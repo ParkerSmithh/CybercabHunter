@@ -242,6 +242,64 @@ const CCC = (() => {
     });
   }
 
+  /* ---------------- Tesla account link (real OAuth via Cloudflare Worker) ----------------
+     The Worker holds the Tesla client secret and all tokens server-side; this
+     script only ever learns a boolean "linked" state via a same-origin-safe
+     cross-site fetch (credentials: 'include' + the Worker's own CORS allow-list). */
+  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const TESLA_ICON_SVG = '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>';
+
+  function initTeslaLink() {
+    // Show a one-time result toast for a just-completed OAuth round trip,
+    // then scrub the query param so it doesn't re-fire on refresh/share.
+    const params = new URLSearchParams(location.search);
+    const result = params.get('tesla');
+    if (result) {
+      const messages = {
+        linked: ['Tesla account linked.', 'success'],
+        cancelled: ['Tesla linking was cancelled.', 'info'],
+        invalid_state: ['Tesla linking failed — please try again.', 'error'],
+        token_exchange_failed: ['Tesla linking failed — please try again.', 'error'],
+        error: ['Tesla linking failed — please try again.', 'error']
+      };
+      const [msg, type] = messages[result] || messages.error;
+      toast(msg, type);
+      params.delete('tesla');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    }
+
+    const btn = document.getElementById('teslaLinkBtn');
+    if (!btn) return;
+
+    function render(linked) {
+      btn.dataset.linked = linked ? '1' : '0';
+      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>${linked ? 'Tesla Account Linked' : 'Link Tesla Account'}`;
+      btn.classList.toggle('text-gold', linked);
+      btn.classList.toggle('border-gold', linked);
+      btn.classList.toggle('text-slate-100', !linked);
+    }
+
+    fetch(TESLA_WORKER_URL + '/oauth/tesla/status', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => render(!!d.linked))
+      .catch(() => render(false));
+
+    btn.addEventListener('click', (e) => {
+      if (btn.dataset.linked === '1') {
+        e.preventDefault();
+        btn.textContent = 'Disconnecting…';
+        fetch(TESLA_WORKER_URL + '/oauth/tesla/disconnect', { method: 'POST', credentials: 'include' })
+          .then(() => { render(false); toast('Tesla account disconnected.', 'info'); })
+          .catch(() => { render(true); toast('Could not disconnect — please try again.', 'error'); });
+      } else {
+        btn.textContent = 'Connecting…';
+        // No preventDefault — the browser follows href to /oauth/tesla/start,
+        // a real top-level navigation to Tesla's own login page.
+      }
+    });
+  }
+
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
@@ -249,7 +307,8 @@ const CCC = (() => {
     initParticles();
     initSightingDrawer();
     initRipple();
+    initTeslaLink();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, init };
 })();

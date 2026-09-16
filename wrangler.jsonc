@@ -5,5 +5,14 @@
   "assets": {
     "directory": "./",
     "binding": "ASSETS"
-  }
+  },
+  "vars": {
+    "FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "TESLA_SESSIONS",
+      "id": "3b4c90b3fd1b40efbc5722fea72d90c0"
+    }
+  ]
 }
