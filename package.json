@@ -1,0 +1,10 @@
+{
+  "name": "cybercabhunter-worker",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy"
+  }
+}

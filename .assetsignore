@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+tests
+*.md
+.DS_Store
+wrangler.jsonc
+worker
+package.json
+package-lock.json
