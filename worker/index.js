@@ -7,7 +7,6 @@ function withCors(response, request) {
   if (origin !== ALLOWED_ORIGIN) return response;
   const headers = new Headers(response.headers);
   headers.set('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  headers.set('Access-Control-Allow-Credentials', 'true');
   headers.set('Vary', 'Origin');
   return new Response(response.body, { status: response.status, headers });
 }
@@ -23,9 +22,8 @@ export default {
           status: 204,
           headers: {
             'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-            'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
             'Vary': 'Origin'
           }
         });

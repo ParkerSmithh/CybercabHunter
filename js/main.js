@@ -249,7 +249,23 @@ const CCC = (() => {
   const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
   const TESLA_ICON_SVG = '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>';
 
+  const TESLA_SESSION_KEY = 'teslaSessionId';
+
   function initTeslaLink() {
+    // The callback hands back a one-time session ID in the URL fragment
+    // (never sent to any server) the first time the browser lands here after
+    // linking. Capture it into localStorage, then scrub it from the URL.
+    // This ID is not a Tesla token — it's an opaque pointer to the token
+    // record the Worker keeps server-side; a cross-site cookie would have
+    // worked the same way in principle, but Chrome/Safari both block
+    // third-party cookies by default, so the Worker uses this instead and
+    // the frontend sends it back explicitly as an Authorization header.
+    const hashMatch = location.hash.match(/tesla_session=([^&]+)/);
+    if (hashMatch) {
+      localStorage.setItem(TESLA_SESSION_KEY, decodeURIComponent(hashMatch[1]));
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+
     // Show a one-time result toast for a just-completed OAuth round trip,
     // then scrub the query param so it doesn't re-fire on refresh/share.
     const params = new URLSearchParams(location.search);
@@ -266,7 +282,7 @@ const CCC = (() => {
       toast(msg, type);
       params.delete('tesla');
       const query = params.toString();
-      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
     }
 
     const btn = document.getElementById('teslaLinkBtn');
@@ -274,18 +290,30 @@ const CCC = (() => {
 
     function render(linked) {
       btn.dataset.linked = linked ? '1' : '0';
-      btn.style.display = linked ? 'none' : '';
-      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
+      btn.classList.toggle('btn-magnetic', !linked);
+      btn.style.pointerEvents = linked ? 'none' : '';
+      btn.style.opacity = linked ? '0.7' : '';
+      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>${linked ? 'Account Linked' : 'Link Tesla Account'}`;
     }
 
-    fetch(TESLA_WORKER_URL + '/oauth/tesla/status', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => render(!!d.linked))
-      .catch(() => render(false));
+    const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+    if (!sessionId) {
+      render(false);
+    } else {
+      fetch(TESLA_WORKER_URL + '/oauth/tesla/status', {
+        headers: { Authorization: 'Bearer ' + sessionId }
+      })
+        .then(r => r.json())
+        .then(d => {
+          render(!!d.linked);
+          if (!d.linked) localStorage.removeItem(TESLA_SESSION_KEY);
+        })
+        .catch(() => render(false));
+    }
 
-    // Button is hidden once linked (see render()), so a click only ever
-    // means "start linking" — no preventDefault, the browser follows href
-    // to /oauth/tesla/start, a real top-level navigation to Tesla's login.
+    // pointer-events:none once linked (see render()) makes the button
+    // unclickable, so this only ever fires for "start linking" — no
+    // preventDefault, the browser follows href to /oauth/tesla/start.
     btn.addEventListener('click', () => {
       btn.textContent = 'Connecting…';
     });

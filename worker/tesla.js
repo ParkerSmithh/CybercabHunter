@@ -20,25 +20,19 @@ function redirectUriFor(request) {
   return new URL('/oauth/tesla/callback', request.url).toString();
 }
 
-function readCookie(request, name) {
-  const header = request.headers.get('Cookie') || '';
-  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function sessionCookieHeader(sessionId, maxAgeSeconds) {
-  return [
-    `tesla_session=${sessionId}`,
-    'Path=/',
-    'HttpOnly',
-    'Secure',
-    'SameSite=None',
-    `Max-Age=${maxAgeSeconds}`
-  ].join('; ');
-}
-
-function clearSessionCookieHeader() {
-  return 'tesla_session=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0';
+// The frontend (github.io) and this Worker (workers.dev) are different sites,
+// so a cookie the Worker sets is a third-party cookie from the frontend's
+// point of view — Chrome and Safari both block those by default, which
+// silently broke the original cookie-based session. Instead, the callback
+// hands the frontend a one-time, opaque session ID via the URL fragment
+// (never sent to any server) and the frontend re-sends it explicitly as an
+// `Authorization: Bearer <id>` header — a normal header isn't subject to
+// third-party cookie policy at all. This ID is not a Tesla token; it's just
+// a pointer to the token record this Worker keeps server-side in KV.
+function readBearerToken(request) {
+  const header = request.headers.get('Authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : null;
 }
 
 async function startOAuth(request, env) {
@@ -134,8 +128,10 @@ async function handleCallback(request, env) {
   const sessionId = randomToken();
   await saveSession(env, sessionId, tokenResponse);
 
-  const headers = new Headers({ Location: `${frontend}?tesla=linked` });
-  headers.append('Set-Cookie', sessionCookieHeader(sessionId, SESSION_TTL_SECONDS));
+  // The fragment (#...) is never transmitted to any server — only this
+  // browser ever sees the session ID, and only for the instant it takes the
+  // frontend's own script to read it out of location.hash and store it.
+  const headers = new Headers({ Location: `${frontend}?tesla=linked#tesla_session=${sessionId}` });
   return new Response(null, { status: 302, headers });
 }
 
@@ -144,7 +140,7 @@ async function handleCallback(request, env) {
 // Returns null if there's no valid linked session. Nothing this returns is
 // ever forwarded to the browser — callers only expose a linked boolean.
 async function getSession(request, env) {
-  const sessionId = readCookie(request, 'tesla_session');
+  const sessionId = readBearerToken(request);
   if (!sessionId) return null;
 
   const raw = await env.TESLA_SESSIONS.get(`session:${sessionId}`);
@@ -170,13 +166,11 @@ async function handleStatus(request, env) {
 }
 
 async function handleDisconnect(request, env) {
-  const sessionId = readCookie(request, 'tesla_session');
+  const sessionId = readBearerToken(request);
   if (sessionId) {
     await env.TESLA_SESSIONS.delete(`session:${sessionId}`);
   }
-  const headers = new Headers({ 'Content-Type': 'application/json' });
-  headers.append('Set-Cookie', clearSessionCookieHeader());
-  return new Response(JSON.stringify({ linked: false }), { status: 200, headers });
+  return Response.json({ linked: false });
 }
 
 export const tesla = { startOAuth, handleCallback, handleStatus, handleDisconnect };
