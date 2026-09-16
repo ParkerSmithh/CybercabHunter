@@ -274,10 +274,8 @@ const CCC = (() => {
 
     function render(linked) {
       btn.dataset.linked = linked ? '1' : '0';
-      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>${linked ? 'Tesla Account Linked' : 'Link Tesla Account'}`;
-      btn.classList.toggle('text-gold', linked);
-      btn.classList.toggle('border-gold', linked);
-      btn.classList.toggle('text-slate-100', !linked);
+      btn.style.display = linked ? 'none' : '';
+      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
     }
 
     fetch(TESLA_WORKER_URL + '/oauth/tesla/status', { credentials: 'include' })
@@ -285,18 +283,11 @@ const CCC = (() => {
       .then(d => render(!!d.linked))
       .catch(() => render(false));
 
-    btn.addEventListener('click', (e) => {
-      if (btn.dataset.linked === '1') {
-        e.preventDefault();
-        btn.textContent = 'Disconnecting…';
-        fetch(TESLA_WORKER_URL + '/oauth/tesla/disconnect', { method: 'POST', credentials: 'include' })
-          .then(() => { render(false); toast('Tesla account disconnected.', 'info'); })
-          .catch(() => { render(true); toast('Could not disconnect — please try again.', 'error'); });
-      } else {
-        btn.textContent = 'Connecting…';
-        // No preventDefault — the browser follows href to /oauth/tesla/start,
-        // a real top-level navigation to Tesla's own login page.
-      }
+    // Button is hidden once linked (see render()), so a click only ever
+    // means "start linking" — no preventDefault, the browser follows href
+    // to /oauth/tesla/start, a real top-level navigation to Tesla's login.
+    btn.addEventListener('click', () => {
+      btn.textContent = 'Connecting…';
     });
   }
 
