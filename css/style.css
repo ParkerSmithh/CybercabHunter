@@ -1,4 +1,4 @@
-/* Cybercab Central — shared visual system: glass, neon, keyframes.
+/* Cybercab Hunter — shared visual system: glass, neon, keyframes.
    Tailwind (CDN) handles layout/spacing/typography utilities; this file
    covers everything Tailwind's utility classes can't express directly. */
 
@@ -25,6 +25,12 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
 
 ::selection{background:var(--gold); color:#07090E;}
 
+/* ---------- MapLibre control focus ring (override default blue) ---------- */
+.maplibregl-ctrl-attrib-button:focus,
+.maplibregl-ctrl-group button:focus{
+  box-shadow: 0 0 2px 2px rgba(255,255,255,0.7);
+}
+
 /* ---------- Custom scrollbar ---------- */
 ::-webkit-scrollbar{width:10px; height:10px;}
 ::-webkit-scrollbar-track{background:#07090E;}
@@ -33,12 +39,21 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
 
 /* ---------- Background mesh ---------- */
 .bg-mesh{
-  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden;
   background:
     radial-gradient(ellipse 60% 40% at 15% 10%, rgba(212,175,55,0.08), transparent 60%),
     radial-gradient(ellipse 50% 40% at 85% 30%, rgba(0,229,255,0.06), transparent 60%),
     radial-gradient(ellipse 60% 50% at 50% 100%, rgba(232,33,39,0.05), transparent 60%),
     #07090E;
+}
+.bg-mesh::after{
+  content:''; position:absolute; inset:-20%;
+  background:radial-gradient(circle at 30% 30%, rgba(212,175,55,0.06), transparent 55%);
+  animation:mesh-drift 26s ease-in-out infinite alternate;
+}
+@keyframes mesh-drift{
+  0%{transform:translate(0,0) scale(1);}
+  100%{transform:translate(5%,7%) scale(1.1);}
 }
 .particle{
   position:absolute; border-radius:50%;
@@ -79,9 +94,10 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
 }
 
 /* ---------- Nav ---------- */
+header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 #navIndicator{
   position:absolute; bottom:-1px; height:2px;
-  background:linear-gradient(90deg,var(--gold),var(--cyan));
+  background:var(--gold);
   border-radius:2px;
   transition:left 0.4s cubic-bezier(0.16,1,0.3,1), width 0.4s cubic-bezier(0.16,1,0.3,1);
   opacity:0;
@@ -99,9 +115,15 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
   background-size:220% 220%; background-position:0% 50%;
   opacity:0; transition:opacity 0.3s ease, background-position 0.6s ease;
 }
-.btn-magnetic:hover{transform:translateY(-2px) scale(1.02); box-shadow:0 10px 30px -10px rgba(212,175,55,0.6);}
+.btn-magnetic:hover{transform:translateY(-3px) scale(1.035); box-shadow:0 14px 34px -10px rgba(212,175,55,0.6);}
 .btn-magnetic:hover::before{opacity:1; background-position:100% 50%;}
 .btn-magnetic:active{transform:scale(0.97);}
+.ripple-circle{
+  position:absolute; border-radius:50%;
+  background:rgba(255,255,255,0.5); transform:scale(0);
+  animation:ripple-anim 0.6s ease-out; pointer-events:none;
+}
+@keyframes ripple-anim{ to{ transform:scale(3); opacity:0; } }
 
 /* ---------- Pulse / radar rings ---------- */
 .pulse-ring{position:relative;}
@@ -124,23 +146,35 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
   70%{box-shadow:0 0 0 8px rgba(0,229,255,0);}
   100%{box-shadow:0 0 0 0 rgba(0,229,255,0);}
 }
+.dot-gold-live{
+  width:10px; height:10px; border-radius:50%; background:#FFC72C;
+  box-shadow:0 0 0 0 rgba(255,199,44,0.6);
+  animation:gold-live-pulse 2s infinite;
+}
+@keyframes gold-live-pulse{
+  0%{box-shadow:0 0 0 0 rgba(255,199,44,0.55);}
+  70%{box-shadow:0 0 0 8px rgba(255,199,44,0);}
+  100%{box-shadow:0 0 0 0 rgba(255,199,44,0);}
+}
 
 /* ---------- Radar sweep ---------- */
 .radar-sweep{
-  position:relative; border-radius:50%;
-  background:
-    repeating-radial-gradient(circle, rgba(212,175,55,0.12) 0, rgba(212,175,55,0.12) 1px, transparent 1px, transparent 40px),
-    #0c1119;
-  border:1px solid var(--hairline);
-  overflow:hidden;
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
 }
-.radar-sweep::before{
-  content:''; position:absolute; inset:0;
-  background:conic-gradient(from 0deg, rgba(212,175,55,0.65), transparent 30%);
-  animation:radar-spin var(--radar-speed, 4s) linear infinite;
-  transform-origin:50% 50%;
+.radar-vehicle-img{
+  width:100%; height:100%; object-fit:contain;
+  transition:transform 0.3s ease, filter 0.3s ease;
 }
-@keyframes radar-spin{ to{ transform:rotate(360deg); } }
+.glass:hover .radar-vehicle-img{
+  transform:scale(1.15);
+}
+.glass:hover #cybercabRadar .radar-vehicle-img{
+  filter:drop-shadow(0 0 10px rgba(212,175,55,0.4));
+}
+.glass:hover #modelyRadar .radar-vehicle-img{
+  filter:drop-shadow(0 0 10px rgba(232,33,39,0.4));
+}
 
 /* ---------- Marquee ticker ---------- */
 .marquee-track{
@@ -208,36 +242,60 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
   transition:stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1);
 }
 
-/* ---------- Bingo tile ---------- */
-.bingo-tile{
-  transition:transform 0.3s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease, background 0.3s ease, border-color 0.3s ease;
-}
-.bingo-tile.lit{
-  background:linear-gradient(150deg,rgba(212,175,55,0.25),rgba(0,229,255,0.08));
-  border-color:var(--gold);
-  box-shadow:0 0 24px -4px rgba(212,175,55,0.7), inset 0 0 20px -6px rgba(212,175,55,0.5);
-  transform:scale(1.03);
-}
-
 /* ---------- Leaderboard rank glow ---------- */
 .rank-1{box-shadow:0 0 0 1px var(--gold), 0 0 24px -6px rgba(212,175,55,0.8);}
 .rank-2{box-shadow:0 0 0 1px var(--silver), 0 0 18px -6px rgba(203,213,225,0.6);}
 .rank-3{box-shadow:0 0 0 1px #B08D57, 0 0 18px -6px rgba(176,141,87,0.6);}
 
-/* ---------- Leaflet dark overrides ---------- */
-.leaflet-container{background:#0c1119 !important; font-family:'Inter',sans-serif;}
-.leaflet-popup-content-wrapper, .leaflet-popup-tip{
+/* ---------- MapLibre / OpenFreeMap dark overrides ---------- */
+.maplibregl-map{background:#0c1119 !important; font-family:'Inter',sans-serif;}
+.maplibregl-popup-content{
   background:rgba(15,20,28,0.92); color:#f4f2ec;
   border:1px solid var(--hairline); backdrop-filter:blur(12px);
+  border-radius:12px; padding:10px 12px;
 }
-.leaflet-popup-content-wrapper{border-radius:12px;}
-.leaflet-control-zoom a{
-  background:rgba(15,20,28,0.85) !important; color:#f4f2ec !important;
-  border-color:var(--hairline) !important;
+.maplibregl-popup-tip{border-top-color:rgba(15,20,28,0.92); border-bottom-color:rgba(15,20,28,0.92);}
+.maplibregl-ctrl-group{
+  background:rgba(15,20,28,0.85) !important;
+  border:1px solid var(--hairline) !important;
 }
+.maplibregl-ctrl-group button{background:transparent !important;}
+.maplibregl-ctrl-icon{filter:invert(1);}
 .marker-pulse{position:relative;}
 .marker-pulse::after{
   content:''; position:absolute; inset:-6px; border-radius:50%;
   border:1.5px solid currentColor; opacity:0.6;
   animation:pulse-ring 2.2s ease-out infinite;
 }
+
+/* ---------- Logo badge idle glow ---------- */
+.logo-badge{animation:logo-glow 4s ease-in-out infinite;}
+@keyframes logo-glow{
+  0%,100%{box-shadow:0 0 0 1px rgba(212,175,55,0.35), 0 6px 18px -6px rgba(212,175,55,0.55);}
+  50%{box-shadow:0 0 0 1px rgba(212,175,55,0.55), 0 6px 26px -4px rgba(212,175,55,0.85);}
+}
+
+/* ---------- Service zone cards ---------- */
+.service-zone-card{
+  position:relative;
+  aspect-ratio:1/0.92;
+  border-radius:28px;
+  overflow:hidden;
+  background:#0c1119;
+  border:1px solid rgba(255,199,44,0.15);
+}
+.service-zone-map{ position:absolute; inset:0; }
+.service-zone-infocard{
+  position:absolute; top:16px; left:16px; max-width:260px;
+  background:rgba(8,11,17,0.92);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:18px;
+  padding:18px 20px;
+}
+
+/* ---------- Hero typewriter ---------- */
+.typewriter-cursor{
+  display:inline-block; margin-left:2px; color:var(--gold);
+  animation:cursor-blink 1s steps(1) infinite;
+}
+@keyframes cursor-blink{ 50%{opacity:0;} }

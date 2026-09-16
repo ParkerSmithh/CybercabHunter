@@ -1,4 +1,4 @@
-/* Cybercab Central — shared runtime: seed data, storage, nav, Tesla-link,
+/* Cybercab Hunter — shared runtime: seed data, storage, nav, Tesla-link,
    scroll reveal, counters, confetti, toasts. Loaded after js/calc.js on
    every page; each page's own inline <script> calls CCC.init() first. */
 
@@ -18,16 +18,6 @@ const CCC = (() => {
       { id: 'MY-1187', lat: 32.7831, lng: -96.7994, battery: 58, status: 'Employee Test', lastSeen: '3m ago' },
       { id: 'MY-1042', lat: 32.7963, lng: -96.7691, battery: 88, status: 'Employee Test', lastSeen: '5m ago' },
       { id: 'MY-1299', lat: 30.2601, lng: -97.7519, battery: 65, status: 'Unsupervised', lastSeen: '2m ago' }
-    ],
-    pads: [
-      { id: 'PAD-A1', lat: 30.2655, lng: -97.7500, status: 'Operational', location: 'S Congress Depot' },
-      { id: 'PAD-A2', lat: 30.2790, lng: -97.7280, status: 'Obstructed', location: 'Rainey St Curb' },
-      { id: 'PAD-A3', lat: 30.2450, lng: -97.7700, status: 'Under Construction', location: 'Slaughter Ln Lot' },
-      { id: 'PAD-D1', lat: 32.7900, lng: -96.7850, status: 'Operational', location: 'Deep Ellum Yard' }
-    ],
-    depots: [
-      { id: 'DEPOT-AUS', name: 'Austin Central Depot', lat: 30.2200, lng: -97.7500, capacity: 120, currentLoad: 94 },
-      { id: 'DEPOT-DAL', name: 'Dallas Turnaround', lat: 32.7500, lng: -96.8200, capacity: 60, currentLoad: 22 }
     ],
     deadZones: [
       { lat: 30.2950, lng: -97.7150, radius: 900, label: 'East Austin high-demand gap' },
@@ -50,17 +40,6 @@ const CCC = (() => {
       { name: 'cabhunter22', score: 1204 },
       { name: 'sillicon_hills', score: 990 },
       { name: 'railyardryan', score: 812 }
-    ],
-    cities: [
-      { name: 'Austin', state: 'TX', votes: 412 },
-      { name: 'Miami', state: 'FL', votes: 356 },
-      { name: 'Las Vegas', state: 'NV', votes: 298 },
-      { name: 'Dallas', state: 'TX', votes: 271 }
-    ],
-    bingoTiles: [
-      'Spot 2 Cybercabs same block', 'Catch a wireless charging stop', 'See an empty Cybercab u-turn',
-      'Spot a Model Y safety driver', 'Photograph a depot at night', 'Cybercab yields to pedestrian',
-      'Spot 3 sightings in one day', 'See a Cybercab at a drive-thru', 'Catch a rainy-day ride'
     ]
   };
 
@@ -107,47 +86,6 @@ const CCC = (() => {
     }
   }
 
-  /* ---------------- Tesla link ---------------- */
-  function isTeslaLinked() {
-    return storage.get('teslaLinked', false) === true;
-  }
-
-  function renderTeslaButton() {
-    const btn = document.getElementById('teslaLinkBtn');
-    if (!btn) return;
-    if (isTeslaLinked()) {
-      btn.innerHTML = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Verified Fleet Scout';
-      btn.classList.remove('btn-magnetic');
-      btn.classList.add('bg-gradient-to-r', 'from-gold', 'to-goldsoft', 'text-[#1a1204]', 'cursor-default');
-      btn.onclick = (e) => e.preventDefault();
-    }
-  }
-
-  function initTeslaLink() {
-    const btn = document.getElementById('teslaLinkBtn');
-    const modal = document.getElementById('teslaLinkModal');
-    const confirmBtn = document.getElementById('teslaLinkConfirm');
-    const cancelBtn = document.getElementById('teslaLinkCancel');
-    if (!btn || !modal) return;
-
-    btn.addEventListener('click', () => {
-      if (isTeslaLinked()) return;
-      modal.classList.add('is-open');
-    });
-    if (cancelBtn) cancelBtn.addEventListener('click', () => modal.classList.remove('is-open'));
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-open'); });
-
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => {
-        storage.set('teslaLinked', true);
-        modal.classList.remove('is-open');
-        spawnConfetti(btn);
-        renderTeslaButton();
-        toast('Tesla account linked — you are now a Verified Fleet Scout.', 'success');
-      });
-    }
-  }
-
   /* ---------------- Reveal on scroll ---------------- */
   function initReveal() {
     const els = document.querySelectorAll('.reveal-on-scroll');
@@ -155,10 +93,18 @@ const CCC = (() => {
     const io = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          const delay = entry.target.dataset.delay || 0;
-          entry.target.style.transitionDelay = delay + 'ms';
-          entry.target.classList.add('is-visible');
-          io.unobserve(entry.target);
+          const el = entry.target;
+          let delay = el.dataset.delay;
+          if (delay === undefined) {
+            const siblings = el.parentElement
+              ? Array.from(el.parentElement.children).filter(c => c.classList.contains('reveal-on-scroll'))
+              : [];
+            const idx = siblings.indexOf(el);
+            delay = idx > 0 ? Math.min(idx, 8) * 70 : 0;
+          }
+          el.style.transitionDelay = delay + 'ms';
+          el.classList.add('is-visible');
+          io.unobserve(el);
         }
       });
     }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
@@ -170,13 +116,15 @@ const CCC = (() => {
     if (!el) return;
     const start = performance.now();
     const fmt = formatFn || (v => Math.round(v).toLocaleString());
+    const isInput = el.tagName === 'INPUT';
+    const set = v => { if (isInput) el.value = v; else el.textContent = v; };
     function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
     function tick(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = easeOutExpo(t);
-      el.textContent = fmt(from + (to - from) * eased);
+      set(fmt(from + (to - from) * eased));
       if (t < 1) requestAnimationFrame(tick);
-      else el.textContent = fmt(to);
+      else set(fmt(to));
     }
     requestAnimationFrame(tick);
   }
@@ -277,15 +225,31 @@ const CCC = (() => {
     }
   }
 
+  /* ---------------- Button ripple ---------------- */
+  function initRipple() {
+    document.querySelectorAll('.btn-magnetic').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const circle = document.createElement('span');
+        const size = Math.max(rect.width, rect.height);
+        circle.className = 'ripple-circle';
+        circle.style.width = circle.style.height = size + 'px';
+        circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
+        circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
+        btn.appendChild(circle);
+        setTimeout(() => circle.remove(), 600);
+      });
+    });
+  }
+
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
-    renderTeslaButton();
-    initTeslaLink();
     initReveal();
     initParticles();
     initSightingDrawer();
+    initRipple();
   }
 
-  return { data, storage, merge, initNav, initTeslaLink, renderTeslaButton, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, init };
 })();

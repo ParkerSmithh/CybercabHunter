@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cybercab Central — Leaderboards & City Showdown</title>
+<title>Cybercab Hunter — Spotter Leaderboard</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -17,9 +21,6 @@
   }
 </script>
 <link rel="stylesheet" href="css/style.css">
-<style>
-  .bingo-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-</style>
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -27,29 +28,27 @@
 <header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-goldsoft via-gold to-[#9c6f21] flex items-center justify-center shadow-[0_0_0_1px_rgba(212,175,55,0.35),0_6px_18px_-6px_rgba(212,175,55,0.55)]">
-        <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5"><path d="M4 15l2.4-6.2A3 3 0 0 1 9.2 7h5.6a3 3 0 0 1 2.8 1.8L20 15" stroke="#1a1204" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 15h19v2.2a1.6 1.6 0 0 1-1.6 1.6H4.1a1.6 1.6 0 0 1-1.6-1.6V15z" stroke="#1a1204" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="18.8" r="1.4" fill="#1a1204"/><circle cx="17" cy="18.8" r="1.4" fill="#1a1204"/></svg>
+      <div class="logo-badge w-10 h-10 rounded-xl bg-gradient-to-br from-goldsoft via-gold to-[#9c6f21] flex items-center justify-center shadow-[0_0_0_1px_rgba(212,175,55,0.35),0_6px_18px_-6px_rgba(212,175,55,0.55)]">
+        <svg viewBox="0 0 24 24" fill="#1a1204" class="w-5 h-5"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
       </div>
       <div class="leading-tight">
         <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">CENTRAL</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="index.html" data-nav="index" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Command Deck</a>
-      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Dispatch Sim</a>
+      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ETA</a>
       <a href="fleet-calculator.html" data-nav="fleet-calculator" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Infrastructure</a>
-      <a href="verify.html" data-nav="verify" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Verify</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
       <a href="community.html" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <button id="teslaLinkBtn" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
+      <a href="https://www.tesla.com/teslaaccount" target="_blank" rel="noopener" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
         Link Tesla Account
-      </button>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit Sighting</button>
+      </a>
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
     </div>
   </div>
 </header>
@@ -57,29 +56,14 @@
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="reveal-on-scroll mb-14 max-w-2xl">
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Community<br><span class="text-gold">Command</span></h1>
-      <p class="mt-4 text-slate-400 text-base leading-relaxed">Vote on the next expansion city, complete Cybercab Bingo, and climb the spotter leaderboard.</p>
+      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Community<br><span class="text-gold">Leaderboard</span></h1>
+      <p class="mt-4 text-slate-400 text-base leading-relaxed">Climb the spotter leaderboard.</p>
     </div>
 
-    <!-- City Showdown -->
-    <div class="mb-16">
-      <h2 class="font-display font-bold text-2xl mb-6 reveal-on-scroll">Where Next? City Showdown</h2>
-      <div id="cityList" class="glass rounded-2xl p-7 space-y-6 reveal-on-scroll"></div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Bingo -->
-      <div class="glass rounded-2xl p-7 reveal-on-scroll">
-        <h2 class="font-display font-bold text-2xl mb-2">Cybercab Bingo</h2>
-        <p class="text-sm text-slate-400 mb-6">Click a tile once you've spotted it in the wild.</p>
-        <div id="bingoGrid" class="bingo-grid"></div>
-      </div>
-
-      <!-- Leaderboard -->
-      <div class="glass rounded-2xl p-7 reveal-on-scroll">
-        <h2 class="font-display font-bold text-2xl mb-6">Spotter Leaderboard</h2>
-        <div id="leaderboardList" class="space-y-3"></div>
-      </div>
+    <!-- Leaderboard -->
+    <div class="glass rounded-2xl p-7 reveal-on-scroll max-w-2xl">
+      <h2 class="font-display font-bold text-2xl mb-6">Spotter Leaderboard</h2>
+      <div id="leaderboardList" class="space-y-3"></div>
     </div>
   </div>
 </section>
@@ -87,15 +71,14 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">Submit a Sighting</h3>
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <form id="sightingForm" class="space-y-5">
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vehicle Type</label>
-      <select id="sightingType" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
-        <option>Unsupervised</option>
-        <option>Employee Test</option>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City</label>
+      <select id="sightingType" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+        <option>Austin</option>
       </select>
     </div>
     <div>
@@ -103,52 +86,35 @@
       <input id="sightingLoc" required placeholder="e.g. S Congress Ave, Austin, TX" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vehicle ID (optional)</label>
-      <input id="sightingVehicle" placeholder="e.g. CC-0412" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate #</label>
+      <input id="sightingVehicle" required placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Log Sighting</button>
   </form>
-</div>
-
-<div id="teslaLinkModal" class="modal-backdrop fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="modal-panel glass-strong rounded-2xl max-w-md w-full p-8">
-    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center mb-5">
-      <svg class="w-6 h-6 text-[#1a1204]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
-    </div>
-    <h3 class="font-display font-bold text-xl mb-2">Link Tesla Account</h3>
-    <p class="text-sm text-slate-400 leading-relaxed mb-6">This verifies your owner status locally, in your browser only. Cybercab Central never contacts Tesla's servers or stores credentials — it simply marks your account as a Verified Fleet Scout on this device.</p>
-    <div class="flex gap-3">
-      <button id="teslaLinkCancel" class="flex-1 py-3 rounded-lg text-sm font-semibold border border-slate-600 text-slate-300">Cancel</button>
-      <button id="teslaLinkConfirm" class="btn-magnetic flex-1 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Confirm & Link</button>
-    </div>
-  </div>
 </div>
 
 <footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
     <div class="col-span-2">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4"><path d="M4 15l2.4-6.2A3 3 0 0 1 9.2 7h5.6a3 3 0 0 1 2.8 1.8L20 15" stroke="#1a1204" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 15h19v2.2a1.6 1.6 0 0 1-1.6 1.6H4.1a1.6 1.6 0 0 1-1.6-1.6V15z" stroke="#1a1204" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <div class="logo-badge w-8 h-8 rounded-lg bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="#1a1204" class="w-4 h-4"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
         </div>
-        <span class="font-display font-bold">CYBERCAB CENTRAL</span>
+        <span class="font-display font-bold">CYBERCAB HUNTER</span>
       </div>
       <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="index.html" class="hover:text-white transition-colors">Command Deck</a>
-        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Dispatch Sim</a>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
         <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
       </div>
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
       <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="infrastructure.html" class="hover:text-white transition-colors">Infrastructure</a>
-        <a href="verify.html" class="hover:text-white transition-colors">Verify</a>
-        <a href="community.html" class="hover:text-white transition-colors">Community</a>
+        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
+      <a href="community.html" class="hover:text-white transition-colors">Community</a>
       </div>
     </div>
     <div>
@@ -159,65 +125,13 @@
       </div>
     </div>
   </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Central. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
 </footer>
 
 <script src="js/calc.js"></script>
 <script src="js/main.js"></script>
 <script>
   CCC.init();
-
-  // ---- City Showdown ----
-  function renderCities() {
-    const extraVotes = CCC.storage.get('cityVotes', {});
-    const cities = CCC.data.cities.map(c => ({ ...c, votes: c.votes + (extraVotes[c.name] || 0) }));
-    const maxVotes = Math.max(...cities.map(c => c.votes));
-    const list = document.getElementById('cityList');
-    list.innerHTML = cities.map(c => `
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-3">
-            <span class="font-semibold text-sm">${c.name}, ${c.state}</span>
-            <span class="text-xs text-slate-500">${c.votes} votes</span>
-          </div>
-          <button class="upvote-btn btn-magnetic text-xs font-bold px-3 py-1.5 rounded-lg border border-gold text-gold" data-city="${c.name}">▲ Upvote</button>
-        </div>
-        <div class="h-3 w-full rounded-full overflow-hidden bg-[#161b26]">
-          <div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold transition-all duration-700 ease-out" style="width:${(c.votes / maxVotes) * 100}%; box-shadow:0 0 12px rgba(212,175,55,0.5);"></div>
-        </div>
-      </div>
-    `).join('');
-    list.querySelectorAll('.upvote-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const city = btn.dataset.city;
-        const votes = CCC.storage.get('cityVotes', {});
-        votes[city] = (votes[city] || 0) + 1;
-        CCC.storage.set('cityVotes', votes);
-        renderCities();
-        CCC.toast(`Vote cast for ${city}.`, 'success');
-      });
-    });
-  }
-  renderCities();
-
-  // ---- Bingo ----
-  function renderBingo() {
-    const state = CCC.storage.get('bingoState', new Array(9).fill(false));
-    const grid = document.getElementById('bingoGrid');
-    grid.innerHTML = CCC.data.bingoTiles.map((tile, i) => `
-      <button class="bingo-tile ${state[i] ? 'lit' : ''} aspect-square rounded-xl border border-[rgba(212,175,55,0.2)] p-3 text-[11px] font-semibold text-center flex items-center justify-center leading-snug" data-idx="${i}">${tile}</button>
-    `).join('');
-    grid.querySelectorAll('.bingo-tile').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.idx, 10);
-        const s = CCC.storage.get('bingoState', new Array(9).fill(false));
-        s[idx] = !s[idx];
-        CCC.storage.set('bingoState', s);
-        btn.classList.toggle('lit', s[idx]);
-      });
-    });
-  }
-  renderBingo();
 
   // ---- Leaderboard ----
   const rankClass = ['rank-1', 'rank-2', 'rank-3'];

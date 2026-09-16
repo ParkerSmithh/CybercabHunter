@@ -3,10 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cybercab Central — Live Command Deck</title>
+<title>Cybercab Hunter — Live Command Deck</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -26,50 +30,32 @@
 <header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-goldsoft via-gold to-[#9c6f21] flex items-center justify-center shadow-[0_0_0_1px_rgba(212,175,55,0.35),0_6px_18px_-6px_rgba(212,175,55,0.55)]">
-        <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5"><path d="M4 15l2.4-6.2A3 3 0 0 1 9.2 7h5.6a3 3 0 0 1 2.8 1.8L20 15" stroke="#1a1204" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 15h19v2.2a1.6 1.6 0 0 1-1.6 1.6H4.1a1.6 1.6 0 0 1-1.6-1.6V15z" stroke="#1a1204" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="18.8" r="1.4" fill="#1a1204"/><circle cx="17" cy="18.8" r="1.4" fill="#1a1204"/></svg>
+      <div class="logo-badge w-10 h-10 rounded-xl bg-gradient-to-br from-goldsoft via-gold to-[#9c6f21] flex items-center justify-center shadow-[0_0_0_1px_rgba(212,175,55,0.35),0_6px_18px_-6px_rgba(212,175,55,0.55)]">
+        <svg viewBox="0 0 24 24" fill="#1a1204" class="w-5 h-5"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
       </div>
       <div class="leading-tight">
         <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">CENTRAL</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="index.html" data-nav="index" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Command Deck</a>
-      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Dispatch Sim</a>
+      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ETA</a>
       <a href="fleet-calculator.html" data-nav="fleet-calculator" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Infrastructure</a>
-      <a href="verify.html" data-nav="verify" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Verify</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
       <a href="community.html" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <button id="teslaLinkBtn" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
+      <a href="https://www.tesla.com/teslaaccount" target="_blank" rel="noopener" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
         Link Tesla Account
-      </button>
+      </a>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">
-        Submit Sighting
+        Submit
       </button>
     </div>
   </div>
 </header>
-
-<!-- ===== Marquee ticker ===== -->
-<div class="border-b border-[rgba(212,175,55,0.12)] bg-panel/40 overflow-hidden py-2.5">
-  <div class="marquee-track text-xs font-medium text-slate-400">
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-    <span>CYBERCAB CENTRAL</span>
-  </div>
-</div>
 
 <!-- ===== Hero ===== -->
 <section class="relative min-h-[600px] flex items-end pt-20 overflow-hidden border-b border-[rgba(212,175,55,0.12)]">
@@ -78,17 +64,13 @@
   <div class="relative z-[2] max-w-7xl mx-auto px-6 lg:px-10 w-full pb-16">
     <div class="max-w-xl reveal-on-scroll">
       <div class="inline-flex items-center gap-2 text-xs font-medium text-slate-300 mb-5">
-        <span class="dot-live"></span> Live telemetry — updated continuously
       </div>
       <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-tight">
-        Command the <span class="text-gold">Cybercab</span><br>fleet in real time.
+        TRACK THE<br><span class="text-gold">FUTURE</span> OF AUTONOMY
       </h1>
-      <p class="mt-6 text-base lg:text-lg text-slate-300 max-w-md leading-relaxed">
-        Crowdsourced tracking, dispatch analytics, and infrastructure intel for Tesla's autonomous robotaxi fleet — no official API required.
-      </p>
+      <p id="heroSubtitle" class="mt-6 text-base lg:text-lg text-slate-300 max-w-md leading-relaxed" style="min-height:5.6rem;"><span id="heroSubtitleText"></span><span class="typewriter-cursor">|</span></p>
       <div class="flex gap-3 mt-8">
-        <a href="#map" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">View Live Map →</a>
-        <button id="heroSightingBtn" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-semibold border border-slate-600 text-slate-100">Submit Sighting 📍</button>
+        <a href="#map" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">VIEW MAP →</a>
       </div>
     </div>
   </div>
@@ -96,26 +78,20 @@
 
 <!-- ===== Stats bar ===== -->
 <section class="border-b border-[rgba(212,175,55,0.12)]">
-  <div class="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 reveal-on-scroll">
-    <div class="p-8 border-r border-[rgba(212,175,55,0.1)] border-b lg:border-b-0">
-      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="1247">0</span></div>
-      <div class="text-sm text-slate-400 mt-2">Total Spots</div>
-      <div class="text-xs font-semibold text-cyan mt-1">+23 today</div>
-    </div>
-    <div class="p-8 lg:border-r border-[rgba(212,175,55,0.1)] border-b lg:border-b-0">
-      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="8">0</span></div>
+  <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 reveal-on-scroll">
+    <div class="p-8 sm:border-r border-[rgba(212,175,55,0.1)] border-b sm:border-b-0">
+      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="45">0</span></div>
       <div class="text-sm text-slate-400 mt-2">Active Cybercabs</div>
-      <div class="text-xs font-semibold text-slate-500 mt-1">Austin, Dallas</div>
     </div>
-    <div class="p-8 border-r border-[rgba(212,175,55,0.1)]">
+    <div class="p-8 sm:border-r border-[rgba(212,175,55,0.1)] border-b sm:border-b-0">
       <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="98">0</span>%</div>
       <div class="text-sm text-slate-400 mt-2">Unsupervised Rate</div>
       <div class="text-xs font-semibold text-cyan mt-1">In Austin</div>
     </div>
     <div class="p-8">
-      <div class="font-display font-bold text-3xl text-gold">Miami</div>
-      <div class="text-sm text-slate-400 mt-2">Leading Expansion Vote</div>
-      <div class="text-xs font-semibold text-crimson mt-1">↗ Community pick</div>
+      <div class="font-display font-bold text-3xl text-gold">Dallas</div>
+      <div class="text-sm text-slate-400 mt-2">Likely Next City</div>
+      <div class="text-xs font-semibold text-crimson mt-1">Coming Soon</div>
     </div>
   </div>
 </section>
@@ -123,30 +99,37 @@
 <!-- ===== Live map ===== -->
 <section class="py-20" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="reveal-on-scroll flex items-end justify-between mb-8">
-      <h2 class="font-display font-bold text-3xl">Live Fleet Map</h2>
-      <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-[rgba(0,229,255,0.35)] text-cyan bg-[rgba(0,229,255,0.08)]"><span class="dot-live"></span> Live</span>
+    <div class="reveal-on-scroll mb-6">
+      <h2 class="font-display font-bold text-3xl">SERVICE ZONES</h2>
     </div>
-    <div class="glass rounded-2xl p-6 reveal-on-scroll">
-      <div class="flex flex-wrap gap-5 mb-4 text-xs text-slate-400">
-        <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#D4AF37;box-shadow:0 0 8px #D4AF37"></span>Cybercabs</span>
-        <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#CBD5E1;box-shadow:0 0 8px #CBD5E1"></span>Model Ys</span>
-        <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#00E5FF;box-shadow:0 0 8px #00E5FF"></span>Inductive Pads</span>
-        <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#A78BFA;box-shadow:0 0 8px #A78BFA"></span>Depots</span>
-      </div>
-      <div id="fleetMap" class="rounded-xl overflow-hidden" style="height:440px;"></div>
+    <div class="mb-8 reveal-on-scroll">
+      <a href="infrastructure.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
+        VIEW ZONES
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
     </div>
-  </div>
-</section>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
 
-<!-- ===== Recent feed ===== -->
-<section class="py-20 border-t border-[rgba(212,175,55,0.12)]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="reveal-on-scroll flex items-end justify-between mb-8">
-      <h2 class="font-display font-bold text-3xl">Recent Check-Ins</h2>
-      <a href="verify.html" class="text-sm font-semibold text-slate-300 hover:text-white transition-colors">View Verification Hub →</a>
+      <!-- Austin -->
+      <div class="service-zone-card reveal-on-scroll">
+        <div id="zoneMap-austin" class="service-zone-map"></div>
+        <div class="service-zone-infocard">
+          <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400"><span class="dot-gold-live"></span>Service Area</div>
+          <div class="font-display font-bold text-3xl mt-1.5 text-white">Austin</div>
+          <p class="text-sm text-slate-300 mt-2 leading-relaxed max-w-[240px]">Cybercab service is available in this area.</p>
+          <div class="border-t border-slate-700/60 my-3"></div>
+          <div class="flex items-center gap-2 text-sm text-slate-300">
+            <svg class="w-4 h-4 shrink-0" style="color:#FFC72C;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Service Hours
+            <span class="font-semibold text-white ml-auto">6AM – 10PM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add more city cards here as Cybercab expands: copy the block above, update the id/name/hours,
+           and add a matching initZoneMap('zoneMap-<id>', '<City Name>', [centerLng, centerLat], <zoneCoords>) call in the script below. -->
+
     </div>
-    <div id="feedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
   </div>
 </section>
 
@@ -154,15 +137,14 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">Submit a Sighting</h3>
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <form id="sightingForm" class="space-y-5">
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vehicle Type</label>
-      <select id="sightingType" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
-        <option>Unsupervised</option>
-        <option>Employee Test</option>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City</label>
+      <select id="sightingType" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+        <option>Austin</option>
       </select>
     </div>
     <div>
@@ -170,26 +152,11 @@
       <input id="sightingLoc" required placeholder="e.g. S Congress Ave, Austin, TX" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vehicle ID (optional)</label>
-      <input id="sightingVehicle" placeholder="e.g. CC-0412" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate #</label>
+      <input id="sightingVehicle" required placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Log Sighting</button>
   </form>
-</div>
-
-<!-- ===== Tesla link modal ===== -->
-<div id="teslaLinkModal" class="modal-backdrop fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="modal-panel glass-strong rounded-2xl max-w-md w-full p-8">
-    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center mb-5">
-      <svg class="w-6 h-6 text-[#1a1204]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
-    </div>
-    <h3 class="font-display font-bold text-xl mb-2">Link Tesla Account</h3>
-    <p class="text-sm text-slate-400 leading-relaxed mb-6">This verifies your owner status locally, in your browser only. Cybercab Central never contacts Tesla's servers or stores credentials — it simply marks your account as a Verified Fleet Scout on this device.</p>
-    <div class="flex gap-3">
-      <button id="teslaLinkCancel" class="flex-1 py-3 rounded-lg text-sm font-semibold border border-slate-600 text-slate-300">Cancel</button>
-      <button id="teslaLinkConfirm" class="btn-magnetic flex-1 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Confirm & Link</button>
-    </div>
-  </div>
 </div>
 
 <!-- ===== Footer ===== -->
@@ -197,27 +164,24 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
     <div class="col-span-2">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4"><path d="M4 15l2.4-6.2A3 3 0 0 1 9.2 7h5.6a3 3 0 0 1 2.8 1.8L20 15" stroke="#1a1204" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 15h19v2.2a1.6 1.6 0 0 1-1.6 1.6H4.1a1.6 1.6 0 0 1-1.6-1.6V15z" stroke="#1a1204" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <div class="logo-badge w-8 h-8 rounded-lg bg-gradient-to-br from-goldsoft to-gold flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="#1a1204" class="w-4 h-4"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
         </div>
-        <span class="font-display font-bold">CYBERCAB CENTRAL</span>
+        <span class="font-display font-bold">CYBERCAB HUNTER</span>
       </div>
-      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="index.html" class="hover:text-white transition-colors">Command Deck</a>
-        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Dispatch Sim</a>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
         <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
       </div>
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
       <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="infrastructure.html" class="hover:text-white transition-colors">Infrastructure</a>
-        <a href="verify.html" class="hover:text-white transition-colors">Verify</a>
-        <a href="community.html" class="hover:text-white transition-colors">Community</a>
+        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
+      <a href="community.html" class="hover:text-white transition-colors">Community</a>
       </div>
     </div>
     <div>
@@ -228,85 +192,125 @@
       </div>
     </div>
   </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Central. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
 </footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/main.js"></script>
 <script>
   CCC.init();
 
-  // ---- Stat counters ----
-  document.querySelectorAll('.counter').forEach(el => {
-    CCC.animateCounter(el, 0, parseInt(el.dataset.target, 10), 1400);
-  });
+  // ---- Hero subtitle typewriter cycle ----
+  const heroMessages = [
+    'Real-time fleet tracking, operational analytics, and infrastructure insights for Tesla\'s autonomous Cybercab network.',
+    'Powered by the community: track Cybercab sightings, explore service zones, and monitor the future of autonomous transportation.',
+    'Live Cybercab intelligence featuring fleet telemetry, dispatch performance analytics, and charging infrastructure monitoring.',
+    'The command center for Tesla Cybercabs—tracking vehicles, analyzing operations, and mapping the autonomous future.',
+    'Crowdsourced tracking, dispatch analytics, and infrastructure intel for Tesla\'s autonomous Cybercab fleet.'
+  ];
 
-  // ---- Leaflet map ----
-  const map = L.map('fleetMap', { scrollWheelZoom: false }).setView([30.85, -97.2], 7);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
-  }).addTo(map);
+  function initHeroTypewriter() {
+    const textEl = document.getElementById('heroSubtitleText');
+    const cursorEl = document.querySelector('.typewriter-cursor');
+    if (!textEl) return;
+    let msgIndex = 0;
 
-  function pinIcon(color, size = 14) {
-    return L.divIcon({
-      className: '',
-      html: `<span class="marker-pulse" style="display:block;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 10px ${color};color:${color};"></span>`,
-      iconSize: [size, size], iconAnchor: [size/2, size/2]
+    function typeMessage(msg) {
+      let charIndex = 0;
+      textEl.textContent = '';
+      if (cursorEl) cursorEl.style.visibility = 'visible';
+      (function step() {
+        charIndex++;
+        textEl.textContent = msg.slice(0, charIndex);
+        if (charIndex < msg.length) {
+          setTimeout(step, 20);
+        } else if (cursorEl) {
+          cursorEl.style.visibility = 'hidden';
+        }
+      })();
+    }
+
+    function cycle() {
+      typeMessage(heroMessages[msgIndex]);
+      msgIndex = (msgIndex + 1) % heroMessages.length;
+    }
+
+    cycle();
+    setInterval(cycle, 10000);
+  }
+  initHeroTypewriter();
+
+  // ---- Stat counters (animate when scrolled into view) ----
+  const counterEls = document.querySelectorAll('.counter');
+  if (counterEls.length) {
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          CCC.animateCounter(el, 0, parseInt(el.dataset.target, 10), 1400);
+          counterObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.4 });
+    counterEls.forEach(el => counterObserver.observe(el));
+  }
+
+  // ---- Austin Robotaxi service zone (Tesla's real published geofence) ----
+  const serviceZoneCoords = [
+    [-97.8089523, 30.2478867], [-97.8237839, 30.2382717], [-97.8376999, 30.2433796], [-97.8522568, 30.2236824],
+    [-97.8609161, 30.2139397], [-97.8681335, 30.2005615], [-97.8598862, 30.1848412], [-97.8251724, 30.1692181],
+    [-97.768898, 30.1522579], [-97.731102, 30.1427193], [-97.6521378, 30.1459084], [-97.5534668, 30.2621021],
+    [-97.5766525, 30.3470936], [-97.6152802, 30.3756886], [-97.6323395, 30.4018478], [-97.6431885, 30.4222393],
+    [-97.6465302, 30.4300823], [-97.6558075, 30.4385662], [-97.6959686, 30.4513607], [-97.7225876, 30.4516335],
+    [-97.7416763, 30.4467773], [-97.778038, 30.4356804], [-97.770607, 30.4302769], [-97.7579498, 30.423193],
+    [-97.7507782, 30.4155159], [-97.7515182, 30.3973579], [-97.7567215, 30.3945923], [-97.76091, 30.3908138],
+    [-97.7832413, 30.3825302], [-97.798378, 30.360218], [-97.819809, 30.3364353], [-97.8299332, 30.3258209],
+    [-97.8367691, 30.2969208], [-97.8253403, 30.2669239], [-97.8089523, 30.2478867]
+  ];
+
+  // ---- Service zone maps (app-style yellow zone display) ----
+  function initZoneMap(containerId, cityName, cityCenter, zoneCoords) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const zoneMap = new maplibregl.Map({
+      container: containerId,
+      style: 'https://tiles.openfreemap.org/styles/fiord',
+      center: zoneCoords[0],
+      zoom: 9,
+      interactive: false,
+      attributionControl: false
+    });
+    zoneMap.on('load', () => {
+      // Darken the default basemap so the yellow zone glows against a near-black backdrop, like the reference app.
+      zoneMap.setPaintProperty('background', 'background-color', '#080a10');
+      zoneMap.setPaintProperty('water', 'fill-color', '#0c1119');
+      zoneMap.setPaintProperty('landcover_wood', 'fill-color', 'hsla(232,18%,10%,0.6)');
+      zoneMap.setPaintProperty('park', 'fill-color', 'hsl(204,17%,12%)');
+      zoneMap.setPaintProperty('landuse_residential', 'fill-color', '#12151d');
+      zoneMap.setPaintProperty('building', 'fill-color', 'hsla(232,30%,6%,0.6)');
+
+      const bounds = zoneCoords.reduce(
+        (b, c) => b.extend(c),
+        new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0])
+      );
+      zoneMap.fitBounds(bounds, { padding: { top: 150, left: 150, right: 24, bottom: 24 }, animate: false });
+      zoneMap.addSource('zone', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [zoneCoords] } }
+      });
+      zoneMap.addLayer({ id: 'zone-fill', type: 'fill', source: 'zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': 0.28 } });
+      zoneMap.addLayer({ id: 'zone-line-glow', type: 'line', source: 'zone', paint: { 'line-color': '#FFC72C', 'line-width': 12, 'line-blur': 8, 'line-opacity': 0.55 } });
+      zoneMap.addLayer({ id: 'zone-line', type: 'line', source: 'zone', paint: { 'line-color': '#FFC72C', 'line-width': 3 } });
+
+      const labelEl = document.createElement('div');
+      labelEl.style.cssText = 'display:flex;align-items:center;gap:7px;white-space:nowrap;';
+      labelEl.innerHTML = `<span style="width:13px;height:13px;border-radius:50%;background:#FFC72C;box-shadow:0 0 10px #FFC72C;display:block;"></span><span style="color:#fff;font-weight:700;font-size:17px;font-family:'Space Grotesk',sans-serif;text-shadow:0 1px 4px rgba(0,0,0,0.9);">${cityName}</span>`;
+      new maplibregl.Marker({ element: labelEl, anchor: 'left' }).setLngLat(cityCenter).addTo(zoneMap);
     });
   }
-
-  CCC.data.cybercabs.forEach(v => {
-    L.marker([v.lat, v.lng], { icon: pinIcon('#D4AF37') }).addTo(map).bindPopup(
-      `<div class="text-[10px] uppercase tracking-wider text-gold font-semibold mb-1">Cybercab</div>
-       <div class="font-display font-bold text-sm mb-1">${v.id}</div>
-       <div class="text-xs text-slate-300 space-y-0.5"><div>Battery: ${v.battery}%</div><div>Status: ${v.status}</div><div>Last seen: ${v.lastSeen}</div></div>`
-    );
-  });
-  CCC.data.modelYs.forEach(v => {
-    L.marker([v.lat, v.lng], { icon: pinIcon('#CBD5E1') }).addTo(map).bindPopup(
-      `<div class="text-[10px] uppercase tracking-wider text-silver font-semibold mb-1">Model Y</div>
-       <div class="font-display font-bold text-sm mb-1">${v.id}</div>
-       <div class="text-xs text-slate-300 space-y-0.5"><div>Battery: ${v.battery}%</div><div>Status: ${v.status}</div><div>Last seen: ${v.lastSeen}</div></div>`
-    );
-  });
-  CCC.data.pads.forEach(p => {
-    L.marker([p.lat, p.lng], { icon: pinIcon('#00E5FF', 12) }).addTo(map).bindPopup(
-      `<div class="text-[10px] uppercase tracking-wider text-cyan font-semibold mb-1">Inductive Pad</div>
-       <div class="font-display font-bold text-sm mb-1">${p.location}</div>
-       <div class="text-xs text-slate-300">Status: ${p.status}</div>`
-    );
-  });
-  CCC.data.depots.forEach(d => {
-    L.marker([d.lat, d.lng], { icon: pinIcon('#A78BFA', 18) }).addTo(map).bindPopup(
-      `<div class="text-[10px] uppercase tracking-wider mb-1" style="color:#A78BFA;">Depot</div>
-       <div class="font-display font-bold text-sm mb-1">${d.name}</div>
-       <div class="text-xs text-slate-300">Capacity: ${d.currentLoad}/${d.capacity}</div>`
-    );
-  });
-
-  // ---- Recent feed ----
-  function renderFeed() {
-    const feed = CCC.merge(CCC.data.sightings, 'sightings').slice(0, 8);
-    const grid = document.getElementById('feedGrid');
-    grid.innerHTML = feed.map((s, i) => `
-      <div class="reveal-on-scroll glass rounded-xl overflow-hidden" data-delay="${i * 60}">
-        <div class="h-28 bg-gradient-to-br from-[#1b1f2e] to-[#0d1017] flex items-center justify-center relative">
-          <span class="absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-1 rounded-md ${s.type === 'Unsupervised' ? 'bg-[rgba(212,175,55,0.15)] text-gold' : 'bg-[rgba(0,229,255,0.15)] text-cyan'}">${s.type}</span>
-          <span class="absolute top-2.5 right-2.5 text-[10px] text-slate-500">${s.time}</span>
-          <svg viewBox="0 0 200 90" fill="none" class="w-4/5 opacity-80"><path d="M14 66c0-8 8-12 20-12h12c6-10 20-17 36-17 18 0 34 8 42 20h20c8 0 14 5 14 12v6H14v-9z" fill="#1b1f2e" stroke="#2c3244" stroke-width="1.2"/><circle cx="52" cy="72" r="9" fill="#0c0f16" stroke="#3a4256"/><circle cx="140" cy="72" r="9" fill="#0c0f16" stroke="#3a4256"/></svg>
-        </div>
-        <div class="p-4">
-          <div class="text-sm font-semibold">${s.vehicle}</div>
-          <div class="text-xs text-slate-500 mt-0.5">${s.loc}</div>
-          ${s.verified ? '<span class="inline-block mt-3 text-[10px] font-bold px-2 py-1 rounded bg-[rgba(212,175,55,0.12)] text-gold">Verified</span>' : ''}
-        </div>
-      </div>
-    `).join('');
-    CCC.initReveal();
-  }
-  renderFeed();
-  document.addEventListener('ccc:sighting-added', renderFeed);
+  // Add one more initZoneMap(...) call per new city card, passing that city's own center + zone polygon.
+  initZoneMap('zoneMap-austin', 'Austin', [-97.7431, 30.2672], serviceZoneCoords);
 </script>
 </body>
 </html>
