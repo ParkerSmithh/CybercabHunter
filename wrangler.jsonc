@@ -1,18 +1,25 @@
 {
-  "name": "cybercabhunter",
-  "main": "worker/index.js",
-  "compatibility_date": "2024-09-23",
-  "assets": {
-    "directory": "./",
-    "binding": "ASSETS"
-  },
-  "vars": {
-    "FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "TESLA_SESSIONS",
-      "id": "3b4c90b3fd1b40efbc5722fea72d90c0"
-    }
-  ]
+	"name": "cybercabhunter",
+	"main": "worker/index.js",
+	"compatibility_date": "2024-09-23",
+	"assets": {
+		"directory": "./",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "TESLA_SESSIONS",
+			"id": "3b4c90b3fd1b40efbc5722fea72d90c0"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "cybercabhunter_db",
+			"database_name": "cybercabhunter-db",
+			"database_id": "1873d232-f799-4a4c-915a-615df4556841"
+		}
+	]
 }

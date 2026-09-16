@@ -272,7 +272,7 @@ const CCC = (() => {
     const result = params.get('tesla');
     if (result) {
       const messages = {
-        linked: ['Tesla account linked.', 'success'],
+        linked: ['TESLA ACCOUNT LINKED', 'success'],
         cancelled: ['Tesla linking was cancelled.', 'info'],
         invalid_state: ['Tesla linking failed — please try again.', 'error'],
         token_exchange_failed: ['Tesla linking failed — please try again.', 'error'],
