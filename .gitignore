@@ -1,2 +1,4 @@
 .DS_Store
 .wrangler/
+private-key.pem
+node_modules/

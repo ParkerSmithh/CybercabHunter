@@ -1,0 +1,15 @@
+From: robotaxi@tesla.com
+To: u_test0000000000000000000000@receipts.example.com
+Subject: Your Tesla Robotaxi Receipt
+Message-ID: <valid-receipt-001@tesla.com>
+Date: Wed, 17 Sep 2026 10:00:00 -0500
+Content-Type: text/plain; charset=utf-8
+
+Thank you for riding with Tesla Robotaxi.
+
+Date: Sep 17, 2026
+City: Austin, TX
+Distance: 5.2 mi
+Total: $12.50
+Ride ID: RT-998877
+License Plate: XWM7221

@@ -2,9 +2,12 @@
   "name": "cybercabhunter-worker",
   "private": true,
   "devDependencies": {
-    "wrangler": "^3.90.0"
+    "wrangler": "^4.133.0"
   },
   "scripts": {
     "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "postal-mime": "^3.0.0"
   }
 }

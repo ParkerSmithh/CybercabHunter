@@ -1,0 +1,26 @@
+From: robotaxi@tesla.com
+To: u_test0000000000000000000000@receipts.example.com
+Subject: Your Tesla Robotaxi Receipt
+Message-ID: <with-attachment-004@tesla.com>
+Date: Wed, 17 Sep 2026 13:00:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUNDARY123"
+
+--BOUNDARY123
+Content-Type: text/plain; charset=utf-8
+
+Thank you for riding with Tesla Robotaxi.
+Date: Sep 17, 2026
+City: Austin, TX
+Distance: 4.0 mi
+Total: $9.00
+Ride ID: RT-445566
+
+--BOUNDARY123
+Content-Type: application/pdf; name="receipt.pdf"
+Content-Disposition: attachment; filename="receipt.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjEKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUj4+ZW5kb2JqCnRyYWlsZXI8PC9Sb290IDEgMCBSPj4=
+
+--BOUNDARY123--

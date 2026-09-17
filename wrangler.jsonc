@@ -7,7 +7,8 @@
 		"binding": "ASSETS"
 	},
 	"vars": {
-		"FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/"
+		"FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/",
+		"RECEIPT_DOMAIN": "cybercabhunter.com"
 	},
 	"kv_namespaces": [
 		{
@@ -21,5 +22,17 @@
 			"database_name": "cybercabhunter-db",
 			"database_id": "1873d232-f799-4a4c-915a-615df4556841"
 		}
-	]
+	],
+	"r2_buckets": [
+		{
+			"binding": "EVIDENCE_BUCKET",
+			"bucket_name": "cybercabhunter-evidence"
+		}
+	],
+	"observability": {
+		"logs": {
+			"enabled": false,
+			"invocation_logs": true
+		}
+	}
 }
