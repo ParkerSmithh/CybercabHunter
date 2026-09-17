@@ -7,7 +7,7 @@
 		"binding": "ASSETS"
 	},
 	"vars": {
-		"FRONTEND_URL": "https://parkersmithh.github.io/CybercabHunter/",
+		"FRONTEND_URL": "https://cybercabhunter.com/",
 		"RECEIPT_DOMAIN": "cybercabhunter.com"
 	},
 	"kv_namespaces": [

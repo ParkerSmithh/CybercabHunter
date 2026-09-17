@@ -2,7 +2,7 @@ import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress } from './receipt-ingestion.js';
 
-const ALLOWED_ORIGIN = 'https://parkersmithh.github.io';
+const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
 function withCors(response, request) {
   const origin = request.headers.get('Origin');
