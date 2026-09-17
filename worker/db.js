@@ -245,6 +245,43 @@ async function createTripFromReceipt(sql, {
   ).run();
 }
 
+// ---- Robotaxi ride-history (ownerapi) connection — separate from tesla_connections ----
+
+async function upsertRobotaxiOwnerConnection(sql, { userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt }) {
+  await sql.prepare(`
+    INSERT INTO robotaxi_owner_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status, last_refresh_at)
+    VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET
+      encrypted_access_token = excluded.encrypted_access_token,
+      encrypted_refresh_token = excluded.encrypted_refresh_token,
+      access_token_expires_at = excluded.access_token_expires_at,
+      status = 'active',
+      updated_at = datetime('now'),
+      last_refresh_at = datetime('now')
+  `).bind(newId(), userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt).run();
+}
+
+async function getRobotaxiOwnerConnectionByUserId(sql, userId) {
+  return sql.prepare(`SELECT * FROM robotaxi_owner_connections WHERE user_id = ?`).bind(userId).first();
+}
+
+async function updateRobotaxiOwnerConnectionTokens(sql, userId, { encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt }) {
+  await sql.prepare(`
+    UPDATE robotaxi_owner_connections SET
+      encrypted_access_token = ?,
+      encrypted_refresh_token = ?,
+      access_token_expires_at = ?,
+      status = 'active',
+      updated_at = datetime('now'),
+      last_refresh_at = datetime('now')
+    WHERE user_id = ?
+  `).bind(encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt, userId).run();
+}
+
+async function markRobotaxiOwnerConnectionRevoked(sql, userId) {
+  await sql.prepare(`UPDATE robotaxi_owner_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?`).bind(userId).run();
+}
+
 export const db = {
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
@@ -269,5 +306,9 @@ export const db = {
   createReceiptIngestion,
   markSubmissionNeedsReview,
   findOrCreateRobotaxiVehicleByPlate,
-  createTripFromReceipt
+  createTripFromReceipt,
+  upsertRobotaxiOwnerConnection,
+  getRobotaxiOwnerConnectionByUserId,
+  updateRobotaxiOwnerConnectionTokens,
+  markRobotaxiOwnerConnectionRevoked
 };

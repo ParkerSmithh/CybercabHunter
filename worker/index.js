@@ -1,6 +1,8 @@
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress } from './receipt-ingestion.js';
+import { apiTeslaDebugCapabilities } from './tesla-debug.js';
+import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -107,6 +109,33 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetIngestionAddress(request, env, userId), request);
+    }
+
+    // TEMPORARY — Tesla Fleet API capability audit. Delete this route (and
+    // worker/tesla-debug.js) once the audit is done; see that file's header.
+    if (url.pathname === '/api/tesla/debug/capabilities' && request.method === 'GET') {
+      return withCors(await apiTeslaDebugCapabilities(request, env), request);
+    }
+
+    // Robotaxi ride-history (ownerapi) authentication — fully separate from
+    // the Fleet API routes above. See worker/robotaxi-owner-auth.js.
+    // /oauth/robotaxi/start requires the bearer session (fetch, not a link
+    // click) since it needs to know which user is linking before handing
+    // off to Tesla, so unlike /oauth/tesla/start it goes through withCors.
+    if (url.pathname === '/oauth/robotaxi/start' && request.method === 'GET') {
+      return withCors(await robotaxiOwnerAuth.startOAuth(request, env), request);
+    }
+    // Tesla's void-callback page isn't on our domain (see that module's
+    // header) — reached by the user pasting the resulting URL, not a
+    // cross-origin fetch, so no CORS handling here, matching /oauth/tesla/callback.
+    if (url.pathname === '/oauth/robotaxi/callback' && request.method === 'GET') {
+      return await robotaxiOwnerAuth.handleCallback(request, env);
+    }
+    if (url.pathname === '/api/robotaxi/status' && request.method === 'GET') {
+      return withCors(await robotaxiOwnerAuth.apiStatus(request, env), request);
+    }
+    if (url.pathname === '/api/robotaxi/disconnect' && request.method === 'POST') {
+      return withCors(await robotaxiOwnerAuth.apiDisconnect(request, env), request);
     }
 
     // Everything else falls through to the static site (same files GitHub Pages serves).
