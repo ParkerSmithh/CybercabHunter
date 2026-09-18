@@ -171,6 +171,23 @@ function splitLines(text) {
   return text.split('\n').map(l => l.trim()).filter(Boolean);
 }
 
+// Gmail's plain-text rendering of Tesla's HTML receipt turns each address
+// into a Google Maps hyperlink and precedes some lines with image
+// alt-text — neither is real location data, so both are stripped from any
+// line before it's kept. A line that's ONLY an artifact (e.g. a standalone
+// "[image: x]" line) disappears entirely rather than leaving an empty
+// fragment in the joined description.
+function stripLocationArtifacts(str) {
+  return str
+    .replace(/\[image[^\]]*\]/gi, '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\s*,\s*,/g, ',')
+    .replace(/^\s*,\s*/, '')
+    .replace(/,\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // Walks the lines after "Pick up", collecting a name/address block until it
 // hits a time line (that's this stop's time) or a payment-section keyword
 // (a guard against runaway consumption if a dropoff time is ever missing).
@@ -190,11 +207,13 @@ function parsePickupDropoff(lines) {
     const block = [];
     let i = startIdx;
     while (i < lines.length && !timeRe.test(lines[i]) && !stopRe.test(lines[i])) {
-      block.push(lines[i]);
+      const cleaned = stripLocationArtifacts(lines[i]);
+      if (cleaned) block.push(cleaned);
       i++;
     }
     const time = i < lines.length && timeRe.test(lines[i]) ? to24HourTime(lines[i]) : null;
-    return { description: block.length ? block.join(', ') : null, time, nextIdx: i + 1 };
+    const description = block.length ? stripLocationArtifacts(block.join(', ')) : null;
+    return { description: description || null, time, nextIdx: i + 1 };
   }
 
   const pickup = collectStop(pickupIdx + 1);
