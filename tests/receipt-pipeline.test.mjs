@@ -109,12 +109,14 @@ async function run() {
     check('duration source is extracted, not derived', extraction.fieldSources.duration_minutes === 'extracted');
     check('license_plate extracted from summary line', extraction.fields.license_plate === 'XJR2195');
     check('fare extracted as cents (Total and Trip Fare agree)', extraction.fields.fare_amount_cents === 692);
-    check('pickup_description preserves full address', extraction.fields.pickup_description === '4301 Hanover St, Dallas, TX 75225');
-    check('pickup_description has no Google Maps URL', !/google\.com\/maps/i.test(extraction.fields.pickup_description));
+    const dirtyPatterns = [/</, />/, /<\/a>/i, /<a\b/i, /google\.com\/maps/i, /\[image:/i];
+    const isClean = str => !dirtyPatterns.some(re => re.test(str));
+
+    check('pickup_description is exactly the clean address', extraction.fields.pickup_description === '4301 Hanover St, Dallas, TX 75225');
+    check('pickup_description has no HTML/URL/image artifacts', isClean(extraction.fields.pickup_description));
     check('pickup_time converted to 24h', extraction.fields.pickup_time === '13:04');
-    check('dropoff_description preserves name and address', extraction.fields.dropoff_description === 'NorthPark Center, 8687 N Central Expy, Dallas, TX 75225');
-    check('dropoff_description has no Google Maps URL', !/google\.com\/maps/i.test(extraction.fields.dropoff_description));
-    check('dropoff_description has no [image: artifact', !/\[image:/i.test(extraction.fields.dropoff_description));
+    check('dropoff_description is exactly the clean name+address', extraction.fields.dropoff_description === 'NorthPark Center, 8687 N Central Expy, Dallas, TX 75225');
+    check('dropoff_description has no HTML/URL/image artifacts', isClean(extraction.fields.dropoff_description));
     check('dropoff_description keeps the location name', extraction.fields.dropoff_description.includes('NorthPark Center'));
     check('dropoff_description keeps the street address', extraction.fields.dropoff_description.includes('8687 N Central Expy, Dallas, TX 75225'));
     check('dropoff_time converted to 24h', extraction.fields.dropoff_time === '13:18');

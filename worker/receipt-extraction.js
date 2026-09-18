@@ -180,7 +180,17 @@ function splitLines(text) {
 function stripLocationArtifacts(str) {
   return str
     .replace(/\[image[^\]]*\]/gi, '')
-    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/<a\b[^>]*>/gi, '')
+    .replace(/<\/a>/gi, '')
+    // Plain-text mail clients often render a link as "text <url>" — strip
+    // the URL together with its surrounding angle brackets as one unit so
+    // neither the bracket nor the URL survives.
+    .replace(/<?https?:\/\/[^\s<>]*>?/gi, '')
+    // Any other HTML tag remnant (<tag ...> or </tag>) that isn't a link.
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '')
+    // Last-resort catch for a lone angle bracket with no matching pair —
+    // real Tesla addresses never legitimately contain one.
+    .replace(/[<>]/g, '')
     .replace(/\s*,\s*,/g, ',')
     .replace(/^\s*,\s*/, '')
     .replace(/,\s*$/, '')
