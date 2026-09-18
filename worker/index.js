@@ -3,6 +3,7 @@ import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvi
 import { handleIncomingEmail, apiGetIngestionAddress } from './receipt-ingestion.js';
 import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
+import { apiListTrips } from './trips.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -109,6 +110,12 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetIngestionAddress(request, env, userId), request);
+    }
+
+    if (url.pathname === '/api/trips' && request.method === 'GET') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiListTrips(request, env, userId), request);
     }
 
     // TEMPORARY — Tesla Fleet API capability audit. Delete this route (and

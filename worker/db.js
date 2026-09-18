@@ -289,6 +289,32 @@ async function markRobotaxiOwnerConnectionRevoked(sql, userId) {
   await sql.prepare(`UPDATE robotaxi_owner_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?`).bind(userId).run();
 }
 
+// ---- Rides (trips) — the authenticated user's own ride history ----
+
+// Explicit column whitelist, never `SELECT *` — this is the boundary that
+// keeps internal/sensitive columns (user_id itself, source_message_id,
+// receipt_hash, evidence_ref, anything from receipt_ingestions) out of
+// what the API can possibly return, regardless of what callers do with it.
+async function getTripsByUser(sql, userId) {
+  const result = await sql.prepare(`
+    SELECT
+      t.id, t.ride_date, t.service_area, t.distance, t.distance_unit,
+      t.duration_minutes, t.duration_minutes_derived,
+      t.pickup_description, t.pickup_time, t.dropoff_description, t.dropoff_time,
+      t.fare_amount_cents, t.currency, t.external_ride_id, t.source,
+      s.status AS submission_status,
+      t.robotaxi_vehicle_id, t.created_at
+    FROM trips t
+    JOIN submissions s ON s.id = t.submission_id
+    WHERE t.user_id = ?
+    ORDER BY
+      CASE WHEN t.ride_date IS NULL THEN 1 ELSE 0 END, t.ride_date DESC,
+      CASE WHEN t.pickup_time IS NULL THEN 1 ELSE 0 END, t.pickup_time DESC,
+      t.created_at DESC
+  `).bind(userId).all();
+  return result.results || [];
+}
+
 export const db = {
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
@@ -317,5 +343,6 @@ export const db = {
   upsertRobotaxiOwnerConnection,
   getRobotaxiOwnerConnectionByUserId,
   updateRobotaxiOwnerConnectionTokens,
-  markRobotaxiOwnerConnectionRevoked
+  markRobotaxiOwnerConnectionRevoked,
+  getTripsByUser
 };
