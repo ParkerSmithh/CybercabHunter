@@ -187,10 +187,17 @@ function stripLocationArtifacts(str) {
     // neither the bracket nor the URL survives.
     .replace(/<?https?:\/\/[^\s<>]*>?/gi, '')
     // Any other HTML tag remnant (<tag ...> or </tag>) that isn't a link.
-    .replace(/<\/?[a-zA-Z][^>]*>/g, '')
+    // Replaced with a space, not '' — an inline element boundary in the
+    // source HTML (e.g. an empty <span> used only for CSS spacing) can sit
+    // directly between two words with no literal space character next to
+    // it, and deleting it outright would merge them ("Central</span>Expy"
+    // -> "CentralExpy"). Matches stripHtml()'s own tag-removal above,
+    // which already uses a space for this same reason.
+    .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
     // Last-resort catch for a lone angle bracket with no matching pair —
-    // real Tesla addresses never legitimately contain one.
-    .replace(/[<>]/g, '')
+    // same word-merge risk, so also a space rather than ''.
+    .replace(/[<>]/g, ' ')
+    .replace(/\s+,/g, ',')
     .replace(/\s*,\s*,/g, ',')
     .replace(/^\s*,\s*/, '')
     .replace(/,\s*$/, '')
