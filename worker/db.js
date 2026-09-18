@@ -231,17 +231,24 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
 
 async function createTripFromReceipt(sql, {
   id, submissionId, userId, serviceArea, rideDate, distance, fareAmountCents,
-  externalRideId, robotaxiVehicleId, sourceMessageId, receiptHash
+  externalRideId, robotaxiVehicleId, sourceMessageId, receiptHash,
+  pickupDescription, dropoffDescription, pickupTime, dropoffTime,
+  durationMinutes, durationMinutesDerived
 }) {
   await sql.prepare(`
     INSERT INTO trips
       (id, submission_id, user_id, service_area, ride_date, distance, fare_amount_cents,
-       external_ride_id, robotaxi_vehicle_id, source, source_message_id, receipt_hash)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'receipt_email', ?, ?)
+       external_ride_id, robotaxi_vehicle_id, source, source_message_id, receipt_hash,
+       pickup_description, dropoff_description, pickup_time, dropoff_time,
+       duration_minutes, duration_minutes_derived)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'receipt_email', ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, submissionId, userId, serviceArea || null, rideDate || null,
     distance ?? null, fareAmountCents ?? null, externalRideId || null,
-    robotaxiVehicleId || null, sourceMessageId || null, receiptHash || null
+    robotaxiVehicleId || null, sourceMessageId || null, receiptHash || null,
+    pickupDescription || null, dropoffDescription || null,
+    pickupTime || null, dropoffTime || null,
+    durationMinutes ?? null, durationMinutesDerived ? 1 : 0
   ).run();
 }
 

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { parseRawEmail } from '../worker/receipt-parser.js';
-import { extractTeslaReceiptFields } from '../worker/receipt-extraction.js';
+import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from '../worker/receipt-extraction.js';
 import { classifyReceipt } from '../worker/receipt-validation.js';
 import { computeReceiptHash } from '../worker/receipt-dedupe.js';
 
@@ -95,6 +95,66 @@ async function run() {
     const msg = await parseRawEmail(fixture('tesla-receipt-missing-fields.eml'));
     const extraction = extractTeslaReceiptFields(msg);
     check('no license_plate fabricated', extraction.fields.license_plate === undefined);
+  }
+
+  console.log('8. Real Tesla receipt format (tesla_robotaxi_v2)');
+  {
+    const msg = await parseRawEmail(fixture('tesla-receipt-real-format.eml'));
+    const extraction = extractTeslaReceiptFieldsV2(msg);
+    const classification = classifyReceipt(msg, extraction);
+    const hash = await computeReceiptHash(msg, extraction);
+    check('ride_date extracted as ISO date', extraction.fields.ride_date === '2026-06-09');
+    check('distance extracted', extraction.fields.distance === 2.8);
+    check('duration_minutes extracted', extraction.fields.duration_minutes === 14);
+    check('duration source is extracted, not derived', extraction.fieldSources.duration_minutes === 'extracted');
+    check('license_plate extracted from summary line', extraction.fields.license_plate === 'XJR2195');
+    check('fare extracted as cents (Total and Trip Fare agree)', extraction.fields.fare_amount_cents === 692);
+    check('pickup_description preserves full address', extraction.fields.pickup_description === '4301 Hanover St, Dallas, TX 75225');
+    check('pickup_time converted to 24h', extraction.fields.pickup_time === '13:04');
+    check('dropoff_description preserves name and address', extraction.fields.dropoff_description === 'NorthPark Center, 8687 N Central Expy, Dallas, TX 75225');
+    check('dropoff_time converted to 24h', extraction.fields.dropoff_time === '13:18');
+    check('service_area derived from address', extraction.fields.service_area === 'Dallas');
+    check('no ride ID present — external_ride_id is undefined', extraction.fields.external_ride_id === undefined);
+    check('license plate is never used as external_ride_id', extraction.fields.external_ride_id !== 'XJR2195');
+    check('absence of ride ID does not reject — classified accepted (real sender, strong structural match)', classification.status === 'accepted');
+    check('dedup hash computed via structured-field fallback (no ride ID)', /^[0-9a-f]{64}$/.test(hash));
+  }
+
+  console.log('9. Same real receipt, Gmail-forwarded copy (different sender, forwarding wrapper in body)');
+  {
+    const direct = await parseRawEmail(fixture('tesla-receipt-real-format.eml'));
+    const forwarded = await parseRawEmail(fixture('tesla-receipt-real-format-forwarded.eml'));
+    const directExtraction = extractTeslaReceiptFieldsV2(direct);
+    const forwardedExtraction = extractTeslaReceiptFieldsV2(forwarded);
+    const forwardedClassification = classifyReceipt(forwarded, forwardedExtraction);
+    check('forwarding wrapper does not corrupt the ride date', forwardedExtraction.fields.ride_date === '2026-06-09');
+    check('forwarding wrapper does not corrupt distance/duration/plate', forwardedExtraction.fields.distance === 2.8 && forwardedExtraction.fields.duration_minutes === 14 && forwardedExtraction.fields.license_plate === 'XJR2195');
+    check('forwarding wrapper does not corrupt pickup/dropoff', forwardedExtraction.fields.pickup_description === directExtraction.fields.pickup_description && forwardedExtraction.fields.dropoff_description === directExtraction.fields.dropoff_description);
+    check('forwarded copy is needs_review, not auto-accepted (sender is the forwarder, not tesla.com)', forwardedClassification.status === 'needs_review');
+    const directHash = await computeReceiptHash(direct, directExtraction);
+    const forwardedHash = await computeReceiptHash(forwarded, forwardedExtraction);
+    check('direct and forwarded copies of the same ride hash identically (structured-field dedup, not raw body)', directHash === forwardedHash);
+  }
+
+  console.log('10. AM/PM edge cases (12 AM and 12 PM must not be confused)');
+  {
+    const noonMsg = await parseRawEmail(
+      'From: robotaxi@tesla.com\nTo: u_test@receipts.example.com\nSubject: Your Tesla Robotaxi Receipt\nMessage-ID: <noon-005@tesla.com>\nDate: Wed, 17 Sep 2026 12:00:00 -0500\nContent-Type: text/plain; charset=utf-8\n\n' +
+      'Trip Summary for September 17, 2026\n\n2.0 mi · 5 min · ABC1234\n\n$5.00\n\nTotal\n\nPick up\n\n1 Main St, Austin, TX 78701\n\n12:00 pm\n\nDest\n\n2 Main St, Austin, TX 78701\n\n12:05 am\n\nPayment\n\nTrip Fare $5.00\n'
+    );
+    const extraction = extractTeslaReceiptFieldsV2(noonMsg);
+    check('12:00 pm is noon (12:00), not midnight', extraction.fields.pickup_time === '12:00');
+    check('12:05 am is just after midnight (00:05), not noon', extraction.fields.dropoff_time === '00:05');
+  }
+
+  console.log('11. Duplicate delivery of the same real-format email is recognized (message-ID path, unaffected by dedupe change)');
+  {
+    const msgA = await parseRawEmail(fixture('tesla-receipt-real-format.eml'));
+    const msgB = await parseRawEmail(fixture('tesla-receipt-real-format.eml'));
+    check('same Message-ID on redelivery', msgA.messageId === msgB.messageId);
+    const hashA = await computeReceiptHash(msgA, extractTeslaReceiptFieldsV2(msgA));
+    const hashB = await computeReceiptHash(msgB, extractTeslaReceiptFieldsV2(msgB));
+    check('identical content also hashes identically as a second line of defense', hashA === hashB);
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);

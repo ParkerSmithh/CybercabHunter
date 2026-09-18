@@ -5,7 +5,7 @@
 // to except the opaque token in the recipient address.
 
 import { parseRawEmail } from './receipt-parser.js';
-import { extractTeslaReceiptFields } from './receipt-extraction.js';
+import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from './receipt-extraction.js';
 import { classifyReceipt } from './receipt-validation.js';
 import { computeReceiptHash } from './receipt-dedupe.js';
 import { db } from './db.js';
@@ -73,9 +73,15 @@ export async function handleIncomingEmail(message, env) {
     }
   }
 
+  // Try the format confirmed against a real Tesla receipt first; only fall
+  // back to the older, never-verified format if v2 recognizes nothing at
+  // all in this particular email.
   let extraction;
   try {
-    extraction = extractTeslaReceiptFields(parsedMessage);
+    extraction = extractTeslaReceiptFieldsV2(parsedMessage);
+    if (Object.keys(extraction.fields).length === 0) {
+      extraction = extractTeslaReceiptFields(parsedMessage);
+    }
   } catch (err) {
     await db.createReceiptIngestion(sql, {
       id: newId(), userId, messageId, status: 'parse_error',
@@ -156,7 +162,13 @@ export async function handleIncomingEmail(message, env) {
     externalRideId: extraction.fields.external_ride_id,
     robotaxiVehicleId,
     sourceMessageId: messageId,
-    receiptHash
+    receiptHash,
+    pickupDescription: extraction.fields.pickup_description,
+    dropoffDescription: extraction.fields.dropoff_description,
+    pickupTime: extraction.fields.pickup_time,
+    dropoffTime: extraction.fields.dropoff_time,
+    durationMinutes: extraction.fields.duration_minutes,
+    durationMinutesDerived: extraction.fieldSources.duration_minutes === 'derived'
   });
 
   await db.touchIngestionAddressReceived(sql, userId);
