@@ -362,15 +362,18 @@ const CCC = (() => {
       providerLabel.textContent = 'Signed in with ' + (providerNames[account.provider] || account.provider || 'account');
     }
 
+    // Slides in from the right, same drawer/backdrop pattern as the
+    // "Submit" sighting drawer — not a small anchored popover.
     const trigger = document.getElementById('accountMenuTrigger');
-    const dropdown = document.getElementById('accountMenuDropdown');
-    if (trigger && dropdown) {
-      trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('hidden');
-      });
-      document.addEventListener('click', () => dropdown.classList.add('hidden'));
-      dropdown.addEventListener('click', (e) => e.stopPropagation());
+    const drawer = document.getElementById('accountDrawer');
+    const backdrop = document.getElementById('accountBackdrop');
+    const closeBtn = document.getElementById('closeAccountDrawer');
+    if (trigger && drawer && backdrop) {
+      function openDrawer() { drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
+      function closeDrawer() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
+      trigger.addEventListener('click', openDrawer);
+      if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+      backdrop.addEventListener('click', closeDrawer);
     }
 
     const signOutBtn = document.getElementById('accountMenuSignOut');
