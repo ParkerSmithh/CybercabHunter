@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="Cybercab2.png">
-<link rel="apple-touch-icon" href="Cybercab2.png">
+<link rel="apple-touch-icon" href="CybercabFlipped.png">
 <title>Cybercab Hunter — Rider Data</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
@@ -44,6 +44,7 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
@@ -53,7 +54,6 @@
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
     </div>
   </div>
 </header>
@@ -70,18 +70,10 @@
 
     <!-- Signed-in data -->
     <div id="dataSignedIn" class="hidden">
-      <!-- Toggles between "not connected yet" and "connected" based on
-           /api/me's tesla.connected. Linking here attaches Tesla to THIS
-           SAME account rather than creating a separate one (see the
-           ?session= handling in worker/tesla.js); unlinking clears the
+      <!-- Only ever shown when connected — linking Tesla now happens from
+           the header button on every other page (see js/main.js's
+           initTeslaLink), not from this page. Unlinking clears the
            connection without touching the account/session itself. -->
-      <div id="dataLinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <div class="font-display font-bold text-base mb-1">Link your Tesla account</div>
-          <p class="text-slate-400 text-sm">Connect Tesla to pull in your real rides and vehicles.</p>
-        </div>
-        <a id="teslaLinkFromData" href="#" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
-      </div>
       <div id="dataUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
@@ -137,7 +129,7 @@
 
           <div class="shrink-0 hidden lg:block relative">
             <div class="absolute inset-0 bg-gold/20 blur-2xl rounded-full"></div>
-            <img src="Cybercab.png" alt="Cybercab" class="relative w-56 h-56 object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
+            <img src="Cybercab2.png" alt="Cybercab" class="relative w-56 h-56 object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
           </div>
         </div>
       </div>
@@ -351,12 +343,6 @@
 
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
 
-  // Passing the current session lets /oauth/tesla/start attach Tesla to
-  // THIS account instead of creating a separate one — see worker/tesla.js.
-  const teslaStartUrl = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
-  const linkFromData = document.getElementById('teslaLinkFromData');
-  if (linkFromData) linkFromData.href = teslaStartUrl;
-
   if (!sessionId) {
     document.getElementById('dataSignedOut').classList.remove('hidden');
   } else {
@@ -376,8 +362,6 @@
         if (!d.authenticated) return;
         if (d.tesla.connected) {
           document.getElementById('dataUnlinkTeslaPrompt').classList.remove('hidden');
-        } else {
-          document.getElementById('dataLinkTeslaPrompt').classList.remove('hidden');
         }
       })
       .catch(() => {});

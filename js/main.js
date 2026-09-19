@@ -308,15 +308,20 @@ const CCC = (() => {
     const btn = document.getElementById('teslaLinkBtn');
     if (!btn) return;
 
+    const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+
+    // Passing the current session lets /oauth/tesla/start attach Tesla to
+    // THIS account instead of creating a separate one — see worker/tesla.js.
+    btn.href = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
+    btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
+
+    // Once linked, this button just disappears entirely (see render())
+    // rather than showing a disabled "Account Linked" state — unlinking,
+    // if the account is signed in, happens from rider-data.html instead.
     function render(linked) {
-      btn.dataset.linked = linked ? '1' : '0';
-      btn.classList.toggle('btn-magnetic', !linked);
-      btn.style.pointerEvents = linked ? 'none' : '';
-      btn.style.opacity = linked ? '0.7' : '';
-      btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>${linked ? 'Account Linked' : 'Link Tesla Account'}`;
+      btn.classList.toggle('hidden', linked);
     }
 
-    const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
     if (!sessionId) {
       render(false);
     } else {
@@ -324,16 +329,10 @@ const CCC = (() => {
         headers: { Authorization: 'Bearer ' + sessionId }
       })
         .then(r => r.json())
-        .then(d => {
-          render(!!d.linked);
-          if (!d.linked) localStorage.removeItem(TESLA_SESSION_KEY);
-        })
+        .then(d => render(!!d.linked))
         .catch(() => render(false));
     }
 
-    // pointer-events:none once linked (see render()) makes the button
-    // unclickable, so this only ever fires for "start linking" — no
-    // preventDefault, the browser follows href to /oauth/tesla/start.
     btn.addEventListener('click', () => {
       btn.textContent = 'Connecting…';
     });

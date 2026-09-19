@@ -56,6 +56,8 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
@@ -65,7 +67,6 @@
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
     </div>
   </div>
 </header>
@@ -94,7 +95,7 @@
           <span class="font-display font-bold text-crimson text-lg"><span id="networkCutOut">0</span>%</span>
         </div>
         <div class="flex items-center justify-between p-3 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)]">
-          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cost per Cybercab</label>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cost per Unit</label>
           <span class="font-display font-bold text-cyan text-lg">$<span id="costPerCabOut">0</span></span>
         </div>
         <div class="p-3 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)]">
