@@ -319,6 +319,71 @@ const CCC = (() => {
     });
   }
 
+  /* ---------------- Account menu (Google/X sign-in placeholder) ----------------
+     Purely a frontend mock for now — no backend call, no real OAuth yet.
+     Stores only a provider tag under storage, never a fabricated name —
+     this represents "completed the placeholder sign-in," not a real
+     identity, so the UI shows a generic avatar rather than inventing a
+     person. This is intentionally separate from the real Tesla session
+     (TESLA_SESSION_KEY): connecting Tesla remains its own action from
+     inside the Profile page's own signed-out prompt, unchanged. */
+  const ACCOUNT_KEY = 'mockAccount';
+  const PERSON_ICON_SVG = '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />';
+
+  function mockSignIn(provider) {
+    storage.set(ACCOUNT_KEY, { provider });
+  }
+
+  function mockSignOut() {
+    try { localStorage.removeItem(NS + ACCOUNT_KEY); } catch (e) {}
+  }
+
+  function initAccountMenu() {
+    const signedOut = document.getElementById('accountSignedOut');
+    const signedIn = document.getElementById('accountSignedIn');
+    if (!signedOut || !signedIn) return;
+
+    const account = storage.get(ACCOUNT_KEY, null);
+    if (!account) {
+      signedOut.classList.remove('hidden');
+      signedIn.classList.add('hidden');
+      return;
+    }
+
+    signedOut.classList.add('hidden');
+    signedIn.classList.remove('hidden');
+
+    const avatarIcon = document.getElementById('accountAvatarIcon');
+    if (avatarIcon) avatarIcon.innerHTML = PERSON_ICON_SVG;
+
+    const trigger = document.getElementById('accountMenuTrigger');
+    const dropdown = document.getElementById('accountMenuDropdown');
+    if (trigger && dropdown) {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', () => dropdown.classList.add('hidden'));
+      dropdown.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    const settingsLink = document.getElementById('accountMenuSettings');
+    if (settingsLink) {
+      settingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toast('Settings are coming soon.', 'info');
+      });
+    }
+
+    const signOutBtn = document.getElementById('accountMenuSignOut');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => {
+        mockSignOut();
+        location.href = 'index.html';
+      });
+    }
+  }
+
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
@@ -327,7 +392,8 @@ const CCC = (() => {
     initSightingDrawer();
     initRipple();
     initTeslaLink();
+    initAccountMenu();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, mockSignIn, mockSignOut, initAccountMenu, init };
 })();

@@ -47,10 +47,20 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" id="teslaLinkBtn" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
-        Link Tesla Account
-      </a>
+      <div id="accountSignedOut">
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+      </div>
+      <div id="accountSignedIn" class="relative hidden">
+        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-full bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] flex items-center justify-center">
+          <svg id="accountAvatarIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+        </button>
+        <div id="accountMenuDropdown" class="hidden absolute right-0 mt-2 w-52 glass-strong rounded-xl p-2 z-50">
+          <a href="profile.html" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">Profile</a>
+          <a href="profile.html" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">My Stats</a>
+          <a href="#" id="accountMenuSettings" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">Settings</a>
+          <button id="accountMenuSignOut" type="button" class="w-full text-left px-3 py-2 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors">Sign out</button>
+        </div>
+      </div>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">
         Submit
       </button>
