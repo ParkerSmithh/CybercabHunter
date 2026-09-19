@@ -356,6 +356,12 @@ const CCC = (() => {
     const avatarIcon = document.getElementById('accountAvatarIcon');
     if (avatarIcon) avatarIcon.innerHTML = PERSON_ICON_SVG;
 
+    const providerLabel = document.getElementById('accountMenuProviderLabel');
+    if (providerLabel) {
+      const providerNames = { google: 'Google', x: 'X' };
+      providerLabel.textContent = 'Signed in with ' + (providerNames[account.provider] || account.provider || 'account');
+    }
+
     const trigger = document.getElementById('accountMenuTrigger');
     const dropdown = document.getElementById('accountMenuDropdown');
     if (trigger && dropdown) {
@@ -365,14 +371,6 @@ const CCC = (() => {
       });
       document.addEventListener('click', () => dropdown.classList.add('hidden'));
       dropdown.addEventListener('click', (e) => e.stopPropagation());
-    }
-
-    const settingsLink = document.getElementById('accountMenuSettings');
-    if (settingsLink) {
-      settingsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        toast('Settings are coming soon.', 'info');
-      });
     }
 
     const signOutBtn = document.getElementById('accountMenuSignOut');

@@ -58,14 +58,30 @@
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
       <div id="accountSignedIn" class="relative hidden">
-        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-full bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] flex items-center justify-center">
-          <svg id="accountAvatarIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl border-2 border-gold bg-panel text-gold flex items-center justify-center">
+          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
         </button>
-        <div id="accountMenuDropdown" class="hidden absolute right-0 mt-2 w-52 glass-strong rounded-xl p-2 z-50">
-          <a href="profile.html" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">Profile</a>
-          <a href="profile.html" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">My Stats</a>
-          <a href="#" id="accountMenuSettings" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">Settings</a>
-          <button id="accountMenuSignOut" type="button" class="w-full text-left px-3 py-2 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors">Sign out</button>
+        <div id="accountMenuDropdown" class="hidden absolute right-0 mt-3 w-56 glass-strong rounded-lg border-t-2 border-gold overflow-hidden z-50">
+          <div class="px-4 py-3 flex items-center gap-2 border-b border-[rgba(212,175,55,0.12)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold shrink-0"></span>
+            <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
+          </div>
+          <div class="py-1">
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 transition-colors">
+              <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+              Profile
+            </a>
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 transition-colors">
+              <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+              Info
+            </a>
+          </div>
+          <div class="border-t border-[rgba(212,175,55,0.12)] py-1">
+            <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-crimson hover:bg-white/5 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
