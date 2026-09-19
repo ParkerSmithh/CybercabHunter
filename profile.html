@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="Cybercab2.png">
+<link rel="apple-touch-icon" href="Cybercab2.png">
+<title>Cybercab Hunter — Rider Profile</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
+        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
+      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
+    }}
+  }
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+
+<header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <nav class="hidden lg:flex items-center gap-8 relative">
+      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ETA</a>
+      <a href="fleet-calculator.html" data-nav="fleet-calculator" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="community.html" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
+      <a href="profile.html" data-nav="profile" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Profile</a>
+      <div id="navIndicator"></div>
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" id="teslaLinkBtn" class="btn-magnetic hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
+        Link Tesla Account
+      </a>
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
+    </div>
+  </div>
+</header>
+
+<section class="py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+
+    <!-- Signed-out state -->
+    <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Link your Tesla account</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider profile is built entirely from your own linked rides and receipts — link your Tesla account to see it.</p>
+      <a href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
+    </div>
+
+    <!-- Signed-in profile -->
+    <div id="profileSignedIn" class="hidden">
+      <div class="reveal-on-scroll mb-10 flex items-center gap-5">
+        <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></div>
+        <div>
+          <h1 id="profileName" class="font-display font-bold text-3xl tracking-tight"></h1>
+          <p id="profileJoined" class="text-sm text-slate-400 mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Contribution stat cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+        <div class="glass rounded-2xl p-6 reveal-on-scroll">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Contributions</div>
+          <div id="statContributions" class="font-display font-bold text-3xl text-gold">—</div>
+        </div>
+        <div class="glass rounded-2xl p-6 reveal-on-scroll">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Vehicles Found</div>
+          <div id="statVehiclesFound" class="font-display font-bold text-3xl text-gold">—</div>
+        </div>
+        <div class="glass rounded-2xl p-6 reveal-on-scroll">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trips Logged</div>
+          <div id="statTripsLogged" class="font-display font-bold text-3xl text-gold">—</div>
+        </div>
+        <div class="glass rounded-2xl p-6 reveal-on-scroll">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Miles Contributed</div>
+          <div id="statMiles" class="font-display font-bold text-3xl text-gold">—</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6 mb-10">
+        <!-- Ride history summary -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
+          <h2 class="font-display font-bold text-xl mb-5">Ride History</h2>
+          <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet — they'll appear here automatically once a Tesla receipt is ingested.</div>
+          <div id="rideSummaryGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-5 text-sm">
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Unique Vehicles</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
+          </div>
+        </div>
+
+        <!-- Providers -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-5">Providers</h2>
+          <div id="providersList" class="space-y-3 text-sm"></div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6 mb-10">
+        <!-- Cities -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
+          <div id="citiesList" class="space-y-3 text-sm"></div>
+          <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
+        </div>
+
+        <!-- Vehicles discovered -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-5">Vehicles Discovered</h2>
+          <p class="text-xs text-slate-500 mb-4">Vehicles you were the first to log a ride in.</p>
+          <div id="discoveredList" class="space-y-3"></div>
+          <div id="discoveredEmpty" class="hidden text-sm text-slate-500">You haven't discovered a new vehicle yet — the first receipt with a new plate credits you here automatically.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
+<div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
+    <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+  </div>
+  <form id="sightingForm" class="space-y-5">
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City</label>
+      <select id="sightingType" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+        <option>Austin</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location</label>
+      <input id="sightingLoc" required placeholder="e.g. S Congress Ave, Austin, TX" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate #</label>
+      <input id="sightingVehicle" required placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+    </div>
+    <button type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Log Sighting</button>
+  </form>
+</div>
+
+<footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+    <div class="col-span-2">
+      <div class="flex items-center gap-2">
+        <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">
+        <span class="font-display font-bold">CYBERCAB HUNTER</span>
+      </div>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
+        <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
+      <a href="community.html" class="hover:text-white transition-colors">Community</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">About</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="#" class="hover:text-white transition-colors">How It Works</a>
+        <a href="#" class="hover:text-white transition-colors">Privacy</a>
+      </div>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+</footer>
+
+<script src="js/calc.js?v=2"></script>
+<script src="js/main.js?v=2"></script>
+<script>
+  CCC.init();
+
+  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const TESLA_SESSION_KEY = 'teslaSessionId';
+
+  function fmtDistance(mi) {
+    return (mi === null || mi === undefined) ? '—' : mi.toFixed(1) + ' mi';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function initials(name) {
+    if (!name) return 'CH';
+    return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  function renderProfile(data) {
+    document.getElementById('profileSignedIn').classList.remove('hidden');
+
+    const displayName = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
+    document.getElementById('profileAvatar').textContent = initials(data.user.display_name || data.user.handle);
+    document.getElementById('profileName').textContent = displayName;
+    document.getElementById('profileJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
+
+    document.getElementById('statContributions').textContent = data.contributions.toLocaleString();
+    document.getElementById('statVehiclesFound').textContent = data.discoveredVehicles.length.toLocaleString();
+    document.getElementById('statTripsLogged').textContent = data.rideSummary.trip_count.toLocaleString();
+    document.getElementById('statMiles').textContent = fmtDistance(data.rideSummary.total_distance);
+
+    if (data.rideSummary.trip_count === 0) {
+      document.getElementById('rideSummaryEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('rideSummaryGrid').classList.remove('hidden');
+      document.getElementById('rsTotalRides').textContent = data.rideSummary.trip_count.toLocaleString();
+      const coverage = data.rideSummary.rides_with_distance < data.rideSummary.trip_count
+        ? ` (${data.rideSummary.rides_with_distance}/${data.rideSummary.trip_count} rides)` : '';
+      document.getElementById('rsAvgDistance').textContent = fmtDistance(data.rideSummary.avg_distance) + coverage;
+      document.getElementById('rsLongest').textContent = fmtDistance(data.rideSummary.longest_ride_distance);
+      document.getElementById('rsUniqueVehicles').textContent = data.rideSummary.unique_vehicles.toLocaleString();
+      document.getElementById('rsFirstRide').textContent = fmtDate(data.rideSummary.first_ride_date);
+      document.getElementById('rsLatestRide').textContent = fmtDate(data.rideSummary.last_ride_date);
+    }
+
+    const providerNames = { tesla: 'Tesla' };
+    document.getElementById('providersList').innerHTML = data.providers.length
+      ? data.providers.map(p => `
+          <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+            <span class="font-semibold">${providerNames[p.provider] || p.provider}</span>
+            <span class="font-display font-bold text-slate-300">${p.ride_count.toLocaleString()} rides</span>
+          </div>`).join('')
+      : '<div class="text-sm text-slate-500">No provider rides recorded yet.</div>';
+
+    if (data.cities.length === 0) {
+      document.getElementById('citiesEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('citiesList').innerHTML = data.cities.map(c => `
+        <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+          <span class="font-semibold">${c.service_area}</span>
+          <span class="font-display font-bold text-slate-300">${c.ride_count.toLocaleString()} rides</span>
+        </div>`).join('');
+    }
+
+    if (data.discoveredVehicles.length === 0) {
+      document.getElementById('discoveredEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('discoveredList').innerHTML = data.discoveredVehicles.map(v => `
+        <div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+          <div class="flex items-center justify-between">
+            <span class="font-display font-bold">${v.license_plate}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wider">${v.verification_status}</span>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">${[v.model, v.service_area].filter(Boolean).join(' · ') || 'Details pending'}</div>
+        </div>`).join('');
+    }
+  }
+
+  const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+  if (!sessionId) {
+    document.getElementById('profileSignedOut').classList.remove('hidden');
+  } else {
+    fetch(TESLA_WORKER_URL + '/api/profile', { headers: { Authorization: 'Bearer ' + sessionId } })
+      .then(r => {
+        if (!r.ok) throw new Error('not authenticated');
+        return r.json();
+      })
+      .then(renderProfile)
+      .catch(() => {
+        document.getElementById('profileSignedOut').classList.remove('hidden');
+      });
+  }
+</script>
+</body>
+</html>

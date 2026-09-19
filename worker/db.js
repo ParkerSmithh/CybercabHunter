@@ -315,6 +315,71 @@ async function getTripsByUser(sql, userId) {
   return result.results || [];
 }
 
+// ---- Rider profile — every figure below is derived live from trips/
+// robotaxi_vehicles/submissions; nothing is stored as a counter. The five
+// queries are independent of each other, so they run as one D1 batch()
+// round-trip rather than five sequential awaits.
+//
+// "Vehicles discovered by this user" has no dedicated column anywhere —
+// robotaxi_vehicles is deliberately ownerless. It's derived instead: the
+// user whose trip is the EARLIEST (created_at) trip referencing a given
+// vehicle is, by definition, whoever discovered it first.
+async function getUserProfile(sql, userId) {
+  const rideSummaryStmt = sql.prepare(`
+    SELECT
+      COUNT(*) AS trip_count,
+      MIN(ride_date) AS first_ride_date,
+      MAX(ride_date) AS last_ride_date,
+      SUM(distance) AS total_distance,
+      AVG(distance) AS avg_distance,
+      COUNT(distance) AS rides_with_distance,
+      MAX(distance) AS longest_ride_distance,
+      COUNT(DISTINCT robotaxi_vehicle_id) AS unique_vehicles
+    FROM trips WHERE user_id = ?
+  `).bind(userId);
+
+  const citiesStmt = sql.prepare(`
+    SELECT service_area, COUNT(*) AS ride_count
+    FROM trips WHERE user_id = ? AND service_area IS NOT NULL
+    GROUP BY service_area ORDER BY ride_count DESC
+  `).bind(userId);
+
+  const providersStmt = sql.prepare(`
+    SELECT provider, COUNT(*) AS ride_count
+    FROM trips WHERE user_id = ?
+    GROUP BY provider ORDER BY ride_count DESC
+  `).bind(userId);
+
+  const discoveredVehiclesStmt = sql.prepare(`
+    SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status, v.first_seen_at
+    FROM robotaxi_vehicles v
+    JOIN (
+      SELECT robotaxi_vehicle_id, user_id,
+             ROW_NUMBER() OVER (PARTITION BY robotaxi_vehicle_id ORDER BY created_at ASC) AS rn
+      FROM trips
+      WHERE robotaxi_vehicle_id IS NOT NULL
+    ) first_trip ON first_trip.robotaxi_vehicle_id = v.id AND first_trip.rn = 1
+    WHERE first_trip.user_id = ?
+    ORDER BY v.first_seen_at ASC
+  `).bind(userId);
+
+  const contributionsStmt = sql.prepare(
+    `SELECT COUNT(*) AS count FROM submissions WHERE user_id = ?`
+  ).bind(userId);
+
+  const [rideSummary, cities, providers, discoveredVehicles, contributions] = await sql.batch([
+    rideSummaryStmt, citiesStmt, providersStmt, discoveredVehiclesStmt, contributionsStmt
+  ]);
+
+  return {
+    rideSummary: rideSummary.results?.[0] || null,
+    cities: cities.results || [],
+    providers: providers.results || [],
+    discoveredVehicles: discoveredVehicles.results || [],
+    contributionCount: contributions.results?.[0]?.count ?? 0
+  };
+}
+
 export const db = {
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
@@ -344,5 +409,6 @@ export const db = {
   getRobotaxiOwnerConnectionByUserId,
   updateRobotaxiOwnerConnectionTokens,
   markRobotaxiOwnerConnectionRevoked,
-  getTripsByUser
+  getTripsByUser,
+  getUserProfile
 };
