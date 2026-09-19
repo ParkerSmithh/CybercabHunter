@@ -4,7 +4,7 @@
 // needed. Run: node tests/profile.test.mjs
 
 import { db } from '../worker/db.js';
-import { apiGetProfile } from '../worker/profile.js';
+import { apiGetProfile, apiUpdateProfile } from '../worker/profile.js';
 
 let pass = 0, fail = 0;
 function check(label, condition) {
@@ -79,12 +79,27 @@ function fakeD1({ users = [], trips = [], vehicles = [], submissions = [] } = {}
     throw new Error('Unrecognized query in fakeD1: ' + sql);
   }
 
+  function runMutation(sql, args) {
+    if (/UPDATE users SET/.test(sql)) {
+      const [displayName, handle, bio, profileVisibility, userId] = args;
+      if (handle) {
+        const conflict = users.find(u => u.handle === handle && u.id !== userId);
+        if (conflict) throw new Error('D1_ERROR: UNIQUE constraint failed: users.handle');
+      }
+      const user = users.find(u => u.id === userId);
+      if (user) Object.assign(user, { display_name: displayName, handle, bio, profile_visibility: profileVisibility });
+      return { success: true };
+    }
+    throw new Error('Unrecognized mutation in fakeD1: ' + sql);
+  }
+
   return {
     prepare(sql) {
       const s = { sql, args: [] };
       s.bind = (...args) => { s.args = args; return s; };
       s.first = async () => runQuery(s.sql, s.args).results[0] || null;
       s.all = async () => runQuery(s.sql, s.args);
+      s.run = async () => runMutation(s.sql, s.args);
       return s;
     },
     async batch(stmts) {
@@ -177,6 +192,68 @@ async function run() {
   {
     const sql = fakeD1({ users: [] });
     const resp = await apiGetProfile({}, { cybercabhunter_db: sql }, 'ghost-user');
+    check('401 when no matching user row exists', resp.status === 401);
+  }
+
+  console.log('8. apiUpdateProfile saves display_name/handle/bio/profile_visibility for the authenticated user');
+  {
+    const users = [{ id: 'u1', display_name: null, handle: null, bio: null, profile_visibility: 'private', created_at: '2026-01-01' }];
+    const sql = fakeD1({ users });
+    const resp = await apiUpdateProfile(
+      new Request('https://x/api/profile', { method: 'PATCH', body: JSON.stringify({ display_name: 'Ada Rider', handle: 'AdaR_23', bio: 'I hunt cybercabs.', profile_visibility: 'public' }) }),
+      { cybercabhunter_db: sql }, 'u1'
+    );
+    const body = await resp.json();
+    check('reports success with the saved fields', resp.status === 200 && body.success === true);
+    check('handle is normalized to lowercase', body.user.handle === 'adar_23');
+    check('the user row is actually updated', users[0].display_name === 'Ada Rider' && users[0].handle === 'adar_23' && users[0].bio === 'I hunt cybercabs.' && users[0].profile_visibility === 'public');
+  }
+
+  console.log('9. apiUpdateProfile rejects a handle already taken by a different user');
+  {
+    const users = [
+      { id: 'u1', display_name: null, handle: null, bio: null, profile_visibility: 'private', created_at: '2026-01-01' },
+      { id: 'u2', display_name: null, handle: 'taken', bio: null, profile_visibility: 'private', created_at: '2026-01-01' }
+    ];
+    const sql = fakeD1({ users });
+    const resp = await apiUpdateProfile(
+      new Request('https://x/api/profile', { method: 'PATCH', body: JSON.stringify({ handle: 'taken', profile_visibility: 'private' }) }),
+      { cybercabhunter_db: sql }, 'u1'
+    );
+    const body = await resp.json();
+    check('409 with a clean handle_taken error, not a raw D1 error', resp.status === 409 && body.error === 'handle_taken');
+    check('user 1 was not modified', users[0].handle === null);
+  }
+
+  console.log('10. apiUpdateProfile rejects a malformed handle without touching the row');
+  {
+    const users = [{ id: 'u1', display_name: null, handle: null, bio: null, profile_visibility: 'private', created_at: '2026-01-01' }];
+    const sql = fakeD1({ users });
+    const resp = await apiUpdateProfile(
+      new Request('https://x/api/profile', { method: 'PATCH', body: JSON.stringify({ handle: 'a b!', profile_visibility: 'private' }) }),
+      { cybercabhunter_db: sql }, 'u1'
+    );
+    const body = await resp.json();
+    check('400 invalid_handle', resp.status === 400 && body.error === 'invalid_handle');
+    check('row untouched', users[0].handle === null);
+  }
+
+  console.log('11. apiUpdateProfile defaults an unrecognized profile_visibility value to private, never a fabricated "public"');
+  {
+    const users = [{ id: 'u1', display_name: null, handle: null, bio: null, profile_visibility: 'private', created_at: '2026-01-01' }];
+    const sql = fakeD1({ users });
+    const resp = await apiUpdateProfile(
+      new Request('https://x/api/profile', { method: 'PATCH', body: JSON.stringify({ profile_visibility: 'sure why not' }) }),
+      { cybercabhunter_db: sql }, 'u1'
+    );
+    const body = await resp.json();
+    check('anything other than the literal "public" is saved as private', body.user.profile_visibility === 'private' && users[0].profile_visibility === 'private');
+  }
+
+  console.log('12. apiUpdateProfile returns 401 for a nonexistent user, matching apiGetProfile');
+  {
+    const sql = fakeD1({ users: [] });
+    const resp = await apiUpdateProfile(new Request('https://x/api/profile', { method: 'PATCH', body: '{}' }), { cybercabhunter_db: sql }, 'ghost-user');
     check('401 when no matching user row exists', resp.status === 401);
   }
 

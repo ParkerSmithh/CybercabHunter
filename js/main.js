@@ -340,22 +340,12 @@ const CCC = (() => {
   }
 
   /* ---------------- Account menu (real session via /api/me) ----------------
-     Signed-in state is now driven by the same opaque bearer session Tesla
+     Signed-in state is driven by the same opaque bearer session Tesla
      linking uses (TESLA_SESSION_KEY) — Google Sign-In's OAuth callback hands
      one back through the identical #tesla_session= fragment (see
      worker/google-auth.js), so this reads whichever provider created it the
-     same way. mockSignIn/mockSignOut remain only for the still-placeholder
-     "Continue with X" button, used as a fallback when no real session exists. */
-  const ACCOUNT_KEY = 'mockAccount';
+     same way. */
   const PERSON_ICON_SVG = '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />';
-
-  function mockSignIn(provider) {
-    storage.set(ACCOUNT_KEY, { provider });
-  }
-
-  function mockSignOut() {
-    try { localStorage.removeItem(NS + ACCOUNT_KEY); } catch (e) {}
-  }
 
   function initAccountMenu() {
     const signedOut = document.getElementById('accountSignedOut');
@@ -403,20 +393,9 @@ const CCC = (() => {
       if (signOutBtn) signOutBtn.addEventListener('click', onSignOut);
     }
 
-    function showMockFallback() {
-      const account = storage.get(ACCOUNT_KEY, null);
-      if (!account) { showSignedOut(); return; }
-      const providerNames = { google: 'Google', x: 'X' };
-      showSignedIn({
-        label: 'Signed in with ' + (providerNames[account.provider] || account.provider || 'account'),
-        avatarUrl: null,
-        onSignOut: () => { mockSignOut(); location.href = 'index.html'; }
-      });
-    }
-
     const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
     if (!sessionId) {
-      showMockFallback();
+      showSignedOut();
       return;
     }
 
@@ -427,7 +406,7 @@ const CCC = (() => {
       .then(d => {
         if (!d.authenticated) {
           localStorage.removeItem(TESLA_SESSION_KEY);
-          showMockFallback();
+          showSignedOut();
           return;
         }
         showSignedIn({
@@ -444,7 +423,7 @@ const CCC = (() => {
           }
         });
       })
-      .catch(() => showMockFallback());
+      .catch(() => showSignedOut());
   }
 
   /* ---------------- Init ---------------- */
@@ -458,5 +437,5 @@ const CCC = (() => {
     initAccountMenu();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, mockSignIn, mockSignOut, initAccountMenu, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, init };
 })();

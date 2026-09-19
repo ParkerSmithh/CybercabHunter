@@ -59,6 +59,14 @@ function fakeD1() {
         connections.set(userId, {
           user_id: userId, tesla_account_identifier: teslaAccountIdentifier, status: 'active'
         });
+      } else if (/UPDATE tesla_connections SET status = 'revoked', tesla_account_identifier = NULL/.test(sql)) {
+        const [userId] = s._args;
+        const row = connections.get(userId);
+        if (row) { row.status = 'revoked'; row.tesla_account_identifier = null; }
+      } else if (/UPDATE tesla_connections SET status = 'revoked'/.test(sql)) {
+        const [userId] = s._args;
+        const row = connections.get(userId);
+        if (row) row.status = 'revoked';
       }
       return { success: true };
     };
@@ -205,6 +213,40 @@ async function run() {
     } finally {
       restoreFetch();
     }
+  }
+
+  console.log('6. apiDisconnect unlinks Tesla without signing the user out, and frees the identifier for relinking');
+  {
+    const env = makeEnv();
+    const existingUserId = 'google-user-unlink-test';
+    const sessionId = 'session-to-keep';
+    env.cybercabhunter_db._users.set(existingUserId, { id: existingUserId });
+    await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: existingUserId }));
+
+    await completeFlow(env, `https://x/oauth/tesla/start?session=${sessionId}`, 'unlink-test-sub');
+    check('connection is active before unlinking', env.cybercabhunter_db._connections.get(existingUserId).status === 'active');
+
+    const resp = await tesla.apiDisconnect(new Request('https://x/api/tesla/disconnect', {
+      method: 'POST', headers: { Authorization: `Bearer ${sessionId}` }
+    }), env);
+    const body = await resp.json();
+    check('reports success, connected: false', resp.status === 200 && body.success === true && body.connected === false);
+
+    check('connection row marked revoked', env.cybercabhunter_db._connections.get(existingUserId).status === 'revoked');
+    check('tesla_account_identifier cleared so it can be relinked elsewhere', env.cybercabhunter_db._connections.get(existingUserId).tesla_account_identifier === null);
+
+    const stillValid = await env.TESLA_SESSIONS.get(`session:${sessionId}`);
+    check('the browser session is NOT destroyed by unlinking Tesla', JSON.parse(stillValid).user_id === existingUserId);
+
+    console.log('  7. that freed Tesla identity can now be linked to a DIFFERENT user');
+    const otherUserId = 'a-different-user';
+    const otherSession = 'other-session';
+    env.cybercabhunter_db._users.set(otherUserId, { id: otherUserId });
+    await env.TESLA_SESSIONS.put(`session:${otherSession}`, JSON.stringify({ user_id: otherUserId }));
+
+    const relinkResp = await completeFlow(env, `https://x/oauth/tesla/start?session=${otherSession}`, 'unlink-test-sub');
+    check('relinking the same Tesla account to a different user now succeeds', relinkResp.status === 302 && relinkResp.headers.get('Location').includes('tesla=linked'));
+    check('the new user now holds that Tesla identifier', env.cybercabhunter_db._connections.get(otherUserId).tesla_account_identifier === 'unlink-test-sub');
   }
 }
 

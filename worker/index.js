@@ -4,7 +4,7 @@ import { handleIncomingEmail, apiGetIngestionAddress } from './receipt-ingestion
 import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips } from './trips.js';
-import { apiGetProfile } from './profile.js';
+import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 
@@ -30,7 +30,7 @@ export default {
           status: 204,
           headers: {
             'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
             'Vary': 'Origin'
           }
@@ -134,6 +134,11 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetProfile(request, env, userId), request);
+    }
+    if (url.pathname === '/api/profile' && request.method === 'PATCH') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiUpdateProfile(request, env, userId), request);
     }
 
     // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API

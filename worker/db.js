@@ -50,11 +50,25 @@ async function updateConnectionTokens(sql, userId, { encryptedAccessToken, encry
   `).bind(encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt, userId).run();
 }
 
-// Soft revoke: used by /api/tesla/disconnect. Keeps the row (with its
-// history) and the user's vehicles intact — only flips status so it's no
-// longer usable to call Tesla's API.
+// Soft revoke: used automatically when a stored refresh token turns out to
+// be dead (see getValidAccessToken in tesla.js). Deliberately keeps
+// tesla_account_identifier so the SAME user can recover simply by
+// re-linking, rather than losing the connection to the (provider,
+// tesla_account_identifier) unique index the next time they try.
 async function markConnectionRevoked(sql, userId) {
   await sql.prepare(`UPDATE tesla_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?`).bind(userId).run();
+}
+
+// User-initiated unlink (POST /api/tesla/disconnect): unlike
+// markConnectionRevoked above, this also clears tesla_account_identifier —
+// otherwise the (provider, tesla_account_identifier) unique index would
+// keep blocking this same Tesla account from ever being linked to a
+// different (or the same) Cybercab Hunter user again. Keeps the row's
+// history and the user's discovered vehicles intact.
+async function unlinkTeslaConnection(sql, userId) {
+  await sql.prepare(`
+    UPDATE tesla_connections SET status = 'revoked', tesla_account_identifier = NULL, updated_at = datetime('now') WHERE user_id = ?
+  `).bind(userId).run();
 }
 
 // Hard delete: used only by DELETE /api/tesla/data. Vehicles are removed
@@ -119,6 +133,24 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
     `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
   ).bind(newId(), id, googleSub, email || null).run();
   return id;
+}
+
+// Always sets all four fields at once (rather than a dynamic partial
+// UPDATE) so a deliberate "clear this field" (null) can't be confused with
+// "field not sent" — the caller (apiUpdateProfile) always resolves the
+// full set first. Throws on the existing unique-handle constraint if
+// `handle` is already taken by a different user; the caller translates
+// that into a clean error rather than a raw D1 message.
+async function updateUserSettings(sql, userId, { displayName, handle, bio, profileVisibility }) {
+  await sql.prepare(`
+    UPDATE users SET
+      display_name = ?,
+      handle = ?,
+      bio = ?,
+      profile_visibility = ?,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(displayName, handle, bio, profileVisibility, userId).run();
 }
 
 async function touchUserSync(sql, userId) {
@@ -482,12 +514,14 @@ export const db = {
   getTeslaConnectionByUserId,
   updateConnectionTokens,
   markConnectionRevoked,
+  unlinkTeslaConnection,
   deleteConnectionAndVehicles,
   upsertVehicles,
   getVehiclesByOwner,
   countVehiclesByOwner,
   getUserById,
   findOrCreateUserByGoogleIdentity,
+  updateUserSettings,
   touchUserSync,
   createSubmission,
   getSubmissionsByUser,

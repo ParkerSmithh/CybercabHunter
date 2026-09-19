@@ -388,16 +388,19 @@ async function apiSync(request, env) {
   return Response.json({ success: true, vehicle_count: vehicleCount });
 }
 
-// Soft revoke: disables the connection and invalidates this browser's
-// session, but keeps the tesla_connections row (status='revoked') and all
-// discovered vehicles. Does not delete the user's account.
+// Soft revoke: disables the connection but keeps the tesla_connections row
+// (status='revoked') and all discovered vehicles/ride history — it also
+// clears the stored tesla_account_identifier so this Tesla account can be
+// linked to a different (or the same) Cybercab Hunter user afterward,
+// unlike the automatic revoke in getValidAccessToken, where keeping the
+// identifier lets the SAME user recover by simply re-linking. Does not
+// touch the browser's session or delete the user's account — Tesla is no
+// longer necessarily how this account signed in (see worker/google-auth.js).
 async function apiDisconnect(request, env) {
   const userId = await requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
 
-  await db.markConnectionRevoked(env.cybercabhunter_db, userId);
-  const sessionId = readBearerToken(request);
-  if (sessionId) await env.TESLA_SESSIONS.delete(`session:${sessionId}`);
+  await db.unlinkTeslaConnection(env.cybercabhunter_db, userId);
 
   return Response.json({ success: true, connected: false });
 }

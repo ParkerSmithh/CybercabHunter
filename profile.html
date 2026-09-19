@@ -48,7 +48,7 @@
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
       <div id="accountSignedIn" class="hidden">
-        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl border-2 border-gold bg-panel text-gold flex items-center justify-center">
+        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
           <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
@@ -70,10 +70,11 @@
 
     <!-- Signed-in profile -->
     <div id="profileSignedIn" class="hidden">
-      <!-- Shown only when the signed-in account (e.g. via Google) has no
-           active Tesla connection yet — linking here attaches Tesla to this
-           SAME account rather than creating a separate one; see the
-           ?session= handling in worker/tesla.js. -->
+      <!-- Toggles between "not connected yet" and "connected" based on
+           /api/me's tesla.connected. Linking here attaches Tesla to THIS
+           SAME account rather than creating a separate one (see the
+           ?session= handling in worker/tesla.js); unlinking clears the
+           connection without touching the account/session itself. -->
       <div id="profileLinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <div class="font-display font-bold text-base mb-1">Link your Tesla account</div>
@@ -81,12 +82,58 @@
         </div>
         <a id="teslaLinkFromSignedIn" href="#" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
       </div>
-
-      <div class="reveal-on-scroll mb-10 flex items-center gap-5">
-        <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></div>
+      <div id="profileUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 id="profileName" class="font-display font-bold text-3xl tracking-tight"></h1>
-          <p id="profileJoined" class="text-sm text-slate-400 mt-1"></p>
+          <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
+          <p class="text-slate-400 text-sm">Unlinking keeps your rider history but stops pulling new rides/vehicles from Tesla.</p>
+        </div>
+        <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
+      </div>
+
+      <div class="reveal-on-scroll mb-10 flex items-start justify-between gap-5 flex-wrap">
+        <div class="flex items-center gap-5">
+          <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></div>
+          <div>
+            <h1 id="profileName" class="font-display font-bold text-3xl tracking-tight"></h1>
+            <p id="profileHandle" class="text-sm text-gold mt-0.5"></p>
+            <p id="profileBio" class="text-sm text-slate-400 mt-1.5 max-w-md leading-relaxed"></p>
+            <p id="profileJoined" class="text-sm text-slate-500 mt-1.5"></p>
+          </div>
+        </div>
+        <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Edit Profile</button>
+      </div>
+
+      <div id="editProfilePanel" class="hidden reveal-on-scroll mb-10 glass rounded-2xl p-6">
+        <div class="grid sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label for="editDisplayName" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Display Name</label>
+            <input id="editDisplayName" type="text" maxlength="60" placeholder="Your name" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold">
+          </div>
+          <div>
+            <label for="editHandle" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Username</label>
+            <div class="flex items-center bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 focus-within:border-gold">
+              <span class="text-slate-500 text-sm">@</span>
+              <input id="editHandle" type="text" maxlength="20" placeholder="username" class="w-full bg-transparent px-1 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none">
+            </div>
+          </div>
+        </div>
+        <div class="mb-5">
+          <label for="editBio" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</label>
+          <textarea id="editBio" maxlength="280" rows="3" placeholder="Tell other riders about yourself" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold resize-none"></textarea>
+        </div>
+        <div class="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-[rgba(212,175,55,0.12)]">
+          <div>
+            <div class="text-sm font-semibold">Public profile</div>
+            <p class="text-xs text-slate-500 mt-0.5">Public profiles can be viewed by anyone with your link. Private is the default.</p>
+          </div>
+          <button id="visibilityToggle" type="button" role="switch" aria-checked="false" class="shrink-0 relative w-12 h-7 rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors">
+            <span id="visibilityToggleKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
+          </button>
+        </div>
+        <div class="flex items-center gap-4 flex-wrap">
+          <button id="saveProfileBtn" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Save Changes</button>
+          <button id="cancelEditBtn" type="button" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">Cancel</button>
+          <p id="editProfileError" class="text-xs text-crimson"></p>
         </div>
       </div>
 
@@ -257,12 +304,17 @@
     return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
+  let currentUser = null;
+
   function renderProfile(data) {
+    currentUser = data.user;
     document.getElementById('profileSignedIn').classList.remove('hidden');
 
     const displayName = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
     document.getElementById('profileAvatar').textContent = initials(data.user.display_name || data.user.handle);
     document.getElementById('profileName').textContent = displayName;
+    document.getElementById('profileHandle').textContent = data.user.handle ? '@' + data.user.handle : '';
+    document.getElementById('profileBio').textContent = data.user.bio || '';
     document.getElementById('profileJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
 
     document.getElementById('statContributions').textContent = data.contributions.toLocaleString();
@@ -317,7 +369,90 @@
     }
   }
 
+  function initEditProfilePanel(sessionId) {
+    const panel = document.getElementById('editProfilePanel');
+    const editBtn = document.getElementById('editProfileBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const saveBtn = document.getElementById('saveProfileBtn');
+    const errorEl = document.getElementById('editProfileError');
+    const toggle = document.getElementById('visibilityToggle');
+    const toggleKnob = document.getElementById('visibilityToggleKnob');
+    if (!panel || !editBtn) return;
+
+    let isPublic = false;
+    function renderToggle() {
+      toggle.setAttribute('aria-checked', String(isPublic));
+      toggle.classList.toggle('bg-gold', isPublic);
+      toggleKnob.classList.toggle('translate-x-5', isPublic);
+      toggleKnob.classList.toggle('bg-[#1a1204]', isPublic);
+      toggleKnob.classList.toggle('bg-slate-400', !isPublic);
+    }
+    toggle.addEventListener('click', () => { isPublic = !isPublic; renderToggle(); });
+
+    editBtn.addEventListener('click', () => {
+      if (!currentUser) return;
+      errorEl.textContent = '';
+      document.getElementById('editDisplayName').value = currentUser.display_name || '';
+      document.getElementById('editHandle').value = currentUser.handle || '';
+      document.getElementById('editBio').value = currentUser.bio || '';
+      isPublic = currentUser.profile_visibility === 'public';
+      renderToggle();
+      panel.classList.remove('hidden');
+      editBtn.classList.add('hidden');
+    });
+
+    function closePanel() {
+      panel.classList.add('hidden');
+      editBtn.classList.remove('hidden');
+      errorEl.textContent = '';
+    }
+    cancelBtn.addEventListener('click', closePanel);
+
+    saveBtn.addEventListener('click', () => {
+      errorEl.textContent = '';
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      fetch(TESLA_WORKER_URL + '/api/profile', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: document.getElementById('editDisplayName').value,
+          handle: document.getElementById('editHandle').value,
+          bio: document.getElementById('editBio').value,
+          profile_visibility: isPublic ? 'public' : 'private'
+        })
+      })
+        .then(async r => {
+          const body = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(body.error || 'update_failed');
+          return body;
+        })
+        .then(body => {
+          currentUser = Object.assign({}, currentUser, body.user);
+          document.getElementById('profileName').textContent = currentUser.display_name || currentUser.handle || 'Cybercab Hunter Rider';
+          document.getElementById('profileHandle').textContent = currentUser.handle ? '@' + currentUser.handle : '';
+          document.getElementById('profileBio').textContent = currentUser.bio || '';
+          document.getElementById('profileAvatar').textContent = initials(currentUser.display_name || currentUser.handle);
+          closePanel();
+        })
+        .catch(err => {
+          const messages = {
+            handle_taken: 'That username is already taken.',
+            invalid_handle: 'Usernames must be 3-20 characters: lowercase letters, numbers, and underscores only.',
+            invalid_body: 'Something went wrong — please try again.'
+          };
+          errorEl.textContent = messages[err.message] || 'Something went wrong — please try again.';
+        })
+        .finally(() => {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        });
+    });
+  }
+
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+  initEditProfilePanel(sessionId);
 
   // Passing the current session lets /oauth/tesla/start attach Tesla to
   // THIS account instead of creating a separate one — see worker/tesla.js.
@@ -343,11 +478,31 @@
     fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
       .then(r => r.ok ? r.json() : { authenticated: false })
       .then(d => {
-        if (d.authenticated && !d.tesla.connected) {
+        if (!d.authenticated) return;
+        if (d.tesla.connected) {
+          document.getElementById('profileUnlinkTeslaPrompt').classList.remove('hidden');
+        } else {
           document.getElementById('profileLinkTeslaPrompt').classList.remove('hidden');
         }
       })
       .catch(() => {});
+
+    const unlinkBtn = document.getElementById('teslaUnlinkBtn');
+    if (unlinkBtn) {
+      unlinkBtn.addEventListener('click', () => {
+        unlinkBtn.disabled = true;
+        unlinkBtn.textContent = 'Unlinking…';
+        fetch(TESLA_WORKER_URL + '/api/tesla/disconnect', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + sessionId }
+        })
+          .then(() => location.reload())
+          .catch(() => {
+            unlinkBtn.disabled = false;
+            unlinkBtn.textContent = 'Unlink Tesla Account';
+          });
+      });
+    }
   }
 </script>
 </body>
