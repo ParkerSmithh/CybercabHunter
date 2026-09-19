@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="Cybercab2.png">
 <link rel="apple-touch-icon" href="Cybercab2.png">
-<title>Cybercab Hunter — Rider Profile</title>
+<title>Cybercab Hunter — Profile</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -23,6 +23,27 @@
   }
 </script>
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* Locked = looks like plain text (no box); unlocked = looks like a normal
+     input, toggled by swapping these two classes in js when Edit Profile
+     is clicked. Font/color/size come from the Tailwind classes already on
+     each element — only the box chrome changes here. */
+  .field-locked, .field-unlocked {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 0;
+    display: block;
+    transition: background-color 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
+  }
+  .field-locked { cursor: default; }
+  .field-unlocked {
+    background: #0F141C;
+    border-color: rgba(212,175,55,0.2);
+    padding: 0.5rem 0.75rem;
+    cursor: text;
+  }
+  .field-unlocked:focus { outline: none; border-color: #D4AF37; }
+</style>
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -63,136 +84,50 @@
 
     <!-- Signed-out state -->
     <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
-      <h1 class="font-display font-bold text-2xl mb-3">Link your Tesla account</h1>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider profile is built entirely from your own linked rides and receipts — link your Tesla account to see it.</p>
-      <a id="teslaLinkFromSignedOut" href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
+      <h1 class="font-display font-bold text-2xl mb-3">Sign in to customize your profile</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Set your name, username, and bio once you're signed in.</p>
+      <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
     </div>
 
-    <!-- Signed-in profile -->
-    <div id="profileSignedIn" class="hidden">
-      <!-- Toggles between "not connected yet" and "connected" based on
-           /api/me's tesla.connected. Linking here attaches Tesla to THIS
-           SAME account rather than creating a separate one (see the
-           ?session= handling in worker/tesla.js); unlinking clears the
-           connection without touching the account/session itself. -->
-      <div id="profileLinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <div class="font-display font-bold text-base mb-1">Link your Tesla account</div>
-          <p class="text-slate-400 text-sm">Connect Tesla to pull in your real rides and vehicles.</p>
-        </div>
-        <a id="teslaLinkFromSignedIn" href="#" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
-      </div>
-      <div id="profileUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
-          <p class="text-slate-400 text-sm">Unlinking keeps your rider history but stops pulling new rides/vehicles from Tesla.</p>
-        </div>
-        <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
-      </div>
-
-      <div class="reveal-on-scroll mb-10 flex items-start justify-between gap-5 flex-wrap">
-        <div class="flex items-center gap-5">
-          <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></div>
-          <div>
-            <h1 id="profileName" class="font-display font-bold text-3xl tracking-tight"></h1>
-            <p id="profileHandle" class="text-sm text-gold mt-0.5"></p>
-            <p id="profileBio" class="text-sm text-slate-400 mt-1.5 max-w-md leading-relaxed"></p>
-            <p id="profileJoined" class="text-sm text-slate-500 mt-1.5"></p>
-          </div>
-        </div>
-        <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Edit Profile</button>
-      </div>
-
-      <div id="editProfilePanel" class="hidden reveal-on-scroll mb-10 glass rounded-2xl p-6">
-        <div class="grid sm:grid-cols-2 gap-5 mb-5">
-          <div>
-            <label for="editDisplayName" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Display Name</label>
-            <input id="editDisplayName" type="text" maxlength="60" placeholder="Your name" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold">
-          </div>
-          <div>
-            <label for="editHandle" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Username</label>
-            <div class="flex items-center bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 focus-within:border-gold">
-              <span class="text-slate-500 text-sm">@</span>
-              <input id="editHandle" type="text" maxlength="20" placeholder="username" class="w-full bg-transparent px-1 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none">
+    <!-- Signed-in profile — ONE section that locks/unlocks in place. Locked:
+         every field is a readonly/disabled input styled as plain text.
+         Clicking Edit Profile removes readonly/disabled and turns the
+         button into Save (disabled until something actually changes).
+         Rider ride data/stats live entirely on rider-data.html, not here. -->
+    <div id="profileSignedIn" class="hidden max-w-2xl mx-auto">
+      <div class="reveal-on-scroll glass rounded-2xl p-8">
+        <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
+          <div class="flex items-center gap-5 flex-1 min-w-0">
+            <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <input id="fieldDisplayName" readonly maxlength="60" placeholder="Cybercab Hunter Rider" class="field-locked font-display font-bold text-3xl tracking-tight w-full rounded-lg placeholder:text-slate-500">
+              <div class="flex items-center mt-0.5">
+                <span class="text-sm text-gold">@</span>
+                <input id="fieldHandle" readonly maxlength="20" placeholder="No username set" class="field-locked text-sm text-gold w-full rounded-lg placeholder:text-slate-500">
+              </div>
             </div>
           </div>
+          <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Edit Profile</button>
         </div>
-        <div class="mb-5">
-          <label for="editBio" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</label>
-          <textarea id="editBio" maxlength="280" rows="3" placeholder="Tell other riders about yourself" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold resize-none"></textarea>
+
+        <div class="mb-6">
+          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</div>
+          <textarea id="fieldBio" readonly rows="2" maxlength="280" placeholder="No bio yet — click Edit Profile to add one." class="field-locked text-sm text-slate-300 w-full rounded-lg resize-none placeholder:text-slate-500"></textarea>
         </div>
-        <div class="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-[rgba(212,175,55,0.12)]">
+
+        <div class="flex items-center justify-between gap-4 pt-6 border-t border-[rgba(212,175,55,0.12)]">
           <div>
             <div class="text-sm font-semibold">Public profile</div>
             <p class="text-xs text-slate-500 mt-0.5">Public profiles can be viewed by anyone with your link. Private is the default.</p>
           </div>
-          <button id="visibilityToggle" type="button" role="switch" aria-checked="false" class="shrink-0 relative w-12 h-7 rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors">
+          <button id="visibilityToggle" type="button" role="switch" aria-checked="false" disabled class="shrink-0 relative w-12 h-7 rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
             <span id="visibilityToggleKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
           </button>
         </div>
-        <div class="flex items-center gap-4 flex-wrap">
-          <button id="saveProfileBtn" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Save Changes</button>
-          <button id="cancelEditBtn" type="button" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors">Cancel</button>
+
+        <div class="flex items-center gap-4 flex-wrap mt-6">
+          <p id="profileJoined" class="text-xs text-slate-500"></p>
           <p id="editProfileError" class="text-xs text-crimson"></p>
-        </div>
-      </div>
-
-      <!-- Contribution stat cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-        <div class="glass rounded-2xl p-6 reveal-on-scroll">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Contributions</div>
-          <div id="statContributions" class="font-display font-bold text-3xl text-gold">—</div>
-        </div>
-        <div class="glass rounded-2xl p-6 reveal-on-scroll">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Vehicles Found</div>
-          <div id="statVehiclesFound" class="font-display font-bold text-3xl text-gold">—</div>
-        </div>
-        <div class="glass rounded-2xl p-6 reveal-on-scroll">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trips Logged</div>
-          <div id="statTripsLogged" class="font-display font-bold text-3xl text-gold">—</div>
-        </div>
-        <div class="glass rounded-2xl p-6 reveal-on-scroll">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Miles Contributed</div>
-          <div id="statMiles" class="font-display font-bold text-3xl text-gold">—</div>
-        </div>
-      </div>
-
-      <div class="grid lg:grid-cols-3 gap-6 mb-10">
-        <!-- Ride history summary -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
-          <h2 class="font-display font-bold text-xl mb-5">Ride History</h2>
-          <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet — they'll appear here automatically once a Tesla receipt is ingested.</div>
-          <div id="rideSummaryGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-5 text-sm">
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Unique Vehicles</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
-          </div>
-        </div>
-
-        <!-- Providers -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-5">Providers</h2>
-          <div id="providersList" class="space-y-3 text-sm"></div>
-        </div>
-      </div>
-
-      <div class="grid lg:grid-cols-2 gap-6 mb-10">
-        <!-- Cities -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
-          <div id="citiesList" class="space-y-3 text-sm"></div>
-          <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
-        </div>
-
-        <!-- Vehicles discovered -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-5">Vehicles Discovered</h2>
-          <p class="text-xs text-slate-500 mb-4">Vehicles you were the first to log a ride in.</p>
-          <div id="discoveredList" class="space-y-3"></div>
-          <div id="discoveredEmpty" class="hidden text-sm text-slate-500">You haven't discovered a new vehicle yet — the first receipt with a new plate credits you here automatically.</div>
         </div>
       </div>
     </div>
@@ -215,7 +150,7 @@
       <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
       Profile
     </a>
-    <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
+    <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
       <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
       Rider Data
     </a>
@@ -292,9 +227,6 @@
   const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
   const TESLA_SESSION_KEY = 'teslaSessionId';
 
-  function fmtDistance(mi) {
-    return (mi === null || mi === undefined) ? '—' : mi.toFixed(1) + ' mi';
-  }
   function fmtDate(d) {
     if (!d) return '—';
     return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -306,80 +238,41 @@
 
   let currentUser = null;
 
-  function renderProfile(data) {
-    currentUser = data.user;
+  function renderProfile(user) {
+    currentUser = user;
     document.getElementById('profileSignedIn').classList.remove('hidden');
 
-    const displayName = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
-    document.getElementById('profileAvatar').textContent = initials(data.user.display_name || data.user.handle);
-    document.getElementById('profileName').textContent = displayName;
-    document.getElementById('profileHandle').textContent = data.user.handle ? '@' + data.user.handle : '';
-    document.getElementById('profileBio').textContent = data.user.bio || '';
-    document.getElementById('profileJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
+    document.getElementById('profileAvatar').textContent = initials(user.display_name || user.handle);
+    document.getElementById('fieldDisplayName').value = user.display_name || '';
+    document.getElementById('fieldHandle').value = user.handle || '';
+    document.getElementById('fieldBio').value = user.bio || '';
+    document.getElementById('profileJoined').textContent = 'Joined ' + fmtDate((user.joined_at || '').slice(0, 10));
 
-    document.getElementById('statContributions').textContent = data.contributions.toLocaleString();
-    document.getElementById('statVehiclesFound').textContent = data.discoveredVehicles.length.toLocaleString();
-    document.getElementById('statTripsLogged').textContent = data.rideSummary.trip_count.toLocaleString();
-    document.getElementById('statMiles').textContent = fmtDistance(data.rideSummary.total_distance);
-
-    if (data.rideSummary.trip_count === 0) {
-      document.getElementById('rideSummaryEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('rideSummaryGrid').classList.remove('hidden');
-      document.getElementById('rsTotalRides').textContent = data.rideSummary.trip_count.toLocaleString();
-      const coverage = data.rideSummary.rides_with_distance < data.rideSummary.trip_count
-        ? ` (${data.rideSummary.rides_with_distance}/${data.rideSummary.trip_count} rides)` : '';
-      document.getElementById('rsAvgDistance').textContent = fmtDistance(data.rideSummary.avg_distance) + coverage;
-      document.getElementById('rsLongest').textContent = fmtDistance(data.rideSummary.longest_ride_distance);
-      document.getElementById('rsUniqueVehicles').textContent = data.rideSummary.unique_vehicles.toLocaleString();
-      document.getElementById('rsFirstRide').textContent = fmtDate(data.rideSummary.first_ride_date);
-      document.getElementById('rsLatestRide').textContent = fmtDate(data.rideSummary.last_ride_date);
-    }
-
-    const providerNames = { tesla: 'Tesla' };
-    document.getElementById('providersList').innerHTML = data.providers.length
-      ? data.providers.map(p => `
-          <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-            <span class="font-semibold">${providerNames[p.provider] || p.provider}</span>
-            <span class="font-display font-bold text-slate-300">${p.ride_count.toLocaleString()} rides</span>
-          </div>`).join('')
-      : '<div class="text-sm text-slate-500">No provider rides recorded yet.</div>';
-
-    if (data.cities.length === 0) {
-      document.getElementById('citiesEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('citiesList').innerHTML = data.cities.map(c => `
-        <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-          <span class="font-semibold">${c.service_area}</span>
-          <span class="font-display font-bold text-slate-300">${c.ride_count.toLocaleString()} rides</span>
-        </div>`).join('');
-    }
-
-    if (data.discoveredVehicles.length === 0) {
-      document.getElementById('discoveredEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('discoveredList').innerHTML = data.discoveredVehicles.map(v => `
-        <div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-          <div class="flex items-center justify-between">
-            <span class="font-display font-bold">${v.license_plate}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wider">${v.verification_status}</span>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">${[v.model, v.service_area].filter(Boolean).join(' · ') || 'Details pending'}</div>
-        </div>`).join('');
-    }
+    const isPublic = user.profile_visibility === 'public';
+    const toggle = document.getElementById('visibilityToggle');
+    const toggleKnob = document.getElementById('visibilityToggleKnob');
+    toggle.setAttribute('aria-checked', String(isPublic));
+    toggle.classList.toggle('bg-gold', isPublic);
+    toggleKnob.classList.toggle('translate-x-5', isPublic);
+    toggleKnob.classList.toggle('bg-[#1a1204]', isPublic);
+    toggleKnob.classList.toggle('bg-slate-400', !isPublic);
   }
 
   function initEditProfilePanel(sessionId) {
-    const panel = document.getElementById('editProfilePanel');
     const editBtn = document.getElementById('editProfileBtn');
-    const cancelBtn = document.getElementById('cancelEditBtn');
-    const saveBtn = document.getElementById('saveProfileBtn');
     const errorEl = document.getElementById('editProfileError');
+    const nameField = document.getElementById('fieldDisplayName');
+    const handleField = document.getElementById('fieldHandle');
+    const bioField = document.getElementById('fieldBio');
     const toggle = document.getElementById('visibilityToggle');
     const toggleKnob = document.getElementById('visibilityToggleKnob');
-    if (!panel || !editBtn) return;
+    const fields = [nameField, handleField, bioField];
+    if (!editBtn) return;
 
+    let editing = false;
     let isPublic = false;
+    let original = null; // snapshot taken when editing starts, for change detection
+
     function renderToggle() {
       toggle.setAttribute('aria-checked', String(isPublic));
       toggle.classList.toggle('bg-gold', isPublic);
@@ -387,39 +280,84 @@
       toggleKnob.classList.toggle('bg-[#1a1204]', isPublic);
       toggleKnob.classList.toggle('bg-slate-400', !isPublic);
     }
-    toggle.addEventListener('click', () => { isPublic = !isPublic; renderToggle(); });
 
-    editBtn.addEventListener('click', () => {
+    function hasChanges() {
+      if (!original) return false;
+      return nameField.value !== original.name || handleField.value !== original.handle ||
+        bioField.value !== original.bio || isPublic !== original.isPublic;
+    }
+
+    function updateSaveEnabled() {
+      if (!editing) return;
+      editBtn.disabled = !hasChanges();
+    }
+
+    function lockFields() {
+      fields.forEach(f => { f.readOnly = true; f.classList.remove('field-unlocked'); f.classList.add('field-locked'); });
+      toggle.disabled = true;
+    }
+    function unlockFields() {
+      fields.forEach(f => { f.readOnly = false; f.classList.remove('field-locked'); f.classList.add('field-unlocked'); });
+      toggle.disabled = false;
+    }
+
+    function setSaveStyle(isSaveMode) {
+      editBtn.classList.toggle('border', !isSaveMode);
+      editBtn.classList.toggle('border-[rgba(212,175,55,0.35)]', !isSaveMode);
+      editBtn.classList.toggle('text-slate-100', !isSaveMode);
+      editBtn.classList.toggle('hover:bg-white/5', !isSaveMode);
+      editBtn.classList.toggle('bg-gradient-to-r', isSaveMode);
+      editBtn.classList.toggle('from-goldsoft', isSaveMode);
+      editBtn.classList.toggle('to-gold', isSaveMode);
+      editBtn.classList.toggle('text-[#1a1204]', isSaveMode);
+    }
+
+    function enterEditMode() {
       if (!currentUser) return;
+      editing = true;
       errorEl.textContent = '';
-      document.getElementById('editDisplayName').value = currentUser.display_name || '';
-      document.getElementById('editHandle').value = currentUser.handle || '';
-      document.getElementById('editBio').value = currentUser.bio || '';
       isPublic = currentUser.profile_visibility === 'public';
       renderToggle();
-      panel.classList.remove('hidden');
-      editBtn.classList.add('hidden');
-    });
-
-    function closePanel() {
-      panel.classList.add('hidden');
-      editBtn.classList.remove('hidden');
-      errorEl.textContent = '';
+      unlockFields();
+      original = { name: nameField.value, handle: handleField.value, bio: bioField.value, isPublic };
+      editBtn.textContent = 'Save';
+      setSaveStyle(true);
+      editBtn.disabled = true; // nothing changed yet
+      nameField.focus();
     }
-    cancelBtn.addEventListener('click', closePanel);
 
-    saveBtn.addEventListener('click', () => {
+    function exitEditMode() {
+      editing = false;
+      original = null;
+      lockFields();
+      editBtn.textContent = 'Edit Profile';
+      setSaveStyle(false);
+      editBtn.disabled = false;
+    }
+
+    toggle.addEventListener('click', () => {
+      if (!editing) return;
+      isPublic = !isPublic;
+      renderToggle();
+      updateSaveEnabled();
+    });
+    fields.forEach(f => f.addEventListener('input', updateSaveEnabled));
+
+    editBtn.addEventListener('click', () => {
+      if (!editing) { enterEditMode(); return; }
+      if (editBtn.disabled) return; // Save, but nothing changed
+
       errorEl.textContent = '';
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving…';
+      editBtn.disabled = true;
+      editBtn.textContent = 'Saving…';
 
       fetch(TESLA_WORKER_URL + '/api/profile', {
         method: 'PATCH',
         headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          display_name: document.getElementById('editDisplayName').value,
-          handle: document.getElementById('editHandle').value,
-          bio: document.getElementById('editBio').value,
+          display_name: nameField.value,
+          handle: handleField.value,
+          bio: bioField.value,
           profile_visibility: isPublic ? 'public' : 'private'
         })
       })
@@ -429,12 +367,8 @@
           return body;
         })
         .then(body => {
-          currentUser = Object.assign({}, currentUser, body.user);
-          document.getElementById('profileName').textContent = currentUser.display_name || currentUser.handle || 'Cybercab Hunter Rider';
-          document.getElementById('profileHandle').textContent = currentUser.handle ? '@' + currentUser.handle : '';
-          document.getElementById('profileBio').textContent = currentUser.bio || '';
-          document.getElementById('profileAvatar').textContent = initials(currentUser.display_name || currentUser.handle);
-          closePanel();
+          renderProfile(Object.assign({}, currentUser, body.user));
+          exitEditMode();
         })
         .catch(err => {
           const messages = {
@@ -443,24 +377,14 @@
             invalid_body: 'Something went wrong — please try again.'
           };
           errorEl.textContent = messages[err.message] || 'Something went wrong — please try again.';
-        })
-        .finally(() => {
-          saveBtn.disabled = false;
-          saveBtn.textContent = 'Save Changes';
+          editBtn.textContent = 'Save';
+          editBtn.disabled = !hasChanges();
         });
     });
   }
 
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
   initEditProfilePanel(sessionId);
-
-  // Passing the current session lets /oauth/tesla/start attach Tesla to
-  // THIS account instead of creating a separate one — see worker/tesla.js.
-  const teslaStartUrl = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
-  const signedOutLink = document.getElementById('teslaLinkFromSignedOut');
-  if (signedOutLink) signedOutLink.href = teslaStartUrl;
-  const signedInLink = document.getElementById('teslaLinkFromSignedIn');
-  if (signedInLink) signedInLink.href = teslaStartUrl;
 
   if (!sessionId) {
     document.getElementById('profileSignedOut').classList.remove('hidden');
@@ -470,39 +394,10 @@
         if (!r.ok) throw new Error('not authenticated');
         return r.json();
       })
-      .then(renderProfile)
+      .then(data => renderProfile(data.user))
       .catch(() => {
         document.getElementById('profileSignedOut').classList.remove('hidden');
       });
-
-    fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
-      .then(r => r.ok ? r.json() : { authenticated: false })
-      .then(d => {
-        if (!d.authenticated) return;
-        if (d.tesla.connected) {
-          document.getElementById('profileUnlinkTeslaPrompt').classList.remove('hidden');
-        } else {
-          document.getElementById('profileLinkTeslaPrompt').classList.remove('hidden');
-        }
-      })
-      .catch(() => {});
-
-    const unlinkBtn = document.getElementById('teslaUnlinkBtn');
-    if (unlinkBtn) {
-      unlinkBtn.addEventListener('click', () => {
-        unlinkBtn.disabled = true;
-        unlinkBtn.textContent = 'Unlinking…';
-        fetch(TESLA_WORKER_URL + '/api/tesla/disconnect', {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + sessionId }
-        })
-          .then(() => location.reload())
-          .catch(() => {
-            unlinkBtn.disabled = false;
-            unlinkBtn.textContent = 'Unlink Tesla Account';
-          });
-      });
-    }
   }
 </script>
 </body>

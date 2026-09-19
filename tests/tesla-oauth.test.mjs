@@ -44,9 +44,9 @@ function fakeD1() {
     const s = { _sql: sql, _args: [] };
     s.bind = (...args) => { s._args = args; return s; };
     s.run = async () => {
-      if (/INSERT INTO users \(id\) VALUES/.test(sql)) {
+      if (/INSERT INTO users/.test(sql)) {
         const [id] = s._args;
-        users.set(id, { id, display_name: null, avatar_url: null, created_at: 'now' });
+        users.set(id, { id, display_name: null, avatar_url: null, profile_visibility: 'public', created_at: 'now' });
       } else if (/INSERT INTO tesla_connections/.test(sql)) {
         const [, userId, teslaAccountIdentifier] = s._args;
         if (teslaAccountIdentifier) {
@@ -144,6 +144,7 @@ async function run() {
     check('redirects with tesla=linked', resp.status === 302 && resp.headers.get('Location').startsWith('https://cybercabhunter.com/?tesla=linked'));
     check('a new session id is handed back via the fragment', /#tesla_session=[a-f0-9]+$/.test(resp.headers.get('Location')));
     check('exactly one user was created', env.cybercabhunter_db._users.size === 1);
+    check('new users default to a public profile', [...env.cybercabhunter_db._users.values()][0].profile_visibility === 'public');
   }
 
   console.log('2. ?session= with no valid session behaves exactly like the classic flow');

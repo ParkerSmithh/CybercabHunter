@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="Cybercab2.png">
+<link rel="apple-touch-icon" href="Cybercab2.png">
+<title>Cybercab Hunter — Rider Data</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
+        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
+      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
+    }}
+  }
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+
+<header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <nav class="hidden lg:flex items-center gap-8 relative">
+      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ETA</a>
+      <a href="fleet-calculator.html" data-nav="fleet-calculator" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="community.html" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
+      <div id="navIndicator"></div>
+    </nav>
+    <div class="flex items-center gap-3">
+      <div id="accountSignedOut">
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+      </div>
+      <div id="accountSignedIn" class="hidden">
+        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
+          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+          <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
+        </button>
+      </div>
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
+    </div>
+  </div>
+</header>
+
+<section class="py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+
+    <!-- Signed-out state -->
+    <div id="dataSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Sign in to view your rider data</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider data is built entirely from your own linked rides and receipts.</p>
+      <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    </div>
+
+    <!-- Signed-in data -->
+    <div id="dataSignedIn" class="hidden">
+      <!-- Toggles between "not connected yet" and "connected" based on
+           /api/me's tesla.connected. Linking here attaches Tesla to THIS
+           SAME account rather than creating a separate one (see the
+           ?session= handling in worker/tesla.js); unlinking clears the
+           connection without touching the account/session itself. -->
+      <div id="dataLinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div class="font-display font-bold text-base mb-1">Link your Tesla account</div>
+          <p class="text-slate-400 text-sm">Connect Tesla to pull in your real rides and vehicles.</p>
+        </div>
+        <a id="teslaLinkFromData" href="#" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
+      </div>
+      <div id="dataUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
+          <p class="text-slate-400 text-sm">Unlinking keeps your rider history but stops pulling new rides/vehicles from Tesla.</p>
+        </div>
+        <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
+      </div>
+
+      <!-- Overview hero — identity is kept minimal and read-only here for
+           orientation only; editing lives on profile.html, and there is no
+           Edit Profile button on this page on purpose. -->
+      <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-8 lg:p-10">
+        <div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gold/10 blur-3xl pointer-events-none"></div>
+        <div class="relative flex flex-col lg:flex-row items-center gap-10">
+          <div class="flex-1 w-full">
+            <div class="flex items-center gap-4 mb-7">
+              <div id="dataAvatar" class="w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-base bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] shrink-0"></div>
+              <div>
+                <div id="dataName" class="font-display font-bold text-lg leading-tight"></div>
+                <div id="dataJoined" class="text-xs text-slate-500"></div>
+              </div>
+            </div>
+
+            <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Rider Overview</p>
+            <div class="flex items-end gap-3 mb-3">
+              <span id="heroRideCount" class="font-display font-bold text-6xl leading-none">0</span>
+              <span class="text-lg text-slate-400 mb-1.5">rides</span>
+            </div>
+            <div id="heroFirstRide" class="hidden items-center gap-2 text-sm text-slate-300 mb-7">
+              <svg class="w-4 h-4 text-gold shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.6L19.5 9l-5.7 1.4L12 16l-1.8-5.6L4.5 9l5.7-1.4L12 2z"/></svg>
+              <span id="heroFirstRideText"></span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-6 border-t border-[rgba(212,175,55,0.12)] max-w-lg">
+              <div>
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Distance</div>
+                <div id="statMiles" class="font-display font-bold text-xl">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Vehicles</div>
+                <div id="statVehiclesFound" class="font-display font-bold text-xl">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Cities</div>
+                <div id="statCitiesCount" class="font-display font-bold text-xl">—</div>
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Contributions</div>
+                <div id="statContributions" class="font-display font-bold text-xl">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="shrink-0 hidden lg:block relative">
+            <div class="absolute inset-0 bg-gold/20 blur-2xl rounded-full"></div>
+            <img src="Cybercab.png" alt="Cybercab" class="relative w-56 h-56 object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+        <!-- Ride history summary -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
+          <h2 class="font-display font-bold text-xl mb-5">Ride History</h2>
+          <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet.</div>
+          <div id="rideSummaryGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-5 text-sm">
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Unique Vehicles</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
+          </div>
+        </div>
+
+        <!-- Spending -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-1">Spending</h2>
+          <p class="text-xs text-slate-500 mb-5">From fares recorded on your receipts.</p>
+          <div id="spendingEmpty" class="hidden text-sm text-slate-500">No fares recorded yet — they'll appear here once a receipt with a fare amount is ingested.</div>
+          <div id="spendingList" class="space-y-6"></div>
+        </div>
+      </div>
+
+      <!-- Cities -->
+      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
+        <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
+        <div id="citiesList" class="space-y-3 text-sm"></div>
+        <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
+<div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="font-display font-bold text-xl">ACCOUNT</h3>
+    <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+  </div>
+  <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
+    <span class="w-1.5 h-1.5 rounded-full bg-gold shrink-0"></span>
+    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
+  </div>
+  <div class="space-y-1 mb-6">
+    <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+      Profile
+    </a>
+    <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      Rider Data
+    </a>
+  </div>
+  <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    Sign out
+  </button>
+</div>
+
+<div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
+<div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
+    <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+  </div>
+  <form id="sightingForm" class="space-y-5">
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City</label>
+      <select id="sightingType" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+        <option>Austin</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location</label>
+      <input id="sightingLoc" required placeholder="e.g. S Congress Ave, Austin, TX" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate #</label>
+      <input id="sightingVehicle" required placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+    </div>
+    <button type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Log Sighting</button>
+  </form>
+</div>
+
+<footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+    <div class="col-span-2">
+      <div class="flex items-center gap-2">
+        <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">
+        <span class="font-display font-bold">CYBERCAB HUNTER</span>
+      </div>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
+        <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
+      <a href="community.html" class="hover:text-white transition-colors">Community</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">About</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="#" class="hover:text-white transition-colors">How It Works</a>
+        <a href="#" class="hover:text-white transition-colors">Privacy</a>
+      </div>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+</footer>
+
+<script src="js/calc.js?v=2"></script>
+<script src="js/main.js?v=2"></script>
+<script>
+  CCC.init();
+
+  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const TESLA_SESSION_KEY = 'teslaSessionId';
+
+  function fmtDistance(mi) {
+    return (mi === null || mi === undefined) ? '—' : mi.toFixed(1) + ' mi';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function initials(name) {
+    if (!name) return 'CH';
+    return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  function renderData(data) {
+    document.getElementById('dataSignedIn').classList.remove('hidden');
+
+    const displayName = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
+    document.getElementById('dataAvatar').textContent = initials(data.user.display_name || data.user.handle);
+    document.getElementById('dataName').textContent = displayName;
+    document.getElementById('dataJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
+
+    document.getElementById('statContributions').textContent = data.contributions.toLocaleString();
+    document.getElementById('statVehiclesFound').textContent = data.discoveredVehicles.length.toLocaleString();
+    document.getElementById('statCitiesCount').textContent = data.cities.length.toLocaleString();
+    document.getElementById('statMiles').textContent = fmtDistance(data.rideSummary.total_distance);
+
+    document.getElementById('heroRideCount').textContent = data.rideSummary.trip_count.toLocaleString();
+    const firstRideEl = document.getElementById('heroFirstRide');
+    if (data.rideSummary.first_ride_date) {
+      const modelText = data.firstVehicleModel ? `First ${data.firstVehicleModel} ride` : 'First ride';
+      document.getElementById('heroFirstRideText').textContent = `${modelText} · ${fmtDate(data.rideSummary.first_ride_date)}`;
+      firstRideEl.classList.remove('hidden');
+      firstRideEl.classList.add('flex');
+    }
+
+    if (!data.spending.length) {
+      document.getElementById('spendingEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('spendingList').innerHTML = data.spending.map(s => {
+        const fmt = cents => {
+          try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: s.currency }).format(cents / 100); }
+          catch (e) { return (cents / 100).toFixed(2) + ' ' + s.currency; }
+        };
+        return `
+          <div>
+            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total · ${s.currency}</div>
+            <div class="font-display font-bold text-4xl mb-4">${fmt(s.totalCents)}</div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Median fare</div><div class="font-display font-bold text-lg">${fmt(s.medianCents)}</div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Average paid</div><div class="font-display font-bold text-lg">${fmt(s.avgCents)}</div></div>
+            </div>
+          </div>`;
+      }).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
+    }
+
+    if (data.rideSummary.trip_count === 0) {
+      document.getElementById('rideSummaryEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('rideSummaryGrid').classList.remove('hidden');
+      document.getElementById('rsTotalRides').textContent = data.rideSummary.trip_count.toLocaleString();
+      const coverage = data.rideSummary.rides_with_distance < data.rideSummary.trip_count
+        ? ` (${data.rideSummary.rides_with_distance}/${data.rideSummary.trip_count} rides)` : '';
+      document.getElementById('rsAvgDistance').textContent = fmtDistance(data.rideSummary.avg_distance) + coverage;
+      document.getElementById('rsLongest').textContent = fmtDistance(data.rideSummary.longest_ride_distance);
+      document.getElementById('rsUniqueVehicles').textContent = data.rideSummary.unique_vehicles.toLocaleString();
+      document.getElementById('rsFirstRide').textContent = fmtDate(data.rideSummary.first_ride_date);
+      document.getElementById('rsLatestRide').textContent = fmtDate(data.rideSummary.last_ride_date);
+    }
+
+    if (data.cities.length === 0) {
+      document.getElementById('citiesEmpty').classList.remove('hidden');
+    } else {
+      document.getElementById('citiesList').innerHTML = data.cities.map(c => `
+        <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+          <span class="font-semibold">${c.service_area}</span>
+          <span class="font-display font-bold text-slate-300">${c.ride_count.toLocaleString()} rides</span>
+        </div>`).join('');
+    }
+
+  }
+
+  const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+
+  // Passing the current session lets /oauth/tesla/start attach Tesla to
+  // THIS account instead of creating a separate one — see worker/tesla.js.
+  const teslaStartUrl = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
+  const linkFromData = document.getElementById('teslaLinkFromData');
+  if (linkFromData) linkFromData.href = teslaStartUrl;
+
+  if (!sessionId) {
+    document.getElementById('dataSignedOut').classList.remove('hidden');
+  } else {
+    fetch(TESLA_WORKER_URL + '/api/profile', { headers: { Authorization: 'Bearer ' + sessionId } })
+      .then(r => {
+        if (!r.ok) throw new Error('not authenticated');
+        return r.json();
+      })
+      .then(renderData)
+      .catch(() => {
+        document.getElementById('dataSignedOut').classList.remove('hidden');
+      });
+
+    fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
+      .then(r => r.ok ? r.json() : { authenticated: false })
+      .then(d => {
+        if (!d.authenticated) return;
+        if (d.tesla.connected) {
+          document.getElementById('dataUnlinkTeslaPrompt').classList.remove('hidden');
+        } else {
+          document.getElementById('dataLinkTeslaPrompt').classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+
+    const unlinkBtn = document.getElementById('teslaUnlinkBtn');
+    if (unlinkBtn) {
+      unlinkBtn.addEventListener('click', () => {
+        unlinkBtn.disabled = true;
+        unlinkBtn.textContent = 'Unlinking…';
+        fetch(TESLA_WORKER_URL + '/api/tesla/disconnect', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + sessionId }
+        })
+          .then(() => location.reload())
+          .catch(() => {
+            unlinkBtn.disabled = false;
+            unlinkBtn.textContent = 'Unlink Tesla Account';
+          });
+      });
+    }
+  }
+</script>
+</body>
+</html>

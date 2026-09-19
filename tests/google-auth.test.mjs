@@ -31,7 +31,7 @@ function fakeD1() {
     s.run = async () => {
       if (/INSERT INTO users/.test(sql)) {
         const [id, displayName, avatarUrl] = s._args;
-        users.set(id, { id, display_name: displayName, avatar_url: avatarUrl });
+        users.set(id, { id, display_name: displayName, avatar_url: avatarUrl, profile_visibility: 'public' });
       } else if (/INSERT INTO google_connections/.test(sql)) {
         const [, userId, googleSub, email] = s._args;
         googleConnections.set(googleSub, { user_id: userId, email });
@@ -168,6 +168,7 @@ async function run() {
     const user = [...db._users.values()][0];
     check('display_name populated from Google profile', user.display_name === 'Ada Rider');
     check('avatar_url populated from Google profile picture', user.avatar_url === 'https://example.com/photo.jpg');
+    check('new users default to a public profile', user.profile_visibility === 'public');
     check('google_connections links the user by google_sub', db._googleConnections.get('google-sub-123').user_id === user.id);
 
     const sessionId = location.split('#tesla_session=')[1];

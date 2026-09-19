@@ -24,7 +24,9 @@ export async function apiGetProfile(request, env, userId) {
     rideSummary: profile.rideSummary,
     cities: profile.cities,
     providers: profile.providers,
-    discoveredVehicles: profile.discoveredVehicles
+    discoveredVehicles: profile.discoveredVehicles,
+    spending: profile.spending,
+    firstVehicleModel: profile.firstVehicleModel
   });
 }
 

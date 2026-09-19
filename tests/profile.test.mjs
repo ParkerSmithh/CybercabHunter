@@ -76,6 +76,21 @@ function fakeD1({ users = [], trips = [], vehicles = [], submissions = [] } = {}
       const [userId] = args;
       return { results: [{ count: submissions.filter(s => s.user_id === userId).length }] };
     }
+    if (/fare_amount_cents FROM trips/.test(sql)) {
+      const [userId] = args;
+      const rows = trips
+        .filter(t => t.user_id === userId && t.fare_amount_cents != null)
+        .map(t => ({ currency: t.currency || 'USD', fare_amount_cents: t.fare_amount_cents }))
+        .sort((a, b) => a.currency.localeCompare(b.currency) || a.fare_amount_cents - b.fare_amount_cents);
+      return { results: rows };
+    }
+    if (/LEFT JOIN robotaxi_vehicles/.test(sql)) {
+      const [userId] = args;
+      const rows = trips.filter(t => t.user_id === userId).sort((a, b) => a.created_at.localeCompare(b.created_at));
+      if (rows.length === 0) return { results: [] };
+      const v = vehicles.find(v => v.id === rows[0].robotaxi_vehicle_id);
+      return { results: [{ model: v ? v.model : null }] };
+    }
     throw new Error('Unrecognized query in fakeD1: ' + sql);
   }
 
@@ -164,6 +179,71 @@ async function run() {
     });
     const profile = await db.getUserProfile(sql, 'u1');
     check('contribution count scoped to the requesting user', profile.contributionCount === 2);
+  }
+
+  console.log('4b. Spending totals/median/average computed correctly per currency, ignoring trips with no recorded fare');
+  {
+    const sql = fakeD1({
+      trips: [
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: 429, created_at: 'a' },
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: 762, created_at: 'b' },
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: null, created_at: 'c' }, // no receipt fare — excluded, not treated as $0
+        { user_id: 'u1', currency: 'EUR', fare_amount_cents: 500, created_at: 'd' }
+      ]
+    });
+    const profile = await db.getUserProfile(sql, 'u1');
+    check('two currencies reported, USD first (higher total)', profile.spending.length === 2 && profile.spending[0].currency === 'USD');
+    const usd = profile.spending[0];
+    check('USD fare_count excludes the null-fare trip', usd.fareCount === 2);
+    check('USD total is the sum of only the recorded fares', usd.totalCents === 1191);
+    check('USD average is correct', usd.avgCents === 1191 / 2);
+    check('USD median of two values is their mean', usd.medianCents === (429 + 762) / 2);
+    const eur = profile.spending[1];
+    check('EUR kept separate from USD, not merged', eur.currency === 'EUR' && eur.totalCents === 500 && eur.fareCount === 1);
+  }
+
+  console.log('4c. Spending median with an odd number of fares picks the true middle value, not an average');
+  {
+    const sql = fakeD1({
+      trips: [
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: 100, created_at: 'a' },
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: 900, created_at: 'b' },
+        { user_id: 'u1', currency: 'USD', fare_amount_cents: 500, created_at: 'c' }
+      ]
+    });
+    const profile = await db.getUserProfile(sql, 'u1');
+    check('median of [100,500,900] is 500, not skewed by outliers', profile.spending[0].medianCents === 500);
+  }
+
+  console.log('4d. A user with no recorded fares gets an empty spending array, not an error or a fabricated $0');
+  {
+    const sql = fakeD1({ trips: [{ user_id: 'u1', currency: 'USD', fare_amount_cents: null, created_at: 'a' }] });
+    const profile = await db.getUserProfile(sql, 'u1');
+    check('empty spending array', Array.isArray(profile.spending) && profile.spending.length === 0);
+  }
+
+  console.log('4e. firstVehicleModel reflects the vehicle from this rider\'s earliest trip, honestly null when unknown');
+  {
+    const sql = fakeD1({
+      vehicles: [{ id: 'v1', model: 'Model Y' }, { id: 'v2', model: null }],
+      trips: [
+        { user_id: 'u1', robotaxi_vehicle_id: 'v1', created_at: '2026-05-10T00:00:00Z' },
+        { user_id: 'u1', robotaxi_vehicle_id: 'v2', created_at: '2026-06-01T00:00:00Z' }
+      ]
+    });
+    const profile = await db.getUserProfile(sql, 'u1');
+    check('first trip\'s vehicle model is reported', profile.firstVehicleModel === 'Model Y');
+
+    const sqlNoModel = fakeD1({
+      vehicles: [{ id: 'v2', model: null }],
+      trips: [{ user_id: 'u1', robotaxi_vehicle_id: 'v2', created_at: 'a' }]
+    });
+    const profileNoModel = await db.getUserProfile(sqlNoModel, 'u1');
+    check('unknown model reported as null, never guessed', profileNoModel.firstVehicleModel === null);
+
+    const sqlNoTrips = fakeD1({});
+    const profileNoTrips = await db.getUserProfile(sqlNoTrips, 'u1');
+    check('no trips at all -> null, not an error', profileNoTrips.firstVehicleModel === null);
   }
 
   console.log('5. User with no data at all gets an honest empty profile, not an error');

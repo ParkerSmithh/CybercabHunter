@@ -14,7 +14,7 @@ async function findOrCreateUserByTeslaIdentifier(sql, teslaAccountIdentifier) {
     if (existing) return existing.user_id;
   }
   const id = newId();
-  await sql.prepare(`INSERT INTO users (id) VALUES (?)`).bind(id).run();
+  await sql.prepare(`INSERT INTO users (id, profile_visibility) VALUES (?, 'public')`).bind(id).run();
   return id;
 }
 
@@ -127,7 +127,7 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
 
   const id = newId();
   await sql.prepare(
-    `INSERT INTO users (id, display_name, avatar_url) VALUES (?, ?, ?)`
+    `INSERT INTO users (id, display_name, avatar_url, profile_visibility) VALUES (?, ?, ?, 'public')`
   ).bind(id, name || null, avatarUrl || null).run();
   await sql.prepare(
     `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
@@ -447,16 +447,57 @@ async function getUserProfile(sql, userId) {
     `SELECT COUNT(*) AS count FROM submissions WHERE user_id = ?`
   ).bind(userId);
 
-  const [rideSummary, cities, providers, discoveredVehicles, contributions] = await sql.batch([
-    rideSummaryStmt, citiesStmt, providersStmt, discoveredVehiclesStmt, contributionsStmt
+  // Raw amounts (not pre-aggregated) since SQLite has no MEDIAN() — sorted
+  // per currency and folded into totals/average/median together in JS below.
+  const fareAmountsStmt = sql.prepare(`
+    SELECT currency, fare_amount_cents FROM trips
+    WHERE user_id = ? AND fare_amount_cents IS NOT NULL
+    ORDER BY currency, fare_amount_cents
+  `).bind(userId);
+
+  // The vehicle model of this rider's very first trip, if known — used for
+  // a "first ride in a Model Y" style badge. Null model (never confirmed)
+  // or no vehicle at all both come back as null, never guessed.
+  const firstVehicleModelStmt = sql.prepare(`
+    SELECT v.model
+    FROM trips t
+    LEFT JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
+    WHERE t.user_id = ?
+    ORDER BY t.created_at ASC
+    LIMIT 1
+  `).bind(userId);
+
+  const [rideSummary, cities, providers, discoveredVehicles, contributions, fareAmounts, firstVehicleModel] = await sql.batch([
+    rideSummaryStmt, citiesStmt, providersStmt, discoveredVehiclesStmt, contributionsStmt, fareAmountsStmt, firstVehicleModelStmt
   ]);
+
+  const byCurrency = new Map();
+  for (const row of fareAmounts.results || []) {
+    if (!byCurrency.has(row.currency)) byCurrency.set(row.currency, []);
+    byCurrency.get(row.currency).push(row.fare_amount_cents);
+  }
+  const spending = [...byCurrency.entries()].map(([currency, amounts]) => {
+    const sorted = [...amounts].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const medianCents = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    const totalCents = amounts.reduce((s, c) => s + c, 0);
+    return {
+      currency,
+      fareCount: amounts.length,
+      totalCents,
+      avgCents: totalCents / amounts.length,
+      medianCents
+    };
+  }).sort((a, b) => b.totalCents - a.totalCents);
 
   return {
     rideSummary: rideSummary.results?.[0] || null,
     cities: cities.results || [],
     providers: providers.results || [],
     discoveredVehicles: discoveredVehicles.results || [],
-    contributionCount: contributions.results?.[0]?.count ?? 0
+    contributionCount: contributions.results?.[0]?.count ?? 0,
+    spending,
+    firstVehicleModel: firstVehicleModel.results?.[0]?.model || null
   };
 }
 
