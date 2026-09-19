@@ -276,11 +276,31 @@ const CCC = (() => {
         cancelled: ['Tesla linking was cancelled.', 'info'],
         invalid_state: ['Tesla linking failed — please try again.', 'error'],
         token_exchange_failed: ['Tesla linking failed — please try again.', 'error'],
+        already_linked_elsewhere: ['That Tesla account is already linked to a different sign-in.', 'error'],
         error: ['Tesla linking failed — please try again.', 'error']
       };
       const [msg, type] = messages[result] || messages.error;
       toast(msg, type);
       params.delete('tesla');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+    }
+
+    // Same one-time toast/scrub for the Google Sign-In round trip
+    // (worker/google-auth.js's callback uses ?signin= instead of ?tesla=
+    // since it's not Tesla-specific).
+    const signinResult = params.get('signin');
+    if (signinResult) {
+      const messages = {
+        success: ['SIGNED IN', 'success'],
+        cancelled: ['Sign-in was cancelled.', 'info'],
+        invalid_state: ['Sign-in failed — please try again.', 'error'],
+        token_exchange_failed: ['Sign-in failed — please try again.', 'error'],
+        error: ['Sign-in failed — please try again.', 'error']
+      };
+      const [msg, type] = messages[signinResult] || messages.error;
+      toast(msg, type);
+      params.delete('signin');
       const query = params.toString();
       history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
     }
@@ -319,14 +339,13 @@ const CCC = (() => {
     });
   }
 
-  /* ---------------- Account menu (Google/X sign-in placeholder) ----------------
-     Purely a frontend mock for now — no backend call, no real OAuth yet.
-     Stores only a provider tag under storage, never a fabricated name —
-     this represents "completed the placeholder sign-in," not a real
-     identity, so the UI shows a generic avatar rather than inventing a
-     person. This is intentionally separate from the real Tesla session
-     (TESLA_SESSION_KEY): connecting Tesla remains its own action from
-     inside the Profile page's own signed-out prompt, unchanged. */
+  /* ---------------- Account menu (real session via /api/me) ----------------
+     Signed-in state is now driven by the same opaque bearer session Tesla
+     linking uses (TESLA_SESSION_KEY) — Google Sign-In's OAuth callback hands
+     one back through the identical #tesla_session= fragment (see
+     worker/google-auth.js), so this reads whichever provider created it the
+     same way. mockSignIn/mockSignOut remain only for the still-placeholder
+     "Continue with X" button, used as a fallback when no real session exists. */
   const ACCOUNT_KEY = 'mockAccount';
   const PERSON_ICON_SVG = '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />';
 
@@ -343,46 +362,89 @@ const CCC = (() => {
     const signedIn = document.getElementById('accountSignedIn');
     if (!signedOut || !signedIn) return;
 
-    const account = storage.get(ACCOUNT_KEY, null);
-    if (!account) {
+    function showSignedOut() {
       signedOut.classList.remove('hidden');
       signedIn.classList.add('hidden');
+    }
+
+    function showSignedIn({ label, avatarUrl, onSignOut }) {
+      signedOut.classList.add('hidden');
+      signedIn.classList.remove('hidden');
+
+      const avatarIcon = document.getElementById('accountAvatarIcon');
+      const avatarImg = document.getElementById('accountAvatarImg');
+      if (avatarUrl && avatarImg) {
+        avatarImg.src = avatarUrl;
+        avatarImg.classList.remove('hidden');
+        if (avatarIcon) avatarIcon.classList.add('hidden');
+      } else {
+        if (avatarImg) avatarImg.classList.add('hidden');
+        if (avatarIcon) { avatarIcon.classList.remove('hidden'); avatarIcon.innerHTML = PERSON_ICON_SVG; }
+      }
+
+      const providerLabel = document.getElementById('accountMenuProviderLabel');
+      if (providerLabel) providerLabel.textContent = label;
+
+      // Slides in from the right, same drawer/backdrop pattern as the
+      // "Submit" sighting drawer — not a small anchored popover.
+      const trigger = document.getElementById('accountMenuTrigger');
+      const drawer = document.getElementById('accountDrawer');
+      const backdrop = document.getElementById('accountBackdrop');
+      const closeBtn = document.getElementById('closeAccountDrawer');
+      if (trigger && drawer && backdrop) {
+        function openDrawer() { drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
+        function closeDrawer() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
+        trigger.addEventListener('click', openDrawer);
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        backdrop.addEventListener('click', closeDrawer);
+      }
+
+      const signOutBtn = document.getElementById('accountMenuSignOut');
+      if (signOutBtn) signOutBtn.addEventListener('click', onSignOut);
+    }
+
+    function showMockFallback() {
+      const account = storage.get(ACCOUNT_KEY, null);
+      if (!account) { showSignedOut(); return; }
+      const providerNames = { google: 'Google', x: 'X' };
+      showSignedIn({
+        label: 'Signed in with ' + (providerNames[account.provider] || account.provider || 'account'),
+        avatarUrl: null,
+        onSignOut: () => { mockSignOut(); location.href = 'index.html'; }
+      });
+    }
+
+    const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+    if (!sessionId) {
+      showMockFallback();
       return;
     }
 
-    signedOut.classList.add('hidden');
-    signedIn.classList.remove('hidden');
-
-    const avatarIcon = document.getElementById('accountAvatarIcon');
-    if (avatarIcon) avatarIcon.innerHTML = PERSON_ICON_SVG;
-
-    const providerLabel = document.getElementById('accountMenuProviderLabel');
-    if (providerLabel) {
-      const providerNames = { google: 'Google', x: 'X' };
-      providerLabel.textContent = 'Signed in with ' + (providerNames[account.provider] || account.provider || 'account');
-    }
-
-    // Slides in from the right, same drawer/backdrop pattern as the
-    // "Submit" sighting drawer — not a small anchored popover.
-    const trigger = document.getElementById('accountMenuTrigger');
-    const drawer = document.getElementById('accountDrawer');
-    const backdrop = document.getElementById('accountBackdrop');
-    const closeBtn = document.getElementById('closeAccountDrawer');
-    if (trigger && drawer && backdrop) {
-      function openDrawer() { drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
-      function closeDrawer() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
-      trigger.addEventListener('click', openDrawer);
-      if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-      backdrop.addEventListener('click', closeDrawer);
-    }
-
-    const signOutBtn = document.getElementById('accountMenuSignOut');
-    if (signOutBtn) {
-      signOutBtn.addEventListener('click', () => {
-        mockSignOut();
-        location.href = 'index.html';
-      });
-    }
+    fetch(TESLA_WORKER_URL + '/api/me', {
+      headers: { Authorization: 'Bearer ' + sessionId }
+    })
+      .then(r => r.ok ? r.json() : { authenticated: false })
+      .then(d => {
+        if (!d.authenticated) {
+          localStorage.removeItem(TESLA_SESSION_KEY);
+          showMockFallback();
+          return;
+        }
+        showSignedIn({
+          label: d.user.display_name || 'Signed in',
+          avatarUrl: d.user.avatar_url,
+          onSignOut: () => {
+            fetch(TESLA_WORKER_URL + '/oauth/tesla/disconnect', {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + sessionId }
+            }).finally(() => {
+              localStorage.removeItem(TESLA_SESSION_KEY);
+              location.href = 'index.html';
+            });
+          }
+        });
+      })
+      .catch(() => showMockFallback());
   }
 
   /* ---------------- Init ---------------- */

@@ -8,7 +8,11 @@
 	},
 	"vars": {
 		"FRONTEND_URL": "https://cybercabhunter.com/",
-		"RECEIPT_DOMAIN": "cybercabhunter.com"
+		"RECEIPT_DOMAIN": "cybercabhunter.com",
+		"TESLA_RIDES_REDIRECT_URI": "https://cybercabhunter.com/api/tesla/rides/callback",
+		"TESLA_RIDES_AUDIENCE": "https://fleet-api.prd.na.vn.cloud.tesla.com",
+		"TESLA_RIDES_SCOPES": "openid offline_access",
+		"GOOGLE_REDIRECT_URI": "https://cybercabhunter.com/oauth/google/callback"
 	},
 	"kv_namespaces": [
 		{

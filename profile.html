@@ -50,6 +50,7 @@
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl border-2 border-gold bg-panel text-gold flex items-center justify-center">
           <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+          <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
@@ -64,11 +65,23 @@
     <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Link your Tesla account</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider profile is built entirely from your own linked rides and receipts — link your Tesla account to see it.</p>
-      <a href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
+      <a id="teslaLinkFromSignedOut" href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/tesla/start" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
     </div>
 
     <!-- Signed-in profile -->
     <div id="profileSignedIn" class="hidden">
+      <!-- Shown only when the signed-in account (e.g. via Google) has no
+           active Tesla connection yet — linking here attaches Tesla to this
+           SAME account rather than creating a separate one; see the
+           ?session= handling in worker/tesla.js. -->
+      <div id="profileLinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div class="font-display font-bold text-base mb-1">Link your Tesla account</div>
+          <p class="text-slate-400 text-sm">Connect Tesla to pull in your real rides and vehicles.</p>
+        </div>
+        <a id="teslaLinkFromSignedIn" href="#" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Link Tesla Account</a>
+      </div>
+
       <div class="reveal-on-scroll mb-10 flex items-center gap-5">
         <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></div>
         <div>
@@ -305,6 +318,15 @@
   }
 
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+
+  // Passing the current session lets /oauth/tesla/start attach Tesla to
+  // THIS account instead of creating a separate one — see worker/tesla.js.
+  const teslaStartUrl = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
+  const signedOutLink = document.getElementById('teslaLinkFromSignedOut');
+  if (signedOutLink) signedOutLink.href = teslaStartUrl;
+  const signedInLink = document.getElementById('teslaLinkFromSignedIn');
+  if (signedInLink) signedInLink.href = teslaStartUrl;
+
   if (!sessionId) {
     document.getElementById('profileSignedOut').classList.remove('hidden');
   } else {
@@ -317,6 +339,15 @@
       .catch(() => {
         document.getElementById('profileSignedOut').classList.remove('hidden');
       });
+
+    fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
+      .then(r => r.ok ? r.json() : { authenticated: false })
+      .then(d => {
+        if (d.authenticated && !d.tesla.connected) {
+          document.getElementById('profileLinkTeslaPrompt').classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
   }
 </script>
 </body>

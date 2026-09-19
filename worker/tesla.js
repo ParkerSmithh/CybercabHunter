@@ -75,8 +75,23 @@ function decodeTeslaAccountIdentifier(idToken) {
 }
 
 async function startOAuth(request, env) {
+  // If the browser is already signed in (e.g. via Google), the frontend
+  // passes that session id through as ?session= so the callback can attach
+  // this Tesla connection to the SAME user instead of minting a new
+  // Tesla-identity account — a plain <a href> navigation can't carry an
+  // Authorization header the way a fetch() can, hence the query param.
+  // Absent or invalid, behavior is unchanged from before: a fresh account
+  // is created from the Tesla identity alone.
+  const requestedSessionId = new URL(request.url).searchParams.get('session');
+  let existingUserId = null;
+  if (requestedSessionId) {
+    existingUserId = await requireUserId(new Request(request.url, {
+      headers: { Authorization: `Bearer ${requestedSessionId}` }
+    }), env);
+  }
+
   const state = randomToken();
-  await env.TESLA_SESSIONS.put(`state:${state}`, '1', { expirationTtl: STATE_TTL_SECONDS });
+  await env.TESLA_SESSIONS.put(`state:${state}`, JSON.stringify({ existing_user_id: existingUserId }), { expirationTtl: STATE_TTL_SECONDS });
 
   const authorizeUrl = new URL(AUTHORIZE_URL);
   authorizeUrl.searchParams.set('response_type', 'code');
@@ -171,6 +186,13 @@ async function handleCallback(request, env) {
   }
   await env.TESLA_SESSIONS.delete(stateKey); // single-use
 
+  let existingUserId = null;
+  try {
+    existingUserId = JSON.parse(stateSeen).existing_user_id || null;
+  } catch (err) {
+    return Response.redirect(`${frontend}?tesla=invalid_state`, 302);
+  }
+
   let tokenResponse;
   try {
     tokenResponse = await exchangeCodeForTokens(code, redirectUriFor(request), env);
@@ -180,15 +202,30 @@ async function handleCallback(request, env) {
 
   const sql = env.cybercabhunter_db;
   const teslaAccountIdentifier = decodeTeslaAccountIdentifier(tokenResponse.id_token);
-  const userId = await db.findOrCreateUserByTeslaIdentifier(sql, teslaAccountIdentifier);
+  // If the browser was already signed in (see startOAuth), attach this
+  // Tesla connection to that SAME user rather than finding/creating a
+  // separate Tesla-identity account — this is the only behavior difference
+  // from the classic sign-in-with-Tesla path below.
+  const userId = existingUserId || await db.findOrCreateUserByTeslaIdentifier(sql, teslaAccountIdentifier);
 
   const encryptedAccessToken = await tokenCrypto.encrypt(tokenResponse.access_token, env.TESLA_TOKEN_ENCRYPTION_KEY);
   const encryptedRefreshToken = await tokenCrypto.encrypt(tokenResponse.refresh_token, env.TESLA_TOKEN_ENCRYPTION_KEY);
   const accessTokenExpiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString();
 
-  await db.upsertTeslaConnection(sql, {
-    userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt, teslaAccountIdentifier
-  });
+  try {
+    await db.upsertTeslaConnection(sql, {
+      userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt, teslaAccountIdentifier
+    });
+  } catch (err) {
+    // upsertTeslaConnection's ON CONFLICT targets user_id only — a Tesla
+    // account already linked to a DIFFERENT user still violates the
+    // separate (provider, tesla_account_identifier) unique index. Surface
+    // that distinctly rather than silently reattaching or merging accounts;
+    // the signed-in user's existing session is left untouched either way.
+    const message = String(err && err.message || '');
+    const alreadyLinkedElsewhere = message.includes('tesla_account_identifier');
+    return Response.redirect(`${frontend}?tesla=${alreadyLinkedElsewhere ? 'already_linked_elsewhere' : 'error'}`, 302);
+  }
 
   // Vehicle discovery is best-effort here — a transient Tesla API hiccup
   // shouldn't fail the linking itself; /api/tesla/sync can retry later.
@@ -197,6 +234,12 @@ async function handleCallback(request, env) {
     await db.upsertVehicles(sql, userId, vehicles);
   } catch (err) {
     // Swallowed intentionally — see comment above. Nothing token-related is logged.
+  }
+
+  // A signed-in browser already holds a working session for this same
+  // user_id — no need to mint (or hand back) a new one.
+  if (existingUserId) {
+    return Response.redirect(`${frontend}?tesla=linked`, 302);
   }
 
   const sessionId = randomToken();
@@ -273,7 +316,12 @@ async function apiMe(request, env) {
   const connection = await db.getTeslaConnectionByUserId(env.cybercabhunter_db, userId);
   return Response.json({
     authenticated: true,
-    user: { id: user.id, created_at: user.created_at },
+    user: {
+      id: user.id,
+      created_at: user.created_at,
+      display_name: user.display_name || null,
+      avatar_url: user.avatar_url || null
+    },
     tesla: { connected: !!connection && connection.status === 'active' }
   });
 }

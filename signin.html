@@ -42,14 +42,15 @@
     <p class="text-slate-400 text-sm leading-relaxed mb-8">Track your rides, discover vehicles, and earn badges.</p>
 
     <div class="glass rounded-2xl p-8 flex flex-col gap-4">
-      <!-- Placeholder only — no real OAuth wired up yet. Clicking either
-           button sets a local mock "signed in" flag (CCC.mockSignIn) so
-           the account-menu UI can be built and tested before real Google/X
-           OAuth exists. No name/photo is fabricated; see js/main.js. -->
-      <button id="signInGoogle" type="button" class="w-full inline-flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold bg-white text-[#1f1f1f] hover:bg-slate-100 transition-colors">
+      <!-- Google: real server-side OAuth (see worker/google-auth.js) — a
+           plain link, so the browser does a full-page navigation straight
+           to the Worker's /oauth/google/start, exactly like the existing
+           Tesla "Link Account" button. X has no credentials yet, so it
+           still falls back to the local mock (CCC.mockSignIn); see js/main.js. -->
+      <a id="signInGoogle" href="https://cybercabhunter.contactjoeclos.workers.dev/oauth/google/start" class="w-full inline-flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold bg-white text-[#1f1f1f] hover:bg-slate-100 transition-colors">
         <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.92l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.95H1.27v3.1C3.25 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.27A11.97 11.97 0 0 0 0 12c0 1.94.46 3.77 1.27 5.38l4-3.1z"/><path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.58 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.62l4 3.1C6.22 6.88 8.87 4.77 12 4.77z"/></svg>
         Continue with Google
-      </button>
+      </a>
       <button id="signInX" type="button" class="w-full inline-flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-7.2L4.5 22H1.4l8.2-9.3L1 2h7.2l5 6.6L18.9 2Zm-1.2 18h1.7L7.4 4H5.6l12.1 16Z"/></svg>
         Continue with X
@@ -64,15 +65,11 @@
 <script>
   CCC.init();
 
-  document.getElementById('signInGoogle').addEventListener('click', () => {
-    CCC.mockSignIn('google');
-    location.href = 'index.html';
-  });
   document.getElementById('signInX').addEventListener('click', () => {
     CCC.mockSignIn('x');
     location.href = 'index.html';
   });
-  document.getElementById('signInNote').textContent = 'Placeholder sign-in — real Google/X OAuth coming soon.';
+  document.getElementById('signInNote').textContent = 'X sign-in is a placeholder for now — real OAuth coming soon.';
 </script>
 </body>
 </html>

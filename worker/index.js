@@ -5,6 +5,8 @@ import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips } from './trips.js';
 import { apiGetProfile } from './profile.js';
+import { teslaRides } from './tesla-rides.js';
+import { googleAuth } from './google-auth.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -51,6 +53,15 @@ export default {
     }
     if (url.pathname === '/oauth/tesla/callback') {
       return tesla.handleCallback(request, env);
+    }
+
+    // Google Sign-In — primary account creation, separate from the Tesla
+    // Fleet API OAuth above. See worker/google-auth.js.
+    if (url.pathname === '/oauth/google/start') {
+      return googleAuth.startOAuth(request, env);
+    }
+    if (url.pathname === '/oauth/google/callback') {
+      return googleAuth.handleCallback(request, env);
     }
 
     // Cross-origin fetch() calls from the frontend — need CORS headers.
@@ -123,6 +134,24 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetProfile(request, env, userId), request);
+    }
+
+    // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API
+    // routes above and from the earlier /oauth/robotaxi/* experiment. See
+    // worker/tesla-rides.js. No ride-history endpoint exists yet.
+    if (url.pathname === '/api/tesla/rides/connect' && request.method === 'GET') {
+      return withCors(await teslaRides.startAuthorization(request, env), request);
+    }
+    // Reached by Tesla's own redirect, not a fetch() — no CORS handling,
+    // matching /oauth/tesla/callback and /oauth/robotaxi/callback.
+    if (url.pathname === '/api/tesla/rides/callback' && request.method === 'GET') {
+      return await teslaRides.handleCallback(request, env);
+    }
+    if (url.pathname === '/api/tesla/rides/status' && request.method === 'GET') {
+      return withCors(await teslaRides.apiStatus(request, env), request);
+    }
+    if (url.pathname === '/api/tesla/rides/disconnect' && request.method === 'POST') {
+      return withCors(await teslaRides.apiDisconnect(request, env), request);
     }
 
     // TEMPORARY — Tesla Fleet API capability audit. Delete this route (and

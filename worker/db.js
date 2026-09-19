@@ -100,6 +100,27 @@ async function getUserById(sql, userId) {
   return sql.prepare(`SELECT * FROM users WHERE id = ?`).bind(userId).first();
 }
 
+// Google Sign-In identity — a separate account-creation path from
+// findOrCreateUserByTeslaIdentifier above, keyed by google_connections
+// instead of tesla_connections. name/avatarUrl are only applied when the
+// user is first created, so a later Google sign-in never clobbers a
+// display_name/avatar_url the user has since customized on Profile.
+async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, avatarUrl }) {
+  const existing = await sql.prepare(
+    `SELECT user_id FROM google_connections WHERE google_sub = ?`
+  ).bind(googleSub).first();
+  if (existing) return existing.user_id;
+
+  const id = newId();
+  await sql.prepare(
+    `INSERT INTO users (id, display_name, avatar_url) VALUES (?, ?, ?)`
+  ).bind(id, name || null, avatarUrl || null).run();
+  await sql.prepare(
+    `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
+  ).bind(newId(), id, googleSub, email || null).run();
+  return id;
+}
+
 async function touchUserSync(sql, userId) {
   await sql.prepare(`UPDATE users SET last_sync_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).bind(userId).run();
 }
@@ -219,7 +240,15 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
   const existing = await sql.prepare(
     `SELECT id FROM robotaxi_vehicles WHERE license_plate = ? LIMIT 1`
   ).bind(plate).first();
-  if (existing) return existing.id;
+  if (existing) {
+    // Every new sighting of an already-known plate should advance
+    // last_seen_at — otherwise "most recent known ride" can never be
+    // answered correctly once a vehicle has more than one trip.
+    await sql.prepare(
+      `UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+    ).bind(existing.id).run();
+    return existing.id;
+  }
 
   const id = newId();
   await sql.prepare(`
@@ -227,6 +256,25 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
     VALUES (?, ?, datetime('now'), datetime('now'))
   `).bind(id, plate).run();
   return id;
+}
+
+// Pure aggregate over this vehicle's known trips — deliberately excludes
+// user_id and any pickup/dropoff text so a vehicle's history can be
+// computed without ever exposing which user rode in it or where they
+// went. Returns null fields (not zeros) when the vehicle has no trips yet,
+// so callers can distinguish "no rides known" from "zero-mile rides."
+async function getRobotaxiVehicleHistory(sql, vehicleId) {
+  return sql.prepare(`
+    SELECT
+      COUNT(*) AS trip_count,
+      MIN(ride_date) AS first_ride_date,
+      MAX(ride_date) AS last_ride_date,
+      SUM(distance) AS total_distance,
+      SUM(fare_amount_cents) AS total_fare_cents,
+      GROUP_CONCAT(DISTINCT service_area) AS service_areas
+    FROM trips
+    WHERE robotaxi_vehicle_id = ?
+  `).bind(vehicleId).first();
 }
 
 async function createTripFromReceipt(sql, {
@@ -380,6 +428,54 @@ async function getUserProfile(sql, userId) {
   };
 }
 
+// ---- Tesla Ride Sync — separate OAuth subsystem from Fleet API and from
+// the earlier robotaxi_owner_connections experiment. Holds no token
+// material itself; kv_token_key only points at the encrypted blob in
+// TESLA_SESSIONS KV. ----
+
+async function createTeslaRideSyncConnection(sql, { userId, kvTokenKey, accessTokenExpiresAt }) {
+  await sql.prepare(`
+    INSERT INTO tesla_ride_sync_connections (id, user_id, kv_token_key, status, connected_at, access_token_expires_at)
+    VALUES (?, ?, ?, 'active', datetime('now'), ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      kv_token_key = excluded.kv_token_key,
+      status = 'active',
+      access_token_expires_at = excluded.access_token_expires_at,
+      last_error = NULL,
+      updated_at = datetime('now')
+  `).bind(newId(), userId, kvTokenKey, accessTokenExpiresAt).run();
+}
+
+async function getTeslaRideSyncConnectionByUserId(sql, userId) {
+  return sql.prepare(`SELECT * FROM tesla_ride_sync_connections WHERE user_id = ?`).bind(userId).first();
+}
+
+async function touchTeslaRideSyncRefresh(sql, userId, accessTokenExpiresAt) {
+  await sql.prepare(`
+    UPDATE tesla_ride_sync_connections SET
+      access_token_expires_at = ?,
+      status = 'active',
+      last_error = NULL,
+      last_refresh_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE user_id = ?
+  `).bind(accessTokenExpiresAt, userId).run();
+}
+
+async function markTeslaRideSyncRevoked(sql, userId) {
+  await sql.prepare(`
+    UPDATE tesla_ride_sync_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?
+  `).bind(userId).run();
+}
+
+// error is a short internal code/message only — never a token, code, or
+// raw Tesla response body.
+async function markTeslaRideSyncError(sql, userId, error) {
+  await sql.prepare(`
+    UPDATE tesla_ride_sync_connections SET status = 'error', last_error = ?, updated_at = datetime('now') WHERE user_id = ?
+  `).bind(String(error).slice(0, 200), userId).run();
+}
+
 export const db = {
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
@@ -391,6 +487,7 @@ export const db = {
   getVehiclesByOwner,
   countVehiclesByOwner,
   getUserById,
+  findOrCreateUserByGoogleIdentity,
   touchUserSync,
   createSubmission,
   getSubmissionsByUser,
@@ -404,11 +501,17 @@ export const db = {
   createReceiptIngestion,
   markSubmissionNeedsReview,
   findOrCreateRobotaxiVehicleByPlate,
+  getRobotaxiVehicleHistory,
   createTripFromReceipt,
   upsertRobotaxiOwnerConnection,
   getRobotaxiOwnerConnectionByUserId,
   updateRobotaxiOwnerConnectionTokens,
   markRobotaxiOwnerConnectionRevoked,
   getTripsByUser,
-  getUserProfile
+  getUserProfile,
+  createTeslaRideSyncConnection,
+  getTeslaRideSyncConnectionByUserId,
+  touchTeslaRideSyncRefresh,
+  markTeslaRideSyncRevoked,
+  markTeslaRideSyncError
 };
