@@ -18,6 +18,7 @@ const FLEET_API_AUDIENCE = 'https://fleet-api.prd.na.vn.cloud.tesla.com'; // Nor
 const SCOPES = 'openid offline_access vehicle_device_data vehicle_location';
 
 const STATE_TTL_SECONDS = 600; // 10 minutes to complete the Tesla login
+const LINK_TOKEN_TTL_SECONDS = 120; // one-time token that carries "which account is linking" to /oauth/tesla/start
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90; // ~3 months
 const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000; // refresh a minute before actual expiry
 
@@ -74,20 +75,23 @@ function decodeTeslaAccountIdentifier(idToken) {
   }
 }
 
+// A signed-in browser can't attach an Authorization header to a plain link
+// navigation, but the long-lived bearer session id must never travel in a
+// URL (it would land in server logs, browser history and Referer headers).
+// So the frontend first asks for a ONE-TIME link token over an authenticated
+// fetch (apiCreateLinkToken below) and puts only that in the URL. The token
+// is single-use and expires in two minutes; it identifies which account is
+// linking and is not a session credential. Absent or expired, behavior is the
+// original one: a fresh account is created from the Tesla identity alone.
 async function startOAuth(request, env) {
-  // If the browser is already signed in (e.g. via Google), the frontend
-  // passes that session id through as ?session= so the callback can attach
-  // this Tesla connection to the SAME user instead of minting a new
-  // Tesla-identity account — a plain <a href> navigation can't carry an
-  // Authorization header the way a fetch() can, hence the query param.
-  // Absent or invalid, behavior is unchanged from before: a fresh account
-  // is created from the Tesla identity alone.
-  const requestedSessionId = new URL(request.url).searchParams.get('session');
+  const linkToken = new URL(request.url).searchParams.get('link');
   let existingUserId = null;
-  if (requestedSessionId) {
-    existingUserId = await requireUserId(new Request(request.url, {
-      headers: { Authorization: `Bearer ${requestedSessionId}` }
-    }), env);
+  if (linkToken) {
+    const raw = await env.TESLA_SESSIONS.get(`tesla_link:${linkToken}`);
+    if (raw) {
+      await env.TESLA_SESSIONS.delete(`tesla_link:${linkToken}`); // single-use
+      try { existingUserId = JSON.parse(raw).user_id || null; } catch (err) { existingUserId = null; }
+    }
   }
 
   const state = randomToken();
@@ -304,6 +308,19 @@ async function handleDisconnect(request, env) {
   return Response.json({ linked: false });
 }
 
+// Authenticated (bearer) — hands the signed-in browser a one-time token to
+// put in the /oauth/tesla/start URL in place of the session id.
+async function apiCreateLinkToken(request, env) {
+  const userId = await requireUserId(request, env);
+  if (!userId) return Response.json({ authenticated: false }, { status: 401 });
+
+  const linkToken = randomToken();
+  await env.TESLA_SESSIONS.put(`tesla_link:${linkToken}`, JSON.stringify({ user_id: userId }), {
+    expirationTtl: LINK_TOKEN_TTL_SECONDS
+  });
+  return Response.json({ link_token: linkToken, expires_in: LINK_TOKEN_TTL_SECONDS });
+}
+
 // ---- New Phase 1 API endpoints ----
 
 async function apiMe(request, env) {
@@ -424,6 +441,7 @@ export const tesla = {
   handleStatus,
   handleDisconnect,
   apiMe,
+  apiCreateLinkToken,
   apiTeslaStatus,
   apiVehicles,
   apiSync,

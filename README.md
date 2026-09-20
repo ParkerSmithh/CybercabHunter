@@ -68,3 +68,11 @@ Covers `dispatchETA`, `arrivalOdds`, and `fleetFinancials` in `js/calc.js`. Ther
 ## Known limitations
 
 See `bugs.md`.
+
+## My Spike Test
+
+I tried to use a github that someone build to instantly extract data such as vehicles, ride distance, cities driven in, plate numbers, amount spent, etc. I used ChatGPT to write Claude prompts for me, and help me plan, and I used Claude to run the repository and test it with my current infrastructure. I ran multiple tests and ran multiple prompts through Claude. I kept on getting the same error when I tried to link my Tesla account. I did not implement the code into my website, I simply had it run the repository to see if it would work. It turns out Tesla changed their uthentication system so that repository will not work. 
+
+In order to move forward, I have to change my original plan of using receipts to track data slightly. If you take a ride, it will automatically import that info as long as you have your account linked to the website, but in order to get old information from receipts, I will have to have it go through the users gmail in order to auto import any Tesla Robotaxi emails it finds. 
+
+I also included a video of my ChatGPT convsersation in my repository under docs/SpikeTest.mp4

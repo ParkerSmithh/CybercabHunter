@@ -1,0 +1,14 @@
+-- Cybercab Hunter — receipt revision ordering.
+--
+-- Additive only: one nullable column, nothing dropped, nothing rewritten.
+--
+-- The sending time (email Date header, normalized to UTC ISO-8601) of the
+-- receipt whose values a ride currently holds. It is the ordering signal
+-- that stops an OLDER receipt from overwriting a value set by a NEWER one,
+-- whichever order they happen to arrive in. NULL means "no trustworthy
+-- timestamp" — a pasted receipt, a manually forwarded one (its Date header
+-- is the forwarder's, not Tesla's), or any ride from before this column
+-- existed. A conflicting value is only ever replaced when BOTH the stored
+-- ride and the incoming receipt carry a timestamp and the incoming one is
+-- strictly later (worker/ride-ingest.js).
+ALTER TABLE trips ADD COLUMN receipt_sent_at TEXT;

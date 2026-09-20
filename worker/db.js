@@ -2,6 +2,9 @@
 // Every query touching tesla_connections or vehicles is scoped by user_id —
 // callers must resolve that from the session first; never from request input.
 
+import { rideQueries } from './db-rides.js';
+import { RIDES_FROM, COUNTED_RIDES_WHERE } from './ride-status.js';
+
 function newId() {
   return crypto.randomUUID();
 }
@@ -186,12 +189,22 @@ async function getSubmissionForOwner(sql, submissionId, userId) {
 // Used both to roll back a submission row if a step after its creation
 // fails, and by the authenticated delete endpoint (which always passes
 // userId too, scoping the delete to the caller's own rows).
+//
+// A ride that other trips were marked superseded_by (legacy duplicates of
+// the same receipt) takes those duplicates with it: they are only alternate
+// representations of that ride, and leaving them behind would re-activate
+// them the moment their canonical ride disappeared.
 async function deleteSubmission(sql, submissionId, userId) {
-  if (userId) {
-    await sql.prepare(`DELETE FROM submissions WHERE id = ? AND user_id = ?`).bind(submissionId, userId).run();
-  } else {
-    await sql.prepare(`DELETE FROM submissions WHERE id = ?`).bind(submissionId).run();
-  }
+  const duplicateSubmissions = sql.prepare(`
+    DELETE FROM submissions WHERE id IN (
+      SELECT d.submission_id FROM trips d JOIN trips c ON d.superseded_by = c.id
+      WHERE c.submission_id = ?1 ${userId ? 'AND c.user_id = ?2' : ''}
+    )
+  `).bind(...(userId ? [submissionId, userId] : [submissionId]));
+  const target = userId
+    ? sql.prepare(`DELETE FROM submissions WHERE id = ? AND user_id = ?`).bind(submissionId, userId)
+    : sql.prepare(`DELETE FROM submissions WHERE id = ?`).bind(submissionId);
+  await sql.batch([duplicateSubmissions, target]);
 }
 
 // ---- Receipt-email ingestion ----
@@ -217,61 +230,17 @@ async function getUserIdByActiveReceiptToken(sql, token) {
   return row ? row.user_id : null;
 }
 
-async function touchIngestionAddressReceived(sql, userId) {
-  await sql.prepare(
-    `UPDATE receipt_ingestion_addresses SET last_received_at = datetime('now') WHERE user_id = ?`
-  ).bind(userId).run();
-}
-
-// Only matches a PRIOR successful (accepted/needs_review) ingestion — a
-// rejected/parse_error/duplicate row must never itself count as "already
-// processed," or a genuine retry of a real receipt could get silently
-// swallowed as a false duplicate.
-async function findIngestionByMessageId(sql, messageId) {
-  return sql.prepare(`
-    SELECT submission_id, trip_id, receipt_hash, parser_version
-    FROM receipt_ingestions
-    WHERE message_id = ? AND status IN ('accepted', 'needs_review')
-    ORDER BY created_at DESC LIMIT 1
-  `).bind(messageId).first();
-}
-
-async function findIngestionByHash(sql, receiptHash) {
-  return sql.prepare(`
-    SELECT submission_id, trip_id
-    FROM receipt_ingestions
-    WHERE receipt_hash = ? AND status IN ('accepted', 'needs_review')
-    ORDER BY created_at DESC LIMIT 1
-  `).bind(receiptHash).first();
-}
-
-async function createReceiptIngestion(sql, {
-  id, userId, messageId, receiptHash, parserVersion, status,
-  errorCode, errorMessage, submissionId, tripId
-}) {
-  await sql.prepare(`
-    INSERT INTO receipt_ingestions
-      (id, user_id, message_id, receipt_hash, parser_version, status, error_code, error_message, submission_id, trip_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    id, userId, messageId || null, receiptHash || null, parserVersion || null,
-    status, errorCode || null, errorMessage || null, submissionId || null, tripId || null
-  ).run();
-}
-
-async function markSubmissionNeedsReview(sql, submissionId) {
-  await sql.prepare(
-    `UPDATE submissions SET status = 'needs_review', updated_at = datetime('now') WHERE id = ?`
-  ).bind(submissionId).run();
-}
-
 // Exact-plate match only — no fuzzy merging. A duplicate/near-duplicate
 // plate across sources is a human moderation decision, not something this
-// query silently resolves.
+// query silently resolves. "Exact" means after normalization (case, spaces
+// and hyphens ignored), so "XJR-2195" and "xjr2195" are the same plate —
+// the receipt parser and the registry must agree on what a plate is, or
+// one physical car would be counted as two vehicles.
 async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
   const existing = await sql.prepare(
-    `SELECT id FROM robotaxi_vehicles WHERE license_plate = ? LIMIT 1`
-  ).bind(plate).first();
+    `SELECT id FROM robotaxi_vehicles
+     WHERE UPPER(REPLACE(REPLACE(license_plate, '-', ''), ' ', '')) = ? LIMIT 1`
+  ).bind(String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).first();
   if (existing) {
     // Every new sighting of an already-known plate should advance
     // last_seen_at — otherwise "most recent known ride" can never be
@@ -286,7 +255,7 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
   await sql.prepare(`
     INSERT INTO robotaxi_vehicles (id, license_plate, first_seen_at, last_seen_at)
     VALUES (?, ?, datetime('now'), datetime('now'))
-  `).bind(id, plate).run();
+  `).bind(id, String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).run();
   return id;
 }
 
@@ -299,37 +268,14 @@ async function getRobotaxiVehicleHistory(sql, vehicleId) {
   return sql.prepare(`
     SELECT
       COUNT(*) AS trip_count,
-      MIN(ride_date) AS first_ride_date,
-      MAX(ride_date) AS last_ride_date,
-      SUM(distance) AS total_distance,
-      SUM(fare_amount_cents) AS total_fare_cents,
-      GROUP_CONCAT(DISTINCT service_area) AS service_areas
-    FROM trips
-    WHERE robotaxi_vehicle_id = ?
+      MIN(t.ride_date) AS first_ride_date,
+      MAX(t.ride_date) AS last_ride_date,
+      SUM(t.distance) AS total_distance,
+      SUM(t.fare_amount_cents) AS total_fare_cents,
+      GROUP_CONCAT(DISTINCT t.service_area) AS service_areas
+    FROM ${RIDES_FROM}
+    WHERE t.robotaxi_vehicle_id = ? AND ${COUNTED_RIDES_WHERE}
   `).bind(vehicleId).first();
-}
-
-async function createTripFromReceipt(sql, {
-  id, submissionId, userId, serviceArea, rideDate, distance, fareAmountCents,
-  externalRideId, robotaxiVehicleId, sourceMessageId, receiptHash,
-  pickupDescription, dropoffDescription, pickupTime, dropoffTime,
-  durationMinutes, durationMinutesDerived
-}) {
-  await sql.prepare(`
-    INSERT INTO trips
-      (id, submission_id, user_id, service_area, ride_date, distance, fare_amount_cents,
-       external_ride_id, robotaxi_vehicle_id, source, source_message_id, receipt_hash,
-       pickup_description, dropoff_description, pickup_time, dropoff_time,
-       duration_minutes, duration_minutes_derived)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'receipt_email', ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    id, submissionId, userId, serviceArea || null, rideDate || null,
-    distance ?? null, fareAmountCents ?? null, externalRideId || null,
-    robotaxiVehicleId || null, sourceMessageId || null, receiptHash || null,
-    pickupDescription || null, dropoffDescription || null,
-    pickupTime || null, dropoffTime || null,
-    durationMinutes ?? null, durationMinutesDerived ? 1 : 0
-  ).run();
 }
 
 // ---- Robotaxi ride-history (ownerapi) connection — separate from tesla_connections ----
@@ -367,138 +313,6 @@ async function updateRobotaxiOwnerConnectionTokens(sql, userId, { encryptedAcces
 
 async function markRobotaxiOwnerConnectionRevoked(sql, userId) {
   await sql.prepare(`UPDATE robotaxi_owner_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?`).bind(userId).run();
-}
-
-// ---- Rides (trips) — the authenticated user's own ride history ----
-
-// Explicit column whitelist, never `SELECT *` — this is the boundary that
-// keeps internal/sensitive columns (user_id itself, source_message_id,
-// receipt_hash, evidence_ref, anything from receipt_ingestions) out of
-// what the API can possibly return, regardless of what callers do with it.
-async function getTripsByUser(sql, userId) {
-  const result = await sql.prepare(`
-    SELECT
-      t.id, t.ride_date, t.service_area, t.distance, t.distance_unit,
-      t.duration_minutes, t.duration_minutes_derived,
-      t.pickup_description, t.pickup_time, t.dropoff_description, t.dropoff_time,
-      t.fare_amount_cents, t.currency, t.external_ride_id, t.source,
-      s.status AS submission_status,
-      t.robotaxi_vehicle_id, t.created_at
-    FROM trips t
-    JOIN submissions s ON s.id = t.submission_id
-    WHERE t.user_id = ?
-    ORDER BY
-      CASE WHEN t.ride_date IS NULL THEN 1 ELSE 0 END, t.ride_date DESC,
-      CASE WHEN t.pickup_time IS NULL THEN 1 ELSE 0 END, t.pickup_time DESC,
-      t.created_at DESC
-  `).bind(userId).all();
-  return result.results || [];
-}
-
-// ---- Rider profile — every figure below is derived live from trips/
-// robotaxi_vehicles/submissions; nothing is stored as a counter. The five
-// queries are independent of each other, so they run as one D1 batch()
-// round-trip rather than five sequential awaits.
-//
-// "Vehicles discovered by this user" has no dedicated column anywhere —
-// robotaxi_vehicles is deliberately ownerless. It's derived instead: the
-// user whose trip is the EARLIEST (created_at) trip referencing a given
-// vehicle is, by definition, whoever discovered it first.
-async function getUserProfile(sql, userId) {
-  const rideSummaryStmt = sql.prepare(`
-    SELECT
-      COUNT(*) AS trip_count,
-      MIN(ride_date) AS first_ride_date,
-      MAX(ride_date) AS last_ride_date,
-      SUM(distance) AS total_distance,
-      AVG(distance) AS avg_distance,
-      COUNT(distance) AS rides_with_distance,
-      MAX(distance) AS longest_ride_distance,
-      COUNT(DISTINCT robotaxi_vehicle_id) AS unique_vehicles
-    FROM trips WHERE user_id = ?
-  `).bind(userId);
-
-  const citiesStmt = sql.prepare(`
-    SELECT service_area, COUNT(*) AS ride_count
-    FROM trips WHERE user_id = ? AND service_area IS NOT NULL
-    GROUP BY service_area ORDER BY ride_count DESC
-  `).bind(userId);
-
-  const providersStmt = sql.prepare(`
-    SELECT provider, COUNT(*) AS ride_count
-    FROM trips WHERE user_id = ?
-    GROUP BY provider ORDER BY ride_count DESC
-  `).bind(userId);
-
-  const discoveredVehiclesStmt = sql.prepare(`
-    SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status, v.first_seen_at
-    FROM robotaxi_vehicles v
-    JOIN (
-      SELECT robotaxi_vehicle_id, user_id,
-             ROW_NUMBER() OVER (PARTITION BY robotaxi_vehicle_id ORDER BY created_at ASC) AS rn
-      FROM trips
-      WHERE robotaxi_vehicle_id IS NOT NULL
-    ) first_trip ON first_trip.robotaxi_vehicle_id = v.id AND first_trip.rn = 1
-    WHERE first_trip.user_id = ?
-    ORDER BY v.first_seen_at ASC
-  `).bind(userId);
-
-  const contributionsStmt = sql.prepare(
-    `SELECT COUNT(*) AS count FROM submissions WHERE user_id = ?`
-  ).bind(userId);
-
-  // Raw amounts (not pre-aggregated) since SQLite has no MEDIAN() — sorted
-  // per currency and folded into totals/average/median together in JS below.
-  const fareAmountsStmt = sql.prepare(`
-    SELECT currency, fare_amount_cents FROM trips
-    WHERE user_id = ? AND fare_amount_cents IS NOT NULL
-    ORDER BY currency, fare_amount_cents
-  `).bind(userId);
-
-  // The vehicle model of this rider's very first trip, if known — used for
-  // a "first ride in a Model Y" style badge. Null model (never confirmed)
-  // or no vehicle at all both come back as null, never guessed.
-  const firstVehicleModelStmt = sql.prepare(`
-    SELECT v.model
-    FROM trips t
-    LEFT JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
-    WHERE t.user_id = ?
-    ORDER BY t.created_at ASC
-    LIMIT 1
-  `).bind(userId);
-
-  const [rideSummary, cities, providers, discoveredVehicles, contributions, fareAmounts, firstVehicleModel] = await sql.batch([
-    rideSummaryStmt, citiesStmt, providersStmt, discoveredVehiclesStmt, contributionsStmt, fareAmountsStmt, firstVehicleModelStmt
-  ]);
-
-  const byCurrency = new Map();
-  for (const row of fareAmounts.results || []) {
-    if (!byCurrency.has(row.currency)) byCurrency.set(row.currency, []);
-    byCurrency.get(row.currency).push(row.fare_amount_cents);
-  }
-  const spending = [...byCurrency.entries()].map(([currency, amounts]) => {
-    const sorted = [...amounts].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    const medianCents = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-    const totalCents = amounts.reduce((s, c) => s + c, 0);
-    return {
-      currency,
-      fareCount: amounts.length,
-      totalCents,
-      avgCents: totalCents / amounts.length,
-      medianCents
-    };
-  }).sort((a, b) => b.totalCents - a.totalCents);
-
-  return {
-    rideSummary: rideSummary.results?.[0] || null,
-    cities: cities.results || [],
-    providers: providers.results || [],
-    discoveredVehicles: discoveredVehicles.results || [],
-    contributionCount: contributions.results?.[0]?.count ?? 0,
-    spending,
-    firstVehicleModel: firstVehicleModel.results?.[0]?.model || null
-  };
 }
 
 // ---- Tesla Ride Sync — separate OAuth subsystem from Fleet API and from
@@ -550,6 +364,7 @@ async function markTeslaRideSyncError(sql, userId, error) {
 }
 
 export const db = {
+  ...rideQueries,
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
   getTeslaConnectionByUserId,
@@ -570,20 +385,12 @@ export const db = {
   deleteSubmission,
   findOrCreateReceiptIngestionAddress,
   getUserIdByActiveReceiptToken,
-  touchIngestionAddressReceived,
-  findIngestionByMessageId,
-  findIngestionByHash,
-  createReceiptIngestion,
-  markSubmissionNeedsReview,
   findOrCreateRobotaxiVehicleByPlate,
   getRobotaxiVehicleHistory,
-  createTripFromReceipt,
   upsertRobotaxiOwnerConnection,
   getRobotaxiOwnerConnectionByUserId,
   updateRobotaxiOwnerConnectionTokens,
   markRobotaxiOwnerConnectionRevoked,
-  getTripsByUser,
-  getUserProfile,
   createTeslaRideSyncConnection,
   getTeslaRideSyncConnectionByUserId,
   touchTeslaRideSyncRefresh,

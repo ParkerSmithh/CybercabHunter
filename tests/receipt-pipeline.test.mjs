@@ -137,7 +137,7 @@ async function run() {
     check('forwarding wrapper does not corrupt the ride date', forwardedExtraction.fields.ride_date === '2026-06-09');
     check('forwarding wrapper does not corrupt distance/duration/plate', forwardedExtraction.fields.distance === 2.8 && forwardedExtraction.fields.duration_minutes === 14 && forwardedExtraction.fields.license_plate === 'XJR2195');
     check('forwarding wrapper does not corrupt pickup/dropoff', forwardedExtraction.fields.pickup_description === directExtraction.fields.pickup_description && forwardedExtraction.fields.dropoff_description === directExtraction.fields.dropoff_description);
-    check('forwarded copy is needs_review, not auto-accepted (sender is the forwarder, not tesla.com)', forwardedClassification.status === 'needs_review');
+    check('forwarded copy is accepted: the forwarded block names tesla.com as the original sender (Phase 2 trust model)', forwardedClassification.status === 'accepted');
     const directHash = await computeReceiptHash(direct, directExtraction);
     const forwardedHash = await computeReceiptHash(forwarded, forwardedExtraction);
     check('direct and forwarded copies of the same ride hash identically (structured-field dedup, not raw body)', directHash === forwardedHash);

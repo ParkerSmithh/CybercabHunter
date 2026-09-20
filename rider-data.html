@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="CybercabFlipped.png">
-<link rel="apple-touch-icon" href="CybercabFlipped.png">
+<link rel="icon" type="image/png" href="Cybercab2.png">
+<link rel="apple-touch-icon" href="Cybercab2.png">
 <title>Cybercab Hunter — Rider Data</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
@@ -61,30 +61,52 @@
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
 
+    <!-- Loading: skeleton while the requests are in flight (authenticated, not yet known) -->
+    <div id="dataLoading" class="hidden" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Loading your rider data…</span>
+      <div class="glass rounded-2xl p-10 mb-8 animate-pulse">
+        <div class="h-3 w-28 rounded bg-white/10 mb-4"></div>
+        <div class="h-14 w-56 rounded bg-white/10 mb-6"></div>
+        <div class="h-3 w-72 rounded bg-white/5 mb-3"></div>
+        <div class="h-3 w-48 rounded bg-white/5"></div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+        <div class="glass rounded-2xl p-7 h-48 lg:col-span-2 animate-pulse"></div>
+        <div class="glass rounded-2xl p-7 h-48 animate-pulse"></div>
+      </div>
+    </div>
+
+    <!-- Error: the request failed — this is NOT the signed-out state -->
+    <div id="dataError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">We couldn't load your rider data</h1>
+      <p id="dataErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. You're still signed in — your data is safe.</p>
+      <button id="dataRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
+    </div>
+
     <!-- Signed-out state -->
     <div id="dataSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Sign in to view your rider data</h1>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider data is built entirely from your own linked rides and receipts.</p>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider data is built entirely from your own Tesla Robotaxi receipts.</p>
       <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
     </div>
 
     <!-- Signed-in data -->
     <div id="dataSignedIn" class="hidden">
-      <!-- Only ever shown when connected — linking Tesla now happens from
-           the header button on every other page (see js/main.js's
-           initTeslaLink), not from this page. Unlinking clears the
-           connection without touching the account/session itself. -->
+
+      <!-- Only ever shown when connected. Linking happens from the header
+           button on every other page; unlinking clears the connection without
+           touching the account or session. The Fleet API connection exposes
+           vehicle information only — rides come from receipts, not from it. -->
       <div id="dataUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
-          <p class="text-slate-400 text-sm">Unlinking keeps your rider history but stops pulling new rides/vehicles from Tesla.</p>
+        <div class="max-w-2xl">
+          <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
+          <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
         </div>
         <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
       </div>
 
       <!-- Overview hero — identity is kept minimal and read-only here for
-           orientation only; editing lives on profile.html, and there is no
-           Edit Profile button on this page on purpose. -->
+           orientation only; editing lives on profile.html. -->
       <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-8 lg:p-10">
         <div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gold/10 blur-3xl pointer-events-none"></div>
         <div class="relative flex flex-col lg:flex-row items-center gap-10">
@@ -100,7 +122,7 @@
             <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Rider Overview</p>
             <div class="flex items-end gap-3 mb-3">
               <span id="heroRideCount" class="font-display font-bold text-6xl leading-none">0</span>
-              <span class="text-lg text-slate-400 mb-1.5">rides</span>
+              <span class="text-lg text-slate-400 mb-1.5">rides on record</span>
             </div>
             <div id="heroFirstRide" class="hidden items-center gap-2 text-sm text-slate-300 mb-7">
               <svg class="w-4 h-4 text-gold shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.6L19.5 9l-5.7 1.4L12 16l-1.8-5.6L4.5 9l5.7-1.4L12 2z"/></svg>
@@ -113,8 +135,8 @@
                 <div id="statMiles" class="font-display font-bold text-xl">—</div>
               </div>
               <div>
-                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Vehicles</div>
-                <div id="statVehiclesFound" class="font-display font-bold text-xl">—</div>
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1" title="Different vehicles you have actually ridden in">Vehicles ridden</div>
+                <div id="statVehiclesRidden" class="font-display font-bold text-xl">—</div>
               </div>
               <div>
                 <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Cities</div>
@@ -125,12 +147,115 @@
                 <div id="statContributions" class="font-display font-bold text-xl">—</div>
               </div>
             </div>
+            <p id="heroNote" class="text-xs text-slate-500 mt-4 max-w-lg leading-relaxed"></p>
           </div>
 
           <div class="shrink-0 hidden lg:block relative">
-            <div class="absolute inset-0 bg-gold/20 blur-2xl rounded-full"></div>
-            <img src="Cybercab2.png" alt="Cybercab" class="relative w-56 h-56 object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
+            <div class="absolute inset-0 bg-gold/20 blur-3xl rounded-full"></div>
+            <img src="CybercabFlipped.png" alt="Cybercab" class="relative w-80 xl:w-96 h-auto object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
           </div>
+        </div>
+      </div>
+
+      <!-- No counted rides yet -->
+      <div id="dataEmptyNotice" class="hidden reveal-on-scroll mb-8 rounded-2xl border border-[rgba(212,175,55,0.25)] bg-[rgba(212,175,55,0.05)] p-6">
+        <div class="font-display font-bold text-base mb-1">No rides are counted yet</div>
+        <p id="dataEmptyDetail" class="text-slate-400 text-sm leading-relaxed">Forward a Tesla Robotaxi receipt to your private address below, or import an old one, and your first ride will appear here.</p>
+      </div>
+
+      <!-- Get your rides in -->
+      <div id="receiptSetup" class="glass rounded-2xl p-7 lg:p-8 reveal-on-scroll mb-8">
+        <div class="mb-6">
+          <h2 class="font-display font-bold text-xl mb-1">Get your rides in</h2>
+          <p class="text-sm text-slate-400 max-w-3xl">Cybercab Hunter builds your rider data from your Tesla Robotaxi <span class="text-slate-300">receipts</span>. Tesla doesn't offer a ride-history connection we can use, so nothing syncs from your Tesla account — receipts are how rides arrive.</p>
+        </div>
+
+        <!-- Three different facts, kept apart on purpose -->
+        <div class="grid sm:grid-cols-3 gap-4 mb-8" aria-label="Sync status">
+          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tesla account</div>
+            <div class="flex items-center gap-2"><span id="pillTeslaDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillTeslaLabel" class="text-sm font-semibold">—</span></div>
+            <p class="text-xs text-slate-500 mt-1.5">Vehicle information only. Not a source of rides.</p>
+          </div>
+          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Receipt forwarding</div>
+            <div class="flex items-center gap-2"><span id="pillFwdDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillFwdLabel" class="text-sm font-semibold">—</span></div>
+            <p id="pillFwdNote" class="text-xs text-slate-500 mt-1.5"></p>
+          </div>
+          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Rides received</div>
+            <div class="flex items-center gap-2"><span id="pillRidesDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillRidesLabel" class="text-sm font-semibold">—</span></div>
+            <p id="pillRidesNote" class="text-xs text-slate-500 mt-1.5"></p>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-8">
+          <!-- 1. Forwarding -->
+          <div>
+            <h3 class="font-display font-bold text-base mb-3"><span class="text-gold mr-1.5">1</span>Forward new receipts</h3>
+
+            <div id="fwdNoAddress" class="hidden">
+              <p class="text-sm text-slate-400 mb-3">Get a private address that only you can send rides to.</p>
+              <button id="fwdCreateBtn" type="button" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Create my forwarding address</button>
+            </div>
+
+            <div id="fwdAddressBlock" class="hidden">
+              <div class="flex items-stretch gap-2 mb-2">
+                <code id="fwdAddress" class="flex-1 min-w-0 truncate rounded-lg bg-[#0F141C] border border-[rgba(212,175,55,0.2)] px-3 py-2.5 text-sm text-goldsoft"></code>
+                <button id="fwdCopyBtn" type="button" class="shrink-0 px-3 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Copy</button>
+              </div>
+              <p class="text-xs text-slate-500 mb-4">Treat this address like a password — anyone who has it can add rides to your account.</p>
+              <p id="fwdDomainNote" class="hidden text-xs text-amber-300/90 mb-4">Receipt email isn't fully switched on for this site yet, so this address can't receive mail. Use the import on the right in the meantime.</p>
+
+              <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5 mb-4">
+                <li>Easiest: open a Tesla Robotaxi receipt and <span class="text-slate-300">forward</span> it to the address above.</li>
+                <li>To automate it in Gmail: <span class="text-slate-300">Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</span>, and enter the address above.</li>
+                <li>Gmail sends a confirmation code to that address. It will appear right here — enter it in Gmail to switch forwarding on.</li>
+                <li>Then create a filter for mail from <span class="text-slate-300">robotaxi@tesla.com</span> and choose <span class="text-slate-300">Forward it to</span> your address.</li>
+              </ol>
+
+              <div id="fwdCodeBox" class="hidden rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] p-4 mb-4">
+                <div class="text-xs text-slate-400 mb-1">Gmail confirmation code</div>
+                <div id="fwdCode" class="font-display font-bold text-2xl tracking-widest text-goldsoft"></div>
+                <div id="fwdCodeAt" class="text-xs text-slate-500 mt-1"></div>
+              </div>
+
+              <p class="text-xs text-slate-500">Forwarding isn't confirmed until your first receipt actually arrives — setting it up in Gmail alone doesn't count.</p>
+            </div>
+          </div>
+
+          <!-- 2. Import -->
+          <div>
+            <h3 class="font-display font-bold text-base mb-3"><span class="text-gold mr-1.5">2</span>Import old receipts</h3>
+            <p class="text-sm text-slate-400 mb-3">Paste the text of a receipt, or choose saved <span class="text-slate-300">.eml</span> files. They go through exactly the same checks as forwarded email, so importing a ride you've already received won't create a duplicate.</p>
+            <textarea id="importText" rows="5" placeholder="Paste a Tesla Robotaxi receipt here…" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold resize-y mb-3"></textarea>
+            <div class="flex items-center gap-3 flex-wrap">
+              <label class="cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">
+                Choose .eml files
+                <input id="importFiles" type="file" accept=".eml,message/rfc822" multiple class="hidden">
+              </label>
+              <span id="importFileNames" class="text-xs text-slate-500"></span>
+              <button id="importBtn" type="button" class="btn-magnetic ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-40 disabled:cursor-not-allowed">Import receipts</button>
+            </div>
+            <div id="importResult" class="hidden mt-4 rounded-xl border border-[rgba(212,175,55,0.12)] p-4 text-sm" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <!-- Receipt sync summary -->
+        <div class="mt-8 pt-6 border-t border-[rgba(212,175,55,0.12)]">
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <h3 class="font-display font-bold text-base">Receipt sync</h3>
+            <span id="syncLastRun" class="text-xs text-slate-500"></span>
+          </div>
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-4 text-sm">
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Processed</div><div id="syncProcessed" class="font-display font-bold text-lg">0</div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Added</div><div id="syncAdded" class="font-display font-bold text-lg">0</div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Updated</div><div id="syncUpdated" class="font-display font-bold text-lg">0</div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Duplicates ignored</div><div id="syncDuplicates" class="font-display font-bold text-lg">0</div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">To review</div><div id="syncReview" class="font-display font-bold text-lg">0</div></div>
+            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Errors</div><div id="syncErrors" class="font-display font-bold text-lg">0</div></div>
+          </div>
+          <p id="syncReviewNote" class="hidden text-xs text-slate-500 mt-3"></p>
         </div>
       </div>
 
@@ -139,30 +264,91 @@
         <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
           <h2 class="font-display font-bold text-xl mb-5">Ride History</h2>
           <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet.</div>
-          <div id="rideSummaryGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-5 text-sm">
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Unique Vehicles</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
+          <div id="rideSummaryGrid" class="hidden">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-5 text-sm">
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Vehicles Ridden</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
+            </div>
+            <p id="rsCoverage" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
           </div>
         </div>
 
         <!-- Spending -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll">
           <h2 class="font-display font-bold text-xl mb-1">Spending</h2>
-          <p class="text-xs text-slate-500 mb-5">From fares recorded on your receipts.</p>
-          <div id="spendingEmpty" class="hidden text-sm text-slate-500">No fares recorded yet — they'll appear here once a receipt with a fare amount is ingested.</div>
+          <p class="text-xs text-slate-500 mb-5">From the fares printed on your receipts.</p>
+          <div id="spendingEmpty" class="hidden text-sm text-slate-500">No fares recorded yet — they'll appear here once a receipt with a fare is added.</div>
           <div id="spendingList" class="space-y-6"></div>
+          <p id="spendingCoverage" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
         </div>
       </div>
 
-      <!-- Cities -->
+      <!-- Monthly activity -->
       <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
-        <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
-        <div id="citiesList" class="space-y-3 text-sm"></div>
-        <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
+        <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1">
+          <h2 class="font-display font-bold text-xl">Monthly Activity</h2>
+          <span class="text-xs text-slate-500">Rides per month, last 12 months</span>
+        </div>
+        <div id="monthlyEmpty" class="hidden text-sm text-slate-500 mt-4">Monthly activity appears once you have rides with a date.</div>
+        <div id="monthlyChart" class="hidden mt-6">
+          <div id="monthlyBars" class="flex items-end gap-2 h-40" role="img" aria-label="Rides per month"></div>
+          <div id="monthlyLabels" class="flex gap-2 mt-2"></div>
+        </div>
+        <p id="monthlyNote" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6 mb-8">
+        <!-- Cities -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
+          <div id="citiesList" class="space-y-3 text-sm"></div>
+          <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
+        </div>
+
+        <!-- Vehicles ridden -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-1">Vehicles Ridden</h2>
+          <p class="text-xs text-slate-500 mb-5">Identified by the license plate on your receipts.</p>
+          <div id="vehiclesList" class="space-y-3 text-sm"></div>
+          <div id="vehiclesEmpty" class="hidden text-sm text-slate-500">No vehicles identified yet — receipts that show a plate link a ride to a vehicle.</div>
+          <p id="vehiclesModels" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <!-- Ride list -->
+      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
+        <div class="flex items-baseline justify-between flex-wrap gap-2 mb-5">
+          <h2 class="font-display font-bold text-xl">Your Rides</h2>
+          <span id="ridesTotal" class="text-xs text-slate-500"></span>
+        </div>
+        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Forward or import a receipt above and it will show up here.</div>
+        <div id="ridesTableWrap" class="hidden overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-slate-500 uppercase tracking-wider">
+                <th class="pb-3 pr-4 font-semibold">Date</th>
+                <th class="pb-3 pr-4 font-semibold">City</th>
+                <th class="pb-3 pr-4 font-semibold text-right">Distance</th>
+                <th class="pb-3 pr-4 font-semibold text-right">Fare</th>
+                <th class="pb-3 pr-4 font-semibold">Vehicle</th>
+                <th class="pb-3 pr-4 font-semibold">Source</th>
+                <th class="pb-3 font-semibold"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="ridesBody" class="divide-y divide-[rgba(212,175,55,0.08)]"></tbody>
+          </table>
+        </div>
+        <div id="ridesPager" class="hidden flex items-center justify-between gap-4 mt-5 text-sm">
+          <button id="ridesPrev" type="button" class="px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">← Newer</button>
+          <span id="ridesPageLabel" class="text-xs text-slate-500"></span>
+          <button id="ridesNext" type="button" class="px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">Older →</button>
+        </div>
+        <p id="ridesActionError" class="hidden text-xs text-crimson mt-3" role="alert"></p>
+        <p id="ridesError" class="hidden text-xs text-crimson mt-3">Couldn't load this page of rides. Try again.</p>
       </div>
     </div>
 
@@ -254,135 +440,10 @@
 </footer>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=2"></script>
+<script src="js/main.js?v=3"></script>
 <script>
   CCC.init();
-
-  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
-  const TESLA_SESSION_KEY = 'teslaSessionId';
-
-  function fmtDistance(mi) {
-    return (mi === null || mi === undefined) ? '—' : mi.toFixed(1) + ' mi';
-  }
-  function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-  function initials(name) {
-    if (!name) return 'CH';
-    return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-  }
-
-  function renderData(data) {
-    document.getElementById('dataSignedIn').classList.remove('hidden');
-
-    const displayName = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
-    document.getElementById('dataAvatar').textContent = initials(data.user.display_name || data.user.handle);
-    document.getElementById('dataName').textContent = displayName;
-    document.getElementById('dataJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
-
-    document.getElementById('statContributions').textContent = data.contributions.toLocaleString();
-    document.getElementById('statVehiclesFound').textContent = data.discoveredVehicles.length.toLocaleString();
-    document.getElementById('statCitiesCount').textContent = data.cities.length.toLocaleString();
-    document.getElementById('statMiles').textContent = fmtDistance(data.rideSummary.total_distance);
-
-    document.getElementById('heroRideCount').textContent = data.rideSummary.trip_count.toLocaleString();
-    const firstRideEl = document.getElementById('heroFirstRide');
-    if (data.rideSummary.first_ride_date) {
-      const modelText = data.firstVehicleModel ? `First ${data.firstVehicleModel} ride` : 'First ride';
-      document.getElementById('heroFirstRideText').textContent = `${modelText} · ${fmtDate(data.rideSummary.first_ride_date)}`;
-      firstRideEl.classList.remove('hidden');
-      firstRideEl.classList.add('flex');
-    }
-
-    if (!data.spending.length) {
-      document.getElementById('spendingEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('spendingList').innerHTML = data.spending.map(s => {
-        const fmt = cents => {
-          try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: s.currency }).format(cents / 100); }
-          catch (e) { return (cents / 100).toFixed(2) + ' ' + s.currency; }
-        };
-        return `
-          <div>
-            <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total · ${s.currency}</div>
-            <div class="font-display font-bold text-4xl mb-4">${fmt(s.totalCents)}</div>
-            <div class="grid grid-cols-2 gap-4 text-sm">
-              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Median fare</div><div class="font-display font-bold text-lg">${fmt(s.medianCents)}</div></div>
-              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Average paid</div><div class="font-display font-bold text-lg">${fmt(s.avgCents)}</div></div>
-            </div>
-          </div>`;
-      }).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
-    }
-
-    if (data.rideSummary.trip_count === 0) {
-      document.getElementById('rideSummaryEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('rideSummaryGrid').classList.remove('hidden');
-      document.getElementById('rsTotalRides').textContent = data.rideSummary.trip_count.toLocaleString();
-      const coverage = data.rideSummary.rides_with_distance < data.rideSummary.trip_count
-        ? ` (${data.rideSummary.rides_with_distance}/${data.rideSummary.trip_count} rides)` : '';
-      document.getElementById('rsAvgDistance').textContent = fmtDistance(data.rideSummary.avg_distance) + coverage;
-      document.getElementById('rsLongest').textContent = fmtDistance(data.rideSummary.longest_ride_distance);
-      document.getElementById('rsUniqueVehicles').textContent = data.rideSummary.unique_vehicles.toLocaleString();
-      document.getElementById('rsFirstRide').textContent = fmtDate(data.rideSummary.first_ride_date);
-      document.getElementById('rsLatestRide').textContent = fmtDate(data.rideSummary.last_ride_date);
-    }
-
-    if (data.cities.length === 0) {
-      document.getElementById('citiesEmpty').classList.remove('hidden');
-    } else {
-      document.getElementById('citiesList').innerHTML = data.cities.map(c => `
-        <div class="flex items-center justify-between p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-          <span class="font-semibold">${c.service_area}</span>
-          <span class="font-display font-bold text-slate-300">${c.ride_count.toLocaleString()} rides</span>
-        </div>`).join('');
-    }
-
-  }
-
-  const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
-
-  if (!sessionId) {
-    document.getElementById('dataSignedOut').classList.remove('hidden');
-  } else {
-    fetch(TESLA_WORKER_URL + '/api/profile', { headers: { Authorization: 'Bearer ' + sessionId } })
-      .then(r => {
-        if (!r.ok) throw new Error('not authenticated');
-        return r.json();
-      })
-      .then(renderData)
-      .catch(() => {
-        document.getElementById('dataSignedOut').classList.remove('hidden');
-      });
-
-    fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
-      .then(r => r.ok ? r.json() : { authenticated: false })
-      .then(d => {
-        if (!d.authenticated) return;
-        if (d.tesla.connected) {
-          document.getElementById('dataUnlinkTeslaPrompt').classList.remove('hidden');
-        }
-      })
-      .catch(() => {});
-
-    const unlinkBtn = document.getElementById('teslaUnlinkBtn');
-    if (unlinkBtn) {
-      unlinkBtn.addEventListener('click', () => {
-        unlinkBtn.disabled = true;
-        unlinkBtn.textContent = 'Unlinking…';
-        fetch(TESLA_WORKER_URL + '/api/tesla/disconnect', {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + sessionId }
-        })
-          .then(() => location.reload())
-          .catch(() => {
-            unlinkBtn.disabled = false;
-            unlinkBtn.textContent = 'Unlink Tesla Account';
-          });
-      });
-    }
-  }
 </script>
+<script src="js/rider-data.js?v=2"></script>
 </body>
 </html>

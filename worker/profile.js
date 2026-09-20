@@ -1,7 +1,10 @@
 // The authenticated user's own rider profile — read-only. Every figure is
-// computed live from trips/robotaxi_vehicles/submissions by db.getUserProfile;
+// computed live from trips/robotaxi_vehicles/submissions by db.getUserProfile
+// through the single "which rides count" rule in worker/ride-status.js;
 // nothing here is a stored counter, and no user_id or private trip field
-// from a DIFFERENT user is ever touched.
+// from a DIFFERENT user is ever touched. "Vehicles ridden" (vehicleStats,
+// rideSummary.unique_vehicles) and "vehicles discovered" (discoveredVehicles,
+// the crowdsourced concept) are deliberately separate figures.
 
 import { db } from './db.js';
 
@@ -26,7 +29,13 @@ export async function apiGetProfile(request, env, userId) {
     providers: profile.providers,
     discoveredVehicles: profile.discoveredVehicles,
     spending: profile.spending,
-    firstVehicleModel: profile.firstVehicleModel
+    firstVehicleModel: profile.firstVehicleModel,
+    monthlyActivity: profile.monthlyActivity,
+    coverage: profile.coverage,
+    vehicleStats: profile.vehicleStats,
+    modelBreakdown: profile.modelBreakdown,
+    unknownModelVehicles: profile.unknownModelVehicles,
+    underReview: profile.underReview
   });
 }
 

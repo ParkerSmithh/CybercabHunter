@@ -1,87 +1,95 @@
-// Focused tests for GET /api/trips (worker/trips.js + db.getTripsByUser).
-// No live D1 needed — a fake binding captures the exact SQL/bound
-// parameters db.js sends, which is what actually proves the security
-// properties here: the query is scoped by a single bound user-id
-// parameter (never anything client-supplied) and the SELECT list never
-// names a forbidden column. Run: node tests/trips-query.test.mjs
+// Tests for GET /api/trips (worker/trips.js + db.getTripsPage): pagination,
+// ordering, user isolation, and the privacy whitelist. Real SQL.
+// Run: node tests/trips-query.test.mjs
 
-import { db } from '../worker/db.js';
+import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
+import { seedRide, seedVehicle, makeCheck } from './helpers/env.mjs';
 import { apiListTrips } from '../worker/trips.js';
 
-let pass = 0, fail = 0;
-function check(label, condition) {
-  if (condition) { pass++; console.log(`  ok — ${label}`); }
-  else { fail++; console.log(`  FAIL — ${label}`); }
-}
+const t = makeCheck();
+const { check } = t;
 
-function fakeSql(rows) {
-  const state = {};
-  return {
-    prepare(sqlText) {
-      state.sql = sqlText;
-      return {
-        bind(...args) { state.args = args; return this; },
-        all: async () => ({ results: rows })
-      };
-    },
-    _state: state
-  };
-}
+const list = async (d1, userId, qs = '') =>
+  (await apiListTrips(new Request(`https://x/api/trips${qs}`), { cybercabhunter_db: d1 }, userId)).json();
 
 async function run() {
-  console.log('1. getTripsByUser builds a query scoped to exactly one bound user id');
+  console.log('1. Pagination: page size, page number, totals');
   {
-    const sql = fakeSql([{ id: 't1', ride_date: '2026-06-09', submission_status: 'needs_review' }]);
-    const rows = await db.getTripsByUser(sql, 'user-123');
-    const selectClause = sql._state.sql.match(/SELECT([\s\S]*?)FROM/i)[1];
-
-    check('exactly one bound parameter', sql._state.args.length === 1);
-    check('bound parameter is the caller-supplied user id, unmodified', sql._state.args[0] === 'user-123');
-    check('WHERE clause filters by t.user_id = ?', /WHERE\s+t\.user_id\s*=\s*\?/i.test(sql._state.sql));
-    check('joins submissions on submission_id', /JOIN\s+submissions\s+s\s+ON\s+s\.id\s*=\s*t\.submission_id/i.test(sql._state.sql));
-    check('submission_status aliased from submissions.status', /s\.status\s+AS\s+submission_status/i.test(selectClause));
-
-    check('SELECT list does not include user_id', !/\buser_id\b/i.test(selectClause));
-    check('SELECT list does not include source_message_id', !/source_message_id/i.test(selectClause));
-    check('SELECT list does not include receipt_hash', !/receipt_hash/i.test(selectClause));
-    check('SELECT list does not include evidence_ref', !/evidence_ref/i.test(selectClause));
-
-    check('rows pass through unchanged', rows.length === 1 && rows[0].id === 't1');
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    for (let i = 1; i <= 5; i++) seedRide(d1, { rideDate: `2026-06-0${i}`, pickupTime: '08:00' });
+    const p1 = await list(d1, 'u1', '?page=1&page_size=2');
+    const p3 = await list(d1, 'u1', '?page=3&page_size=2');
+    check('page 1 holds 2 rides', p1.trips.length === 2);
+    check('pagination reports total 5, 3 pages', p1.pagination.total === 5 && p1.pagination.total_pages === 3 && p1.pagination.page === 1 && p1.pagination.page_size === 2);
+    check('the last page holds the remaining 1 ride', p3.trips.length === 1);
+    check('newest ride date first', p1.trips[0].ride_date === '2026-06-05' && p1.trips[1].ride_date === '2026-06-04');
+    const beyond = await list(d1, 'u1', '?page=9&page_size=2');
+    check('a page past the end is empty, not an error', beyond.trips.length === 0 && beyond.pagination.total === 5);
+    const all = new Set([...p1.trips, ...(await list(d1, 'u1', '?page=2&page_size=2')).trips, ...p3.trips].map(r => r.id));
+    check('paging covers every ride exactly once', all.size === 5);
   }
 
-  console.log('2. No trips for this user returns an empty array, not an error or null');
+  console.log('2. Sane bounds on page parameters');
   {
-    const sql = fakeSql([]);
-    const rows = await db.getTripsByUser(sql, 'user-with-no-trips');
-    check('returns an array', Array.isArray(rows));
-    check('array is empty', rows.length === 0);
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    for (let i = 1; i <= 3; i++) seedRide(d1, { rideDate: `2026-06-0${i}`, pickupTime: '08:00' });
+    check('junk parameters fall back to defaults', (await list(d1, 'u1', '?page=abc&page_size=xyz')).pagination.page === 1);
+    check('page_size is capped at 50', (await list(d1, 'u1', '?page_size=100000')).pagination.page_size === 50);
+    check('page_size floors at 1', (await list(d1, 'u1', '?page_size=0')).pagination.page_size === 1);
+    check('negative page floors at 1', (await list(d1, 'u1', '?page=-4')).pagination.page === 1);
   }
 
-  console.log('3. apiListTrips wraps the query in { trips: [...] } with no forbidden fields');
+  console.log('3. A user with no rides gets an empty list, a normal 200');
   {
-    const sql = fakeSql([
-      { id: 't1', ride_date: '2026-06-09', fare_amount_cents: 692, submission_status: 'needs_review' }
-    ]);
-    const resp = await apiListTrips({}, { cybercabhunter_db: sql }, 'user-123');
-    const body = await resp.json();
-    check('response has a trips array', Array.isArray(body.trips));
-    check('response body has no user_id on any trip', !body.trips.some(t => Object.prototype.hasOwnProperty.call(t, 'user_id')));
-    check('response body has no source_message_id on any trip', !body.trips.some(t => Object.prototype.hasOwnProperty.call(t, 'source_message_id')));
-    check('response body has no receipt_hash on any trip', !body.trips.some(t => Object.prototype.hasOwnProperty.call(t, 'receipt_hash')));
-    check('response body has no evidence_ref on any trip', !body.trips.some(t => Object.prototype.hasOwnProperty.call(t, 'evidence_ref')));
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    const body = await list(d1, 'u1');
+    check('empty trips array', Array.isArray(body.trips) && body.trips.length === 0);
+    check('total 0, one (empty) page', body.pagination.total === 0 && body.pagination.total_pages === 1);
   }
 
-  console.log('4. apiListTrips for a user with no trips returns { trips: [] }, still a 200');
+  console.log("4. User isolation: a rider never receives another rider's rides, whatever the request says");
   {
-    const sql = fakeSql([]);
-    const resp = await apiListTrips({}, { cybercabhunter_db: sql }, 'user-with-no-trips');
-    const body = await resp.json();
-    check('status is 200 (default Response.json status)', resp.status === 200);
-    check('trips is an empty array', Array.isArray(body.trips) && body.trips.length === 0);
+    const d1 = createTestD1(); seedUser(d1, 'u1'); seedUser(d1, 'u2');
+    seedRide(d1, { id: 'mine', userId: 'u1', pickupTime: '08:00' });
+    seedRide(d1, { id: 'theirs', userId: 'u2', pickupTime: '09:00' });
+    const body = await list(d1, 'u1', '?user_id=u2&userId=u2');
+    check("only u1's ride is returned", body.trips.length === 1 && body.trips[0].id === 'mine');
+    check("a user_id in the query string has no effect", body.pagination.total === 1);
   }
 
-  console.log(`\n${pass} passed, ${fail} failed`);
-  if (fail > 0) process.exit(1);
+  console.log('5. Privacy: only whitelisted ride fields ever leave the API');
+  {
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    seedVehicle(d1, { id: 'v1', plate: 'XJR2195' });
+    seedRide(d1, { vehicleId: 'v1', pickupDescription: '4301 Hanover St, Dallas, TX 75225', dropoffDescription: 'NorthPark Center, Dallas', duration: 14 });
+    d1.exec(`UPDATE trips SET dropoff_time = '13:18', receipt_hash = 'deadbeef', source_message_id = '<secret@id>'`);
+    const body = await list(d1, 'u1');
+    const ride = body.trips[0];
+    const keys = Object.keys(ride).sort().join();
+    check('exactly the expected fields', keys === 'city,currency,currency_source,distance,distance_unit,duration_derived,duration_minutes,fare_amount_cents,id,revision,ride_date,source,status,vehicle_plate');
+    const blob = JSON.stringify(body);
+    check('no pickup/dropoff address text', !/Hanover|NorthPark|pickup|dropoff/i.test(blob));
+    check('no exact ride times', !/13:04|13:18|pickup_time|dropoff_time/i.test(blob));
+    check('no receipt hash or message id', !/deadbeef|secret@id|receipt_hash|source_message_id/i.test(blob));
+    check('no user id', !/user_id/i.test(blob) && !blob.includes('"u1"'));
+    check("the rider's own plate IS shown (they saw it on the receipt)", ride.vehicle_plate === 'XJR2195');
+  }
+
+  console.log('6. Missing values stay NULL in the API; status labels reflect review state; superseded duplicates are hidden');
+  {
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    seedRide(d1, { id: 'a', distance: null, fare: null, status: 'pending', pickupTime: '08:00' });
+    seedRide(d1, { id: 'b', status: 'needs_review', pickupTime: '09:00', rideDate: '2026-06-10' });
+    seedRide(d1, { id: 'c', status: 'rejected', pickupTime: '10:00', rideDate: '2026-06-11' });
+    seedRide(d1, { id: 'd', supersededBy: 'a', pickupTime: '08:00' });
+    const body = await list(d1, 'u1');
+    const byId = Object.fromEntries(body.trips.map(r => [r.id, r]));
+    check('a superseded duplicate is not listed', !byId.d && body.pagination.total === 3);
+    check('missing distance and fare are null, not 0', byId.a.distance === null && byId.a.fare_amount_cents === null);
+    check('statuses: counted / under_review / rejected', byId.a.status === 'counted' && byId.b.status === 'under_review' && byId.c.status === 'rejected');
+  }
+
+  t.finish();
 }
 
-run();
+run().catch(err => { console.error(err); process.exit(1); });

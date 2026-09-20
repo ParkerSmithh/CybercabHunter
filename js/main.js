@@ -309,10 +309,13 @@ const CCC = (() => {
     if (!btn) return;
 
     const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+    const startUrl = TESLA_WORKER_URL + '/oauth/tesla/start';
 
-    // Passing the current session lets /oauth/tesla/start attach Tesla to
-    // THIS account instead of creating a separate one — see worker/tesla.js.
-    btn.href = TESLA_WORKER_URL + '/oauth/tesla/start' + (sessionId ? '?session=' + encodeURIComponent(sessionId) : '');
+    // What connecting Tesla actually does: it gives Cybercab Hunter access to
+    // the eligible vehicle information on the rider's Tesla account. It does
+    // NOT import Robotaxi ride history — rides come from receipts.
+    btn.href = startUrl;
+    btn.title = 'Connect your Tesla account so Cybercab Hunter can see your eligible Tesla vehicle information. This does not import Robotaxi ride history.';
     btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
 
     // Once linked, this button just disappears entirely (see render())
@@ -333,8 +336,31 @@ const CCC = (() => {
         .catch(() => render(false));
     }
 
-    btn.addEventListener('click', () => {
+    // A signed-in browser must tell the Worker WHICH account is linking so
+    // Tesla attaches to it instead of creating a separate account — but the
+    // long-lived session id must never appear in a URL. So ask (over an
+    // authenticated fetch) for a one-time, two-minute link token and put only
+    // that in the URL. Signed out, this is just an ordinary link.
+    btn.addEventListener('click', (e) => {
+      if (!sessionId) { btn.textContent = 'Connecting…'; return; }
+      e.preventDefault();
+      const label = btn.innerHTML;
       btn.textContent = 'Connecting…';
+      fetch(TESLA_WORKER_URL + '/oauth/tesla/link', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + sessionId }
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          // A rejected session means we aren't really signed in — the plain flow is right then.
+          location.href = startUrl + (d && d.link_token ? '?link=' + encodeURIComponent(d.link_token) : '');
+        })
+        .catch(() => {
+          // Never silently fall back to a plain link here: for a signed-in
+          // rider that would create a second, separate account.
+          btn.innerHTML = label;
+          toast('Could not start Tesla linking — please try again.', 'error');
+        });
     });
   }
 

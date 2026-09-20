@@ -1,13 +1,16 @@
-// Orchestrates the full inbound-email pipeline: resolve recipient -> user,
-// parse MIME, deduplicate, classify, store evidence, create the
-// submission + trip, and log every attempt (including failures) to
-// receipt_ingestions. Never trusts anything about *which user* this belongs
-// to except the opaque token in the recipient address.
+// Inbound receipt email -> canonical ride, plus the two authenticated APIs
+// that describe the rider's forwarding setup and receipt-sync status.
+//
+// This file owns only what is specific to the EMAIL source: resolving the
+// recipient to a user, size limits, MIME parsing, the attachment, and the
+// Gmail forwarding-confirmation message. Everything that turns a receipt
+// into a ride lives in receipt-process.js / ride-ingest.js and is shared
+// with the historical-import API. Never trusts anything about WHICH USER a
+// message belongs to except the opaque token in the recipient address.
 
 import { parseRawEmail } from './receipt-parser.js';
-import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from './receipt-extraction.js';
-import { classifyReceipt } from './receipt-validation.js';
-import { computeReceiptHash } from './receipt-dedupe.js';
+import { detectGmailForwardingConfirmation } from './receipt-forwarding.js';
+import { processReceiptMessage, newCounts, addToCounts, runStatusFor } from './receipt-process.js';
 import { db } from './db.js';
 
 const MAX_INBOUND_BYTES = 10 * 1024 * 1024; // well under Cloudflare's 25 MiB platform cap
@@ -38,10 +41,15 @@ export async function handleIncomingEmail(message, env) {
     return;
   }
 
+  const runId = newId();
+  await db.createSyncRun(sql, { id: runId, userId, source: 'receipt_email' });
+  const counts = newCounts();
+
   if (message.rawSize > MAX_INBOUND_BYTES) {
     await db.createReceiptIngestion(sql, {
-      id: newId(), userId, status: 'rejected', errorCode: 'message_too_large'
+      id: newId(), userId, status: 'rejected', outcome: 'rejected', errorCode: 'message_too_large', syncRunId: runId
     });
+    await db.finishSyncRun(sql, runId, { status: 'completed', ...tally(addToCounts(counts, { outcome: 'rejected' })) });
     message.setReject('Message too large');
     return;
   }
@@ -51,141 +59,82 @@ export async function handleIncomingEmail(message, env) {
     parsedMessage = await parseRawEmail(message.raw);
   } catch (err) {
     await db.createReceiptIngestion(sql, {
-      id: newId(), userId, status: 'parse_error',
-      errorCode: 'mime_parse_failed', errorMessage: String(err).slice(0, 200)
+      id: newId(), userId, status: 'parse_error', outcome: 'error',
+      errorCode: 'mime_parse_failed', errorMessage: String(err).slice(0, 200), syncRunId: runId
+    });
+    await db.finishSyncRun(sql, runId, {
+      status: 'failed', errorCode: 'mime_parse_failed', ...tally(addToCounts(counts, { outcome: 'error' }))
     });
     return;
   }
 
-  const messageId = parsedMessage.messageId;
-
-  // Idempotency check #1: a retried/duplicate delivery of a Message-ID this
-  // user's address has already successfully processed.
-  if (messageId) {
-    const existing = await db.findIngestionByMessageId(sql, messageId);
-    if (existing) {
-      await db.createReceiptIngestion(sql, {
-        id: newId(), userId, messageId, receiptHash: existing.receipt_hash,
-        parserVersion: existing.parser_version, status: 'duplicate',
-        submissionId: existing.submission_id, tripId: existing.trip_id
-      });
-      return;
-    }
-  }
-
-  // Try the format confirmed against a real Tesla receipt first; only fall
-  // back to the older, never-verified format if v2 recognizes nothing at
-  // all in this particular email.
-  let extraction;
-  try {
-    extraction = extractTeslaReceiptFieldsV2(parsedMessage);
-    if (Object.keys(extraction.fields).length === 0) {
-      extraction = extractTeslaReceiptFields(parsedMessage);
-    }
-  } catch (err) {
+  // Gmail's "confirm forwarding" message is delivered to this address, where
+  // the rider can't see it. Keep only the code, to show it to them.
+  const confirmation = detectGmailForwardingConfirmation(parsedMessage);
+  if (confirmation) {
+    await db.saveForwardingCode(sql, userId, confirmation.code);
     await db.createReceiptIngestion(sql, {
-      id: newId(), userId, messageId, status: 'parse_error',
-      errorCode: 'extraction_failed', errorMessage: String(err).slice(0, 200)
+      id: newId(), userId, status: 'rejected', outcome: 'forwarding_confirmation',
+      errorCode: 'gmail_forwarding_confirmation', syncRunId: runId
     });
+    counts.seen += 1;
+    await db.finishSyncRun(sql, runId, { status: 'completed', ...tally(counts) });
     return;
   }
 
-  const receiptHash = await computeReceiptHash(parsedMessage, extraction);
-
-  // Idempotency check #2: same content fingerprint via a different
-  // Message-ID (e.g. forwarded twice from different clients).
-  const existingByHash = await db.findIngestionByHash(sql, receiptHash);
-  if (existingByHash) {
-    await db.createReceiptIngestion(sql, {
-      id: newId(), userId, messageId, receiptHash,
-      parserVersion: extraction.parserVersion, status: 'duplicate',
-      submissionId: existingByHash.submission_id, tripId: existingByHash.trip_id
-    });
-    return;
-  }
-
-  const classification = classifyReceipt(parsedMessage, extraction);
-
-  if (classification.status === 'rejected') {
-    await db.createReceiptIngestion(sql, {
-      id: newId(), userId, messageId, receiptHash,
-      parserVersion: extraction.parserVersion, status: 'rejected',
-      errorCode: classification.reason
-    });
-    return;
-  }
-
-  // Store a supported attachment (e.g. a PDF receipt) as private evidence.
-  // The email body itself is parsed then discarded — only the structured
-  // fields below and this optional attachment persist, not the raw email.
-  let evidenceRef = null;
+  // A supported attachment (e.g. a PDF receipt) is kept as private evidence —
+  // but only if the ride it belongs to is actually created, so a duplicate
+  // never leaves an orphaned file. The email body itself is parsed then
+  // discarded; only structured fields and this optional attachment persist.
   const attachment = parsedMessage.attachments.find(a => ALLOWED_ATTACHMENT_MIME_EXT[a.mimeType]);
-  if (attachment) {
-    const ext = ALLOWED_ATTACHMENT_MIME_EXT[attachment.mimeType];
-    const key = `receipts/${userId}/${newId()}.${ext}`;
+  const storeEvidence = attachment ? async () => {
+    const key = `receipts/${userId}/${newId()}.${ALLOWED_ATTACHMENT_MIME_EXT[attachment.mimeType]}`;
     try {
       await env.EVIDENCE_BUCKET.put(key, attachment.content, {
         httpMetadata: { contentType: attachment.mimeType },
         customMetadata: { verifiedContentType: attachment.mimeType }
       });
-      evidenceRef = key;
+      return key;
     } catch (err) {
-      // Non-fatal — proceed without the attachment rather than losing the ride data.
+      return null; // Non-fatal — keep the ride rather than lose it over the attachment.
     }
+  } : undefined;
+
+  let result;
+  try {
+    result = await processReceiptMessage(env, parsedMessage, 'receipt_email', {
+      userId, syncRunId: runId, evidenceType: 'email_receipt', storeEvidence
+    });
+  } catch (err) {
+    result = { outcome: 'error', code: 'ingest_failed', message: String(err).slice(0, 200) };
   }
 
-  const submissionId = newId();
-  await db.createSubmission(sql, {
-    id: submissionId, userId,
-    submissionType: 'ride_receipt',
-    evidenceType: 'email_receipt',
-    evidenceRef
-  });
-  if (classification.status === 'needs_review') {
-    await db.markSubmissionNeedsReview(sql, submissionId);
+  if (result.outcome === 'error') {
+    await db.createReceiptIngestion(sql, {
+      id: newId(), userId, messageId: parsedMessage.messageId, status: 'parse_error', outcome: 'error',
+      errorCode: result.code, errorMessage: result.message, syncRunId: runId
+    });
+  } else if (['created', 'updated', 'duplicate', 'unidentified'].includes(result.outcome)) {
+    await db.markReceiptReceived(sql, userId);
   }
 
-  let robotaxiVehicleId = null;
-  if (extraction.fields.license_plate) {
-    robotaxiVehicleId = await db.findOrCreateRobotaxiVehicleByPlate(sql, extraction.fields.license_plate);
-  }
-
-  const tripId = newId();
-  await db.createTripFromReceipt(sql, {
-    id: tripId,
-    submissionId,
-    userId,
-    serviceArea: extraction.fields.service_area,
-    rideDate: extraction.fields.ride_date,
-    distance: extraction.fields.distance,
-    fareAmountCents: extraction.fields.fare_amount_cents,
-    externalRideId: extraction.fields.external_ride_id,
-    robotaxiVehicleId,
-    sourceMessageId: messageId,
-    receiptHash,
-    pickupDescription: extraction.fields.pickup_description,
-    dropoffDescription: extraction.fields.dropoff_description,
-    pickupTime: extraction.fields.pickup_time,
-    dropoffTime: extraction.fields.dropoff_time,
-    durationMinutes: extraction.fields.duration_minutes,
-    durationMinutesDerived: extraction.fieldSources.duration_minutes === 'derived'
-  });
-
-  await db.touchIngestionAddressReceived(sql, userId);
-
-  await db.createReceiptIngestion(sql, {
-    id: newId(), userId, messageId, receiptHash,
-    parserVersion: extraction.parserVersion,
-    status: classification.status,
-    submissionId, tripId
+  addToCounts(counts, result);
+  await db.finishSyncRun(sql, runId, {
+    status: runStatusFor(counts), errorCode: result.outcome === 'error' ? result.code : null, ...tally(counts)
   });
 }
 
+function tally(counts) {
+  return {
+    seen: counts.seen, created: counts.created, updated: counts.updated, duplicates: counts.duplicates,
+    review: counts.review, rejected: counts.rejected, errors: counts.errors
+  };
+}
+
 // Authenticated API: returns (creating if needed) this user's receipt
-// ingestion address. Only the local-part is meaningful right now since no
-// domain is configured for Email Routing yet (see docs/receipt-ingestion.md)
-// — `domain_configured: false` tells the frontend not to present this as a
-// working address until RECEIPT_DOMAIN is set.
+// ingestion address. Only the local-part is meaningful until a domain is
+// configured for Email Routing — `domain_configured: false` tells the
+// frontend not to present this as a working address until RECEIPT_DOMAIN is set.
 export async function apiGetIngestionAddress(request, env, userId) {
   const token = await db.findOrCreateReceiptIngestionAddress(env.cybercabhunter_db, userId);
   const domain = env.RECEIPT_DOMAIN;
@@ -193,4 +142,65 @@ export async function apiGetIngestionAddress(request, env, userId) {
     return Response.json({ success: true, local_part: `u_${token}`, domain_configured: false });
   }
   return Response.json({ success: true, address: `u_${token}@${domain}`, domain_configured: true });
+}
+
+// Authenticated API: the rider's own receipt-sync picture. These are three
+// DIFFERENT facts and are reported separately (the Tesla account link is a
+// fourth, reported by /api/me): whether a forwarding address exists, whether
+// mail has actually arrived through it, and how many rides came in.
+// "receiving" is only true once a real receipt has arrived by email — an
+// address existing is not evidence that forwarding was ever set up.
+export async function apiGetSyncStatus(request, env, userId) {
+  const status = await db.getSyncStatus(env.cybercabhunter_db, userId);
+  const domain = env.RECEIPT_DOMAIN;
+  const address = status.address;
+  const totals = status.totals || {};
+
+  return Response.json({
+    forwarding: {
+      address_issued: !!address,
+      address: address && domain ? `u_${address.opaque_token}@${domain}` : null,
+      local_part: address ? `u_${address.opaque_token}` : null,
+      domain_configured: !!domain,
+      confirmation_code: address ? address.forwarding_code : null,
+      confirmation_code_received_at: address ? address.forwarding_code_received_at : null,
+      // A receipt that arrived BY EMAIL and was recognised — even one we already
+      // had — proves forwarding works. An imported ride does not. last_received_at
+      // is only ever set by the email path, and also covers receipts that arrived
+      // before receipt-sync runs were recorded.
+      receiving: (totals.email_receipts || 0) > 0 || !!(address && address.last_received_at),
+      last_received_at: address ? address.last_received_at : null
+    },
+    receipt_sync: {
+      last_run: status.lastRun && {
+        source: status.lastRun.source,
+        started_at: status.lastRun.started_at,
+        finished_at: status.lastRun.finished_at,
+        status: status.lastRun.status,
+        processed: status.lastRun.seen_count,
+        added: status.lastRun.created_count,
+        updated: status.lastRun.updated_count,
+        duplicates: status.lastRun.duplicate_count,
+        needs_review: status.lastRun.review_count,
+        rejected: status.lastRun.rejected_count,
+        errors: status.lastRun.error_count
+      },
+      last_ride_received_at: status.lastRideReceivedAt,
+      totals: {
+        processed: totals.seen || 0,
+        added: totals.created || 0,
+        updated: totals.updated || 0,
+        duplicates: totals.duplicates || 0,
+        needs_review: totals.review || 0,
+        rejected: totals.rejected || 0,
+        errors: totals.errors || 0
+      },
+      // Receipts that were recognized but had no readable date/pickup time, so
+      // no ride was created (distinct receipts, not attempts).
+      not_added_unreadable: status.unidentified || 0,
+      rides_from_email: totals.email_created || 0,
+      rides_from_import: totals.import_created || 0,
+      under_review: status.underReview
+    }
+  });
 }

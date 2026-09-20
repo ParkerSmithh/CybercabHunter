@@ -1,9 +1,10 @@
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
-import { handleIncomingEmail, apiGetIngestionAddress } from './receipt-ingestion.js';
+import { handleIncomingEmail, apiGetIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
+import { apiImportReceipts } from './receipt-import.js';
 import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
-import { apiListTrips } from './trips.js';
+import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -68,6 +69,9 @@ export default {
     if (url.pathname === '/oauth/tesla/status' && request.method === 'GET') {
       return withCors(await tesla.handleStatus(request, env), request);
     }
+    if (url.pathname === '/oauth/tesla/link' && request.method === 'POST') {
+      return withCors(await tesla.apiCreateLinkToken(request, env), request);
+    }
     if (url.pathname === '/oauth/tesla/disconnect' && request.method === 'POST') {
       return withCors(await tesla.handleDisconnect(request, env), request);
     }
@@ -128,6 +132,29 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiListTrips(request, env, userId), request);
+    }
+    if (url.pathname === '/api/trips' && request.method === 'DELETE') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiDeleteAllTrips(request, env, userId), request);
+    }
+    const tripIdMatch = url.pathname.match(/^\/api\/trips\/([^/]+)$/);
+    if (tripIdMatch && request.method === 'DELETE') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiDeleteTrip(request, env, userId, tripIdMatch[1]), request);
+    }
+
+    // Receipt sync: historical import and the rider's sync/forwarding status.
+    if (url.pathname === '/api/rides/import' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiImportReceipts(request, env, userId), request);
+    }
+    if (url.pathname === '/api/rides/sync-status' && request.method === 'GET') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiGetSyncStatus(request, env, userId), request);
     }
 
     if (url.pathname === '/api/profile' && request.method === 'GET') {

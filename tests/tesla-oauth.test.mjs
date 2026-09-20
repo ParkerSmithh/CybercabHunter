@@ -1,5 +1,5 @@
 // Tests for the Tesla Fleet API OAuth start/callback in worker/tesla.js,
-// focused on the ?session= "attach to an already signed-in account" path
+// focused on the ?link= (one-time token) "attach to an already signed-in account" path
 // (e.g. a user who signed in with Google first, then links Tesla) added
 // alongside the original sign-in-with-Tesla-creates-a-new-account path.
 // Uses an in-memory fake KV and a small fake D1 simulating users/
@@ -29,11 +29,13 @@ function makeIdToken(sub) {
 
 function fakeKV() {
   const store = new Map();
+  const ttls = new Map();
   return {
     async get(key) { return store.has(key) ? store.get(key) : null; },
-    async put(key, value) { store.set(key, value); },
+    async put(key, value, opts) { store.set(key, value); ttls.set(key, opts && opts.expirationTtl); },
     async delete(key) { store.delete(key); },
-    _store: store
+    _store: store,
+    _ttls: ttls
   };
 }
 
@@ -125,6 +127,15 @@ function mockTeslaNetwork(sub) {
   });
 }
 
+// The frontend never puts a session id in a URL: it first asks (authenticated)
+// for a one-time link token and uses only that. Mirrors that here.
+async function linkTokenFor(env, sessionId) {
+  const resp = await tesla.apiCreateLinkToken(new Request('https://x/oauth/tesla/link', {
+    method: 'POST', headers: { Authorization: `Bearer ${sessionId}` }
+  }), env);
+  return (await resp.json()).link_token;
+}
+
 async function completeFlow(env, startUrl, sub) {
   const startResp = await tesla.startOAuth(new Request(startUrl), env);
   const state = new URL(startResp.headers.get('Location')).searchParams.get('state');
@@ -137,7 +148,7 @@ async function completeFlow(env, startUrl, sub) {
 }
 
 async function run() {
-  console.log('1. classic flow (no ?session=) is unchanged: creates a new user and a new session');
+  console.log('1. classic flow (no link token) is unchanged: creates a new user and a new session');
   {
     const env = makeEnv();
     const resp = await completeFlow(env, 'https://x/oauth/tesla/start', 'tesla-sub-classic');
@@ -147,15 +158,15 @@ async function run() {
     check('new users default to a public profile', [...env.cybercabhunter_db._users.values()][0].profile_visibility === 'public');
   }
 
-  console.log('2. ?session= with no valid session behaves exactly like the classic flow');
+  console.log('2. an invalid/unknown link token behaves exactly like the classic flow');
   {
     const env = makeEnv();
-    const resp = await completeFlow(env, 'https://x/oauth/tesla/start?session=not-a-real-session', 'tesla-sub-noauth');
+    const resp = await completeFlow(env, 'https://x/oauth/tesla/start?link=not-a-real-token', 'tesla-sub-noauth');
     check('still creates a new user (invalid session ignored, not treated as an error)', env.cybercabhunter_db._users.size === 1);
     check('still hands back a new session', /#tesla_session=/.test(resp.headers.get('Location')));
   }
 
-  console.log('3. ?session= with a valid existing session attaches Tesla to that SAME user, no new user/session');
+  console.log('3. a valid one-time link token attaches Tesla to that SAME user, no new user/session');
   {
     const env = makeEnv();
     const existingUserId = 'google-user-abc';
@@ -163,7 +174,7 @@ async function run() {
     const priorSessionId = 'existing-google-session';
     await env.TESLA_SESSIONS.put(`session:${priorSessionId}`, JSON.stringify({ user_id: existingUserId }));
 
-    const resp = await completeFlow(env, `https://x/oauth/tesla/start?session=${priorSessionId}`, 'tesla-sub-attach');
+    const resp = await completeFlow(env, `https://x/oauth/tesla/start?link=${await linkTokenFor(env, priorSessionId)}`, 'tesla-sub-attach');
 
     check('redirects with tesla=linked', resp.status === 302 && resp.headers.get('Location').startsWith('https://cybercabhunter.com/?tesla=linked'));
     check('no new session fragment — the existing session already covers this user', !resp.headers.get('Location').includes('#tesla_session='));
@@ -186,7 +197,7 @@ async function run() {
     const sessionB = 'session-for-b';
     await env.TESLA_SESSIONS.put(`session:${sessionB}`, JSON.stringify({ user_id: userB }));
 
-    const resp = await completeFlow(env, `https://x/oauth/tesla/start?session=${sessionB}`, 'shared-tesla-sub');
+    const resp = await completeFlow(env, `https://x/oauth/tesla/start?link=${await linkTokenFor(env, sessionB)}`, 'shared-tesla-sub');
 
     check('redirects with tesla=already_linked_elsewhere, not tesla=linked', resp.status === 302 && resp.headers.get('Location').includes('tesla=already_linked_elsewhere'));
     check('user B still has no Tesla connection row', !env.cybercabhunter_db._connections.has(userB));
@@ -201,7 +212,7 @@ async function run() {
     await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: existingUserId }));
     env.cybercabhunter_db._users.set(existingUserId, { id: existingUserId });
 
-    const startResp = await tesla.startOAuth(new Request(`https://x/oauth/tesla/start?session=${sessionId}`), env);
+    const startResp = await tesla.startOAuth(new Request(`https://x/oauth/tesla/start?link=${await linkTokenFor(env, sessionId)}`), env);
     const state = new URL(startResp.headers.get('Location')).searchParams.get('state');
     const stored = JSON.parse(await env.TESLA_SESSIONS.get(`state:${state}`));
     check('state carries the resolved existing_user_id, not the raw session id', stored.existing_user_id === existingUserId);
@@ -224,7 +235,7 @@ async function run() {
     env.cybercabhunter_db._users.set(existingUserId, { id: existingUserId });
     await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: existingUserId }));
 
-    await completeFlow(env, `https://x/oauth/tesla/start?session=${sessionId}`, 'unlink-test-sub');
+    await completeFlow(env, `https://x/oauth/tesla/start?link=${await linkTokenFor(env, sessionId)}`, 'unlink-test-sub');
     check('connection is active before unlinking', env.cybercabhunter_db._connections.get(existingUserId).status === 'active');
 
     const resp = await tesla.apiDisconnect(new Request('https://x/api/tesla/disconnect', {
@@ -245,9 +256,41 @@ async function run() {
     env.cybercabhunter_db._users.set(otherUserId, { id: otherUserId });
     await env.TESLA_SESSIONS.put(`session:${otherSession}`, JSON.stringify({ user_id: otherUserId }));
 
-    const relinkResp = await completeFlow(env, `https://x/oauth/tesla/start?session=${otherSession}`, 'unlink-test-sub');
+    const relinkResp = await completeFlow(env, `https://x/oauth/tesla/start?link=${await linkTokenFor(env, otherSession)}`, 'unlink-test-sub');
     check('relinking the same Tesla account to a different user now succeeds', relinkResp.status === 302 && relinkResp.headers.get('Location').includes('tesla=linked'));
     check('the new user now holds that Tesla identifier', env.cybercabhunter_db._connections.get(otherUserId).tesla_account_identifier === 'unlink-test-sub');
+  }
+
+  console.log('8. Session security: a bearer session id never travels in the URL');
+  {
+    const env = makeEnv();
+    const userId = 'signed-in-user';
+    env.cybercabhunter_db._users.set(userId, { id: userId });
+    const sessionId = 'long-lived-session-id';
+    await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: userId }));
+
+    const noAuth = await tesla.apiCreateLinkToken(new Request('https://x/oauth/tesla/link', { method: 'POST' }), env);
+    check('a link token cannot be minted without a valid session', noAuth.status === 401);
+
+    const token = await linkTokenFor(env, sessionId);
+    check('the link token is NOT the session id', !!token && token !== sessionId);
+    check('the link token lives in KV with a short TTL (120s)', env.TESLA_SESSIONS._ttls.get(`tesla_link:${token}`) === 120);
+    check('the link token cannot be used as a bearer session', await tesla.requireUserId(new Request('https://x/', { headers: { Authorization: `Bearer ${token}` } }), env) === null);
+
+    // single use
+    const first = await completeFlow(env, `https://x/oauth/tesla/start?link=${token}`, 'single-use-sub');
+    check('first use attaches to the signed-in account (no new session)', !first.headers.get('Location').includes('#tesla_session='));
+    check('the token is consumed', await env.TESLA_SESSIONS.get(`tesla_link:${token}`) === null);
+    const usersBefore = env.cybercabhunter_db._users.size;
+    const second = await completeFlow(env, `https://x/oauth/tesla/start?link=${token}`, 'another-sub');
+    check('a replayed token no longer identifies the account (classic flow, new user)', env.cybercabhunter_db._users.size === usersBefore + 1 && /#tesla_session=/.test(second.headers.get('Location')));
+
+    // the old ?session= parameter is no longer honoured at all
+    const before = env.cybercabhunter_db._users.size;
+    const legacy = await completeFlow(env, `https://x/oauth/tesla/start?session=${sessionId}`, 'legacy-sub');
+    check('a session id in the URL is ignored: it does NOT attach to the signed-in account', env.cybercabhunter_db._users.size === before + 1 && env.cybercabhunter_db._connections.get(userId).tesla_account_identifier === 'single-use-sub' && /#tesla_session=/.test(legacy.headers.get('Location')));
+    const authorizeUrl = new URL((await tesla.startOAuth(new Request(`https://x/oauth/tesla/start?session=${sessionId}`), env)).headers.get('Location'));
+    check('and the session id is never forwarded to Tesla', !authorizeUrl.toString().includes(sessionId));
   }
 }
 
