@@ -230,6 +230,32 @@ async function getUserIdByActiveReceiptToken(sql, token) {
   return row ? row.user_id : null;
 }
 
+// Replaces a rider's receipt address with a fresh one, so a leaked address
+// (the rider is told to treat it like a password) can be shut off. There is
+// a UNIQUE index on user_id alone (one address row per rider, active or
+// not — see migrations/0003_receipt_ingestion.sql), so rotation can't be
+// "revoke old row, insert a new one" without a schema change; instead the
+// SAME row's token is replaced in place. The old token stops resolving
+// immediately (nothing in the table holds it any more) while the row's id,
+// user_id and created_at — and every receipt_ingestions/trips row, which
+// key off user_id, never the token — are untouched. last_received_at and
+// any pending Gmail confirmation code described the OLD address, so they're
+// cleared; they'll be set again once the new address actually receives mail.
+async function rotateReceiptIngestionAddress(sql, userId) {
+  const token = crypto.randomUUID().replace(/-/g, '');
+  const result = await sql.prepare(`
+    UPDATE receipt_ingestion_addresses
+    SET opaque_token = ?, last_received_at = NULL, forwarding_code = NULL, forwarding_code_received_at = NULL
+    WHERE user_id = ? AND status = 'active'
+  `).bind(token, userId).run();
+  if (!result || !result.meta || !result.meta.changes) {
+    // No address existed yet — rotating one that was never issued is the
+    // same as issuing it for the first time.
+    return findOrCreateReceiptIngestionAddress(sql, userId);
+  }
+  return token;
+}
+
 // Exact-plate match only — no fuzzy merging. A duplicate/near-duplicate
 // plate across sources is a human moderation decision, not something this
 // query silently resolves. "Exact" means after normalization (case, spaces
@@ -257,6 +283,86 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
     VALUES (?, ?, datetime('now'), datetime('now'))
   `).bind(id, String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).run();
   return id;
+}
+
+// Read-only counterpart for worker/sightings.js. Unlike
+// findOrCreateRobotaxiVehicleByPlate, this NEVER creates a row and NEVER
+// advances last_seen_at — an unreviewed crowdsourced sighting must not be
+// able to create a public vehicle or mutate receipt-derived vehicle state
+// (Phase 3D trust boundary).
+async function findRobotaxiVehicleByPlate(sql, plate) {
+  const row = await sql.prepare(
+    `SELECT id FROM robotaxi_vehicles
+     WHERE UPPER(REPLACE(REPLACE(license_plate, '-', ''), ' ', '')) = ? LIMIT 1`
+  ).bind(String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).first();
+  return row ? row.id : null;
+}
+
+// An accidental-double-submit guard only — the same rider, the same
+// normalized plate, within the last couple of minutes. Not spam/anti-abuse
+// protection (deferred to a later Phase 3D step); uses only data this
+// endpoint already writes, no new table or index.
+async function findRecentDuplicateSighting(sql, userId, normalizedPlate) {
+  const row = await sql.prepare(`
+    SELECT o.id AS observation_id, o.submission_id
+    FROM vehicle_observations o
+    WHERE o.user_id = ?
+      AND UPPER(REPLACE(REPLACE(o.license_plate, '-', ''), ' ', '')) = ?
+      AND o.created_at >= datetime('now', '-2 minutes')
+    ORDER BY o.created_at DESC LIMIT 1
+  `).bind(userId, normalizedPlate).first();
+  return row || null;
+}
+
+// Records a rider's vehicle sighting: a submissions row (submission_type
+// 'vehicle_sighting', status 'pending' — nothing reviews it yet) and its
+// vehicle_observations row, created atomically in one batch (matching
+// createRideRecords's pattern below) so the two can never go out of sync.
+// robotaxiVehicleId is null when the observed plate didn't match an
+// existing registry vehicle — the caller decides that with a read-only
+// lookup; this function never creates or mutates a robotaxi_vehicles row.
+async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt }) {
+  const submissionId = newId();
+  const observationId = newId();
+
+  const submissionStmt = sql.prepare(`
+    INSERT INTO submissions (id, user_id, submission_type, status, submitted_at)
+    VALUES (?, ?, 'vehicle_sighting', 'pending', datetime('now'))
+  `).bind(submissionId, userId);
+
+  // observed_at is only included when the caller supplied one — binding an
+  // explicit NULL would violate the column's NOT NULL constraint instead of
+  // letting its own datetime('now') default apply.
+  const columns = ['id', 'robotaxi_vehicle_id', 'user_id', 'submission_id', 'service_area', 'approx_location', 'license_plate', 'model', 'color', 'verification_status', 'notes'];
+  const values = [observationId, robotaxiVehicleId || null, userId, submissionId, serviceArea, approxLocation || null, licensePlate || null, model || null, color || null, 'unverified', notes || null];
+  if (observedAt) { columns.push('observed_at'); values.push(observedAt); }
+
+  const observationStmt = sql.prepare(`
+    INSERT INTO vehicle_observations (${columns.join(', ')})
+    VALUES (${columns.map(() => '?').join(', ')})
+  `).bind(...values);
+
+  await sql.batch([submissionStmt, observationStmt]);
+  return { submissionId, observationId };
+}
+
+// The public-facing view of a single registry row, for worker/vehicles.js.
+// Selects only vehicle-descriptive columns — never `visibility` itself,
+// which is the gate this query enforces rather than a fact about the car.
+// A row with visibility != 'public' comes back exactly like a nonexistent
+// one; the caller can't tell the difference, which is the point of the
+// column existing. license_plate/model/color/service_area are frequently
+// NULL today (receipts only ever fill in the plate — see
+// findOrCreateRobotaxiVehicleByPlate above), returned honestly as null
+// rather than defaulted to something invented.
+async function getPublicRobotaxiVehicle(sql, vehicleId) {
+  const row = await sql.prepare(`
+    SELECT id, provider, license_plate, model, color, service_area,
+           first_seen_at, last_seen_at, verification_status
+    FROM robotaxi_vehicles
+    WHERE id = ? AND visibility = 'public'
+  `).bind(vehicleId).first();
+  return row || null;
 }
 
 // Pure aggregate over this vehicle's known trips — deliberately excludes
@@ -384,8 +490,13 @@ export const db = {
   getSubmissionForOwner,
   deleteSubmission,
   findOrCreateReceiptIngestionAddress,
+  rotateReceiptIngestionAddress,
   getUserIdByActiveReceiptToken,
   findOrCreateRobotaxiVehicleByPlate,
+  findRobotaxiVehicleByPlate,
+  findRecentDuplicateSighting,
+  createVehicleSighting,
+  getPublicRobotaxiVehicle,
   getRobotaxiVehicleHistory,
   upsertRobotaxiOwnerConnection,
   getRobotaxiOwnerConnectionByUserId,

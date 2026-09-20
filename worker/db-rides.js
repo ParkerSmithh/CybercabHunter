@@ -182,6 +182,48 @@ async function setSubmissionStatus(sql, submissionId, status) {
 
 // ---- Ride history (private, one rider's own rides) ----
 
+// A revision bump can come from filling in a previously-missing field
+// (started_at_utc, a plate-key upgrade, ...) as easily as from an actual
+// correction to what the ride cost or how far/long it was. Riders should
+// only see "Corrected" for the latter. trip_revisions already snapshots the
+// fare/currency/distance/duration a trip held at each past revision (see
+// reviseTrip above), so the substantive history of a trip is exactly the
+// chain of those snapshots followed by its current values — no new storage
+// needed. A trip is "corrected" only if some step in that chain replaced a
+// non-null value with a different non-null value: a null -> value fill-in
+// never counts, matching what reviseTrip already guarantees (a column is
+// only ever touched, and thus only ever snapshotted differently, when the
+// incoming receipt actually supplied a new value for it).
+const SUBSTANTIVE_REVISION_FIELDS = ['fare_amount_cents', 'currency', 'distance', 'duration_minutes'];
+
+function hasSubstantiveCorrection(trip, orderedSnapshots) {
+  if (trip.revision <= 1) return false;
+  const chain = [...orderedSnapshots, trip];
+  for (let i = 1; i < chain.length; i++) {
+    for (const field of SUBSTANTIVE_REVISION_FIELDS) {
+      const was = chain[i - 1][field], now = chain[i][field];
+      if (was != null && now != null && was !== now) return true;
+    }
+  }
+  return false;
+}
+
+async function loadRevisionSnapshotsByTrip(sql, tripIds) {
+  const byTrip = new Map();
+  if (!tripIds.length) return byTrip;
+  const placeholders = tripIds.map(() => '?').join(',');
+  const result = await sql.prepare(`
+    SELECT trip_id, revision, fare_amount_cents, currency, distance, duration_minutes
+    FROM trip_revisions WHERE trip_id IN (${placeholders})
+    ORDER BY trip_id, revision ASC
+  `).bind(...tripIds).all();
+  for (const row of (result.results || [])) {
+    if (!byTrip.has(row.trip_id)) byTrip.set(row.trip_id, []);
+    byTrip.get(row.trip_id).push(row);
+  }
+  return byTrip;
+}
+
 // The whitelist of what ride history can ever expose. Deliberately absent:
 // pickup/dropoff addresses, pickup/dropoff times, payment details,
 // passenger name, receipt hashes, message ids, raw receipt content.
@@ -206,8 +248,12 @@ async function getTripsPage(sql, userId, { limit, offset }) {
     `).bind(userId)
   ]);
 
+  const tripRows = rows.results || [];
+  const revisedTripIds = tripRows.filter(r => r.revision > 1).map(r => r.id);
+  const snapshotsByTrip = await loadRevisionSnapshotsByTrip(sql, revisedTripIds);
+
   return {
-    trips: (rows.results || []).map(r => ({
+    trips: tripRows.map(r => ({
       id: r.id,
       ride_date: r.ride_date,
       city: r.service_area,
@@ -221,6 +267,7 @@ async function getTripsPage(sql, userId, { limit, offset }) {
       vehicle_plate: r.vehicle_plate,
       source: r.source,
       revision: r.revision,
+      corrected: hasSubstantiveCorrection(r, snapshotsByTrip.get(r.id) || []),
       status: rideReviewState(r.submission_status)
     })),
     total: total.results?.[0]?.n ?? 0
@@ -397,7 +444,15 @@ async function getUserProfile(sql, userId) {
              MIN(t.ride_date) AS first_ride_date, MAX(t.ride_date) AS last_ride_date,
              SUM(t.distance) AS total_distance, AVG(t.distance) AS avg_distance,
              COUNT(t.distance) AS rides_with_distance, MAX(t.distance) AS longest_ride_distance,
-             COUNT(DISTINCT t.robotaxi_vehicle_id) AS unique_vehicles
+             COUNT(DISTINCT t.robotaxi_vehicle_id) AS unique_vehicles,
+             SUM(t.duration_minutes) AS total_duration_minutes, AVG(t.duration_minutes) AS avg_duration_minutes,
+             COUNT(t.duration_minutes) AS rides_with_duration,
+             -- Some durations are computed from pickup/dropoff timestamps rather
+             -- than stated on the receipt (see duration_minutes_derived on trips,
+             -- set in worker/receipt-extraction.js). Free to compute in this same
+             -- query/round trip, so the distinction isn't lost even though the
+             -- SUM/AVG above can't carry it themselves.
+             SUM(CASE WHEN t.duration_minutes IS NOT NULL AND t.duration_minutes_derived = 1 THEN 1 ELSE 0 END) AS rides_with_derived_duration
       ${counted}
     `).bind(userId),
 

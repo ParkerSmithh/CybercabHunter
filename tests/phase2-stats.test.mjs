@@ -4,7 +4,9 @@
 // Run: node tests/phase2-stats.test.mjs
 
 import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
-import { seedRide, seedVehicle, makeCheck } from './helpers/env.mjs';
+import { makeEnv, seedRide, seedVehicle, makeCheck } from './helpers/env.mjs';
+import { receiptBody, eml, inboundMessage, sentAt } from './helpers/receipts.mjs';
+import { handleIncomingEmail } from '../worker/receipt-ingestion.js';
 import { db } from '../worker/db.js';
 
 const t = makeCheck();
@@ -173,6 +175,54 @@ async function run() {
     d1.exec(`DELETE FROM trips WHERE id = 'r1'`);
     p = await db.getUserProfile(d1, 'u1');
     check('a ride is deleted: statistics drop it', p.rideSummary.trip_count === 1 && p.spending[0].totalCents === 900);
+  }
+
+  console.log('11. Time on board: total/average duration, NULL (not zero) when no data, existing stats untouched');
+  {
+    const d1 = world('u1');
+    seedRide(d1, { id: 'r1', duration: 14, fare: 692, distance: 2.8, pickupTime: '08:00', rideDate: '2026-06-01' });
+    seedRide(d1, { id: 'r2', duration: 20, fare: 850, distance: 3.4, pickupTime: '09:00', rideDate: '2026-06-02' });
+    const p = await db.getUserProfile(d1, 'u1');
+    check('total duration sums the two recorded durations', p.rideSummary.total_duration_minutes === 34);
+    check('average duration is the mean of the two', p.rideSummary.avg_duration_minutes === 17);
+    check('both rides fed the duration figures', p.rideSummary.rides_with_duration === 2);
+    check('none of them were derived from timestamps', p.rideSummary.rides_with_derived_duration === 0);
+    check('existing ride count/distance/fare stats are unaffected by the new columns', p.rideSummary.trip_count === 2 && Math.abs(p.rideSummary.total_distance - 6.2) < 1e-9 && p.spending[0].totalCents === 1542);
+  }
+  {
+    const d1 = world('u1');
+    seedRide(d1, { id: 'r1', duration: 14, pickupTime: '08:00', rideDate: '2026-06-01' });
+    seedRide(d1, { id: 'r2', duration: 20, pickupTime: '09:00', rideDate: '2026-06-02' });
+    seedRide(d1, { id: 'r3', duration: null, pickupTime: '10:00', rideDate: '2026-06-03' });
+    const p = await db.getUserProfile(d1, 'u1');
+    check('the NULL-duration ride is excluded from the total (34, not treated as 0)', p.rideSummary.total_duration_minutes === 34);
+    check('the NULL-duration ride is excluded from the average too (17, not 34/3)', p.rideSummary.avg_duration_minutes === 17);
+    check('rides_with_duration says 2 of 3, matching the exclusion', p.rideSummary.rides_with_duration === 2);
+    check('the ride itself is still counted in trip_count even without a duration', p.rideSummary.trip_count === 3);
+  }
+  {
+    const d1 = world('u1');
+    seedRide(d1, { id: 'r1', duration: null, pickupTime: '08:00', rideDate: '2026-06-01' });
+    seedRide(d1, { id: 'r2', duration: null, pickupTime: '09:00', rideDate: '2026-06-02' });
+    const p = await db.getUserProfile(d1, 'u1');
+    check('no duration data anywhere: total is NULL, not 0', p.rideSummary.total_duration_minutes === null);
+    check('no duration data anywhere: average is NULL, not 0', p.rideSummary.avg_duration_minutes === null);
+    check('rides_with_duration is 0', p.rideSummary.rides_with_duration === 0);
+    check('the rides themselves still count', p.rideSummary.trip_count === 2);
+  }
+  {
+    // A duration computed from pickup/dropoff timestamps (no "X min" stated
+    // on the receipt) is real ingestion, not a hand-seeded row — exercises
+    // duration_minutes_derived end to end and confirms the aggregate can
+    // still tell how many of the summed rides were derived vs. stated.
+    const ctx = await makeEnv({ users: ['u1'] });
+    const to = ctx.addressFor('u1');
+    const email = async opts => handleIncomingEmail(inboundMessage(eml({ ...opts, to }), to), ctx.env);
+    await email({ body: receiptBody({ summary: null }), date: sentAt(0) });                         // derived: 13:04->13:18 = 14 min
+    await email({ body: receiptBody({ date: 'June 10, 2026' }), date: sentAt(60) });                 // stated: "14 min" on the summary line
+    const p = await db.getUserProfile(ctx.d1, 'u1');
+    check('both rides contributed to the total (28 minutes)', p.rideSummary.total_duration_minutes === 28);
+    check('exactly one of the two rides had a derived (not receipt-stated) duration', p.rideSummary.rides_with_derived_duration === 1 && p.rideSummary.rides_with_duration === 2);
   }
 
   t.finish();

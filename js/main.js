@@ -173,37 +173,124 @@ const CCC = (() => {
     }, 3200);
   }
 
-  /* ---------------- Sighting drawer (shared across pages) ---------------- */
+  /* ---------------- Sighting drawer (shared across pages) ----------------
+     Real submission as of Phase 3D-B: POST /api/vehicle-sightings
+     (worker/sightings.js), authenticated with the same bearer session
+     Tesla/Google sign-in and the account menu already use (TESLA_SESSION_KEY).
+     Nothing here is written to localStorage any more — the old
+     cybercabCentral.sightings entries some browsers still have from before
+     this change are simply never read or added to by this function again.
+     Submitting a sighting only ever queues it for review; nothing about it
+     is public, and no vehicle is created or changed by it (that trust
+     boundary lives entirely in the backend — see worker/sightings.js). */
+  const SIGHTING_ERROR_MESSAGES = {
+    invalid_license_plate: "That doesn't look like a valid license plate.",
+    invalid_service_area: 'Please enter a city or service area.',
+    invalid_observed_at: "That doesn't look like a valid time.",
+    invalid_body: "That sighting couldn't be submitted — check the fields and try again."
+  };
+
   function initSightingDrawer() {
     const drawer = document.getElementById('sightingDrawer');
     const backdrop = document.getElementById('sightingBackdrop');
     const form = document.getElementById('sightingForm');
-    if (!drawer || !backdrop || !form) return;
+    const signInRequired = document.getElementById('sightingSignInRequired');
+    if (!drawer || !backdrop || !form || !signInRequired) return;
 
     const openBtns = [document.getElementById('openSightingDrawer'), document.getElementById('heroSightingBtn')].filter(Boolean);
     const closeBtn = document.getElementById('closeSightingDrawer');
+    const submitBtn = document.getElementById('sightingSubmitBtn');
+    const serviceAreaField = document.getElementById('sightingServiceArea');
+    const locationField = document.getElementById('sightingLoc');
+    const plateField = document.getElementById('sightingVehicle');
+    let inFlight = false;
 
-    function open() { drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
+    // Re-checked every time the drawer opens (not just once at page load) so
+    // signing in/out between openings is reflected without a page reload.
+    function refreshAuthGate() {
+      const signedIn = !!localStorage.getItem(TESLA_SESSION_KEY);
+      signInRequired.classList.toggle('hidden', signedIn);
+      form.classList.toggle('hidden', !signedIn);
+      return signedIn;
+    }
+
+    function open() { refreshAuthGate(); drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
 
     openBtns.forEach(btn => btn.addEventListener('click', open));
     if (closeBtn) closeBtn.addEventListener('click', close);
     backdrop.addEventListener('click', close);
 
-    form.addEventListener('submit', (e) => {
+    function setSubmitting(submitting) {
+      inFlight = submitting;
+      submitBtn.disabled = submitting;
+      submitBtn.textContent = submitting ? 'Submitting…' : 'Log Sighting';
+    }
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const type = document.getElementById('sightingType').value;
-      const loc = document.getElementById('sightingLoc').value.trim();
-      const vehicle = document.getElementById('sightingVehicle').value.trim() || 'Unlisted';
-      if (!loc) return;
-      const entry = { id: 'u' + Date.now(), vehicle, loc, time: 'Just now', type, verified: false };
-      const stored = storage.get('sightings', []);
-      stored.unshift(entry);
-      storage.set('sightings', stored);
+      if (inFlight) return; // guards a double-click/rapid-repeat submit
+
+      // The authoritative check is always the sessionId read fresh right
+      // here — refreshAuthGate() at open-time is just the honest UI state;
+      // this covers a sign-out that happened while the drawer was open.
+      const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+      if (!sessionId) { refreshAuthGate(); return; }
+
+      const serviceArea = serviceAreaField.value.trim();
+      if (!serviceArea) return; // required attribute already guards this; defensive backstop only
+
+      const approxLocation = locationField.value.trim();
+      const licensePlate = plateField.value.trim();
+
+      const payload = { service_area: serviceArea };
+      if (approxLocation) payload.approx_location = approxLocation;
+      if (licensePlate) payload.license_plate = licensePlate; // never the old "Unlisted" fallback — missing stays missing
+
+      setSubmitting(true);
+      let resp;
+      try {
+        resp = await fetch(TESLA_WORKER_URL + '/api/vehicle-sightings', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        setSubmitting(false);
+        toast("Couldn't submit the sighting. Please try again.", 'error');
+        return; // entered fields are left exactly as typed
+      }
+
+      let json = null;
+      try { json = await resp.json(); } catch (err) { /* non-JSON body */ }
+      setSubmitting(false);
+
+      if (resp.status === 401) {
+        localStorage.removeItem(TESLA_SESSION_KEY);
+        refreshAuthGate();
+        return;
+      }
+      if (resp.status === 400) {
+        const code = json && json.error;
+        toast((code && SIGHTING_ERROR_MESSAGES[code]) || SIGHTING_ERROR_MESSAGES.invalid_body, 'error');
+        return;
+      }
+      if (resp.status === 413) {
+        toast("That sighting is too large to submit.", 'error');
+        return;
+      }
+      if (!resp.ok) {
+        toast("Couldn't submit the sighting. Please try again.", 'error');
+        return;
+      }
+
+      if (json && json.duplicate) {
+        toast('That sighting was already submitted.', 'info');
+      } else {
+        toast('Sighting submitted for review.', 'success');
+      }
       close();
       form.reset();
-      toast('Sighting logged — thanks for the intel.', 'success');
-      document.dispatchEvent(new CustomEvent('ccc:sighting-added', { detail: entry }));
     });
   }
 

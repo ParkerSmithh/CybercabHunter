@@ -138,6 +138,30 @@ async function run() {
     check('the profile response carries no pickup/dropoff addresses', !/Hanover|NorthPark|pickup_description|dropoff_description/i.test(blob));
   }
 
+  console.log('6b. apiGetProfile.discoveredVehicles stays scoped to the authenticated rider — no other rider\'s identity or ride data leaks in');
+  {
+    const d1 = world(); seedUser(d1, 'user-first'); seedUser(d1, 'user-second');
+    seedVehicle(d1, { id: 'v1', plate: 'XJR2195', model: 'Model Y' });
+    seedRide(d1, {
+      userId: 'user-first', vehicleId: 'v1', createdAt: '2026-06-09 13:00:00',
+      pickupDescription: '4301 Hanover St, Dallas, TX 75225', dropoffDescription: 'NorthPark Center, Dallas'
+    });
+    seedRide(d1, { userId: 'user-second', vehicleId: 'v1', createdAt: '2026-07-01 13:00:00', rideDate: '2026-07-01' });
+
+    const firstResp = await apiGetProfile({}, { cybercabhunter_db: d1 }, 'user-first');
+    const firstBody = await firstResp.json();
+    check("the discovering rider's own response credits them with the vehicle", firstBody.discoveredVehicles.length === 1 && firstBody.discoveredVehicles[0].id === 'v1');
+    check('the entry carries only whitelisted vehicle fields — no user_id, no other rider identity', Object.keys(firstBody.discoveredVehicles[0]).sort().join() === 'color,first_seen_at,id,license_plate,model,service_area,verification_status');
+
+    const secondResp = await apiGetProfile({}, { cybercabhunter_db: d1 }, 'user-second');
+    const secondBody = await secondResp.json();
+    check('a later rider of the same vehicle sees it in neither response as their own discovery', secondBody.discoveredVehicles.length === 0);
+
+    const blob = JSON.stringify(firstBody) + JSON.stringify(secondBody);
+    check('no pickup/dropoff address text leaks through this field either', !/Hanover|NorthPark|pickup_description|dropoff_description/i.test(blob));
+    check("no user id (this rider's or the other rider's) appears in the discovery entries", !/user-first|user-second|"user_id"/i.test(JSON.stringify(firstBody.discoveredVehicles) + JSON.stringify(secondBody.discoveredVehicles)));
+  }
+
   console.log('7. apiGetProfile returns 401 when the user does not exist (mirrors requireUserId failure upstream)');
   {
     const d1 = world();

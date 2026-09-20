@@ -70,7 +70,7 @@
         <div class="h-3 w-72 rounded bg-white/5 mb-3"></div>
         <div class="h-3 w-48 rounded bg-white/5"></div>
       </div>
-      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div class="glass rounded-2xl p-7 h-48 lg:col-span-2 animate-pulse"></div>
         <div class="glass rounded-2xl p-7 h-48 animate-pulse"></div>
       </div>
@@ -171,7 +171,7 @@
         </div>
 
         <!-- Three different facts, kept apart on purpose -->
-        <div class="grid sm:grid-cols-3 gap-4 mb-8" aria-label="Sync status">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8" aria-label="Sync status">
           <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
             <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tesla account</div>
             <div class="flex items-center gap-2"><span id="pillTeslaDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillTeslaLabel" class="text-sm font-semibold">—</span></div>
@@ -189,7 +189,7 @@
           </div>
         </div>
 
-        <div class="grid lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <!-- 1. Forwarding -->
           <div>
             <h3 class="font-display font-bold text-base mb-3"><span class="text-gold mr-1.5">1</span>Forward new receipts</h3>
@@ -204,7 +204,9 @@
                 <code id="fwdAddress" class="flex-1 min-w-0 truncate rounded-lg bg-[#0F141C] border border-[rgba(212,175,55,0.2)] px-3 py-2.5 text-sm text-goldsoft"></code>
                 <button id="fwdCopyBtn" type="button" class="shrink-0 px-3 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Copy</button>
               </div>
-              <p class="text-xs text-slate-500 mb-4">Treat this address like a password — anyone who has it can add rides to your account.</p>
+              <p class="text-xs text-slate-500 mb-2">Treat this address like a password — anyone who has it can add rides to your account.</p>
+              <div id="fwdRotateArea" class="mb-4"></div>
+              <p id="fwdRotateNote" class="hidden text-xs mb-4"></p>
               <p id="fwdDomainNote" class="hidden text-xs text-amber-300/90 mb-4">Receipt email isn't fully switched on for this site yet, so this address can't receive mail. Use the import on the right in the meantime.</p>
 
               <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5 mb-4">
@@ -259,7 +261,7 @@
         </div>
       </div>
 
-      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Ride history summary -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
           <h2 class="font-display font-bold text-xl mb-5">Ride History</h2>
@@ -269,6 +271,8 @@
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Total Time</div><div id="rsTotalDuration" class="font-display font-bold text-lg"></div></div>
+              <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Avg Duration</div><div id="rsAvgDuration" class="font-display font-bold text-lg"></div></div>
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Vehicles Ridden</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
               <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
@@ -301,7 +305,7 @@
         <p id="monthlyNote" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
       </div>
 
-      <div class="grid lg:grid-cols-2 gap-6 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Cities -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll">
           <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
@@ -316,6 +320,16 @@
           <div id="vehiclesList" class="space-y-3 text-sm"></div>
           <div id="vehiclesEmpty" class="hidden text-sm text-slate-500">No vehicles identified yet — receipts that show a plate link a ride to a vehicle.</div>
           <p id="vehiclesModels" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
+        </div>
+
+        <!-- Vehicles discovered — a separate, crowdsourced credit: this rider's
+             own counted ride was the EARLIEST one on record for the vehicle.
+             Not a claim of ownership or in-person verification. -->
+        <div class="glass rounded-2xl p-7 reveal-on-scroll">
+          <h2 class="font-display font-bold text-xl mb-1">Vehicles You Discovered</h2>
+          <p class="text-xs text-slate-500 mb-5">Your ride was the first one on record for these vehicles.</p>
+          <div id="discoveredList" class="space-y-3 text-sm"></div>
+          <div id="discoveredEmpty" class="hidden text-sm text-slate-500">No vehicles discovered yet.</div>
         </div>
       </div>
 
@@ -387,22 +401,32 @@
     <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
+  <div id="sightingSignInRequired" class="hidden text-center py-6">
+    <p class="text-sm text-slate-400 mb-5">Sign in to submit a vehicle sighting.</p>
+    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+  </div>
   <form id="sightingForm" class="space-y-5">
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City</label>
-      <select id="sightingType" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
-        <option>Austin</option>
-      </select>
+      <label for="sightingServiceArea" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City / Service Area</label>
+      <input id="sightingServiceArea" required list="sightingServiceAreaOptions" placeholder="e.g. Austin" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <datalist id="sightingServiceAreaOptions">
+        <option value="Austin"></option>
+        <option value="Dallas"></option>
+        <option value="Houston"></option>
+        <option value="San Antonio"></option>
+      </datalist>
     </div>
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location</label>
-      <input id="sightingLoc" required placeholder="e.g. S Congress Ave, Austin, TX" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <label for="sightingLoc" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Approximate Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <input id="sightingLoc" placeholder="e.g. S Congress Ave" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <p class="text-[11px] text-slate-500 mt-1.5">Approximate location — no exact address needed.</p>
     </div>
     <div>
-      <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate #</label>
-      <input id="sightingVehicle" required placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <label for="sightingVehicle" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
-    <button type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Log Sighting</button>
+    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Log Sighting</button>
+    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
   </form>
 </div>
 

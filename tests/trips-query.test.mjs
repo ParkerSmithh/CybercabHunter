@@ -66,7 +66,7 @@ async function run() {
     const body = await list(d1, 'u1');
     const ride = body.trips[0];
     const keys = Object.keys(ride).sort().join();
-    check('exactly the expected fields', keys === 'city,currency,currency_source,distance,distance_unit,duration_derived,duration_minutes,fare_amount_cents,id,revision,ride_date,source,status,vehicle_plate');
+    check('exactly the expected fields', keys === 'city,corrected,currency,currency_source,distance,distance_unit,duration_derived,duration_minutes,fare_amount_cents,id,revision,ride_date,source,status,vehicle_plate');
     const blob = JSON.stringify(body);
     check('no pickup/dropoff address text', !/Hanover|NorthPark|pickup|dropoff/i.test(blob));
     check('no exact ride times', !/13:04|13:18|pickup_time|dropoff_time/i.test(blob));

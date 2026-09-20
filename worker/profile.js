@@ -57,6 +57,14 @@ export async function apiUpdateProfile(request, env, userId) {
   } catch (err) {
     return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
   }
+  // request.json() also accepts any valid JSON value, not just an object —
+  // a literal `null` body parses successfully and then throws on the very
+  // next field access below (TypeError, an uncaught 500), and a bare array
+  // or primitive would silently fall through every `typeof` check and wipe
+  // the rider's settings to defaults. Both are "malformed" for this endpoint.
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
+  }
 
   const displayName = typeof body.display_name === 'string' ? (body.display_name.trim().slice(0, MAX_DISPLAY_NAME) || null) : null;
   const bio = typeof body.bio === 'string' ? (body.bio.trim().slice(0, MAX_BIO) || null) : null;

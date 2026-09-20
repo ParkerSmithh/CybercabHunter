@@ -144,6 +144,21 @@ export async function apiGetIngestionAddress(request, env, userId) {
   return Response.json({ success: true, address: `u_${token}@${domain}`, domain_configured: true });
 }
 
+// Authenticated API: replaces the rider's receipt address with a fresh one
+// (see db.rotateReceiptIngestionAddress) — the mitigation for the address
+// having leaked, since the UI itself warns "treat this address like a
+// password". The old address stops accepting mail from this moment on;
+// existing rides and ingestion history are entirely unaffected, since
+// neither is keyed by the token.
+export async function apiRotateIngestionAddress(request, env, userId) {
+  const token = await db.rotateReceiptIngestionAddress(env.cybercabhunter_db, userId);
+  const domain = env.RECEIPT_DOMAIN;
+  if (!domain) {
+    return Response.json({ success: true, local_part: `u_${token}`, domain_configured: false });
+  }
+  return Response.json({ success: true, address: `u_${token}@${domain}`, domain_configured: true });
+}
+
 // Authenticated API: the rider's own receipt-sync picture. These are three
 // DIFFERENT facts and are reported separately (the Tesla account link is a
 // fourth, reported by /api/me): whether a forwarding address exists, whether

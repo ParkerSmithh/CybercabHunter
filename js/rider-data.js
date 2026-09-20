@@ -18,10 +18,21 @@
   let ridesPage = 1;
   let currentRides = null;      // last rides payload, re-rendered when the confirm prompt toggles
   let pendingDeleteId = null;   // the ride whose inline "Remove this ride?" prompt is open
+  let rotateState = 'idle';     // 'idle' | 'confirm' | 'busy' — the inline "Rotate forwarding address?" prompt
 
   // ---------- formatting ----------
   const fmtInt = n => (n == null ? '—' : Number(n).toLocaleString());
   const fmtMiles = mi => (mi == null ? '—' : Number(mi).toFixed(1) + ' mi');
+  // Minutes for anything under an hour, "1h 18m" style beyond that — never
+  // more precision than the underlying minute-granularity data actually has.
+  function fmtDuration(minutes) {
+    if (minutes == null) return '—';
+    const total = Math.round(Number(minutes));
+    if (!Number.isFinite(total) || total < 0) return '—';
+    if (total < 60) return total + ' min';
+    const h = Math.floor(total / 60), m = total % 60;
+    return `${h}h ${String(m).padStart(2, '0')}m`;
+  }
   function fmtDate(d) {
     if (!d) return '—';
     const dt = new Date(d + 'T00:00:00');
@@ -104,12 +115,16 @@
     $('rsTotalRides').textContent = fmtInt(rs.trip_count);
     $('rsAvgDistance').textContent = fmtMiles(rs.avg_distance);
     $('rsLongest').textContent = fmtMiles(rs.longest_ride_distance);
+    $('rsTotalDuration').textContent = fmtDuration(rs.total_duration_minutes);
+    $('rsAvgDuration').textContent = fmtDuration(rs.avg_duration_minutes);
     $('rsUniqueVehicles').textContent = fmtInt(rs.unique_vehicles);
     $('rsFirstRide').textContent = fmtDate(rs.first_ride_date);
     $('rsLatestRide').textContent = fmtDate(rs.last_ride_date);
 
     const parts = [];
     if (cov.withDistance < cov.rides) parts.push(`Distance recorded for ${cov.withDistance} of ${plural(cov.rides, 'ride')} — average and longest use only those.`);
+    if (cov.withDuration < cov.rides) parts.push(`Duration recorded for ${cov.withDuration} of ${cov.rides} — time on board uses only those.`);
+    if (rs.rides_with_derived_duration > 0) parts.push(`${plural(rs.rides_with_derived_duration, 'duration')} calculated from pickup and dropoff times rather than stated on the receipt.`);
     if (cov.withDate < cov.rides) parts.push(`Date recorded for ${cov.withDate} of ${cov.rides}.`);
     if (cov.withCity < cov.rides) parts.push(`City recorded for ${cov.withCity} of ${cov.rides}.`);
     $('rsCoverage').textContent = parts.join(' ');
@@ -212,6 +227,24 @@
     $('vehiclesModels').textContent = bits.join(' ');
   }
 
+  // Vehicles this rider's OWN counted ride was the earliest on record for
+  // (see the "Crowdsourced concept" comment on this query in
+  // worker/db-rides.js) — a data-provenance credit, not a claim of
+  // ownership or that the rider physically verified the car in person.
+  function renderDiscovered(data) {
+    const list = data.discoveredVehicles;
+    if (!list.length) { show('discoveredEmpty', true); $('discoveredList').innerHTML = ''; return; }
+    show('discoveredEmpty', false);
+    $('discoveredList').innerHTML = list.map(v => `
+      <div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+        <div class="flex items-center justify-between">
+          <span class="font-display font-bold">${esc(v.license_plate || 'Plate unknown')}</span>
+          <span class="text-xs text-slate-500">${esc(fmtDateTime(v.first_seen_at))}</span>
+        </div>
+        <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${v.service_area ? ' · ' + esc(v.service_area) : ''}</div>
+      </div>`).join('');
+  }
+
   function statusPill(dot, label, tone) {
     const colors = { on: 'bg-emerald-400', wait: 'bg-amber-400', off: 'bg-slate-600' };
     $(dot).className = 'w-2 h-2 rounded-full ' + colors[tone];
@@ -265,6 +298,7 @@
         $('fwdCode').textContent = f.confirmation_code;
         $('fwdCodeAt').textContent = 'Received ' + fmtDateTime(f.confirmation_code_received_at);
       }
+      renderRotateArea();
     }
 
     // Receipt sync summary
@@ -312,7 +346,7 @@
       const badges = [];
       if (r.status === 'under_review') badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300 uppercase tracking-wider" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
       if (r.status === 'rejected') badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson uppercase tracking-wider">Rejected</span>');
-      if (r.revision > 1) badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wider" title="Updated by a corrected receipt">Corrected</span>');
+      if (r.corrected) badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wider" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
         <td class="py-3 pr-4 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>
@@ -450,6 +484,31 @@
   }
 
   // ---------- forwarding-address actions ----------
+
+  // Same inline ask/confirm/cancel idiom as removeCell() for a ride — a
+  // plain link that expands into an explicit confirmation in place, never
+  // a one-click destructive action.
+  function renderRotateArea() {
+    const el = $('fwdRotateArea');
+    if (rotateState === 'confirm') {
+      el.innerHTML = `<div class="rounded-lg border border-[rgba(212,175,55,0.2)] p-3">
+        <p class="text-xs text-slate-300 mb-2">Rotate forwarding address? Your current address will stop working immediately. Your existing ride history will not be affected.</p>
+        <button type="button" data-action="confirm-rotate" class="text-xs px-2 py-1 rounded border border-crimson/50 text-crimson hover:bg-crimson/10">Rotate address</button>
+        <button type="button" data-action="cancel-rotate" class="text-xs px-2 py-1 ml-1 rounded border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
+      </div>`;
+    } else {
+      const busy = rotateState === 'busy';
+      el.innerHTML = `<button type="button" data-action="ask-rotate" ${busy ? 'disabled' : ''} class="text-xs text-slate-500 hover:text-crimson underline-offset-2 hover:underline disabled:opacity-50 disabled:pointer-events-none">${busy ? 'Rotating…' : 'Rotate forwarding address'}</button>`;
+    }
+  }
+
+  function showRotateNote(text, ok) {
+    const el = $('fwdRotateNote');
+    el.textContent = text;
+    el.className = 'text-xs mb-4 ' + (ok ? 'text-emerald-400' : 'text-crimson');
+    if (ok) setTimeout(() => show('fwdRotateNote', false), 3000);
+  }
+
   function setupForwarding() {
     $('fwdCopyBtn').addEventListener('click', async () => {
       const text = $('fwdAddress').textContent;
@@ -465,6 +524,51 @@
         await refreshAll(false);
       } catch (e) {
         b.disabled = false; b.textContent = 'Create my forwarding address';
+      }
+    });
+
+    $('fwdRotateArea').addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+
+      if (action === 'ask-rotate') {
+        rotateState = 'confirm';
+        show('fwdRotateNote', false);
+        renderRotateArea();
+      } else if (action === 'cancel-rotate') {
+        rotateState = 'idle';
+        renderRotateArea();
+      } else if (action === 'confirm-rotate') {
+        rotateState = 'busy';
+        renderRotateArea();
+        let resp;
+        try {
+          resp = await api('/api/receipt-ingestion/address/rotate', { method: 'POST' });
+        } catch (err) {
+          // Network failure: nothing on the server changed, so the address
+          // shown here — still the old one, since refreshAll never ran —
+          // is still correct. Only the local confirm state resets.
+          rotateState = 'idle';
+          renderRotateArea();
+          showRotateNote("Couldn't rotate your address — check your connection. Nothing was changed.", false);
+          return;
+        }
+        if (resp.ok) {
+          rotateState = 'idle';
+          // The new address, and the sync status/Gmail-code state that goes
+          // with it, come from the server — refreshAll re-renders all of it
+          // (including resetting this area back to idle) from the same
+          // response every other mutating action here already uses.
+          await refreshAll(false);
+          showRotateNote('New forwarding address issued — your old address no longer works.', true);
+        } else {
+          rotateState = 'idle';
+          renderRotateArea();
+          showRotateNote(resp.status === 401
+            ? 'Your session has expired — sign in again to rotate your address.'
+            : "Couldn't rotate your address — nothing was changed. Try again in a moment.", false);
+        }
       }
     });
   }
@@ -506,6 +610,7 @@
     renderMonthly(data);
     renderCities(data);
     renderVehicles(data);
+    renderDiscovered(data);
     renderSetup(sync.json, me.json);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);

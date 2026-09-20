@@ -1,11 +1,13 @@
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
-import { handleIncomingEmail, apiGetIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
+import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
 import { apiImportReceipts } from './receipt-import.js';
 import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
+import { apiGetVehicle } from './vehicles.js';
+import { apiCreateVehicleSighting } from './sightings.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 
@@ -122,10 +124,24 @@ export default {
       return withCors(await apiDeleteSubmission(request, env, userId, submissionIdMatch[1]), request);
     }
 
+    // Structured JSON sighting submission (worker/sightings.js) — separate
+    // from the file-upload-only /api/submissions above. Phase 3D-A backend
+    // only; not yet called by any frontend (see that file's header).
+    if (url.pathname === '/api/vehicle-sightings' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiCreateVehicleSighting(request, env, userId), request);
+    }
+
     if (url.pathname === '/api/receipt-ingestion/address' && request.method === 'GET') {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetIngestionAddress(request, env, userId), request);
+    }
+    if (url.pathname === '/api/receipt-ingestion/address/rotate' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiRotateIngestionAddress(request, env, userId), request);
     }
 
     if (url.pathname === '/api/trips' && request.method === 'GET') {
@@ -166,6 +182,14 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiUpdateProfile(request, env, userId), request);
+    }
+
+    // Public robotaxi vehicle info (worker/vehicles.js) — deliberately the
+    // only /api/* route with no tesla.requireUserId check. Backs the future
+    // Phase 3C public vehicle page; nothing here is rider-specific.
+    const vehicleIdMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)$/);
+    if (vehicleIdMatch && request.method === 'GET') {
+      return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);
     }
 
     // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API
@@ -211,6 +235,22 @@ export default {
     }
     if (url.pathname === '/api/robotaxi/disconnect' && request.method === 'POST') {
       return withCors(await robotaxiOwnerAuth.apiDisconnect(request, env), request);
+    }
+
+    // Public vehicle page shell (Phase 3C): vehicle.html is ONE static file
+    // that serves every /vehicle/:id — the page itself reads the id from
+    // location.pathname and calls the public GET /api/robotaxi-vehicles/:id
+    // above. No literal file exists at /vehicle/<every possible id>, and this
+    // is otherwise a one-file-per-page static site with no router, so this is
+    // the smallest way to make that URL work when loaded directly: serve
+    // vehicle.html's bytes for the request without a redirect, so the
+    // browser's address bar (and this page's own location.pathname) keep the
+    // real /vehicle/:id URL.
+    const vehiclePageMatch = url.pathname.match(/^\/vehicle\/([^/]+)$/);
+    if (vehiclePageMatch && request.method === 'GET') {
+      const assetUrl = new URL(request.url);
+      assetUrl.pathname = '/vehicle.html';
+      return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
     // Everything else falls through to the static site (same files GitHub Pages serves).
