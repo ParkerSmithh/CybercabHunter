@@ -18,7 +18,6 @@
   let ridesPage = 1;
   let currentRides = null;      // last rides payload, re-rendered when the confirm prompt toggles
   let pendingDeleteId = null;   // the ride whose inline "Remove this ride?" prompt is open
-  let rotateState = 'idle';     // 'idle' | 'confirm' | 'busy' — the inline "Rotate forwarding address?" prompt
 
   // ---------- formatting ----------
   const fmtInt = n => (n == null ? '—' : Number(n).toLocaleString());
@@ -245,82 +244,6 @@
       </div>`).join('');
   }
 
-  function statusPill(dot, label, tone) {
-    const colors = { on: 'bg-emerald-400', wait: 'bg-amber-400', off: 'bg-slate-600' };
-    $(dot).className = 'w-2 h-2 rounded-full ' + colors[tone];
-    $(label).textContent = '';
-  }
-
-  function renderSetup(sync, me) {
-    const f = sync.forwarding, rs = sync.receipt_sync;
-
-    // Pill 1 — the Tesla account link. Vehicle information only.
-    const linked = !!(me && me.authenticated && me.tesla && me.tesla.connected);
-    statusPill('pillTeslaDot', 'pillTeslaLabel', linked ? 'on' : 'off');
-    $('pillTeslaLabel').textContent = linked ? 'Connected' : 'Not connected';
-
-    // Pill 2 — forwarding. Never "active" until mail has actually arrived.
-    if (!f.address_issued) {
-      statusPill('pillFwdDot', 'pillFwdLabel', 'off');
-      $('pillFwdLabel').textContent = 'Not set up';
-      $('pillFwdNote').textContent = 'Create your address to get started.';
-    } else if (!f.receiving) {
-      statusPill('pillFwdDot', 'pillFwdLabel', 'wait');
-      $('pillFwdLabel').textContent = 'Waiting for a receipt';
-      $('pillFwdNote').textContent = 'Address ready — not confirmed until a receipt arrives.';
-    } else {
-      statusPill('pillFwdDot', 'pillFwdLabel', 'on');
-      $('pillFwdLabel').textContent = 'Receiving receipts';
-      $('pillFwdNote').textContent = f.last_received_at ? `Last receipt ${fmtDateTime(f.last_received_at)}` : '';
-    }
-
-    // Pill 3 — rides that have actually come in.
-    const added = rs.totals.added;
-    if (added > 0) {
-      statusPill('pillRidesDot', 'pillRidesLabel', 'on');
-      $('pillRidesLabel').textContent = plural(added, 'ride') + ' added';
-      $('pillRidesNote').textContent = `${rs.rides_from_email} by email · ${rs.rides_from_import} imported${rs.totals.updated ? ` · ${rs.totals.updated} updated` : ''}`;
-    } else {
-      statusPill('pillRidesDot', 'pillRidesLabel', 'off');
-      $('pillRidesLabel').textContent = 'None yet';
-      $('pillRidesNote').textContent = 'Rides appear after your first receipt.';
-    }
-
-    // Address block
-    show('fwdNoAddress', !f.address_issued);
-    show('fwdAddressBlock', f.address_issued);
-    if (f.address_issued) {
-      $('fwdAddress').textContent = f.address || f.local_part;
-      $('fwdAddress').title = f.address || f.local_part;
-      show('fwdDomainNote', !f.domain_configured);
-      show('fwdCodeBox', !!f.confirmation_code);
-      if (f.confirmation_code) {
-        $('fwdCode').textContent = f.confirmation_code;
-        $('fwdCodeAt').textContent = 'Received ' + fmtDateTime(f.confirmation_code_received_at);
-      }
-      renderRotateArea();
-    }
-
-    // Receipt sync summary
-    $('syncProcessed').textContent = fmtInt(rs.totals.processed);
-    $('syncAdded').textContent = fmtInt(rs.totals.added);
-    $('syncUpdated').textContent = fmtInt(rs.totals.updated);
-    $('syncDuplicates').textContent = fmtInt(rs.totals.duplicates);
-    $('syncReview').textContent = fmtInt(rs.under_review);
-    $('syncErrors').textContent = fmtInt(rs.totals.errors);
-    $('syncLastRun').textContent = rs.last_run
-      ? `Last ${rs.last_run.source === 'receipt_email' ? 'email' : 'import'}: ${fmtDateTime(rs.last_run.finished_at || rs.last_run.started_at)}`
-      : 'No receipts processed yet';
-    const rejectedTotal = rs.totals.rejected;
-    const noteParts = [];
-    if (rs.under_review > 0) noteParts.push(`${plural(rs.under_review, 'ride')} ${rs.under_review === 1 ? 'needs' : 'need'} review (kept, but not counted in your stats). You can remove ${rs.under_review === 1 ? 'it' : 'them'} from Ride history below.`);
-    const unreadable = rs.not_added_unreadable || 0;
-    if (unreadable > 0) noteParts.push(`${plural(unreadable, 'receipt')} ${unreadable === 1 ? 'was' : 'were'} not added because ${unreadable === 1 ? 'its' : 'their'} date or pickup time could not be read.`);
-    if (rejectedTotal > 0) noteParts.push(`${plural(rejectedTotal, 'message')} ${rejectedTotal === 1 ? "wasn't" : "weren't"} recognized as ${rejectedTotal === 1 ? 'a Tesla receipt' : 'Tesla receipts'} and ${rejectedTotal === 1 ? 'was' : 'were'} ignored.`);
-    $('syncReviewNote').textContent = noteParts.join(' ');
-    show('syncReviewNote', noteParts.length > 0);
-  }
-
   const SOURCE_LABELS = { receipt_email: 'Email receipt', receipt_import: 'Imported receipt' };
 
   // A ride is removed only after an inline confirmation. The id comes from the
@@ -418,161 +341,6 @@
     }
   }
 
-  // ---------- the import panel ----------
-  const OUTCOME_TEXT = {
-    created: 'Added', updated: 'Updated an existing ride', duplicate: 'Already had it',
-    rejected: "Didn't look like a Tesla receipt", error: 'Could not be read',
-    unidentified: "Not added — the ride date or pickup time couldn't be read"
-  };
-
-  function setupImport() {
-    const fileInput = $('importFiles');
-    const button = $('importBtn');
-    const resultBox = $('importResult');
-    let files = [];
-
-    fileInput.addEventListener('change', () => {
-      files = Array.from(fileInput.files || []);
-      $('importFileNames').textContent = files.length ? plural(files.length, 'file') + ' selected' : '';
-    });
-
-    button.addEventListener('click', async () => {
-      const items = [];
-      const pasted = $('importText').value;
-      if (pasted.trim()) items.push({ kind: 'text', content: pasted });
-      for (const f of files) {
-        if (f.size > 2_000_000) { showImportError(`"${f.name}" is too large to import (limit about 2 MB).`); return; }
-        items.push({ kind: 'eml', content: await f.text() });
-      }
-      if (!items.length) { showImportError('Paste a receipt or choose a .eml file first.'); return; }
-      if (items.length > 25) { showImportError('Import up to 25 receipts at a time.'); return; }
-
-      button.disabled = true; button.textContent = 'Importing…';
-      try {
-        const r = await api('/api/rides/import', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items })
-        });
-        if (!r.ok) throw new Error(r.json && r.json.error || 'import_failed');
-        renderImportResult(r.json);
-        $('importText').value = ''; fileInput.value = ''; files = []; $('importFileNames').textContent = '';
-        await refreshAll(false);
-      } catch (e) {
-        showImportError("The import didn't go through. Check your connection and try again.");
-      } finally {
-        button.disabled = false; button.textContent = 'Import receipts';
-      }
-    });
-
-    function showImportError(msg) {
-      resultBox.classList.remove('hidden');
-      resultBox.innerHTML = `<p class="text-crimson">${esc(msg)}</p>`;
-    }
-
-    function renderImportResult(res) {
-      const r = res.run;
-      const lines = res.results.map((it, i) => {
-        const label = OUTCOME_TEXT[it.outcome] || it.outcome;
-        let extra = it.review_status === 'needs_review' && (it.outcome === 'created' || it.outcome === 'updated') ? ' — needs review, not counted yet' : '';
-        // The receipt matched a ride you already have but differed, and it couldn't be shown to be newer.
-        if (it.outcome === 'duplicate' && it.reason === 'kept_existing_values') extra = " — differs from the ride you have, and it can't be confirmed as newer, so your existing values were kept";
-        const when = it.ride_date ? ` (${fmtDate(it.ride_date)})` : '';
-        return `<li class="text-slate-400">Receipt ${i + 1}: <span class="text-slate-200">${esc(label)}</span>${esc(when)}${esc(extra)}</li>`;
-      }).join('');
-      resultBox.classList.remove('hidden');
-      resultBox.innerHTML = `<p class="mb-2 text-slate-200">Processed ${r.processed}: ${r.added} added, ${r.updated} updated, ${r.duplicates} already had, ${r.needs_review} need review, ${r.rejected} not recognized, ${r.errors} errors.</p><ul class="space-y-1 text-xs">${lines}</ul>`;
-    }
-  }
-
-  // ---------- forwarding-address actions ----------
-
-  // Same inline ask/confirm/cancel idiom as removeCell() for a ride — a
-  // plain link that expands into an explicit confirmation in place, never
-  // a one-click destructive action.
-  function renderRotateArea() {
-    const el = $('fwdRotateArea');
-    if (rotateState === 'confirm') {
-      el.innerHTML = `<div class="rounded-lg border border-[rgba(212,175,55,0.2)] p-3">
-        <p class="text-xs text-slate-300 mb-2">Rotate forwarding address? Your current address will stop working immediately. Your existing ride history will not be affected.</p>
-        <button type="button" data-action="confirm-rotate" class="text-xs px-2 py-1 rounded border border-crimson/50 text-crimson hover:bg-crimson/10">Rotate address</button>
-        <button type="button" data-action="cancel-rotate" class="text-xs px-2 py-1 ml-1 rounded border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
-      </div>`;
-    } else {
-      const busy = rotateState === 'busy';
-      el.innerHTML = `<button type="button" data-action="ask-rotate" ${busy ? 'disabled' : ''} class="text-xs text-slate-500 hover:text-crimson underline-offset-2 hover:underline disabled:opacity-50 disabled:pointer-events-none">${busy ? 'Rotating…' : 'Rotate forwarding address'}</button>`;
-    }
-  }
-
-  function showRotateNote(text, ok) {
-    const el = $('fwdRotateNote');
-    el.textContent = text;
-    el.className = 'text-xs mb-4 ' + (ok ? 'text-emerald-400' : 'text-crimson');
-    if (ok) setTimeout(() => show('fwdRotateNote', false), 3000);
-  }
-
-  function setupForwarding() {
-    $('fwdCopyBtn').addEventListener('click', async () => {
-      const text = $('fwdAddress').textContent;
-      try { await navigator.clipboard.writeText(text); $('fwdCopyBtn').textContent = 'Copied'; }
-      catch (e) { $('fwdCopyBtn').textContent = 'Select & copy'; }
-      setTimeout(() => { $('fwdCopyBtn').textContent = 'Copy'; }, 1800);
-    });
-    $('fwdCreateBtn').addEventListener('click', async () => {
-      const b = $('fwdCreateBtn'); b.disabled = true; b.textContent = 'Creating…';
-      try {
-        const r = await api('/api/receipt-ingestion/address');
-        if (!r.ok) throw new Error('address');
-        await refreshAll(false);
-      } catch (e) {
-        b.disabled = false; b.textContent = 'Create my forwarding address';
-      }
-    });
-
-    $('fwdRotateArea').addEventListener('click', async e => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn) return;
-      const action = btn.dataset.action;
-
-      if (action === 'ask-rotate') {
-        rotateState = 'confirm';
-        show('fwdRotateNote', false);
-        renderRotateArea();
-      } else if (action === 'cancel-rotate') {
-        rotateState = 'idle';
-        renderRotateArea();
-      } else if (action === 'confirm-rotate') {
-        rotateState = 'busy';
-        renderRotateArea();
-        let resp;
-        try {
-          resp = await api('/api/receipt-ingestion/address/rotate', { method: 'POST' });
-        } catch (err) {
-          // Network failure: nothing on the server changed, so the address
-          // shown here — still the old one, since refreshAll never ran —
-          // is still correct. Only the local confirm state resets.
-          rotateState = 'idle';
-          renderRotateArea();
-          showRotateNote("Couldn't rotate your address — check your connection. Nothing was changed.", false);
-          return;
-        }
-        if (resp.ok) {
-          rotateState = 'idle';
-          // The new address, and the sync status/Gmail-code state that goes
-          // with it, come from the server — refreshAll re-renders all of it
-          // (including resetting this area back to idle) from the same
-          // response every other mutating action here already uses.
-          await refreshAll(false);
-          showRotateNote('New forwarding address issued — your old address no longer works.', true);
-        } else {
-          rotateState = 'idle';
-          renderRotateArea();
-          showRotateNote(resp.status === 401
-            ? 'Your session has expired — sign in again to rotate your address.'
-            : "Couldn't rotate your address — nothing was changed. Try again in a moment.", false);
-        }
-      }
-    });
-  }
-
   // ---------- Tesla unlink (vehicle-info connection only) ----------
   function setupUnlink() {
     const btn = $('teslaUnlinkBtn');
@@ -587,10 +355,10 @@
   // ---------- load ----------
   async function refreshAll(showSkeleton) {
     if (showSkeleton) setView('loading');
-    let profile, me, sync, rides;
+    let profile, me, rides;
     try {
-      [profile, me, sync, rides] = await Promise.all([
-        api('/api/profile'), api('/api/me'), api('/api/rides/sync-status'), api(`/api/trips?page=${ridesPage}&page_size=${PAGE_SIZE}`)
+      [profile, me, rides] = await Promise.all([
+        api('/api/profile'), api('/api/me'), api(`/api/trips?page=${ridesPage}&page_size=${PAGE_SIZE}`)
       ]);
     } catch (e) {
       // Network failure: the request never completed. That is an ERROR, not "signed out".
@@ -598,8 +366,8 @@
     }
 
     if (profile.status === 401) { setView('signedOut'); return; }
-    if (!profile.ok || !sync.ok || !rides.ok) {
-      $('dataErrorDetail').textContent = `The server had a problem (code ${profile.ok ? (sync.ok ? rides.status : sync.status) : profile.status}). You're still signed in — your data is safe. Try again in a moment.`;
+    if (!profile.ok || !rides.ok) {
+      $('dataErrorDetail').textContent = `The server had a problem (code ${profile.ok ? rides.status : profile.status}). You're still signed in — your data is safe. Try again in a moment.`;
       setView('error'); return;
     }
 
@@ -611,7 +379,6 @@
     renderCities(data);
     renderVehicles(data);
     renderDiscovered(data);
-    renderSetup(sync.json, me.json);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
     show('dataUnlinkTeslaPrompt', !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected));
@@ -620,7 +387,7 @@
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupImport(); setupForwarding(); setupUnlink(); setupRideActions();
+    setupUnlink(); setupRideActions();
     $('dataRetry').addEventListener('click', () => refreshAll(true));
     $('ridesPrev').addEventListener('click', () => loadRides(ridesPage - 1));
     $('ridesNext').addEventListener('click', () => loadRides(ridesPage + 1));

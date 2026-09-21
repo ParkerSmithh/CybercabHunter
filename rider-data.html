@@ -160,105 +160,7 @@
       <!-- No counted rides yet -->
       <div id="dataEmptyNotice" class="hidden reveal-on-scroll mb-8 rounded-2xl border border-[rgba(212,175,55,0.25)] bg-[rgba(212,175,55,0.05)] p-6">
         <div class="font-display font-bold text-base mb-1">No rides are counted yet</div>
-        <p id="dataEmptyDetail" class="text-slate-400 text-sm leading-relaxed">Forward a Tesla Robotaxi receipt to your private address below, or import an old one, and your first ride will appear here.</p>
-      </div>
-
-      <!-- Get your rides in -->
-      <div id="receiptSetup" class="glass rounded-2xl p-7 lg:p-8 reveal-on-scroll mb-8">
-        <div class="mb-6">
-          <h2 class="font-display font-bold text-xl mb-1">Get your rides in</h2>
-          <p class="text-sm text-slate-400 max-w-3xl">Cybercab Hunter builds your rider data from your Tesla Robotaxi <span class="text-slate-300">receipts</span>. Tesla doesn't offer a ride-history connection we can use, so nothing syncs from your Tesla account — receipts are how rides arrive.</p>
-        </div>
-
-        <!-- Three different facts, kept apart on purpose -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8" aria-label="Sync status">
-          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
-            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tesla account</div>
-            <div class="flex items-center gap-2"><span id="pillTeslaDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillTeslaLabel" class="text-sm font-semibold">—</span></div>
-            <p class="text-xs text-slate-500 mt-1.5">Vehicle information only. Not a source of rides.</p>
-          </div>
-          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
-            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Receipt forwarding</div>
-            <div class="flex items-center gap-2"><span id="pillFwdDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillFwdLabel" class="text-sm font-semibold">—</span></div>
-            <p id="pillFwdNote" class="text-xs text-slate-500 mt-1.5"></p>
-          </div>
-          <div class="rounded-xl border border-[rgba(212,175,55,0.12)] p-4">
-            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Rides received</div>
-            <div class="flex items-center gap-2"><span id="pillRidesDot" class="w-2 h-2 rounded-full bg-slate-600"></span><span id="pillRidesLabel" class="text-sm font-semibold">—</span></div>
-            <p id="pillRidesNote" class="text-xs text-slate-500 mt-1.5"></p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- 1. Forwarding -->
-          <div>
-            <h3 class="font-display font-bold text-base mb-3"><span class="text-gold mr-1.5">1</span>Forward new receipts</h3>
-
-            <div id="fwdNoAddress" class="hidden">
-              <p class="text-sm text-slate-400 mb-3">Get a private address that only you can send rides to.</p>
-              <button id="fwdCreateBtn" type="button" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Create my forwarding address</button>
-            </div>
-
-            <div id="fwdAddressBlock" class="hidden">
-              <div class="flex items-stretch gap-2 mb-2">
-                <code id="fwdAddress" class="flex-1 min-w-0 truncate rounded-lg bg-[#0F141C] border border-[rgba(212,175,55,0.2)] px-3 py-2.5 text-sm text-goldsoft"></code>
-                <button id="fwdCopyBtn" type="button" class="shrink-0 px-3 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Copy</button>
-              </div>
-              <p class="text-xs text-slate-500 mb-2">Treat this address like a password — anyone who has it can add rides to your account.</p>
-              <div id="fwdRotateArea" class="mb-4"></div>
-              <p id="fwdRotateNote" class="hidden text-xs mb-4"></p>
-              <p id="fwdDomainNote" class="hidden text-xs text-amber-300/90 mb-4">Receipt email isn't fully switched on for this site yet, so this address can't receive mail. Use the import on the right in the meantime.</p>
-
-              <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5 mb-4">
-                <li>Easiest: open a Tesla Robotaxi receipt and <span class="text-slate-300">forward</span> it to the address above.</li>
-                <li>To automate it in Gmail: <span class="text-slate-300">Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</span>, and enter the address above.</li>
-                <li>Gmail sends a confirmation code to that address. It will appear right here — enter it in Gmail to switch forwarding on.</li>
-                <li>Then create a filter for mail from <span class="text-slate-300">robotaxi@tesla.com</span> and choose <span class="text-slate-300">Forward it to</span> your address.</li>
-              </ol>
-
-              <div id="fwdCodeBox" class="hidden rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] p-4 mb-4">
-                <div class="text-xs text-slate-400 mb-1">Gmail confirmation code</div>
-                <div id="fwdCode" class="font-display font-bold text-2xl tracking-widest text-goldsoft"></div>
-                <div id="fwdCodeAt" class="text-xs text-slate-500 mt-1"></div>
-              </div>
-
-              <p class="text-xs text-slate-500">Forwarding isn't confirmed until your first receipt actually arrives — setting it up in Gmail alone doesn't count.</p>
-            </div>
-          </div>
-
-          <!-- 2. Import -->
-          <div>
-            <h3 class="font-display font-bold text-base mb-3"><span class="text-gold mr-1.5">2</span>Import old receipts</h3>
-            <p class="text-sm text-slate-400 mb-3">Paste the text of a receipt, or choose saved <span class="text-slate-300">.eml</span> files. They go through exactly the same checks as forwarded email, so importing a ride you've already received won't create a duplicate.</p>
-            <textarea id="importText" rows="5" placeholder="Paste a Tesla Robotaxi receipt here…" class="w-full bg-[#0F141C] border border-[rgba(212,175,55,0.2)] rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-gold resize-y mb-3"></textarea>
-            <div class="flex items-center gap-3 flex-wrap">
-              <label class="cursor-pointer text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">
-                Choose .eml files
-                <input id="importFiles" type="file" accept=".eml,message/rfc822" multiple class="hidden">
-              </label>
-              <span id="importFileNames" class="text-xs text-slate-500"></span>
-              <button id="importBtn" type="button" class="btn-magnetic ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-40 disabled:cursor-not-allowed">Import receipts</button>
-            </div>
-            <div id="importResult" class="hidden mt-4 rounded-xl border border-[rgba(212,175,55,0.12)] p-4 text-sm" aria-live="polite"></div>
-          </div>
-        </div>
-
-        <!-- Receipt sync summary -->
-        <div class="mt-8 pt-6 border-t border-[rgba(212,175,55,0.12)]">
-          <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <h3 class="font-display font-bold text-base">Receipt sync</h3>
-            <span id="syncLastRun" class="text-xs text-slate-500"></span>
-          </div>
-          <div class="grid grid-cols-3 sm:grid-cols-6 gap-4 text-sm">
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Processed</div><div id="syncProcessed" class="font-display font-bold text-lg">0</div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Added</div><div id="syncAdded" class="font-display font-bold text-lg">0</div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Updated</div><div id="syncUpdated" class="font-display font-bold text-lg">0</div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Duplicates ignored</div><div id="syncDuplicates" class="font-display font-bold text-lg">0</div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">To review</div><div id="syncReview" class="font-display font-bold text-lg">0</div></div>
-            <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Errors</div><div id="syncErrors" class="font-display font-bold text-lg">0</div></div>
-          </div>
-          <p id="syncReviewNote" class="hidden text-xs text-slate-500 mt-3"></p>
-        </div>
+        <p id="dataEmptyDetail" class="text-slate-400 text-sm leading-relaxed">Once a Tesla Robotaxi receipt is received, your first ride will appear here.</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -339,7 +241,7 @@
           <h2 class="font-display font-bold text-xl">Your Rides</h2>
           <span id="ridesTotal" class="text-xs text-slate-500"></span>
         </div>
-        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Forward or import a receipt above and it will show up here.</div>
+        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received.</div>
         <div id="ridesTableWrap" class="hidden overflow-x-auto">
           <table class="w-full text-sm">
             <thead>

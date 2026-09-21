@@ -71,11 +71,10 @@ async function run() {
     // A legacy-style ride with no date/pickup time: it can never be matched by a later receipt.
     seedRide(ctx.d1, { id: 'legacy', status: 'needs_review', rideDate: null, pickupTime: null, distance: null });
     const page = await openPage(ctx, 'u1');
-    const shown = [page.text('dataEmptyDetail'), page.text('syncReviewNote'), page.text('heroNote')].join(' | ');
+    const shown = [page.text('dataEmptyDetail'), page.text('heroNote')].join(' | ');
     check('the empty-state text says the ride is not counted', /not counted/i.test(page.text('dataEmptyDetail')));
     check('it points the rider at removal', /remove it from Ride history/i.test(page.text('dataEmptyDetail')));
     check('the old promise ("clearer copy … will update") is gone from every message', !/clearer copy|will update/i.test(shown));
-    check('the sync note says the ride needs review, is not counted, and can be removed', /1 ride needs review/.test(page.text('syncReviewNote')) && /not counted/.test(page.text('syncReviewNote')) && /remove it/i.test(page.text('syncReviewNote')));
     check('plural grammar', await (async () => {
       seedRide(ctx.d1, { id: 'legacy2', status: 'needs_review', rideDate: null, pickupTime: null });
       const p2 = await openPage(ctx, 'u1');
@@ -88,8 +87,7 @@ async function run() {
     const ctx = await makeApp();
     await ctx.email('u1', { body: receiptBody({ date: '9 June 2026' }), date: sentAt(0) });
     const page = await openPage(ctx, 'u1');
-    check('the sync note says 1 receipt was not added because its date or pickup time could not be read', /1 receipt was not added because its date or pickup time could not be read/.test(page.text('syncReviewNote')));
-    check('no ride row and no under-review ride exist', page.rows().length === 0 && page.text('syncReview') === '0');
+    check('no ride row and no under-review ride exist', page.rows().length === 0 && !/under review/i.test(page.text('heroNote')));
     check('the rider is told nothing counted yet', page.visible('dataEmptyNotice') && page.text('heroRideCount') === '0');
   }
 
@@ -100,7 +98,7 @@ async function run() {
     await ctx.email('u1', { from: 'rider@example.com', subject: 'r', body: receiptBody({ date: 'June 10, 2026', fare: null, summary: null }), date: sentAt(1) }); // needs_review
     const page = await openPage(ctx, 'u1');
     check('two rides listed, each with a Remove button', page.rows().length === 2 && page.rows().every(r => r.querySelector('button[data-action="ask-remove"]')));
-    check('one is counted and one is under review', page.text('heroRideCount') === '1' && page.text('syncReview') === '1');
+    check('one is counted and one is under review', page.text('heroRideCount') === '1' && page.rows().filter(r => /Under review/.test(r.textContent)).length === 1);
 
     page.click(removeBtn(page, 0));
     check('clicking Remove asks for confirmation instead of deleting', /Remove this ride\?/.test(page.rows()[0].textContent) && tripsOf(ctx, 'u1').length === 2);
@@ -127,7 +125,7 @@ async function run() {
     check('exactly one DELETE, to that ride\'s id, with the rider\'s bearer session', del.length === 1 && del[0].path === `/api/trips/${reviewId}` && del[0].auth === 'Bearer session-u1');
     check('the ride is gone from the database', !tripsOf(ctx, 'u1').includes(reviewId) && tripsOf(ctx, 'u1').length === 1);
     check('the counted ride is untouched and still counted', page.text('heroRideCount') === '1' && !/Under review/.test(page.rows()[0].textContent));
-    check('the under-review figures and note refreshed', page.text('syncReview') === '0' && !/needs review/.test(page.text('syncReviewNote')));
+    check('the under-review figures and note refreshed', !page.rows().some(r => /Under review/.test(r.textContent)) && !/under review/i.test(page.text('heroNote')));
     check('no error is shown', !page.visible('ridesActionError'));
 
     // Remove the last ride: the empty state appears.
@@ -276,85 +274,19 @@ async function run() {
     check('the "Corrected" badge survives a later metadata-only revision', page.rows().length === 1 && /Corrected/.test(page.rows()[0].textContent));
   }
 
-  console.log('Rotate forwarding address (UI). Present for a rider with an address, and requires explicit confirmation');
+  console.log('Receipt setup block removed. The page no longer offers forwarding-address or import controls');
   {
     const ctx = await makeApp();
     await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
+    const addr = ctx.addressFor('u1');
     const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('fwdAddressBlock'), 'address block to render');
-
-    const askBtn = () => page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]');
-    check('the rotate action is present for an authenticated rider with an address', !!askBtn() && /Rotate forwarding address/.test(askBtn().textContent));
-
-    const oldAddress = page.text('fwdAddress');
-    check('precondition: an address is displayed', oldAddress.length > 0);
-
-    page.click(askBtn());
-    check('clicking it asks for confirmation instead of rotating immediately', /Rotate forwarding address\?/.test(page.text('fwdRotateArea')) && !page.requests.some(r => r.path.includes('/rotate')));
-    check('the confirmation explains the consequence in brief', /stop working immediately/i.test(page.text('fwdRotateArea')) && /existing ride history will not be affected/i.test(page.text('fwdRotateArea')));
-    const cancelBtn = () => page.d.querySelector('#fwdRotateArea button[data-action="cancel-rotate"]');
-    check('a Cancel option is offered', !!cancelBtn());
-
-    page.click(cancelBtn());
-    check('Cancel restores the plain action and sends no request', !!askBtn() && !page.requests.some(r => r.path.includes('/rotate')));
-    check('the address is unchanged after cancelling', page.text('fwdAddress') === oldAddress);
-  }
-
-  console.log('Rotate forwarding address (UI). Confirming rotates: new address shown, old one gone, history untouched');
-  {
-    const ctx = await makeApp();
-    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
-    const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('fwdAddressBlock'), 'address block to render');
-    const oldAddress = page.text('fwdAddress');
-    const ridesBefore = page.rows().length;
-    const heroBefore = page.text('heroRideCount');
-
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]'));
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="confirm-rotate"]'));
-    const rotateReq = () => page.requests.find(r => r.method === 'POST' && r.path === '/api/receipt-ingestion/address/rotate');
-    await page.waitFor(() => !!rotateReq(), 'the rotate request to be sent');
-    check("confirming sends exactly one POST to the rotate endpoint, with the rider's bearer session", !!rotateReq() && rotateReq().auth === 'Bearer session-u1');
-
-    await page.waitFor(() => page.text('fwdAddress') !== oldAddress, 'the displayed address to change');
-    const newAddress = page.text('fwdAddress');
-    check('the displayed address changed to a new one', newAddress.length > 0 && newAddress !== oldAddress);
-    check('the OLD address is no longer shown anywhere on the page', !page.d.body.textContent.includes(oldAddress));
-    check('a concise success message is shown', /new forwarding address issued/i.test(page.text('fwdRotateNote')));
-    check('the prompt collapses back to the plain action, not stuck mid-flow', !!page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]'));
-    check('existing ride history is unaffected by rotating', page.rows().length === ridesBefore && page.text('heroRideCount') === heroBefore);
-
-    // The old address is really dead server-side, not just relabeled client-side.
-    const tripsBefore = tripsOf(ctx, 'u1').length;
-    await handleIncomingEmail(inboundMessage(eml({ body: receiptBody({ date: 'June 10, 2026' }), date: sentAt(60), to: oldAddress }), oldAddress), ctx.env);
-    check('mail to the old address no longer creates a ride', tripsOf(ctx, 'u1').length === tripsBefore);
-  }
-
-  console.log('Rotate forwarding address (UI). Failure keeps the old address and reports a clean error, never backend detail');
-  {
-    const ctx = await makeApp();
-    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
-    const isRotate = (path, init) => path === '/api/receipt-ingestion/address/rotate' && init.method === 'POST';
-
-    let page = await openPage(ctx, 'u1', (path, init) => (isRotate(path, init) ? new Response('{"success":false}', { status: 500 }) : null));
-    await page.waitFor(() => page.visible('fwdAddressBlock'), 'address block to render');
-    const oldAddress = page.text('fwdAddress');
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]'));
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="confirm-rotate"]'));
-    await page.waitFor(() => /Couldn't rotate/i.test(page.text('fwdRotateNote')), 'error message');
-    check('a server error is shown without exposing backend exception detail', /Couldn't rotate your address/i.test(page.text('fwdRotateNote')) && !/500|Error:|stack|exception/i.test(page.text('fwdRotateNote')));
-    check('the OLD address is still displayed — nothing changed', page.text('fwdAddress') === oldAddress);
-    check('the action returns to the plain state, not stuck mid-flow', !!page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]'));
-
-    page = await openPage(ctx, 'u1', (path, init) => { if (isRotate(path, init)) throw new TypeError('network down'); return null; });
-    await page.waitFor(() => page.visible('fwdAddressBlock'), 'address block to render');
-    const oldAddress2 = page.text('fwdAddress');
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="ask-rotate"]'));
-    page.click(page.d.querySelector('#fwdRotateArea button[data-action="confirm-rotate"]'));
-    await page.waitFor(() => /check your connection/i.test(page.text('fwdRotateNote')), 'network error message');
-    check('a network failure is reported and the address is unchanged', /check your connection/i.test(page.text('fwdRotateNote')) && page.text('fwdAddress') === oldAddress2);
-
-    check('no rides were affected by either failure', tripsOf(ctx, 'u1').length === 1);
+    const gone = ['receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdCopyBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
+    check('none of the removed elements exist in the page', gone.every(id => page.d.getElementById(id) === null));
+    check('the removed copy is gone', !/Get your rides in|Forward new receipts|Import old receipts|Receipt forwarding|Receipt sync|Choose \.eml files/.test(page.d.body.textContent));
+    check("the rider's forwarding address is not shown anywhere on the page", !page.d.body.textContent.includes(addr) && !/@cybercabhunter\.com/.test(page.d.body.textContent));
+    check('the rest of the page still renders: the ride is listed and counted', page.rows().length === 1 && page.text('heroRideCount') === '1');
+    check('the page no longer requests the receipt sync status', !page.requests.some(r => r.path === '/api/rides/sync-status'));
+    check('the empty-state and ride-list copy no longer point at controls that do not exist', !/private address below|Forward or import a receipt above/i.test(HTML));
   }
 
   console.log('Time on board (UI). Total/average duration render with the site\'s hour/minute formatting; missing data shows —');
