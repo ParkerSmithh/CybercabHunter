@@ -229,7 +229,7 @@ async function run() {
     const script = urls.find(u => /vehicle\.js$/.test(u.pathname));
     check('the page script resolves to the real static file /js/vehicle.js', !!script && script.pathname === '/js/vehicle.js');
     check('the stylesheet resolves to /css/style.css', urls.some(u => u.pathname === '/css/style.css'));
-    check('the header has no "Link Tesla Account" button (it made the shared header wider than a 390px viewport; rider-data.html omits it for the same reason)', !d.getElementById('teslaLinkBtn'));
+    check('the header has no "Link Tesla Account" button (it made the shared header wider than a 390px viewport)', !d.getElementById('teslaLinkBtn'));
   }
 
   t.finish();

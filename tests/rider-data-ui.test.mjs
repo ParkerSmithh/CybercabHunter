@@ -289,6 +289,38 @@ async function run() {
     check('the empty-state and ride-list copy no longer point at controls that do not exist', !/private address below|Forward or import a receipt above/i.test(HTML));
   }
 
+  console.log('Link Tesla Account button. Same header button as the other pages: shown when not linked, hidden when linked');
+  {
+    const CALC = fs.readFileSync(`${ROOT}js/calc.js`, 'utf8');
+    const MAIN = fs.readFileSync(`${ROOT}js/main.js`, 'utf8');
+    const INDEX = fs.readFileSync(`${ROOT}index.html`, 'utf8');
+    const tag = html => (html.match(/<a id="teslaLinkBtn"[^>]*>/) || [''])[0];
+    check('the header has the button, hidden until the script decides (no flash for a linked rider)', /id="teslaLinkBtn"/.test(HTML) && /class="hidden /.test(tag(HTML)));
+    check('it is the identical element the other pages use', tag(HTML) !== '' && tag(HTML) === tag(INDEX));
+    check('it sits in the header, next to the Submit button', /<header[\s\S]*id="teslaLinkBtn"[\s\S]*id="openSightingDrawer"[\s\S]*<\/header>/.test(HTML));
+
+    async function headerButton(session, statusLinked) {
+      const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/rider-data.html', pretendToBeVisual: true });
+      const w = dom.window;
+      w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+      if (session) w.localStorage.setItem('teslaSessionId', session);
+      w.fetch = async url => {
+        const path = String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '');
+        if (path === '/oauth/tesla/status') return new Response(JSON.stringify({ linked: statusLinked }), { status: 200 });
+        return new Response('{}', { status: 401 });
+      };
+      w.eval(`${CALC}\n${MAIN}\nCCC.initTeslaLink();`);
+      await new Promise(r => setTimeout(r, 40));
+      return w.document.getElementById('teslaLinkBtn');
+    }
+    let btn = await headerButton(null, false);
+    check('signed out (no session): the button is shown and starts Tesla linking', !btn.classList.contains('hidden') && /\/oauth\/tesla\/start$/.test(btn.getAttribute('href')) && /Link Tesla Account/.test(btn.textContent));
+    btn = await headerButton('session-u1', false);
+    check('signed in but Tesla not linked: the button is shown', !btn.classList.contains('hidden'));
+    btn = await headerButton('session-u1', true);
+    check('Tesla already linked: the button is hidden', btn.classList.contains('hidden'));
+  }
+
   console.log('Time on board (UI). Total/average duration render with the site\'s hour/minute formatting; missing data shows —');
   {
     const ctx = await makeApp();
