@@ -56,12 +56,35 @@ async function openPage(env, vehicleId, intercept) {
 async function run() {
   console.log('1. Worker routing: /vehicle/:id serves vehicle.html\'s content without a redirect');
   {
-    let fetchedPath = null;
-    const fakeEnv = { ASSETS: { fetch: async req => { fetchedPath = new URL(req.url).pathname; return new Response('<html>vehicle shell</html>', { status: 200, headers: { 'Content-Type': 'text/html' } }); } } };
-    const resp = await worker.fetch(new Request('https://x/vehicle/0c617f6a-969a-4610-8025-f4f2e4f395ea'), fakeEnv, {});
-    check('200, served without a 3xx redirect', resp.status === 200);
-    check('internally requested the vehicle.html asset', fetchedPath === '/vehicle.html');
-    check('the response body is the page shell', (await resp.text()).includes('vehicle shell'));
+    // A stand-in for the real static-assets binding that behaves like Cloudflare's default
+    // html handling ("auto-trailing-slash"): the extensionless path serves the file with a 200,
+    // while the ".html" path is answered with a 307 redirect to the extensionless one. (A stub
+    // that returned the page for ANY path is what let a 307 slip through to production.)
+    const requested = [];
+    const ASSETS = { fetch: async req => {
+      const path = new URL(req.url).pathname;
+      requested.push(path);
+      if (path === '/vehicle') return new Response('<html>vehicle shell</html>', { status: 200, headers: { 'Content-Type': 'text/html' } });
+      if (path === '/vehicle.html') return new Response(null, { status: 307, headers: { Location: new URL('/vehicle', req.url).href } });
+      return new Response('not found', { status: 404 });
+    } };
+    const fakeEnv = { ASSETS };
+    const ids = ['0ac4f010-b852-4ae3-a064-7b2b92b7d6db', '1cda265e-c1e3-4b72-9db4-3ff13a6aeaef', '2412b9ff-c5cc-4dd2-a889-9252e60e9edd', '5b040cd5-4d98-430b-9c38-cae74ed6a691', '0c617f6a-969a-4610-8025-f4f2e4f395ea'];
+    for (const id of ids) {
+      requested.length = 0;
+      const resp = await worker.fetch(new Request(`https://cybercabhunter.com/vehicle/${id}`), fakeEnv, {});
+      check(`/vehicle/${id.slice(0, 8)}…: 200, served without a 3xx redirect and with no Location header`, resp.status === 200 && resp.headers.get('Location') === null);
+      check('it asked the assets for the canonical /vehicle (not /vehicle.html, which redirects)', requested.join() === '/vehicle');
+      check('the response body is the page shell', (await resp.text()).includes('vehicle shell'));
+    }
+    const noRedirectPast = await worker.fetch(new Request('https://cybercabhunter.com/vehicle/0ac4f010-b852-4ae3-a064-7b2b92b7d6db?ref=share'), fakeEnv, {});
+    check('a query string on the page URL does not break it', noRedirectPast.status === 200);
+    const bare = await worker.fetch(new Request('https://cybercabhunter.com/vehicle'), fakeEnv, {});
+    check('the existing /vehicle route still falls through to the static page (200)', bare.status === 200 && (await bare.text()).includes('vehicle shell'));
+    const dotHtml = await worker.fetch(new Request('https://cybercabhunter.com/vehicle.html'), fakeEnv, {});
+    check('/vehicle.html is untouched by the Worker (the assets\' own redirect to /vehicle)', dotHtml.status === 307 && dotHtml.headers.get('Location') === 'https://cybercabhunter.com/vehicle');
+    const post = await worker.fetch(new Request('https://cybercabhunter.com/vehicle/0ac4f010-b852-4ae3-a064-7b2b92b7d6db', { method: 'POST' }), fakeEnv, {});
+    check('only GET is routed to the page (a POST is not served the shell)', !(post.status === 200 && (await post.text()).includes('vehicle shell')));
   }
   {
     // An unrelated path is unaffected by the new route.

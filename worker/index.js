@@ -281,10 +281,16 @@ export default {
     // vehicle.html's bytes for the request without a redirect, so the
     // browser's address bar (and this page's own location.pathname) keep the
     // real /vehicle/:id URL.
+    // The asset is requested as '/vehicle', NOT '/vehicle.html': Cloudflare's
+    // default static-assets handling (html_handling "auto-trailing-slash")
+    // answers '/vehicle.html' with a 307 redirect to '/vehicle', and that
+    // redirect was being handed straight back to the browser, so every
+    // /vehicle/:id sent the visitor to /vehicle. '/vehicle' is the canonical
+    // URL of vehicle.html and is served directly with a 200.
     const vehiclePageMatch = url.pathname.match(/^\/vehicle\/([^/]+)$/);
     if (vehiclePageMatch && request.method === 'GET') {
       const assetUrl = new URL(request.url);
-      assetUrl.pathname = '/vehicle.html';
+      assetUrl.pathname = '/vehicle';
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 

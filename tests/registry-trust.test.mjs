@@ -473,7 +473,7 @@ async function run() {
     const shellPaths = [];
     ctx.env.ASSETS = { fetch: async r => { shellPaths.push(new URL(r.url).pathname); return new Response('shell', { status: 200 }); } };
     const shells = await Promise.all([priv, zero, MISSING].map(id => call(ctx, 'GET', `/vehicle/${id}`, null).then(r => r.text())));
-    check('the /vehicle/:id page shell is identical for hidden, ineligible and nonexistent ids (it reveals nothing)', shells.every(x => x === 'shell') && shellPaths.every(x => x === '/vehicle.html'));
+    check('the /vehicle/:id page shell is identical for hidden, ineligible and nonexistent ids (it reveals nothing)', shells.every(x => x === 'shell') && shellPaths.every(x => x === '/vehicle'));
 
     // Ambiguity details never reach the public.
     const a = rawVehicle(ctx, V3, 'AMB7777', { visibility: 'public' }); seedRide(ctx.d1, { userId: 'rider', vehicleId: a, status: 'pending' });
