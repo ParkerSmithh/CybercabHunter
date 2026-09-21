@@ -359,7 +359,10 @@ async function run() {
     const gen = runDocShell('generate-cleanup', { CLEANUP_DIR: dir });
     // Same condition as before. Only when it FAILS, the label now also carries what the spawned command actually did (exit status and captured
     // output), so a failure in some other environment identifies whether the exit code or the stdout was the part that differed.
-    const genOk = gen.status === 0 && /inventory rows: 1/.test(gen.out);
+    // Node colors the number in console.log('inventory rows:', n) whenever FORCE_COLOR is present in the environment (even empty), so strip
+    // ANSI escapes before matching. The condition itself is unchanged: exit status 0 AND exactly the text "inventory rows: 1".
+    const genOut = String(gen.out).replace(/\u001b\[[0-9;]*m/g, '');
+    const genOk = gen.status === 0 && /inventory rows: 1/.test(genOut);
     check('the documented generate command runs and reports the inventory size' + (genOk ? '' : ` [exit status: ${JSON.stringify(gen.status)}; captured output: ${JSON.stringify(String(gen.out).slice(0, 400))}]`), genOk);
     const cleanupFile = fs.readFileSync(`${dir}/cleanup.sql`, 'utf8'); const rollbackFile = fs.readFileSync(`${dir}/rollback.sql`, 'utf8');
     check('it wrote cleanup.sql and rollback.sql matching the builder', cleanupFile === buildCleanupStatements(invRows).cleanup && rollbackFile === buildCleanupStatements(invRows).rollback);
