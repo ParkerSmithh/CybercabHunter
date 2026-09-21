@@ -7,7 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings } from './vehicles.js';
-import { apiListPendingVehicleSightings, apiReviewVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -138,6 +138,9 @@ export default {
     // are both checked inside these handlers via requireModerator, not
     // here, since a 401-vs-403 split doesn't fit the plain "if (!userId)"
     // shape every other inline check above uses.
+    if (url.pathname === '/api/moderation/access' && request.method === 'GET') {
+      return withCors(await apiModerationAccess(request, env), request);
+    }
     if (url.pathname === '/api/moderation/vehicle-sightings' && request.method === 'GET') {
       return withCors(await apiListPendingVehicleSightings(request, env), request);
     }

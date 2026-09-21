@@ -514,6 +514,27 @@ const CCC = (() => {
       if (signOutBtn) signOutBtn.addEventListener('click', onSignOut);
     }
 
+    // A "Moderation" entry beside Profile / Rider Data, for moderators only.
+    // It is a convenience and nothing more: whether the account is a moderator
+    // comes from the server (GET /api/moderation/access, which answers only
+    // about the caller's own account), and every moderation API call is
+    // authorized again server-side. Anything unexpected leaves the link out.
+    function showModerationLink(sessionId) {
+      const anchor = document.querySelector('#accountDrawer a[href="rider-data.html"]');
+      if (!anchor || document.getElementById('accountMenuModeration')) return;
+      fetch(TESLA_WORKER_URL + '/api/moderation/access', { headers: { Authorization: 'Bearer ' + sessionId } })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (!d || d.moderator !== true || document.getElementById('accountMenuModeration')) return;
+          const link = anchor.cloneNode(false);
+          link.id = 'accountMenuModeration';
+          link.setAttribute('href', '/moderation');
+          link.innerHTML = '<svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>Moderation';
+          anchor.insertAdjacentElement('afterend', link);
+        })
+        .catch(() => { /* no link on any failure */ });
+    }
+
     const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
     if (!sessionId) {
       showSignedOut();
@@ -530,6 +551,7 @@ const CCC = (() => {
           showSignedOut();
           return;
         }
+        showModerationLink(sessionId);
         showSignedIn({
           label: d.user.display_name || 'Signed in',
           avatarUrl: d.user.avatar_url,

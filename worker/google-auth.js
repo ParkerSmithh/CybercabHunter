@@ -31,13 +31,35 @@ function redirectUriFor(env) {
   return env.GOOGLE_REDIRECT_URI || 'https://cybercabhunter.com/oauth/google/callback';
 }
 
+// Where to send the visitor after a successful sign-in, when they asked for a
+// particular page (e.g. /signin?returnTo=/moderation). ONLY a same-site path
+// is ever accepted: anything else — an absolute URL, a scheme-relative
+// "//host", a backslash form some browsers treat as "//", control characters,
+// or an API/OAuth path — returns null and the visitor simply lands on the
+// home page as before. Applied when the sign-in starts AND again when the
+// callback redirects, so a stored value is never trusted.
+export function sanitizeReturnPath(raw) {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 200) return null;
+  if (raw[0] !== '/' || raw[1] === '/') return null;
+  if (/[\u0000-\u0020\u007f\\]/.test(raw)) return null;
+  let parsed;
+  try { parsed = new URL(raw, 'https://internal.invalid'); } catch (e) { return null; }
+  if (parsed.origin !== 'https://internal.invalid') return null;
+  const path = parsed.pathname + parsed.search;   // any #fragment is dropped
+  if (path.startsWith('//') || /^\/(api|oauth)(\/|$)/.test(path)) return null;
+  return path;
+}
+
 async function startOAuth(request, env) {
   if (!env.GOOGLE_CLIENT_ID) {
     return Response.json({ error: 'google_signin_not_configured' }, { status: 503 });
   }
 
+  // The requested return page is kept server-side with the single-use state
+  // (never sent to Google, never trusted from the callback's own URL).
+  const returnTo = sanitizeReturnPath(new URL(request.url).searchParams.get('returnTo'));
   const state = randomToken();
-  await env.TESLA_SESSIONS.put(`google_state:${state}`, '1', { expirationTtl: STATE_TTL_SECONDS });
+  await env.TESLA_SESSIONS.put(`google_state:${state}`, returnTo || '1', { expirationTtl: STATE_TTL_SECONDS });
 
   const authorizeUrl = new URL(AUTHORIZE_URL);
   authorizeUrl.searchParams.set('response_type', 'code');
@@ -76,6 +98,19 @@ async function fetchGoogleProfile(accessToken) {
   return resp.json(); // { sub, email, name, picture, ... }
 }
 
+// The home page by default; the requested page when one was stored (and it is
+// still on this site's own origin once resolved against FRONTEND_URL).
+function successLocation(frontend, returnTo, sessionId) {
+  const home = `${frontend}?signin=success#tesla_session=${sessionId}`;
+  if (!returnTo) return home;
+  let base, target;
+  try { base = new URL(frontend); target = new URL(returnTo, base); } catch (e) { return home; }
+  if (target.origin !== base.origin) return home;
+  target.searchParams.set('signin', 'success');
+  target.hash = `tesla_session=${sessionId}`;
+  return target.toString();
+}
+
 async function handleCallback(request, env) {
   const url = new URL(request.url);
   const error = url.searchParams.get('error');
@@ -94,6 +129,7 @@ async function handleCallback(request, env) {
   // hasn't already consumed — never trust a callback on `code` alone.
   const stateKey = `google_state:${state}`;
   const stateSeen = await env.TESLA_SESSIONS.get(stateKey);
+  const returnTo = sanitizeReturnPath(stateSeen);   // '1' (no page requested) -> null
   if (!stateSeen) {
     return Response.redirect(`${frontend}?signin=invalid_state`, 302);
   }
@@ -132,7 +168,7 @@ async function handleCallback(request, env) {
   // Same fragment handoff Tesla's callback uses — never sent to any server,
   // and js/main.js already reads #tesla_session= into the same session
   // store regardless of which provider created it.
-  const headers = new Headers({ Location: `${frontend}?signin=success#tesla_session=${sessionId}` });
+  const headers = new Headers({ Location: successLocation(frontend, returnTo, sessionId) });
   return new Response(null, { status: 302, headers });
 }
 

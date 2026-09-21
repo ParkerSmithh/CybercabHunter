@@ -58,6 +58,18 @@
 <script src="js/main.js?v=3"></script>
 <script>
   CCC.init();
+
+  // "/signin?returnTo=/moderation": hand the requested page to the Worker's
+  // sign-in start so the visitor comes back there instead of the home page.
+  // Only a same-site path is passed on; the Worker validates it again and is
+  // the authority, this just avoids sending obvious junk.
+  (function () {
+    var link = document.getElementById('signInGoogle');
+    var raw = new URLSearchParams(location.search).get('returnTo');
+    if (!link || !raw) return;
+    if (raw.charAt(0) !== '/' || raw.charAt(1) === '/' || raw.charAt(1) === '\\') return;
+    link.href = link.href.split('?')[0] + '?returnTo=' + encodeURIComponent(raw);
+  })();
 </script>
 </body>
 </html>

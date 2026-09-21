@@ -39,6 +39,19 @@ function authFailureResponse(auth) {
     : Response.json({ success: false, error: 'forbidden' }, { status: 403 });
 }
 
+// GET /api/moderation/access — tells the CALLER whether their own account is
+// a moderator, so the site can show a "Moderation" link to moderators only.
+// It reports the same server-side role check requireModerator makes for every
+// moderation route and grants nothing itself: an ordinary signed-in user gets
+// 200 { moderator: false } (not a 403, so it isn't an error on every page
+// they open), a signed-out caller gets 401, and no other account's role is
+// ever revealed. Each moderation endpoint still authorizes its own request.
+export async function apiModerationAccess(request, env) {
+  const auth = await requireModerator(request, env);
+  if (auth.error === 'unauthenticated') return Response.json({ authenticated: false }, { status: 401 });
+  return Response.json({ authenticated: true, moderator: !auth.error });
+}
+
 // Moderator-only: the reviewable vehicle-sighting queue. Deliberately does
 // NOT include submitter identity (display name, handle, email) — nothing
 // about the current review workflow needs it, so it's simply left out
