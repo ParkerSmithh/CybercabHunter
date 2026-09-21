@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- This one file is served at /vehicle/<id> (see worker/index.js), so every relative
+     URL below would otherwise resolve under /vehicle/ (e.g. /vehicle/js/vehicle.js). -->
+<base href="/">
 <link rel="icon" type="image/png" href="Cybercab2.png">
 <link rel="apple-touch-icon" href="Cybercab2.png">
 <title>Cybercab Hunter — Vehicle</title>
@@ -44,7 +47,6 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
@@ -125,6 +127,22 @@
           <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Recorded Ride</div><div id="vLastRide" class="font-display font-bold text-lg"></div></div>
         </div>
         <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
+      </div>
+
+      <div id="vSightingsSection" class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
+        <h2 class="font-display font-bold text-xl mb-1">Community Sightings</h2>
+        <p class="text-xs text-slate-500 mb-5 leading-relaxed">Community-reported observations of this vehicle. These reports are separate from recorded rides and do not necessarily indicate that the vehicle was operating at the reported time.</p>
+        <div id="vSightingsLoading" class="hidden animate-pulse space-y-3" aria-busy="true" aria-live="polite">
+          <span class="sr-only">Loading community sightings…</span>
+          <div class="h-12 rounded-xl bg-white/5"></div>
+          <div class="h-12 rounded-xl bg-white/5"></div>
+        </div>
+        <p id="vSightingsEmpty" class="hidden text-sm text-slate-400">No approved community sightings recorded yet.</p>
+        <div id="vSightingsError" class="hidden text-sm text-slate-400">
+          <span>Community sightings couldn't be loaded right now.</span>
+          <button id="vSightingsRetry" type="button" class="ml-2 text-cyan hover:underline">Try again</button>
+        </div>
+        <ul id="vSightingsList" class="hidden space-y-3"></ul>
       </div>
     </div>
 

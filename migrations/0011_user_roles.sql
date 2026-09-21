@@ -1,0 +1,16 @@
+-- Cybercab Hunter — moderator authorization foundation (Phase 3D-C1).
+--
+-- Adds a server-side role so a later phase can distinguish an ordinary
+-- rider from a moderator when reviewing crowdsourced vehicle sightings.
+-- This migration adds ONLY the column — no moderation route, queue, or UI
+-- exists yet, and nothing here grants moderator status to anyone.
+--
+-- Additive and non-destructive: no existing column, table, or row is
+-- touched beyond giving every existing user the ordinary 'user' role
+-- (SQLite backfills a newly added NOT NULL DEFAULT column onto every
+-- existing row automatically — no separate UPDATE is needed, and there is
+-- no risk of an existing row being left with a NULL role). Nobody is
+-- promoted to moderator by this migration; see the deployment runbook for
+-- how the first moderator is assigned by hand, out of band, after this
+-- migration applies.
+ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator'));

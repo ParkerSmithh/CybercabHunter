@@ -6,7 +6,8 @@ import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
-import { apiGetVehicle } from './vehicles.js';
+import { apiGetVehicle, apiGetVehicleSightings } from './vehicles.js';
+import { apiListPendingVehicleSightings, apiReviewVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -125,12 +126,39 @@ export default {
     }
 
     // Structured JSON sighting submission (worker/sightings.js) — separate
-    // from the file-upload-only /api/submissions above. Phase 3D-A backend
-    // only; not yet called by any frontend (see that file's header).
+    // from the file-upload-only /api/submissions above. Wired to the real
+    // sighting drawer since Phase 3D-B.
     if (url.pathname === '/api/vehicle-sightings' && request.method === 'POST') {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiCreateVehicleSighting(request, env, userId), request);
+    }
+
+    // Moderator-only review queue (worker/moderation.js) — auth AND role
+    // are both checked inside these handlers via requireModerator, not
+    // here, since a 401-vs-403 split doesn't fit the plain "if (!userId)"
+    // shape every other inline check above uses.
+    if (url.pathname === '/api/moderation/vehicle-sightings' && request.method === 'GET') {
+      return withCors(await apiListPendingVehicleSightings(request, env), request);
+    }
+    if (url.pathname === '/api/moderation/robotaxi-vehicles' && request.method === 'GET') {
+      return withCors(await apiListRegistryVehicles(request, env), request);
+    }
+    const moderationVehicleReviewMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)\/review$/);
+    if (moderationVehicleReviewMatch && request.method === 'POST') {
+      return withCors(await apiReviewRegistryVehicle(request, env, moderationVehicleReviewMatch[1]), request);
+    }
+    const moderationVehicleReviewsMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)\/reviews$/);
+    if (moderationVehicleReviewsMatch && request.method === 'GET') {
+      return withCors(await apiListRegistryVehicleReviews(request, env, moderationVehicleReviewsMatch[1]), request);
+    }
+    const moderationVehicleMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)$/);
+    if (moderationVehicleMatch && request.method === 'PATCH') {
+      return withCors(await apiSetVehicleVisibility(request, env, moderationVehicleMatch[1]), request);
+    }
+    const moderationReviewMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)$/);
+    if (moderationReviewMatch && request.method === 'PATCH') {
+      return withCors(await apiReviewVehicleSighting(request, env, moderationReviewMatch[1]), request);
     }
 
     if (url.pathname === '/api/receipt-ingestion/address' && request.method === 'GET') {
@@ -187,6 +215,10 @@ export default {
     // Public robotaxi vehicle info (worker/vehicles.js) — deliberately the
     // only /api/* route with no tesla.requireUserId check. Backs the future
     // Phase 3C public vehicle page; nothing here is rider-specific.
+    const vehicleSightingsMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)\/sightings$/);
+    if (vehicleSightingsMatch && request.method === 'GET') {
+      return withCors(await apiGetVehicleSightings(request, env, vehicleSightingsMatch[1]), request);
+    }
     const vehicleIdMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)$/);
     if (vehicleIdMatch && request.method === 'GET') {
       return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);

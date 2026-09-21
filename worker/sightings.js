@@ -12,8 +12,11 @@
 //     to that vehicle's id. The vehicle's own model/color/service_area/
 //     verification_status/last_seen_at are left exactly as receipt-derived
 //     discovery set them.
-//   - If the plate matches nothing, the observation is still recorded —
-//     robotaxi_vehicle_id is simply left NULL. The registry is untouched
+//   - The link is made only for a UNIQUE match. If the plate matches
+//     nothing, or matches two or more registry rows (an ambiguous plate),
+//     the observation is still recorded — robotaxi_vehicle_id is simply
+//     left NULL rather than attached to an arbitrary duplicate. The
+//     registry is untouched
 //     either way. Nothing here calls findOrCreateRobotaxiVehicleByPlate,
 //     which is receipt-oriented and would wrongly create/touch a public
 //     vehicle from an unreviewed claim.
@@ -22,6 +25,7 @@
 // sets reviewed_at/reviewed_by/rejection_reason, and nothing it writes is
 // exposed through any public API today.
 
+import { normalizePlate } from './plate.js';
 import { db } from './db.js';
 
 const MAX_PLATE_RAW = 20;
@@ -55,10 +59,6 @@ async function readBodyWithLimit(request, maxBytes) {
   let offset = 0;
   for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.byteLength; }
   return { text: new TextDecoder().decode(buf), tooLarge: false };
-}
-
-function normalizePlate(raw) {
-  return String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function trimmedOrNull(value, maxLen) {

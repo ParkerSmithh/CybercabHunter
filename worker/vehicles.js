@@ -23,7 +23,7 @@
 
 import { db } from './db.js';
 
-const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function apiGetVehicle(request, env, vehicleId) {
   if (!VEHICLE_ID_RE.test(vehicleId)) {
@@ -54,6 +54,41 @@ export async function apiGetVehicle(request, env, vehicleId) {
       service_areas: history.service_areas
     }
   }, {
+    headers: { 'Cache-Control': 'public, max-age=60' }
+  });
+}
+
+const SIGHTINGS_DEFAULT_LIMIT = 10;
+const SIGHTINGS_MAX_LIMIT = 50;
+
+// Public: approved community sightings for one public registry vehicle.
+// Same gate as apiGetVehicle (400 bad id, 404 missing OR non-public — the
+// two are indistinguishable to the caller). The response is deliberately
+// only { date, service_area } per entry: no observation/submission/user
+// ids, no free-text location or notes, no evidence, no moderation data, no
+// exact timestamp, and no model/color (see db.getPublicVehicleSightings).
+// An unusable ?limit falls back to the default rather than erroring; a
+// too-large one is clamped to the maximum. There is no cursor: this is a
+// short recent list, not a feed.
+export async function apiGetVehicleSightings(request, env, vehicleId) {
+  if (!VEHICLE_ID_RE.test(vehicleId)) {
+    return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });
+  }
+
+  const sql = env.cybercabhunter_db;
+  const vehicle = await db.getPublicRobotaxiVehicle(sql, vehicleId);
+  if (!vehicle) {
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+  }
+
+  const raw = new URL(request.url).searchParams.get('limit');
+  let limit = SIGHTINGS_DEFAULT_LIMIT;
+  if (raw !== null && /^\d+$/.test(raw)) {
+    limit = Math.min(Math.max(parseInt(raw, 10), 1), SIGHTINGS_MAX_LIMIT);
+  }
+
+  const sightings = await db.getPublicVehicleSightings(sql, vehicleId, limit);
+  return Response.json({ sightings }, {
     headers: { 'Cache-Control': 'public, max-age=60' }
   });
 }

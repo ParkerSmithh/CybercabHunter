@@ -70,3 +70,15 @@ export function seedVehicle(d1, { id, plate, model = null, firstSeenAt = '2026-0
     .bind(id, plate, model, firstSeenAt, firstSeenAt)._exec();
   return id;
 }
+
+// Registry vehicles created by the receipt path are INTERNAL ('private')
+// until a moderator approves them, and the public endpoints additionally
+// require a counted, non-superseded ride (Phase 3E). This puts a vehicle in
+// the state those endpoints serve: moderator-approved visibility, plus one
+// counted ride when `withRide` is set (pass false if the test seeds its own).
+export function approveVehicle(d1, vehicleId, { withRide = false, userId } = {}) {
+  d1.prepare(`UPDATE robotaxi_vehicles SET visibility = 'public' WHERE id = ?`).bind(vehicleId)._exec();
+  // The ride's owner only has to be a real user (foreign key); default to any.
+  if (withRide) seedRide(d1, { userId: userId || d1.query('SELECT id FROM users LIMIT 1')[0].id, vehicleId, status: 'pending' });
+  return vehicleId;
+}

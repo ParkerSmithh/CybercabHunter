@@ -4,6 +4,47 @@
 
 import { rideQueries } from './db-rides.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE } from './ride-status.js';
+import { normalizePlate, sqlNormalizedPlate } from './plate.js';
+
+// Registry visibility values. 'private' is the value this schema already
+// uses for non-public rows (see the personal `vehicles` table); the column
+// has no CHECK constraint, so these two are enforced here and in the
+// moderator endpoint, not by the database.
+const VEHICLE_VISIBILITY = { PUBLIC: 'public', PRIVATE: 'private' };
+
+// A registry vehicle is publicly eligible only when a moderator has made it
+// public AND at least one counted, non-superseded ride backs it. The ride
+// half reuses the canonical ride-status predicates so "counted" means exactly
+// what it means for rider statistics. Query-time only: nothing is deleted or
+// rewritten when a vehicle stops being eligible. `alias` is the
+// robotaxi_vehicles alias in the caller's query; the inner t/s aliases come
+// from RIDES_FROM and deliberately shadow any outer ones.
+function countedRideExistsSql(alias) {
+  return `EXISTS (
+    SELECT 1 FROM ${RIDES_FROM}
+    WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE}
+  )`;
+}
+
+function publicVehicleEligibleSql(alias) {
+  return `${alias}.visibility = 'public' AND ${countedRideExistsSql(alias)}`;
+}
+
+// What must be true for a moderator to APPROVE a vehicle for the public
+// registry (worker/moderation.js's review action): the ride requirement of the
+// public gate above (a counted, non-superseded ride — the same
+// countedRideExistsSql, not a second definition) PLUS a usable, UNIQUE plate,
+// so approving one of several registry rows for the same plate can never make
+// an ambiguous vehicle public. Needs-review-only, rejected-only and orphaned
+// vehicles all fail on the ride requirement. `alias` is the robotaxi_vehicles
+// name/alias in the caller's statement; the inner v2 alias is private to it.
+function vehicleApprovalGuardSql(alias) {
+  const plate = sqlNormalizedPlate(`${alias}.license_plate`);
+  return `${countedRideExistsSql(alias)}
+    AND ${plate} <> ''
+    AND (SELECT COUNT(*) FROM robotaxi_vehicles v2
+         WHERE ${sqlNormalizedPlate('v2.license_plate')} = ${plate}) = 1`;
+}
 
 function newId() {
   return crypto.randomUUID();
@@ -169,9 +210,13 @@ async function createSubmission(sql, { id, userId, submissionType, evidenceType,
   `).bind(id, userId, submissionType, evidenceType, evidenceRef).run();
 }
 
+// rejection_reason is deliberately NOT selected: it is a moderator's private
+// note (see worker/moderation.js) and this list is returned to the ordinary
+// submitting user. Moderators read it through the moderation queries, which
+// select it explicitly.
 async function getSubmissionsByUser(sql, userId) {
   const result = await sql.prepare(`
-    SELECT id, submission_type, evidence_type, status, submitted_at, reviewed_at, rejection_reason
+    SELECT id, submission_type, evidence_type, status, submitted_at, reviewed_at
     FROM submissions WHERE user_id = ? ORDER BY submitted_at DESC
   `).bind(userId).all();
   return result.results || [];
@@ -256,46 +301,92 @@ async function rotateReceiptIngestionAddress(sql, userId) {
   return token;
 }
 
-// Exact-plate match only — no fuzzy merging. A duplicate/near-duplicate
-// plate across sources is a human moderation decision, not something this
-// query silently resolves. "Exact" means after normalization (case, spaces
-// and hyphens ignored), so "XJR-2195" and "xjr2195" are the same plate —
-// the receipt parser and the registry must agree on what a plate is, or
-// one physical car would be counted as two vehicles.
-async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
-  const existing = await sql.prepare(
-    `SELECT id FROM robotaxi_vehicles
-     WHERE UPPER(REPLACE(REPLACE(license_plate, '-', ''), ' ', '')) = ? LIMIT 1`
-  ).bind(String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).first();
-  if (existing) {
-    // Every new sighting of an already-known plate should advance
-    // last_seen_at — otherwise "most recent known ride" can never be
-    // answered correctly once a vehicle has more than one trip.
-    await sql.prepare(
-      `UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
-    ).bind(existing.id).run();
-    return existing.id;
-  }
+// Registry lookup/creation by plate. "Same plate" means the same NORMALIZED
+// plate (worker/plate.js): "XJR-2195" and "xjr2195" are one plate, so the
+// receipt parser, sighting submission and registry all agree on identity.
+//
+// Trust boundary: this is the ONLY function that creates registry rows, and
+// what it creates is INTERNAL. A receipt is not authenticated (forwarded
+// email is not SPF/DKIM-verified and a pasted receipt has no sender at all),
+// so a new vehicle starts 'private' and only becomes publicly visible when a
+// moderator sets it public (worker/moderation.js) — and even then only while
+// it has a counted ride (publicVehicleEligibleSql).
 
-  const id = newId();
-  await sql.prepare(`
-    INSERT INTO robotaxi_vehicles (id, license_plate, first_seen_at, last_seen_at)
-    VALUES (?, ?, datetime('now'), datetime('now'))
-  `).bind(id, String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).run();
-  return id;
+// Every row for a normalized plate, in one fixed order (oldest first, id as
+// the final tiebreak) so "first" is never arbitrary. A well-formed registry
+// has at most one; more than one is a data problem to be resolved by a human
+// (see registry-preflight.js), never guessed at here. LIMIT 2 is enough to
+// tell unique from ambiguous.
+async function lookupVehiclesByPlate(sql, normalizedPlate) {
+  const result = await sql.prepare(`
+    SELECT id FROM robotaxi_vehicles
+    WHERE ${sqlNormalizedPlate('license_plate')} = ?
+    ORDER BY first_seen_at ASC, created_at ASC, id ASC
+    LIMIT 2
+  `).bind(normalizedPlate).all();
+  return (result.results || []).map(r => r.id);
 }
 
-// Read-only counterpart for worker/sightings.js. Unlike
-// findOrCreateRobotaxiVehicleByPlate, this NEVER creates a row and NEVER
-// advances last_seen_at — an unreviewed crowdsourced sighting must not be
-// able to create a public vehicle or mutate receipt-derived vehicle state
-// (Phase 3D trust boundary).
+// Read-only. { status: 'none' | 'unique' | 'ambiguous', vehicleId } —
+// vehicleId is set ONLY for 'unique'. Callers that can act on ambiguity
+// (sighting linking, public matching) must not attach to any vehicle when it
+// is 'ambiguous'. Internal detail: never returned by a public endpoint.
+async function resolveRobotaxiVehicleByPlate(sql, plate) {
+  const normalized = normalizePlate(plate);
+  if (!normalized) return { status: 'none', vehicleId: null };
+  const ids = await lookupVehiclesByPlate(sql, normalized);
+  if (ids.length === 0) return { status: 'none', vehicleId: null };
+  if (ids.length > 1) return { status: 'ambiguous', vehicleId: null };
+  return { status: 'unique', vehicleId: ids[0] };
+}
+
+// Read-only counterpart for worker/sightings.js. NEVER creates a row and
+// NEVER advances last_seen_at — an unreviewed crowdsourced sighting must not
+// create a vehicle or mutate receipt-derived vehicle state (Phase 3D trust
+// boundary). Returns an id only for a UNIQUE match: no match and an
+// ambiguous match both return null, so a sighting is never linked to an
+// arbitrary one of several vehicles.
 async function findRobotaxiVehicleByPlate(sql, plate) {
-  const row = await sql.prepare(
-    `SELECT id FROM robotaxi_vehicles
-     WHERE UPPER(REPLACE(REPLACE(license_plate, '-', ''), ' ', '')) = ? LIMIT 1`
-  ).bind(String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '')).first();
-  return row ? row.id : null;
+  return (await resolveRobotaxiVehicleByPlate(sql, plate)).vehicleId;
+}
+
+// Race-safe find-or-create. The row is inserted by ONE conditional
+// statement (INSERT ... SELECT ... WHERE NOT EXISTS), so "no row for this
+// plate yet" and "insert it" are evaluated together by the database rather
+// than as a separate SELECT followed by an INSERT that another request can
+// slip between. Whichever call inserts reports it via meta.changes; every
+// other call falls through to the existing row, which is reused unchanged
+// except for last_seen_at/updated_at — model, color, service area,
+// visibility and verification_status are never overwritten.
+//
+// If duplicate rows for a plate already exist (legacy data), a ride still
+// needs a vehicle to attach to: the oldest row wins, deterministically, and
+// nothing is merged, deleted or rewritten. That choice is internal — public
+// sighting matching refuses ambiguous plates entirely.
+//
+// Returns null for a plate with nothing left after normalization.
+async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
+  const normalized = normalizePlate(plate);
+  if (!normalized) return null;
+
+  const id = newId();
+  const inserted = await sql.prepare(`
+    INSERT INTO robotaxi_vehicles (id, license_plate, visibility, first_seen_at, last_seen_at)
+    SELECT ?, ?, '${VEHICLE_VISIBILITY.PRIVATE}', datetime('now'), datetime('now')
+    WHERE NOT EXISTS (
+      SELECT 1 FROM robotaxi_vehicles WHERE ${sqlNormalizedPlate('license_plate')} = ?
+    )
+  `).bind(id, normalized, normalized).run();
+  if (inserted && inserted.meta && inserted.meta.changes > 0) return id;
+
+  const [existingId] = await lookupVehiclesByPlate(sql, normalized);
+  // Every new ride of an already-known plate advances last_seen_at —
+  // otherwise "most recent known ride" can never be answered correctly once
+  // a vehicle has more than one trip.
+  await sql.prepare(
+    `UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+  ).bind(existingId).run();
+  return existingId;
 }
 
 // An accidental-double-submit guard only — the same rider, the same
@@ -346,23 +437,413 @@ async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePl
   return { submissionId, observationId };
 }
 
+// ---- Moderation (Phase 3D-C2) — vehicle-sighting review queue only ----
+// Every function here is reached exclusively through worker/moderation.js's
+// requireModerator gate; none of it is exposed to an ordinary rider or to
+// any public/unauthenticated route.
+
+// The reviewable queue: vehicle_sighting submissions still awaiting a
+// decision. needs_review is included alongside pending for completeness —
+// nothing currently puts a sighting there (createVehicleSighting always
+// inserts 'pending'), but the column's own status model already allows it,
+// and treating it as reviewable costs nothing extra here.
+async function getPendingVehicleSightings(sql) {
+  const result = await sql.prepare(`
+    SELECT
+      s.id AS submission_id, s.status, s.submitted_at, s.evidence_ref AS submission_evidence_ref,
+      o.id AS observation_id, o.robotaxi_vehicle_id, o.observed_at, o.service_area, o.approx_location,
+      o.license_plate, o.model, o.color, o.evidence_ref AS observation_evidence_ref, o.verification_status, o.notes
+    FROM submissions s
+    JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE s.submission_type = 'vehicle_sighting' AND s.status IN ('pending', 'needs_review')
+    ORDER BY s.submitted_at ASC
+  `).all();
+  return result.results || [];
+}
+
+// A single submission+observation pair, for the review endpoint to check
+// eligibility (type, current status) before attempting the transition —
+// the UPDATE's own WHERE clause below is the real race guard; this is what
+// lets the caller return an accurate 404 vs 409 rather than a generic
+// failure.
+async function getVehicleSightingSubmission(sql, submissionId) {
+  const row = await sql.prepare(`
+    SELECT s.id AS submission_id, s.submission_type, s.status, s.reviewed_at, s.reviewed_by, s.rejection_reason,
+           o.id AS observation_id, o.robotaxi_vehicle_id, o.verification_status
+    FROM submissions s
+    JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE s.id = ?
+  `).bind(submissionId).first();
+  return row || null;
+}
+
+// Approves or rejects a pending/needs_review vehicle-sighting submission.
+// Atomic and race-safe: both statements run in ONE batch (one transaction),
+// and BOTH are independently gated by the submission's status at the START
+// of the transaction (the observation update's subquery reads
+// submissions.status before the submission update — which comes second —
+// has touched it, so a concurrent second reviewer's batch, whichever one
+// the database serializes second, sees the ALREADY-transitioned status and
+// updates zero rows in both statements). The caller checks
+// submissionResult.meta.changes to know whether this call actually won the
+// transition; 0 means someone else already reviewed it — a 409, never a
+// silently overwritten decision.
+//
+// This never touches robotaxi_vehicles. Approval only ever changes
+// submissions.status/reviewed_at/reviewed_by and this observation's own
+// verification_status — never the linked vehicle's model/color/
+// service_area/verification_status/first_seen_at/last_seen_at, and never
+// creates a new registry row for an unknown plate. That trust boundary is
+// enforced simply by this function never containing an INSERT or UPDATE
+// against robotaxi_vehicles at all.
+async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, rejectionReason }) {
+  const observationStatus = decision === 'approved' ? 'verified' : 'rejected';
+
+  const observationStmt = sql.prepare(`
+    UPDATE vehicle_observations
+    SET verification_status = ?
+    WHERE submission_id = ?
+      AND EXISTS (
+        SELECT 1 FROM submissions
+        WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review')
+      )
+  `).bind(observationStatus, submissionId, submissionId);
+
+  const submissionStmt = sql.prepare(`
+    UPDATE submissions
+    SET status = ?, reviewed_at = datetime('now'), reviewed_by = ?, rejection_reason = ?
+    WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review')
+  `).bind(decision, reviewerId, rejectionReason || null, submissionId);
+
+  const [, submissionResult] = await sql.batch([observationStmt, submissionStmt]);
+  return { applied: !!(submissionResult && submissionResult.meta && submissionResult.meta.changes) };
+}
+
 // The public-facing view of a single registry row, for worker/vehicles.js.
 // Selects only vehicle-descriptive columns — never `visibility` itself,
-// which is the gate this query enforces rather than a fact about the car.
-// A row with visibility != 'public' comes back exactly like a nonexistent
-// one; the caller can't tell the difference, which is the point of the
-// column existing. license_plate/model/color/service_area are frequently
+// which is part of the gate this query enforces rather than a fact about the
+// car. The gate is publicVehicleEligibleSql: visibility 'public' AND at least
+// one counted, non-superseded ride. A vehicle that fails either half comes
+// back exactly like a nonexistent one; the caller can't tell the difference,
+// which is the point of the column existing. license_plate/model/color/service_area are frequently
 // NULL today (receipts only ever fill in the plate — see
 // findOrCreateRobotaxiVehicleByPlate above), returned honestly as null
 // rather than defaulted to something invented.
 async function getPublicRobotaxiVehicle(sql, vehicleId) {
   const row = await sql.prepare(`
-    SELECT id, provider, license_plate, model, color, service_area,
-           first_seen_at, last_seen_at, verification_status
-    FROM robotaxi_vehicles
-    WHERE id = ? AND visibility = 'public'
+    SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
+           v.first_seen_at, v.last_seen_at, v.verification_status
+    FROM robotaxi_vehicles v
+    WHERE v.id = ? AND ${publicVehicleEligibleSql('v')}
   `).bind(vehicleId).first();
   return row || null;
+}
+
+// Public, read-only: approved community sightings for ONE vehicle that the
+// caller has already established is a public registry vehicle (the route
+// gates on getPublicRobotaxiVehicle first; the query below re-asserts the
+// same eligibility so this function is safe on its own).
+//
+// An observation counts for the vehicle when EITHER its frozen
+// robotaxi_vehicle_id points at it, OR that FK is still NULL and the
+// observation's normalized plate equals the vehicle's normalized plate AND
+// that plate belongs to exactly ONE registry vehicle (of any visibility).
+// If two or more registry rows share the plate the match is ambiguous and
+// the sighting stays private — it is never shown on several vehicles and
+// never assigned to an arbitrary one. The second branch is a read-time match
+// only: nothing is ever written back (no relink, no backfill), so an
+// unmatched sighting stays private until a receipt independently creates the
+// registry vehicle AND a moderator makes it public.
+//
+// Only trusted server-side data leaves this query: the date is the
+// submissions.submitted_at DAY (server-set; the client-controlled
+// observed_at is never selected) and the raw service_area, which the caller
+// normalizes before publishing. Returned rows are pre-grouped by
+// (date, lower/trimmed area) purely to bound the row count; the JS below
+// then normalizes the area and re-aggregates, so every published entry is
+// one per vehicle + date + normalized area, with no submitter counts.
+const PUBLIC_SIGHTING_AREAS = { austin: 'Austin', dallas: 'Dallas', houston: 'Houston', 'san antonio': 'San Antonio' };
+const AREA_NOT_SPECIFIED = 'Area not specified';
+
+// Case-insensitive, whitespace-tolerant match against the known launch
+// cities; anything else (free text a submitter typed) is never published.
+function normalizePublicServiceArea(raw) {
+  const key = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ').toLowerCase();
+  return PUBLIC_SIGHTING_AREAS[key] || AREA_NOT_SPECIFIED;
+}
+
+async function getPublicVehicleSightings(sql, vehicleId, limit = 10) {
+  const plateOfObservation = sqlNormalizedPlate('o.license_plate');
+  const plateOfVehicle = sqlNormalizedPlate('v.license_plate');
+  const plateOfAnyVehicle = sqlNormalizedPlate('v2.license_plate');
+  const result = await sql.prepare(`
+    SELECT substr(s.submitted_at, 1, 10) AS date,
+           LOWER(TRIM(o.service_area)) AS area_key,
+           MIN(o.service_area) AS raw_service_area
+    FROM robotaxi_vehicles v
+    JOIN vehicle_observations o
+      ON o.robotaxi_vehicle_id = v.id
+      OR (o.robotaxi_vehicle_id IS NULL
+          AND ${plateOfObservation} <> ''
+          AND ${plateOfObservation} = ${plateOfVehicle}
+          AND (SELECT COUNT(*) FROM robotaxi_vehicles v2
+               WHERE ${plateOfAnyVehicle} = ${plateOfVehicle}) = 1)
+    JOIN submissions s ON s.id = o.submission_id
+    WHERE v.id = ? AND ${publicVehicleEligibleSql('v')}
+      AND s.status = 'approved'
+      AND s.submission_type = 'vehicle_sighting'
+      AND o.verification_status = 'verified'
+    GROUP BY date, area_key
+    ORDER BY date DESC
+  `).bind(vehicleId).all();
+
+  const seen = new Set();
+  const out = [];
+  for (const row of result.results || []) {
+    const service_area = normalizePublicServiceArea(row.raw_service_area);
+    const key = `${row.date}|${service_area}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ date: row.date, service_area });
+  }
+  return out.slice(0, limit);
+}
+
+// ---- Registry vehicle visibility (Phase 3E) — moderator-only, reached only
+// through worker/moderation.js's requireModerator gate. These expose
+// registry facts and counts ONLY: never a rider id, receipt content, an
+// address, or evidence. ----
+
+// One moderator-facing row per registry vehicle: identity, current
+// visibility, how many counted rides back it, how those rides ENTERED the
+// system, and whether the plate is shared with another registry row (a
+// duplicate a human must resolve).
+//
+// Provenance is descriptive only. counted_rides_by_source groups the SAME
+// counted rides (RIDES_FROM + COUNTED_RIDES_WHERE — there is no second
+// definition of "counted") by trips.source, the path the receipt took in:
+//   receipt_email  — arrived at the rider's forwarding address
+//   receipt_import — pasted text or an uploaded .eml. The stored data does
+//                    not distinguish those two, so neither does this.
+//   other          — any other value (e.g. the legacy 'manual' default)
+// It says how data entered Cybercab Hunter. It does NOT show that a receipt
+// was really issued by Tesla, and nothing here scores or ranks it. No rider
+// identity, address, or receipt content is selected.
+const COUNTED_BY = extra => `(SELECT COUNT(*) FROM ${RIDES_FROM}
+           WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra})`;
+// Live rides (not superseded) in a given NON-counted submission status. Facts
+// about what is attached to the vehicle, so a moderator can see whether a
+// vehicle has review/rejected history, not a judgment about it.
+const LIVE_STATUS_COUNT = status => `(SELECT COUNT(*) FROM ${RIDES_FROM}
+           WHERE t.robotaxi_vehicle_id = v.id AND t.superseded_by IS NULL AND s.status = '${status}')`;
+// The most recent review of this vehicle (append-only history, Phase 3H).
+const LAST_REVIEW = col => `(SELECT r.${col} FROM robotaxi_vehicle_reviews r
+           WHERE r.robotaxi_vehicle_id = v.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1)`;
+const REGISTRY_VEHICLE_MOD_SELECT = `
+  SELECT v.id, v.license_plate, v.visibility, v.verification_status,
+         v.first_seen_at, v.last_seen_at, v.created_at,
+         ${COUNTED_BY('')} AS counted_ride_count,
+         ${COUNTED_BY(` AND t.source = 'receipt_email'`)} AS counted_email,
+         ${COUNTED_BY(` AND t.source = 'receipt_import'`)} AS counted_import,
+         ${LIVE_STATUS_COUNT('needs_review')} AS needs_review_ride_count,
+         ${LIVE_STATUS_COUNT('rejected')} AS rejected_ride_count,
+         (SELECT COUNT(*) FROM trips t WHERE t.robotaxi_vehicle_id = v.id) AS total_trip_count,
+         (SELECT MIN(t.ride_date) FROM ${RIDES_FROM}
+           WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}) AS first_counted_ride_date,
+         (SELECT MAX(t.ride_date) FROM ${RIDES_FROM}
+           WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}) AS last_counted_ride_date,
+         (SELECT COUNT(*) FROM robotaxi_vehicles v2
+           WHERE v.license_plate IS NOT NULL
+             AND ${sqlNormalizedPlate('v2.license_plate')} = ${sqlNormalizedPlate('v.license_plate')}) AS plate_vehicle_count,
+         ${LAST_REVIEW('action')} AS last_review_action,
+         ${LAST_REVIEW('created_at')} AS last_review_at,
+         ${LAST_REVIEW('moderator_user_id')} AS last_review_moderator_id,
+         (SELECT u.display_name FROM users u WHERE u.id = ${LAST_REVIEW('moderator_user_id')}) AS last_review_moderator_name
+  FROM robotaxi_vehicles v
+`;
+
+// Factual approval readiness, computed once on the server so the UI never
+// re-derives rules. NOT a score: every entry is a plain fact from the
+// database.
+//   blocking_reasons  — why a moderator cannot approve it right now
+//   notes             — other facts worth seeing (never blocking on their own)
+// state: 'public'                 visible on the public site
+//        'eligible_for_approval'  private, and approval would be accepted
+//        'not_eligible'           private (or public-but-hidden) and NOT
+//                                 publicly eligible / approvable, with reasons
+function evaluateVehicleApproval(row) {
+  const counted = row.counted_ride_count;
+  const blocking = [];
+  const notes = [];
+
+  if (!normalizePlate(row.license_plate)) blocking.push('no_plate');
+  if (counted === 0) blocking.push('no_counted_rides');
+  if (row.plate_vehicle_count > 1) blocking.push('duplicate_plate');
+
+  if (counted > 0) notes.push('eligible_counted_ride_present');
+  if (row.needs_review_ride_count > 0) notes.push('needs_review_ride_present');
+  if (counted === 0 && row.needs_review_ride_count === 0 && row.rejected_ride_count > 0) notes.push('rejected_only_history');
+  if (row.total_trip_count === 0) notes.push('no_rides_on_record');
+
+  const isPublic = row.visibility === VEHICLE_VISIBILITY.PUBLIC;
+  const publiclyEligible = isPublic && counted > 0;
+  let state;
+  if (isPublic) state = publiclyEligible ? 'public' : 'not_eligible';
+  else state = blocking.length === 0 ? 'eligible_for_approval' : 'not_eligible';
+
+  return { state, can_approve: !isPublic && blocking.length === 0, blocking_reasons: blocking, notes };
+}
+
+function toModeratorVehicle(row) {
+  return {
+    id: row.id,
+    license_plate: row.license_plate,
+    visibility: row.visibility,
+    // The vehicle record's own status column ('unverified' by default). It is
+    // NOT changed by anything in this workflow and says nothing about Tesla.
+    verification_status: row.verification_status,
+    counted_ride_count: row.counted_ride_count,
+    // Facts about the rest of what is attached to the vehicle.
+    needs_review_ride_count: row.needs_review_ride_count,
+    rejected_ride_count: row.rejected_ride_count,
+    total_trip_count: row.total_trip_count,
+    // Provenance: how the counted rides entered the system (descriptive
+    // counts of the same rides, not a judgment about them).
+    counted_rides_by_source: {
+      receipt_email: row.counted_email,
+      receipt_import: row.counted_import,
+      other: row.counted_ride_count - row.counted_email - row.counted_import
+    },
+    first_counted_ride_date: row.first_counted_ride_date,
+    last_counted_ride_date: row.last_counted_ride_date,
+    // Registry timestamps: when the ROW was created / last touched by a
+    // receipt. Database facts, not evidence the vehicle exists.
+    first_seen_at: row.first_seen_at,
+    last_seen_at: row.last_seen_at,
+    created_at: row.created_at,
+    // The same rule the public endpoints apply: setting visibility public is
+    // necessary but NOT sufficient — a counted ride is also required.
+    publicly_eligible: row.visibility === VEHICLE_VISIBILITY.PUBLIC && row.counted_ride_count > 0,
+    plate_vehicle_count: row.plate_vehicle_count,
+    approval: evaluateVehicleApproval(row),
+    // Most recent moderator decision on this vehicle, or null if none has
+    // ever been recorded (e.g. it was made private by the legacy cleanup).
+    latest_review: row.last_review_action ? {
+      action: row.last_review_action,
+      created_at: row.last_review_at,
+      moderator_user_id: row.last_review_moderator_id,
+      moderator_display_name: row.last_review_moderator_name || null
+    } : null
+  };
+}
+
+// scope 'awaiting' (default): not public, but has a counted ride — i.e.
+// candidates for approval. scope 'private': every non-public vehicle, including
+// ones with no counted rides (so nothing hides from review). scope 'public':
+// currently public rows, for auditing/takedown. A plate search ignores scope and returns every row
+// (any visibility) for that normalized plate, so duplicates are visible.
+async function getRegistryVehiclesForModeration(sql, { plate, scope, limit = 50 } = {}) {
+  let where; const binds = [];
+  const normalized = plate ? normalizePlate(plate) : '';
+  if (plate) {
+    where = normalized ? `WHERE ${sqlNormalizedPlate('v.license_plate')} = ?` : 'WHERE 0';
+    if (normalized) binds.push(normalized);
+  } else if (scope === 'public') {
+    where = `WHERE v.visibility = '${VEHICLE_VISIBILITY.PUBLIC}'`;
+  } else if (scope === 'private') {
+    where = `WHERE v.visibility <> '${VEHICLE_VISIBILITY.PUBLIC}'`;
+  } else {
+    where = `WHERE v.visibility <> '${VEHICLE_VISIBILITY.PUBLIC}' AND EXISTS (
+      SELECT 1 FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE})`;
+  }
+  const result = await sql.prepare(`
+    ${REGISTRY_VEHICLE_MOD_SELECT} ${where}
+    ORDER BY v.last_seen_at DESC, v.id ASC LIMIT ?
+  `).bind(...binds, limit).all();
+  return (result.results || []).map(toModeratorVehicle);
+}
+
+async function getRegistryVehicleForModeration(sql, vehicleId) {
+  const row = await sql.prepare(`${REGISTRY_VEHICLE_MOD_SELECT} WHERE v.id = ?`).bind(vehicleId).first();
+  return row ? toModeratorVehicle(row) : null;
+}
+
+// Re-asserts 'private' on a vehicle that is already private (the idempotent
+// no-op of the takedown PATCH, which writes no history). It refuses any other
+// value, so it can never be used to grant public visibility.
+async function setRobotaxiVehicleVisibility(sql, vehicleId, visibility) {
+  if (visibility !== VEHICLE_VISIBILITY.PRIVATE) {
+    throw new Error('setRobotaxiVehicleVisibility can only set private; use changeRobotaxiVehicleVisibility for a reviewed change to public');
+  }
+  const result = await sql.prepare(
+    `UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now') WHERE id = ?`
+  ).bind(visibility, vehicleId).run();
+  return !!(result && result.meta && result.meta.changes > 0);
+}
+
+// The audited, atomic visibility change behind every moderator decision.
+//
+// One batch (a single transaction) runs two statements with the SAME
+// predicate: an INSERT of the review-history row, then the visibility UPDATE.
+// Because neither touches what the predicate reads (vehicles/trips/submissions),
+// they succeed or skip together — a vehicle never changes visibility without a
+// history row, and a history row is never written for a change that did not
+// happen. The history row snapshots the facts at decision time (plate, counted
+// rides, how many registry rows share the plate) plus who acted and when.
+//
+// This is the ONLY function that can make a vehicle public, and it can only do
+// so through vehicleApprovalGuardSql(): there is deliberately no option to skip
+// that guard, so no caller (route, script, or future code) can grant public
+// visibility without the approval rules being checked inside the write itself.
+// Making a vehicle PRIVATE has no guard (a takedown must always be possible).
+//
+// History is append-only: nothing in the application UPDATEs or DELETEs
+// robotaxi_vehicle_reviews.
+// Returns { applied }. Not applied means the vehicle does not exist, is
+// already in the target state, or (to public) no longer meets the guard.
+async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, target, reason }) {
+  const action = target === VEHICLE_VISIBILITY.PUBLIC ? 'approved_public' : 'returned_private';
+  const guard = target === VEHICLE_VISIBILITY.PUBLIC
+    ? vehicleApprovalGuardSql('robotaxi_vehicles')
+    : '1 = 1';
+  const plateOuter = sqlNormalizedPlate('robotaxi_vehicles.license_plate');
+
+  const insert = sql.prepare(`
+    INSERT INTO robotaxi_vehicle_reviews
+      (id, robotaxi_vehicle_id, license_plate, moderator_user_id, action, previous_visibility, reason,
+       counted_ride_count, plate_vehicle_count)
+    SELECT ?, robotaxi_vehicles.id, robotaxi_vehicles.license_plate, ?, ?, robotaxi_vehicles.visibility, ?,
+           (SELECT COUNT(*) FROM ${RIDES_FROM}
+             WHERE t.robotaxi_vehicle_id = robotaxi_vehicles.id AND ${COUNTED_RIDES_WHERE}),
+           (SELECT COUNT(*) FROM robotaxi_vehicles v2
+             WHERE ${sqlNormalizedPlate('v2.license_plate')} = ${plateOuter})
+    FROM robotaxi_vehicles
+    WHERE robotaxi_vehicles.id = ? AND robotaxi_vehicles.visibility <> ? AND ${guard}
+  `).bind(newId(), moderatorId, action, reason || null, vehicleId, target);
+
+  const update = sql.prepare(`
+    UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now')
+    WHERE id = ? AND visibility <> ? AND ${guard}
+  `).bind(target, vehicleId, target);
+
+  const results = await sql.batch([insert, update]);
+  const updateResult = results[1];
+  return { applied: !!(updateResult && updateResult.meta && updateResult.meta.changes > 0) };
+}
+
+// A vehicle's review history, newest first. Moderator-only: it names the
+// moderator who acted. Never exposed by any public route.
+async function getRobotaxiVehicleReviews(sql, vehicleId, limit = 100) {
+  const result = await sql.prepare(`
+    SELECT r.id, r.action, r.previous_visibility, r.reason, r.counted_ride_count, r.plate_vehicle_count,
+           r.license_plate, r.created_at, r.moderator_user_id, u.display_name AS moderator_display_name
+    FROM robotaxi_vehicle_reviews r
+    LEFT JOIN users u ON u.id = r.moderator_user_id
+    WHERE r.robotaxi_vehicle_id = ?
+    ORDER BY r.created_at DESC, r.rowid DESC
+    LIMIT ?
+  `).bind(vehicleId, limit).all();
+  return (result.results || []).map(r => ({ ...r, moderator_display_name: r.moderator_display_name || null }));
 }
 
 // Pure aggregate over this vehicle's known trips — deliberately excludes
@@ -469,6 +950,8 @@ async function markTeslaRideSyncError(sql, userId, error) {
   `).bind(String(error).slice(0, 200), userId).run();
 }
 
+export { VEHICLE_VISIBILITY };
+
 export const db = {
   ...rideQueries,
   findOrCreateUserByTeslaIdentifier,
@@ -494,9 +977,19 @@ export const db = {
   getUserIdByActiveReceiptToken,
   findOrCreateRobotaxiVehicleByPlate,
   findRobotaxiVehicleByPlate,
+  resolveRobotaxiVehicleByPlate,
   findRecentDuplicateSighting,
   createVehicleSighting,
+  getPendingVehicleSightings,
+  getVehicleSightingSubmission,
+  reviewVehicleSighting,
   getPublicRobotaxiVehicle,
+  getPublicVehicleSightings,
+  getRegistryVehiclesForModeration,
+  getRegistryVehicleForModeration,
+  setRobotaxiVehicleVisibility,
+  changeRobotaxiVehicleVisibility,
+  getRobotaxiVehicleReviews,
   getRobotaxiVehicleHistory,
   upsertRobotaxiOwnerConnection,
   getRobotaxiOwnerConnectionByUserId,

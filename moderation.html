@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="Cybercab2.png">
+<link rel="apple-touch-icon" href="Cybercab2.png">
+<title>Cybercab Hunter — Moderation</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
+        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
+      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
+    }}
+  }
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+
+<!-- Deliberately minimal chrome (matches signin.html) — this is not a
+     consumer page and isn't linked from the main nav or account menu.
+     Authorization is never decided here: every state below reflects
+     what GET /api/moderation/vehicle-sightings actually returned. -->
+<header class="border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-5xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <span class="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em]">Moderation</span>
+  </div>
+</header>
+
+<section class="py-16">
+  <div class="max-w-5xl mx-auto px-6 lg:px-10">
+
+    <!-- Loading -->
+    <div id="modLoading" class="hidden" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Loading the review queue…</span>
+      <div class="glass rounded-2xl p-7 h-40 animate-pulse mb-4"></div>
+      <div class="glass rounded-2xl p-7 h-40 animate-pulse"></div>
+    </div>
+
+    <!-- Signed out -->
+    <div id="modSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Sign in required</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">This page requires a moderator account.</p>
+      <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    </div>
+
+    <!-- Authenticated but not a moderator -->
+    <div id="modForbidden" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Not authorized</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your account doesn't have moderator access.</p>
+      <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to Cybercab Hunter</a>
+    </div>
+
+    <!-- Load/network failure — distinct from not-authorized -->
+    <div id="modError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Couldn't load the queue</h1>
+      <p id="modErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server.</p>
+      <button id="modRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
+    </div>
+
+    <!-- Queue -->
+    <div id="modQueue" class="hidden">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-8">
+        <div>
+          <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Review Queue</p>
+          <h1 class="font-display font-bold text-3xl tracking-tight">Vehicle Sightings</h1>
+        </div>
+        <button id="modRefresh" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Refresh</button>
+      </div>
+
+      <div id="modEmpty" class="hidden glass rounded-2xl p-10 text-center text-sm text-slate-400">No sightings waiting for review.</div>
+      <div id="modList" class="space-y-4"></div>
+
+      <!-- Registry vehicle visibility (Phase 3E). Kept apart from the sighting
+           queue: a receipt creates a registry vehicle internally, and only a
+           moderator making it public — while it also has a counted ride — lets
+           it appear on the public site. Registry facts and counts only. -->
+      <div id="modVehicles" class="mt-16">
+        <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Registry</p>
+        <h2 class="font-display font-bold text-2xl tracking-tight mb-2">Registry Vehicles</h2>
+        <p class="text-xs text-slate-500 leading-relaxed mb-3 max-w-2xl">Receipts create vehicles internally, but nothing confirms who actually issued a receipt, so a new vehicle stays private until you make it public. Public visibility alone is not enough: a vehicle also needs at least one counted ride before it appears on the public site.</p>
+        <p id="modProvenanceNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Provenance describes how data entered Cybercab Hunter. It does not prove that a receipt was genuinely issued by Tesla.</p>
+        <p id="modApprovalNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Approving a vehicle means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. Each approval or return to private is recorded in the vehicle's review history.</p>
+        <form id="modVehicleSearch" class="flex items-center gap-2 flex-wrap mb-5">
+          <select id="modVehicleScope" aria-label="Which vehicles to list" class="min-w-0 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+            <option value="awaiting">Private — has counted rides</option>
+            <option value="private">All private vehicles</option>
+            <option value="public">Currently public</option>
+          </select>
+          <input id="modVehiclePlate" type="text" maxlength="40" autocomplete="off" placeholder="Or search by plate" aria-label="Search by plate" class="min-w-0 flex-1 basis-40 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+          <button type="submit" class="text-xs font-semibold px-4 py-2.5 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Search</button>
+        </form>
+        <div id="modVehiclesLoading" class="hidden glass rounded-2xl p-7 h-24 animate-pulse" aria-busy="true"><span class="sr-only">Loading registry vehicles…</span></div>
+        <div id="modVehiclesError" class="hidden glass rounded-2xl p-6 text-sm text-slate-400">Couldn't load registry vehicles. <button id="modVehiclesRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></div>
+        <div id="modVehiclesEmpty" class="hidden glass rounded-2xl p-8 text-center text-sm text-slate-400">No registry vehicles match.</div>
+        <div id="modVehicleList" class="space-y-4"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script src="js/calc.js?v=2"></script>
+<script src="js/main.js?v=3"></script>
+<script>
+  CCC.init();
+</script>
+<script src="js/moderation.js?v=1"></script>
+</body>
+</html>

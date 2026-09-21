@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
-import { seedRide, makeCheck } from './helpers/env.mjs';
+import { seedRide, approveVehicle, makeCheck } from './helpers/env.mjs';
 import { db } from '../worker/db.js';
 import worker from '../worker/index.js';
 
@@ -75,6 +75,7 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id, { withRide: true });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
     check('the loaded view is shown, no error/not-found/invalid state', page.visible('vehicleLoaded') && !page.visible('vehicleError') && !page.visible('vehicleNotFound') && !page.visible('vehicleInvalid'));
     check('license plate renders', page.text('vLicensePlate') === 'XJR2195');
@@ -89,6 +90,7 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, { userId: 'u1', vehicleId: id, rideDate: '2026-06-09', distance: 2.8, serviceArea: 'Dallas' });
     seedRide(d1, { userId: 'u1', vehicleId: id, rideDate: '2026-06-15', distance: 3.4, serviceArea: 'Dallas' });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
@@ -98,11 +100,19 @@ async function run() {
     check('the service-areas note lists the recorded city', /Dallas/.test(page.text('vServiceAreasNote')));
   }
   {
-    const d1 = createTestD1();
+    // Phase 3E: a vehicle with NO counted rides is not public at all, so it
+    // can no longer be shown with a "0 rides" history — it is simply not found.
+    // What remains is a counted ride that has no distance/date/area recorded.
+    const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ZZZ0000');
+    approveVehicle(d1, id);
+    const none = await openPage({ cybercabhunter_db: d1 }, id);
+    check('an approved vehicle with no counted rides is not public: the page shows not-found, not a "0 rides" vehicle', none.visible('vehicleNotFound') && !none.visible('vehicleLoaded'));
+
+    seedRide(d1, { userId: 'u1', vehicleId: id, distance: null, rideDate: null, serviceArea: null });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('a vehicle with no rides still loads normally (not an error)', page.visible('vehicleLoaded'));
-    check('rides recorded honestly shows 0, not blank or fabricated', page.text('vTripCount') === '0');
+    check('a vehicle whose counted ride has no details still loads normally (not an error)', page.visible('vehicleLoaded'));
+    check('rides recorded shows the real count of 1', page.text('vTripCount') === '1');
     check('distance/first/last ride show the missing-data dash, never 0 or a fake date', page.text('vTotalDistance') === '—' && page.text('vFirstRide') === '—' && page.text('vLastRide') === '—');
     check('the service-areas note says none is recorded, not a blank line', /No service area recorded/i.test(page.text('vServiceAreasNote')));
   }
@@ -110,6 +120,7 @@ async function run() {
     // Multiple service areas across different riders — the GROUP_CONCAT list.
     const d1 = createTestD1(); seedUser(d1, 'rider-a'); seedUser(d1, 'rider-b');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, { userId: 'rider-a', vehicleId: id, rideDate: '2026-06-01', serviceArea: 'Dallas' });
     seedRide(d1, { userId: 'rider-b', vehicleId: id, rideDate: '2026-06-02', serviceArea: 'Austin' });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
@@ -140,13 +151,15 @@ async function run() {
     check('no internal exception text leaks into the error message', !/TypeError|network down|at\s+\S+\.js:\d+/i.test(page.text('vehicleErrorDetail')));
   }
   {
-    const d1 = createTestD1();
+    const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id, { withRide: true });
     let calls = 0;
     // First call fails (simulating a server hiccup); the retry click's call
     // is let through to the real worker, simulating the server recovering.
     const intercept = (path) => {
-      if (!path.includes('/api/robotaxi-vehicles/')) return null;
+      // Only the vehicle endpoint itself, not the separate /sightings one.
+      if (!/\/api\/robotaxi-vehicles\/[^/]+$/.test(path)) return null;
       calls += 1;
       return calls === 1 ? new Response('{"success":false}', { status: 500 }) : null;
     };
@@ -162,14 +175,17 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'user-first'); seedUser(d1, 'user-second');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, {
       userId: 'user-first', vehicleId: id, fare: 692,
       pickupDescription: '4301 Hanover St, Dallas, TX 75225', dropoffDescription: 'NorthPark Center, Dallas'
     });
     seedRide(d1, { userId: 'user-second', vehicleId: id, fare: 810, rideDate: '2026-07-01' });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('exactly one request was made, to the public vehicle endpoint', page.requests.length === 1 && page.requests[0].path === `/api/robotaxi-vehicles/${id}`);
-    check('no Authorization header was ever sent — this page never authenticates', !page.requests[0].headers.Authorization);
+    await page.waitFor(() => !page.visible('vSightingsLoading'), 'sightings section to settle');
+    check('exactly one request was made to the public vehicle endpoint', page.requests.filter(r => r.path === `/api/robotaxi-vehicles/${id}`).length === 1);
+    check('the only other request is the public sightings endpoint — nothing else is called', page.requests.length === 2 && page.requests[1].path === `/api/robotaxi-vehicles/${id}/sightings`);
+    check('no Authorization header was ever sent — this page never authenticates', page.requests.every(r => !r.headers.Authorization));
     check('no private endpoints were called (/api/profile, /api/trips, /api/tesla/*)', !page.requests.some(r => /\/api\/(profile|trips|tesla|me)\b/.test(r.path)));
     const rendered = page.d.body.innerHTML;
     check('no rider id string leaks into the rendered page', !/user-first|user-second/.test(rendered));
@@ -190,6 +206,8 @@ async function run() {
     const esc = s => s.replace(/'/g, "''");
     d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, model, color, service_area, first_seen_at, last_seen_at, visibility)
              VALUES ('${hostileId}', '${esc(hostile)}', '${esc(hostile)}', '${esc(hostile)}', '${esc(hostile)}', datetime('now'), datetime('now'), 'public')`);
+    seedUser(d1, 'u1');
+    seedRide(d1, { userId: 'u1', vehicleId: hostileId, status: 'pending' }); // public eligibility needs a counted ride
     const page = await openPage({ cybercabhunter_db: d1 }, hostileId);
     check('the page loads normally rather than erroring on hostile content', page.visible('vehicleLoaded'));
     check('no actual <img onerror> element was created from the hostile string — it never became markup (the page has 2 legitimate logo <img> tags, neither with onerror)', page.d.querySelectorAll('img[onerror]').length === 0);

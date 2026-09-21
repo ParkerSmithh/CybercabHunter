@@ -13,6 +13,7 @@
 //  - Private receipt details (payment last-four, passenger name) are never
 //    read into this shape.
 
+import { normalizePlate as normalizePlateBase } from './plate.js';
 import { parseStateFromAddress, resolveTimezone } from './city-reference.js';
 import { localToUtcIso } from './ride-time.js';
 
@@ -57,9 +58,11 @@ export function normalizeRideDate(raw) {
   return null;
 }
 
+// Receipt plates additionally must be 2-10 characters after the shared
+// normalization (worker/plate.js); anything else is treated as unreadable.
 export function normalizePlate(raw) {
   if (!raw) return null;
-  const plate = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const plate = normalizePlateBase(raw);
   return plate.length >= 2 && plate.length <= 10 ? plate : null;
 }
 

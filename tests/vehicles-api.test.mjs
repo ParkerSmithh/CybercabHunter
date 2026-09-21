@@ -9,7 +9,7 @@
 // Run: node tests/vehicles-api.test.mjs
 
 import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
-import { seedRide, makeCheck } from './helpers/env.mjs';
+import { seedRide, approveVehicle, makeCheck } from './helpers/env.mjs';
 import { db } from '../worker/db.js';
 import worker from '../worker/index.js';
 
@@ -25,27 +25,34 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id, { withRide: true });
     const resp = await call({ cybercabhunter_db: d1 }, `/api/robotaxi-vehicles/${id}`);
     check('200 with no Authorization header at all', resp.status === 200);
     const body = await resp.json();
     check('the vehicle is returned', body.vehicle.id === id && body.vehicle.license_plate === 'XJR2195');
   }
 
-  console.log('2. Valid vehicle, no rides yet: public vehicle info plus an honest empty history');
+  console.log('2. Valid approved vehicle whose only counted ride lacks details: an honest history with nulls, never invented values');
   {
-    const d1 = createTestD1();
+    // Phase 3E: a vehicle with NO counted rides is no longer public at all
+    // (see tests/registry-trust.test.mjs). What "honest nulls" now means is a
+    // counted ride that simply has no distance/date/area recorded.
+    const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ZZZ0000');
+    seedRide(d1, { userId: 'u1', vehicleId: id, distance: null, rideDate: null, serviceArea: null });
+    approveVehicle(d1, id);
     const resp = await call({ cybercabhunter_db: d1 }, `/api/robotaxi-vehicles/${id}`);
     const body = await resp.json();
     check('200', resp.status === 200);
     check('vehicle fields present, unknowns honestly null (never invented)', body.vehicle.license_plate === 'ZZZ0000' && body.vehicle.model === null && body.vehicle.color === null);
-    check('history has zero rides, and totals are null (not zero/fabricated)', body.history.trip_count === 0 && body.history.first_ride_date === null && body.history.total_distance === null);
+    check('history shows the one ride, and missing totals are null (not zero/fabricated)', body.history.trip_count === 1 && body.history.first_ride_date === null && body.history.total_distance === null);
   }
 
   console.log('3. Valid vehicle WITH history: counted rides aggregate correctly, exactly matching db.getRobotaxiVehicleHistory');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, { userId: 'u1', vehicleId: id, rideDate: '2026-06-09', distance: 2.8, fare: 692, serviceArea: 'Dallas' });
     seedRide(d1, { userId: 'u1', vehicleId: id, rideDate: '2026-06-15', distance: 3.4, fare: 810, serviceArea: 'Dallas' });
     seedRide(d1, { userId: 'u1', vehicleId: id, rideDate: '2026-01-01', distance: 50, fare: 5000, status: 'rejected' }); // never counted
@@ -85,6 +92,7 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'user-first'); seedUser(d1, 'user-second');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, {
       userId: 'user-first', vehicleId: id, rideDate: '2026-06-09',
       pickupDescription: '4301 Hanover St, Dallas, TX 75225', dropoffDescription: 'NorthPark Center, Dallas'
@@ -104,6 +112,7 @@ async function run() {
   {
     const d1 = createTestD1(); seedUser(d1, 'rider-a'); seedUser(d1, 'rider-b'); seedUser(d1, 'rider-c');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id);
     seedRide(d1, { userId: 'rider-a', vehicleId: id, rideDate: '2026-06-01', distance: 2, serviceArea: 'Dallas' });
     seedRide(d1, { userId: 'rider-b', vehicleId: id, rideDate: '2026-06-15', distance: 3, serviceArea: 'Austin' });
     seedRide(d1, { userId: 'rider-c', vehicleId: id, rideDate: '2026-07-01', distance: 4, serviceArea: 'Dallas' });
