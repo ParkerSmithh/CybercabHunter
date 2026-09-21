@@ -416,7 +416,7 @@ async function run() {
   console.log('6. Scope of this phase');
   {
     const ctx = await makeApp({ mod: 'moderator' }); ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };
-    check('there is still no public registry list, no /vehicles page route and no bulk-approve route', (await call(ctx, 'GET', '/api/robotaxi-vehicles', null)).status === 404 && (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/approve-all', 'mod', {})).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/review', 'mod', {})).status === 404);
+    check('there is still no bulk-approve route, and /vehicles is only a static page, not a Worker route (the public list itself lives in vehicle-registry.test.mjs)', (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/approve-all', 'mod', {})).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/review', 'mod', {})).status === 404);
     check('the review route accepts only POST', (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod')).status === 404 && (await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod', { action: 'approve_public' })).status === 404);
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
     check('exactly one migration was added for this phase (0012), additive only', migrations.length === 12 && migrations[11] === '0012_robotaxi_vehicle_reviews.sql' && !/\b(DROP|DELETE|UPDATE|ALTER)\b/i.test(fs.readFileSync(`${ROOT}migrations/${migrations[11]}`, 'utf8').replace(/^--.*$/gm, '')));

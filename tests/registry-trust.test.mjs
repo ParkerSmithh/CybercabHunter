@@ -528,7 +528,10 @@ async function run() {
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };
-    check('there is no public /api/robotaxi-vehicles list endpoint', (await call(ctx, 'GET', '/api/robotaxi-vehicles', null)).status === 404 && (await call(ctx, 'GET', '/api/robotaxi-vehicles?limit=5', null)).status === 404);
+    // The public list now exists (worker/vehicles.js apiListVehicles, tested in vehicle-registry.test.mjs). What must still hold here:
+    // it is read-only, and nothing in this fixture (only private vehicles) can appear in it.
+    const publicList = await call(ctx, 'GET', '/api/robotaxi-vehicles', null);
+    check('the public /api/robotaxi-vehicles list is GET-only and, with no public vehicle, is empty', publicList.status === 200 && (await publicList.json()).total === 0 && (await call(ctx, 'POST', '/api/robotaxi-vehicles', 'mod', {})).status === 404 && (await call(ctx, 'DELETE', '/api/robotaxi-vehicles', 'mod')).status === 404);
     check('there is no public preflight/diagnostics route', (await call(ctx, 'GET', '/api/moderation/registry-preflight', 'mod')).status === 404 && (await call(ctx, 'GET', '/api/registry-preflight', null)).status === 404);
     check('/vehicles and /registry are not served by the worker (still plain static-asset lookups)', (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'GET', '/registry', null)).status === 404);
     check('the moderator vehicle route does not accept DELETE or POST', (await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${V1}`, 'mod')).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles', 'mod', {})).status === 404);

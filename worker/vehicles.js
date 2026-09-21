@@ -25,6 +25,43 @@ import { db } from './db.js';
 
 export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const LIST_DEFAULT_LIMIT = 50;
+const LIST_MAX_LIMIT = 100;
+
+// Public: the registry list behind /vehicles. Same gate as apiGetVehicle (only
+// vehicles that are public AND have a counted ride) — see
+// db.getPublicRobotaxiVehicles — so a private, hidden, ineligible or
+// nonexistent vehicle can never appear here, and nothing is returned that the
+// per-vehicle endpoint would not also return. A missing or unusable
+// ?limit / ?offset falls back to the default; a too-large limit is clamped.
+export async function apiListVehicles(request, env) {
+  const params = new URL(request.url).searchParams;
+  const asInt = (raw, fallback) => (/^\d{1,6}$/.test(raw || '') ? Number(raw) : fallback);
+  const limit = Math.min(Math.max(asInt(params.get('limit'), LIST_DEFAULT_LIMIT), 1), LIST_MAX_LIMIT);
+  const offset = asInt(params.get('offset'), 0);
+
+  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset });
+  return Response.json({
+    vehicles: vehicles.map(v => ({
+      id: v.id,
+      provider: v.provider,
+      license_plate: v.license_plate,
+      model: v.model,
+      color: v.color,
+      service_area: v.service_area,
+      first_seen_at: v.first_seen_at,
+      last_seen_at: v.last_seen_at,
+      verification_status: v.verification_status,
+      trip_count: v.trip_count,
+      last_ride_date: v.last_ride_date,
+      service_areas: v.service_areas
+    })),
+    total, limit, offset
+  }, {
+    headers: { 'Cache-Control': 'public, max-age=60' }
+  });
+}
+
 export async function apiGetVehicle(request, env, vehicleId) {
   if (!VEHICLE_ID_RE.test(vehicleId)) {
     return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });

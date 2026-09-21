@@ -519,6 +519,31 @@ async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, 
   return { applied: !!(submissionResult && submissionResult.meta && submissionResult.meta.changes) };
 }
 
+// The public registry LIST: exactly the vehicles getPublicRobotaxiVehicle would
+// return (same gate, publicVehicleEligibleSql — public AND at least one
+// counted ride), with the same public fields plus a small ride summary taken
+// from the same counted-ride rule the detail page uses. Nothing private is
+// selected: no user/ride/submission ids, no fares, no addresses. Most recently
+// seen first, then plate, then id, so the order is stable between pages.
+async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
+  const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
+  const rows = await sql.prepare(`
+    SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
+           v.first_seen_at, v.last_seen_at, v.verification_status,
+           (SELECT COUNT(*) ${counted()}) AS trip_count,
+           (SELECT MAX(t.ride_date) ${counted()}) AS last_ride_date,
+           (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas
+    FROM robotaxi_vehicles v
+    WHERE ${publicVehicleEligibleSql('v')}
+    ORDER BY v.last_seen_at DESC, v.license_plate ASC, v.id ASC
+    LIMIT ? OFFSET ?
+  `).bind(limit, offset).all();
+  const total = await sql.prepare(`
+    SELECT COUNT(*) AS n FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}
+  `).first();
+  return { vehicles: rows.results || [], total: total ? total.n : 0 };
+}
+
 // The public-facing view of a single registry row, for worker/vehicles.js.
 // Selects only vehicle-descriptive columns — never `visibility` itself,
 // which is part of the gate this query enforces rather than a fact about the
@@ -984,6 +1009,7 @@ export const db = {
   getVehicleSightingSubmission,
   reviewVehicleSighting,
   getPublicRobotaxiVehicle,
+  getPublicRobotaxiVehicles,
   getPublicVehicleSightings,
   getRegistryVehiclesForModeration,
   getRegistryVehicleForModeration,

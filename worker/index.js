@@ -6,7 +6,7 @@ import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
-import { apiGetVehicle, apiGetVehicleSightings } from './vehicles.js';
+import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles } from './vehicles.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { teslaRides } from './tesla-rides.js';
@@ -218,6 +218,11 @@ export default {
     // Public robotaxi vehicle info (worker/vehicles.js) — deliberately the
     // only /api/* route with no tesla.requireUserId check. Backs the future
     // Phase 3C public vehicle page; nothing here is rider-specific.
+    // The registry list behind the /vehicles page: public, GET only, and gated
+    // by the same rule as the per-vehicle route below.
+    if (url.pathname === '/api/robotaxi-vehicles' && request.method === 'GET') {
+      return withCors(await apiListVehicles(request, env), request);
+    }
     const vehicleSightingsMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)\/sightings$/);
     if (vehicleSightingsMatch && request.method === 'GET') {
       return withCors(await apiGetVehicleSightings(request, env, vehicleSightingsMatch[1]), request);

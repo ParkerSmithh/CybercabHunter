@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="Cybercab2.png">
 <link rel="apple-touch-icon" href="Cybercab2.png">
-<title>Cybercab Hunter — Spotter Leaderboard</title>
+<title>Cybercab Hunter — Vehicle Registry</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -45,7 +45,6 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
       <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
@@ -62,16 +61,44 @@
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="reveal-on-scroll mb-14 max-w-2xl">
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Community<br><span class="text-gold">Leaderboard</span></h1>
-      <p class="mt-4 text-slate-400 text-base leading-relaxed">Climb the spotter leaderboard.</p>
+
+    <div class="reveal-on-scroll mb-8">
+      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Registry</p>
+      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight mb-3">Vehicle Registry</h1>
+      <p class="text-slate-400 text-sm leading-relaxed max-w-2xl">Robotaxis recorded by Cybercab Hunter riders that a moderator has approved for the public registry. Listing here does not verify a vehicle with Tesla, and a vehicle's "last seen" does not mean it is currently operating.</p>
     </div>
 
-    <!-- Leaderboard -->
-    <div class="glass rounded-2xl p-7 reveal-on-scroll max-w-2xl">
-      <h2 class="font-display font-bold text-2xl mb-6">Spotter Leaderboard</h2>
-      <div id="leaderboardList" class="space-y-3"></div>
+    <!-- Loading -->
+    <div id="regLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Loading vehicles…</span>
+      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
+      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
+      <div class="glass rounded-2xl p-6 h-44 animate-pulse hidden sm:block"></div>
     </div>
+
+    <!-- Empty: nothing is public yet -->
+    <div id="regEmpty" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h2 class="font-display font-bold text-2xl mb-3">No vehicles in the registry yet</h2>
+      <p class="text-slate-400 text-sm leading-relaxed">Vehicles appear here once a moderator approves them. Check back soon.</p>
+    </div>
+
+    <!-- Network/server failure — NOT the same as empty -->
+    <div id="regError" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h2 class="font-display font-bold text-2xl mb-3">We couldn't load the registry</h2>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
+      <button id="regRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
+    </div>
+
+    <!-- Loaded -->
+    <div id="regLoaded" class="hidden">
+      <p id="regCount" class="text-xs text-slate-500 uppercase tracking-wider mb-4"></p>
+      <ul id="regList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"></ul>
+      <div class="mt-8 text-center">
+        <button id="regMore" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Show more</button>
+        <p id="regMoreError" class="hidden text-sm text-slate-400 mt-3">Couldn't load more right now. <button id="regMoreRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -174,21 +201,7 @@
 <script src="js/main.js?v=3"></script>
 <script>
   CCC.init();
-
-  // ---- Leaderboard ----
-  const rankClass = ['rank-1', 'rank-2', 'rank-3'];
-  const rankColor = ['text-gold', 'text-silver', 'text-[#B08D57]'];
-  document.getElementById('leaderboardList').innerHTML = [...CCC.data.leaderboard]
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => `
-      <div class="flex items-center justify-between p-3 rounded-xl ${i < 3 ? 'glass ' + rankClass[i] : 'border border-[rgba(212,175,55,0.08)]'}">
-        <div class="flex items-center gap-3">
-          <span class="font-display font-bold w-6 text-center ${i < 3 ? rankColor[i] : 'text-slate-500'}">#${i + 1}</span>
-          <span class="text-sm font-semibold">${s.name}</span>
-        </div>
-        <span class="text-sm font-display font-bold text-slate-300">${s.score.toLocaleString()}</span>
-      </div>
-    `).join('');
 </script>
+<script src="js/vehicles.js?v=1"></script>
 </body>
 </html>
