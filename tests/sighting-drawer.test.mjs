@@ -9,7 +9,7 @@
 // Run: node tests/sighting-drawer.test.mjs
 
 import fs from 'node:fs';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import worker from '../worker/index.js';
 
@@ -31,7 +31,13 @@ async function makeApp(users = ['u1']) {
 // identical across every page that has it) with an optional session and an
 // optional fetch intercept, matching rider-data-ui.test.mjs's own pattern.
 async function openPage(env, sessionId, intercept) {
-  const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community.html', pretendToBeVisual: true });
+  // jsdom cannot navigate, and reports every attempt as a "not implemented:
+  // navigation" error. That is exactly the signal wanted here: it counts the
+  // times the page tried to leave for another URL.
+  const navigations = [];
+  const virtualConsole = new VirtualConsole();
+  virtualConsole.on('jsdomError', err => { if (/navigation/i.test(err.message)) navigations.push(err.message); });
+  const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community.html', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   if (sessionId) w.localStorage.setItem('teslaSessionId', sessionId);
@@ -49,7 +55,8 @@ async function openPage(env, sessionId, intercept) {
   await new Promise(r => setTimeout(r, 20));
   const d = w.document;
   const page = {
-    w, d, requests,
+    w, d, requests, navigations,
+    drawerOpen: () => d.getElementById('sightingDrawer').classList.contains('is-open') && d.getElementById('sightingBackdrop').classList.contains('is-open'),
     text: id => d.getElementById(id).textContent.replace(/\s+/g, ' ').trim(),
     visible: id => !d.getElementById(id).classList.contains('hidden'),
     // Only the MOST RECENT toast — toast() leaves each one in the DOM for
@@ -79,23 +86,37 @@ async function openPage(env, sessionId, intercept) {
 const sightingRows = ctx => ctx.d1.query('SELECT * FROM vehicle_observations');
 
 async function run() {
-  console.log('1. Signed out: no fake success, no localStorage write, sign-in requirement shown');
+  console.log('1. Signed out: the submit button goes to the sign-in page instead of opening the drawer; nothing is sent or stored');
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, null);
     page.openDrawer();
-    check('the sign-in-required state is shown', page.visible('sightingSignInRequired'));
-    check('the form itself is hidden while signed out', !page.visible('sightingForm'));
-    check('a Sign In link is offered, using the existing sign-in page', page.d.querySelector('#sightingSignInRequired a[href="signin.html"]') !== null);
+    await new Promise(r => setTimeout(r, 30));
+    check('clicking the submit button leaves the page (one navigation attempt)', page.navigations.length === 1);
+    check('the submit drawer and its backdrop are not opened', !page.drawerOpen());
 
-    // Even a direct dispatch of submit (bypassing the hidden-field UX) must
-    // not silently "succeed" for a signed-out visitor.
+    // The destination is the existing Google sign-in page.
+    check('the navigation target is the existing sign-in page', /const SIGN_IN_PAGE = 'signin\.html'/.test(MAIN) && /window\.location\.href = SIGN_IN_PAGE/.test(MAIN));
+    check('that page exists and offers Google sign-in', fs.existsSync(`${ROOT}signin.html`) && /oauth\/google\/start/.test(fs.readFileSync(`${ROOT}signin.html`, 'utf8')));
+
+    // The same holds for the hero submit button, where a page has one.
+    const hero = page.d.getElementById('heroSightingBtn');
+    if (hero) { hero.click(); check('the hero submit button behaves the same', page.navigations.length === 2 && !page.drawerOpen()); }
+
+    // Even a direct dispatch of submit (bypassing the UI entirely) must not
+    // silently "succeed" for a signed-out visitor.
     page.fill('Dallas', 'S Congress Ave', 'XJR2195');
     page.submit();
     await new Promise(r => setTimeout(r, 30));
     check('no request was sent while signed out', page.requests.length === 0);
     check('no localStorage sighting entry was written', page.w.localStorage.getItem('cybercabCentral.sightings') === null);
     check('no success toast appeared', !/submitted for review/i.test(page.toastText()));
+  }
+  {
+    // Every page that has the submit button loads the script that enforces this.
+    const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}${f}`, 'utf8').includes('id="openSightingDrawer"'));
+    check('the submit button exists on several pages', pages.length >= 5);
+    check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}${f}`, 'utf8'))));
   }
 
   console.log('2. Authenticated submit: correct endpoint, correct JSON fields, no user_id, no "Unlisted" sentinel');
@@ -104,6 +125,7 @@ async function run() {
     const page = await openPage(ctx.env, 'session-u1');
     page.openDrawer();
     check('the form is shown for a signed-in visitor', page.visible('sightingForm') && !page.visible('sightingSignInRequired'));
+    check('the drawer opens and the visitor stays on the page', page.drawerOpen() && page.navigations.length === 0);
     page.fill('Dallas', 'S Congress Ave', 'xjr-2195');
     page.submit();
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');

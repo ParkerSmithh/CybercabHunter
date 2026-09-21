@@ -190,6 +190,8 @@ const CCC = (() => {
     invalid_body: "That sighting couldn't be submitted — check the fields and try again."
   };
 
+  const SIGN_IN_PAGE = 'signin.html';   // relative on purpose: vehicle.html's <base href="/"> makes it resolve from the site root
+
   function initSightingDrawer() {
     const drawer = document.getElementById('sightingDrawer');
     const backdrop = document.getElementById('sightingBackdrop');
@@ -214,7 +216,14 @@ const CCC = (() => {
       return signedIn;
     }
 
-    function open() { refreshAuthGate(); drawer.classList.add('is-open'); backdrop.classList.add('is-open'); }
+    // Signed out: the drawer is never opened. The visitor goes straight to the
+    // existing sign-in page (Google), so the submit form is only ever reachable
+    // signed in. The in-drawer sign-in prompt above stays as the fallback for a
+    // session that turns out to be rejected while the drawer is already open.
+    function open() {
+      if (!refreshAuthGate()) { window.location.href = SIGN_IN_PAGE; return; }
+      drawer.classList.add('is-open'); backdrop.classList.add('is-open');
+    }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
 
     openBtns.forEach(btn => btn.addEventListener('click', open));
