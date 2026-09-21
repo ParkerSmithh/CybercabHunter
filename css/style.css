@@ -95,6 +95,28 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
 
 /* ---------- Nav ---------- */
 header nav a{text-transform:uppercase; letter-spacing:0.03em;}
+
+/* Phones: the signed-out header (logo + wordmark + "Link Tesla Account" + Submit + Sign In) needs ~400px, wider
+   than a 375/390px screen, so the page scrolled sideways by ~11px and items ran into each other. Tighten it below
+   the sm breakpoint (640px) only, and only on pages whose header has that button. The button keeps its full
+   "Link Tesla Account" label (it may wrap to two lines); Submit and Sign In never shrink below their text, so
+   the Link Tesla button absorbs the squeeze. Desktop and tablet are untouched. */
+@media (max-width:639px){
+  header:has(#teslaLinkBtn) > div{padding-left:1rem; padding-right:1rem;}
+  header:has(#teslaLinkBtn) .gap-3{gap:.5rem;}
+  header:has(#teslaLinkBtn) .px-4{padding-left:.75rem; padding-right:.75rem;}
+  header:has(#teslaLinkBtn) > div > a:first-child,
+  header:has(#teslaLinkBtn) #openSightingDrawer,
+  header:has(#teslaLinkBtn) #accountSignedOut a{flex-shrink:0; white-space:nowrap;}
+  header:has(#teslaLinkBtn) #teslaLinkBtn{font-size:.75rem; line-height:1rem;}
+}
+/* Below ~520px there is no room for the wordmark beside the logo image as well; the image link keeps its alt text. */
+@media (max-width:519px){
+  header:has(#teslaLinkBtn) > div > a:first-child > div{display:none;}
+}
+@media (max-width:339px){
+  header:has(#teslaLinkBtn) .px-4{padding-left:.5rem; padding-right:.5rem;}
+}
 #navIndicator{
   position:absolute; bottom:-1px; height:2px;
   background:var(--gold);
