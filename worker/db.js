@@ -537,7 +537,14 @@ async function getPublicRegistryStats(sql) {
         WHERE ${COUNTED_RIDES_WHERE}
           AND t.robotaxi_vehicle_id IN (SELECT v.id FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')})) AS recorded_rides
   `).first();
-  return { public_vehicles: row ? row.public_vehicles : 0, recorded_rides: row ? row.recorded_rides : 0 };
+  // An aggregate SELECT of COUNT(*)s always yields exactly one row of whole numbers. Anything else (no row,
+  // a null result, missing or non-numeric columns) means the query did not really answer, and that must
+  // surface as a failure (the caller turns a throw into the generic 503) — never be reported as a zero.
+  const whole = n => Number.isInteger(n) && n >= 0;
+  if (!row || !whole(row.public_vehicles) || !whole(row.recorded_rides)) {
+    throw new Error('registry stats: the aggregate query returned no usable row');
+  }
+  return { public_vehicles: row.public_vehicles, recorded_rides: row.recorded_rides };
 }
 
 // The public registry LIST: exactly the vehicles getPublicRobotaxiVehicle would

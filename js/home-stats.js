@@ -13,6 +13,9 @@
 
   const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
 
+  // The tiles are deliberately NOT live regions (no aria-live / role=status): the count-up rewrites the text on
+  // every animation frame, and a live region would make a screen reader announce dozens of intermediate
+  // numbers. They are ordinary text, so the final value is read normally. tests/registry-stats.test.mjs guards this.
   function reveal(el, n) {
     el.dataset.value = String(n);
     const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

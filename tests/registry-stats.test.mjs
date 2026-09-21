@@ -112,6 +112,28 @@ async function run() {
     const txt = await r.text();
     check('a database failure is a 503 with a generic error', r.status === 503 && JSON.parse(txt).error === 'stats_unavailable');
     check('the failure is never cached and leaks no internal detail', r.headers.get('Cache-Control') === 'no-store' && !/D1_ERROR|secret|internal/.test(txt));
+
+    // A missing / null / unusable aggregate result is a FAILURE (503), never a zero.
+    const withDb = impl => ({ ...ctx.env, cybercabhunter_db: { prepare: impl } });
+    const answer = async db => { const x = await worker.fetch(new Request('https://x/api/registry/stats', { headers: { Origin: 'https://cybercabhunter.com' } }), withDb(db), {}); const raw = await x.text(); let body = null; try { body = JSON.parse(raw); } catch {} return { status: x.status, cache: x.headers.get('Cache-Control'), raw, body }; };
+    const isGeneric503 = a => a.status === 503 && a.body && a.body.error === 'stats_unavailable' && a.body.success === false && Object.keys(a.body).sort().join() === 'error,success' && a.cache === 'no-store' && !/public_vehicles|recorded_rides|null|undefined|Error|registry stats|aggregate|usable/.test(a.raw);
+    for (const [label, result] of [['null', null], ['undefined', undefined], ['an empty object (no columns)', {}], ['one column missing', { public_vehicles: 3 }], ['null columns', { public_vehicles: null, recorded_rides: null }], ['non-numeric columns', { public_vehicles: 'x', recorded_rides: '5' }], ['negative counts', { public_vehicles: -1, recorded_rides: 0 }], ['fractional counts', { public_vehicles: 1.5, recorded_rides: 2 }]]) {
+      const a = await answer(() => ({ first: async () => result }));
+      check(`the aggregate query resolving ${label} is a generic 503 (no-store, nothing internal) — never zeros`, isGeneric503(a), `${a.status} ${a.raw.slice(0, 60)}`);
+    }
+    const rejected = await answer(() => ({ first: async () => { throw new Error('D1_ERROR: connection reset by peer 10.0.0.7'); } }));
+    check('the aggregate query rejecting is a generic 503 too, with no internal detail', isGeneric503(rejected) && !/D1_ERROR|10\.0\.0\.7|connection/.test(rejected.raw));
+
+    // ...while a genuine database answer of zero is still a normal 200 with zeroes.
+    const zero = await answer(() => ({ first: async () => ({ public_vehicles: 0, recorded_rides: 0 }) }));
+    check('a genuine aggregate result of zero is a 200 with zeroes, cached 60s', zero.status === 200 && zero.body.public_vehicles === 0 && zero.body.recorded_rides === 0 && zero.cache === 'public, max-age=60' && Object.keys(zero.body).join() === 'public_vehicles,recorded_rides');
+    const normal = await answer(() => ({ first: async () => ({ public_vehicles: 4, recorded_rides: 5 }) }));
+    check('a normal aggregate result is a 200 with those numbers', normal.status === 200 && normal.body.public_vehicles === 4 && normal.body.recorded_rides === 5);
+    // Direct check at the data layer: the function itself throws instead of inventing zeros.
+    const { db } = await import('../worker/db.js');
+    let threw = false; try { await db.getPublicRegistryStats({ prepare: () => ({ first: async () => null }) }); } catch { threw = true; }
+    check('db.getPublicRegistryStats throws on a null result instead of returning zeros', threw);
+    check('and returns the real zeros for a real empty database', JSON.stringify(await db.getPublicRegistryStats(ctx.d1)) === '{"public_vehicles":0,"recorded_rides":0}');
   }
 
   console.log('4. Homepage markup: nothing hard-coded');
@@ -123,6 +145,10 @@ async function run() {
     check('the page loads the stats script after main.js', /js\/main\.js[^\n]*\n<script src="js\/home-stats\.js/.test(HTML));
     check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Vehicle registry'))));
     check('the homepage no longer contains the old counter observer', !/counterObserver/.test(HTML));
+    const bar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Vehicle registry'));
+    check('the stats bar has no live region: no aria-live, role=status/alert/log, aria-atomic or aria-relevant', !/aria-live|role="(status|alert|log|timer|marquee)"|aria-atomic|aria-relevant/i.test(bar));
+    const statsCode = STATS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');   // executable code only (the comments explain why there is no live region)
+    check('the stats script never adds a live region either', !/aria-live|setAttribute\(\s*['"]role|aria-atomic|\.role\s*=/i.test(statsCode));
   }
 
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
@@ -187,6 +213,30 @@ async function run() {
     const early = anim.v();
     await new Promise(r => setTimeout(r, 1700));
     check('with motion allowed it counts up and ends on the exact real value', anim.v() === '1' && anim.r() === '2' && early !== undefined);
+  }
+
+  console.log('5b. Accessibility: the count-up is not announced (no live region), yet it still animates and ends on the real value');
+  {
+    const ctx = await makeApp();
+    for (let i = 1; i <= 3; i++) { const id = vehicle(ctx, i, `LIVE00${i}`, 'public'); ride(ctx, id); ride(ctx, id, { rideKey: `l${i}` }); }
+    const p = await home(ctx, { reducedMotion: false });
+    const LIVE = '[aria-live], [role="status"], [role="alert"], [role="log"], [role="timer"]';
+    const changes = { statVehicles: 0, statRides: 0 };
+    for (const id of Object.keys(changes)) new p.w.MutationObserver(m => { changes[id] += m.length; }).observe(p.d.getElementById(id), { childList: true, characterData: true, subtree: true });
+    const end = Date.now() + 4000;
+    while (Date.now() < end && !(p.v() === '3' && p.r() === '6')) await new Promise(r => setTimeout(r, 25));
+    check('the animation really rewrites the tile text many times (this is what must NOT be announced)', changes.statVehicles > 5 && changes.statRides > 5, `vehicles ${changes.statVehicles}, rides ${changes.statRides}`);
+    check('...and it lands on the exact real values (3 vehicles, 6 rides)', p.v() === '3' && p.r() === '6');
+    for (const id of ['statVehicles', 'statRides']) {
+      const el = p.d.getElementById(id);
+      check(`${id}: neither the tile nor any ancestor is a live region, and it carries no live attributes`, el.closest(LIVE) === null && !el.hasAttribute('aria-live') && !el.hasAttribute('aria-atomic') && !el.hasAttribute('role'));
+    }
+    check('nothing in the whole document is a live region that contains the tiles', [...p.d.querySelectorAll(LIVE)].every(r => !r.contains(p.d.getElementById('statVehicles')) && !r.contains(p.d.getElementById('statRides'))));
+    // Reduced motion: no count-up at all — one write of the final value.
+    const still = await home(ctx, { reducedMotion: true });
+    const stillChanges = { n: 0 }; new still.w.MutationObserver(m => { stillChanges.n += m.length; }).observe(still.d.getElementById('statVehicles'), { childList: true, characterData: true, subtree: true });
+    await new Promise(r => setTimeout(r, 400));
+    check('reduced motion: the final value is shown immediately and never rewritten', still.v() === '3' && still.r() === '6' && stillChanges.n === 0);
   }
 
   console.log('6. Community page: the invented leaderboard is gone');
