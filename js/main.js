@@ -33,13 +33,6 @@ const CCC = (() => {
       { id: 'b1', title: 'First sighting in Zilker', reward: 250, progress: 3, goal: 5 },
       { id: 'b2', title: 'Night-time unsupervised clip', reward: 400, progress: 1, goal: 3 },
       { id: 'b3', title: 'Inductive pad in-use photo', reward: 150, progress: 4, goal: 4 }
-    ],
-    leaderboard: [
-      { name: 'atx_spotter', score: 1820 },
-      { name: 'dfw_watcher', score: 1390 },
-      { name: 'cabhunter22', score: 1204 },
-      { name: 'sillicon_hills', score: 990 },
-      { name: 'railyardryan', score: 812 }
     ]
   };
 

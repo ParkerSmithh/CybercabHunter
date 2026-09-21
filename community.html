@@ -64,13 +64,13 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="reveal-on-scroll mb-14 max-w-2xl">
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Community<br><span class="text-gold">Leaderboard</span></h1>
-      <p class="mt-4 text-slate-400 text-base leading-relaxed">Climb the spotter leaderboard.</p>
+      <p class="mt-4 text-slate-400 text-base leading-relaxed">The spotter leaderboard isn't live yet.</p>
     </div>
 
-    <!-- Leaderboard -->
-    <div class="glass rounded-2xl p-7 reveal-on-scroll max-w-2xl">
-      <h2 class="font-display font-bold text-2xl mb-6">Spotter Leaderboard</h2>
-      <div id="leaderboardList" class="space-y-3"></div>
+    <!-- No leaderboard yet: the names and scores that used to be shown here were invented placeholders, not real activity. -->
+    <div id="leaderboardEmpty" class="glass rounded-2xl p-7 reveal-on-scroll max-w-2xl">
+      <h2 class="font-display font-bold text-2xl mb-3">Nothing is ranked yet</h2>
+      <p class="text-sm text-slate-400 leading-relaxed">Rankings will only be shown once they can be based on real, moderated contributions. Until then, this page doesn't display any names or scores.</p>
     </div>
   </div>
 </section>
@@ -174,21 +174,6 @@
 <script src="js/main.js?v=3"></script>
 <script>
   CCC.init();
-
-  // ---- Leaderboard ----
-  const rankClass = ['rank-1', 'rank-2', 'rank-3'];
-  const rankColor = ['text-gold', 'text-silver', 'text-[#B08D57]'];
-  document.getElementById('leaderboardList').innerHTML = [...CCC.data.leaderboard]
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => `
-      <div class="flex items-center justify-between p-3 rounded-xl ${i < 3 ? 'glass ' + rankClass[i] : 'border border-[rgba(212,175,55,0.08)]'}">
-        <div class="flex items-center gap-3">
-          <span class="font-display font-bold w-6 text-center ${i < 3 ? rankColor[i] : 'text-slate-500'}">#${i + 1}</span>
-          <span class="text-sm font-semibold">${s.name}</span>
-        </div>
-        <span class="text-sm font-display font-bold text-slate-300">${s.score.toLocaleString()}</span>
-      </div>
-    `).join('');
 </script>
 </body>
 </html>

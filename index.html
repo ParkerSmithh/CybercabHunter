@@ -87,13 +87,14 @@
 <section class="border-b border-[rgba(212,175,55,0.12)]">
   <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 reveal-on-scroll">
     <div class="p-8 sm:border-r border-[rgba(212,175,55,0.1)] border-b sm:border-b-0">
-      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="45">0</span></div>
-      <div class="text-sm text-slate-400 mt-2">Active Cybercabs</div>
+      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span id="statVehicles" aria-live="polite">—</span></div>
+      <div class="text-sm text-slate-400 mt-2">Vehicles in the Registry</div>
+      <div class="text-xs font-semibold text-cyan mt-1">Moderator-approved</div>
     </div>
     <div class="p-8 sm:border-r border-[rgba(212,175,55,0.1)] border-b sm:border-b-0">
-      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span class="counter" data-target="98">0</span>%</div>
-      <div class="text-sm text-slate-400 mt-2">Unsupervised Rate</div>
-      <div class="text-xs font-semibold text-cyan mt-1">In Austin</div>
+      <div class="flex items-center gap-2 font-display font-bold text-3xl"><span id="statRides" aria-live="polite">—</span></div>
+      <div class="text-sm text-slate-400 mt-2">Rides Recorded</div>
+      <div class="text-xs font-semibold text-cyan mt-1">On registry vehicles</div>
     </div>
     <div class="p-8">
       <div class="font-display font-bold text-3xl text-gold">Dallas</div>
@@ -256,6 +257,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=2"></script>
 <script src="js/main.js?v=3"></script>
+<script src="js/home-stats.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -298,21 +300,6 @@
     setInterval(cycle, 10000);
   }
   initHeroTypewriter();
-
-  // ---- Stat counters (animate when scrolled into view) ----
-  const counterEls = document.querySelectorAll('.counter');
-  if (counterEls.length) {
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          CCC.animateCounter(el, 0, parseInt(el.dataset.target, 10), 1400);
-          counterObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.4 });
-    counterEls.forEach(el => counterObserver.observe(el));
-  }
 
   // ---- Austin Robotaxi service zone (Tesla's real published geofence) ----
   const serviceZoneCoords = [

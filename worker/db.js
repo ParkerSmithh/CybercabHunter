@@ -519,6 +519,27 @@ async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, 
   return { applied: !!(submissionResult && submissionResult.meta && submissionResult.meta.changes) };
 }
 
+// Public registry AGGREGATES for the homepage: how many vehicles are publicly
+// eligible, and how many counted rides belong to exactly those vehicles. Both
+// come from the SAME gate the registry list and the vehicle page use
+// (publicVehicleEligibleSql — public AND at least one counted ride) and the
+// same counted-ride rule (COUNTED_RIDES_WHERE), so the totals always equal the
+// sum of what the public list shows. Only two numbers leave this function: no
+// ids, no per-vehicle, per-user, per-submission or moderation data. Sightings
+// are deliberately NOT counted here: the public sighting list de-duplicates by
+// day and area and caps each vehicle's list, so a raw total would not match
+// anything a visitor can verify.
+async function getPublicRegistryStats(sql) {
+  const row = await sql.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}) AS public_vehicles,
+      (SELECT COUNT(*) FROM ${RIDES_FROM}
+        WHERE ${COUNTED_RIDES_WHERE}
+          AND t.robotaxi_vehicle_id IN (SELECT v.id FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')})) AS recorded_rides
+  `).first();
+  return { public_vehicles: row ? row.public_vehicles : 0, recorded_rides: row ? row.recorded_rides : 0 };
+}
+
 // The public registry LIST: exactly the vehicles getPublicRobotaxiVehicle would
 // return (same gate, publicVehicleEligibleSql — public AND at least one
 // counted ride), with the same public fields plus a small ride summary taken
@@ -1010,6 +1031,7 @@ export const db = {
   reviewVehicleSighting,
   getPublicRobotaxiVehicle,
   getPublicRobotaxiVehicles,
+  getPublicRegistryStats,
   getPublicVehicleSightings,
   getRegistryVehiclesForModeration,
   getRegistryVehicleForModeration,

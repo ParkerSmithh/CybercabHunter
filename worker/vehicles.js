@@ -25,6 +25,24 @@ import { db } from './db.js';
 
 export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Public: two aggregate numbers for the homepage (see db.getPublicRegistryStats).
+// GET only, no session, an explicit two-field whitelist. A database failure is a
+// generic 503 that is never cached — the page then shows a dash, because "could
+// not load" is not the same as zero.
+export async function apiGetRegistryStats(request, env) {
+  try {
+    const stats = await db.getPublicRegistryStats(env.cybercabhunter_db);
+    return Response.json({
+      public_vehicles: stats.public_vehicles,
+      recorded_rides: stats.recorded_rides
+    }, {
+      headers: { 'Cache-Control': 'public, max-age=60' }
+    });
+  } catch (err) {
+    return Response.json({ success: false, error: 'stats_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
+}
+
 const LIST_DEFAULT_LIMIT = 50;
 const LIST_MAX_LIMIT = 100;
 
