@@ -141,11 +141,12 @@ async function run() {
   {
     check('the invented tiles are gone: no "Active Cybercabs", no "Unsupervised Rate", no 45 / 98 targets', !/Active Cybercabs|Unsupervised Rate|data-target="(45|98)"|class="counter"/.test(HTML));
     check('the two real tiles exist and start as an em dash, not 0', /id="statVehicles"[^>]*>—</.test(HTML) && /id="statRides"[^>]*>—</.test(HTML));
-    check('the tiles are labelled honestly', /Vehicles in the Registry/.test(HTML) && /Rides Recorded/.test(HTML) && /On registry vehicles/.test(HTML));
+    const statsBar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'));
+    check('the two tiles carry the labels "Cybercabs Spotted" and "Total Rides", and no sub-labels', /Cybercabs Spotted/.test(statsBar) && /Total Rides/.test(statsBar) && !/Moderator-approved|On registry vehicles|Vehicles in the Registry|Rides Recorded/.test(statsBar) && !/text-cyan/.test(statsBar));
     check('the page loads the stats script after main.js', /js\/main\.js[^\n]*\n<script src="js\/home-stats\.js/.test(HTML));
-    check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Vehicle registry'))));
+    check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'))));
     check('the homepage no longer contains the old counter observer', !/counterObserver/.test(HTML));
-    const bar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Vehicle registry'));
+    const bar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'));
     check('the stats bar has no live region: no aria-live, role=status/alert/log, aria-atomic or aria-relevant', !/aria-live|role="(status|alert|log|timer|marquee)"|aria-atomic|aria-relevant/i.test(bar));
     const statsCode = STATS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');   // executable code only (the comments explain why there is no live region)
     check('the stats script never adds a live region either', !/aria-live|setAttribute\(\s*['"]role|aria-atomic|\.role\s*=/i.test(statsCode));
