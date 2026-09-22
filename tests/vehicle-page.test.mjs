@@ -109,6 +109,19 @@ async function run() {
     check('first/last seen render as formatted timestamps, not raw SQL text', !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(page.text('vFirstSeen')) && page.text('vFirstSeen') !== '—');
   }
 
+  console.log('2b. Rendering: populated model/color/service_area render as-is; a field that is still null keeps the honest fallback (Candidate A: these may now be filled by an approved sighting, not just a receipt)');
+  {
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
+    approveVehicle(d1, id, { withRide: true });
+    // service_area is deliberately left NULL here, alongside two filled fields, to prove the page renders a mix correctly rather than an all-or-nothing state.
+    d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White' WHERE id = '${id}'`);
+    const page = await openPage({ cybercabhunter_db: d1 }, id);
+    check('11. a populated model renders instead of the "Model not confirmed" fallback', page.text('vModelLine') === 'Model Y');
+    check('11. a populated color renders instead of the "Not recorded" fallback', page.text('vColor') === 'Pearl White');
+    check('12. a field that is still null (service_area, in this same mixed vehicle) keeps the existing honest fallback', page.text('vServiceArea') === 'Not recorded');
+  }
+
   console.log('3. Rendering: recorded ride history, including a vehicle with zero rides (honest, not fabricated)');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');

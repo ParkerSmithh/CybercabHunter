@@ -267,26 +267,33 @@ async function run() {
     check('repeat submissions by one rider on the same day/area still yield one entry', r.json.sightings.filter(x => x.date === '2026-09-22').length === 1);
   }
 
-  console.log('7. Integrity: approving a sighting changes no ride stats and no vehicle data');
+  console.log('7. Integrity: approving a sighting never touches ride/trip data; it may only fill the vehicle\'s own blank descriptive fields (Candidate A)');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const v = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'XJR2195');
     approveVehicle(ctx.d1, v, { withRide: true });
     seedRide(ctx.d1, { userId: 'rider', vehicleId: v, rideDate: '2026-06-09', distance: 2.8 });
     seedRide(ctx.d1, { userId: 'rider', vehicleId: v, rideDate: '2026-06-15', distance: 3.4 });
-    const vehicleBefore = await (await call(ctx, 'GET', `/api/robotaxi-vehicles/${v}`, null)).text();
-    const rowBefore = JSON.stringify(ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v));
+    const rowBefore = ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v)[0];
+    check('setup: model/color/service_area start NULL — the receipt pipeline that created this vehicle never sets them', rowBefore.model === null && rowBefore.color === null && rowBefore.service_area === null);
     const tripsBefore = JSON.stringify(ctx.d1.query('SELECT * FROM trips ORDER BY id'));
     const historyBefore = JSON.stringify(await db.getRobotaxiVehicleHistory(ctx.d1, v));
 
+    // This sighting names a service_area ('Dallas', the submit() helper's default) but no model/color.
     await approvedSighting(ctx, 'rider', { license_plate: 'XJR2195' }, '2026-09-18');
 
-    check('the public vehicle response is byte-identical after approval', (await (await call(ctx, 'GET', `/api/robotaxi-vehicles/${v}`, null)).text()) === vehicleBefore);
-    check('the registry row (first/last seen, visibility, verification, metadata) is unchanged', JSON.stringify(ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v)) === rowBefore);
-    check('ride count, distance, first/last ride dates are unchanged', JSON.stringify(await db.getRobotaxiVehicleHistory(ctx.d1, v)) === historyBefore);
+    check('ride count, distance, first/last ride dates are unchanged (ride/trip data is entirely separate from a sighting)', JSON.stringify(await db.getRobotaxiVehicleHistory(ctx.d1, v)) === historyBefore);
     check('no trip row was touched', JSON.stringify(ctx.d1.query('SELECT * FROM trips ORDER BY id')) === tripsBefore);
+
+    const rowAfter = ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v)[0];
+    check('the previously-blank service_area was filled from the approved sighting', rowAfter.service_area === 'Dallas');
+    check('model/color stay NULL — the sighting never named them, so there was nothing to fill', rowAfter.model === null && rowAfter.color === null);
+    check('every other column on the row (id, plate, visibility, verification_status, first/last seen, created_at) is byte-for-byte unchanged', rowAfter.id === rowBefore.id && rowAfter.license_plate === rowBefore.license_plate && rowAfter.visibility === rowBefore.visibility && rowAfter.verification_status === rowBefore.verification_status && rowAfter.first_seen_at === rowBefore.first_seen_at && rowAfter.last_seen_at === rowBefore.last_seen_at && rowAfter.created_at === rowBefore.created_at);
+    check('the public vehicle endpoint reflects the newly filled service_area, nothing else', (await (await call(ctx, 'GET', `/api/robotaxi-vehicles/${v}`, null)).json()).vehicle.service_area === 'Dallas');
+
+    const rowAfterFill = JSON.stringify(ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v));
     await sightings(ctx, v);
-    check('reading sightings mutates nothing either', JSON.stringify(ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v)) === rowBefore);
+    check('merely reading sightings mutates nothing further', JSON.stringify(ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', v)) === rowAfterFill);
   }
 
   console.log('8. Public API behavior');
@@ -354,6 +361,82 @@ async function run() {
 
     const queue = await call(ctx, 'GET', '/api/moderation/vehicle-sightings', 'mod');
     check('the moderation queue API is unaffected', queue.status === 200);
+  }
+
+  console.log('10. Candidate A: an approved, linked sighting fills only the vehicle\'s blank model/color/service_area — never creates a vehicle, never grants eligibility, never overwrites');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+
+    // 1/2/3: each blank field is independently fillable; a sighting that names only one field leaves the others NULL.
+    const vModel = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'FIL0001');
+    const sModel = await submit(ctx, 'rider', { license_plate: 'FIL0001', model: 'Model Y' });
+    await approve(ctx, sModel.submission_id);
+    const afterModel = ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', vModel)[0];
+    check('1. a NULL model is filled from the approved sighting', afterModel.model === 'Model Y');
+    check('   color stays NULL — this sighting never named it (service_area fills too: submit() always sends one, the required field it is)', afterModel.color === null && afterModel.service_area === 'Dallas');
+
+    const vColor = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'FIL0002');
+    const sColor = await submit(ctx, 'rider', { license_plate: 'FIL0002', color: 'White' });
+    await approve(ctx, sColor.submission_id);
+    check('2. a NULL color is filled from the approved sighting', ctx.d1.query('SELECT color FROM robotaxi_vehicles WHERE id = ?', vColor)[0].color === 'White');
+
+    const vArea = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'FIL0003');
+    const sArea = await submit(ctx, 'rider', { license_plate: 'FIL0003', service_area: 'Austin' });
+    await approve(ctx, sArea.submission_id);
+    check('3. a NULL service_area is filled from the approved sighting', ctx.d1.query('SELECT service_area FROM robotaxi_vehicles WHERE id = ?', vArea)[0].service_area === 'Austin');
+
+    // 4/5/6: a value the vehicle already has is never overwritten, even by a conflicting approved sighting.
+    const vSet = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'KEEP001');
+    ctx.d1.exec(`UPDATE robotaxi_vehicles SET model = 'Cybercab', color = 'Red', service_area = 'Houston' WHERE id = '${vSet}'`);
+    const sConflict = await submit(ctx, 'rider', { license_plate: 'KEEP001', model: 'Model 3', color: 'Blue', service_area: 'San Antonio' });
+    await approve(ctx, sConflict.submission_id);
+    const afterKeep = ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', vSet)[0];
+    check('4. an existing non-NULL model is not overwritten', afterKeep.model === 'Cybercab');
+    check('5. an existing non-NULL color is not overwritten', afterKeep.color === 'Red');
+    check('6. an existing non-NULL service_area is not overwritten', afterKeep.service_area === 'Houston');
+
+    // 7: rejecting a sighting writes nothing, even one that names attributes and is linked to a vehicle.
+    const vRej = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'REJ0001');
+    const sRej = await submit(ctx, 'rider', { license_plate: 'REJ0001', model: 'Model Y', color: 'Black', service_area: 'Austin' });
+    await reject(ctx, sRej.submission_id, 'not convincing');
+    const afterRej = ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', vRej)[0];
+    check('7. a rejected sighting writes nothing to the linked vehicle', afterRej.model === null && afterRej.color === null && afterRej.service_area === null);
+
+    // 8: an unmatched sighting (no existing vehicle for the plate) creates no vehicle, and links to none.
+    const vehicleCountBefore = vehicleCount(ctx);
+    const sUnmatched = await submit(ctx, 'rider', { license_plate: 'UNK0001', model: 'Model Y', color: 'White', service_area: 'Austin' });
+    check('setup: the sighting is genuinely unmatched (no vehicle linked at submission time)', sUnmatched.robotaxi_vehicle_id === null);
+    await approve(ctx, sUnmatched.submission_id);
+    check('8. an unmatched sighting creates no vehicle row even once approved', vehicleCount(ctx) === vehicleCountBefore);
+    check('   and stays unmatched afterward — approval never links or creates a registry row', ctx.d1.query('SELECT robotaxi_vehicle_id FROM vehicle_observations WHERE submission_id = ?', sUnmatched.submission_id)[0].robotaxi_vehicle_id === null);
+
+    // Filling descriptive fields never grants public eligibility on its own — that still requires a counted ride and explicit moderator approval of the VEHICLE (a separate action).
+    check('none of the vehicles filled above are publicly listed (no counted ride backs any of them; a sighting alone never grants eligibility)', (await (await call(ctx, 'GET', '/api/robotaxi-vehicles', null)).json()).total === 0);
+  }
+
+  console.log('11. Candidate A race-safety: the attribute fill rides on the same atomic, conditionally-gated write as approval itself');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator', mod2: 'moderator' });
+    const v = await db.findOrCreateRobotaxiVehicleByPlate(ctx.d1, 'RACE0001');
+    const s = await submit(ctx, 'rider', { license_plate: 'RACE0001', model: 'Model Y', color: 'White' });
+
+    // Same harness/limitation as the existing concurrent-review race test in
+    // tests/moderation-api.test.mjs: no real parallelism, but it proves the
+    // same thing sequential double-review proves — the atomic, conditionally
+    // gated batch (not app-level read-then-write) decides the outcome.
+    const [r1, r2] = await Promise.all([
+      call(ctx, 'PATCH', `/api/moderation/vehicle-sightings/${s.submission_id}`, 'mod', { action: 'approve' }),
+      call(ctx, 'PATCH', `/api/moderation/vehicle-sightings/${s.submission_id}`, 'mod2', { action: 'reject', rejection_reason: 'race' })
+    ]);
+    const statuses = [r1.status, r2.status].sort();
+    check('exactly one of the two concurrent requests wins — unchanged from the existing (non-Candidate-A) race guarantee', statuses[0] === 200 && statuses[1] === 409);
+    const finalStatus = ctx.d1.query('SELECT status FROM submissions WHERE id = ?', s.submission_id)[0].status;
+    const row = ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', v)[0];
+    check('the fill happened exactly once, and only if approval is what actually won the race', finalStatus === 'approved' ? (row.model === 'Model Y' && row.color === 'White') : (row.model === null && row.color === null));
+
+    // The loser side (or a retried request against an already-decided submission) must not re-run the fill.
+    const second = await call(ctx, 'PATCH', `/api/moderation/vehicle-sightings/${s.submission_id}`, 'mod', { action: 'approve' });
+    check('re-approving an already-decided submission is refused (409), not silently reapplied', second.status === 409);
   }
 
   t.finish();

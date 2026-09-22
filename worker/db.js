@@ -467,24 +467,30 @@ async function getVehicleSightingSubmission(sql, submissionId) {
 }
 
 // Approves or rejects a pending/needs_review vehicle-sighting submission.
-// Atomic and race-safe: both statements run in ONE batch (one transaction),
-// and BOTH are independently gated by the submission's status at the START
+// Atomic and race-safe: every statement runs in ONE batch (one transaction),
+// and each is independently gated by the submission's status at the START
 // of the transaction (the observation update's subquery reads
 // submissions.status before the submission update — which comes second —
 // has touched it, so a concurrent second reviewer's batch, whichever one
 // the database serializes second, sees the ALREADY-transitioned status and
-// updates zero rows in both statements). The caller checks
+// updates zero rows in every statement). The caller checks
 // submissionResult.meta.changes to know whether this call actually won the
 // transition; 0 means someone else already reviewed it — a 409, never a
 // silently overwritten decision.
 //
-// This never touches robotaxi_vehicles. Approval only ever changes
-// submissions.status/reviewed_at/reviewed_by and this observation's own
-// verification_status — never the linked vehicle's model/color/
-// service_area/verification_status/first_seen_at/last_seen_at, and never
-// creates a new registry row for an unknown plate. That trust boundary is
-// enforced simply by this function never containing an INSERT or UPDATE
-// against robotaxi_vehicles at all.
+// This still never CREATES a robotaxi_vehicles row (a new plate is never
+// registered from a sighting) and never changes visibility/eligibility —
+// that trust boundary is unchanged. Candidate A (Phase 3D-D-lite) adds one
+// narrow exception: an APPROVED sighting whose observation is linked to an
+// EXISTING registry vehicle (o.robotaxi_vehicle_id already set — see
+// worker/sightings.js's read-only plate match) may fill that vehicle's
+// currently-blank model/color/service_area. COALESCE keeps whichever value
+// is non-null: an existing value always wins, so this can only fill a gap,
+// never overwrite or blank out a value the vehicle already has. Gated on
+// THIS transaction having actually verified the observation, so the losing
+// side of a review race (or a reject, or an unmatched sighting) writes
+// nothing to robotaxi_vehicles. last_seen_at, ride/trip data, and every
+// other column are untouched.
 async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, rejectionReason }) {
   const observationStatus = decision === 'approved' ? 'verified' : 'rejected';
 
@@ -504,7 +510,31 @@ async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, 
     WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review')
   `).bind(decision, reviewerId, rejectionReason || null, submissionId);
 
-  const [, submissionResult] = await sql.batch([observationStmt, submissionStmt]);
+  const statements = [observationStmt, submissionStmt];
+
+  if (decision === 'approved') {
+    statements.push(sql.prepare(`
+      UPDATE robotaxi_vehicles
+      SET model = COALESCE(model, (
+            SELECT o.model FROM vehicle_observations o
+            WHERE o.submission_id = ? AND o.model IS NOT NULL AND o.model <> ''
+          )),
+          color = COALESCE(color, (
+            SELECT o.color FROM vehicle_observations o
+            WHERE o.submission_id = ? AND o.color IS NOT NULL AND o.color <> ''
+          )),
+          service_area = COALESCE(service_area, (
+            SELECT o.service_area FROM vehicle_observations o
+            WHERE o.submission_id = ? AND o.service_area IS NOT NULL AND o.service_area <> ''
+          ))
+      WHERE id = (
+        SELECT o.robotaxi_vehicle_id FROM vehicle_observations o
+        WHERE o.submission_id = ? AND o.verification_status = 'verified' AND o.robotaxi_vehicle_id IS NOT NULL
+      )
+    `).bind(submissionId, submissionId, submissionId, submissionId));
+  }
+
+  const [, submissionResult] = await sql.batch(statements);
   return { applied: !!(submissionResult && submissionResult.meta && submissionResult.meta.changes) };
 }
 
