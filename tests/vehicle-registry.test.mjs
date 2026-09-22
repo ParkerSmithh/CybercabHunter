@@ -202,10 +202,10 @@ async function run() {
     const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html') && read(f).includes('data-nav="community"'));
     check('the header nav has a "Cars" tab linking to /vehicles on every page that has the nav (and on /vehicles itself)', pages.length >= 9 && pages.every(f => /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(read(f))));
     check('the tab is no longer labelled "Registry" anywhere in the header nav', pages.every(f => !/<a href="\/vehicles" data-nav="vehicles"[^>]*>Registry<\/a>/.test(read(f))));
-    check('the footer (the only nav on phones) has it on every page too', pages.every(f => /<a href="\/vehicles" class="[^"]*">Registry<\/a>/.test(read(f))));
+    check('the footer (the only nav on phones) has it on every page too', pages.every(f => /<a href="\/vehicles" class="[^"]*">Cars<\/a>/.test(read(f))));
     const home = read('index.html');
     check('the homepage no longer has the Vehicle Registry promo card or its Browse Vehicles button', !/BROWSE VEHICLES|VEHICLE REGISTRY|id="registry"|Browse the robotaxis recorded/.test(home));
-    check('the homepage still reaches the registry through its header tab (and the footer link)', /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(home) && /<a href="\/vehicles" class="[^"]*">Registry<\/a>/.test(home));
+    check('the homepage still reaches the registry through its header tab (and the footer link)', /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(home) && /<a href="\/vehicles" class="[^"]*">Cars<\/a>/.test(home));
     check('the page highlights its own nav item (data-nav matches the /vehicles path)', /data-nav="vehicles"/.test(read('vehicles.html')));
     check('the detail page is unchanged apart from the nav link (still one shell, still <base href="/">)', /<base href="\/">/.test(read('vehicle.html')) && /js\/vehicle\.js/.test(read('vehicle.html')));
     check('the page is not excluded from the static assets', !/vehicles/.test(read('.assetsignore')));
