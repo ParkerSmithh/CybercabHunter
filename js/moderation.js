@@ -255,6 +255,10 @@
     const isBusy = vehicleBusy.has(v.id);
     return `<div class="w-full">
       <p class="text-xs text-slate-400 leading-relaxed">Permanently delete <span class="font-semibold text-slate-200">${esc(v.license_plate || 'this vehicle')}</span> from the registry? This cannot be undone. It disappears from the public site immediately; any trips riders already logged against it stay on their accounts but are no longer linked to a vehicle.</p>
+      <label class="flex items-start gap-2 mt-3 text-xs text-slate-400 leading-relaxed">
+        <input type="checkbox" data-purge-rides class="mt-0.5 shrink-0">
+        <span>Also delete the ride(s)/receipt(s) logged against this vehicle, so the same receipt can be resent and re-reviewed. This removes a rider's own ride record — fare, pickup/dropoff — not just the registry row, and cannot be undone either.</span>
+      </label>
       <div class="flex items-center gap-2 mt-3 flex-wrap">
         <button type="button" data-vehicle-action="confirm-delete" ${isBusy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${isBusy ? 'Working…' : 'Confirm Delete'}</button>
         <button type="button" data-vehicle-action="cancel-review" class="text-xs px-3 py-2.5 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
@@ -424,14 +428,18 @@
     renderVehicles();
   }
 
-  // DELETE .../:id — removes the registry row entirely. Always drops the
-  // vehicle from the local list on success; it can never belong in any scope.
-  async function submitDelete(vehicleId) {
+  // DELETE .../:id[?purge_rides=true] — removes the registry row entirely.
+  // Always drops the vehicle from the local list on success; it can never
+  // belong in any scope. purgeRides additionally erases every trip logged
+  // against this vehicle (any rider's), freeing the underlying receipt(s)
+  // to be resent — see worker/moderation.js's apiDeleteRegistryVehicle.
+  async function submitDelete(vehicleId, purgeRides) {
     vehicleBusy.add(vehicleId);
     renderVehicles();
     let resp;
     try {
-      resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}`, { method: 'DELETE' });
+      const qs = purgeRides ? '?purge_rides=true' : '';
+      resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}${qs}`, { method: 'DELETE' });
     } catch (e) {
       vehicleBusy.delete(vehicleId);
       renderVehicles();
@@ -456,7 +464,7 @@
     }
     vehicles = vehicles.filter(v => v.id !== vehicleId);
     renderVehicles();
-    CCC.toast('Vehicle removed from the registry.', 'success');
+    CCC.toast(purgeRides ? 'Vehicle and its ride history removed — the receipt can be resent.' : 'Vehicle removed from the registry.', 'success');
   }
 
   function setupVehicleActions() {
@@ -474,7 +482,10 @@
         const note = card.querySelector('[data-review-note]');
         submitReview(id, act === 'confirm-approve' ? 'approve_public' : 'return_private', note ? note.value.trim() : '');
       }
-      else if (act === 'confirm-delete') { submitDelete(id); }
+      else if (act === 'confirm-delete') {
+        const purgeCheckbox = card.querySelector('[data-purge-rides]');
+        submitDelete(id, !!(purgeCheckbox && purgeCheckbox.checked));
+      }
     });
     $('modVehicleSearch').addEventListener('submit', e => { e.preventDefault(); loadVehicles(); });
     $('modVehicleScope').addEventListener('change', () => { $('modVehiclePlate').value = ''; loadVehicles(); });

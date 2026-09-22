@@ -324,15 +324,24 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   return Response.json({ success: true, action: approving ? 'approved_public' : 'returned_private', vehicle: fresh });
 }
 
-// DELETE /api/moderation/robotaxi-vehicles/:id
+// DELETE /api/moderation/robotaxi-vehicles/:id[?purge_rides=true]
 //
 // Removes a registry vehicle row entirely (e.g. resolving a duplicate plate,
 // or a row created in error). Unlike the takedown PATCH, this can remove a
-// vehicle regardless of its current visibility. A rider's own trips are never
-// deleted — db.deleteRegistryVehicle relies on the schema's ON DELETE SET
-// NULL, so their trips just stop being linked to a vehicle. Not audited in
-// robotaxi_vehicle_reviews: that table records approve/return decisions on a
-// vehicle that still exists, not its removal.
+// vehicle regardless of its current visibility. By default a rider's own
+// trips are never deleted — db.deleteRegistryVehicle relies on the schema's
+// ON DELETE SET NULL, so their trips just stop being linked to a vehicle.
+//
+// ?purge_rides=true additionally deletes every trip logged against this
+// vehicle (any rider's), which is what actually frees the underlying
+// receipt(s) to be resent and reprocessed — deleting just the vehicle row
+// does not, since the ingestion dedupe keys off the trip surviving, not the
+// vehicle link. This is a real, cross-account deletion of rider ride data
+// (fare, pickup/dropoff), so it is opt-in only, never the default, and any
+// receipt evidence it frees is also removed from R2.
+//
+// Not audited in robotaxi_vehicle_reviews either way: that table records
+// approve/return decisions on a vehicle that still exists, not its removal.
 export async function apiDeleteRegistryVehicle(request, env, vehicleId) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
@@ -341,13 +350,17 @@ export async function apiDeleteRegistryVehicle(request, env, vehicleId) {
     return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });
   }
 
+  const purgeRides = new URL(request.url).searchParams.get('purge_rides') === 'true';
   const sql = env.cybercabhunter_db;
-  const deleted = await db.deleteRegistryVehicle(sql, vehicleId);
+  const { deleted, evidenceRefs } = await db.deleteRegistryVehicle(sql, vehicleId, { purgeRides });
   if (!deleted) {
     return Response.json({ success: false, error: 'not_found' }, { status: 404 });
   }
+  for (const ref of evidenceRefs) {
+    try { await env.EVIDENCE_BUCKET.delete(ref); } catch (err) { /* best effort, mirrors worker/trips.js */ }
+  }
 
-  return Response.json({ success: true, id: vehicleId });
+  return Response.json({ success: true, id: vehicleId, purged_rides: purgeRides });
 }
 
 // GET /api/moderation/robotaxi-vehicles/:id/reviews — the vehicle's

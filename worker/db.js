@@ -811,18 +811,70 @@ async function getRegistryVehicleForModeration(sql, vehicleId) {
   return row ? toModeratorVehicle(row) : null;
 }
 
+// Opt-in companion to deleteRegistryVehicle. Removes every trip currently
+// linked to this vehicle — ANY rider's, not just one — along with the
+// submissions, receipt_ingestions log rows and superseded duplicates behind
+// them (same shape as db-rides.js's deleteRideForUser, generalized from "one
+// rider's one trip" to "every trip on this vehicle"). This is what actually
+// frees a receipt to be resent and reprocessed from scratch: the dedupe in
+// worker/ride-ingest.js checks whether a trip with the same receipt_hash OR
+// the same ride_key (date+time+plate) still exists, and neither check cares
+// whether that trip's robotaxi_vehicle_id is set — only deleting the trip
+// itself clears both.
+//
+// This deletes a RIDER's own private ride data (fare, pickup/dropoff
+// descriptions) — not just a registry row — for whichever rider(s) logged a
+// ride on this vehicle, which may not be the moderator performing the
+// delete. It must never run silently; callers opt in explicitly.
+async function purgeVehicleRides(sql, vehicleId) {
+  const primary = await sql.prepare(`
+    SELECT t.id, t.submission_id, s.evidence_ref
+    FROM trips t JOIN submissions s ON s.id = t.submission_id
+    WHERE t.robotaxi_vehicle_id = ?
+  `).bind(vehicleId).all();
+  const primaryRows = primary.results || [];
+  if (primaryRows.length === 0) return { deletedTrips: 0, evidenceRefs: [] };
+
+  const placeholders = primaryRows.map(() => '?').join(',');
+  const dupes = await sql.prepare(`
+    SELECT t.id, t.submission_id, s.evidence_ref
+    FROM trips t JOIN submissions s ON s.id = t.submission_id
+    WHERE t.superseded_by IN (${placeholders})
+  `).bind(...primaryRows.map(r => r.id)).all();
+  const dupeRows = dupes.results || [];
+
+  // Duplicates deleted before the primaries they point at (superseded_by is
+  // ON DELETE SET NULL — see deleteRideForUser's identical comment).
+  const allRows = [...dupeRows, ...primaryRows];
+  const evidenceRefs = allRows.filter(r => r.evidence_ref).map(r => r.evidence_ref);
+  const submissionIds = [...new Set(allRows.map(r => r.submission_id))];
+
+  const statements = allRows.map(r => sql.prepare(`DELETE FROM receipt_ingestions WHERE trip_id = ?`).bind(r.id));
+  for (const r of dupeRows) statements.push(sql.prepare(`DELETE FROM trips WHERE id = ?`).bind(r.id));
+  for (const r of primaryRows) statements.push(sql.prepare(`DELETE FROM trips WHERE id = ?`).bind(r.id));
+  for (const sid of submissionIds) statements.push(sql.prepare(`DELETE FROM submissions WHERE id = ? AND submission_type = 'ride_receipt'`).bind(sid));
+
+  await sql.batch(statements);
+  return { deletedTrips: allRows.length, evidenceRefs };
+}
+
 // Hard delete of a registry vehicle (e.g. resolving a duplicate plate, or
-// removing a row created in error). Trips and sightings reference it with
-// ON DELETE SET NULL (see migrations/0002), so a rider's own trip history is
-// never touched — it just stops being linked to a vehicle. Review-history
-// rows (robotaxi_vehicle_reviews) intentionally have no foreign key and are
-// left in place as a record of what a moderator once decided (see
-// migrations/0012's design notes), so this is the one place a
-// robotaxi_vehicle_id in that table can point at a vehicle that no longer
-// exists — by design, not by accident.
-async function deleteRegistryVehicle(sql, vehicleId) {
+// removing a row created in error). By default trips and sightings just lose
+// the link (ON DELETE SET NULL, migrations/0002) — a rider's own trip
+// history is left alone. Passing purgeRides: true additionally deletes every
+// trip on this vehicle via purgeVehicleRides (see its own comment for why —
+// short version: only that frees the underlying receipt to be resent).
+// Review-history rows (robotaxi_vehicle_reviews) intentionally have no
+// foreign key and are left in place either way, as a record of what a
+// moderator once decided (see migrations/0012's design notes) — this is the
+// one place a robotaxi_vehicle_id in that table can point at a vehicle that
+// no longer exists, by design.
+// Returns { deleted, evidenceRefs } — evidenceRefs is only non-empty when
+// purgeRides removed receipt evidence the caller must also delete from R2.
+async function deleteRegistryVehicle(sql, vehicleId, { purgeRides = false } = {}) {
+  const purge = purgeRides ? await purgeVehicleRides(sql, vehicleId) : { evidenceRefs: [] };
   const result = await sql.prepare(`DELETE FROM robotaxi_vehicles WHERE id = ?`).bind(vehicleId).run();
-  return !!(result && result.meta && result.meta.changes > 0);
+  return { deleted: !!(result && result.meta && result.meta.changes > 0), evidenceRefs: purge.evidenceRefs };
 }
 
 // Re-asserts 'private' on a vehicle that is already private (the idempotent
