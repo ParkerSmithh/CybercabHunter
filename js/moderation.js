@@ -95,7 +95,6 @@
   }
 
   function renderQueue() {
-    show('modEmpty', queue.length === 0);
     $('modList').innerHTML = queue.map(sightingCard).join('');
   }
 
@@ -196,7 +195,7 @@
   // Every rule shown here is computed by the server (vehicle.approval); this
   // code only labels it. Labels are plain facts — never a score or a ranking.
   const vehicleBusy = new Set();      // vehicle ids with a request in flight
-  const pendingReview = new Map();    // vehicle id -> 'approve' | 'return' (inline confirmation open)
+  const pendingReview = new Map();    // vehicle id -> 'delete' (inline confirmation open; approve/return are instant)
 
   const REASON_LABELS = {
     no_counted_rides: 'No counted rides',
@@ -233,22 +232,6 @@
     const what = r.action === 'approved_public' ? 'Approved for public' : 'Returned to private';
     const who = r.moderator_display_name || 'a moderator';
     return `<div class="text-xs text-slate-400 mt-2">Last review: ${esc(what)} by ${esc(who)} · ${esc(fmtDateTime(r.created_at))}</div>`;
-  }
-
-  function reviewPanel(v, mode) {
-    const approving = mode === 'approve';
-    const msg = approving
-      ? `Approve <span class="font-semibold text-slate-200">${esc(v.license_plate || 'this vehicle')}</span> for the public registry? Approving means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. It does not prove that a receipt was genuinely issued by Tesla.`
-      : `Return <span class="font-semibold text-slate-200">${esc(v.license_plate || 'this vehicle')}</span> to private? It disappears from the public site immediately.`;
-    return `<div class="w-full">
-      <p class="text-xs text-slate-400 leading-relaxed">${msg}</p>
-      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mt-3">Optional note for the review history</label>
-      <textarea data-review-note rows="2" maxlength="280" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600" placeholder="Why? (optional)"></textarea>
-      <div class="flex items-center gap-2 mt-2 flex-wrap">
-        <button type="button" data-vehicle-action="${approving ? 'confirm-approve' : 'confirm-return'}" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="${approving ? 'btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]' : 'border border-crimson/50 text-crimson hover:bg-crimson/10'} text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${vehicleBusy.has(v.id) ? 'Working…' : (approving ? 'Confirm Approval' : 'Confirm Return to Private')}</button>
-        <button type="button" data-vehicle-action="cancel-review" class="text-xs px-3 py-2.5 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
-      </div>
-    </div>`;
   }
 
   function deletePanel(v) {
@@ -288,14 +271,13 @@
     let actions;
     if (mode === 'delete') {
       actions = deletePanel(v);
-    } else if (mode) {
-      actions = reviewPanel(v, mode);
     } else {
-      const deleteBtn = `<button type="button" data-vehicle-action="ask-delete" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Delete Vehicle</button>`;
+      const busy = vehicleBusy.has(v.id);
+      const deleteBtn = `<button type="button" data-vehicle-action="ask-delete" ${busy ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Delete Vehicle</button>`;
       if (v.visibility === 'public') {
-        actions = `<button type="button" data-vehicle-action="ask-return" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Return to Private</button>${deleteBtn}`;
+        actions = `<button type="button" data-vehicle-action="return" ${busy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Return to Private'}</button>${deleteBtn}`;
       } else if (ap.can_approve) {
-        actions = `<button type="button" data-vehicle-action="ask-approve" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Approve for Public Registry</button>${deleteBtn}`;
+        actions = `<button type="button" data-vehicle-action="approve" ${busy ? 'disabled' : ''} class="btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve'}</button>${deleteBtn}`;
       } else {
         actions = `<span class="text-xs text-slate-500">Cannot be approved while the reasons above apply.</span>${deleteBtn}`;
       }
@@ -359,14 +341,15 @@
 
   const replaceVehicle = fresh => { vehicles = vehicles.map(v => (v.id === fresh.id ? fresh : v)); };
 
-  // The one write path: POST .../review. The server re-checks eligibility
-  // atomically, so a stale card can never approve something that no longer
-  // qualifies — it gets a 409 with the current facts instead.
-  async function submitReview(vehicleId, action, reason) {
+  // The one write path: POST .../review, sent the instant the moderator
+  // clicks Approve or Return to Private — no confirmation step and no
+  // reason field. The server re-checks eligibility atomically, so a stale
+  // card can never approve something that no longer qualifies — it gets a
+  // 409 with the current facts instead.
+  async function submitReview(vehicleId, action) {
     vehicleBusy.add(vehicleId);
     renderVehicles();
     const payload = { action };
-    if (reason) payload.reason = reason;
     let resp;
     try {
       resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/review`, {
@@ -468,14 +451,10 @@
       const card = btn.closest('[data-vehicle-id]');
       const id = card.dataset.vehicleId;
       const act = btn.dataset.vehicleAction;
-      if (act === 'ask-approve') { pendingReview.set(id, 'approve'); renderVehicles(); }
-      else if (act === 'ask-return') { pendingReview.set(id, 'return'); renderVehicles(); }
+      if (act === 'approve') { submitReview(id, 'approve_public'); }
+      else if (act === 'return') { submitReview(id, 'return_private'); }
       else if (act === 'ask-delete') { pendingReview.set(id, 'delete'); renderVehicles(); }
       else if (act === 'cancel-review') { pendingReview.delete(id); renderVehicles(); }
-      else if (act === 'confirm-approve' || act === 'confirm-return') {
-        const note = card.querySelector('[data-review-note]');
-        submitReview(id, act === 'confirm-approve' ? 'approve_public' : 'return_private', note ? note.value.trim() : '');
-      }
       else if (act === 'confirm-delete') { submitDelete(id); }
     });
     $('modVehicleSearch').addEventListener('submit', e => { e.preventDefault(); loadVehicles(); });

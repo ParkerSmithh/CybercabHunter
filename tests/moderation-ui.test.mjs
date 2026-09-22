@@ -76,7 +76,7 @@ async function run() {
     const ctx = await makeApp({ mod: 'moderator' });
     const page = await openPage(ctx.env, 'session-mod');
     await page.waitFor(() => page.visible('modQueue'), 'queue to load');
-    check('an empty queue shows the empty state, not a blank list or an error', page.visible('modEmpty') && page.cards().length === 0);
+    check('an empty queue shows no cards and no error (there is no empty-state box)', page.cards().length === 0 && !page.visible('modError'));
   }
   {
     const ctx = await makeApp({});
@@ -109,7 +109,7 @@ async function run() {
 
     page.click(card.querySelector('button[data-action="approve"]'));
     await page.waitFor(() => page.cards().length === 0, 'the card to be removed after approval');
-    check('the approved sighting disappears from the queue', page.cards().length === 0 && page.visible('modEmpty'));
+    check('the approved sighting disappears from the queue', page.cards().length === 0);
     check('a distinct approval message is shown', /approved/i.test(page.toastText()));
   }
 
@@ -182,7 +182,7 @@ async function run() {
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.visible('modEmpty'), 'initial empty queue');
+    await page.waitFor(() => page.visible('modQueue') && page.cards().length === 0, 'initial empty queue');
     await submitSighting(ctx, 'rider', { license_plate: 'AAA1111' }); // arrives after the page already loaded
     page.click(page.d.getElementById('modRefresh'));
     await page.waitFor(() => page.cards().length === 1, 'the newly submitted sighting to appear after refresh');
