@@ -94,7 +94,7 @@ async function run() {
     check('a normal static page still falls through to ASSETS unchanged', resp.status === 200 && calledAssets);
   }
 
-  console.log('2. Rendering: vehicle identity, including honest fallbacks for null model/color/service area');
+  console.log('2. Rendering: vehicle identity — a simplified header (plate + eyebrow only; VIN when present), no model/color/provider/service-area/verification/first-seen/last-seen clutter');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
@@ -102,24 +102,20 @@ async function run() {
     const page = await openPage({ cybercabhunter_db: d1 }, id);
     check('the loaded view is shown, no error/not-found/invalid state', page.visible('vehicleLoaded') && !page.visible('vehicleError') && !page.visible('vehicleNotFound') && !page.visible('vehicleInvalid'));
     check('license plate renders', page.text('vLicensePlate') === 'XJR2195');
-    check('unknown model falls back to the site\'s existing wording, not blank or null', page.text('vModelLine') === 'Model not confirmed');
-    check('unknown color and service area are shown honestly, not blank', page.text('vColor') === 'Not recorded' && page.text('vServiceArea') === 'Not recorded');
-    check('provider renders', page.text('vProvider') === 'tesla');
-    check('verification is worded as a disclaimer, never as an active "Unverified" check/badge claim', /Not independently verified/i.test(page.text('vVerificationNote')) && !/^Unverified$/i.test(page.text('vVerificationNote')));
-    check('first/last seen render as formatted timestamps, not raw SQL text', !/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(page.text('vFirstSeen')) && page.text('vFirstSeen') !== '—');
+    check('an ordinary vehicle with no vin keeps the generic "Robotaxi Vehicle" eyebrow label (never "Cybercab" unless a moderator actually verified one)', page.text('vEyebrow') === 'Robotaxi Vehicle');
+    check('no VIN is shown, and no Cybercab image, for a vehicle with no vin', !page.visible('vVinInline') && !page.visible('vCybercabImage'));
+    check('the header no longer shows model, provider, color, service area, verification, or first/last seen — that clutter was removed', !/Not independently verified|Provider|Model not confirmed|First Seen|Last Seen/.test(page.d.getElementById('vehicleLoaded').textContent));
   }
 
-  console.log('2b. Rendering: populated model/color/service_area render as-is; a field that is still null keeps the honest fallback (Candidate A: these may now be filled by an approved sighting, not just a receipt)');
+  console.log('2b. Rendering: model/color/service_area may still be populated in the database (Candidate A / approve_cybercab), but the simplified header never displays them — a regression guard against that clutter quietly coming back');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
     approveVehicle(d1, id, { withRide: true });
-    // service_area is deliberately left NULL here, alongside two filled fields, to prove the page renders a mix correctly rather than an all-or-nothing state.
-    d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White' WHERE id = '${id}'`);
+    d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White', service_area = 'Austin' WHERE id = '${id}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('11. a populated model renders instead of the "Model not confirmed" fallback', page.text('vModelLine') === 'Model Y');
-    check('11. a populated color renders instead of the "Not recorded" fallback', page.text('vColor') === 'Pearl White');
-    check('12. a field that is still null (service_area, in this same mixed vehicle) keeps the existing honest fallback', page.text('vServiceArea') === 'Not recorded');
+    check('populated model/color/service_area values do not leak into the simplified header', !/Model Y|Pearl White|Austin/.test(page.d.getElementById('vehicleLoaded').textContent));
+    check('the plate and eyebrow still render normally alongside the now-unused fields', page.text('vLicensePlate') === 'XJR2195' && page.text('vEyebrow') === 'Robotaxi Vehicle');
   }
 
   console.log('3. Rendering: recorded ride history, including a vehicle with zero rides (honest, not fabricated)');
@@ -228,11 +224,11 @@ async function run() {
     check('no pickup/dropoff address text leaks into the rendered page', !/Hanover|NorthPark/i.test(rendered));
     check('no fare/dollar figure appears anywhere on the page', !/\$6\.92|\$8\.10|692|810/.test(rendered.replace(/2026|2795/g, '')));
     // This vehicle was never given a vin (approveVehicle above passes none),
-    // so the VIN row/image must stay hidden and empty — a "VIN" LABEL existing
+    // so the inline VIN/image must stay hidden and empty — a "VIN" LABEL existing
     // in the page's static markup is fine (see 5b below for a vehicle that
     // DOES have one), but no vin VALUE, and no session/token material, may
     // ever appear.
-    check('the VIN row and Cybercab image stay hidden for a vehicle with no vin', !page.visible('vVinRow') && !page.visible('vCybercabImage') && page.text('vVin') === '');
+    check('the inline VIN and Cybercab image stay hidden for a vehicle with no vin', !page.visible('vVinInline') && !page.visible('vCybercabImage') && page.text('vVin') === '');
     check('no session/token material appears anywhere on the page', !/access_token|refresh_token|\bsession\b/i.test(rendered));
   }
 
@@ -242,19 +238,20 @@ async function run() {
     const noVinId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ORD0011');
     approveVehicle(d1, noVinId, { withRide: true });
     const noVinPage = await openPage({ cybercabhunter_db: d1 }, noVinId);
-    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — VIN row and image both hidden', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vVinRow') && !noVinPage.visible('vCybercabImage'));
+    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — VIN and image both hidden, eyebrow stays "Robotaxi Vehicle"', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vVinInline') && !noVinPage.visible('vCybercabImage') && noVinPage.text('vEyebrow') === 'Robotaxi Vehicle');
 
     const VIN = '5YJSA1E14FF101183';
     const cybercabId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'CYB0010');
     approveVehicle(d1, cybercabId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}' WHERE id = '${cybercabId}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, cybercabId);
-    check('a vehicle with a vin: the VIN row is shown and renders the exact value', page.visible('vVinRow') && page.text('vVin') === VIN);
+    check('a vehicle with a vin: it is shown inline (next to the plate), rendering the exact value', page.visible('vVinInline') && page.text('vVin') === VIN);
+    check('the eyebrow label says "Cybercab" once a moderator-verified vin is present', page.text('vEyebrow') === 'Cybercab');
     check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
     check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'Cybercab2.png');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
-    check('provider/color/service-area/first-seen/last-seen still render normally alongside the VIN', page.text('vProvider') === 'tesla' && page.text('vFirstSeen') !== '—' && page.text('vLastSeen') !== '—');
+    check('the plate still renders normally alongside the VIN', page.text('vLicensePlate') === 'CYB0010');
     check('still no session/token material leaks, even with a vin present', !/access_token|refresh_token|\bsession\b/i.test(page.d.body.innerHTML));
   }
 
@@ -264,19 +261,19 @@ async function run() {
     const hostile = '<img src=x onerror=alert(1)>';
     const hostileId = '12345678-1234-1234-1234-1234567890ab'; // must be UUID-shaped or the endpoint 400s before ever rendering
     // Direct SQL insert bypasses findOrCreateRobotaxiVehicleByPlate's plate
-    // normalization on purpose: model/color/service_area are never written
-    // by any current code path (confirmed in the Phase 3B audit), so the
-    // page itself — not an upstream sanitizer — must be what makes this safe.
+    // normalization AND the moderator vin endpoint's format validation on
+    // purpose (a raw INSERT can hold any string) — the page itself, not an
+    // upstream sanitizer, must be what makes this safe.
     const esc = s => s.replace(/'/g, "''");
-    d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, model, color, service_area, first_seen_at, last_seen_at, visibility)
-             VALUES ('${hostileId}', '${esc(hostile)}', '${esc(hostile)}', '${esc(hostile)}', '${esc(hostile)}', datetime('now'), datetime('now'), 'public')`);
+    d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, vin, first_seen_at, last_seen_at, visibility)
+             VALUES ('${hostileId}', '${esc(hostile)}', '${esc(hostile)}', datetime('now'), datetime('now'), 'public')`);
     seedUser(d1, 'u1');
     seedRide(d1, { userId: 'u1', vehicleId: hostileId, status: 'pending' }); // public eligibility needs a counted ride
     const page = await openPage({ cybercabhunter_db: d1 }, hostileId);
     check('the page loads normally rather than erroring on hostile content', page.visible('vehicleLoaded'));
     check('no actual <img onerror> element was created from the hostile string — it never became markup (the page has 2 legitimate logo <img> tags, neither with onerror)', page.d.querySelectorAll('img[onerror]').length === 0);
     check('the hostile plate renders as literal, inert text content', page.text('vLicensePlate') === hostile);
-    check('the hostile model/color/service-area render as literal text too', page.text('vModelLine') === hostile && page.text('vColor') === hostile && page.text('vServiceArea') === hostile);
+    check('the hostile vin renders as literal, inert text content too, shown inline next to the plate', page.visible('vVinInline') && page.text('vVin') === hostile);
   }
 
   t.finish();

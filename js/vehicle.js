@@ -28,11 +28,6 @@
     const dt = new Date(d + 'T00:00:00');
     return isNaN(dt) ? '—' : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
-  function fmtDateTime(sqlTs) {
-    if (!sqlTs) return '—';
-    const dt = new Date(String(sqlTs).replace(' ', 'T') + 'Z');
-    return isNaN(dt) ? '—' : dt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  }
 
   // "2026-09-18" -> "September 18, 2026". Parsed as a calendar date, not an
   // instant, so it can't shift a day with the viewer's timezone.
@@ -64,23 +59,18 @@
     const v = body.vehicle, h = body.history;
 
     $('vLicensePlate').textContent = v.license_plate || 'Plate unknown';
-    $('vModelLine').textContent = v.model || 'Model not confirmed';
-    $('vVerificationNote').textContent = v.verification_status === 'unverified'
-      ? 'Verification: Not independently verified by Cybercab Hunter.'
-      : `Verification: ${v.verification_status || 'unknown'}`;
-
-    $('vProvider').textContent = v.provider || '—';
-    $('vColor').textContent = v.color || 'Not recorded';
-    $('vServiceArea').textContent = v.service_area || 'Not recorded';
-    $('vFirstSeen').textContent = fmtDateTime(v.first_seen_at);
-    $('vLastSeen').textContent = fmtDateTime(v.last_seen_at);
 
     // A vin is present only once a moderator has approved this vehicle as a
     // Cybercab and saved its VIN (worker/vehicles.js only ever forwards one
-    // for an already publicly-eligible vehicle). The image is the same
-    // generic Cybercab2.png for every vehicle — never a photo of this
-    // specific VIN — and, like vin itself, is simply absent otherwise.
-    show('vVinRow', !!v.vin);
+    // for an already publicly-eligible vehicle) — never inferred here. The
+    // eyebrow label and the image both key off that same fact: a vehicle
+    // never gets called a Cybercab, or shown the Cybercab image, unless a
+    // moderator actually verified and approved it as one. An ordinary
+    // approved vehicle with no vin keeps the generic "Robotaxi Vehicle"
+    // label instead, since Cybercab Hunter never claims a classification it
+    // hasn't verified.
+    $('vEyebrow').textContent = v.vin ? 'Cybercab' : 'Robotaxi Vehicle';
+    show('vVinInline', !!v.vin);
     show('vCybercabImage', !!v.vin);
     $('vVin').textContent = v.vin || '';
 
