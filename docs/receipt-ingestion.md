@@ -46,7 +46,7 @@ Missing stays missing: no distance/fare/duration is ever coerced to 0; `$0.00` i
 
 ## Not implemented (by decision)
 
-The undocumented `ownership.tesla.com/mobile-app/ride/history` endpoint, the private `ownerapi` client as a ride source, the Tesla Fleet API as a ride source (it returns the rider's *owned* vehicles, not the robotaxis they rode), VIN matching, any Texas registry join, and a delete-my-rides button in the UI (the backend exists and is tested; the control is a follow-up).
+The undocumented `ownership.tesla.com/mobile-app/ride/history` endpoint, the private `ownerapi` client as a ride source, the Tesla Fleet API as a ride source (it returns the rider's *owned* vehicles, not the robotaxis they rode), VIN matching, and any Texas registry join. (A delete-my-rides control was listed here as a follow-up; it has since shipped — Rider Data's per-ride **Remove** button, `DELETE /api/trips/:id`.)
 
 ---
 

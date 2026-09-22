@@ -404,6 +404,21 @@ per `docs/deployment-and-migrations.md`). The approval action writes to that
 table, so deploying first would make every approval fail with a server error.
 It is additive: one new table and two indexes.
 
+> **Historical UI note.** The rest of this section describes the moderator
+> page's UI **as it was at Phase 3H**. The eligibility rules, audit history,
+> and the public-eligibility gate described below are still accurate; the
+> specific controls have since changed:
+> - The scope dropdown now offers only **Private** (the default) and
+>   **Public** — the third option described below, "Private — has counted
+>   rides", no longer exists.
+> - **Approve** and **Return to Private** are now instant, single-click
+>   actions with no confirmation step and no note field (described below as
+>   opening a confirmation first — that step was removed).
+> - A **Delete Vehicle** action now exists (not covered by this runbook,
+>   added later). It keeps a two-step confirmation for safety, and also
+>   purges the ride(s)/receipt(s) logged against that vehicle — intentional,
+>   disclosed behavior, not something this runbook's cleanup ever does.
+
 On the moderator page, **Registry Vehicles**, choose a list: **Private — has
 counted rides** (the default), **All private vehicles** (including ones with no
 counted rides, so nothing hides from review), or **Currently public**. Each card
@@ -480,6 +495,10 @@ recovery point.
 
 ## Not part of this runbook
 
-Merging or deleting duplicate vehicles, a unique plate index, receipt
-authentication, rate limiting, and the public `/vehicles` page are separate,
-later work. Nothing here changes them.
+Merging duplicate vehicles, a unique plate index, receipt authentication, and
+rate limiting are separate, later work. Nothing here changes them.
+
+(The public `/vehicles` page and a moderator Delete Vehicle action were also
+listed here as later work when this runbook was written — both have since
+shipped. See `features.md` for the current Cars registry and moderation
+behavior.)
