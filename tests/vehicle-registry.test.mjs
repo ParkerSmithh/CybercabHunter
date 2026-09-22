@@ -19,10 +19,13 @@ const read = f => fs.readFileSync(`${ROOT}${f}`, 'utf8');
 const WORKER_ORIGIN = 'https://cybercabhunter.contactjoeclos.workers.dev';
 const uuid = n => `${String(n).padStart(8, '0')}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-// A registry row with an explicit visibility and last-seen time.
-function vehicle(ctx, n, plate, { visibility = 'private', model = null, serviceArea = null, seen = '2026-09-01 00:00:00', created = '2026-08-01 00:00:00' } = {}) {
-  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, service_area, visibility, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .bind(uuid(n), plate, model, serviceArea, visibility, created, seen)._exec();
+// A registry row with an explicit visibility and last-seen time. vin mirrors
+// what a moderator would have saved via POST .../vin and approve_cybercab
+// (see tests/registry-review-approval.test.mjs for that write path itself) —
+// inserted directly here since this file tests the PUBLIC read side only.
+function vehicle(ctx, n, plate, { visibility = 'private', model = null, serviceArea = null, seen = '2026-09-01 00:00:00', created = '2026-08-01 00:00:00', vin = null } = {}) {
+  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, service_area, visibility, first_seen_at, last_seen_at, vin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(uuid(n), plate, model, serviceArea, visibility, created, seen, vin)._exec();
   return uuid(n);
 }
 const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', ...o });
@@ -65,8 +68,8 @@ async function run() {
     check('the ride count is the COUNTED rides only', a.trip_count === 2 && b.trip_count === 2);
     check('ride summary: latest ride date and service areas', a.last_ride_date === '2026-08-10' && /Austin/.test(a.service_areas) && b.last_ride_date === '2026-09-02' && b.service_areas === 'Dallas');
     check('ride summary: earliest ride date too', a.first_ride_date === '2026-08-09' && b.first_ride_date === '2026-08-29');
-    check('missing values stay null (not 0 or a placeholder)', b.model === null && b.service_area === null && b.color === null);
-    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'trip_count', 'verification_status'];
+    check('missing values stay null (not 0 or a placeholder)', b.model === null && b.service_area === null && b.color === null && b.vin === null);
+    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'trip_count', 'verification_status', 'vin'];
     check('an entry carries exactly the public fields', r.body.vehicles.every(v => Object.keys(v).sort().join() === allowed.join()));
     check('nothing private in the payload: no user, submission, fare, distance or address fields', !/user_id|submission|fare|distance|pickup|dropoff|email|role|visibility|reason/i.test(JSON.stringify(r.body)));
     check('short-lived public caching, like the detail endpoint', /public, max-age=\d+/.test(r.headers.get('Cache-Control') || ''));
@@ -201,6 +204,41 @@ async function run() {
     await p.waitFor(() => p.cards().length === 55);
     check('Show more appends the rest without repeating any card', p.cards().length === 55 && new Set(p.cards().map(a => a.getAttribute('href'))).size === 55 && !p.vis('regMore'));
     check('it asked for offset 50 the second time', p.requests.some(r => /offset=50/.test(r.path)));
+  }
+
+  console.log('4b. VIN and Cybercab2.png: present only for an approved, publicly-eligible vehicle with a vin');
+  {
+    const ctx = await makeApp();
+    const VIN = '5YJSA1E14FF101183';
+    const cybercab = vehicle(ctx, 10, 'CYB0010', { visibility: 'public', model: 'Cybercab', vin: VIN }); ride(ctx, cybercab);
+    const ordinary = vehicle(ctx, 11, 'ORD0011', { visibility: 'public' }); ride(ctx, ordinary);         // no vin: existing vehicles keep working unchanged
+    const vinButPrivate = vehicle(ctx, 12, 'PRV0012', { visibility: 'private', vin: VIN }); ride(ctx, vinButPrivate); // vin saved, never approved
+    const vinButNoRide = vehicle(ctx, 13, 'NOR0013', { visibility: 'public', vin: VIN });                 // vin + approved, but no counted ride
+
+    const r = await list(ctx);
+    check('only the eligible vehicles are listed (vin-but-private and vin-but-no-ride stay excluded, same gate as always)', r.body.vehicles.map(v => v.id).sort().join() === [cybercab, ordinary].sort().join());
+    const c = r.body.vehicles.find(v => v.id === cybercab), o = r.body.vehicles.find(v => v.id === ordinary);
+    check('the approved Cybercab carries its vin in the public list', c.vin === VIN);
+    check('an ordinary approved vehicle with no vin still works exactly as before: vin is simply null', o.vin === null && o.license_plate === 'ORD0011');
+    check('vin-but-private and vin-but-no-ride never expose their vin publicly (the shared VIN appears exactly once — only for the eligible Cybercab)', (JSON.stringify(r.body).match(new RegExp(VIN, 'g')) || []).length === 1);
+    check('no moderation provenance (vin_set_by_user_id / vin_set_at) ever appears in the public payload', !/vin_set_by_user_id|vin_set_at/.test(JSON.stringify(r.body)));
+
+    const detail = await call(ctx, `/api/robotaxi-vehicles/${cybercab}`);
+    const detailBody = await detail.json();
+    check('the per-vehicle endpoint also carries the vin, and only the vin (no provenance)', detail.status === 200 && detailBody.vehicle.vin === VIN && !/vin_set_by_user_id|vin_set_at/.test(JSON.stringify(detailBody)));
+    check('an ordinary vehicle\'s detail endpoint reports vin: null, not an error or a missing field', (await (await call(ctx, `/api/robotaxi-vehicles/${ordinary}`)).json()).vehicle.vin === null);
+    check('the vin-but-not-yet-approved vehicle is still 404 on its detail endpoint, same as any other private vehicle', (await call(ctx, `/api/robotaxi-vehicles/${vinButPrivate}`)).status === 404);
+
+    // Cars registry page: Cybercab2.png shown iff v.vin is present, and never for a vehicle without one.
+    const p = await open(ctx, null);
+    check('two cards render (the Cybercab and the ordinary vehicle)', p.cards().length === 2);
+    const cybercabCard = p.cards().find(a => /CYB0010/.test(a.textContent));
+    const ordinaryCard = p.cards().find(a => /ORD0011/.test(a.textContent));
+    check('the Cybercab\'s card includes an <img src="Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="Cybercab2.png"]'));
+    check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="Cybercab2.png"]').getAttribute('alt') || '').length > 0);
+    check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
+    const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
+    check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('Cybercab2.png'));
   }
 
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');

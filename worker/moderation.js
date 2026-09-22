@@ -253,22 +253,36 @@ export async function apiSetVehicleVisibility(request, env, vehicleId) {
 }
 
 // POST /api/moderation/robotaxi-vehicles/:id/review
-//   { "action": "approve_public" | "return_private", "reason"?: string }
+//   { "action": "approve_public" | "approve_cybercab" | "return_private", "reason"?: string }
 //
 // The explicit moderator decision. Moderator approval means: a Cybercab
 // Hunter moderator reviewed this registry record and intentionally approved
 // it for public visibility. It is NOT evidence that any receipt was really
 // issued by Tesla, and nothing here says so.
 //
-//  approve_public  STRICT. Refused with 409 not_eligible (and the factual
-//                  blocking_reasons) unless the vehicle is private and meets
-//                  the approval requirements: a counted, non-superseded ride
-//                  and a unique plate. The check is repeated atomically inside
-//                  the audited write, so a ride deleted between the check and
-//                  the write cannot slip a vehicle through.
-//  return_private  Takes a public vehicle out of public view.
-// Both write an append-only history row (who, when, what, and the facts they
-// were made on). 409 already_public / already_private if there is nothing to do.
+//  approve_public   STRICT. Refused with 409 not_eligible (and the factual
+//                   blocking_reasons) unless the vehicle is private and meets
+//                   the approval requirements: a counted, non-superseded ride
+//                   and a unique plate. The check is repeated atomically inside
+//                   the audited write, so a ride deleted between the check and
+//                   the write cannot slip a vehicle through. Behavior and
+//                   requirements are UNCHANGED by the addition of approve_cybercab
+//                   below — it does not require a vin and never looks at one.
+//  approve_cybercab Same guard as approve_public, PLUS the vehicle must already
+//                   have a vin (saved separately beforehand via POST .../vin —
+//                   see apiSetRegistryVehicleVin). This is the moderator's own
+//                   assertion, made outside this app on Robotaxi Tracker, that
+//                   the vehicle is a Cybercab; nothing here inspects or decodes
+//                   the vin to decide that. Refused with 409 not_eligible and
+//                   blocking_reasons including 'no_vin' when the vin is missing.
+//                   Writes the SAME review action as approve_public
+//                   ('approved_public' — see changeRobotaxiVehicleVisibility):
+//                   this is still fundamentally "a moderator made this vehicle
+//                   public", so no new review-table action value is needed.
+//  return_private   Takes a public vehicle out of public view.
+// All three write (or, for return_private, may write) an append-only history
+// row (who, when, what, and the facts they were made on). 409 already_public /
+// already_private if there is nothing to do.
 export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
@@ -281,7 +295,7 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   if (!body) {
     return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
   }
-  if (body.action !== 'approve_public' && body.action !== 'return_private') {
+  if (body.action !== 'approve_public' && body.action !== 'approve_cybercab' && body.action !== 'return_private') {
     return Response.json({ success: false, error: 'invalid_action' }, { status: 400 });
   }
   const parsed = parseReason(body);
@@ -295,15 +309,24 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
     return Response.json({ success: false, error: 'not_found' }, { status: 404 });
   }
 
-  const approving = body.action === 'approve_public';
+  const isCybercab = body.action === 'approve_cybercab';
+  const approving = body.action === 'approve_public' || isCybercab;
   if (approving && vehicle.visibility === VEHICLE_VISIBILITY.PUBLIC) {
     return Response.json({ success: false, error: 'already_public', vehicle }, { status: 409 });
   }
   if (!approving && vehicle.visibility !== VEHICLE_VISIBILITY.PUBLIC) {
     return Response.json({ success: false, error: 'already_private', vehicle }, { status: 409 });
   }
-  if (approving && !vehicle.approval.can_approve) {
-    return Response.json({ success: false, error: 'not_eligible', blocking_reasons: vehicle.approval.blocking_reasons, vehicle }, { status: 409 });
+  if (approving) {
+    // evaluateVehicleApproval (vehicle.approval) is never changed for this
+    // feature — approve_cybercab only ADDS 'no_vin' to the SAME blocking-reasons
+    // list ordinary approve_public already computes, at the response level.
+    const blockingReasons = isCybercab && !vehicle.vin
+      ? [...vehicle.approval.blocking_reasons, 'no_vin']
+      : vehicle.approval.blocking_reasons;
+    if (blockingReasons.length > 0) {
+      return Response.json({ success: false, error: 'not_eligible', blocking_reasons: blockingReasons, vehicle }, { status: 409 });
+    }
   }
 
   const { applied } = await db.changeRobotaxiVehicleVisibility(sql, {
@@ -318,10 +341,78 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
     if (!fresh) return Response.json({ success: false, error: 'not_found' }, { status: 404 });
     if (approving && fresh.visibility === VEHICLE_VISIBILITY.PUBLIC) return Response.json({ success: false, error: 'already_public', vehicle: fresh }, { status: 409 });
     if (!approving && fresh.visibility !== VEHICLE_VISIBILITY.PUBLIC) return Response.json({ success: false, error: 'already_private', vehicle: fresh }, { status: 409 });
-    return Response.json({ success: false, error: 'not_eligible', blocking_reasons: fresh.approval.blocking_reasons, vehicle: fresh }, { status: 409 });
+    const freshBlocking = isCybercab && !fresh.vin
+      ? [...fresh.approval.blocking_reasons, 'no_vin']
+      : fresh.approval.blocking_reasons;
+    return Response.json({ success: false, error: 'not_eligible', blocking_reasons: freshBlocking, vehicle: fresh }, { status: 409 });
   }
 
   return Response.json({ success: true, action: approving ? 'approved_public' : 'returned_private', vehicle: fresh });
+}
+
+const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i; // standard 17-char VIN shape, excludes I/O/Q — format only, never decoded
+
+// POST /api/moderation/robotaxi-vehicles/:id/vin   { "vin": string }
+//
+// Records the VIN a moderator read directly off Robotaxi Tracker (an
+// external site this app never queries programmatically — see the workflow
+// comment above apiReviewRegistryVehicle) after manually confirming for
+// themselves that the vehicle is a Cybercab. This is the ONLY way a vin is
+// ever written: nothing in this app derives, decodes, or looks one up.
+//
+// Writes vin/vin_set_by_user_id/vin_set_at ONLY (db.setRegistryVehicleVin) —
+// never visibility, never a robotaxi_vehicle_reviews row, never any
+// ride/trip/eligibility data. Saving a VIN never approves anything by
+// itself; Approve Cybercab (apiReviewRegistryVehicle, action approve_cybercab)
+// is always a separate follow-up request. Refuses to overwrite an existing
+// vin (409 vin_already_set) rather than silently replacing it.
+export async function apiSetRegistryVehicleVin(request, env, vehicleId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  if (!VEHICLE_ID_RE.test(vehicleId)) {
+    return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });
+  }
+
+  const body = await readJsonObject(request);
+  if (!body || typeof body.vin !== 'string') {
+    return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
+  }
+  const vin = body.vin.trim().toUpperCase();
+  if (!VIN_RE.test(vin)) {
+    return Response.json({ success: false, error: 'invalid_vin' }, { status: 400 });
+  }
+
+  const sql = env.cybercabhunter_db;
+  const existing = await db.getRegistryVehicleForModeration(sql, vehicleId);
+  if (!existing) {
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+  }
+  if (existing.vin) {
+    return Response.json({ success: false, error: 'vin_already_set', vehicle: existing }, { status: 409 });
+  }
+  // A vin may be saved only while the vehicle is still private. Approve
+  // Cybercab is the ONLY path that is meant to combine "vin present" with
+  // public visibility (see apiReviewRegistryVehicle); without this guard a
+  // vehicle already public through the ordinary approve_public path (no vin
+  // ever required) could have a vin attached afterward and start showing
+  // publicly — vin and Cybercab2.png — without Approve Cybercab ever having
+  // run. Refusing here keeps that combination reachable only through the
+  // gated action.
+  if (existing.visibility === VEHICLE_VISIBILITY.PUBLIC) {
+    return Response.json({ success: false, error: 'already_public', vehicle: existing }, { status: 409 });
+  }
+
+  const applied = await db.setRegistryVehicleVin(sql, vehicleId, auth.userId, vin);
+  const fresh = await db.getRegistryVehicleForModeration(sql, vehicleId);
+  if (!applied) {
+    // Lost a race (another moderator saved one first, or the vehicle was
+    // deleted) between the read above and the atomic write.
+    if (!fresh) return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+    return Response.json({ success: false, error: 'vin_already_set', vehicle: fresh }, { status: 409 });
+  }
+
+  return Response.json({ success: true, vehicle: fresh });
 }
 
 // DELETE /api/moderation/robotaxi-vehicles/:id

@@ -75,6 +75,15 @@
     $('vFirstSeen').textContent = fmtDateTime(v.first_seen_at);
     $('vLastSeen').textContent = fmtDateTime(v.last_seen_at);
 
+    // A vin is present only once a moderator has approved this vehicle as a
+    // Cybercab and saved its VIN (worker/vehicles.js only ever forwards one
+    // for an already publicly-eligible vehicle). The image is the same
+    // generic Cybercab2.png for every vehicle — never a photo of this
+    // specific VIN — and, like vin itself, is simply absent otherwise.
+    show('vVinRow', !!v.vin);
+    show('vCybercabImage', !!v.vin);
+    $('vVin').textContent = v.vin || '';
+
     $('vTripCount').textContent = fmtInt(h.trip_count);
     $('vTotalDistance').textContent = fmtMiles(h.total_distance);
     $('vFirstRide').textContent = fmtDate(h.first_ride_date);

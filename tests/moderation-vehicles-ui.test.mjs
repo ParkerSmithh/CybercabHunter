@@ -109,7 +109,7 @@ async function run() {
     check('an awaiting vehicle is listed with its plate', card.dataset.vehicleId === a && /AWT0001/.test(card.textContent));
     check('it shows its counted-ride count', /2 counted rides/.test(card.textContent));
     check('it is labelled "Private — Needs Review" and "Eligible for Approval"', /Private — Needs Review/.test(card.textContent) && /Eligible for Approval/.test(card.textContent) && card.dataset.approvalState === 'eligible_for_approval');
-    check('it offers "Approve" and no public-page link (it is not public)', /Approve/.test(card.textContent) && !!card.querySelector('button[data-vehicle-action="approve"]') && !card.querySelector('a'));
+    check('it offers "Approve" and no public-page link (it is not public)', /Approve/.test(card.textContent) && !!card.querySelector('button[data-vehicle-action="approve"]') && !card.querySelector('a[href^="vehicle/"]'));
     check('a vehicle with no counted rides is ALSO listed now: "Private" is every private vehicle, not just approval candidates', !!byPlate('NORIDES'));
     check('the sighting queue above is unaffected', page.sightingCards().length === 0);
   }
@@ -154,7 +154,7 @@ async function run() {
     scope.value = 'private';
     scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
     await page.waitFor(() => page.cards().length === 1, 'switch back to "Private" to see it again');
-    check('back in "Private" it shows private again with its audit line, and no public-page link', /Private — Needs Review/.test(page.cards()[0].textContent) && /Last review: Returned to private by/.test(page.cards()[0].textContent) && !page.cards()[0].querySelector('a'));
+    check('back in "Private" it shows private again with its audit line, and no public-page link', /Private — Needs Review/.test(page.cards()[0].textContent) && /Last review: Returned to private by/.test(page.cards()[0].textContent) && !page.cards()[0].querySelector('a[href^="vehicle/"]'));
   }
 
   console.log('4. Not eligible: the reasons are plain facts and there is no approve button');
@@ -239,7 +239,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 1, 'vehicle list');
     approveVia(page);
     await page.waitFor(() => /reach the server/i.test(page.toastText()), 'error toast');
-    check('a failed change shows an error toast and leaves the card usable (the Approve button re-enabled, not stuck disabled)', /Eligible for Approval/.test(page.cards()[0].textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="approve"]') && !page.cards()[0].querySelector('button[disabled]'));
+    check('a failed change shows an error toast and leaves the card usable (the Approve button re-enabled, not stuck disabled)', /Eligible for Approval/.test(page.cards()[0].textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="approve"]') && !page.cards()[0].querySelector('button[data-vehicle-action="approve"]').disabled && !page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]').disabled);
     check('nothing changed in the database', ctx.d1.query("SELECT visibility FROM robotaxi_vehicles WHERE license_plate = 'AWT0001'")[0].visibility === 'private' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 0);
     fail = false;
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="approve"]'));
@@ -345,7 +345,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 2, 'both duplicates');
     check('both duplicates carry the warning and their own provenance', page.cards().every(c => /Duplicate plate: 2 registry vehicles/.test(c.textContent) && /How the counted rides entered/.test(c.textContent)));
     check('duplicate plates are flagged as a blocking reason and neither can be approved', page.cards().every(c => /Duplicate plate/.test(c.textContent) && c.dataset.approvalState === 'not_eligible' && !c.querySelector('button[data-vehicle-action="approve"]')));
-    check('there is no merge or resolve control on any card (Delete Vehicle is the only other action, alongside approve / return)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve|Return to Private|Delete Vehicle)$/.test(b.textContent.trim()))) && !/merge|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
+    check('there is no merge or resolve control on any card (Delete Vehicle, Save VIN and Approve Cybercab are the only other actions, alongside approve / return)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve|Approve Cybercab|Save VIN|Return to Private|Delete Vehicle)$/.test(b.textContent.trim()))) && !/merge|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
   }
   {
     // Hostile values from the API stay inert text.
@@ -431,6 +431,53 @@ async function run() {
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
     await page.waitFor(() => /reach the server/i.test(page.toastText()), 'error toast');
     check('a failed delete shows an error toast and leaves the confirmation open, nothing removed', !!page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]') && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 1);
+  }
+
+  console.log('11. Cybercab verification: a manual Robotaxi Tracker link, and Save VIN / Approve Cybercab as two separate requests');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'CYB0001');
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    const card = () => page.cards()[0];
+
+    const trackerLink = card().querySelector('a[target="_blank"]');
+    check('a plain external Robotaxi Tracker link exists, opening in a new tab safely (rel=noopener)', !!trackerLink && trackerLink.getAttribute('rel') === 'noopener' && /^https:\/\/robotaxitracker\.com\//.test(trackerLink.getAttribute('href')));
+    check('it links to a real, general page — never an invented per-vehicle URL (no plate baked in)', !trackerLink.getAttribute('href').includes('CYB0001'));
+    check('a VIN input and Save VIN button exist, and Approve Cybercab starts disabled (no vin yet)', !!card().querySelector('input[data-vehicle-vin-input]') && !!card().querySelector('button[data-vehicle-action="save-vin"]') && card().querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
+    check('Delete Vehicle remains available alongside the new controls', !!card().querySelector('button[data-vehicle-action="ask-delete"]'));
+    check('nothing was requested yet beyond the initial listing', page.vehicleRequests('POST').length === 0);
+
+    const VIN = '5YJSA1E14FF101183';
+    card().querySelector('input[data-vehicle-vin-input]').value = VIN;
+    page.click(card().querySelector('button[data-vehicle-action="save-vin"]'));
+    await page.waitFor(() => page.vehicleRequests('POST').length === 1, 'Save VIN request sent');
+    const saveReq = page.vehicleRequests('POST')[0];
+    check('Save VIN sent exactly one POST, to the vin endpoint — never the review endpoint — with the VIN in the body', saveReq.path === `/api/moderation/robotaxi-vehicles/${id}/vin` && JSON.parse(saveReq.body).vin === VIN);
+    await page.waitFor(() => /VIN on file/.test(card().textContent), 'card reflects the saved vin');
+    check('entering and saving a VIN did NOT approve the vehicle: still private, no history row', ctx.d1.query('SELECT visibility FROM robotaxi_vehicles WHERE id = ?', id)[0].visibility === 'private' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 0);
+    check('the saved VIN is shown on the card', new RegExp(VIN).test(card().textContent));
+    check('Approve Cybercab is now enabled', !card().querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
+    check('the VIN input is gone now that a vin is on file (nothing left to overwrite from this card)', !card().querySelector('input[data-vehicle-vin-input]'));
+
+    page.click(card().querySelector('button[data-vehicle-action="approve-cybercab"]'));
+    await page.waitFor(() => page.cards().length === 0, 'the now-public vehicle drops off the "Private" list');
+    const reviewReq = page.vehicleRequests('POST').find(r => r.path.endsWith('/review'));
+    check('Approve Cybercab sent a SEPARATE POST, to the review endpoint, with action approve_cybercab', !!reviewReq && JSON.parse(reviewReq.body).action === 'approve_cybercab');
+    check('exactly two POSTs total were sent for this whole flow: Save VIN, then Approve Cybercab', page.vehicleRequests('POST').length === 2);
+    check('the vehicle is now public, and its vin is unchanged by the approval', ctx.d1.query('SELECT visibility, vin FROM robotaxi_vehicles WHERE id = ?', id)[0].visibility === 'public' && ctx.d1.query('SELECT vin FROM robotaxi_vehicles WHERE id = ?', id)[0].vin === VIN);
+    check('exactly one review-history row exists, recorded as the same approved_public action ordinary approval uses', ctx.d1.query('SELECT action FROM robotaxi_vehicle_reviews')[0].action === 'approved_public' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 1);
+    check('a distinct success toast is shown', /approved for the public registry/i.test(page.toastText()));
+  }
+  {
+    // Approve Cybercab stays gated even when the ordinary Approve button would already be enabled.
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    vehicle(ctx, 'CYB0002'); // 1 counted ride by default -> ordinarily approvable, but no vin
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    const card = page.cards()[0];
+    check('ordinary Approve is enabled (existing behavior, unaffected)', !!card.querySelector('button[data-vehicle-action="approve"]') && !card.querySelector('button[data-vehicle-action="approve"]').disabled);
+    check('Approve Cybercab is still disabled purely for lack of a vin, even though the vehicle is otherwise eligible', card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
   }
 
   t.finish();

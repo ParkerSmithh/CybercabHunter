@@ -70,6 +70,11 @@ export async function apiListVehicles(request, env) {
       first_seen_at: v.first_seen_at,
       last_seen_at: v.last_seen_at,
       verification_status: v.verification_status,
+      // A moderator-entered fact (never inferred/decoded — see migrations/0013),
+      // present only once a moderator has confirmed and approved the vehicle as
+      // a Cybercab. Never vin_set_by_user_id/vin_set_at — those are moderation
+      // provenance, not public vehicle data.
+      vin: v.vin,
       trip_count: v.trip_count,
       first_ride_date: v.first_ride_date,
       last_ride_date: v.last_ride_date,

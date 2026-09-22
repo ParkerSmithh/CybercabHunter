@@ -227,7 +227,35 @@ async function run() {
     check('no rider id string leaks into the rendered page', !/user-first|user-second/.test(rendered));
     check('no pickup/dropoff address text leaks into the rendered page', !/Hanover|NorthPark/i.test(rendered));
     check('no fare/dollar figure appears anywhere on the page', !/\$6\.92|\$8\.10|692|810/.test(rendered.replace(/2026|2795/g, '')));
-    check('no VIN or session/token material appears anywhere on the page', !/\bvin\b|access_token|refresh_token|session/i.test(rendered));
+    // This vehicle was never given a vin (approveVehicle above passes none),
+    // so the VIN row/image must stay hidden and empty — a "VIN" LABEL existing
+    // in the page's static markup is fine (see 5b below for a vehicle that
+    // DOES have one), but no vin VALUE, and no session/token material, may
+    // ever appear.
+    check('the VIN row and Cybercab image stay hidden for a vehicle with no vin', !page.visible('vVinRow') && !page.visible('vCybercabImage') && page.text('vVin') === '');
+    check('no session/token material appears anywhere on the page', !/access_token|refresh_token|\bsession\b/i.test(rendered));
+  }
+
+  console.log('5b. VIN: shown only when the vehicle has one — Cybercab Hunter never derives or decodes it, only displays what a moderator saved');
+  {
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    const noVinId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ORD0011');
+    approveVehicle(d1, noVinId, { withRide: true });
+    const noVinPage = await openPage({ cybercabhunter_db: d1 }, noVinId);
+    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — VIN row and image both hidden', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vVinRow') && !noVinPage.visible('vCybercabImage'));
+
+    const VIN = '5YJSA1E14FF101183';
+    const cybercabId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'CYB0010');
+    approveVehicle(d1, cybercabId, { withRide: true });
+    d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}' WHERE id = '${cybercabId}'`);
+    const page = await openPage({ cybercabhunter_db: d1 }, cybercabId);
+    check('a vehicle with a vin: the VIN row is shown and renders the exact value', page.visible('vVinRow') && page.text('vVin') === VIN);
+    check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
+    const img = page.d.getElementById('vCybercabImage');
+    check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'Cybercab2.png');
+    check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
+    check('provider/color/service-area/first-seen/last-seen still render normally alongside the VIN', page.text('vProvider') === 'tesla' && page.text('vFirstSeen') !== '—' && page.text('vLastSeen') !== '—');
+    check('still no session/token material leaks, even with a vin present', !/access_token|refresh_token|\bsession\b/i.test(page.d.body.innerHTML));
   }
 
   console.log('6. XSS: hostile-looking vehicle fields render as inert text, never as markup');

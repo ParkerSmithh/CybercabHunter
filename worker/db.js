@@ -576,7 +576,7 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
   const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
   const rows = await sql.prepare(`
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
-           v.first_seen_at, v.last_seen_at, v.verification_status,
+           v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
            (SELECT COUNT(*) ${counted()}) AS trip_count,
            (SELECT MIN(t.ride_date) ${counted()}) AS first_ride_date,
            (SELECT MAX(t.ride_date) ${counted()}) AS last_ride_date,
@@ -605,7 +605,7 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
 async function getPublicRobotaxiVehicle(sql, vehicleId) {
   const row = await sql.prepare(`
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
-           v.first_seen_at, v.last_seen_at, v.verification_status
+           v.first_seen_at, v.last_seen_at, v.verification_status, v.vin
     FROM robotaxi_vehicles v
     WHERE v.id = ? AND ${publicVehicleEligibleSql('v')}
   `).bind(vehicleId).first();
@@ -715,6 +715,7 @@ const LAST_REVIEW = col => `(SELECT r.${col} FROM robotaxi_vehicle_reviews r
 const REGISTRY_VEHICLE_MOD_SELECT = `
   SELECT v.id, v.license_plate, v.visibility, v.verification_status,
          v.first_seen_at, v.last_seen_at, v.created_at,
+         v.vin, v.vin_set_by_user_id, v.vin_set_at,
          ${COUNTED_BY('')} AS counted_ride_count,
          ${COUNTED_BY(` AND t.source = 'receipt_email'`)} AS counted_email,
          ${COUNTED_BY(` AND t.source = 'receipt_import'`)} AS counted_import,
@@ -768,10 +769,15 @@ function evaluateVehicleApproval(row) {
 }
 
 function toModeratorVehicle(row) {
+  const approval = evaluateVehicleApproval(row);
   return {
     id: row.id,
     license_plate: row.license_plate,
     visibility: row.visibility,
+    // Set only by POST .../vin (a moderator manually entering what Robotaxi
+    // Tracker showed them). Cybercab Hunter never derives, decodes, or infers
+    // this — see migrations/0013's note.
+    vin: row.vin || null,
     // The vehicle record's own status column ('unverified' by default). It is
     // NOT changed by anything in this workflow and says nothing about Tesla.
     verification_status: row.verification_status,
@@ -798,7 +804,14 @@ function toModeratorVehicle(row) {
     // necessary but NOT sufficient — a counted ride is also required.
     publicly_eligible: row.visibility === VEHICLE_VISIBILITY.PUBLIC && row.counted_ride_count > 0,
     plate_vehicle_count: row.plate_vehicle_count,
-    approval: evaluateVehicleApproval(row),
+    approval: approval,
+    // A SEPARATE gate from approval.can_approve, never a replacement for it:
+    // everything approval.can_approve already requires, PLUS a VIN already
+    // saved. evaluateVehicleApproval itself is untouched — Cybercab Hunter
+    // still does not know or guess whether this vehicle IS a Cybercab; a
+    // moderator's own choice to click Approve Cybercab (only enabled once a
+    // vin exists) is what asserts that, never anything computed here.
+    can_approve_cybercab: approval.can_approve && !!row.vin,
     // Most recent moderator decision on this vehicle, or null if none has
     // ever been recorded (e.g. it was made private by the legacy cleanup).
     latest_review: row.last_review_action ? {
@@ -916,6 +929,23 @@ async function setRobotaxiVehicleVisibility(sql, vehicleId, visibility) {
   const result = await sql.prepare(
     `UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now') WHERE id = ?`
   ).bind(visibility, vehicleId).run();
+  return !!(result && result.meta && result.meta.changes > 0);
+}
+
+// Records a VIN a moderator read directly off Robotaxi Tracker (worker/moderation.js's
+// POST .../vin). Writes ONLY vin/vin_set_by_user_id/vin_set_at — never
+// visibility, never a robotaxi_vehicle_reviews row, and (the WHERE clause
+// below) never overwrites an existing non-null vin: this statement's own
+// changes count is 0 if one is already set, so the caller can tell "no such
+// vehicle" and "vin already set" apart with one extra read, exactly like
+// changeRobotaxiVehicleVisibility's applied/not-applied pattern.
+// Returns whether the write happened.
+async function setRegistryVehicleVin(sql, vehicleId, moderatorId, vin) {
+  const result = await sql.prepare(`
+    UPDATE robotaxi_vehicles
+    SET vin = ?, vin_set_by_user_id = ?, vin_set_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ? AND vin IS NULL
+  `).bind(vin, moderatorId, vehicleId).run();
   return !!(result && result.meta && result.meta.changes > 0);
 }
 
@@ -1130,6 +1160,7 @@ export const db = {
   deleteRegistryVehicle,
   setRobotaxiVehicleVisibility,
   changeRobotaxiVehicleVisibility,
+  setRegistryVehicleVin,
   getRobotaxiVehicleReviews,
   getRobotaxiVehicleHistory,
   upsertRobotaxiOwnerConnection,

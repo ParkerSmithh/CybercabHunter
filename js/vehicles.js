@@ -54,10 +54,26 @@
     return box;
   }
 
+  // Generic Cybercab illustration, shown only once a moderator has approved
+  // this vehicle as a Cybercab and saved its VIN (v.vin != null — see
+  // worker/vehicles.js's apiListVehicles, which only ever forwards a vin for
+  // a vehicle that already passed publicVehicleEligibleSql). It is the SAME
+  // file for every vehicle, never a photo of that specific VIN. Built via
+  // createElement/attribute assignment, never innerHTML, matching every
+  // other element on this page.
+  function cybercabImage() {
+    const img = document.createElement('img');
+    img.src = 'Cybercab2.png';
+    img.alt = 'Cybercab (generic vehicle-type image, not a photo of this specific vehicle)';
+    img.className = 'w-full h-32 object-contain mb-4';
+    return img;
+  }
+
   function card(v) {
     const li = el('li');
     const a = el('a', 'block glass rounded-2xl p-6 h-full hover:bg-white/5 transition-colors min-w-0');
     a.href = '/vehicle/' + encodeURIComponent(v.id);
+    if (v.vin) a.appendChild(cybercabImage());
     a.appendChild(el('h2', 'font-display font-bold text-2xl tracking-tight [overflow-wrap:anywhere]', v.license_plate || 'Plate not recorded'));
     a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere]', v.model || 'Model not confirmed'));
     // service_area is the record's own field; service_areas are the cities of its counted rides.

@@ -39,7 +39,11 @@ async function pub(ctx, p) {
 }
 const review = (ctx, user, id, body, raw) => call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, user, body, raw);
 const approve = (ctx, user, id, reason) => review(ctx, user, id, { action: 'approve_public', ...(reason !== undefined ? { reason } : {}) });
+const approveCybercab = (ctx, user, id, reason) => review(ctx, user, id, { action: 'approve_cybercab', ...(reason !== undefined ? { reason } : {}) });
 const giveBack = (ctx, user, id, reason) => review(ctx, user, id, { action: 'return_private', ...(reason !== undefined ? { reason } : {}) });
+const setVin = (ctx, user, id, vin, raw) => call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/vin`, user, vin === undefined ? undefined : { vin }, raw);
+const VIN_A = '5YJSA1E14FF101183';
+const VIN_B = '5YJSA1E27FF101184';
 const list = (ctx, qs = '', user = 'mod') => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles${qs}`, user).then(r => r.json());
 const one = async (ctx, plate) => (await list(ctx, `?plate=${encodeURIComponent(plate)}`)).vehicles[0];
 
@@ -529,7 +533,7 @@ async function run() {
     check('there is still no bulk-approve route, and /vehicles is only a static page, not a Worker route (the public list itself lives in vehicle-registry.test.mjs)', (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/approve-all', 'mod', {})).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/review', 'mod', {})).status === 404);
     check('the review route accepts only POST', (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod')).status === 404 && (await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod', { action: 'approve_public' })).status === 404);
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
-    check('exactly one migration was added for this phase (0012), additive only', migrations.length === 12 && migrations[11] === '0012_robotaxi_vehicle_reviews.sql' && !/\b(DROP|DELETE|UPDATE|ALTER)\b/i.test(fs.readFileSync(`${ROOT}migrations/${migrations[11]}`, 'utf8').replace(/^--.*$/gm, '')));
+    check('exactly one migration was added for this phase (0012), additive only', migrations.includes('0012_robotaxi_vehicle_reviews.sql') && !/\b(DROP|DELETE|UPDATE|ALTER)\b/i.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8').replace(/^--.*$/gm, '')));
     check('the migration creates exactly the review table with the two allowed actions', /CREATE TABLE robotaxi_vehicle_reviews/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')) && /CHECK \(action IN \('approved_public', 'returned_private'\)\)/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')));
     // countedRideExistsSql/publicVehicleEligibleSql moved to worker/ride-status.js (Candidate B: Rider
     // Data reuses them too, and that would have meant a circular import if they'd stayed in worker/db.js,
@@ -540,6 +544,147 @@ async function run() {
     const dbSrc = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
     check('the public eligibility gate is unchanged: still visibility public AND a counted, non-superseded ride', /visibility = 'public' AND \$\{countedRideExistsSql\(alias\)\}/.test(rideStatusSrc) && /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(rideStatusSrc));
     check('worker/db.js imports the real gate rather than defining its own copy', /import \{[^}]*publicVehicleEligibleSql[^}]*\}\s*from\s*'\.\/ride-status\.js'/.test(dbSrc) && !/^function publicVehicleEligibleSql/m.test(dbSrc));
+  }
+
+  console.log('7. VIN: a moderator-entered fact (POST .../vin), independent of approval');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator', other: 'user' });
+    const v = rawVehicle(ctx, id(400), 'VIN0400'); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
+
+    check('unauthenticated -> 401, nothing written', (await setVin(ctx, undefined, v, VIN_A)).status === 401);
+    check('an ordinary user -> 403, nothing written', (await setVin(ctx, 'other', v, VIN_A)).status === 403);
+    check('so far no vin is recorded', (await one(ctx, 'VIN0400')).vin === null);
+
+    const beforeRow = JSON.stringify(ctx.d1.query('SELECT visibility, verification_status, first_seen_at, last_seen_at FROM robotaxi_vehicles WHERE id = ?', v)[0]);
+    const before = await one(ctx, 'VIN0400');
+    check('before saving: vin is null and Approve Cybercab is not allowed', before.vin === null && before.can_approve_cybercab === false);
+    const r = await setVin(ctx, 'mod', v, VIN_A); const j = await r.json();
+    check('a moderator can save a VIN (200), and it is echoed back', r.status === 200 && j.success === true && j.vehicle.vin === VIN_A);
+    check('it is stored uppercase and trimmed', (await setVin(ctx, 'mod', rawVehicle(ctx, id(401), 'VIN0401'), `  ${VIN_A.toLowerCase()}  `).then(x => x.json())).vehicle.vin === VIN_A);
+
+    const after = await one(ctx, 'VIN0400');
+    check('saving a VIN does not grant visibility: the vehicle is still private', after.visibility === 'private' && vis(ctx, v) === 'private');
+    check('saving a VIN does not approve anything: it wrote NO robotaxi_vehicle_reviews row', rows(ctx).length === 0);
+    check('saving a VIN does not touch ride/trip data', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
+    check('saving a VIN changed nothing else on the vehicle row (only vin/vin_set_by_user_id/vin_set_at/updated_at)', JSON.stringify(ctx.d1.query('SELECT visibility, verification_status, first_seen_at, last_seen_at FROM robotaxi_vehicles WHERE id = ?', v)[0]) === beforeRow);
+    check('eligibility (publicly_eligible / approval) is exactly what it was before, apart from the new can_approve_cybercab gate', after.publicly_eligible === before.publicly_eligible && after.approval.state === before.approval.state && after.approval.can_approve === before.approval.can_approve);
+    check('now Approve Cybercab is allowed (existing guard already passed, and a vin is now present)', after.can_approve_cybercab === true);
+    check('the vin does not leak into the public API before approval', (await pub(ctx, `/api/robotaxi-vehicles/${v}`)).status === 404);
+
+    check('an existing VIN cannot be silently overwritten: 409 vin_already_set, value unchanged', await (async () => {
+      const r2 = await setVin(ctx, 'mod', v, VIN_B); const j2 = await r2.json();
+      return r2.status === 409 && j2.error === 'vin_already_set' && (await one(ctx, 'VIN0400')).vin === VIN_A;
+    })());
+    check('overwrite is refused even for a different moderator', await (async () => {
+      await ctx.env.TESLA_SESSIONS.put('session:session-mod3', JSON.stringify({ user_id: 'mod3' }));
+      ctx.d1.exec(`INSERT INTO users (id, role) VALUES ('mod3', 'moderator')`);
+      const r2 = await setVin(ctx, 'mod3', v, VIN_B);
+      return r2.status === 409 && (await one(ctx, 'VIN0400')).vin === VIN_A;
+    })());
+
+    const bad = async (label, resp, status, error) => { const r = await resp; const j = await r.json(); check(`${label} -> ${status} ${error}`, r.status === status && j.error === error); };
+    const fresh = rawVehicle(ctx, id(402), 'VIN0402');
+    await bad('a non-JSON body', setVin(ctx, 'mod', fresh, undefined, 'not json'), 400, 'invalid_body');
+    await bad('a missing vin field', setVin(ctx, 'mod', fresh, undefined), 400, 'invalid_body');
+    await bad('a non-string vin', setVin(ctx, 'mod', fresh, 12345678901234567), 400, 'invalid_body');
+    await bad('too short', setVin(ctx, 'mod', fresh, 'SHORT123'), 400, 'invalid_vin');
+    await bad('too long', setVin(ctx, 'mod', fresh, VIN_A + 'X'), 400, 'invalid_vin');
+    await bad('contains a disallowed letter (O)', setVin(ctx, 'mod', fresh, 'O'.repeat(17)), 400, 'invalid_vin');
+    await bad('a malformed vehicle id', setVin(ctx, 'mod', 'not-a-uuid', VIN_A), 400, 'invalid_vehicle_id');
+    await bad('a well-formed but missing vehicle', setVin(ctx, 'mod', MISSING, VIN_A), 404, 'not_found');
+    check('none of the invalid attempts wrote a vin', (await one(ctx, 'VIN0402')).vin === null);
+
+    // A deleted vehicle cannot gain a VIN through this or any other path — the row is simply gone.
+    const gone = rawVehicle(ctx, id(403), 'VIN0403');
+    await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${gone}`, 'mod');
+    check('saving a VIN for a deleted vehicle -> 404, not resurrected', (await setVin(ctx, 'mod', gone, VIN_A)).status === 404);
+
+    // The VIN persists across an approve/return-to-private cycle and is never touched by either.
+    await approveCybercab(ctx, 'mod', v);
+    check('vin is unchanged after Approve Cybercab', (await one(ctx, 'VIN0400')).vin === VIN_A);
+    await giveBack(ctx, 'mod', v);
+    check('vin is unchanged after returning to private', (await one(ctx, 'VIN0400')).vin === VIN_A);
+  }
+
+  console.log('7c. Regression: a vehicle already public through ORDINARY approve_public cannot have a vin attached afterward (closes the bypass where a vin — and so Cybercab2.png — could reach the public site without Approve Cybercab ever running)');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const v = rawVehicle(ctx, id(405), 'VIN0405'); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
+
+    // 1-3: approve it ordinarily (no vin ever involved) and confirm it is public.
+    const approveResp = await approve(ctx, 'mod', v);
+    check('setup: the vehicle is approved through ordinary approve_public, with no vin', approveResp.status === 200 && vis(ctx, v) === 'public' && (await one(ctx, 'VIN0405')).vin === null);
+    const auditBefore = rows(ctx).length;
+
+    // 4-5: attempt the VIN endpoint on the now-public vehicle -> 409 already_public.
+    const r = await setVin(ctx, 'mod', v, VIN_A); const j = await r.json();
+    check('the VIN endpoint refuses an already-public vehicle: 409 already_public', r.status === 409 && j.error === 'already_public' && j.vehicle.visibility === 'public');
+
+    // 6: the vehicle still has no vin.
+    check('the vehicle still has no vin after the refusal', (await one(ctx, 'VIN0405')).vin === null);
+
+    // 7: the public response carries no VIN/image signal.
+    const pr = await pub(ctx, `/api/robotaxi-vehicles/${v}`);
+    const prBody = JSON.parse(pr.text);
+    check('the public response has vin: null — no VIN/image signal reaches the public site', pr.status === 200 && prBody.vehicle.vin === null && !pr.text.includes(VIN_A));
+
+    // 8: no extra review row or other vehicle-state change from the rejected request.
+    check('no review-history row was written by the rejected VIN request', rows(ctx).length === auditBefore);
+    check('visibility, ride/trip counts and everything else are untouched by the refusal', vis(ctx, v) === 'public' && ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
+
+    // The refusal is not a one-time fluke: repeating it behaves identically.
+    check('a repeated attempt is refused the same way', (await setVin(ctx, 'mod', v, VIN_B)).status === 409);
+  }
+
+  console.log('8. Approve Cybercab: the existing approval guard, PLUS a VIN already on file — evaluateVehicleApproval itself is untouched');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const eligible = rawVehicle(ctx, id(410), 'CYB0410'); seedRide(ctx.d1, { userId: 'rider', vehicleId: eligible, status: 'pending' });
+
+    check('without a vin: approve_cybercab is refused 409 not_eligible with reason no_vin (guard itself already passes)', await (async () => {
+      const r = await approveCybercab(ctx, 'mod', eligible); const j = await r.json();
+      return r.status === 409 && j.error === 'not_eligible' && j.blocking_reasons.join() === 'no_vin' && vis(ctx, eligible) === 'private';
+    })());
+    check('ordinary approve_public is completely unaffected: it still needs no vin at all', await (async () => {
+      const other = rawVehicle(ctx, id(411), 'PUB0411'); seedRide(ctx.d1, { userId: 'rider', vehicleId: other, status: 'pending' });
+      const r = await approve(ctx, 'mod', other);
+      return r.status === 200 && vis(ctx, other) === 'public' && (await one(ctx, 'PUB0411')).vin === null;
+    })());
+    check('a vehicle that is missing BOTH a counted ride and a vin reports both reasons together', await (async () => {
+      const empty = rawVehicle(ctx, id(412), 'CYB0412');
+      const r = await approveCybercab(ctx, 'mod', empty); const j = await r.json();
+      return r.status === 409 && j.blocking_reasons.sort().join() === ['no_counted_rides', 'no_vin'].sort().join();
+    })());
+    check('evaluateVehicleApproval itself never mentions vin: ordinary approval state/can_approve for the vehicle above are unaffected by having no vin', (await one(ctx, 'CYB0410')).approval.state === 'eligible_for_approval' && (await one(ctx, 'CYB0410')).approval.can_approve === true && !('vin' in (await one(ctx, 'CYB0410')).approval));
+    check('no history row was written by any refused approve_cybercab attempt', rows(ctx).length === 1); // only PUB0411's approve_public above
+
+    await setVin(ctx, 'mod', eligible, VIN_A);
+    const auditBefore = rows(ctx).length;
+    const r = await approveCybercab(ctx, 'mod', eligible); const j = await r.json();
+    check('with the existing guard passing AND a vin on file, approve_cybercab succeeds (200)', r.status === 200 && j.success === true);
+    check('it made the vehicle public, exactly like approve_public would', vis(ctx, eligible) === 'public' && j.vehicle.approval.state === 'public' && j.vehicle.publicly_eligible === true);
+    check('it did not touch the vin', j.vehicle.vin === VIN_A);
+    check('it wrote exactly one audit row, recorded as the SAME approved_public action — no new review action value was introduced', rows(ctx).length === auditBefore + 1 && rows(ctx)[rows(ctx).length - 1].action === 'approved_public' && rows(ctx)[rows(ctx).length - 1].moderator_user_id === 'mod');
+    check('it did not touch ride/trip counts', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 2); // eligible's ride + PUB0411's ride
+    check('the vehicle is now publicly reachable and its vin is exposed publicly (only the vin itself, no provenance)', await (async () => {
+      const pr = await pub(ctx, `/api/robotaxi-vehicles/${eligible}`); const body = pr.text;
+      return pr.status === 200 && body.includes(VIN_A) && !/vin_set_by_user_id|vin_set_at/.test(body);
+    })());
+
+    check('approve_cybercab on an already-public vehicle -> 409 already_public, same as approve_public', (await approveCybercab(ctx, 'mod', eligible)).status === 409);
+
+    // The existing guard (duplicate plate) still applies to approve_cybercab exactly as it does to approve_public.
+    const dupA = rawVehicle(ctx, id(420), 'DUP0420'); const dupB = rawVehicle(ctx, id(421), 'dup-0420');
+    for (const d of [dupA, dupB]) seedRide(ctx.d1, { userId: 'rider', vehicleId: d, status: 'pending' });
+    await setVin(ctx, 'mod', dupA, VIN_B);
+    const dupResp = await approveCybercab(ctx, 'mod', dupA); const dupBody = await dupResp.json();
+    check('a duplicate plate is still refused for approve_cybercab even with a vin on file', dupResp.status === 409 && dupBody.blocking_reasons.includes('duplicate_plate') && vis(ctx, dupA) === 'private');
+
+    // Validation: approve_cybercab is a recognized action value.
+    check('approve_cybercab is accepted as a valid action (not invalid_action)', await (async () => {
+      const noVehicle = await review(ctx, 'mod', MISSING, { action: 'approve_cybercab' });
+      return noVehicle.status === 404; // reaches the not_found check, not invalid_action -> proves the action itself validated fine
+    })());
   }
 
   t.finish();

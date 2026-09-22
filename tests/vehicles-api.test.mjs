@@ -103,9 +103,26 @@ async function run() {
     check('no user_id field of any shape', !/user_id|"userId"/i.test(blob));
     check('no rider id string leaks (neither rider)', !/user-first|user-second/.test(blob));
     check('no pickup/dropoff address text', !/Hanover|NorthPark|pickup_description|dropoff_description/i.test(blob));
-    check('no VIN field', !/\bvin\b/i.test(blob));
+    // This vehicle was never given a vin, so the field is legitimately
+    // present as vin:null (a moderator-entered fact — see migrations/0013 —
+    // not a leak); provenance of WHO/WHEN set it must still never appear.
+    check('vin is present but null (no vin was ever saved for this vehicle)', JSON.parse(blob).vehicle.vin === null);
+    check('no vin provenance (who/when it was set) ever appears in the public response', !/vin_set_by_user_id|vin_set_at/i.test(blob));
     check('no Tesla/Google account or session/token material', !/access_token|refresh_token|session|tesla_account_identifier|google_sub|email/i.test(blob));
     check('no fare/money figure — a rider\'s own payment amount is deliberately excluded from this public response', !/total_fare_cents|fare_amount_cents/i.test(blob));
+  }
+  {
+    // A vehicle that DOES have a vin (a moderator saved one and approved it
+    // as a Cybercab — see tests/registry-review-approval.test.mjs for that
+    // write path) exposes exactly the vin itself, and nothing about who set it.
+    const d1 = createTestD1(); seedUser(d1, 'u1');
+    const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'CYB0099');
+    approveVehicle(d1, id, { withRide: true });
+    d1.exec(`UPDATE robotaxi_vehicles SET vin = '5YJSA1E14FF101183', vin_set_by_user_id = 'u1', vin_set_at = datetime('now') WHERE id = '${id}'`);
+    const resp = await call({ cybercabhunter_db: d1 }, `/api/robotaxi-vehicles/${id}`);
+    const blob = JSON.stringify(await resp.json());
+    check('the vin itself is exposed', JSON.parse(blob).vehicle.vin === '5YJSA1E14FF101183');
+    check('vin_set_by_user_id and vin_set_at are never exposed, even when a vin is present', !/vin_set_by_user_id|vin_set_at/i.test(blob) && !/\bu1\b/.test(blob));
   }
 
   console.log('6. Cross-user isolation: a vehicle several different riders rode returns vehicle-level facts, crediting no one');

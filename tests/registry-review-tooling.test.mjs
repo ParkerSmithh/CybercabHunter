@@ -448,7 +448,7 @@ async function run() {
     check('the builder holds no database handle and executes nothing', !/\.prepare\(|\.exec\(|\.batch\(|fetch\(/.test(fs.readFileSync(`${ROOT}worker/registry-cleanup-sql.js`, 'utf8').replace(/\/\/.*$/gm, '')));
     check('worker/ stays excluded from the public static assets', /^worker$/m.test(fs.readFileSync(`${ROOT}.assetsignore`, 'utf8')));
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
-    check('Phase 3G itself added no migration: the set is 0001-0012, where 0012 is the Phase 3H review-history table', migrations.length === 12 && migrations[10].startsWith('0011_') && migrations[11].startsWith('0012_robotaxi_vehicle_reviews'));
+    check('Phase 3G itself added no migration: 0011 is immediately followed by 0012, the Phase 3H review-history table (later phases may add more after it)', migrations[10].startsWith('0011_') && migrations[11].startsWith('0012_robotaxi_vehicle_reviews'));
     const ctx = await makeApp({ mod: 'moderator' }); ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };
     for (const p of ['/api/moderation/registry-cleanup', '/api/moderation/registry-rollback', '/api/moderation/registry-preflight']) check(`GET ${p} is not a route`, (await call(ctx, 'GET', p, 'mod')).status === 404 && (await call(ctx, 'POST', p, 'mod', {})).status === 404);
   }

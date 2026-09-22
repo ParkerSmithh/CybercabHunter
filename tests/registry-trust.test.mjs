@@ -396,7 +396,7 @@ async function run() {
     check('a moderator can make an eligible vehicle public through the review action -> 200', makePublic.status === 200 && mp.success === true);
     check('the stored visibility changed', vehicleRow(ctx, id).visibility === 'public');
     check('the response reports the fresh state, including eligibility', mp.vehicle.visibility === 'public' && mp.vehicle.counted_ride_count === 1 && mp.vehicle.publicly_eligible === true);
-    check('the response has exactly the registry + provenance fields and no rider/receipt data', JSON.stringify(Object.keys(mp.vehicle).sort()) === '["approval","counted_ride_count","counted_rides_by_source","created_at","first_counted_ride_date","first_seen_at","id","last_counted_ride_date","last_seen_at","latest_review","license_plate","needs_review_ride_count","plate_vehicle_count","publicly_eligible","rejected_ride_count","total_trip_count","verification_status","visibility"]' && !/rider|user_id|pickup|dropoff|@/i.test(JSON.stringify(mp).replace(/"moderator_user_id"/g, '')) && !/email/i.test(JSON.stringify(mp).replace(/receipt_email/g, '')));
+    check('the response has exactly the registry + provenance fields and no rider/receipt data', JSON.stringify(Object.keys(mp.vehicle).sort()) === '["approval","can_approve_cybercab","counted_ride_count","counted_rides_by_source","created_at","first_counted_ride_date","first_seen_at","id","last_counted_ride_date","last_seen_at","latest_review","license_plate","needs_review_ride_count","plate_vehicle_count","publicly_eligible","rejected_ride_count","total_trip_count","verification_status","vin","visibility"]' && !/rider|user_id|pickup|dropoff|@/i.test(JSON.stringify(mp).replace(/"moderator_user_id"/g, '')) && !/email/i.test(JSON.stringify(mp).replace(/receipt_email/g, '')));
     check('the public endpoint now serves it', (await vehiclePage(ctx, id)).status === 200);
 
     const makePrivate = await patch('mod', { visibility: 'private' });
@@ -482,7 +482,7 @@ async function run() {
     const ra = await sightingsOf(ctx, a); const va = await vehiclePage(ctx, a);
     check('an ambiguous plate produces a plain empty list, with no collision hint', JSON.stringify(ra.json) === '{"sightings":[]}');
     check('the public vehicle response for a duplicate has the normal shape and does not mention the other vehicle', !va.text.includes(b) && !/ambig|duplicate|plate_vehicle_count/i.test(va.text + ra.text) && va.status === 200);
-    check('public vehicle fields are unchanged by Phase 3E', JSON.stringify(Object.keys(va.json.vehicle)) === '["id","provider","license_plate","model","color","service_area","first_seen_at","last_seen_at","verification_status"]');
+    check('public vehicle fields are unchanged by Phase 3E (vin was added later, by the Cybercab verification workflow)', JSON.stringify(Object.keys(va.json.vehicle)) === '["id","provider","license_plate","model","color","service_area","first_seen_at","last_seen_at","verification_status","vin"]');
     check('moderator-only fields never appear publicly', !/counted_ride_count|publicly_eligible|visibility/.test(va.text));
   }
 
@@ -536,7 +536,7 @@ async function run() {
     check('/vehicles and /registry are not served by the worker (still plain static-asset lookups)', (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'GET', '/registry', null)).status === 404);
     check('the moderator vehicle route does not accept DELETE or POST', (await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${V1}`, 'mod')).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles', 'mod', {})).status === 404);
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
-    check('Phase 3E itself added no migration: 0011 (moderator roles) is still followed only by 0012 (Phase 3H review history), and nothing else exists', migrations.join() === migrations.filter(f => /^00(0[1-9]|1[0-2])_/.test(f)).join() && migrations.length === 12 && migrations[10].startsWith('0011_') && migrations[11].startsWith('0012_robotaxi_vehicle_reviews'));
+    check('Phase 3E itself added no migration: 0011 (moderator roles) is immediately followed by 0012 (Phase 3H review history) — later phases may add more after it, but nothing was inserted BY Phase 3E itself', migrations[10].startsWith('0011_') && migrations[11].startsWith('0012_robotaxi_vehicle_reviews'));
   }
 
   t.finish();
