@@ -62,7 +62,8 @@ async function run() {
       ['POST review', () => review(ctx, undefined, v, { action: 'approve_public' }), () => review(ctx, 'rider', v, { action: 'approve_public' })],
       ['GET reviews', () => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${v}/reviews`, undefined), () => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${v}/reviews`, 'rider')],
       ['GET list', () => call(ctx, 'GET', '/api/moderation/robotaxi-vehicles?scope=private', undefined), () => call(ctx, 'GET', '/api/moderation/robotaxi-vehicles?scope=private', 'rider')],
-      ['PATCH', () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, undefined, { visibility: 'public' }), () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, 'rider', { visibility: 'public' })]
+      ['PATCH', () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, undefined, { visibility: 'public' }), () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, 'rider', { visibility: 'public' })],
+      ['DELETE', () => call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, undefined), () => call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'rider')]
     ];
     for (const [name, unauth, ordinary] of routes) {
       check(`${name}: unauthenticated -> 401`, (await unauth()).status === 401);
@@ -374,6 +375,39 @@ async function run() {
     const modSrc = strip(fs.readFileSync(`${ROOT}worker/moderation.js`, 'utf8'));
     check('the PATCH handler never calls the change function with a public target from request input', !/target:\s*body\.visibility/.test(modSrc.slice(modSrc.indexOf('export async function apiSetVehicleVisibility'), modSrc.indexOf('export async function apiReviewRegistryVehicle'))) || /review_required/.test(modSrc));
     check('the requireApprovalEligibility option no longer exists anywhere', !/requireApprovalEligibility/.test(dbSrc) && !/requireApprovalEligibility/.test(modSrc));
+  }
+
+  console.log('4d. DELETE removes a registry row outright — unlike the takedown PATCH, regardless of current visibility');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator', other: 'user' });
+    const del = (user, vid) => call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${vid}`, user);
+    const priv = rawVehicle(ctx, id(300), 'DEL0300'); seedRide(ctx.d1, { userId: 'rider', vehicleId: priv, status: 'pending' });
+    const pubV = rawVehicle(ctx, id(301), 'DEL0301', { visibility: 'public' }); seedRide(ctx.d1, { userId: 'rider', vehicleId: pubV, status: 'pending' });
+
+    const r1 = await del('mod', priv);
+    check('deleting a private vehicle succeeds (200)', r1.status === 200 && (await r1.json()).id === priv);
+    check('the row is gone from the database', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', priv).length === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', priv)[0].n === 0);
+    check('its trip is not deleted — it just stops pointing at a vehicle (ON DELETE SET NULL)', ctx.d1.query('SELECT robotaxi_vehicle_id FROM trips WHERE robotaxi_vehicle_id IS NULL').length === 1);
+
+    const r2 = await del('mod', pubV);
+    check('deleting a CURRENTLY PUBLIC vehicle also succeeds (200) — DELETE is not limited to private rows the way PATCH is', r2.status === 200);
+    check('it is gone from the database and from the public endpoint alike', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', pubV)[0].n === 0 && (await pub(ctx, `/api/robotaxi-vehicles/${pubV}`)).status === 404);
+
+    check('malformed id -> 400 invalid_vehicle_id, nothing touched', (await del('mod', 'not-a-uuid')).status === 400);
+    check('a hostile id string is inert (400, no injection)', (await del('mod', encodeURIComponent("x'; DROP TABLE robotaxi_vehicles;--"))).status === 400 && ctx.d1.query("SELECT name FROM sqlite_master WHERE type='table' AND name='robotaxi_vehicles'").length === 1);
+    check('deleting the same vehicle twice: the second call is 404 not_found, not a silent success', (await del('mod', priv)).status === 404);
+    check('deleting a vehicle that never existed -> 404', (await del('mod', MISSING)).status === 404);
+
+    // Review history rows deliberately have no foreign key to the vehicle (see migrations/0012's design notes)
+    // and are NOT deleted or rewritten when the vehicle they describe is removed — they are a record of what a
+    // moderator decided, not a live view of the vehicle.
+    const withHistory = rawVehicle(ctx, id(302), 'DEL0302'); seedRide(ctx.d1, { userId: 'rider', vehicleId: withHistory, status: 'pending' });
+    await approve(ctx, 'mod', withHistory);
+    const historyCountBefore = rows(ctx).filter(r => r.robotaxi_vehicle_id === withHistory).length;
+    const totalReviewRowsBefore = rows(ctx).length;
+    await del('mod', withHistory);
+    check('its review-history row(s) survive the vehicle\'s deletion, unchanged', historyCountBefore === 1 && rows(ctx).filter(r => r.robotaxi_vehicle_id === withHistory).length === 1 && rows(ctx).find(r => r.robotaxi_vehicle_id === withHistory).action === 'approved_public');
+    check('deleting a vehicle writes no NEW review-history row of its own (DELETE is not audited there)', rows(ctx).length === totalReviewRowsBefore);
   }
 
   console.log('5. The moderator payload: factual, complete, and free of private data');

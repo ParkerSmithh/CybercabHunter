@@ -811,6 +811,20 @@ async function getRegistryVehicleForModeration(sql, vehicleId) {
   return row ? toModeratorVehicle(row) : null;
 }
 
+// Hard delete of a registry vehicle (e.g. resolving a duplicate plate, or
+// removing a row created in error). Trips and sightings reference it with
+// ON DELETE SET NULL (see migrations/0002), so a rider's own trip history is
+// never touched — it just stops being linked to a vehicle. Review-history
+// rows (robotaxi_vehicle_reviews) intentionally have no foreign key and are
+// left in place as a record of what a moderator once decided (see
+// migrations/0012's design notes), so this is the one place a
+// robotaxi_vehicle_id in that table can point at a vehicle that no longer
+// exists — by design, not by accident.
+async function deleteRegistryVehicle(sql, vehicleId) {
+  const result = await sql.prepare(`DELETE FROM robotaxi_vehicles WHERE id = ?`).bind(vehicleId).run();
+  return !!(result && result.meta && result.meta.changes > 0);
+}
+
 // Re-asserts 'private' on a vehicle that is already private (the idempotent
 // no-op of the takedown PATCH, which writes no history). It refuses any other
 // value, so it can never be used to grant public visibility.
@@ -1032,6 +1046,7 @@ export const db = {
   getPublicVehicleSightings,
   getRegistryVehiclesForModeration,
   getRegistryVehicleForModeration,
+  deleteRegistryVehicle,
   setRobotaxiVehicleVisibility,
   changeRobotaxiVehicleVisibility,
   getRobotaxiVehicleReviews,

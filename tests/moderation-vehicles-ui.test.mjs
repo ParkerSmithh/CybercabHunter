@@ -98,23 +98,25 @@ async function run() {
     check('no registry-vehicle request was ever made for them', page.vehicleRequests().length === 0);
   }
 
-  console.log('2. Listing: awaiting-approval vehicles, with counted rides and honest status');
+  console.log('2. Listing: the default view is "Private" — every private vehicle, approval candidates and not-yet-eligible alike');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const a = vehicle(ctx, 'AWT0001', { rides: 2 });
     vehicle(ctx, 'NORIDES', { rides: 0 });
     const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
-    const card = page.cards()[0];
+    await page.waitFor(() => page.cards().length === 2, 'vehicle list');
+    check('the scope dropdown defaults to "Private" (the "Private — has counted rides" option was removed)', page.d.getElementById('modVehicleScope').value === 'private');
+    const byPlate = p => page.cards().find(c => c.textContent.includes(p));
+    const card = byPlate('AWT0001');
     check('an awaiting vehicle is listed with its plate', card.dataset.vehicleId === a && /AWT0001/.test(card.textContent));
     check('it shows its counted-ride count', /2 counted rides/.test(card.textContent));
     check('it is labelled "Private — Needs Review" and "Eligible for Approval"', /Private — Needs Review/.test(card.textContent) && /Eligible for Approval/.test(card.textContent) && card.dataset.approvalState === 'eligible_for_approval');
     check('it offers "Approve for Public Registry" and no public-page link (it is not public)', /Approve for Public Registry/.test(card.textContent) && !!card.querySelector('button[data-vehicle-action="ask-approve"]') && !card.querySelector('a'));
-    check('a vehicle with no counted rides is not in the approval list', !page.d.body.textContent.includes('NORIDES'));
+    check('a vehicle with no counted rides is ALSO listed now: "Private" is every private vehicle, not just approval candidates', !!byPlate('NORIDES'));
     check('the sighting queue above is unaffected', page.visible('modEmpty') && page.sightingCards().length === 0);
   }
 
-  console.log('3. Approving and returning a vehicle: an intentional two-step action, sent to the review endpoint');
+  console.log('3. Approving and returning a vehicle: an intentional two-step action, sent to the review endpoint, and each list stays in sync with the current scope');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const id = vehicle(ctx, 'AWT0001');
@@ -129,23 +131,39 @@ async function run() {
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-approve"]'));
     page.cards()[0].querySelector('[data-review-note]').value = 'Checked the plate against the ride history.';
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-approve"]'));
-    await page.waitFor(() => /Visible on the public registry/.test(page.cards()[0].textContent), 'card to update');
+    // It is now public, so it must drop off the still-selected "Private" list immediately —
+    // not sit there showing stale info until the moderator happens to reload.
+    await page.waitFor(() => page.cards().length === 0, 'the now-public vehicle drops off the "Private" list');
     const sent = page.vehicleRequests('POST');
     check('exactly one POST was sent, to the review endpoint, with the exact action and note', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}/review` && JSON.parse(sent[0].body).action === 'approve_public' && JSON.parse(sent[0].body).reason === 'Checked the plate against the ride history.');
     check('the legacy PATCH is no longer used by the page', page.vehicleRequests('PATCH').length === 0);
     check('the stored visibility changed', ctx.d1.query('SELECT visibility FROM robotaxi_vehicles WHERE id = ?', id)[0].visibility === 'public');
-    check('the card now says it is public and offers "Return to Private"', /Public/.test(page.cards()[0].querySelector('span').textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="ask-return"]'));
-    check('a link to the public page appears (it is genuinely eligible)', page.cards()[0].querySelector('a').getAttribute('href') === `vehicle/${id}`);
     check('a distinct success message is shown', /approved for the public registry/i.test(page.toastText()));
+    check('it is gone from the "Private" list', page.cards().length === 0);
+
+    const scope = page.d.getElementById('modVehicleScope');
+    scope.value = 'public';
+    scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
+    await page.waitFor(() => page.cards().length === 1, 'switch to "Public"');
+    check('switching to "Public" shows it there, labelled Public with "Return to Private"', /Public/.test(page.cards()[0].querySelector('span').textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="ask-return"]'));
+    check('a link to the public page appears (it is genuinely eligible)', page.cards()[0].querySelector('a').getAttribute('href') === `vehicle/${id}`);
     check('the card shows the audit line: who reviewed it and when', /Last review: Approved for public by/.test(page.cards()[0].textContent));
 
+    // The exact bug this fixes: returning a vehicle to private while looking
+    // at the "Public" list must remove it from that list right away, not
+    // leave it showing "Private — Needs Review" mixed in among public ones.
     returnVia(page);
-    await page.waitFor(() => /Private — Needs Review/.test(page.cards()[0].textContent), 'card to update back');
+    await page.waitFor(() => page.cards().length === 0, 'returning it to private removes it from the still-selected "Public" list');
     check('taking it down sets it private in the database', ctx.d1.query('SELECT visibility FROM robotaxi_vehicles WHERE id = ?', id)[0].visibility === 'private');
-    check('the public-page link disappears and the message is distinct', !page.cards()[0].querySelector('a') && /returned to private/i.test(page.toastText()));
-    check('the audit line now records the return', /Last review: Returned to private by/.test(page.cards()[0].textContent));
+    check('it is gone from the "Public" list, not left showing stale info', page.cards().length === 0);
+    check('the message is distinct', /returned to private/i.test(page.toastText()));
     check('no ride, trip or observation data was touched', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
     check('two history rows exist, in order', ctx.d1.query('SELECT action FROM robotaxi_vehicle_reviews ORDER BY rowid').map(r => r.action).join() === 'approved_public,returned_private');
+
+    scope.value = 'private';
+    scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
+    await page.waitFor(() => page.cards().length === 1, 'switch back to "Private" to see it again');
+    check('back in "Private" it shows private again with its audit line, and no public-page link', /Private — Needs Review/.test(page.cards()[0].textContent) && /Last review: Returned to private by/.test(page.cards()[0].textContent) && !page.cards()[0].querySelector('a'));
   }
 
   console.log('4. Not eligible: the reasons are plain facts and there is no approve button');
@@ -153,7 +171,8 @@ async function run() {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     vehicle(ctx, 'ZERO001', { rides: 0 });
     const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.visible('modVehiclesEmpty'), 'empty awaiting list');
+    // The default "Private" list is every private vehicle, so this one (0 rides) is already there.
+    await page.waitFor(() => page.cards().length === 1, 'default list settles');
     page.d.getElementById('modVehiclePlate').value = 'zero-001';
     page.submitSearch();
     await page.waitFor(() => page.cards().length === 1, 'search result');
@@ -202,7 +221,7 @@ async function run() {
     const scope = page.d.getElementById('modVehicleScope'); scope.value = 'public';
     scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
     await page.waitFor(() => page.cards().length === 1, 'public list');
-    check('switching to "Currently public" lists public vehicles for audit', /PUB0001/.test(page.cards()[0].textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="ask-return"]') && /Public/.test(page.cards()[0].querySelector('span').textContent));
+    check('switching to "Public" lists public vehicles for audit', /PUB0001/.test(page.cards()[0].textContent) && !!page.cards()[0].querySelector('button[data-vehicle-action="ask-return"]') && /Public/.test(page.cards()[0].querySelector('span').textContent));
     page.d.getElementById('modVehiclePlate').value = 'NOSUCH';
     page.submitSearch();
     await page.waitFor(() => page.visible('modVehiclesEmpty'), 'no-match empty state');
@@ -233,8 +252,9 @@ async function run() {
     check('nothing changed in the database', ctx.d1.query("SELECT visibility FROM robotaxi_vehicles WHERE license_plate = 'AWT0001'")[0].visibility === 'private' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 0);
     fail = false;
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-approve"]'));
-    await page.waitFor(() => /Visible on the public registry/.test(page.cards()[0].textContent), 'retry to succeed');
-    check('retrying then succeeds, with exactly one history row', /Visible on the public registry/.test(page.cards()[0].textContent) && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 1);
+    // It succeeds this time, and — now public — drops off the still-selected "Private" list.
+    await page.waitFor(() => page.cards().length === 0, 'retry succeeds and the now-public vehicle drops off the list');
+    check('retrying then succeeds, with exactly one history row', ctx.d1.query("SELECT visibility FROM robotaxi_vehicles WHERE license_plate = 'AWT0001'")[0].visibility === 'public' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 1);
   }
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
@@ -301,7 +321,11 @@ async function run() {
     check('a first-seen timestamp is shown alongside created / last activity', /First seen/.test(text));
     check('approval is still offered', !!card.querySelector('button[data-vehicle-action="ask-approve"]'));
     approveVia(page);
-    await page.waitFor(() => /Visible on the public registry/.test(page.cards()[0].textContent), 'card to update');
+    // Now public, it drops off the default "Private" list; switch to "Public" to see it updated.
+    await page.waitFor(() => page.cards().length === 0, 'drops off "Private"');
+    const scope = page.d.getElementById('modVehicleScope'); scope.value = 'public';
+    scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
+    await page.waitFor(() => page.cards().length === 1, 'switch to "Public"');
     check('after a change the card still shows its provenance (from the server response)', /Forwarded email: 2/.test(page.cards()[0].textContent) && /Visible on the public registry/.test(page.cards()[0].textContent));
 
     const note = page.d.getElementById('modProvenanceNote').textContent.replace(/\s+/g, ' ').trim();
@@ -315,7 +339,8 @@ async function run() {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     vehicle(ctx, 'ZERO001', { rides: 0 });
     const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.visible('modVehiclesEmpty'), 'empty awaiting list');
+    // The default "Private" list is every private vehicle, so this one (0 rides) is already there.
+    await page.waitFor(() => page.cards().length === 1, 'default list settles');
     page.d.getElementById('modVehiclePlate').value = 'ZERO001'; page.submitSearch();
     await page.waitFor(() => page.cards().length === 1, 'search result');
     const text = page.cards()[0].textContent.replace(/\s+/g, ' ');
@@ -329,7 +354,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 2, 'both duplicates');
     check('both duplicates carry the warning and their own provenance', page.cards().every(c => /Duplicate plate: 2 registry vehicles/.test(c.textContent) && /How the counted rides entered/.test(c.textContent)));
     check('duplicate plates are flagged as a blocking reason and neither can be approved', page.cards().every(c => /Duplicate plate/.test(c.textContent) && c.dataset.approvalState === 'not_eligible' && !c.querySelector('button[data-vehicle-action="ask-approve"]')));
-    check('there is no merge, delete or resolve control on any card (only the approve / return actions exist anywhere)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve for Public Registry|Return to Private)$/.test(b.textContent.trim()))) && !/delete|merge|remove|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
+    check('there is no merge or resolve control on any card (Delete Vehicle is the only other action, alongside approve / return)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve for Public Registry|Return to Private|Delete Vehicle)$/.test(b.textContent.trim()))) && !/merge|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
   }
   {
     // Hostile values from the API stay inert text.
@@ -355,6 +380,66 @@ async function run() {
     const page = await openPage(ctx.env, 'session-mod', path => (path.startsWith('/api/moderation/robotaxi-vehicles') ? new Response(JSON.stringify({ success: true, vehicles: [fake] }), { status: 200, headers: { 'Content-Type': 'application/json' } }) : null));
     await page.waitFor(() => page.cards().length === 1, 'long card');
     check('the card opts in to anywhere-wrapping so a 300-character plate cannot force horizontal scroll', /overflow-wrap:anywhere/.test(page.cards()[0].className));
+  }
+
+  console.log('10. Deleting a vehicle from the registry: works regardless of visibility, never touches a rider\'s own trips');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'DEL0001', { rides: 2 });
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
+    check('the first click only opens a confirmation — nothing is sent and nothing changes', page.vehicleRequests('DELETE').length === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 1);
+    check('the confirmation names the plate and warns it cannot be undone', /cannot be undone/i.test(page.cards()[0].textContent) && /DEL0001/.test(page.cards()[0].textContent));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="cancel-review"]'));
+    check('Cancel closes it without sending anything', !!page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]') && page.vehicleRequests('DELETE').length === 0);
+
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
+    await page.waitFor(() => page.cards().length === 0, 'card removed');
+    const sent = page.vehicleRequests('DELETE');
+    check('exactly one DELETE was sent, to the vehicle\'s own endpoint', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}`);
+    check('the row is gone from the database', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 0);
+    check('a distinct success message is shown', /removed from the registry/i.test(page.toastText()));
+    check('the rider keeps their trips; they just stop pointing at a vehicle', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 2 && ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id IS NOT NULL')[0].n === 0);
+  }
+  {
+    // Delete works on a currently-public vehicle too, unlike the takedown PATCH which only demotes it.
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'PUBDEL01', { visibility: 'public' });
+    const page = await openPage(ctx.env, 'session-mod');
+    const scope = page.d.getElementById('modVehicleScope'); scope.value = 'public';
+    scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
+    await page.waitFor(() => page.cards().length === 1, 'public vehicle listed');
+    check('a public vehicle also offers Delete Vehicle, alongside Return to Private', !!page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]') && !!page.cards()[0].querySelector('button[data-vehicle-action="ask-return"]'));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
+    await page.waitFor(() => page.cards().length === 0, 'public vehicle removed');
+    check('a public vehicle can be deleted outright, not just returned to private', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 0);
+    check('the now-nonexistent vehicle is 404 on the public endpoint', (await worker.fetch(new Request(`https://x/api/robotaxi-vehicles/${id}`), ctx.env, {})).status === 404);
+  }
+  {
+    // Stale card: already deleted (by someone else, or a prior click) by the time this one confirms.
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'GONEDEL1');
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    ctx.d1.exec(`DELETE FROM trips WHERE robotaxi_vehicle_id = '${id}'`); ctx.d1.exec(`DELETE FROM robotaxi_vehicles WHERE id = '${id}'`);
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
+    await page.waitFor(() => page.cards().length === 0, 'stale card removal');
+    check('a vehicle already gone (404) is removed from the list with a clear message', page.cards().length === 0 && /no longer exists/i.test(page.toastText()));
+  }
+  {
+    // A network failure leaves the confirmation open and usable, same as the review actions.
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'FAILDEL1');
+    const page = await openPage(ctx.env, 'session-mod', (path, init) => ((init.method === 'DELETE') && path.startsWith('/api/moderation/robotaxi-vehicles') ? Promise.reject(new TypeError('down')) : null));
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
+    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
+    await page.waitFor(() => /reach the server/i.test(page.toastText()), 'error toast');
+    check('a failed delete shows an error toast and leaves the confirmation open, nothing removed', !!page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]') && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 1);
   }
 
   t.finish();

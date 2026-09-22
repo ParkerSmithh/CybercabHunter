@@ -101,9 +101,8 @@
         <p id="modApprovalNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Approving a vehicle means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. Each approval or return to private is recorded in the vehicle's review history.</p>
         <form id="modVehicleSearch" class="flex items-center gap-2 flex-wrap mb-5">
           <select id="modVehicleScope" aria-label="Which vehicles to list" class="min-w-0 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
-            <option value="awaiting">Private — has counted rides</option>
-            <option value="private">All private vehicles</option>
-            <option value="public">Currently public</option>
+            <option value="private">Private</option>
+            <option value="public">Public</option>
           </select>
           <input id="modVehiclePlate" type="text" maxlength="40" autocomplete="off" placeholder="Or search by plate" aria-label="Search by plate" class="min-w-0 flex-1 basis-40 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
           <button type="submit" class="text-xs font-semibold px-4 py-2.5 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Search</button>

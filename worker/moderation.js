@@ -324,6 +324,32 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   return Response.json({ success: true, action: approving ? 'approved_public' : 'returned_private', vehicle: fresh });
 }
 
+// DELETE /api/moderation/robotaxi-vehicles/:id
+//
+// Removes a registry vehicle row entirely (e.g. resolving a duplicate plate,
+// or a row created in error). Unlike the takedown PATCH, this can remove a
+// vehicle regardless of its current visibility. A rider's own trips are never
+// deleted — db.deleteRegistryVehicle relies on the schema's ON DELETE SET
+// NULL, so their trips just stop being linked to a vehicle. Not audited in
+// robotaxi_vehicle_reviews: that table records approve/return decisions on a
+// vehicle that still exists, not its removal.
+export async function apiDeleteRegistryVehicle(request, env, vehicleId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  if (!VEHICLE_ID_RE.test(vehicleId)) {
+    return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });
+  }
+
+  const sql = env.cybercabhunter_db;
+  const deleted = await db.deleteRegistryVehicle(sql, vehicleId);
+  if (!deleted) {
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+  }
+
+  return Response.json({ success: true, id: vehicleId });
+}
+
 // GET /api/moderation/robotaxi-vehicles/:id/reviews — the vehicle's
 // append-only review history, newest first. Moderator-only.
 export async function apiListRegistryVehicleReviews(request, env, vehicleId) {

@@ -251,6 +251,17 @@
     </div>`;
   }
 
+  function deletePanel(v) {
+    const isBusy = vehicleBusy.has(v.id);
+    return `<div class="w-full">
+      <p class="text-xs text-slate-400 leading-relaxed">Permanently delete <span class="font-semibold text-slate-200">${esc(v.license_plate || 'this vehicle')}</span> from the registry? This cannot be undone. It disappears from the public site immediately; any trips riders already logged against it stay on their accounts but are no longer linked to a vehicle.</p>
+      <div class="flex items-center gap-2 mt-3 flex-wrap">
+        <button type="button" data-vehicle-action="confirm-delete" ${isBusy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${isBusy ? 'Working…' : 'Confirm Delete'}</button>
+        <button type="button" data-vehicle-action="cancel-review" class="text-xs px-3 py-2.5 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
+      </div>
+    </div>`;
+  }
+
   function vehicleCard(v) {
     const view = vehicleStateView(v);
     const ap = v.approval || { blocking_reasons: [], notes: [], can_approve: false };
@@ -275,14 +286,19 @@
       <div class="text-xs text-slate-500 mt-1" title="An existing field on the vehicle record. Moderation does not change it.">Record field verification_status: ${esc(v.verification_status || '—')}</div>`;
 
     let actions;
-    if (mode) {
+    if (mode === 'delete') {
+      actions = deletePanel(v);
+    } else if (mode) {
       actions = reviewPanel(v, mode);
-    } else if (v.visibility === 'public') {
-      actions = `<button type="button" data-vehicle-action="ask-return" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Return to Private</button>`;
-    } else if (ap.can_approve) {
-      actions = `<button type="button" data-vehicle-action="ask-approve" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Approve for Public Registry</button>`;
     } else {
-      actions = '<span class="text-xs text-slate-500">Cannot be approved while the reasons above apply.</span>';
+      const deleteBtn = `<button type="button" data-vehicle-action="ask-delete" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Delete Vehicle</button>`;
+      if (v.visibility === 'public') {
+        actions = `<button type="button" data-vehicle-action="ask-return" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Return to Private</button>${deleteBtn}`;
+      } else if (ap.can_approve) {
+        actions = `<button type="button" data-vehicle-action="ask-approve" ${vehicleBusy.has(v.id) ? 'disabled' : ''} class="btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">Approve for Public Registry</button>${deleteBtn}`;
+      } else {
+        actions = `<span class="text-xs text-slate-500">Cannot be approved while the reasons above apply.</span>${deleteBtn}`;
+      }
     }
 
     return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-vehicle-id="${esc(v.id)}" data-approval-state="${esc(ap.state || '')}">
@@ -393,9 +409,54 @@
       return;
     }
     pendingReview.delete(vehicleId);
-    replaceVehicle(json.vehicle);
-    renderVehicles();
     CCC.toast(action === 'approve_public' ? 'Vehicle approved for the public registry.' : 'Vehicle returned to private.', 'success');
+    // Visibility just changed, so this vehicle may no longer belong in the
+    // currently selected scope (e.g. it must drop off "Public" the moment
+    // it's returned to private, not sit there showing stale private info).
+    // A plate search isn't scope-filtered at all, so it always stays and
+    // just updates in place.
+    const searching = !!$('modVehiclePlate').value.trim();
+    if (!searching && json.vehicle.visibility !== $('modVehicleScope').value) {
+      vehicles = vehicles.filter(v => v.id !== vehicleId);
+    } else {
+      replaceVehicle(json.vehicle);
+    }
+    renderVehicles();
+  }
+
+  // DELETE .../:id — removes the registry row entirely. Always drops the
+  // vehicle from the local list on success; it can never belong in any scope.
+  async function submitDelete(vehicleId) {
+    vehicleBusy.add(vehicleId);
+    renderVehicles();
+    let resp;
+    try {
+      resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}`, { method: 'DELETE' });
+    } catch (e) {
+      vehicleBusy.delete(vehicleId);
+      renderVehicles();
+      CCC.toast("Couldn't reach the server. Please try again.", 'error');
+      return;
+    }
+    vehicleBusy.delete(vehicleId);
+    pendingReview.delete(vehicleId);
+
+    if (resp.status === 401) { setView('signedOut'); return; }
+    if (resp.status === 403) { setView('forbidden'); return; }
+    if (resp.status === 404) {
+      vehicles = vehicles.filter(v => v.id !== vehicleId);
+      renderVehicles();
+      CCC.toast('That vehicle no longer exists — removed from the list.', 'info');
+      return;
+    }
+    if (!resp.ok) {
+      renderVehicles();
+      CCC.toast("Couldn't delete that vehicle. Please try again.", 'error');
+      return;
+    }
+    vehicles = vehicles.filter(v => v.id !== vehicleId);
+    renderVehicles();
+    CCC.toast('Vehicle removed from the registry.', 'success');
   }
 
   function setupVehicleActions() {
@@ -407,11 +468,13 @@
       const act = btn.dataset.vehicleAction;
       if (act === 'ask-approve') { pendingReview.set(id, 'approve'); renderVehicles(); }
       else if (act === 'ask-return') { pendingReview.set(id, 'return'); renderVehicles(); }
+      else if (act === 'ask-delete') { pendingReview.set(id, 'delete'); renderVehicles(); }
       else if (act === 'cancel-review') { pendingReview.delete(id); renderVehicles(); }
       else if (act === 'confirm-approve' || act === 'confirm-return') {
         const note = card.querySelector('[data-review-note]');
         submitReview(id, act === 'confirm-approve' ? 'approve_public' : 'return_private', note ? note.value.trim() : '');
       }
+      else if (act === 'confirm-delete') { submitDelete(id); }
     });
     $('modVehicleSearch').addEventListener('submit', e => { e.preventDefault(); loadVehicles(); });
     $('modVehicleScope').addEventListener('change', () => { $('modVehiclePlate').value = ''; loadVehicles(); });
