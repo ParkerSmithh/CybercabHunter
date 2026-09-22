@@ -382,7 +382,7 @@ async function run() {
     check('the card opts in to anywhere-wrapping so a 300-character plate cannot force horizontal scroll', /overflow-wrap:anywhere/.test(page.cards()[0].className));
   }
 
-  console.log('10. Deleting a vehicle from the registry: works regardless of visibility, never touches a rider\'s own trips');
+  console.log('10. Deleting a vehicle from the registry: works regardless of visibility, and takes every ride/receipt logged against it with it');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const id = vehicle(ctx, 'DEL0001', { rides: 2 });
@@ -390,7 +390,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 1, 'vehicle list');
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
     check('the first click only opens a confirmation — nothing is sent and nothing changes', page.vehicleRequests('DELETE').length === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 1);
-    check('the confirmation names the plate and warns it cannot be undone', /cannot be undone/i.test(page.cards()[0].textContent) && /DEL0001/.test(page.cards()[0].textContent));
+    check('the confirmation names the plate, warns it cannot be undone, and says the ride(s)/receipt(s) are deleted too', /cannot be undone/i.test(page.cards()[0].textContent) && /DEL0001/.test(page.cards()[0].textContent) && /ride\(s\)\/receipt\(s\)/i.test(page.cards()[0].textContent) && /fare, pickup\/dropoff/i.test(page.cards()[0].textContent));
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="cancel-review"]'));
     check('Cancel closes it without sending anything', !!page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]') && page.vehicleRequests('DELETE').length === 0);
 
@@ -398,43 +398,10 @@ async function run() {
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
     await page.waitFor(() => page.cards().length === 0, 'card removed');
     const sent = page.vehicleRequests('DELETE');
-    check('exactly one DELETE was sent, to the vehicle\'s own endpoint', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}`);
+    check('exactly one DELETE was sent, to the vehicle\'s own endpoint, with no extra params', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}`);
     check('the row is gone from the database', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 0);
-    check('a distinct success message is shown', /removed from the registry/i.test(page.toastText()));
-    check('the rider keeps their trips; they just stop pointing at a vehicle', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 2 && ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id IS NOT NULL')[0].n === 0);
-  }
-  {
-    // The "also delete the ride(s)" checkbox: present, unchecked by default, opt-in only.
-    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
-    const id = vehicle(ctx, 'PURGE001', { rides: 1 });
-    const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
-    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
-    const checkbox = page.cards()[0].querySelector('[data-purge-rides]');
-    check('the confirmation offers a checkbox to also delete the ride(s), unchecked by default', !!checkbox && checkbox.checked === false);
-    check('the checkbox label is explicit that it removes a rider\'s own ride data, not just the registry row', /rider's own ride record|fare, pickup\/dropoff/i.test(page.cards()[0].textContent));
-
-    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
-    await page.waitFor(() => page.cards().length === 0, 'card removed');
-    const sent = page.vehicleRequests('DELETE');
-    check('leaving the checkbox unchecked sends a plain DELETE, no purge_rides param', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}`);
-    check('the trip survives, unlinked (the default, non-destructive path)', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id IS NULL')[0].n === 1);
-  }
-  {
-    // Checking the box actually sends purge_rides=true and the ride is gone too.
-    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
-    const id = vehicle(ctx, 'PURGE002', { rides: 1 });
-    const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
-    page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
-    const checkbox = page.cards()[0].querySelector('[data-purge-rides]');
-    checkbox.checked = true;
-    page.click(page.cards()[0].querySelector('button[data-vehicle-action="confirm-delete"]'));
-    await page.waitFor(() => page.cards().length === 0, 'card removed');
-    const sent = page.vehicleRequests('DELETE');
-    check('checking the box sends purge_rides=true', sent.length === 1 && sent[0].path === `/api/moderation/robotaxi-vehicles/${id}?purge_rides=true`);
-    check('the underlying ride is actually gone this time, not just unlinked', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0);
-    check('a distinct toast explains the receipt can now be resent', /ride history removed.*receipt can be resent/i.test(page.toastText()));
+    check('a distinct success message explains the receipt can be resent', /ride history removed.*receipt can be resent/i.test(page.toastText()));
+    check('the rider\'s trips are deleted too, not just unlinked — this is what frees the receipt to be resent', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0);
   }
   {
     // Delete works on a currently-public vehicle too, unlike the takedown PATCH which only demotes it.

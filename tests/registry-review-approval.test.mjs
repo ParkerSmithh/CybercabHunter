@@ -378,7 +378,7 @@ async function run() {
     check('the requireApprovalEligibility option no longer exists anywhere', !/requireApprovalEligibility/.test(dbSrc) && !/requireApprovalEligibility/.test(modSrc));
   }
 
-  console.log('4d. DELETE removes a registry row outright — unlike the takedown PATCH, regardless of current visibility');
+  console.log('4d. DELETE removes a registry row AND every ride/receipt logged against it — unlike the takedown PATCH, regardless of current visibility');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator', other: 'user' });
     const del = (user, vid) => call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${vid}`, user);
@@ -388,11 +388,12 @@ async function run() {
     const r1 = await del('mod', priv);
     check('deleting a private vehicle succeeds (200)', r1.status === 200 && (await r1.json()).id === priv);
     check('the row is gone from the database', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', priv).length === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', priv)[0].n === 0);
-    check('its trip is not deleted — it just stops pointing at a vehicle (ON DELETE SET NULL)', ctx.d1.query('SELECT robotaxi_vehicle_id FROM trips WHERE robotaxi_vehicle_id IS NULL').length === 1);
+    check('its trip and submission are deleted too, not just unlinked — this is what actually frees the receipt to be resent', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 1);
 
     const r2 = await del('mod', pubV);
     check('deleting a CURRENTLY PUBLIC vehicle also succeeds (200) — DELETE is not limited to private rows the way PATCH is', r2.status === 200);
     check('it is gone from the database and from the public endpoint alike', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', pubV)[0].n === 0 && (await pub(ctx, `/api/robotaxi-vehicles/${pubV}`)).status === 404);
+    check('its trip is gone too', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0);
 
     check('malformed id -> 400 invalid_vehicle_id, nothing touched', (await del('mod', 'not-a-uuid')).status === 400);
     check('a hostile id string is inert (400, no injection)', (await del('mod', encodeURIComponent("x'; DROP TABLE robotaxi_vehicles;--"))).status === 400 && ctx.d1.query("SELECT name FROM sqlite_master WHERE type='table' AND name='robotaxi_vehicles'").length === 1);
@@ -411,7 +412,7 @@ async function run() {
     check('deleting a vehicle writes no NEW review-history row of its own (DELETE is not audited there)', rows(ctx).length === totalReviewRowsBefore);
   }
 
-  console.log('4e. purge_rides: the only thing that actually frees a receipt to be resent and re-reviewed');
+  console.log('4e. Deleting a vehicle frees its receipt(s) to be resent and re-reviewed from scratch');
   {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const importOnce = () => call(ctx, 'POST', '/api/rides/import', 'rider', { items: [{ kind: 'text', content: receiptBody({ summary: '2.1 mi · 21 min · DEL0400', date: 'August 5, 2026' }) }] });
@@ -421,91 +422,66 @@ async function run() {
     check('the first import creates a new trip', first.run.added === 1 && first.results[0].outcome === 'created');
     const before = await vehicleByPlate('DEL0400');
     await approve(ctx, 'mod', before[0].id);
+    check('the trip and submission exist before the delete', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 1);
 
-    // Plain delete (no purge_rides): reproduces the reported bug exactly —
-    // deleting the vehicle alone does not free the receipt.
-    const plainDelete = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${before[0].id}`, 'mod');
-    check('plain delete succeeds and reports purged_rides:false', plainDelete.status === 200 && (await plainDelete.json()).purged_rides === false);
-    const resendAfterPlainDelete = await (await importOnce()).json();
-    check('resending the SAME receipt after a plain delete is STILL a duplicate — nothing new for a moderator to review', resendAfterPlainDelete.run.added === 0 && resendAfterPlainDelete.run.duplicates === 1 && resendAfterPlainDelete.results[0].outcome === 'duplicate');
-    check('no vehicle exists for that plate at all now (the old one is gone, no new one was created)', (await vehicleByPlate('DEL0400')).length === 0);
-  }
-  {
-    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
-    const importOnce = () => call(ctx, 'POST', '/api/rides/import', 'rider', { items: [{ kind: 'text', content: receiptBody({ summary: '2.1 mi · 21 min · DEL0401', date: 'August 5, 2026' }) }] });
-    const vehicleByPlate = async plate => (await (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles?plate=${plate}`, 'mod')).json()).vehicles;
-
-    const f = await (await importOnce()).json();
-    check('setup: the purge scenario also starts with a created trip', f.run.added === 1);
-    const before = await vehicleByPlate('DEL0401');
-    await approve(ctx, 'mod', before[0].id);
-    check('the trip and submission exist before the purge', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 1);
-
-    const purgeDelete = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${before[0].id}?purge_rides=true`, 'mod');
-    const purgeBody = await purgeDelete.json();
-    check('a purge delete succeeds and reports purged_rides:true', purgeDelete.status === 200 && purgeBody.purged_rides === true);
+    const del = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${before[0].id}`, 'mod');
+    check('the delete succeeds', del.status === 200);
     check('the trip, its submission and its ingestion log rows are ALL gone, not just the vehicle', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM receipt_ingestions')[0].n === 0);
 
-    const resendAfterPurge = await (await importOnce()).json();
-    check('resending the SAME receipt after a purge delete is a brand-new "created" trip, not a duplicate', resendAfterPurge.run.added === 1 && resendAfterPurge.run.duplicates === 0 && resendAfterPurge.results[0].outcome === 'created');
-    const after = await vehicleByPlate('DEL0401');
+    const resend = await (await importOnce()).json();
+    check('resending the SAME receipt is now a brand-new "created" trip, not a duplicate stuck behind the old, deleted vehicle', resend.run.added === 1 && resend.run.duplicates === 0 && resend.results[0].outcome === 'created');
+    const after = await vehicleByPlate('DEL0400');
     check('a fresh, private vehicle exists again, ready for a moderator to review from scratch', after.length === 1 && after[0].visibility === 'private' && after[0].id !== before[0].id);
   }
   {
-    // purge_rides reaches every rider who logged a ride on the vehicle, not just one account.
+    // Deleting a vehicle reaches every rider who logged a ride on it, not just one account.
     const ctx = await makeApp({ r1: 'user', r2: 'user', mod: 'moderator' });
     const v = rawVehicle(ctx, id(310), 'DEL0310');
     seedRide(ctx.d1, { userId: 'r1', vehicleId: v, status: 'pending' });
     seedRide(ctx.d1, { userId: 'r2', vehicleId: v, status: 'pending' });
-    check('two different riders both have a trip on this vehicle before the purge', ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id = ?', v)[0].n === 2);
-    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}?purge_rides=true`, 'mod');
-    check('purge delete succeeds across both riders in one call', r.status === 200);
+    check('two different riders both have a trip on this vehicle before the delete', ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id = ?', v)[0].n === 2);
+    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'mod');
+    check('the delete succeeds across both riders in one call', r.status === 200);
     check('both riders\' trips and submissions are gone', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 0);
   }
   {
-    // A superseded duplicate trip on the vehicle is purged along with the trip that superseded it.
+    // A superseded duplicate trip on the vehicle is removed along with the trip that superseded it.
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const v = rawVehicle(ctx, id(311), 'DEL0311');
     const winner = seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
     seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending', supersededBy: winner });
     check('setup: two trips on the vehicle, one superseded by the other', ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id = ?', v)[0].n === 2);
-    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}?purge_rides=true`, 'mod');
-    check('the purge succeeds', r.status === 200);
+    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'mod');
+    check('the delete succeeds', r.status === 200);
     check('both the winning trip and the superseded duplicate are gone', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 0);
   }
   {
-    // R2 evidence behind a purged trip's receipt is removed too, not left orphaned.
+    // R2 evidence behind a deleted trip's receipt is removed too, not left orphaned.
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const v = rawVehicle(ctx, id(312), 'DEL0312');
     const tripId = seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
     const evidenceKey = `evidence/${tripId}.eml`;
     await ctx.env.EVIDENCE_BUCKET.put(evidenceKey, 'raw receipt bytes');
     ctx.d1.exec(`UPDATE submissions SET evidence_ref = '${evidenceKey}' WHERE id = 'sub-${tripId}'`);
-    check('the evidence object exists before the purge', ctx.env.EVIDENCE_BUCKET._objects.has(evidenceKey));
-    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}?purge_rides=true`, 'mod');
-    check('the purge succeeds', r.status === 200);
+    check('the evidence object exists before the delete', ctx.env.EVIDENCE_BUCKET._objects.has(evidenceKey));
+    const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'mod');
+    check('the delete succeeds', r.status === 200);
     check('the evidence object is removed from R2 along with the trip', !ctx.env.EVIDENCE_BUCKET._objects.has(evidenceKey));
   }
   {
-    // Without purge_rides — the default — nothing about ride data changes, matching the earlier (pre-purge-feature) behavior exactly.
-    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    // A vehicle with no rides at all deletes cleanly (nothing to purge).
+    const ctx = await makeApp({ mod: 'moderator' });
     const v = rawVehicle(ctx, id(313), 'DEL0313');
-    seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
     const r = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'mod');
-    check('a plain delete (no query param) reports purged_rides:false', (await r.json()).purged_rides === false);
-    check('nothing in trips/submissions changed', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM submissions')[0].n === 1);
-
-    const v2 = rawVehicle(ctx, id(314), 'DEL0314'); seedRide(ctx.d1, { userId: 'rider', vehicleId: v2, status: 'pending' });
-    const r2 = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v2}?purge_rides=false`, 'mod');
-    check('an explicit purge_rides=false behaves the same as omitting it', (await r2.json()).purged_rides === false && ctx.d1.query('SELECT COUNT(*) AS n FROM trips WHERE robotaxi_vehicle_id IS NULL')[0].n === 2);
+    check('deleting a rideless vehicle still succeeds', r.status === 200 && (await r.json()).id === v);
   }
   {
-    // Auth still applies: purge_rides cannot be used to smuggle a privileged delete past the moderator check.
+    // Auth still applies to the delete route.
     const ctx = await makeApp({ rider: 'user', other: 'user' });
     const v = rawVehicle(ctx, id(315), 'DEL0315');
     seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
-    check('unauthenticated purge delete -> 401, nothing touched', (await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}?purge_rides=true`, undefined)).status === 401);
-    const ordinary = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}?purge_rides=true`, 'other');
+    check('unauthenticated delete -> 401, nothing touched', (await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, undefined)).status === 401);
+    const ordinary = await call(ctx, 'DELETE', `/api/moderation/robotaxi-vehicles/${v}`, 'other');
     check('an ordinary (non-moderator) user gets 403, nothing touched', ordinary.status === 403);
     check('the vehicle and its trip both still exist', ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', v)[0].n === 1 && ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
   }
