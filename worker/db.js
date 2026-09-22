@@ -969,12 +969,31 @@ async function setRegistryVehicleVin(sql, vehicleId, moderatorId, vin) {
 // robotaxi_vehicle_reviews.
 // Returns { applied }. Not applied means the vehicle does not exist, is
 // already in the target state, or (to public) no longer meets the guard.
-async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, target, reason }) {
+// cybercabApproval (only ever passed true for the approve_cybercab action —
+// see worker/moderation.js) also sets model/color/service_area in the SAME
+// atomic UPDATE, since Approve Cybercab can only ever run once per
+// private-to-public transition (the vehicle must already be private, per
+// apiReviewRegistryVehicle's own guard) and IS the moderator's deliberate
+// assertion that this vehicle is a Cybercab — not an inference from the vin.
+// model/color are unconditionally 'Cybercab'/'Gold' (every Cybercab in this
+// fleet is that model and color); service_area is fill-only, from the
+// vehicle's OWN earliest counted ride (never a community sighting — that
+// remains reviewVehicleSighting's separate, untouched fill path).
+async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, target, reason, cybercabApproval = false }) {
   const action = target === VEHICLE_VISIBILITY.PUBLIC ? 'approved_public' : 'returned_private';
   const guard = target === VEHICLE_VISIBILITY.PUBLIC
     ? vehicleApprovalGuardSql('robotaxi_vehicles')
     : '1 = 1';
   const plateOuter = sqlNormalizedPlate('robotaxi_vehicles.license_plate');
+  const cybercabFields = cybercabApproval ? `,
+      model = 'Cybercab',
+      color = 'Gold',
+      service_area = COALESCE(service_area, (
+        SELECT t.service_area FROM ${RIDES_FROM}
+        WHERE t.robotaxi_vehicle_id = robotaxi_vehicles.id AND ${COUNTED_RIDES_WHERE}
+          AND t.service_area IS NOT NULL AND t.service_area <> ''
+        ORDER BY t.ride_date ASC, t.rowid ASC LIMIT 1
+      ))` : '';
 
   const insert = sql.prepare(`
     INSERT INTO robotaxi_vehicle_reviews
@@ -990,7 +1009,7 @@ async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, ta
   `).bind(newId(), moderatorId, action, reason || null, vehicleId, target);
 
   const update = sql.prepare(`
-    UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now')
+    UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now')${cybercabFields}
     WHERE id = ? AND visibility <> ? AND ${guard}
   `).bind(target, vehicleId, target);
 

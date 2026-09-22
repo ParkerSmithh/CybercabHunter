@@ -331,7 +331,8 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
 
   const { applied } = await db.changeRobotaxiVehicleVisibility(sql, {
     vehicleId, moderatorId: auth.userId, reason: parsed.reason,
-    target: approving ? VEHICLE_VISIBILITY.PUBLIC : VEHICLE_VISIBILITY.PRIVATE
+    target: approving ? VEHICLE_VISIBILITY.PUBLIC : VEHICLE_VISIBILITY.PRIVATE,
+    cybercabApproval: isCybercab
   });
 
   const fresh = await db.getRegistryVehicleForModeration(sql, vehicleId);

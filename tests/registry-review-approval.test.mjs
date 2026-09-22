@@ -666,6 +666,8 @@ async function run() {
     check('it did not touch the vin', j.vehicle.vin === VIN_A);
     check('it wrote exactly one audit row, recorded as the SAME approved_public action — no new review action value was introduced', rows(ctx).length === auditBefore + 1 && rows(ctx)[rows(ctx).length - 1].action === 'approved_public' && rows(ctx)[rows(ctx).length - 1].moderator_user_id === 'mod');
     check('it did not touch ride/trip counts', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 2); // eligible's ride + PUB0411's ride
+    check('approve_cybercab sets model to Cybercab and color to Gold, and fills the blank service_area from the vehicle\'s own counted ride', j.vehicle.publicly_eligible === true && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].model === 'Cybercab' && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].color === 'Gold' && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].service_area === 'Dallas');
+    check('ordinary approve_public never sets model/color: PUB0411 (approved earlier, above) still has neither', ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].model === null && ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].color === null);
     check('the vehicle is now publicly reachable and its vin is exposed publicly (only the vin itself, no provenance)', await (async () => {
       const pr = await pub(ctx, `/api/robotaxi-vehicles/${eligible}`); const body = pr.text;
       return pr.status === 200 && body.includes(VIN_A) && !/vin_set_by_user_id|vin_set_at/.test(body);
@@ -684,6 +686,51 @@ async function run() {
     check('approve_cybercab is accepted as a valid action (not invalid_action)', await (async () => {
       const noVehicle = await review(ctx, 'mod', MISSING, { action: 'approve_cybercab' });
       return noVehicle.status === 404; // reaches the not_found check, not invalid_action -> proves the action itself validated fine
+    })());
+  }
+
+  console.log('9. Approve Cybercab\'s model/color/service_area write: always-overwrite vs fill-only, and picking the EARLIEST counted ride');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+
+    // model/color are unconditionally overwritten, even if a community sighting had already set something else.
+    const relabeled = rawVehicle(ctx, id(430), 'CYB0430');
+    ctx.d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White' WHERE id = '${relabeled}'`);
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: relabeled, status: 'pending', serviceArea: 'Austin' });
+    await setVin(ctx, 'mod', relabeled, VIN_A);
+    await approveCybercab(ctx, 'mod', relabeled);
+    const relabeledRow = ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', relabeled)[0];
+    check('model/color are overwritten to Cybercab/Gold even if a prior (e.g. sighting-derived) value existed', relabeledRow.model === 'Cybercab' && relabeledRow.color === 'Gold');
+    check('service_area is fill-ONLY: an existing value is never overwritten (there was none here, so it fills from the ride)', relabeledRow.service_area === 'Austin');
+
+    // service_area is fill-only: an EXISTING value survives untouched.
+    const keepsArea = rawVehicle(ctx, id(431), 'CYB0431');
+    ctx.d1.exec(`UPDATE robotaxi_vehicles SET service_area = 'Miami' WHERE id = '${keepsArea}'`);
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: keepsArea, status: 'pending', serviceArea: 'Austin' });
+    await setVin(ctx, 'mod', keepsArea, VIN_B);
+    await approveCybercab(ctx, 'mod', keepsArea);
+    check('an existing service_area is never overwritten by approve_cybercab, unlike model/color', ctx.d1.query('SELECT service_area FROM robotaxi_vehicles WHERE id = ?', keepsArea)[0].service_area === 'Miami');
+
+    // Multiple counted rides in different areas: the EARLIEST counted ride's area wins, not the latest.
+    const multi = rawVehicle(ctx, id(432), 'CYB0432');
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: multi, status: 'pending', serviceArea: 'Houston', rideDate: '2026-05-01' });
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: multi, status: 'pending', serviceArea: 'Phoenix', rideDate: '2026-07-01' });
+    await setVin(ctx, 'mod', multi, '5YJSA1E27FF101185');
+    await approveCybercab(ctx, 'mod', multi);
+    check('with multiple counted rides, the EARLIEST one\'s service_area is used to fill the blank field', ctx.d1.query('SELECT service_area FROM robotaxi_vehicles WHERE id = ?', multi)[0].service_area === 'Houston');
+
+    // A needs_review (uncounted) ride with an earlier date must not win over a real counted ride.
+    const uncounted = rawVehicle(ctx, id(433), 'CYB0433');
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: uncounted, status: 'needs_review', serviceArea: 'Denver', rideDate: '2026-01-01' });
+    seedRide(ctx.d1, { userId: 'rider', vehicleId: uncounted, status: 'pending', serviceArea: 'Seattle', rideDate: '2026-08-01' });
+    await setVin(ctx, 'mod', uncounted, '5YJSA1E27FF101186');
+    await approveCybercab(ctx, 'mod', uncounted);
+    check('an uncounted (needs_review) ride never supplies the fill value, even if it is chronologically earlier', ctx.d1.query('SELECT service_area FROM robotaxi_vehicles WHERE id = ?', uncounted)[0].service_area === 'Seattle');
+
+    check('return_private never touches model/color/service_area', await (async () => {
+      await giveBack(ctx, 'mod', relabeled);
+      const row = ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', relabeled)[0];
+      return row.model === 'Cybercab' && row.color === 'Gold' && row.service_area === 'Austin';
     })());
   }
 
