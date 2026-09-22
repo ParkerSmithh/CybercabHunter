@@ -182,7 +182,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const empty = await open(ctx, null);
-    check('empty registry: a friendly empty state, no cards', empty.vis('regEmpty') && !empty.vis('regLoaded') && empty.cards().length === 0 && /No vehicles in the registry yet/.test(empty.d.getElementById('regEmpty').textContent));
+    check('empty registry: a friendly empty state, no cards', empty.vis('regEmpty') && !empty.vis('regLoaded') && empty.cards().length === 0 && /NO VEHICLES FOUND/.test(empty.d.getElementById('regEmpty').textContent));
     const failing = await open(ctx, async () => new Response('{}', { status: 500 }));
     check('a server error is an error state, not "empty"', failing.vis('regError') && !failing.vis('regEmpty'));
     let calls = 0;

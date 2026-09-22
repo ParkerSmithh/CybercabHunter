@@ -390,7 +390,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 1, 'vehicle list');
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]'));
     check('the first click only opens a confirmation — nothing is sent and nothing changes', page.vehicleRequests('DELETE').length === 0 && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicles WHERE id = ?', id)[0].n === 1);
-    check('the confirmation names the plate, warns it cannot be undone, and says the ride(s)/receipt(s) are deleted too', /cannot be undone/i.test(page.cards()[0].textContent) && /DEL0001/.test(page.cards()[0].textContent) && /ride\(s\)\/receipt\(s\)/i.test(page.cards()[0].textContent) && /fare, pickup\/dropoff/i.test(page.cards()[0].textContent));
+    check('the confirmation names the plate, warns it cannot be undone, and says the ride(s)/receipt(s) are deleted too', /cannot be undone/i.test(page.cards()[0].textContent) && /DEL0001/.test(page.cards()[0].textContent) && /ride\(s\)\/receipt\(s\)/i.test(page.cards()[0].textContent));
     page.click(page.cards()[0].querySelector('button[data-vehicle-action="cancel-review"]'));
     check('Cancel closes it without sending anything', !!page.cards()[0].querySelector('button[data-vehicle-action="ask-delete"]') && page.vehicleRequests('DELETE').length === 0);
 
