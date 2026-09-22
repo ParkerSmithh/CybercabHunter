@@ -1,10 +1,8 @@
 /* Public vehicle page. Unlike every other page/*.js in this project, this
    one is NOT signed-in state — it never reads a session, never sends an
-   Authorization header, and calls only public endpoints:
+   Authorization header, and calls only the one public endpoint:
    GET /api/robotaxi-vehicles/:id (worker/vehicles.js), which is itself
-   public and privacy-tested — plus, once that vehicle has loaded, the
-   equally public GET /api/robotaxi-vehicles/:id/sightings for the
-   Community Sightings section. No other API is called from this file.
+   public and privacy-tested.
    States: invalid (the URL itself has no usable id) / loading / notFound /
    error (network/server) / loaded. Missing values render as an em dash,
    never as 0 — matching every other page here. */
@@ -29,15 +27,6 @@
     return isNaN(dt) ? '—' : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  // "2026-09-18" -> "September 18, 2026". Parsed as a calendar date, not an
-  // instant, so it can't shift a day with the viewer's timezone.
-  function fmtLongDate(d) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || ''));
-    if (!m) return '';
-    const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return isNaN(dt) ? '' : dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  }
-
   // ---------- view state ----------
   function setView(view) {
     show('vehicleLoading', view === 'loading');
@@ -60,19 +49,26 @@
 
     $('vLicensePlate').textContent = v.license_plate || 'Plate unknown';
 
-    // A vin is present only once a moderator has approved this vehicle as a
-    // Cybercab and saved its VIN (worker/vehicles.js only ever forwards one
-    // for an already publicly-eligible vehicle) — never inferred here. The
-    // eyebrow label and the image both key off that same fact: a vehicle
-    // never gets called a Cybercab, or shown the Cybercab image, unless a
-    // moderator actually verified and approved it as one. An ordinary
-    // approved vehicle with no vin keeps the generic "Robotaxi Vehicle"
-    // label instead, since Cybercab Hunter never claims a classification it
-    // hasn't verified.
-    $('vEyebrow').textContent = v.vin ? 'Cybercab' : 'Robotaxi Vehicle';
-    show('vVinInline', !!v.vin);
+    // The Tesla badge is a plain fact (every vehicle here is Tesla-provided
+    // today). The Cybercab badge and the generic image both key off vin
+    // alone — set only once a moderator has approved this vehicle as a
+    // Cybercab (worker/vehicles.js only ever forwards a vin for an
+    // already publicly-eligible vehicle) — never inferred here. An ordinary
+    // approved vehicle with no vin gets neither badge, since Cybercab
+    // Hunter never claims a classification it hasn't verified.
+    show('vTeslaBadge', v.provider === 'tesla');
+    show('vCybercabBadge', !!v.vin);
     show('vCybercabImage', !!v.vin);
-    $('vVin').textContent = v.vin || '';
+
+    // One plain-text summary line built only from the facts actually on
+    // record, joined with " · " — never a fixed template with "Not
+    // recorded" filler for whatever is missing.
+    const clauses = [];
+    if (v.service_area) clauses.push(`Operating in ${v.service_area}`);
+    if (v.color) clauses.push(`${v.color} exterior`);
+    if (v.vin) clauses.push(`VIN ${v.vin}`);
+    $('vSummaryLine').textContent = clauses.join(' · ');
+    show('vSummaryLine', clauses.length > 0);
 
     $('vTripCount').textContent = fmtInt(h.trip_count);
     $('vTotalDistance').textContent = fmtMiles(h.total_distance);
@@ -83,51 +79,6 @@
       : 'No service area recorded for these rides yet.';
 
     document.title = `${v.license_plate || 'Vehicle'} — Cybercab Hunter`;
-  }
-
-  // ---------- community sightings ----------
-  // Independent of the vehicle card: a failure here only swaps this one
-  // section into its own error state and never touches the rest of the page.
-  // Entries are built with createElement + textContent — nothing from the
-  // API is ever parsed as markup.
-  function setSightingsView(view) {
-    show('vSightingsLoading', view === 'loading');
-    show('vSightingsEmpty', view === 'empty');
-    show('vSightingsError', view === 'error');
-    show('vSightingsList', view === 'list');
-  }
-
-  function renderSightings(sightings) {
-    const list = $('vSightingsList');
-    list.textContent = '';
-    for (const s of sightings) {
-      const li = document.createElement('li');
-      li.className = 'rounded-xl border border-[rgba(212,175,55,0.15)] bg-white/5 px-4 py-3 [overflow-wrap:anywhere]';
-      const head = document.createElement('div');
-      head.className = 'text-sm font-semibold';
-      head.textContent = [s.service_area, fmtLongDate(s.date)].filter(Boolean).join(' · ');
-      const sub = document.createElement('div');
-      sub.className = 'text-xs text-slate-500 mt-0.5';
-      sub.textContent = 'Community sighting';
-      li.append(head, sub);
-      list.appendChild(li);
-    }
-  }
-
-  async function loadSightings(vehicleId) {
-    setSightingsView('loading');
-    try {
-      const resp = await fetch(`${WORKER}/api/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/sightings`);
-      if (!resp.ok) throw new Error('status ' + resp.status);
-      const body = await resp.json();
-      const sightings = Array.isArray(body && body.sightings) ? body.sightings : null;
-      if (!sightings) throw new Error('unexpected body');
-      if (sightings.length === 0) { setSightingsView('empty'); return; }
-      renderSightings(sightings);
-      setSightingsView('list');
-    } catch (e) {
-      setSightingsView('error');
-    }
   }
 
   async function load(vehicleId) {
@@ -161,14 +112,12 @@
 
     renderVehicle(body);
     setView('loaded');
-    loadSightings(vehicleId);
   }
 
   function init() {
     const vehicleId = extractVehicleId();
     if (!vehicleId) { setView('invalid'); return; }
     $('vehicleRetry').addEventListener('click', () => load(vehicleId));
-    $('vSightingsRetry').addEventListener('click', () => loadSightings(vehicleId));
     load(vehicleId);
   }
 

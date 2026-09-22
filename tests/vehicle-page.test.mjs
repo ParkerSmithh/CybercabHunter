@@ -94,7 +94,7 @@ async function run() {
     check('a normal static page still falls through to ASSETS unchanged', resp.status === 200 && calledAssets);
   }
 
-  console.log('2. Rendering: vehicle identity — a simplified header (plate + eyebrow only; VIN when present), no model/color/provider/service-area/verification/first-seen/last-seen clutter');
+  console.log('2. Rendering: vehicle identity — plate + badges + a one-line summary; no model/provider-label/verification/first-seen/last-seen clutter');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
@@ -102,20 +102,23 @@ async function run() {
     const page = await openPage({ cybercabhunter_db: d1 }, id);
     check('the loaded view is shown, no error/not-found/invalid state', page.visible('vehicleLoaded') && !page.visible('vehicleError') && !page.visible('vehicleNotFound') && !page.visible('vehicleInvalid'));
     check('license plate renders', page.text('vLicensePlate') === 'XJR2195');
-    check('an ordinary vehicle with no vin keeps the generic "Robotaxi Vehicle" eyebrow label (never "Cybercab" unless a moderator actually verified one)', page.text('vEyebrow') === 'Robotaxi Vehicle');
-    check('no VIN is shown, and no Cybercab image, for a vehicle with no vin', !page.visible('vVinInline') && !page.visible('vCybercabImage'));
-    check('the header no longer shows model, provider, color, service area, verification, or first/last seen — that clutter was removed', !/Not independently verified|Provider|Model not confirmed|First Seen|Last Seen/.test(page.d.getElementById('vehicleLoaded').textContent));
+    check('the Tesla badge shows (provider is tesla)', page.visible('vTeslaBadge') && page.text('vTeslaBadge') === 'Tesla');
+    check('no Cybercab badge or image for a vehicle with no vin (never claim a classification that was not verified)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
+    check('no summary line when there is nothing to summarize (no color/service_area/vin on record)', !page.visible('vSummaryLine'));
+    check('the header no longer shows model text, a "Provider" label, the verification disclaimer, or first/last seen — that clutter was removed', !/Not independently verified|Provider|Model not confirmed|First Seen|Last Seen/.test(page.d.getElementById('vehicleLoaded').textContent));
   }
 
-  console.log('2b. Rendering: model/color/service_area may still be populated in the database (Candidate A / approve_cybercab), but the simplified header never displays them — a regression guard against that clutter quietly coming back');
+  console.log('2b. Rendering: color/service_area (Candidate A / approve_cybercab fills) appear in the one-line summary; model never does — the Cybercab badge already conveys type');
   {
     const d1 = createTestD1(); seedUser(d1, 'u1');
     const id = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'XJR2195');
     approveVehicle(d1, id, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White', service_area = 'Austin' WHERE id = '${id}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('populated model/color/service_area values do not leak into the simplified header', !/Model Y|Pearl White|Austin/.test(page.d.getElementById('vehicleLoaded').textContent));
-    check('the plate and eyebrow still render normally alongside the now-unused fields', page.text('vLicensePlate') === 'XJR2195' && page.text('vEyebrow') === 'Robotaxi Vehicle');
+    check('the summary line reads "Operating in Austin · Pearl White exterior" (service_area then color, joined with " · ")', page.visible('vSummaryLine') && page.text('vSummaryLine') === 'Operating in Austin · Pearl White exterior');
+    check('model text ("Model Y") never appears anywhere on the page — the Cybercab badge (absent here, no vin) is the only type signal', !page.d.getElementById('vehicleLoaded').textContent.includes('Model Y'));
+    check('still no Cybercab badge/image (no vin was set in this scenario)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
+    check('the plate and Tesla badge still render normally alongside the summary line', page.text('vLicensePlate') === 'XJR2195' && page.visible('vTeslaBadge'));
   }
 
   console.log('3. Rendering: recorded ride history, including a vehicle with zero rides (honest, not fabricated)');
@@ -214,9 +217,7 @@ async function run() {
     });
     seedRide(d1, { userId: 'user-second', vehicleId: id, fare: 810, rideDate: '2026-07-01' });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    await page.waitFor(() => !page.visible('vSightingsLoading'), 'sightings section to settle');
-    check('exactly one request was made to the public vehicle endpoint', page.requests.filter(r => r.path === `/api/robotaxi-vehicles/${id}`).length === 1);
-    check('the only other request is the public sightings endpoint — nothing else is called', page.requests.length === 2 && page.requests[1].path === `/api/robotaxi-vehicles/${id}/sightings`);
+    check('exactly one request was made to the public vehicle endpoint, and nothing else is called (the Community Sightings section was removed, so its endpoint is never fetched)', page.requests.length === 1 && page.requests[0].path === `/api/robotaxi-vehicles/${id}`);
     check('no Authorization header was ever sent — this page never authenticates', page.requests.every(r => !r.headers.Authorization));
     check('no private endpoints were called (/api/profile, /api/trips, /api/tesla/*)', !page.requests.some(r => /\/api\/(profile|trips|tesla|me)\b/.test(r.path)));
     const rendered = page.d.body.innerHTML;
@@ -224,11 +225,10 @@ async function run() {
     check('no pickup/dropoff address text leaks into the rendered page', !/Hanover|NorthPark/i.test(rendered));
     check('no fare/dollar figure appears anywhere on the page', !/\$6\.92|\$8\.10|692|810/.test(rendered.replace(/2026|2795/g, '')));
     // This vehicle was never given a vin (approveVehicle above passes none),
-    // so the inline VIN/image must stay hidden and empty — a "VIN" LABEL existing
-    // in the page's static markup is fine (see 5b below for a vehicle that
-    // DOES have one), but no vin VALUE, and no session/token material, may
-    // ever appear.
-    check('the inline VIN and Cybercab image stay hidden for a vehicle with no vin', !page.visible('vVinInline') && !page.visible('vCybercabImage') && page.text('vVin') === '');
+    // so the Cybercab badge/image must stay hidden and no vin VALUE — nor
+    // any session/token material — may ever appear (see 5b below for a
+    // vehicle that DOES have one).
+    check('the Cybercab badge and image stay hidden for a vehicle with no vin, and no vin value is shown', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage') && !rendered.includes('VIN'));
     check('no session/token material appears anywhere on the page', !/access_token|refresh_token|\bsession\b/i.test(rendered));
   }
 
@@ -238,15 +238,15 @@ async function run() {
     const noVinId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ORD0011');
     approveVehicle(d1, noVinId, { withRide: true });
     const noVinPage = await openPage({ cybercabhunter_db: d1 }, noVinId);
-    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — VIN and image both hidden, eyebrow stays "Robotaxi Vehicle"', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vVinInline') && !noVinPage.visible('vCybercabImage') && noVinPage.text('vEyebrow') === 'Robotaxi Vehicle');
+    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — no Cybercab badge/image', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vCybercabBadge') && !noVinPage.visible('vCybercabImage'));
 
     const VIN = '5YJSA1E14FF101183';
     const cybercabId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'CYB0010');
     approveVehicle(d1, cybercabId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}' WHERE id = '${cybercabId}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, cybercabId);
-    check('a vehicle with a vin: it is shown inline (next to the plate), rendering the exact value', page.visible('vVinInline') && page.text('vVin') === VIN);
-    check('the eyebrow label says "Cybercab" once a moderator-verified vin is present', page.text('vEyebrow') === 'Cybercab');
+    check('a vehicle with a vin: it appears in the one-line summary, rendering the exact value', page.visible('vSummaryLine') && page.text('vSummaryLine') === `VIN ${VIN}`);
+    check('the Cybercab badge shows once a moderator-verified vin is present', page.visible('vCybercabBadge') && page.text('vCybercabBadge') === 'Cybercab');
     check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
     check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'Cybercab2.png');
@@ -273,7 +273,28 @@ async function run() {
     check('the page loads normally rather than erroring on hostile content', page.visible('vehicleLoaded'));
     check('no actual <img onerror> element was created from the hostile string — it never became markup (the page has 2 legitimate logo <img> tags, neither with onerror)', page.d.querySelectorAll('img[onerror]').length === 0);
     check('the hostile plate renders as literal, inert text content', page.text('vLicensePlate') === hostile);
-    check('the hostile vin renders as literal, inert text content too, shown inline next to the plate', page.visible('vVinInline') && page.text('vVin') === hostile);
+    check('the hostile vin renders as literal, inert text content too, inside the one-line summary', page.visible('vSummaryLine') && page.text('vSummaryLine') === `VIN ${hostile}`);
+  }
+
+  console.log('7. Page shell: assets and links must resolve correctly when the page is served at /vehicle/<id> (moved here from the retired vehicle-sightings-ui.test.mjs)');
+  {
+    // Regression: vehicle.html is served at /vehicle/<id> by the Worker, so without
+    // <base href="/"> its relative js/css/nav URLs resolved to /vehicle/js/vehicle.js
+    // etc. — which do not exist. jsdom tests that eval() the script directly cannot
+    // notice that; resolving every URL the way a browser would can.
+    const id = '0c617f6a-969a-4610-8025-f4f2e4f395ea';
+    const dom = new JSDOM(HTML, { url: `https://cybercabhunter.com/vehicle/${id}` });
+    const d = dom.window.document;
+    const urls = [...d.querySelectorAll('script[src], link[href], a[href], img[src]')]
+      .map(el => el.getAttribute('src') || el.getAttribute('href'))
+      .filter(u => u && !/^(https?:|mailto:|data:|#)/.test(u))
+      .map(u => new URL(u, d.baseURI));
+    check('there are relative URLs to check (script, css, nav links, images)', urls.length > 10);
+    check('none of them resolve underneath /vehicle/ (which would 404)', urls.every(u => !u.pathname.startsWith('/vehicle/')));
+    const script = urls.find(u => /vehicle\.js$/.test(u.pathname));
+    check('the page script resolves to the real static file /js/vehicle.js', !!script && script.pathname === '/js/vehicle.js');
+    check('the stylesheet resolves to /css/style.css', urls.some(u => u.pathname === '/css/style.css'));
+    check('the header has no "Link Tesla Account" button (it made the shared header wider than a 390px viewport)', !d.getElementById('teslaLinkBtn'));
   }
 
   t.finish();
