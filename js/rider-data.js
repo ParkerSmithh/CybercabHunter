@@ -252,7 +252,7 @@
       <div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
         <div class="flex items-center justify-between">
           <span class="font-display font-bold">${esc(v.license_plate || 'Plate unknown')}</span>
-          <span class="text-xs text-slate-500">${esc(fmtDateTime(v.first_seen_at))}</span>
+          <span class="text-xs text-slate-500">${esc(fmtDate(v.discovered_ride_date))}</span>
         </div>
         <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${v.service_area ? ' · ' + esc(v.service_area) : ''}</div>
         ${publicVehicleLink(v.public_eligible, v.id)}

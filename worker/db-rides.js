@@ -471,19 +471,26 @@ async function getUserProfile(sql, userId) {
 
     // Crowdsourced concept, kept separate from vehicles RIDDEN: vehicles this
     // rider was the FIRST to log a (counted) ride in. Earliest counted trip
-    // for a vehicle, across all riders, decides who discovered it.
+    // for a vehicle, across all riders, decides who discovered it (by
+    // created_at/rowid — arrival order into this database — not by the ride's
+    // own date; that credit-assignment rule is unchanged here). The date
+    // shown for the discovery, though, is that winning trip's OWN ride_date
+    // (from the receipt) — NOT v.first_seen_at, which is when the registry
+    // row itself was created and can be much later than the ride if a
+    // receipt was imported well after the fact.
     sql.prepare(`
-      SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status, v.first_seen_at,
+      SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status,
+             first_trip.ride_date AS discovered_ride_date,
              ${publicVehicleEligibleSql('v')} AS public_eligible
       FROM robotaxi_vehicles v
       JOIN (
-        SELECT t.robotaxi_vehicle_id AS robotaxi_vehicle_id, t.user_id AS user_id,
+        SELECT t.robotaxi_vehicle_id AS robotaxi_vehicle_id, t.user_id AS user_id, t.ride_date AS ride_date,
                ROW_NUMBER() OVER (PARTITION BY t.robotaxi_vehicle_id ORDER BY t.created_at ASC, t.rowid ASC) AS rn
         FROM ${RIDES_FROM}
         WHERE t.robotaxi_vehicle_id IS NOT NULL AND ${COUNTED_RIDES_WHERE}
       ) first_trip ON first_trip.robotaxi_vehicle_id = v.id AND first_trip.rn = 1
       WHERE first_trip.user_id = ?
-      ORDER BY v.first_seen_at ASC
+      ORDER BY first_trip.ride_date ASC
     `).bind(userId),
 
     // Contributions: the rider's counted submissions, excluding any that back

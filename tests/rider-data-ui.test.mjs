@@ -382,7 +382,13 @@ async function run() {
     const page = await openPage(ctx, 'u1');
     await page.waitFor(() => page.visible('discoveredList'), 'discovered list to render');
     check('a rider who discovered a vehicle sees the section, not the empty state', page.visible('discoveredList') && !page.visible('discoveredEmpty'));
-    check('the correct vehicle (plate, model fallback, first-seen date) renders', /XJR2195/.test(page.text('discoveredList')) && /Model not confirmed/.test(page.text('discoveredList')));
+    check('the correct vehicle (plate, model fallback) renders', /XJR2195/.test(page.text('discoveredList')) && /Model not confirmed/.test(page.text('discoveredList')));
+    // The receipt's own ride date (June 9, 2026) — NOT today, the real wall-clock moment this test
+    // actually ran and the registry row was created. This is the exact bug reported: an old receipt
+    // imported "now" must still show the RIDE's date here, not the import/ingestion moment.
+    const todayFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    check('the discovered date shown is the receipt\'s OWN ride date (Jun 9, 2026)', /Jun 9, 2026/.test(page.text('discoveredList')));
+    check('...not today\'s date (the ingestion/row-creation timestamp)', !page.text('discoveredList').includes(todayFormatted) || todayFormatted === 'Jun 9, 2026');
   }
   {
     const ctx = await makeApp({ users: ['u1', 'u2'] });

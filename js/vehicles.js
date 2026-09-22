@@ -19,9 +19,13 @@
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
 
   const fmtInt = n => (n == null ? '—' : Number(n).toLocaleString());
-  function fmtDateTime(sqlTs) {
-    if (!sqlTs) return '—';
-    const dt = new Date(String(sqlTs).replace(' ', 'T') + 'Z');
+  // A calendar date ('YYYY-MM-DD', e.g. a ride_date) shown as a date, not an
+  // instant — parsed at LOCAL midnight (no 'Z'), so it never shifts a day
+  // backward for a viewer west of UTC the way appending 'Z' to a bare date
+  // would. Same pattern as js/vehicle.js and js/rider-data.js's fmtDate.
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
     return isNaN(dt) ? '—' : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
@@ -61,8 +65,12 @@
     a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere]', area || 'Service area not recorded'));
     const stats = el('div', 'grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
-    stats.appendChild(stat('First seen', fmtDateTime(v.first_seen_at)));
-    stats.appendChild(stat('Last seen', fmtDateTime(v.last_seen_at)));
+    // First/Last seen reflect the RIDE dates a receipt reported (v.first_ride_date/last_ride_date),
+    // not when the registry row was created or last touched — those are ingestion timestamps
+    // (v.first_seen_at/last_seen_at) that can be much later than the ride itself if a receipt was
+    // imported well after the fact, and would otherwise show the wrong date here.
+    stats.appendChild(stat('First seen', fmtDate(v.first_ride_date)));
+    stats.appendChild(stat('Last seen', fmtDate(v.last_ride_date)));
     a.appendChild(stats);
     li.appendChild(a);
     return li;

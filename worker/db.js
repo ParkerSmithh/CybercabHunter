@@ -548,6 +548,7 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
            v.first_seen_at, v.last_seen_at, v.verification_status,
            (SELECT COUNT(*) ${counted()}) AS trip_count,
+           (SELECT MIN(t.ride_date) ${counted()}) AS first_ride_date,
            (SELECT MAX(t.ride_date) ${counted()}) AS last_ride_date,
            (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas
     FROM robotaxi_vehicles v

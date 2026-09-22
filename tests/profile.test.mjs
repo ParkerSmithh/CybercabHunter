@@ -151,9 +151,12 @@ async function run() {
     const firstResp = await apiGetProfile({}, { cybercabhunter_db: d1 }, 'user-first');
     const firstBody = await firstResp.json();
     check("the discovering rider's own response credits them with the vehicle", firstBody.discoveredVehicles.length === 1 && firstBody.discoveredVehicles[0].id === 'v1');
-    check('the entry carries only whitelisted vehicle fields — no user_id, no other rider identity', Object.keys(firstBody.discoveredVehicles[0]).sort().join() === 'color,first_seen_at,id,license_plate,model,public_eligible,service_area,verification_status');
+    check('the entry carries only whitelisted vehicle fields — no user_id, no other rider identity', Object.keys(firstBody.discoveredVehicles[0]).sort().join() === 'color,discovered_ride_date,id,license_plate,model,public_eligible,service_area,verification_status');
     // v1 is visibility='public' (seedVehicle's schema default) with a counted ride (the one just seeded) — genuinely eligible, not a guess.
     check('public_eligible is a real boolean, and true here since the vehicle is public with a counted ride', firstBody.discoveredVehicles[0].public_eligible === true);
+    // The discovering ride's OWN ride_date (seedRide's default), NOT a registry/ingestion timestamp like
+    // first_seen_at — this is the field this whole test section exists to guard against regressing.
+    check('discovered_ride_date is the discovering RIDE\'s own date, not a registry/ingestion timestamp', firstBody.discoveredVehicles[0].discovered_ride_date === '2026-06-09');
 
     const secondResp = await apiGetProfile({}, { cybercabhunter_db: d1 }, 'user-second');
     const secondBody = await secondResp.json();

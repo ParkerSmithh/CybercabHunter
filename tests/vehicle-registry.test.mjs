@@ -64,8 +64,9 @@ async function run() {
     check('identifying fields are present', a.license_plate === 'AAA1111' && a.model === 'Model Y' && a.service_area === 'Austin' && a.first_seen_at === '2026-08-01 00:00:00' && a.last_seen_at === '2026-09-10 12:00:00');
     check('the ride count is the COUNTED rides only', a.trip_count === 2 && b.trip_count === 2);
     check('ride summary: latest ride date and service areas', a.last_ride_date === '2026-08-10' && /Austin/.test(a.service_areas) && b.last_ride_date === '2026-09-02' && b.service_areas === 'Dallas');
+    check('ride summary: earliest ride date too', a.first_ride_date === '2026-08-09' && b.first_ride_date === '2026-08-29');
     check('missing values stay null (not 0 or a placeholder)', b.model === null && b.service_area === null && b.color === null);
-    const allowed = ['color', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'trip_count', 'verification_status'];
+    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'trip_count', 'verification_status'];
     check('an entry carries exactly the public fields', r.body.vehicles.every(v => Object.keys(v).sort().join() === allowed.join()));
     check('nothing private in the payload: no user, submission, fare, distance or address fields', !/user_id|submission|fare|distance|pickup|dropoff|email|role|visibility|reason/i.test(JSON.stringify(r.body)));
     check('short-lived public caching, like the detail endpoint', /public, max-age=\d+/.test(r.headers.get('Cache-Control') || ''));
@@ -147,8 +148,11 @@ async function run() {
   }
   {
     const ctx = await makeApp();
-    const a = vehicle(ctx, 1, 'XFY4946', { visibility: 'public', serviceArea: null, seen: '2026-09-19 23:11:44', created: '2026-09-19 23:11:44' }); ride(ctx, a, { serviceArea: 'Austin' });
-    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Model Y', seen: '2026-09-20 05:16:22', created: '2026-09-20 05:16:22' }); ride(ctx, b, { serviceArea: 'Dallas' });
+    // The registry row's own ingestion timestamps (seen/created) are deliberately far from the ride's
+    // own date, matching the real bug report this guards against: a receipt imported long after the ride
+    // it describes must still show the RIDE's date, not when the row was created/touched.
+    const a = vehicle(ctx, 1, 'XFY4946', { visibility: 'public', serviceArea: null, seen: '2026-09-19 23:11:44', created: '2026-09-19 23:11:44' }); ride(ctx, a, { serviceArea: 'Austin', rideDate: '2026-08-05' });
+    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Model Y', seen: '2026-09-20 05:16:22', created: '2026-09-20 05:16:22' }); ride(ctx, b, { serviceArea: 'Dallas', rideDate: '2026-07-04' });
     vehicle(ctx, 3, 'HIDDEN33', { visibility: 'private' }); const hid = uuid(3); ride(ctx, hid);
     const p = await open(ctx, null);
     check('the loaded state is shown (not empty, not error, not loading)', p.vis('regLoaded') && !p.vis('regEmpty') && !p.vis('regError') && !p.vis('regLoading'));
@@ -156,7 +160,9 @@ async function run() {
     check('each card links to the correct /vehicle/<id>', p.cards()[0].getAttribute('href') === `/vehicle/${b}` && p.cards()[1].getAttribute('href') === `/vehicle/${a}`);
     check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(p.cards()[1].textContent) && /Model not confirmed/.test(p.cards()[1].textContent) && /Model Y/.test(p.cards()[0].textContent));
     check('service area falls back to the cities of the counted rides', /Austin/.test(p.cards()[1].textContent) && /Dallas/.test(p.cards()[0].textContent));
-    check('ride count and seen dates are shown', /Rides\s*1/.test(p.cards()[0].textContent) && /Sep 19, 2026|Sep 20, 2026/.test(p.cards()[0].textContent + p.cards()[1].textContent));
+    check('ride count is shown', /Rides\s*1/.test(p.cards()[0].textContent));
+    check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Jul 4, 2026/.test(p.cards()[0].textContent) && /Aug 5, 2026/.test(p.cards()[1].textContent));
+    check('the ingestion timestamps are NOT what is displayed for First/Last seen', !/Sep 19, 2026|Sep 20, 2026/.test(p.cards()[0].textContent + p.cards()[1].textContent));
     check('the count line says "2 vehicles"', p.d.getElementById('regCount').textContent === '2 vehicles');
     check('a private vehicle is not on the page, in text or links', !/HIDDEN33/.test(p.d.body.textContent) && ![...p.d.querySelectorAll('a')].some(x => (x.getAttribute('href') || '').includes(hid)));
     check('the page calls only the public list endpoint, with no Authorization header', p.requests.every(r => r.path.startsWith('/api/robotaxi-vehicles') && !('Authorization' in r.headers)) && p.requests.length === 1);

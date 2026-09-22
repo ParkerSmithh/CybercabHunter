@@ -71,6 +71,7 @@ export async function apiListVehicles(request, env) {
       last_seen_at: v.last_seen_at,
       verification_status: v.verification_status,
       trip_count: v.trip_count,
+      first_ride_date: v.first_ride_date,
       last_ride_date: v.last_ride_date,
       service_areas: v.service_areas
     })),
