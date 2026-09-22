@@ -102,7 +102,6 @@ async function run() {
     const page = await openPage({ cybercabhunter_db: d1 }, id);
     check('the loaded view is shown, no error/not-found/invalid state', page.visible('vehicleLoaded') && !page.visible('vehicleError') && !page.visible('vehicleNotFound') && !page.visible('vehicleInvalid'));
     check('license plate renders', page.text('vLicensePlate') === 'XJR2195');
-    check('the Tesla badge shows (provider is tesla)', page.visible('vTeslaBadge') && page.text('vTeslaBadge') === 'Tesla');
     check('no Cybercab badge or image for a vehicle with no vin (never claim a classification that was not verified)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
     check('no summary line when there is nothing to summarize (no color/service_area/vin on record)', !page.visible('vSummaryLine'));
     check('the header no longer shows model text, a "Provider" label, the verification disclaimer, or first/last seen — that clutter was removed', !/Not independently verified|Provider|Model not confirmed|First Seen|Last Seen/.test(page.d.getElementById('vehicleLoaded').textContent));
@@ -118,7 +117,7 @@ async function run() {
     check('the summary line reads "Operating in Austin · Pearl White exterior" (service_area then color, joined with " · ")', page.visible('vSummaryLine') && page.text('vSummaryLine') === 'Operating in Austin · Pearl White exterior');
     check('model text ("Model Y") never appears anywhere on the page — the Cybercab badge (absent here, no vin) is the only type signal', !page.d.getElementById('vehicleLoaded').textContent.includes('Model Y'));
     check('still no Cybercab badge/image (no vin was set in this scenario)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
-    check('the plate and Tesla badge still render normally alongside the summary line', page.text('vLicensePlate') === 'XJR2195' && page.visible('vTeslaBadge'));
+    check('the plate still renders normally alongside the summary line', page.text('vLicensePlate') === 'XJR2195');
   }
 
   console.log('3. Rendering: recorded ride history, including a vehicle with zero rides (honest, not fabricated)');

@@ -49,14 +49,12 @@
 
     $('vLicensePlate').textContent = v.license_plate || 'Plate unknown';
 
-    // The Tesla badge is a plain fact (every vehicle here is Tesla-provided
-    // today). The Cybercab badge and the generic image both key off vin
-    // alone — set only once a moderator has approved this vehicle as a
-    // Cybercab (worker/vehicles.js only ever forwards a vin for an
-    // already publicly-eligible vehicle) — never inferred here. An ordinary
-    // approved vehicle with no vin gets neither badge, since Cybercab
-    // Hunter never claims a classification it hasn't verified.
-    show('vTeslaBadge', v.provider === 'tesla');
+    // The Cybercab badge and the generic image both key off vin alone — set
+    // only once a moderator has approved this vehicle as a Cybercab
+    // (worker/vehicles.js only ever forwards a vin for an already
+    // publicly-eligible vehicle) — never inferred here. An ordinary approved
+    // vehicle with no vin gets no badge, since Cybercab Hunter never claims
+    // a classification it hasn't verified.
     show('vCybercabBadge', !!v.vin);
     show('vCybercabImage', !!v.vin);
 
