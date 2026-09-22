@@ -10,7 +10,7 @@
 //  - NULL is preserved. SUM/AVG/MAX over a column that is null for every ride
 //    is NULL, not 0, and coverage counts say how many rides fed each figure.
 
-import { RIDES_FROM, LIVE_RIDES_WHERE, COUNTED_RIDES_WHERE, rideReviewState } from './ride-status.js';
+import { RIDES_FROM, LIVE_RIDES_WHERE, COUNTED_RIDES_WHERE, rideReviewState, publicVehicleEligibleSql } from './ride-status.js';
 
 function newId() {
   return crypto.randomUUID();
@@ -473,7 +473,8 @@ async function getUserProfile(sql, userId) {
     // rider was the FIRST to log a (counted) ride in. Earliest counted trip
     // for a vehicle, across all riders, decides who discovered it.
     sql.prepare(`
-      SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status, v.first_seen_at
+      SELECT v.id, v.license_plate, v.model, v.color, v.service_area, v.verification_status, v.first_seen_at,
+             ${publicVehicleEligibleSql('v')} AS public_eligible
       FROM robotaxi_vehicles v
       JOIN (
         SELECT t.robotaxi_vehicle_id AS robotaxi_vehicle_id, t.user_id AS user_id,
@@ -526,7 +527,8 @@ async function getUserProfile(sql, userId) {
     sql.prepare(`
       SELECT v.id AS vehicle_id, v.license_plate, v.model, COUNT(*) AS ride_count,
              SUM(t.distance) AS total_distance, COUNT(t.distance) AS rides_with_distance,
-             MIN(t.ride_date) AS first_ride_date, MAX(t.ride_date) AS last_ride_date
+             MIN(t.ride_date) AS first_ride_date, MAX(t.ride_date) AS last_ride_date,
+             ${publicVehicleEligibleSql('v')} AS public_eligible
       FROM ${RIDES_FROM}
       JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
       WHERE t.user_id = ? AND ${COUNTED_RIDES_WHERE}
@@ -539,7 +541,11 @@ async function getUserProfile(sql, userId) {
     `).bind(userId)
   ]);
 
-  const vehicles = vehicleStats.results || [];
+  // public_eligible comes back from SQLite as 0/1 (there's no real boolean
+  // type); normalize to an actual JS boolean before it reaches the API
+  // response, same as every other boolean-shaped field in this codebase.
+  const withRealBoolean = rows => rows.map(r => ({ ...r, public_eligible: !!r.public_eligible }));
+  const vehicles = withRealBoolean(vehicleStats.results || []);
   const { models, unknownModelVehicles } = summarizeModels(vehicles);
   const cov = coverage.results?.[0] || { rides: 0 };
 
@@ -547,7 +553,7 @@ async function getUserProfile(sql, userId) {
     rideSummary: rideSummary.results?.[0] || null,
     cities: cities.results || [],
     providers: providers.results || [],
-    discoveredVehicles: discoveredVehicles.results || [],
+    discoveredVehicles: withRealBoolean(discoveredVehicles.results || []),
     contributionCount: contributions.results?.[0]?.count ?? 0,
     spending: summarizeSpending(fareAmounts.results || []),
     firstVehicleModel: firstVehicleModel.results?.[0]?.model || null,

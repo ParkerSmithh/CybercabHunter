@@ -217,6 +217,7 @@
           <span class="font-display font-bold text-slate-300">${esc(plural(v.ride_count, 'ride'))}</span>
         </div>
         <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${esc(dist)}</div>
+        ${publicVehicleLink(v.public_eligible, v.vehicle_id)}
       </div>`;
     }).join('') + (vs.length > shown.length ? `<div class="text-xs text-slate-500">+ ${vs.length - shown.length} more</div>` : '');
 
@@ -224,6 +225,19 @@
     if (data.modelBreakdown.length) bits.push(data.modelBreakdown.map(m => `${m.model}: ${plural(m.ride_count, 'ride')} in ${plural(m.vehicle_count, 'vehicle')}`).join(' · '));
     if (data.unknownModelVehicles > 0) bits.push(`Model isn't confirmed for ${plural(data.unknownModelVehicles, 'vehicle')} — receipts don't state it.`);
     $('vehiclesModels').textContent = bits.join(' ');
+  }
+
+  // A link to the public /vehicle/<id> page, shown only when the API says
+  // this vehicle is currently public-eligible (worker/ride-status.js
+  // publicVehicleEligibleSql — the SAME rule the registry/vehicle pages
+  // enforce server-side; this is a navigation convenience only, never the
+  // authority — the public page re-checks eligibility itself regardless of
+  // what this link is or isn't shown). Never rendered for a private or
+  // ineligible vehicle, and never implies ownership or that Tesla has
+  // verified anything about the car.
+  function publicVehicleLink(eligible, id) {
+    if (!eligible || !id) return '';
+    return `<div class="mt-1.5"><a href="/vehicle/${esc(encodeURIComponent(id))}" class="text-xs text-cyan hover:underline">View on Cars →</a></div>`;
   }
 
   // Vehicles this rider's OWN counted ride was the earliest on record for
@@ -241,6 +255,7 @@
           <span class="text-xs text-slate-500">${esc(fmtDateTime(v.first_seen_at))}</span>
         </div>
         <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${v.service_area ? ' · ' + esc(v.service_area) : ''}</div>
+        ${publicVehicleLink(v.public_eligible, v.id)}
       </div>`).join('');
   }
 

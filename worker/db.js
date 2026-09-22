@@ -3,7 +3,7 @@
 // callers must resolve that from the session first; never from request input.
 
 import { rideQueries } from './db-rides.js';
-import { RIDES_FROM, COUNTED_RIDES_WHERE } from './ride-status.js';
+import { RIDES_FROM, COUNTED_RIDES_WHERE, countedRideExistsSql, publicVehicleEligibleSql } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 
 // Registry visibility values. 'private' is the value this schema already
@@ -13,22 +13,11 @@ import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 const VEHICLE_VISIBILITY = { PUBLIC: 'public', PRIVATE: 'private' };
 
 // A registry vehicle is publicly eligible only when a moderator has made it
-// public AND at least one counted, non-superseded ride backs it. The ride
-// half reuses the canonical ride-status predicates so "counted" means exactly
-// what it means for rider statistics. Query-time only: nothing is deleted or
-// rewritten when a vehicle stops being eligible. `alias` is the
-// robotaxi_vehicles alias in the caller's query; the inner t/s aliases come
-// from RIDES_FROM and deliberately shadow any outer ones.
-function countedRideExistsSql(alias) {
-  return `EXISTS (
-    SELECT 1 FROM ${RIDES_FROM}
-    WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE}
-  )`;
-}
-
-function publicVehicleEligibleSql(alias) {
-  return `${alias}.visibility = 'public' AND ${countedRideExistsSql(alias)}`;
-}
+// public AND at least one counted, non-superseded ride backs it.
+// countedRideExistsSql / publicVehicleEligibleSql now live in
+// worker/ride-status.js (imported above) so worker/db-rides.js can reuse the
+// exact same definition — see that file for the full rationale. Query-time
+// only: nothing is deleted or rewritten when a vehicle stops being eligible.
 
 // What must be true for a moderator to APPROVE a vehicle for the public
 // registry (worker/moderation.js's review action): the ride requirement of the

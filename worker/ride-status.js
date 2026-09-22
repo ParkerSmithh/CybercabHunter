@@ -35,3 +35,28 @@ export function rideReviewState(submissionStatus) {
   if (submissionStatus === 'rejected') return 'rejected';
   return 'under_review';
 }
+
+// THE definition of "at least one counted, non-superseded ride exists for
+// this vehicle" — reused everywhere a caller needs to know a vehicle has ride
+// activity backing it (public eligibility below, the moderator approval
+// guard in worker/db.js). Lives here rather than in worker/db.js so
+// worker/db-rides.js can reuse the exact same predicate too, without a
+// circular import (worker/db.js already imports worker/db-rides.js).
+// `alias` is the robotaxi_vehicles alias in the caller's query; the inner
+// t/s aliases come from RIDES_FROM and deliberately shadow any outer ones.
+export function countedRideExistsSql(alias) {
+  return `EXISTS (
+    SELECT 1 FROM ${RIDES_FROM}
+    WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE}
+  )`;
+}
+
+// THE definition of public eligibility: a moderator has made the vehicle
+// public AND at least one counted, non-superseded ride backs it. Every
+// public-facing surface (the registry list/detail pages, the homepage
+// stats, and any other caller) must reuse this exact function — never a
+// hand-derived equivalent — so eligibility can't quietly drift into a
+// second, weaker definition.
+export function publicVehicleEligibleSql(alias) {
+  return `${alias}.visibility = 'public' AND ${countedRideExistsSql(alias)}`;
+}

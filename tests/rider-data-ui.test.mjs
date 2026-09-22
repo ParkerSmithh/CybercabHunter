@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { makeEnv, makeCheck, seedRide } from './helpers/env.mjs';
+import { makeEnv, makeCheck, seedRide, seedVehicle, approveVehicle } from './helpers/env.mjs';
 import { receiptBody, eml, inboundMessage, sentAt } from './helpers/receipts.mjs';
 import { handleIncomingEmail } from '../worker/receipt-ingestion.js';
 import worker from '../worker/index.js';
@@ -392,6 +392,50 @@ async function run() {
     await page.waitFor(() => page.visible('discoveredEmpty'), 'the discovered empty state to render');
     check('a rider with no discovered vehicles sees the concise empty state, not an error', page.visible('discoveredEmpty') && page.d.getElementById('discoveredList').innerHTML === '' && /No vehicles discovered yet/i.test(page.text('discoveredEmpty')));
     check('the empty state is not styled or worded as an error', !/error|failed|wrong/i.test(page.text('discoveredEmpty')));
+  }
+
+  console.log('View on Cars link (UI). Shown only for a currently public, eligible vehicle — Candidate B');
+  {
+    // A freshly-ingested vehicle is PRIVATE by default (worker/db.js
+    // findOrCreateRobotaxiVehicleByPlate) — the common case, and it must
+    // produce no public link in either section even though it has a
+    // counted ride and appears in both lists.
+    const ctx = await makeApp();
+    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) }); // XJR2195, private
+    let page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.visible('vehiclesList') && page.visible('discoveredList'), 'vehicle sections to render');
+    check('a private vehicle: no "View on Cars" link in Vehicles Ridden, even though it is listed', page.text('vehiclesList').includes('XJR2195') && !/View on Cars/.test(page.d.getElementById('vehiclesList').innerHTML));
+    check('a private vehicle: no "View on Cars" link in Vehicles Discovered either', page.text('discoveredList').includes('XJR2195') && !/View on Cars/.test(page.d.getElementById('discoveredList').innerHTML));
+
+    // The exact same vehicle, made public by a moderator (the ONLY way this
+    // ever happens in production — see worker/moderation.js) — the counted
+    // ride from ingestion above already satisfies the ride half of
+    // publicVehicleEligibleSql, so this alone should now make it eligible.
+    const vehicleId = ctx.d1.query("SELECT id FROM robotaxi_vehicles WHERE license_plate = 'XJR2195'")[0].id;
+    approveVehicle(ctx.d1, vehicleId);
+    page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.visible('vehiclesList') && page.visible('discoveredList'), 'vehicle sections to render');
+
+    const riddenLink = page.d.querySelector(`#vehiclesList a[href="/vehicle/${vehicleId}"]`);
+    check('now public+eligible: Vehicles Ridden shows "View on Cars →" linking to the correct /vehicle/<id>', !!riddenLink && /View on Cars/.test(riddenLink.textContent));
+    const discoveredLink = page.d.querySelector(`#discoveredList a[href="/vehicle/${vehicleId}"]`);
+    check('now public+eligible: Vehicles Discovered shows the same link', !!discoveredLink && /View on Cars/.test(discoveredLink.textContent));
+    check('the link makes no ownership/verification claim — plain navigation text only', riddenLink.textContent.trim() === 'View on Cars →' && !/verified|owner|confirmed by tesla/i.test(riddenLink.textContent));
+  }
+  {
+    // A vehicle that is visibility='public' but has NO counted ride at all
+    // (only a needs_review one) must not appear in either list in the first
+    // place — there is structurally no row to attach a link to, which is
+    // itself the guarantee that "zero counted rides" can never produce a
+    // public link. Confirmed directly against the API response used to
+    // render these sections (js/rider-data.js reads exactly this).
+    const ctx = await makeApp();
+    const vehicleId = seedVehicle(ctx.d1, { id: 'zero-counted-v1', plate: 'XJR2195' }); // visibility defaults to 'public' — the interesting case
+    seedRide(ctx.d1, { userId: 'u1', vehicleId, status: 'needs_review' }); // never counted — see worker/ride-status.js
+    const page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.visible('vehiclesEmpty') || page.visible('discoveredEmpty'), 'empty vehicle sections to render');
+    check('a public vehicle with zero counted rides appears in neither list (nothing for a link to attach to)', !page.text('vehiclesList').includes('XJR2195') && !page.text('discoveredList').includes('XJR2195'));
+    check('...so of course no "View on Cars" link renders anywhere on the page', !/View on Cars/.test(page.d.body.innerHTML));
   }
 
   t.finish();

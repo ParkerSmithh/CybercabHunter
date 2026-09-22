@@ -421,7 +421,15 @@ async function run() {
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
     check('exactly one migration was added for this phase (0012), additive only', migrations.length === 12 && migrations[11] === '0012_robotaxi_vehicle_reviews.sql' && !/\b(DROP|DELETE|UPDATE|ALTER)\b/i.test(fs.readFileSync(`${ROOT}migrations/${migrations[11]}`, 'utf8').replace(/^--.*$/gm, '')));
     check('the migration creates exactly the review table with the two allowed actions', /CREATE TABLE robotaxi_vehicle_reviews/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')) && /CHECK \(action IN \('approved_public', 'returned_private'\)\)/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')));
-    check('the public eligibility gate is unchanged: still visibility public AND a counted, non-superseded ride', /visibility = 'public' AND \$\{countedRideExistsSql\(alias\)\}/.test(fs.readFileSync(`${ROOT}worker/db.js`, 'utf8')) && /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(fs.readFileSync(`${ROOT}worker/db.js`, 'utf8')));
+    // countedRideExistsSql/publicVehicleEligibleSql moved to worker/ride-status.js (Candidate B: Rider
+    // Data reuses them too, and that would have meant a circular import if they'd stayed in worker/db.js,
+    // which already imports worker/db-rides.js). worker/db.js now imports them rather than defining them —
+    // confirm both: the definition itself hasn't drifted, AND worker/db.js still uses the real import, not
+    // a re-implementation of its own.
+    const rideStatusSrc = fs.readFileSync(`${ROOT}worker/ride-status.js`, 'utf8');
+    const dbSrc = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
+    check('the public eligibility gate is unchanged: still visibility public AND a counted, non-superseded ride', /visibility = 'public' AND \$\{countedRideExistsSql\(alias\)\}/.test(rideStatusSrc) && /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(rideStatusSrc));
+    check('worker/db.js imports the real gate rather than defining its own copy', /import \{[^}]*publicVehicleEligibleSql[^}]*\}\s*from\s*'\.\/ride-status\.js'/.test(dbSrc) && !/^function publicVehicleEligibleSql/m.test(dbSrc));
   }
 
   t.finish();
