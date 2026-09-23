@@ -96,40 +96,44 @@ h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
 /* ---------- Nav ---------- */
 header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 
-/* Phones: the signed-out header (logo + wordmark + "Link Tesla Account" + Submit + Sign In) needs ~400px, wider
-   than a 375/390px screen, so the page scrolled sideways by ~11px and items ran into each other. Tighten it below
-   the sm breakpoint (640px) only, and only on pages whose header has that button. The button keeps its full
-   "Link Tesla Account" label (it may wrap to two lines); Submit and Sign In never shrink below their text, so
-   the Link Tesla button absorbs the squeeze. Desktop and tablet are untouched. */
+/* Phones: reduce the header's own side padding and item spacing so the
+   signed-out cluster (logo + wordmark + Link Tesla Account + Submit + Sign
+   In) doesn't scroll the page sideways. Only pages whose header has the
+   Tesla-link button need this — the others (e.g. the Cars pages) never
+   carry that extra element. */
 @media (max-width:639px){
   header:has(#teslaLinkBtn) > div{padding-left:1rem; padding-right:1rem;}
   header:has(#teslaLinkBtn) .gap-3{gap:.5rem;}
-  header:has(#teslaLinkBtn) .px-4{padding-left:.75rem; padding-right:.75rem;}
-  header:has(#teslaLinkBtn) > div > a:first-child,
-  header:has(#teslaLinkBtn) #openSightingDrawer,
-  header:has(#teslaLinkBtn) #accountSignedOut a{flex-shrink:0; white-space:nowrap;}
-  header:has(#teslaLinkBtn) #teslaLinkBtn{font-size:.75rem; line-height:1rem;}
 }
 /* Below ~520px there is no room for the wordmark beside the logo image as well; the image link keeps its alt text. */
 @media (max-width:519px){
   header:has(#teslaLinkBtn) > div > a:first-child > div{display:none;}
 }
-@media (max-width:339px){
-  header:has(#teslaLinkBtn) .px-4{padding-left:.25rem; padding-right:.25rem;}
+
+/* Mobile-only sizing for the three header action buttons (Link Tesla
+   Account, Submit, Sign In) — smaller and more compact below the lg
+   breakpoint (1024px, the same range #mobileBottomNav below covers), so
+   "Link Tesla Account" in particular doesn't dominate the header before an
+   account is linked. Desktop (>=1024px) keeps its existing size exactly;
+   nothing else on the page is affected. */
+@media (max-width:1023px){
+  #teslaLinkBtn, #openSightingDrawer, #accountSignedOut a{
+    padding-left:.75rem; padding-right:.75rem; padding-top:.5rem; padding-bottom:.5rem;
+    font-size:.75rem; line-height:1rem;
+  }
+  #teslaLinkBtn{white-space:nowrap;}
 }
 
-/* Mobile nav toggle: joining the same signed-out header row above re-creates
-   the same tightness the fix above solves, so it gets an equivalently small
-   footprint at the same breakpoints rather than re-tuning the elements
-   above. Applies on every page that has the toggle (with or without
-   #teslaLinkBtn — e.g. the Cars pages, which never show that button). */
-@media (max-width:639px){
-  header:has(#mobileNavToggle) .gap-3{gap:.375rem;}
-  header:has(#mobileNavToggle) #mobileNavToggle{width:2rem; height:2rem; border-width:0; background:transparent;}
-  header:has(#mobileNavToggle) #mobileNavToggle svg{width:1.15rem; height:1.15rem;}
-}
-@media (max-width:339px){
-  header:has(#mobileNavToggle) #mobileNavToggle{width:1.75rem; height:1.75rem; margin-left:-.25rem;}
+/* ---------- Mobile bottom nav ---------- */
+/* Replaces the old hamburger/drawer below the lg breakpoint. Fixed to the
+   viewport bottom, so page content needs matching bottom padding or its
+   last few pixels (and any bottom-anchored controls) would sit underneath
+   it — added only on pages that actually have the bar. iOS's home-indicator
+   safe area is handled on the bar's own padding, not the body compensation,
+   since that inset is device-specific and not something to guess a fixed
+   pixel value for. */
+@media (max-width:1023px){
+  body:has(#mobileBottomNav){padding-bottom:4.5rem;}
 }
 #navIndicator{
   position:absolute; bottom:-1px; height:2px;

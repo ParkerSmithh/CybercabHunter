@@ -60,18 +60,20 @@ const CCC = (() => {
     let path = location.pathname.split('/').pop() || 'index.html';
     path = path.replace('.html', '') || 'index';
 
-    // The mobile nav drawer duplicates these same [data-nav] links (see
-    // initMobileNav) so both copies highlight together, but only the copy
+    // The mobile bottom nav (#mobileBottomNav) duplicates these same
+    // [data-nav] links so both copies highlight together, but only the copy
     // inside the desktop <nav> (indicator's own parent) can host the sliding
-    // gold indicator — the drawer's copy lives off-canvas and would hand
-    // getBoundingClientRect() a zero rect while hidden.
+    // gold indicator — the bottom nav's copy is a different element entirely
+    // and has no indicator of its own.
     let activeLink = null;
     links.forEach(link => {
       if (link.dataset.nav === path) {
         link.classList.add('text-gold');
+        link.setAttribute('aria-current', 'page');
         if (indicator && link.parentElement === indicator.parentElement) activeLink = link;
       } else {
         link.classList.remove('text-gold');
+        link.removeAttribute('aria-current');
       }
     });
 
@@ -82,38 +84,6 @@ const CCC = (() => {
       indicator.style.width = linkRect.width + 'px';
       indicator.classList.add('is-active');
     }
-  }
-
-  /* ---------------- Mobile nav drawer ---------------- */
-  // Same drawer/backdrop/is-open mechanism as the Submit and Account drawers
-  // below (initSightingDrawer, initAccountMenu) — not a second mechanism.
-  function initMobileNav() {
-    const toggle = document.getElementById('mobileNavToggle');
-    const drawer = document.getElementById('mobileNavDrawer');
-    const backdrop = document.getElementById('mobileNavBackdrop');
-    const closeBtn = document.getElementById('closeMobileNavDrawer');
-    if (!toggle || !drawer || !backdrop) return;
-
-    function open() {
-      drawer.classList.add('is-open');
-      backdrop.classList.add('is-open');
-      toggle.setAttribute('aria-expanded', 'true');
-    }
-    function close() {
-      drawer.classList.remove('is-open');
-      backdrop.classList.remove('is-open');
-      toggle.setAttribute('aria-expanded', 'false');
-    }
-
-    toggle.addEventListener('click', () => {
-      if (drawer.classList.contains('is-open')) close(); else open();
-    });
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', close);
-    drawer.querySelectorAll('[data-nav]').forEach(link => link.addEventListener('click', close));
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && drawer.classList.contains('is-open')) close();
-    });
   }
 
   /* ---------------- Reveal on scroll ---------------- */
@@ -602,7 +572,6 @@ const CCC = (() => {
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
-    initMobileNav();
     initReveal();
     initParticles();
     initSightingDrawer();
@@ -611,5 +580,5 @@ const CCC = (() => {
     initAccountMenu();
   }
 
-  return { data, storage, merge, initNav, initMobileNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, init };
 })();
