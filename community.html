@@ -56,9 +56,27 @@
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
+      <button id="mobileNavToggle" type="button" class="lg:hidden w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.25)] text-slate-200 hover:text-white flex items-center justify-center shrink-0" aria-expanded="false" aria-controls="mobileNavDrawer" aria-label="Open navigation menu">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
     </div>
   </div>
 </header>
+
+<div id="mobileNavBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm lg:hidden"></div>
+<nav id="mobileNavDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-xs glass-strong p-8 overflow-y-auto lg:hidden" aria-label="Mobile navigation">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="font-display font-bold text-xl">MENU</h3>
+    <button id="closeMobileNavDrawer" type="button" class="text-slate-400 hover:text-white text-2xl leading-none" aria-label="Close navigation menu">&times;</button>
+  </div>
+  <div class="flex flex-col gap-1">
+    <a href="infrastructure.html" data-nav="infrastructure" class="px-3 py-3 rounded-lg text-sm font-medium uppercase tracking-wide text-slate-300 hover:bg-white/5 hover:text-white transition-colors">ZONES</a>
+    <a href="/vehicles" data-nav="vehicles" class="px-3 py-3 rounded-lg text-sm font-medium uppercase tracking-wide text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Cars</a>
+    <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="px-3 py-3 rounded-lg text-sm font-medium uppercase tracking-wide text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Fleet ETA</a>
+    <a href="fleet-calculator.html" data-nav="fleet-calculator" class="px-3 py-3 rounded-lg text-sm font-medium uppercase tracking-wide text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Fleet ROI</a>
+    <a href="community.html" data-nav="community" class="px-3 py-3 rounded-lg text-sm font-medium uppercase tracking-wide text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Community</a>
+  </div>
+</nav>
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">

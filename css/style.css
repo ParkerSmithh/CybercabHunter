@@ -115,7 +115,21 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
   header:has(#teslaLinkBtn) > div > a:first-child > div{display:none;}
 }
 @media (max-width:339px){
-  header:has(#teslaLinkBtn) .px-4{padding-left:.5rem; padding-right:.5rem;}
+  header:has(#teslaLinkBtn) .px-4{padding-left:.25rem; padding-right:.25rem;}
+}
+
+/* Mobile nav toggle: joining the same signed-out header row above re-creates
+   the same tightness the fix above solves, so it gets an equivalently small
+   footprint at the same breakpoints rather than re-tuning the elements
+   above. Applies on every page that has the toggle (with or without
+   #teslaLinkBtn — e.g. the Cars pages, which never show that button). */
+@media (max-width:639px){
+  header:has(#mobileNavToggle) .gap-3{gap:.375rem;}
+  header:has(#mobileNavToggle) #mobileNavToggle{width:2rem; height:2rem; border-width:0; background:transparent;}
+  header:has(#mobileNavToggle) #mobileNavToggle svg{width:1.15rem; height:1.15rem;}
+}
+@media (max-width:339px){
+  header:has(#mobileNavToggle) #mobileNavToggle{width:1.75rem; height:1.75rem; margin-left:-.25rem;}
 }
 #navIndicator{
   position:absolute; bottom:-1px; height:2px;
