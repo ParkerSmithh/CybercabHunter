@@ -148,7 +148,7 @@ async function run() {
       check(`${path}: ordinary user -> 403`, (await call(ctx, path, as('rider'))).status === 403);
       check(`${path}: moderator -> 200`, (await call(ctx, path, as('mod'))).status === 200);
     }
-    const write = await call(ctx, '/api/moderation/robotaxi-vehicles/00000000-0000-4000-8000-000000000000/review', { ...as('rider'), 'Content-Type': 'application/json' }, { method: 'POST', body: JSON.stringify({ action: 'approve_public' }) });
+    const write = await call(ctx, '/api/moderation/robotaxi-vehicles/00000000-0000-4000-8000-000000000000/review', { ...as('rider'), 'Content-Type': 'application/json' }, { method: 'POST', body: JSON.stringify({ action: 'approve_cybercab' }) });
     check('an ordinary user cannot use the review action', write.status === 403);
     check('a forged role in the request body/query changes nothing', (await call(ctx, '/api/moderation/robotaxi-vehicles?role=moderator&is_moderator=true', { ...as('rider'), 'X-Role': 'moderator' })).status === 403);
   }

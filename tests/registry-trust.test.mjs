@@ -269,7 +269,9 @@ async function run() {
     check('the rider who imported it cannot make it public either', (await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${id}`, 'rider', { visibility: 'public' })).status === 403);
 
     // Public visibility is granted ONLY by the review action (Phase 3H); PATCH can no longer do it.
-    const ok = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_public' });
+    // approve_cybercab is the only remaining approval action, and requires a vin first.
+    await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/vin`, 'mod', { vin: '5YJSA1E14FF101183' });
+    const ok = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_cybercab' });
     check('a moderator approves it (through the review action)', ok.status === 200);
     check('now it is public', (await vehiclePage(ctx, id)).status === 200);
     await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${id}`, 'mod', { visibility: 'private' });
@@ -283,7 +285,7 @@ async function run() {
     const id = ctx.d1.query("SELECT id FROM robotaxi_vehicles WHERE license_plate = 'REV1234'")[0].id;
     check('a needs_review receipt still creates an internal (private) vehicle', r.review_status === 'needs_review' && vehicleRow(ctx, id).visibility === 'private');
     // Phase 3H tightened this: a vehicle with no counted ride can no longer be flagged public at all.
-    const resp = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_public' });
+    const resp = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_cybercab' });
     const body2 = await resp.json();
     check('a moderator can NOT approve it: 409 not_eligible, because it has no counted ride', resp.status === 409 && body2.error === 'not_eligible' && body2.blocking_reasons.includes('no_counted_rides') && vehicleRow(ctx, id).visibility === 'private');
     const viaPatch = await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${id}`, 'mod', { visibility: 'public' });
@@ -391,13 +393,22 @@ async function run() {
     const history = JSON.stringify(await db.getRobotaxiVehicleHistory(ctx.d1, id));
     const before = vehicleRow(ctx, id);
 
-    const makePublic = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_public' });
+    // approve_cybercab is the only remaining approval action, and requires a vin first.
+    await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/vin`, 'mod', { vin: '5YJSA1E14FF101183' });
+    const makePublic = await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_cybercab' });
     const mp = await makePublic.json();
     check('a moderator can make an eligible vehicle public through the review action -> 200', makePublic.status === 200 && mp.success === true);
     check('the stored visibility changed', vehicleRow(ctx, id).visibility === 'public');
     check('the response reports the fresh state, including eligibility', mp.vehicle.visibility === 'public' && mp.vehicle.counted_ride_count === 1 && mp.vehicle.publicly_eligible === true);
     check('the response has exactly the registry + provenance fields and no rider/receipt data', JSON.stringify(Object.keys(mp.vehicle).sort()) === '["approval","can_approve_cybercab","counted_ride_count","counted_rides_by_source","created_at","first_counted_ride_date","first_seen_at","id","last_counted_ride_date","last_seen_at","latest_review","license_plate","needs_review_ride_count","plate_vehicle_count","publicly_eligible","rejected_ride_count","total_trip_count","verification_status","vin","visibility"]' && !/rider|user_id|pickup|dropoff|@/i.test(JSON.stringify(mp).replace(/"moderator_user_id"/g, '')) && !/email/i.test(JSON.stringify(mp).replace(/receipt_email/g, '')));
     check('the public endpoint now serves it', (await vehiclePage(ctx, id)).status === 200);
+    // approve_cybercab itself DOES set model/color/service_area (tested thoroughly
+    // elsewhere, in registry-review-approval.test.mjs) — snapshot again here, after
+    // approval, so the takedown check below proves what it actually needs to: that
+    // RETURNING to private doesn't touch metadata a second time, not that approval
+    // itself left everything alone (it deliberately doesn't).
+    const afterApproval = vehicleRow(ctx, id);
+    check('approve_cybercab did set model/color (expected — not part of what this test protects)', afterApproval.model === 'Cybercab' && afterApproval.color === 'Gold');
 
     const makePrivate = await patch('mod', { visibility: 'private' });
     check('a moderator can make a vehicle private -> 200', makePrivate.status === 200 && vehicleRow(ctx, id).visibility === 'private');
@@ -407,7 +418,8 @@ async function run() {
     const after = vehicleRow(ctx, id);
     check('ride statistics are unchanged (trips, history)', snapshot(ctx, 'trips') === trips && JSON.stringify(await db.getRobotaxiVehicleHistory(ctx.d1, id)) === history);
     check('submissions and observations are unchanged', snapshot(ctx, 'submissions') === subs && snapshot(ctx, 'vehicle_observations') === obs);
-    check('no vehicle metadata changed: only visibility (and updated_at bookkeeping)', ['id', 'provider', 'license_plate', 'model', 'color', 'service_area', 'first_seen_at', 'last_seen_at', 'verification_status', 'created_at'].every(k => after[k] === before[k]));
+    check('returning to private changes only visibility (and updated_at bookkeeping) — no SECOND metadata change on top of approval\'s', ['id', 'provider', 'license_plate', 'model', 'color', 'service_area', 'first_seen_at', 'last_seen_at', 'verification_status', 'created_at'].every(k => after[k] === afterApproval[k]));
+    check('license_plate/provider/first_seen_at/etc — the fields approve_cybercab itself never touches — are unchanged all the way back to before approval too', ['id', 'provider', 'license_plate', 'first_seen_at', 'last_seen_at', 'verification_status', 'created_at'].every(k => after[k] === before[k]));
 
     for (const [label, body] of [['an unsupported value', { visibility: 'hidden' }], ['a missing field', {}], ['a number', { visibility: 1 }], ['null', { visibility: null }], ['uppercase', { visibility: 'PUBLIC' }], ['a boolean', { visibility: true }]]) {
       const r = await patch('mod', body);

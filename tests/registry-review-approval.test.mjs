@@ -38,8 +38,19 @@ async function pub(ctx, p) {
   return { status: r.status, text: await r.text(), cache: r.headers.get('Cache-Control') };
 }
 const review = (ctx, user, id, body, raw) => call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, user, body, raw);
-const approve = (ctx, user, id, reason) => review(ctx, user, id, { action: 'approve_public', ...(reason !== undefined ? { reason } : {}) });
 const approveCybercab = (ctx, user, id, reason) => review(ctx, user, id, { action: 'approve_cybercab', ...(reason !== undefined ? { reason } : {}) });
+// The ordinary/ungated "approve" action no longer exists — approve_cybercab is
+// the only remaining approval path, and it requires a vin. This helper keeps
+// every existing call site (this file has many, all exercising the SAME
+// shared guard: counted ride, unique plate, race safety, audit trail — none
+// of that changed) working unchanged by quietly ensuring a vin is on file
+// first. The vin write is best-effort/idempotent here: if the caller isn't a
+// real moderator, or a vin is already set, it's simply ignored and the
+// review call below still runs (and still correctly fails) on its own.
+async function approve(ctx, user, id, reason) {
+  await setVin(ctx, user, id, VIN_A).catch(() => {});
+  return review(ctx, user, id, { action: 'approve_cybercab', ...(reason !== undefined ? { reason } : {}) });
+}
 const giveBack = (ctx, user, id, reason) => review(ctx, user, id, { action: 'return_private', ...(reason !== undefined ? { reason } : {}) });
 const setVin = (ctx, user, id, vin, raw) => call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/vin`, user, vin === undefined ? undefined : { vin }, raw);
 const VIN_A = '5YJSA1E14FF101183';
@@ -64,7 +75,7 @@ async function run() {
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const v = rawVehicle(ctx, id(1), 'AUT0001'); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
     const routes = [
-      ['POST review', () => review(ctx, undefined, v, { action: 'approve_public' }), () => review(ctx, 'rider', v, { action: 'approve_public' })],
+      ['POST review', () => review(ctx, undefined, v, { action: 'approve_cybercab' }), () => review(ctx, 'rider', v, { action: 'approve_cybercab' })],
       ['GET reviews', () => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${v}/reviews`, undefined), () => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${v}/reviews`, 'rider')],
       ['GET list', () => call(ctx, 'GET', '/api/moderation/robotaxi-vehicles?scope=private', undefined), () => call(ctx, 'GET', '/api/moderation/robotaxi-vehicles?scope=private', 'rider')],
       ['PATCH', () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, undefined, { visibility: 'public' }), () => call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${v}`, 'rider', { visibility: 'public' })],
@@ -76,7 +87,7 @@ async function run() {
       check(`${name}: ordinary user -> 403 with no registry data`, r.status === 403 && !/AUT0001|counted|approval|reviews|license_plate/.test(txt));
     }
     check('none of the refused requests changed anything or wrote history', vis(ctx, v) === 'private' && rows(ctx).length === 0);
-    check('a bogus bearer token is 401', (await worker.fetch(new Request(`https://x/api/moderation/robotaxi-vehicles/${v}/review`, { method: 'POST', headers: { Origin: 'https://cybercabhunter.com', Authorization: 'Bearer nope', 'Content-Type': 'application/json' }, body: '{"action":"approve_public"}' }), ctx.env, {})).status === 401);
+    check('a bogus bearer token is 401', (await worker.fetch(new Request(`https://x/api/moderation/robotaxi-vehicles/${v}/review`, { method: 'POST', headers: { Origin: 'https://cybercabhunter.com', Authorization: 'Bearer nope', 'Content-Type': 'application/json' }, body: '{"action":"approve_cybercab"}' }), ctx.env, {})).status === 401);
     check('a moderator is allowed', (await approve(ctx, 'mod', v)).status === 200);
     check('the moderator can read the history', (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${v}/reviews`, 'mod')).status === 200);
   }
@@ -160,10 +171,10 @@ async function run() {
     await bad('a missing action', review(ctx, 'mod', v, {}), 400, 'invalid_action');
     await bad('the legacy visibility field is not accepted here', review(ctx, 'mod', v, { visibility: 'public' }), 400, 'invalid_action');
     await bad('a non-JSON body', review(ctx, 'mod', v, undefined, 'not json'), 400, 'invalid_body');
-    await bad('an array body', review(ctx, 'mod', v, ['approve_public']), 400, 'invalid_body');
+    await bad('an array body', review(ctx, 'mod', v, ['approve_cybercab']), 400, 'invalid_body');
     await bad('a non-string reason', approve(ctx, 'mod', v, 42), 400, 'invalid_reason');
     await bad('an over-long reason (281)', approve(ctx, 'mod', v, 'x'.repeat(281)), 400, 'invalid_reason');
-    await bad('a malformed vehicle id', review(ctx, 'mod', 'not-a-uuid', { action: 'approve_public' }), 400, 'invalid_vehicle_id');
+    await bad('a malformed vehicle id', review(ctx, 'mod', 'not-a-uuid', { action: 'approve_cybercab' }), 400, 'invalid_vehicle_id');
     await bad('a well-formed but missing vehicle', approve(ctx, 'mod', MISSING), 404, 'not_found');
     check('nothing was changed or recorded by any invalid request', vis(ctx, v) === 'private' && rows(ctx).length === 0);
     check('a 280-character reason is accepted', (await approve(ctx, 'mod', v, 'y'.repeat(280))).status === 200);
@@ -295,7 +306,7 @@ async function run() {
 
     // The review endpoint remains the authoritative way.
     const viaReview = await approve(ctx, 'mod', eligible, 'Reviewed.'); const rj = await viaReview.json();
-    check('POST /review approve_public still approves the same vehicle (200)', viaReview.status === 200 && rj.success === true && rj.action === 'approved_public' && vis(ctx, eligible) === 'public');
+    check('POST /review approve_cybercab still approves the same vehicle (200)', viaReview.status === 200 && rj.success === true && rj.action === 'approved_public' && vis(ctx, eligible) === 'public');
     check('and it wrote exactly one audit row: moderator, timestamp, reason and the decision-time counts', rows(ctx).length === 1 && rows(ctx)[0].moderator_user_id === 'mod' && rows(ctx)[0].action === 'approved_public' && rows(ctx)[0].reason === 'Reviewed.' && rows(ctx)[0].counted_ride_count === 1 && rows(ctx)[0].plate_vehicle_count === 1 && /^\d{4}-\d{2}-\d{2} /.test(rows(ctx)[0].created_at));
     check('the approved vehicle is publicly accessible (vehicle and sightings endpoints)', (await pub(ctx, `/api/robotaxi-vehicles/${eligible}`)).status === 200 && (await pub(ctx, `/api/robotaxi-vehicles/${eligible}/sightings`)).status === 200);
     check('the duplicate rows are still refused by the review action too', (await approve(ctx, 'mod', dupA)).status === 409 && (await approve(ctx, 'mod', noRides)).status === 409 && (await approve(ctx, 'mod', reviewOnly)).status === 409 && rows(ctx).length === 1);
@@ -327,10 +338,11 @@ async function run() {
   {
     // The handler reads the vehicle, sees it eligible, and only THEN writes. Here the world changes in exactly that gap: the wrapped database runs
     // `mutate` just before the handler's atomic batch. The single-connection test database proves the logic, not D1's parallelism.
-    const interleaved = async (setup, mutate, action = 'approve_public') => {
+    const interleaved = async (setup, mutate, action = 'approve_cybercab') => {
       const ctx = await makeApp({ rider: 'user', mod: 'moderator', mod2: 'moderator' });
       ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };
       const v = setup(ctx);
+      if (action === 'approve_cybercab') await setVin(ctx, 'mod', v, VIN_A).catch(() => {});
       const real = ctx.d1; let fired = false;
       ctx.env.cybercabhunter_db = { prepare: real.prepare.bind(real), exec: real.exec.bind(real), query: real.query.bind(real),
         async batch(statements) { if (!fired) { fired = true; mutate(real, v); } return real.batch(statements); } };
@@ -350,7 +362,7 @@ async function run() {
     refusedApproval('its only ride is rejected', await interleaved(eligibleVehicle, (d, v) => d.exec(`UPDATE submissions SET status = 'rejected' WHERE id IN (SELECT submission_id FROM trips WHERE robotaxi_vehicle_id = '${v}')`)), 'no_counted_rides');
     refusedApproval('its only ride is superseded by another trip', await interleaved(eligibleVehicle, (d, v) => { const other = rawVehicle({ d1: d }, id(201), 'OTH0201'); const winner = seedRide(d, { userId: 'rider', vehicleId: other, status: 'pending' }); d.exec(`UPDATE trips SET superseded_by = '${winner}' WHERE robotaxi_vehicle_id = '${v}'`); }), 'no_counted_rides');
     refusedApproval('a second registry row for the same plate appears', await interleaved(eligibleVehicle, d => rawVehicle({ d1: d }, id(202), 'RAC-0200')), 'duplicate_plate');
-    check('control: with NO interleaving the same vehicle is approved through the same handler (200) and one audit row is written', await (async () => { const ctx = await makeApp({ rider: 'user', mod: 'moderator' }); const v = eligibleVehicle(ctx); const r = await review(ctx, 'mod', v, { action: 'approve_public' }); return r.status === 200 && vis(ctx, v) === 'public' && rows(ctx).length === 1; })());
+    check('control: with NO interleaving the same vehicle is approved through the same handler (200) and one audit row is written', await (async () => { const ctx = await makeApp({ rider: 'user', mod: 'moderator' }); const v = eligibleVehicle(ctx); await setVin(ctx, 'mod', v, VIN_A); const r = await review(ctx, 'mod', v, { action: 'approve_cybercab' }); return r.status === 200 && vis(ctx, v) === 'public' && rows(ctx).length === 1; })());
 
     // Another moderator gets there first.
     const wonByOther = await interleaved(eligibleVehicle, (d, v) => d.exec(`UPDATE robotaxi_vehicles SET visibility = 'public' WHERE id = '${v}'`));
@@ -362,7 +374,8 @@ async function run() {
     // Two moderators approving at the same moment.
     const ctx = await makeApp({ rider: 'user', mod: 'moderator', mod2: 'moderator' });
     const v = eligibleVehicle(ctx);
-    const both = await Promise.all([review(ctx, 'mod', v, { action: 'approve_public' }), review(ctx, 'mod2', v, { action: 'approve_public' })]);
+    await setVin(ctx, 'mod', v, VIN_A);
+    const both = await Promise.all([review(ctx, 'mod', v, { action: 'approve_cybercab' }), review(ctx, 'mod2', v, { action: 'approve_cybercab' })]);
     check('two moderators approving concurrently: exactly one 200 and one 409', both.map(r => r.status).sort().join() === '200,409');
     check('and exactly one history row exists (no duplicate audit entry)', rows(ctx).length === 1 && vis(ctx, v) === 'public');
   }
@@ -531,7 +544,7 @@ async function run() {
   {
     const ctx = await makeApp({ mod: 'moderator' }); ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };
     check('there is still no bulk-approve route, and /vehicles is only a static page, not a Worker route (the public list itself lives in vehicle-registry.test.mjs)', (await call(ctx, 'GET', '/vehicles', null)).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/approve-all', 'mod', {})).status === 404 && (await call(ctx, 'POST', '/api/moderation/robotaxi-vehicles/review', 'mod', {})).status === 404);
-    check('the review route accepts only POST', (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod')).status === 404 && (await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod', { action: 'approve_public' })).status === 404);
+    check('the review route accepts only POST', (await call(ctx, 'GET', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod')).status === 404 && (await call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${MISSING}/review`, 'mod', { action: 'approve_cybercab' })).status === 404);
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
     check('exactly one migration was added for this phase (0012), additive only', migrations.includes('0012_robotaxi_vehicle_reviews.sql') && !/\b(DROP|DELETE|UPDATE|ALTER)\b/i.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8').replace(/^--.*$/gm, '')));
     check('the migration creates exactly the review table with the two allowed actions', /CREATE TABLE robotaxi_vehicle_reviews/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')) && /CHECK \(action IN \('approved_public', 'returned_private'\)\)/.test(fs.readFileSync(`${ROOT}migrations/0012_robotaxi_vehicle_reviews.sql`, 'utf8')));
@@ -606,14 +619,21 @@ async function run() {
     check('vin is unchanged after returning to private', (await one(ctx, 'VIN0400')).vin === VIN_A);
   }
 
-  console.log('7c. Regression: a vehicle already public through ORDINARY approve_public cannot have a vin attached afterward (closes the bypass where a vin — and so Cybercab2.png — could reach the public site without Approve Cybercab ever running)');
+  console.log('7c. Regression: a vehicle that is already public cannot have a vin attached afterward (closes the bypass where a vin — and so Cybercab2.png — could reach the public site without Approve Cybercab ever running)');
   {
+    // The ordinary/ungated approval action that used to make this reachable
+    // through normal moderation no longer exists at all (approve_cybercab is
+    // now the only way to grant public visibility, and it requires a vin
+    // first — so "public with no vin" can no longer happen through the API).
+    // The guard being tested here is defense-in-depth for any OTHER way a
+    // vehicle might already be public with no vin — e.g. a legacy row from
+    // before this registry required one — so it's set up directly, exactly
+    // like this file's other "flagged public" fixtures (see hiddenApproved
+    // in section 3 above).
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
-    const v = rawVehicle(ctx, id(405), 'VIN0405'); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
+    const v = rawVehicle(ctx, id(405), 'VIN0405', { visibility: 'public' }); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
 
-    // 1-3: approve it ordinarily (no vin ever involved) and confirm it is public.
-    const approveResp = await approve(ctx, 'mod', v);
-    check('setup: the vehicle is approved through ordinary approve_public, with no vin', approveResp.status === 200 && vis(ctx, v) === 'public' && (await one(ctx, 'VIN0405')).vin === null);
+    check('setup: the vehicle is public with no vin', vis(ctx, v) === 'public' && (await one(ctx, 'VIN0405')).vin === null);
     const auditBefore = rows(ctx).length;
 
     // 4-5: attempt the VIN endpoint on the now-public vehicle -> 409 already_public.
@@ -645,10 +665,10 @@ async function run() {
       const r = await approveCybercab(ctx, 'mod', eligible); const j = await r.json();
       return r.status === 409 && j.error === 'not_eligible' && j.blocking_reasons.join() === 'no_vin' && vis(ctx, eligible) === 'private';
     })());
-    check('ordinary approve_public is completely unaffected: it still needs no vin at all', await (async () => {
+    check('approve_public is no longer a recognized action at all: 400 invalid_action, nothing changed', await (async () => {
       const other = rawVehicle(ctx, id(411), 'PUB0411'); seedRide(ctx.d1, { userId: 'rider', vehicleId: other, status: 'pending' });
-      const r = await approve(ctx, 'mod', other);
-      return r.status === 200 && vis(ctx, other) === 'public' && (await one(ctx, 'PUB0411')).vin === null;
+      const r = await review(ctx, 'mod', other, { action: 'approve_public' }); const j = await r.json();
+      return r.status === 400 && j.error === 'invalid_action' && vis(ctx, other) === 'private';
     })());
     check('a vehicle that is missing BOTH a counted ride and a vin reports both reasons together', await (async () => {
       const empty = rawVehicle(ctx, id(412), 'CYB0412');
@@ -656,26 +676,26 @@ async function run() {
       return r.status === 409 && j.blocking_reasons.sort().join() === ['no_counted_rides', 'no_vin'].sort().join();
     })());
     check('evaluateVehicleApproval itself never mentions vin: ordinary approval state/can_approve for the vehicle above are unaffected by having no vin', (await one(ctx, 'CYB0410')).approval.state === 'eligible_for_approval' && (await one(ctx, 'CYB0410')).approval.can_approve === true && !('vin' in (await one(ctx, 'CYB0410')).approval));
-    check('no history row was written by any refused approve_cybercab attempt', rows(ctx).length === 1); // only PUB0411's approve_public above
+    check('no history row was written by any refused attempt so far (missing vin, invalid_action, or missing both)', rows(ctx).length === 0);
 
     await setVin(ctx, 'mod', eligible, VIN_A);
     const auditBefore = rows(ctx).length;
     const r = await approveCybercab(ctx, 'mod', eligible); const j = await r.json();
     check('with the existing guard passing AND a vin on file, approve_cybercab succeeds (200)', r.status === 200 && j.success === true);
-    check('it made the vehicle public, exactly like approve_public would', vis(ctx, eligible) === 'public' && j.vehicle.approval.state === 'public' && j.vehicle.publicly_eligible === true);
+    check('it made the vehicle public', vis(ctx, eligible) === 'public' && j.vehicle.approval.state === 'public' && j.vehicle.publicly_eligible === true);
     check('it did not touch the vin', j.vehicle.vin === VIN_A);
     check('it wrote exactly one audit row, recorded as the SAME approved_public action — no new review action value was introduced', rows(ctx).length === auditBefore + 1 && rows(ctx)[rows(ctx).length - 1].action === 'approved_public' && rows(ctx)[rows(ctx).length - 1].moderator_user_id === 'mod');
     check('it did not touch ride/trip counts', ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 2); // eligible's ride + PUB0411's ride
     check('approve_cybercab sets model to Cybercab and color to Gold, and fills the blank service_area from the vehicle\'s own counted ride', j.vehicle.publicly_eligible === true && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].model === 'Cybercab' && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].color === 'Gold' && ctx.d1.query('SELECT model, color, service_area FROM robotaxi_vehicles WHERE id = ?', eligible)[0].service_area === 'Dallas');
-    check('ordinary approve_public never sets model/color: PUB0411 (approved earlier, above) still has neither', ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].model === null && ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].color === null);
+    check('a vehicle never approved through any path (PUB0411, above) still has no model/color set — the field-fill is exclusive to approve_cybercab succeeding', ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].model === null && ctx.d1.query('SELECT model, color FROM robotaxi_vehicles WHERE id = ?', id(411))[0].color === null);
     check('the vehicle is now publicly reachable and its vin is exposed publicly (only the vin itself, no provenance)', await (async () => {
       const pr = await pub(ctx, `/api/robotaxi-vehicles/${eligible}`); const body = pr.text;
       return pr.status === 200 && body.includes(VIN_A) && !/vin_set_by_user_id|vin_set_at/.test(body);
     })());
 
-    check('approve_cybercab on an already-public vehicle -> 409 already_public, same as approve_public', (await approveCybercab(ctx, 'mod', eligible)).status === 409);
+    check('approve_cybercab on an already-public vehicle -> 409 already_public', (await approveCybercab(ctx, 'mod', eligible)).status === 409);
 
-    // The existing guard (duplicate plate) still applies to approve_cybercab exactly as it does to approve_public.
+    // The existing guard (duplicate plate) still applies to approve_cybercab, unchanged.
     const dupA = rawVehicle(ctx, id(420), 'DUP0420'); const dupB = rawVehicle(ctx, id(421), 'dup-0420');
     for (const d of [dupA, dupB]) seedRide(ctx.d1, { userId: 'rider', vehicleId: d, status: 'pending' });
     await setVin(ctx, 'mod', dupA, VIN_B);

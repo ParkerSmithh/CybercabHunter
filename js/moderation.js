@@ -303,19 +303,21 @@
     const record = `<div class="text-xs text-slate-500 mt-2">Vehicle record created ${esc(fmtDateTime(v.created_at))} · First seen ${esc(fmtDateTime(v.first_seen_at))} · Last receipt activity ${esc(fmtDateTime(v.last_seen_at))}</div>
       <div class="text-xs text-slate-500 mt-1" title="An existing field on the vehicle record. Moderation does not change it.">Record field verification_status: ${esc(v.verification_status || '—')}</div>`;
 
+    // No ordinary "Approve" action exists for registry vehicles — a private
+    // vehicle's only path to public visibility is Approve Cybercab, in the
+    // Cybercab verification panel below (cybercabPanel), which is vin-gated.
+    // This card's own reasons/notes above already explain anything blocking
+    // that (e.g. no counted ride, duplicate plate); Delete remains the only
+    // action offered here for a private vehicle.
     let actions;
     if (mode === 'delete') {
       actions = deletePanel(v);
     } else {
       const busy = vehicleBusy.has(v.id);
       const deleteBtn = `<button type="button" data-vehicle-action="ask-delete" ${busy ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Delete Vehicle</button>`;
-      if (v.visibility === 'public') {
-        actions = `<button type="button" data-vehicle-action="return" ${busy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Return to Private'}</button>${deleteBtn}`;
-      } else if (ap.can_approve) {
-        actions = `<button type="button" data-vehicle-action="approve" ${busy ? 'disabled' : ''} class="btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve'}</button>${deleteBtn}`;
-      } else {
-        actions = `<span class="text-xs text-slate-500">Cannot be approved while the reasons above apply.</span>${deleteBtn}`;
-      }
+      actions = v.visibility === 'public'
+        ? `<button type="button" data-vehicle-action="return" ${busy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Return to Private'}</button>${deleteBtn}`
+        : deleteBtn;
     }
 
     return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-vehicle-id="${esc(v.id)}" data-approval-state="${esc(ap.state || '')}">
@@ -428,8 +430,7 @@
       return;
     }
     pendingReview.delete(vehicleId);
-    const approved = action === 'approve_public' || action === 'approve_cybercab';
-    CCC.toast(approved ? 'Vehicle approved for the public registry.' : 'Vehicle returned to private.', 'success');
+    CCC.toast(action === 'approve_cybercab' ? 'Vehicle approved for the public registry.' : 'Vehicle returned to private.', 'success');
     // Visibility just changed, so this vehicle may no longer belong in the
     // currently selected scope (e.g. it must drop off "Public" the moment
     // it's returned to private, not sit there showing stale private info).
@@ -537,8 +538,7 @@
       const card = btn.closest('[data-vehicle-id]');
       const id = card.dataset.vehicleId;
       const act = btn.dataset.vehicleAction;
-      if (act === 'approve') { submitReview(id, 'approve_public'); }
-      else if (act === 'return') { submitReview(id, 'return_private'); }
+      if (act === 'return') { submitReview(id, 'return_private'); }
       else if (act === 'approve-cybercab') { submitReview(id, 'approve_cybercab'); }
       else if (act === 'save-vin') {
         const input = card.querySelector(`[data-vehicle-vin-input="${CSS.escape(id)}"]`);

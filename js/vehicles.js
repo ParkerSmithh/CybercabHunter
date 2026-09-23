@@ -75,7 +75,15 @@
     a.href = '/vehicle/' + encodeURIComponent(v.id);
     if (v.vin) a.appendChild(cybercabImage());
     a.appendChild(el('h2', 'font-display font-bold text-2xl tracking-tight [overflow-wrap:anywhere]', v.license_plate || 'Plate not recorded'));
-    a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere]', v.model || 'Model not confirmed'));
+    // A confirmed Cybercab (vin present) gets the same compact gold/yellow
+    // badge used on the vehicle detail page (vCybercabBadge), never plain
+    // text — matching styles exactly rather than inventing a new treatment.
+    // An unconfirmed vehicle keeps the existing plain-text model line as-is.
+    if (v.vin) {
+      a.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
+    } else {
+      a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere]', v.model || 'Model not confirmed'));
+    }
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
     a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere]', area || 'Service area not recorded'));

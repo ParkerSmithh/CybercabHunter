@@ -52,10 +52,14 @@ function rawVehicle(ctx, id, plate, { visibility = 'private', updatedAt = '2026-
   return id;
 }
 const listVehicles = (ctx, qs = '') => call(ctx, 'GET', `/api/moderation/robotaxi-vehicles${qs}`, 'mod').then(r => r.json());
-// Public visibility is granted ONLY by the review action (approve_public); PATCH can only take a vehicle private.
-const setVis = (ctx, id, visibility) => (visibility === 'public'
-  ? call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_public' })
-  : call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${id}`, 'mod', { visibility }));
+// Public visibility is granted ONLY by the review action (approve_cybercab,
+// the only remaining approval action — it requires a vin, saved here as a
+// best-effort/idempotent step); PATCH can only take a vehicle private.
+const setVis = async (ctx, id, visibility) => {
+  if (visibility !== 'public') return call(ctx, 'PATCH', `/api/moderation/robotaxi-vehicles/${id}`, 'mod', { visibility });
+  await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/vin`, 'mod', { vin: '5YJSA1E14FF101183' });
+  return call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${id}/review`, 'mod', { action: 'approve_cybercab' });
+};
 const snap = (ctx, table, where = '1=1') => JSON.stringify(ctx.d1.query(`SELECT * FROM ${table} WHERE ${where} ORDER BY id`));
 const id = n => `dddddddd-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const MISSING = '99999999-9999-4999-8999-999999999999';

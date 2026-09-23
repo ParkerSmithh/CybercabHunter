@@ -239,6 +239,17 @@ async function run() {
     check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
     check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('Cybercab2.png'));
+
+    // A confirmed Cybercab's card shows a compact gold/yellow BADGE, never
+    // plain text — reusing the exact detail-page styling (vCybercabBadge in
+    // vehicle.html), not an invented treatment. An ordinary vehicle keeps
+    // its existing plain-text model line untouched.
+    const badge = cybercabCard.querySelector('span');
+    check('the Cybercab card shows a "Cybercab" badge (a <span>, not a plain <p> model line)', !!badge && badge.textContent.trim() === 'Cybercab');
+    check('the badge reuses the exact detail-page vCybercabBadge classes (border, rounded-full, gold-tinted border, uppercase)', badge.className === 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide');
+    check('the Cybercab card does NOT also render a plain-text model paragraph', !cybercabCard.querySelector('p') || !/^Cybercab$/.test((cybercabCard.querySelector('p') || {}).textContent || ''));
+    check('the ordinary vehicle\'s card keeps its existing plain-text model line, not a badge', !ordinaryCard.querySelector('span') && /Model not confirmed/.test(ordinaryCard.textContent));
+    check('the underlying data/classification logic is unchanged — this is presentation only (the API still reports the same vin/model as before)', c.vin === VIN && r.body.vehicles.find(v => v.id === ordinary).vin === null);
   }
 
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');
