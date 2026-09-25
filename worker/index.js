@@ -9,6 +9,7 @@ import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
+import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 
@@ -132,6 +133,12 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiCreateVehicleSighting(request, env, userId), request);
+    }
+
+    // Muse connector: shared-secret, submit-only, server-to-server (no CORS).
+    // See worker/connector.js.
+    if (url.pathname === '/api/connector/vehicle-sightings' && request.method === 'POST') {
+      return apiConnectorCreateVehicleSighting(request, env);
     }
 
     // Moderator-only review queue (worker/moderation.js) — auth AND role
