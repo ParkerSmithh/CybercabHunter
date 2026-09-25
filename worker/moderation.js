@@ -16,6 +16,7 @@ import { tesla } from './tesla.js';
 import { db, VEHICLE_VISIBILITY } from './db.js';
 import { VEHICLE_ID_RE } from './vehicles.js';
 import { normalizePlate } from './plate.js';
+import { normalizeRideDate } from './ride-canonical.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -460,6 +461,95 @@ export async function apiSetRegistryVehicleVin(request, env, vehicleId) {
   }
 
   return Response.json({ success: true, vehicle: fresh });
+}
+
+// POST /api/moderation/robotaxi-vehicles/:id/rides
+//   { "ride_date": "YYYY-MM-DD", "distance"?: number, "distance_unit"?: "mi" | "km", "service_area"?: string }
+//
+// A moderator records one ride against an EXISTING registry vehicle (see
+// db.logModeratorRide for the write sequence, ownership, units and the
+// duplicate rule). The ride is OWNED by the dedicated system user
+// (env.MUSE_CONNECTOR_USER_ID — the established non-login owner of registry-
+// level records) and reviewed_by is the calling moderator; with no system
+// owner configured it is refused (503) and never falls back to the moderator. It adds ride history only: it never changes a vehicle's
+// visibility, approval, VIN, model, color or service area, and it can never
+// make anything public. service_area here is ride-level data (trips.service_area).
+// Unknown body fields are ignored, like every other endpoint here.
+//   400 invalid_vehicle_id | invalid_body | invalid_ride_date | future_ride_date |
+//       invalid_distance | invalid_distance_unit | invalid_service_area
+//   404 not_found   409 duplicate_ride   503 system_owner_not_configured   201 { success, ride, vehicle }
+const MAX_RIDE_SERVICE_AREA = 100;
+const DISTANCE_UNITS = ['mi', 'km'];
+export async function apiLogVehicleRide(request, env, vehicleId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  if (!VEHICLE_ID_RE.test(vehicleId)) {
+    return Response.json({ success: false, error: 'invalid_vehicle_id' }, { status: 400 });
+  }
+  const body = await readJsonObject(request);
+  if (!body) {
+    return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
+  }
+  const bad = error => Response.json({ success: false, error }, { status: 400 });
+
+  // ride_date: required, a REAL calendar date in exactly YYYY-MM-DD, not after today (UTC).
+  if (typeof body.ride_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.ride_date) || normalizeRideDate(body.ride_date) !== body.ride_date) {
+    return bad('invalid_ride_date');
+  }
+  if (body.ride_date > new Date().toISOString().slice(0, 10)) return bad('future_ride_date');
+
+  // distance: optional; a JSON number that is finite and strictly positive. Never defaulted or guessed.
+  let distance = null;
+  if (body.distance !== undefined && body.distance !== null) {
+    if (typeof body.distance !== 'number' || !Number.isFinite(body.distance) || body.distance <= 0) return bad('invalid_distance');
+    distance = body.distance;
+  }
+  let distanceUnit = 'mi';
+  if (body.distance_unit !== undefined && body.distance_unit !== null) {
+    if (!DISTANCE_UNITS.includes(body.distance_unit)) return bad('invalid_distance_unit');
+    distanceUnit = body.distance_unit;
+  }
+  let serviceArea = null;
+  if (body.service_area !== undefined && body.service_area !== null) {
+    if (typeof body.service_area !== 'string') return bad('invalid_service_area');
+    const trimmed = body.service_area.trim();
+    if (trimmed.length > MAX_RIDE_SERVICE_AREA) return bad('invalid_service_area');
+    serviceArea = trimmed || null;
+  }
+
+  const ownerUserId = env.MUSE_CONNECTOR_USER_ID;
+  if (!ownerUserId) {
+    return Response.json({ success: false, error: 'system_owner_not_configured' }, { status: 503 });
+  }
+  const sql = env.cybercabhunter_db;
+  let result;
+  try {
+    result = await db.logModeratorRide(sql, {
+      vehicleId, moderatorId: auth.userId, ownerUserId, rideDate: body.ride_date, distance, distanceUnit, serviceArea
+    });
+  } catch (err) {
+    return Response.json({ success: false, error: 'log_ride_failed' }, { status: 500 });
+  }
+  if (result.status === 'not_found') {
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+  }
+  if (result.status === 'owner_missing') {
+    return Response.json({ success: false, error: 'system_owner_not_configured' }, { status: 503 });
+  }
+  const vehicle = await db.getRegistryVehicleForModeration(sql, vehicleId);
+  if (result.status === 'duplicate') {
+    return Response.json({ success: false, error: 'duplicate_ride', vehicle }, { status: 409 });
+  }
+  return Response.json({
+    success: true,
+    ride: {
+      id: result.tripId, submission_id: result.submissionId, ride_date: body.ride_date,
+      distance: result.distance, distance_unit: 'mi', service_area: serviceArea,
+      ...(distance !== null && distanceUnit === 'km' ? { converted_from: 'km' } : {})
+    },
+    vehicle
+  }, { status: 201 });
 }
 
 // DELETE /api/moderation/robotaxi-vehicles/:id

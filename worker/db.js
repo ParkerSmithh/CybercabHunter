@@ -597,6 +597,81 @@ async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId 
   return { applied, vehicleId: applied ? vehicleId : null };
 }
 
+// Moderator action: record ONE structured ride against an existing registry
+// vehicle — a normal approved submission + counted trip, so every existing
+// aggregate (Cars list, vehicle page, homepage) picks it up with no new
+// counters. Nothing about the vehicle changes except last_seen_at/updated_at
+// (the same "receipt activity" touch findOrCreateRobotaxiVehicleByPlate makes);
+// visibility, approval, VIN, model, color and service area are never written.
+//
+// Ownership vs provenance. A moderator logging a ride is recording a registry
+// observation, not claiming the ride as their own, so submissions.user_id and
+// trips.user_id are the dedicated SYSTEM owner (`ownerUserId` — the same
+// non-login user, configured as MUSE_CONNECTOR_USER_ID, that already owns the
+// Muse connector's registry-level records). Every rider-level path (Rider
+// Data, "delete my rides", account deletion) is scoped to the caller's own
+// user_id, so none of them can touch or remove it. The actual moderator is
+// recorded in reviewed_by (+ reviewed_at). evidence_type and trips.source are
+// 'manual_entry'.
+// ride_key stays NULL — this adds no new identity scheme, and a trip with no
+// ride_key counts on its own in the physical-ride aggregation.
+//
+// UNITS: every aggregate sums trips.distance as MILES (distance_unit is
+// informational only), so a kilometre value is converted to miles here and the
+// row is stored as 'mi' — storing raw kilometres would silently corrupt the
+// public "Recorded Distance". Rounded to 3 decimals.
+//
+// Duplicate guard (no new identity): refuse when a counted, non-superseded ride
+// (RIDES_FROM + COUNTED_RIDES_WHERE) already exists for the same vehicle, same
+// ride_date and same distance (NULL matches NULL, via IS). The guard is part of
+// the writes themselves, and each later statement only runs if the earlier one
+// did, so the batch (one D1 transaction) writes the submission, the trip and
+// the vehicle touch together or not at all.
+// Returns { status: 'created', tripId, submissionId, distance } | { status: 'not_found' } | { status: 'owner_missing' } | { status: 'duplicate' }.
+const KM_TO_MILES = 0.621371;
+async function logModeratorRide(sql, { vehicleId, moderatorId, ownerUserId, rideDate, distance = null, distanceUnit = 'mi', serviceArea = null }) {
+  const vehicle = await sql.prepare('SELECT id FROM robotaxi_vehicles WHERE id = ?').bind(vehicleId).first();
+  if (!vehicle) return { status: 'not_found' };
+  // Never fall back to the moderator: with no usable system owner nothing is written.
+  const owner = ownerUserId ? await sql.prepare('SELECT id FROM users WHERE id = ?').bind(ownerUserId).first() : null;
+  if (!owner) return { status: 'owner_missing' };
+
+  const miles = distance === null || distance === undefined
+    ? null
+    : (distanceUnit === 'km' ? Math.round(distance * KM_TO_MILES * 1000) / 1000 : distance);
+  const submissionId = newId();
+  const tripId = newId();
+  const duplicate = `EXISTS (
+    SELECT 1 FROM ${RIDES_FROM}
+    WHERE t.robotaxi_vehicle_id = ? AND ${COUNTED_RIDES_WHERE} AND t.ride_date = ? AND t.distance IS ?)`;
+
+  const submissionStmt = sql.prepare(`
+    INSERT INTO submissions (id, user_id, submission_type, status, evidence_type, submitted_at, reviewed_at, reviewed_by)
+    SELECT ?, ?, 'ride_receipt', 'approved', 'manual_entry', datetime('now'), datetime('now'), ?
+    WHERE EXISTS (SELECT 1 FROM robotaxi_vehicles WHERE id = ?) AND NOT ${duplicate}
+  `).bind(submissionId, ownerUserId, moderatorId, vehicleId, vehicleId, rideDate, miles);
+
+  const tripStmt = sql.prepare(`
+    INSERT INTO trips (id, submission_id, user_id, service_area, ride_date, distance, distance_unit,
+                       currency, currency_source, robotaxi_vehicle_id, source)
+    SELECT ?, ?, ?, ?, ?, ?, 'mi', NULL, NULL, ?, 'manual_entry'
+    WHERE EXISTS (SELECT 1 FROM submissions WHERE id = ? AND evidence_type = 'manual_entry')
+  `).bind(tripId, submissionId, ownerUserId, serviceArea, rideDate, miles, vehicleId, submissionId);
+
+  const touchStmt = sql.prepare(`
+    UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ? AND EXISTS (SELECT 1 FROM trips WHERE id = ?)
+  `).bind(vehicleId, tripId);
+
+  const results = await sql.batch([submissionStmt, tripStmt, touchStmt]);
+  const created = !!(results[1] && results[1].meta && results[1].meta.changes > 0);
+  if (created) return { status: 'created', tripId, submissionId, distance: miles };
+
+  // Nothing was written: the vehicle vanished, or an identical ride landed first.
+  const stillThere = await sql.prepare('SELECT id FROM robotaxi_vehicles WHERE id = ?').bind(vehicleId).first();
+  return { status: stillThere ? 'duplicate' : 'not_found' };
+}
+
 // Public registry AGGREGATES for the homepage: how many vehicles are publicly
 // eligible, and how many counted rides belong to exactly those vehicles. Both
 // come from the SAME gate the registry list and the vehicle page use
@@ -1244,6 +1319,7 @@ export const db = {
   getVehicleSightingSubmission,
   reviewVehicleSighting,
   promoteSightingToRegistryVehicle,
+  logModeratorRide,
   getPublicRobotaxiVehicle,
   getPublicRobotaxiVehicles,
   getPublicRegistryStats,

@@ -7,7 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { teslaRides } from './tesla-rides.js';
@@ -161,6 +161,10 @@ export default {
     const moderationVehicleReviewsMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)\/reviews$/);
     if (moderationVehicleReviewsMatch && request.method === 'GET') {
       return withCors(await apiListRegistryVehicleReviews(request, env, moderationVehicleReviewsMatch[1]), request);
+    }
+    const moderationVehicleRidesMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)\/rides$/);
+    if (moderationVehicleRidesMatch && request.method === 'POST') {
+      return withCors(await apiLogVehicleRide(request, env, moderationVehicleRidesMatch[1]), request);
     }
     const moderationVehicleVinMatch = url.pathname.match(/^\/api\/moderation\/robotaxi-vehicles\/([^/]+)\/vin$/);
     if (moderationVehicleVinMatch && request.method === 'POST') {

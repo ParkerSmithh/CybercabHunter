@@ -247,6 +247,8 @@
   // code only labels it. Labels are plain facts — never a score or a ranking.
   const vehicleBusy = new Set();      // vehicle ids with a request in flight
   const pendingReview = new Map();    // vehicle id -> 'delete' (inline confirmation open; approve/return are instant)
+  const logRideDrafts = new Map();    // vehicle id -> { date, miles } typed into that card's Log ride panel
+  const logRideMsgs = new Map();      // vehicle id -> { kind: 'ok' | 'error', text } shown under that panel
 
   const REASON_LABELS = {
     no_counted_rides: 'No counted rides',
@@ -332,6 +334,31 @@
     </div>`;
   }
 
+  // Compact "Log ride" panel: records one ride (date, optional miles) against
+  // this registry vehicle via POST .../rides. It only adds ride history — it
+  // never touches this card's approval/public state. The UI is in miles and
+  // always submits distance_unit "mi".
+  function logRidePanel(v) {
+    const busy = vehicleBusy.has(v.id);
+    const draft = logRideDrafts.get(v.id) || { date: '', miles: '' };
+    const msg = logRideMsgs.get(v.id);
+    const today = new Date().toISOString().slice(0, 10);   // the server rejects any date after today (UTC)
+    const msgHtml = msg
+      ? `<div data-log-ride-msg role="${msg.kind === 'error' ? 'alert' : 'status'}" class="text-xs mt-1 ${msg.kind === 'error' ? 'text-amber-400' : 'text-emerald-400'}">${esc(msg.text)}</div>`
+      : '<div data-log-ride-msg role="status" class="text-xs mt-1"></div>';
+    return `<div class="mt-3 pt-3 border-t border-[rgba(212,175,55,0.1)]" data-log-ride-panel>
+      <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Log ride</div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <input type="date" data-log-ride-date aria-label="Ride date" required max="${esc(today)}" value="${esc(draft.date)}" ${busy ? 'disabled' : ''}
+          class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs disabled:opacity-50">
+        <input type="number" data-log-ride-miles aria-label="Distance in miles (optional)" placeholder="Miles (optional)" min="0" step="any" inputmode="decimal" value="${esc(draft.miles)}" ${busy ? 'disabled' : ''}
+          class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs w-36 disabled:opacity-50">
+        <button type="button" data-vehicle-action="log-ride" ${busy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.3)] text-slate-200 hover:bg-white/5 disabled:opacity-50">${busy ? 'Working…' : 'Log ride'}</button>
+      </div>
+      ${msgHtml}
+    </div>`;
+  }
+
   function vehicleCard(v) {
     const view = vehicleStateView(v);
     const ap = v.approval || { blocking_reasons: [], notes: [], can_approve: false };
@@ -400,6 +427,7 @@
       ${record}
       ${reviewLine(v)}
       ${dupe}
+      ${mode !== 'delete' ? logRidePanel(v) : ''}
       <div class="flex items-center gap-2 flex-wrap pt-4 mt-4 border-t border-[rgba(212,175,55,0.1)]">
         ${actions}
         ${v.publicly_eligible && !mode ? `<a href="vehicle/${esc(v.id)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">View public page →</a>` : ''}
@@ -558,6 +586,65 @@
     CCC.toast('VIN saved.', 'success');
   }
 
+  // POST .../:id/rides — one manually logged ride (see worker/moderation.js
+  // apiLogVehicleRide). Success replaces just this vehicle's data from the
+  // response and re-renders the list; nothing reloads, and the approval/public
+  // state shown is whatever the server reports (it is never changed by this).
+  const LOG_RIDE_ERRORS = {
+    invalid_ride_date: 'That is not a valid date.',
+    future_ride_date: 'The ride date cannot be in the future.',
+    invalid_distance: 'Miles must be a number greater than 0 — or leave it blank.',
+    duplicate_ride: 'A counted ride with that date and distance is already recorded for this vehicle.'
+  };
+  async function submitLogRide(vehicleId, rawDate, rawMiles) {
+    const date = String(rawDate || '').trim();
+    const milesText = String(rawMiles == null ? '' : rawMiles).trim();
+    logRideDrafts.set(vehicleId, { date, miles: milesText });
+    const fail = text => { logRideMsgs.set(vehicleId, { kind: 'error', text }); renderVehicles(); };
+    if (!date) return fail('Pick the ride date.');
+    const payload = { ride_date: date, distance_unit: 'mi' };
+    if (milesText !== '') {
+      const miles = Number(milesText);
+      if (!Number.isFinite(miles) || miles <= 0) return fail(LOG_RIDE_ERRORS.invalid_distance);
+      payload.distance = miles;
+    }
+
+    logRideMsgs.delete(vehicleId);
+    vehicleBusy.add(vehicleId);
+    renderVehicles();
+    let resp;
+    try {
+      resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/rides`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      vehicleBusy.delete(vehicleId);
+      return fail("Couldn't reach the server. Please try again.");
+    }
+    vehicleBusy.delete(vehicleId);
+
+    if (resp.status === 401) { setView('signedOut'); return; }
+    if (resp.status === 403) { setView('forbidden'); return; }
+    const json = resp.json || {};
+    if (resp.status === 404) {
+      vehicles = vehicles.filter(v => v.id !== vehicleId);
+      logRideDrafts.delete(vehicleId); logRideMsgs.delete(vehicleId);
+      renderVehicles();
+      CCC.toast('That vehicle no longer exists — removed from the list.', 'info');
+      return;
+    }
+    if (resp.status === 409 && json.vehicle) replaceVehicle(json.vehicle);
+    if (!resp.ok) {
+      return fail(LOG_RIDE_ERRORS[json.error] || "Couldn't log that ride. Please try again.");
+    }
+    replaceVehicle(json.vehicle);
+    logRideDrafts.delete(vehicleId);
+    const dist = json.ride && json.ride.distance != null ? ` (${Number(json.ride.distance).toFixed(1)} mi)` : ' (no distance)';
+    logRideMsgs.set(vehicleId, { kind: 'ok', text: `Logged a ride on ${fmtDay(json.ride.ride_date)}${dist}. This vehicle now has ${json.vehicle.counted_ride_count} counted ${json.vehicle.counted_ride_count === 1 ? 'ride' : 'rides'}.` });
+    renderVehicles();
+    CCC.toast('Ride logged.', 'success');
+  }
+
   // DELETE .../:id — removes the registry row AND every ride/receipt logged
   // against it (any rider's), freeing those receipts to be resent — see
   // worker/moderation.js's apiDeleteRegistryVehicle. Always drops the
@@ -608,9 +695,22 @@
         const input = card.querySelector(`[data-vehicle-vin-input="${CSS.escape(id)}"]`);
         submitSetVin(id, input ? input.value : '');
       }
+      else if (act === 'log-ride') {
+        const date = card.querySelector('[data-log-ride-date]');
+        const miles = card.querySelector('[data-log-ride-miles]');
+        submitLogRide(id, date ? date.value : '', miles ? miles.value : '');
+      }
       else if (act === 'ask-delete') { pendingReview.set(id, 'delete'); renderVehicles(); }
       else if (act === 'cancel-review') { pendingReview.delete(id); renderVehicles(); }
       else if (act === 'confirm-delete') { submitDelete(id); }
+    });
+    // Keep what was typed in a Log ride panel if the list re-renders (e.g. another card's action).
+    $('modVehicleList').addEventListener('input', e => {
+      const card = e.target.closest('[data-vehicle-id]');
+      if (!card || !e.target.matches('[data-log-ride-date], [data-log-ride-miles]')) return;
+      const draft = logRideDrafts.get(card.dataset.vehicleId) || { date: '', miles: '' };
+      if (e.target.matches('[data-log-ride-date]')) draft.date = e.target.value; else draft.miles = e.target.value;
+      logRideDrafts.set(card.dataset.vehicleId, draft);
     });
     $('modVehicleSearch').addEventListener('submit', e => { e.preventDefault(); loadVehicles(); });
     $('modVehicleScope').addEventListener('change', () => { $('modVehiclePlate').value = ''; loadVehicles(); });
