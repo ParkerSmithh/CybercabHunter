@@ -68,6 +68,7 @@ Placeholder page only. The previously described City Showdown voting, Cybercab B
   - **Approve** — single click, shown only when the vehicle is eligible (private, has a counted ride, unique plate); no confirmation step
   - **Return to Private** — single click, shown for public vehicles; no confirmation step
   - **Delete Vehicle** — two-step confirmation (ask, then confirm), for extra safety. Deleting also purges the ride(s)/receipt(s) logged against that vehicle, for any rider who logged one — this is what actually frees the underlying receipt to be resent and reprocessed, since the ingestion pipeline's duplicate check keys off the trip surviving, not the vehicle link. This is intentional, disclosed in the confirmation text, and not a bug (see `bugs.md`).
+- **Add to registry** (on a sighting card that has a plate and no matching registry vehicle) — creates a *private* registry vehicle from the sighting and approves the sighting in one step. No ride is created: such a vehicle shows "0 counted rides" and "Added from a community sighting", and reaches the public registry only after a moderator enters its VIN and clicks Approve Cybercab (the VIN stands in for the counted-ride requirement that receipt-created vehicles need). Refused when the sighting has no plate or a registry vehicle already holds that plate.
 - Access is restricted to accounts with the `moderator` role (see `docs/registry-preflight.md` for how that's granted)
 
 ## Rider Data (`rider-data.html`)

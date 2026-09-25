@@ -61,6 +61,8 @@
     if (s.color) details.push(`Color: ${esc(s.color)}`);
     if (s.approx_location) details.push(`Near: ${esc(s.approx_location)}`);
     if (s.evidence_ref) details.push('Evidence attached');
+    // Only a sighting with a plate and no registry vehicle yet can become one.
+    const canPromote = !!s.license_plate && !s.robotaxi_vehicle_id;
     const vehicleLine = s.robotaxi_vehicle_id
       ? `<a href="vehicle/${esc(s.robotaxi_vehicle_id)}" class="text-cyan hover:underline" target="_blank" rel="noopener">Linked to an existing registry vehicle →</a>`
       : '<span class="text-slate-500">No matching vehicle in the registry — plate is unrecognized</span>';
@@ -88,6 +90,7 @@
           </div>
         ` : `
           <button type="button" data-action="approve" ${isBusy ? 'disabled' : ''} class="btn-magnetic text-xs font-bold px-4 py-2.5 rounded-lg bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">${isBusy ? 'Working…' : 'Approve'}</button>
+          ${canPromote ? `<button type="button" data-action="promote" ${isBusy ? 'disabled' : ''} title="Creates a private registry vehicle from this sighting and approves the sighting. No ride is created." class="text-xs font-bold px-4 py-2.5 rounded-lg border border-cyan/50 text-cyan hover:bg-cyan/10 disabled:opacity-50">Add to registry</button>` : ''}
           <button type="button" data-action="ask-reject" ${isBusy ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-crimson/50 text-crimson hover:bg-crimson/10 disabled:opacity-50">Reject</button>
         `}
       </div>
@@ -166,6 +169,52 @@
     CCC.toast(action === 'approve' ? 'Sighting approved.' : 'Sighting rejected.', 'success');
   }
 
+  async function promote(submissionId) {
+    busy.add(submissionId);
+    renderQueue();
+    let resp;
+    try {
+      resp = await api(`/api/moderation/vehicle-sightings/${encodeURIComponent(submissionId)}/promote`, { method: 'POST' });
+    } catch (e) {
+      busy.delete(submissionId);
+      renderQueue();
+      CCC.toast("Couldn't reach the server. Please try again.", 'error');
+      return;
+    }
+    busy.delete(submissionId);
+
+    if (resp.status === 401) { setView('signedOut'); return; }
+    if (resp.status === 403) { setView('forbidden'); return; }
+    const error = resp.json && resp.json.error;
+    if (resp.status === 409 && error === 'already_reviewed') {
+      queue = queue.filter(s => s.submission_id !== submissionId);
+      renderQueue();
+      CCC.toast('That sighting was already reviewed — removed from the queue.', 'info');
+      return;
+    }
+    if (resp.status === 409 && error === 'vehicle_exists') {
+      renderQueue();
+      CCC.toast('A registry vehicle with that plate already exists — approve the sighting instead.', 'error');
+      loadQueue(false);
+      return;
+    }
+    if (resp.status === 400 && error === 'plate_required') {
+      renderQueue();
+      CCC.toast('This sighting has no usable plate, so it cannot become a vehicle.', 'error');
+      return;
+    }
+    if (!resp.ok) {
+      renderQueue();
+      CCC.toast("Couldn't add it to the registry. Please try again.", 'error');
+      return;
+    }
+
+    queue = queue.filter(s => s.submission_id !== submissionId);
+    renderQueue();
+    CCC.toast('Added to the registry as a private vehicle — find it under Registry Vehicles.', 'success');
+    loadVehicles();
+  }
+
   function setupActions() {
     $('modList').addEventListener('click', e => {
       const btn = e.target.closest('button[data-action]');
@@ -176,6 +225,8 @@
 
       if (action === 'approve') {
         review(submissionId, 'approve');
+      } else if (action === 'promote') {
+        promote(submissionId);
       } else if (action === 'ask-reject') {
         pendingReject.add(submissionId);
         renderQueue();
@@ -207,7 +258,8 @@
     eligible_counted_ride_present: 'Eligible counted ride present',
     needs_review_ride_present: 'Needs review ride present',
     rejected_only_history: 'Rejected-only history',
-    no_rides_on_record: 'No rides on record (orphaned)'
+    no_rides_on_record: 'No rides on record (orphaned)',
+    added_from_sighting: 'Added from a community sighting'
   };
   const label = (map, code) => map[code] || String(code);
 
@@ -292,7 +344,13 @@
     const dupe = v.plate_vehicle_count > 1
       ? `<div class="text-xs text-amber-400 mt-2">Duplicate plate: ${esc(v.plate_vehicle_count)} registry vehicles share this plate, so it cannot be approved and its sightings are not matched publicly.</div>` : '';
     // Provenance: how the counted rides ENTERED the system. Descriptive only.
-    const provenance = v.counted_ride_count > 0
+    const fromSighting = v.origin === 'sighting';
+    const provenance = fromSighting
+      ? `<div class="text-xs text-slate-400 mt-3">
+           <div class="font-semibold text-slate-300 mb-0.5">How this vehicle was added</div>
+           <div>From a community sighting a moderator added to the registry — no receipt and no rides. A VIN you enter and approve stands in for a counted ride.</div>
+         </div>`
+      : v.counted_ride_count > 0
       ? `<div class="text-xs text-slate-400 mt-3">
            <div class="font-semibold text-slate-300 mb-0.5">How the counted rides entered</div>
            <div>Forwarded email: ${esc(src.receipt_email || 0)} · Import (pasted text or .eml file): ${esc(src.receipt_import || 0)} · Other: ${esc(src.other || 0)}</div>
@@ -300,7 +358,7 @@
          </div>`
       : '<div class="text-xs text-slate-500 mt-3">No counted rides yet, so there is no ride provenance to show.</div>';
     const attached = `<div class="text-xs text-slate-400 mt-2">Rides attached: ${esc(v.counted_ride_count)} counted · ${esc(v.needs_review_ride_count || 0)} needs review · ${esc(v.rejected_ride_count || 0)} rejected · ${esc(v.total_trip_count || 0)} total trips on record</div>`;
-    const record = `<div class="text-xs text-slate-500 mt-2">Vehicle record created ${esc(fmtDateTime(v.created_at))} · First seen ${esc(fmtDateTime(v.first_seen_at))} · Last receipt activity ${esc(fmtDateTime(v.last_seen_at))}</div>
+    const record = `<div class="text-xs text-slate-500 mt-2">Vehicle record created ${esc(fmtDateTime(v.created_at))} · First seen ${esc(fmtDateTime(v.first_seen_at))} · Last ${fromSighting ? 'sighting' : 'receipt'} activity ${esc(fmtDateTime(v.last_seen_at))}</div>
       <div class="text-xs text-slate-500 mt-1" title="An existing field on the vehicle record. Moderation does not change it.">Record field verification_status: ${esc(v.verification_status || '—')}</div>`;
 
     // No ordinary "Approve" action exists for registry vehicles — a private

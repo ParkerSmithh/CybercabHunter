@@ -555,7 +555,13 @@ async function run() {
     // a re-implementation of its own.
     const rideStatusSrc = fs.readFileSync(`${ROOT}worker/ride-status.js`, 'utf8');
     const dbSrc = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
-    check('the public eligibility gate is unchanged: still visibility public AND a counted, non-superseded ride', /visibility = 'public' AND \$\{countedRideExistsSql\(alias\)\}/.test(rideStatusSrc) && /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(rideStatusSrc));
+    // Deliberately changed by the sighting-promotion work (migration 0014): the gate is now visibility public
+    // AND registryEvidenceSql. For a RECEIPT vehicle that is still exactly "a counted, non-superseded ride" —
+    // countedRideExistsSql itself is untouched — and the ONLY alternative is a sighting-origin vehicle with a
+    // non-empty vin. Pin all three pieces so the rule can't drift again without this test being revisited.
+    check('the counted-ride definition itself is unchanged (a counted, non-superseded ride)', /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(rideStatusSrc));
+    check('public eligibility is visibility public AND registryEvidenceSql, nothing else', /visibility = 'public' AND \$\{registryEvidenceSql\(alias\)\}/.test(rideStatusSrc));
+    check('registryEvidenceSql is a counted ride OR (sighting origin AND a non-empty vin) — no other alternative', /\(\$\{countedRideExistsSql\(alias\)\}\s+OR \(\$\{alias\}\.origin = 'sighting' AND \$\{alias\}\.vin IS NOT NULL AND \$\{alias\}\.vin <> ''\)\)/.test(rideStatusSrc));
     check('worker/db.js imports the real gate rather than defining its own copy', /import \{[^}]*publicVehicleEligibleSql[^}]*\}\s*from\s*'\.\/ride-status\.js'/.test(dbSrc) && !/^function publicVehicleEligibleSql/m.test(dbSrc));
   }
 

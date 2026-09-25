@@ -15,6 +15,7 @@
 import { tesla } from './tesla.js';
 import { db, VEHICLE_VISIBILITY } from './db.js';
 import { VEHICLE_ID_RE } from './vehicles.js';
+import { normalizePlate } from './plate.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -140,6 +141,54 @@ export async function apiReviewVehicleSighting(request, env, submissionId) {
   }
 
   return Response.json({ success: true, submission_id: submissionId, status: decision });
+}
+
+// POST /api/moderation/vehicle-sightings/:id/promote   (no body)
+//
+// The moderator's explicit "Add to registry": turns a reviewable sighting
+// with a plate into a PRIVATE registry vehicle (origin 'sighting') and
+// approves the sighting in the same atomic write (db.promoteSightingToRegistryVehicle).
+// No ride is invented. The new vehicle still needs the normal path to go
+// public — a VIN entered by a moderator, then Approve Cybercab — and nothing
+// here makes anything public. 400 plate_required (no usable plate);
+// 409 vehicle_exists (a registry row already holds that plate — approve the
+// sighting normally instead) / already_reviewed; 404 not_found.
+export async function apiPromoteVehicleSighting(request, env, submissionId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  const sql = env.cybercabhunter_db;
+  const existing = await db.getVehicleSightingSubmission(sql, submissionId);
+  if (!existing || existing.submission_type !== 'vehicle_sighting') {
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+  }
+  if (existing.status !== 'pending' && existing.status !== 'needs_review') {
+    return Response.json({ success: false, error: 'already_reviewed', status: existing.status }, { status: 409 });
+  }
+  if (!existing.license_plate || !normalizePlate(existing.license_plate)) {
+    return Response.json({ success: false, error: 'plate_required' }, { status: 400 });
+  }
+  const match = await db.resolveRobotaxiVehicleByPlate(sql, existing.license_plate);
+  if (match.status !== 'none') {
+    return Response.json({ success: false, error: 'vehicle_exists', robotaxi_vehicle_id: match.vehicleId }, { status: 409 });
+  }
+
+  let result;
+  try {
+    result = await db.promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId: auth.userId });
+  } catch (err) {
+    return Response.json({ success: false, error: 'promote_failed' }, { status: 500 });
+  }
+  if (!result.applied) {
+    // Lost a race (another moderator, a second click, or a receipt that just
+    // created the same plate) between the checks above and the atomic write.
+    const fresh = await db.getVehicleSightingSubmission(sql, submissionId);
+    const stillPending = fresh && (fresh.status === 'pending' || fresh.status === 'needs_review');
+    return Response.json({ success: false, error: stillPending ? 'vehicle_exists' : 'already_reviewed' }, { status: 409 });
+  }
+
+  const vehicle = await db.getRegistryVehicleForModeration(sql, result.vehicleId);
+  return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle }, { status: 201 });
 }
 
 // ---- Registry vehicle visibility (Phase 3E) ----

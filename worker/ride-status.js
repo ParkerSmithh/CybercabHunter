@@ -51,12 +51,23 @@ export function countedRideExistsSql(alias) {
   )`;
 }
 
+// THE definition of what backs a registry vehicle. A receipt-origin vehicle
+// (every vehicle created by the receipt pipeline) needs a counted ride. A
+// sighting-origin vehicle — added by a moderator from a reviewed sighting —
+// has no ride by construction, so a moderator-entered VIN stands in for it:
+// the VIN is only ever written by a moderator, only while the vehicle is
+// private, and is never overwritten (worker/moderation.js).
+export function registryEvidenceSql(alias) {
+  return `(${countedRideExistsSql(alias)}
+    OR (${alias}.origin = 'sighting' AND ${alias}.vin IS NOT NULL AND ${alias}.vin <> ''))`;
+}
+
 // THE definition of public eligibility: a moderator has made the vehicle
-// public AND at least one counted, non-superseded ride backs it. Every
-// public-facing surface (the registry list/detail pages, the homepage
-// stats, and any other caller) must reuse this exact function — never a
-// hand-derived equivalent — so eligibility can't quietly drift into a
-// second, weaker definition.
+// public AND it is backed (registryEvidenceSql above — for a receipt vehicle,
+// at least one counted, non-superseded ride). Every public-facing surface
+// (the registry list/detail pages, the homepage stats, and any other caller)
+// must reuse this exact function — never a hand-derived equivalent — so
+// eligibility can't quietly drift into a second, weaker definition.
 export function publicVehicleEligibleSql(alias) {
-  return `${alias}.visibility = 'public' AND ${countedRideExistsSql(alias)}`;
+  return `${alias}.visibility = 'public' AND ${registryEvidenceSql(alias)}`;
 }
