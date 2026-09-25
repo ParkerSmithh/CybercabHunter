@@ -552,7 +552,14 @@ async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, 
 //   3. approve the sighting (reviewed_at/by), only if step 1 inserted.
 // No ride is created: the vehicle's evidence is the VIN a moderator enters
 // later (registryEvidenceSql). Returns { applied, vehicleId }.
-async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId }) {
+//
+// auto: true is the Muse connector registering its OWN submission the moment
+// it arrives (worker/connector.js), with no moderator involved. The vehicle is
+// created identically (private, origin 'sighting'), but no human has looked at
+// the sighting, so the observation is left 'unverified' (never asserted
+// verified) and the submission is closed with no reviewer (reviewed_by NULL —
+// the audit trail shows it was not a moderator's decision).
+async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId = null, auto = false }) {
   const vehicleId = newId();
   const plateOfObservation = sqlNormalizedPlate('o.license_plate');
   const pending = `EXISTS (SELECT 1 FROM submissions WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review'))`;
@@ -573,7 +580,7 @@ async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId 
 
   const linkStmt = sql.prepare(`
     UPDATE vehicle_observations
-    SET robotaxi_vehicle_id = ?, verification_status = 'verified'
+    SET robotaxi_vehicle_id = ?, verification_status = ${auto ? 'verification_status' : "'verified'"}
     WHERE submission_id = ? AND ${pending}
       AND EXISTS (SELECT 1 FROM robotaxi_vehicles WHERE id = ? AND origin = 'sighting')
   `).bind(vehicleId, submissionId, submissionId, vehicleId);

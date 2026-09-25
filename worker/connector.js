@@ -8,8 +8,18 @@
 // as 'pending'/'unverified' in the moderation queue and can never create or
 // change a public registry vehicle. Public reads need no token at all and
 // are untouched by this file.
+//
+// One addition for this route only: a NEW sighting that carries a plate no
+// registry vehicle holds yet is registered straight away as a PRIVATE
+// registry vehicle (origin 'sighting', no ride), so it appears in Registry
+// Vehicles beside the receipt-created ones instead of waiting in the sighting
+// queue. It is still private and hidden; going public still takes a
+// moderator-entered VIN plus Approve Cybercab. A sighting with no plate, or
+// whose plate is already in the registry (linked to that vehicle), stays in
+// the sighting queue as before. Riders' own sightings are unchanged.
 
 import { apiCreateVehicleSighting } from './sightings.js';
+import { db } from './db.js';
 
 export const CONNECTOR_DAILY_LIMIT = 50;
 
@@ -63,5 +73,21 @@ export async function apiConnectorCreateVehicleSighting(request, env) {
     });
   }
 
-  return apiCreateVehicleSighting(request, env, userId);
+  const response = await apiCreateVehicleSighting(request, env, userId);
+  if (response.status !== 201) return response;
+
+  // The submission already exists. Registering it is best-effort: any failure
+  // here leaves the sighting safely in the moderation queue, never lost.
+  try {
+    const body = await response.clone().json();
+    const sql = env.cybercabhunter_db;
+    const obs = await sql.prepare('SELECT license_plate FROM vehicle_observations WHERE id = ?').bind(body.observation_id).first();
+    if (obs && obs.license_plate && !body.robotaxi_vehicle_id) {
+      const { applied, vehicleId } = await db.promoteSightingToRegistryVehicle(sql, { submissionId: body.submission_id, auto: true });
+      if (applied) {
+        return Response.json({ ...body, robotaxi_vehicle_id: vehicleId, registered: true }, { status: 201 });
+      }
+    }
+  } catch (err) { /* fall through: the sighting is queued for a moderator */ }
+  return response;
 }

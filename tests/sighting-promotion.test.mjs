@@ -231,7 +231,7 @@ async function run() {
     check('the CHECK constraint rejects any origin other than receipt/sighting', rejected);
   }
 
-  console.log('8. End to end: a Muse connector submission can be promoted');
+  console.log('8. End to end: a Muse connector submission is registered automatically');
   {
     const ctx = await makeApp({ mod: 'moderator', muse: 'user' });
     ctx.env.MUSE_CONNECTOR_TOKEN = 'connector-token-for-test-0123456789';
@@ -241,9 +241,10 @@ async function run() {
       body: JSON.stringify({ license_plate: 'XVF2567', service_area: 'Austin', model: 'Cybercab', color: 'Gold', notes: 'Filmed 2026-09-04' })
     }), ctx.env, {});
     const s = await json(resp);
-    check('the connector submission is queued', resp.status === 201);
+    check('the connector submission is accepted and registered straight away', resp.status === 201 && s.registered === true);
+    check('it became a private sighting-origin vehicle with no moderator click', vehicles(ctx).length === 1 && vehicles(ctx)[0].origin === 'sighting' && vehicles(ctx)[0].visibility === 'private' && s.robotaxi_vehicle_id === vehicles(ctx)[0].id);
     const r = await promote(ctx, s.submission_id);
-    check('and can be promoted to a private sighting-origin vehicle', r.status === 201 && vehicles(ctx).length === 1 && vehicles(ctx)[0].origin === 'sighting' && vehicles(ctx)[0].visibility === 'private');
+    check('a manual promote afterwards is refused (already handled) and creates no duplicate', r.status === 409 && (await json(r)).error === 'already_reviewed' && vehicles(ctx).length === 1);
     // a later sighting of the same plate links to the new vehicle automatically
     const later = await worker.fetch(new Request('https://x/api/connector/vehicle-sightings', {
       method: 'POST', headers: { Authorization: `Bearer ${ctx.env.MUSE_CONNECTOR_TOKEN}`, 'Content-Type': 'application/json' },
@@ -310,6 +311,30 @@ async function run() {
     check('the Cybercab verification panel (Tracker link, VIN, Approve Cybercab) is present', /Cybercab verification/.test(text) && /Check Robotaxi Tracker/.test(text) && !!vc.querySelector('[data-vehicle-action="save-vin"]') && !!vc.querySelector('[data-vehicle-action="approve-cybercab"]'));
     check('Approve Cybercab is disabled until a VIN is saved', vc.querySelector('[data-vehicle-action="approve-cybercab"]').disabled === true);
     check('Delete Vehicle is offered', !!vc.querySelector('[data-vehicle-action="ask-delete"]'));
+  }
+
+  console.log('11. Moderator card: a sighting-added vehicle that later gets a receipt shows BOTH provenances');
+  {
+    const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
+    const COMBINED = `${fs.readFileSync(`${ROOT}js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8')}`;
+    const ctx = await makeApp();
+    const id = crypto.randomUUID();
+    ctx.d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, origin, visibility) VALUES ('${id}', 'HYB0001', 'sighting', 'private')`);
+    seedRide(ctx.d1, { userId: 'u1', vehicleId: id, status: 'pending', rideDate: '2026-08-29', source: 'receipt_email' });
+    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/moderation.html', pretendToBeVisual: true });
+    const w = dom.window;
+    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+    w.localStorage.setItem('teslaSessionId', 'session-mod');
+    w.fetch = async (url, init = {}) => worker.fetch(new Request(`https://x${String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '')}`, init), ctx.env, {});
+    w.eval(COMBINED);
+    const d = w.document;
+    const end = Date.now() + 2000;
+    while (Date.now() < end && ![...d.querySelectorAll('[data-vehicle-id]')].length) await new Promise(r => setTimeout(r, 5));
+    const card = d.querySelector('[data-vehicle-id]');
+    const text = card ? card.textContent.replace(/\s+/g, ' ') : '';
+    check('the ride provenance is shown (Forwarded email: 1, first/latest counted ride)', /Forwarded email: 1/.test(text) && /First counted ride:/.test(text));
+    check('and it still says the vehicle was added from a community sighting', /How this vehicle was added/.test(text) && /added to the registry without a receipt/.test(text));
+    check('without the "no receipt and no rides" claim, which would now be false', !/no receipt and no rides/.test(text));
   }
 
   t.finish();

@@ -345,17 +345,23 @@
       ? `<div class="text-xs text-amber-400 mt-2">Duplicate plate: ${esc(v.plate_vehicle_count)} registry vehicles share this plate, so it cannot be approved and its sightings are not matched publicly.</div>` : '';
     // Provenance: how the counted rides ENTERED the system. Descriptive only.
     const fromSighting = v.origin === 'sighting';
-    const provenance = fromSighting
-      ? `<div class="text-xs text-slate-400 mt-3">
-           <div class="font-semibold text-slate-300 mb-0.5">How this vehicle was added</div>
-           <div>From a community sighting a moderator added to the registry — no receipt and no rides. A VIN you enter and approve stands in for a counted ride.</div>
-         </div>`
-      : v.counted_ride_count > 0
+    const rideProvenance = v.counted_ride_count > 0
       ? `<div class="text-xs text-slate-400 mt-3">
            <div class="font-semibold text-slate-300 mb-0.5">How the counted rides entered</div>
            <div>Forwarded email: ${esc(src.receipt_email || 0)} · Import (pasted text or .eml file): ${esc(src.receipt_import || 0)} · Other: ${esc(src.other || 0)}</div>
            <div class="mt-1">First counted ride: ${esc(fmtDay(v.first_counted_ride_date))} · Latest counted ride: ${esc(fmtDay(v.last_counted_ride_date))}</div>
          </div>`
+      : '';
+    // A vehicle added from a sighting says so, even after a real receipt later
+    // attaches rides to it — the ride provenance above is then shown as well.
+    const sightingProvenance = fromSighting
+      ? `<div class="text-xs text-slate-400 mt-3">
+           <div class="font-semibold text-slate-300 mb-0.5">How this vehicle was added</div>
+           <div>From a community sighting, added to the registry without a receipt.${v.counted_ride_count > 0 ? '' : ' It has no receipt and no rides; a VIN you enter and approve stands in for a counted ride.'}</div>
+         </div>`
+      : '';
+    const provenance = (rideProvenance || sightingProvenance)
+      ? rideProvenance + sightingProvenance
       : '<div class="text-xs text-slate-500 mt-3">No counted rides yet, so there is no ride provenance to show.</div>';
     const attached = `<div class="text-xs text-slate-400 mt-2">Rides attached: ${esc(v.counted_ride_count)} counted · ${esc(v.needs_review_ride_count || 0)} needs review · ${esc(v.rejected_ride_count || 0)} rejected · ${esc(v.total_trip_count || 0)} total trips on record</div>`;
     const record = `<div class="text-xs text-slate-500 mt-2">Vehicle record created ${esc(fmtDateTime(v.created_at))} · First seen ${esc(fmtDateTime(v.first_seen_at))} · Last ${fromSighting ? 'sighting' : 'receipt'} activity ${esc(fmtDateTime(v.last_seen_at))}</div>
