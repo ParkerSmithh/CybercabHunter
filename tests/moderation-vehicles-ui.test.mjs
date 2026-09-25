@@ -349,7 +349,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 2, 'both duplicates');
     check('both duplicates carry the warning and their own provenance', page.cards().every(c => /Duplicate plate: 2 registry vehicles/.test(c.textContent) && /How the counted rides entered/.test(c.textContent)));
     check('duplicate plates are flagged as a blocking reason and neither can be approved (no ordinary approve, and Approve Cybercab disabled too)', page.cards().every(c => /Duplicate plate/.test(c.textContent) && c.dataset.approvalState === 'not_eligible' && !c.querySelector('button[data-vehicle-action="approve"]') && c.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled));
-    check('there is no merge or resolve control on any card (Delete Vehicle, Save VIN, Approve Cybercab and Log ride are the only actions, alongside return)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve Cybercab|Save VIN|Return to Private|Delete Vehicle|Log ride)$/.test(b.textContent.trim()))) && !/merge|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
+    check('there is no merge or resolve control on any card (Delete Vehicle, Save VIN and Approve Cybercab are the only actions, alongside return)', page.cards().every(c => [...c.querySelectorAll('button')].every(b => /^(Approve Cybercab|Save VIN|Return to Private|Delete Vehicle)$/.test(b.textContent.trim()))) && !/merge|resolve/i.test(page.d.getElementById('modVehicleList').textContent));
   }
   {
     // Hostile values from the API stay inert text.

@@ -7,7 +7,6 @@
 // Run: node tests/moderator-log-ride.test.mjs
 
 import fs from 'node:fs';
-import { JSDOM } from 'jsdom';
 import { makeEnv, seedRide, makeCheck } from './helpers/env.mjs';
 import { receiptBody } from './helpers/receipts.mjs';
 import { db } from '../worker/db.js';
@@ -329,94 +328,13 @@ async function run() {
     check('the connector module has no code path to log rides (it never references the ride-logging function or the rides route)', !/logModeratorRide|\/rides/.test(connectorSrc));
   }
 
-  console.log('7. Moderator page (jsdom): the Log ride panel');
+  console.log('7. Moderator page: the Log ride panel was removed from the cards (the API stays)');
   {
-    const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
-    const COMBINED = `${fs.readFileSync(`${ROOT}js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8')}`;
-    const ctx = await makeApp();
-    const privId = mkVehicle(ctx, { plate: 'PRV0001' });
-    const privId2 = mkVehicle(ctx, { plate: 'PRV0002' });
-    const pubId = mkVehicle(ctx, { plate: 'PUB0001', visibility: 'public', vin: VIN, origin: 'sighting', model: 'Cybercab', color: 'Gold' });
-
-    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/moderation.html', pretendToBeVisual: true });
-    const w = dom.window;
-    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
-    w.localStorage.setItem('teslaSessionId', 'session-mod');
-    const requests = [];
-    w.fetch = async (url, init = {}) => {
-      const path = String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '');
-      if (path.startsWith('/api/moderation/')) requests.push({ path, method: init.method || 'GET', body: init.body });
-      return worker.fetch(new Request(`https://x${path}`, init), ctx.env, {});
-    };
-    w.eval(COMBINED);
-    const d = w.document;
-    const waitFor = async (cond, ms = 2500) => { const end = Date.now() + ms; while (Date.now() < end) { if (cond()) return true; await new Promise(r => setTimeout(r, 5)); } return false; };
-    const cardFor = id => [...d.querySelectorAll('[data-vehicle-id]')].find(c => c.dataset.vehicleId === id);
-    const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-    const setVal = (el, v) => { el.value = v; el.dispatchEvent(new w.Event('input', { bubbles: true })); };
-    await waitFor(() => !!cardFor(privId));
-    const rideRequests = () => requests.filter(r => r.method === 'POST' && /\/rides$/.test(r.path));
-    const listLoads = () => requests.filter(r => r.method === 'GET' && r.path.startsWith('/api/moderation/robotaxi-vehicles')).length;
-
-    const panel = cardFor(privId).querySelector('[data-log-ride-panel]');
-    check('19. a private vehicle card renders the Log ride panel', !!panel && /Log ride/.test(panel.textContent));
-    check('19. it has a required date input, an optional miles input and a Log ride button',
-      panel.querySelector('input[type="date"][data-log-ride-date]').required === true && !!panel.querySelector('input[type="number"][data-log-ride-miles]') && panel.querySelector('input[data-log-ride-miles]').required === false
-      && panel.querySelector('button[data-vehicle-action="log-ride"]').textContent.trim() === 'Log ride');
-    check('19. the date input cannot pick a future date (max = today)', panel.querySelector('[data-log-ride-date]').max === TODAY);
-    check('19. it works on a PUBLIC vehicle card too (the moderator switches scope to see it)', await (async () => {
-      const sel = d.getElementById('modVehicleScope'); sel.value = 'public'; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
-      return waitFor(() => !!cardFor(pubId) && !!cardFor(pubId).querySelector('[data-log-ride-panel]'));
-    })());
-    const sel = d.getElementById('modVehicleScope'); sel.value = 'private'; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await waitFor(() => !!cardFor(privId));
-
-    // ---- validation: inline, no request ----
-    const before = listLoads();
-    click(cardFor(privId).querySelector('button[data-vehicle-action="log-ride"]'));
-    check('21. an empty date shows an inline error and sends NO request', /Pick the ride date/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent) && rideRequests().length === 0);
-    setVal(cardFor(privId).querySelector('[data-log-ride-date]'), '2026-08-30');
-    setVal(cardFor(privId).querySelector('[data-log-ride-miles]'), '-3');
-    click(cardFor(privId).querySelector('button[data-vehicle-action="log-ride"]'));
-    check('21. negative miles shows an inline error and sends NO request (what was typed is kept)', /greater than 0/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent) && rideRequests().length === 0 && cardFor(privId).querySelector('[data-log-ride-date]').value === '2026-08-30');
-
-    // ---- success ----
-    const stateBefore = { approval: cardFor(privId).dataset.approvalState, badge: /Private — Needs Review/.test(cardFor(privId).textContent), scope: sel.value };
-    setVal(cardFor(privId).querySelector('[data-log-ride-miles]'), '2.5');
-    click(cardFor(privId).querySelector('button[data-vehicle-action="log-ride"]'));
-    await waitFor(() => /Logged a ride/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent));
-    const posted = rideRequests();
-    check('20. it POSTs { ride_date, distance, distance_unit: "mi" } to the rides endpoint for that vehicle', posted.length === 1 && posted[0].path === `/api/moderation/robotaxi-vehicles/${privId}/rides` && JSON.stringify(JSON.parse(posted[0].body)) === JSON.stringify({ ride_date: '2026-08-30', distance_unit: 'mi', distance: 2.5 }));
-    const okMsg = cardFor(privId).querySelector('[data-log-ride-msg]').textContent;
-    check('20. a clear confirmation with the date, distance and the vehicle\'s new counted-ride total', /Logged a ride on Aug 30, 2026 \(2\.5 mi\)/.test(okMsg) && /1 counted ride/.test(okMsg));
-    check('20. the card refreshed in place: it now shows "1 counted ride" and the ride provenance (Other: 1)', /1 counted ride/.test(cardFor(privId).textContent) && /Other: 1/.test(cardFor(privId).textContent));
-    check('20. NO full-page reload and no list re-fetch: the window did not navigate and only the one POST happened', w.location.href === 'https://cybercabhunter.com/moderation.html' && listLoads() === before && rideRequests().length === 1);
-    check('20. the approval/public state is unchanged (still Private — Needs Review, same scope, not public)', cardFor(privId).dataset.approvalState === 'eligible_for_approval' && stateBefore.badge && /Private — Needs Review/.test(cardFor(privId).textContent) && sel.value === stateBefore.scope && !cardFor(privId).querySelector('a[href^="vehicle/"]'));
-    check('20. the inputs were cleared after success', cardFor(privId).querySelector('[data-log-ride-date]').value === '' && cardFor(privId).querySelector('[data-log-ride-miles]').value === '');
-    check('20. the ride really exists in the database', count(ctx, `SELECT COUNT(*) n FROM trips WHERE robotaxi_vehicle_id = ? AND source = 'manual_entry'`, privId) === 1);
-
-    // ---- 409 duplicate ----
-    const approvalBefore = cardFor(privId).dataset.approvalState;
-    setVal(cardFor(privId).querySelector('[data-log-ride-date]'), '2026-08-30');
-    setVal(cardFor(privId).querySelector('[data-log-ride-miles]'), '2.5');
-    click(cardFor(privId).querySelector('button[data-vehicle-action="log-ride"]'));
-    await waitFor(() => /already recorded/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent));
-    const errEl = cardFor(privId).querySelector('[data-log-ride-msg]');
-    check('21. a duplicate shows a useful inline error in an alert region', /already recorded for this vehicle/.test(errEl.textContent) && errEl.getAttribute('role') === 'alert');
-    check('21. the duplicate did not reload the page, change the approval state, or add a ride', w.location.href === 'https://cybercabhunter.com/moderation.html' && listLoads() === before && cardFor(privId).dataset.approvalState === approvalBefore && count(ctx, `SELECT COUNT(*) n FROM trips WHERE robotaxi_vehicle_id = ?`, privId) === 1 && /1 counted ride/.test(cardFor(privId).textContent));
-    check('21. what was typed is kept so the moderator can correct it', cardFor(privId).querySelector('[data-log-ride-date]').value === '2026-08-30' && cardFor(privId).querySelector('[data-log-ride-miles]').value === '2.5');
-
-    // ---- server-side rejection (future date) surfaces inline too ----
-    setVal(cardFor(privId).querySelector('[data-log-ride-date]'), YEAR_AHEAD);
-    click(cardFor(privId).querySelector('button[data-vehicle-action="log-ride"]'));
-    await waitFor(() => /future/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent));
-    check('21. a server 400 (future date) is shown inline and changes nothing', /cannot be in the future/.test(cardFor(privId).querySelector('[data-log-ride-msg]').textContent) && count(ctx, `SELECT COUNT(*) n FROM trips WHERE robotaxi_vehicle_id = ?`, privId) === 1 && cardFor(privId).dataset.approvalState === approvalBefore);
-
-    // ---- drafts survive another card's re-render ----
-    setVal(cardFor(privId).querySelector('[data-log-ride-date]'), '2026-08-01');
-    click(cardFor(privId2).querySelector('button[data-vehicle-action="ask-delete"]'));
-    await waitFor(() => /Permanently delete/.test(cardFor(privId2).textContent));
-    check('what was typed in one card\'s panel survives a re-render triggered by another card (its delete confirmation opened)', /Permanently delete/.test(cardFor(privId2).textContent) && cardFor(privId).querySelector('[data-log-ride-date]').value === '2026-08-01');
+    const modJs = fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8');
+    const modHtml = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
+    check('js/moderation.js renders no Log ride panel, inputs, button or submit code', !/log-ride|logRide|Log ride|LOG_RIDE|\/rides/i.test(modJs));
+    check('moderation.html has no Log ride markup either', !/log-ride|Log ride/i.test(modHtml));
+    check('the moderator endpoint itself is still routed (only the card UI was removed)', /apiLogVehicleRide/.test(fs.readFileSync(`${ROOT}worker/index.js`, 'utf8')));
   }
 
   console.log('8. Scope guard');
