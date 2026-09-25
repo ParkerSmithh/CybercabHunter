@@ -69,9 +69,11 @@ async function run() {
     check('ride summary: latest ride date and service areas', a.last_ride_date === '2026-08-10' && /Austin/.test(a.service_areas) && b.last_ride_date === '2026-09-02' && b.service_areas === 'Dallas');
     check('ride summary: earliest ride date too', a.first_ride_date === '2026-08-09' && b.first_ride_date === '2026-08-29');
     check('missing values stay null (not 0 or a placeholder)', b.model === null && b.service_area === null && b.color === null && b.vin === null);
-    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'trip_count', 'verification_status', 'vin'];
+    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'total_distance', 'trip_count', 'verification_status', 'vin'];
     check('an entry carries exactly the public fields', r.body.vehicles.every(v => Object.keys(v).sort().join() === allowed.join()));
-    check('nothing private in the payload: no user, submission, fare, distance or address fields', !/user_id|submission|fare|distance|pickup|dropoff|email|role|visibility|reason/i.test(JSON.stringify(r.body)));
+    // total_distance is the ONE distance field allowed here: the same vehicle-level aggregate the detail endpoint already publishes.
+    // Anything else distance-like (a per-ride distance) is still banned, along with fares, addresses and identities.
+    check('nothing private in the payload: no user, submission, fare, per-ride distance or address fields', !/user_id|submission|fare|(?<!total_)distance|pickup|dropoff|email|role|visibility|reason/i.test(JSON.stringify(r.body)));
     check('short-lived public caching, like the detail endpoint', /public, max-age=\d+/.test(r.headers.get('Cache-Control') || ''));
 
     // Consistency with the per-vehicle endpoints: the list and the detail page apply one rule.

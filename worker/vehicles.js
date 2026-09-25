@@ -78,6 +78,9 @@ export async function apiListVehicles(request, env) {
       trip_count: v.trip_count,
       first_ride_date: v.first_ride_date,
       last_ride_date: v.last_ride_date,
+      // Sum of the counted rides' recorded miles (same rule as the detail page's
+      // total_distance); null when none of them recorded a distance.
+      total_distance: v.total_distance,
       service_areas: v.service_areas
     })),
     total, limit, offset

@@ -3,7 +3,7 @@
 // callers must resolve that from the session first; never from request input.
 
 import { rideQueries } from './db-rides.js';
-import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, publicVehicleEligibleSql } from './ride-status.js';
+import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 
 // Registry visibility values. 'private' is the value this schema already
@@ -611,9 +611,8 @@ async function getPublicRegistryStats(sql) {
   const row = await sql.prepare(`
     SELECT
       (SELECT COUNT(*) FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}) AS public_vehicles,
-      (SELECT COUNT(*) FROM ${RIDES_FROM}
-        WHERE ${COUNTED_RIDES_WHERE}
-          AND t.robotaxi_vehicle_id IN (SELECT v.id FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')})) AS recorded_rides
+      (SELECT COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0)
+         FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}) AS recorded_rides
   `).first();
   // An aggregate SELECT of COUNT(*)s always yields exactly one row of whole numbers. Anything else (no row,
   // a null result, missing or non-numeric columns) means the query did not really answer, and that must
@@ -636,9 +635,10 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
   const rows = await sql.prepare(`
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
            v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
-           (SELECT COUNT(*) ${counted()}) AS trip_count,
-           (SELECT MIN(t.ride_date) ${counted()}) AS first_ride_date,
-           (SELECT MAX(t.ride_date) ${counted()}) AS last_ride_date,
+           (SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')}) AS trip_count,
+           (SELECT MIN(ride_date) FROM ${physicalRidesFrom('v.id')}) AS first_ride_date,
+           (SELECT MAX(ride_date) FROM ${physicalRidesFrom('v.id')}) AS last_ride_date,
+           (SELECT SUM(distance) FROM ${physicalRidesFrom('v.id')}) AS total_distance,
            (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas
     FROM robotaxi_vehicles v
     WHERE ${publicVehicleEligibleSql('v')}
@@ -1107,17 +1107,22 @@ async function getRobotaxiVehicleReviews(sql, vehicleId, limit = 100) {
 // went. Returns null fields (not zeros) when the vehicle has no trips yet,
 // so callers can distinguish "no rides known" from "zero-mile rides."
 async function getRobotaxiVehicleHistory(sql, vehicleId) {
+  // Count, dates and distance are over PHYSICAL rides (physicalRidesFrom: the
+  // same ride submitted by two riders is one ride). Fares are what each rider
+  // individually paid and are never public, so they stay a plain sum of the
+  // counted trips; service areas are a distinct set, unaffected by duplicates.
   return sql.prepare(`
     SELECT
       COUNT(*) AS trip_count,
-      MIN(t.ride_date) AS first_ride_date,
-      MAX(t.ride_date) AS last_ride_date,
-      SUM(t.distance) AS total_distance,
-      SUM(t.fare_amount_cents) AS total_fare_cents,
-      GROUP_CONCAT(DISTINCT t.service_area) AS service_areas
-    FROM ${RIDES_FROM}
-    WHERE t.robotaxi_vehicle_id = ? AND ${COUNTED_RIDES_WHERE}
-  `).bind(vehicleId).first();
+      MIN(p.ride_date) AS first_ride_date,
+      MAX(p.ride_date) AS last_ride_date,
+      SUM(p.distance) AS total_distance,
+      (SELECT SUM(t.fare_amount_cents) FROM ${RIDES_FROM}
+         WHERE t.robotaxi_vehicle_id = ? AND ${COUNTED_RIDES_WHERE}) AS total_fare_cents,
+      (SELECT GROUP_CONCAT(DISTINCT t.service_area) FROM ${RIDES_FROM}
+         WHERE t.robotaxi_vehicle_id = ? AND ${COUNTED_RIDES_WHERE}) AS service_areas
+    FROM ${physicalRidesFrom('?')} p
+  `).bind(vehicleId, vehicleId, vehicleId).first();
 }
 
 // ---- Robotaxi ride-history (ownerapi) connection — separate from tesla_connections ----

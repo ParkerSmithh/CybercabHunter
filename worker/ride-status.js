@@ -51,6 +51,26 @@ export function countedRideExistsSql(alias) {
   )`;
 }
 
+// PHYSICAL rides, for PUBLIC aggregates. Two riders in the same car each get a
+// receipt, and each receipt is a separate counted trip (deduplication is per
+// user), but it is ONE ride on the vehicle. A physical ride is identified by
+// trips.ride_key — 'v1|<local ride date>|<pickup HH:MM, 24-hour>|<normalized
+// plate>' (worker/ride-canonical.js): one vehicle cannot start two rides in
+// the same minute, and every rider's receipt of a ride prints the same local
+// date and time. A trip with no ride_key (legacy rows) counts on its own
+// (its id). Within one physical ride the distance is taken once (MAX ignores
+// NULL, so a missing distance never hides a recorded one, and stays NULL when
+// no submission recorded one). Yields one row per physical ride:
+// { ride_date, distance }, over the same counted rides as everything else
+// (COUNTED_RIDES_WHERE). `vehicleRef` is a SQL expression for the vehicle id
+// (an alias column like 'v.id', or '?').
+export function physicalRidesFrom(vehicleRef) {
+  return `(SELECT MIN(t.ride_date) AS ride_date, MAX(t.distance) AS distance
+           FROM ${RIDES_FROM}
+           WHERE t.robotaxi_vehicle_id = ${vehicleRef} AND ${COUNTED_RIDES_WHERE}
+           GROUP BY COALESCE(t.ride_key, t.id))`;
+}
+
 // THE definition of what backs a registry vehicle. A receipt-origin vehicle
 // (every vehicle created by the receipt pipeline) needs a counted ride. A
 // sighting-origin vehicle — added by a moderator from a reviewed sighting —

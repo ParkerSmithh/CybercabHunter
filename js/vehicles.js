@@ -19,6 +19,7 @@
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
 
   const fmtInt = n => (n == null ? '—' : Number(n).toLocaleString());
+  const fmtMiles = mi => (mi == null ? '—' : Number(mi).toFixed(1) + ' mi');
   // A calendar date ('YYYY-MM-DD', e.g. a ride_date) shown as a date, not an
   // instant — parsed at LOCAL midnight (no 'Z'), so it never shifts a day
   // backward for a viewer west of UTC the way appending 'Z' to a bare date
@@ -87,8 +88,9 @@
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
     a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere]', area || 'Service area not recorded'));
-    const stats = el('div', 'grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]');
+    const stats = el('div', 'grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
+    stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance)));
     // First/Last seen reflect the RIDE dates a receipt reported (v.first_ride_date/last_ride_date),
     // not when the registry row was created or last touched — those are ingestion timestamps
     // (v.first_seen_at/last_seen_at) that can be much later than the ride itself if a receipt was
