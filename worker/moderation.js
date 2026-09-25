@@ -16,7 +16,7 @@ import { tesla } from './tesla.js';
 import { db, VEHICLE_VISIBILITY } from './db.js';
 import { VEHICLE_ID_RE } from './vehicles.js';
 import { normalizePlate } from './plate.js';
-import { normalizeRideDate } from './ride-canonical.js';
+import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -494,17 +494,13 @@ export async function apiLogVehicleRide(request, env, vehicleId) {
   const bad = error => Response.json({ success: false, error }, { status: 400 });
 
   // ride_date: required, a REAL calendar date in exactly YYYY-MM-DD, not after today (UTC).
-  if (typeof body.ride_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.ride_date) || normalizeRideDate(body.ride_date) !== body.ride_date) {
-    return bad('invalid_ride_date');
-  }
-  if (body.ride_date > new Date().toISOString().slice(0, 10)) return bad('future_ride_date');
+  const dateCheck = parseManualRideDate(body.ride_date);
+  if (!dateCheck.ok) return bad(dateCheck.reason === 'future' ? 'future_ride_date' : 'invalid_ride_date');
 
   // distance: optional; a JSON number that is finite and strictly positive. Never defaulted or guessed.
-  let distance = null;
-  if (body.distance !== undefined && body.distance !== null) {
-    if (typeof body.distance !== 'number' || !Number.isFinite(body.distance) || body.distance <= 0) return bad('invalid_distance');
-    distance = body.distance;
-  }
+  const distanceCheck = parseManualRideDistance(body.distance);
+  if (!distanceCheck.ok) return bad('invalid_distance');
+  const distance = distanceCheck.value;
   let distanceUnit = 'mi';
   if (body.distance_unit !== undefined && body.distance_unit !== null) {
     if (!DISTANCE_UNITS.includes(body.distance_unit)) return bad('invalid_distance_unit');

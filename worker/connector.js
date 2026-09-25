@@ -29,14 +29,14 @@ async function sha256(text) {
 
 // Compares fixed-length digests so the comparison time doesn't depend on
 // how much of the token a guess got right.
-async function tokensMatch(provided, expected) {
+export async function tokensMatch(provided, expected) {
   const [a, b] = await Promise.all([sha256(provided), sha256(expected)]);
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
 }
 
-function readBearerToken(request) {
+export function readBearerToken(request) {
   const match = (request.headers.get('Authorization') || '').match(/^Bearer\s+(\S+)\s*$/i);
   return match ? match[1] : null;
 }

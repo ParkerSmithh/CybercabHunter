@@ -627,10 +627,27 @@ async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId 
 // the writes themselves, and each later statement only runs if the earlier one
 // did, so the batch (one D1 transaction) writes the submission, the trip and
 // the vehicle touch together or not at all.
+//
+// ONE write path for every manual ride. logManualRide takes the provenance as
+// arguments: `reviewedBy` (the human who reviewed it, or null when nobody did)
+// and `source` (written to BOTH submissions.evidence_type and trips.source).
+// logModeratorRide below is the moderator's thin wrapper. The Muse machine
+// endpoint passes reviewedBy null and source 'muse_api'; callers of HTTP
+// endpoints never choose either value.
+// `requirePublicEligible` (machine caller) makes the write refuse — atomically,
+// inside the same statements — unless the vehicle passes publicVehicleEligibleSql
+// right now, so it can never revive a vehicle the public registry would hide.
 // Returns { status: 'created', tripId, submissionId, distance } | { status: 'not_found' } | { status: 'owner_missing' } | { status: 'duplicate' }.
+// The moderator's Log ride: the human moderator is the reviewer, the label is 'manual_entry'.
+async function logModeratorRide(sql, { moderatorId, ...ride }) {
+  return logManualRide(sql, { ...ride, reviewedBy: moderatorId, source: 'manual_entry' });
+}
+
 const KM_TO_MILES = 0.621371;
-async function logModeratorRide(sql, { vehicleId, moderatorId, ownerUserId, rideDate, distance = null, distanceUnit = 'mi', serviceArea = null }) {
-  const vehicle = await sql.prepare('SELECT id FROM robotaxi_vehicles WHERE id = ?').bind(vehicleId).first();
+async function logManualRide(sql, { vehicleId, reviewedBy = null, ownerUserId, source = 'manual_entry', requirePublicEligible = false, rideDate, distance = null, distanceUnit = 'mi', serviceArea = null }) {
+  // A vehicle that fails the eligibility requirement is reported exactly like a missing one.
+  const vehicleOk = `EXISTS (SELECT 1 FROM robotaxi_vehicles v WHERE v.id = ?${requirePublicEligible ? ` AND ${publicVehicleEligibleSql('v')}` : ''})`;
+  const vehicle = await sql.prepare(`SELECT 1 AS ok WHERE ${vehicleOk}`).bind(vehicleId).first();
   if (!vehicle) return { status: 'not_found' };
   // Never fall back to the moderator: with no usable system owner nothing is written.
   const owner = ownerUserId ? await sql.prepare('SELECT id FROM users WHERE id = ?').bind(ownerUserId).first() : null;
@@ -647,16 +664,16 @@ async function logModeratorRide(sql, { vehicleId, moderatorId, ownerUserId, ride
 
   const submissionStmt = sql.prepare(`
     INSERT INTO submissions (id, user_id, submission_type, status, evidence_type, submitted_at, reviewed_at, reviewed_by)
-    SELECT ?, ?, 'ride_receipt', 'approved', 'manual_entry', datetime('now'), datetime('now'), ?
-    WHERE EXISTS (SELECT 1 FROM robotaxi_vehicles WHERE id = ?) AND NOT ${duplicate}
-  `).bind(submissionId, ownerUserId, moderatorId, vehicleId, vehicleId, rideDate, miles);
+    SELECT ?, ?, 'ride_receipt', 'approved', ?, datetime('now'), datetime('now'), ?
+    WHERE ${vehicleOk} AND NOT ${duplicate}
+  `).bind(submissionId, ownerUserId, source, reviewedBy, vehicleId, vehicleId, rideDate, miles);
 
   const tripStmt = sql.prepare(`
     INSERT INTO trips (id, submission_id, user_id, service_area, ride_date, distance, distance_unit,
                        currency, currency_source, robotaxi_vehicle_id, source)
-    SELECT ?, ?, ?, ?, ?, ?, 'mi', NULL, NULL, ?, 'manual_entry'
-    WHERE EXISTS (SELECT 1 FROM submissions WHERE id = ? AND evidence_type = 'manual_entry')
-  `).bind(tripId, submissionId, ownerUserId, serviceArea, rideDate, miles, vehicleId, submissionId);
+    SELECT ?, ?, ?, ?, ?, ?, 'mi', NULL, NULL, ?, ?
+    WHERE EXISTS (SELECT 1 FROM submissions WHERE id = ? AND evidence_type = ?)
+  `).bind(tripId, submissionId, ownerUserId, serviceArea, rideDate, miles, vehicleId, source, submissionId, source);
 
   const touchStmt = sql.prepare(`
     UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now')
@@ -668,7 +685,7 @@ async function logModeratorRide(sql, { vehicleId, moderatorId, ownerUserId, ride
   if (created) return { status: 'created', tripId, submissionId, distance: miles };
 
   // Nothing was written: the vehicle vanished, or an identical ride landed first.
-  const stillThere = await sql.prepare('SELECT id FROM robotaxi_vehicles WHERE id = ?').bind(vehicleId).first();
+  const stillThere = await sql.prepare(`SELECT 1 AS ok WHERE ${vehicleOk}`).bind(vehicleId).first();
   return { status: stillThere ? 'duplicate' : 'not_found' };
 }
 
@@ -1320,6 +1337,7 @@ export const db = {
   reviewVehicleSighting,
   promoteSightingToRegistryVehicle,
   logModeratorRide,
+  logManualRide,
   getPublicRobotaxiVehicle,
   getPublicRobotaxiVehicles,
   getPublicRegistryStats,

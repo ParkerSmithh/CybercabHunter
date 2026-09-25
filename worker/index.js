@@ -10,6 +10,7 @@ import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryS
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
+import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 
@@ -139,6 +140,13 @@ export default {
     // See worker/connector.js.
     if (url.pathname === '/api/connector/vehicle-sightings' && request.method === 'POST') {
       return apiConnectorCreateVehicleSighting(request, env);
+    }
+
+    // Muse machine endpoint: records one ride on an existing, publicly eligible
+    // vehicle. Separate bearer secret (MUSE_RIDES_TOKEN), server-to-server (no
+    // CORS). See worker/muse-rides.js.
+    if (url.pathname === '/api/integrations/muse/robotaxi-rides' && request.method === 'POST') {
+      return apiMuseLogRide(request, env);
     }
 
     // Moderator-only review queue (worker/moderation.js) — auth AND role

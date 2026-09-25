@@ -33,6 +33,16 @@
 			"bucket_name": "cybercabhunter-evidence"
 		}
 	],
+	"ratelimits": [
+		{
+			"name": "MUSE_RIDES_LIMITER",
+			"namespace_id": "7301",
+			"simple": {
+				"limit": 30,
+				"period": 60
+			}
+		}
+	],
 	"observability": {
 		"logs": {
 			"enabled": false,
