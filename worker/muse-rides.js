@@ -1,5 +1,5 @@
 // Machine endpoint for the Muse assistant to record ONE ride against an
-// EXISTING, publicly eligible registry vehicle:
+// EXISTING registry vehicle (public or not):
 //
 //   POST /api/integrations/muse/robotaxi-rides   { "plate", "date", "miles"? }
 //
@@ -12,8 +12,9 @@
 // moderator's Log ride — with fixed provenance the caller cannot influence:
 // owned by the system user (env.MUSE_CONNECTOR_USER_ID), reviewed_by NULL
 // (no human reviewed it), evidence_type and trips.source 'muse_api'. It never
-// creates a vehicle, and it only writes when the vehicle is publicly eligible
-// (publicVehicleEligibleSql) at that moment, so it can't revive a hidden one.
+// creates a vehicle, and it never changes a vehicle's visibility, approval or
+// verification: a pending/private vehicle simply gains ride data a moderator
+// can review, and stays exactly as private as it was.
 // The D1 duplicate guard inside that write is the authority on duplicates; the
 // Workers rate limiter below is only a coarse abuse brake.
 //
@@ -74,7 +75,7 @@ export async function apiMuseLogRide(request, env) {
     if (found.status !== 'unique') return fail(404, 'vehicle_not_found');
 
     const result = await db.logManualRide(sql, {
-      vehicleId: found.vehicleId, reviewedBy: null, ownerUserId, source: 'muse_api', requirePublicEligible: true,
+      vehicleId: found.vehicleId, reviewedBy: null, ownerUserId, source: 'muse_api',
       rideDate: dateCheck.value, distance: milesCheck.value, distanceUnit: 'mi', serviceArea: null
     });
     if (result.status === 'not_found') return fail(404, 'vehicle_not_found');

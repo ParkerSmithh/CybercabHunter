@@ -46,6 +46,7 @@ function mkVehicle(ctx, { plate = 'XJR1903', visibility = 'public', vin = VIN, o
     .bind(id, plate, visibility, vin, origin)._exec();
   return id;
 }
+const vrowId = (ctx, plate) => ctx.d1.query('SELECT id FROM robotaxi_vehicles WHERE license_plate = ?', plate)[0].id;
 const vrow = (ctx, id) => ctx.d1.query('SELECT * FROM robotaxi_vehicles WHERE id = ?', id)[0];
 const FROZEN = ['visibility', 'vin', 'model', 'color', 'service_area', 'verification_status', 'origin', 'license_plate', 'first_seen_at'];
 const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
@@ -168,35 +169,59 @@ const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
     check('and no ride was written for the unknown plate', count(ctx, `SELECT COUNT(*) n FROM trips WHERE robotaxi_vehicle_id NOT IN ('${id}', '${stored}')`) === 0);
   }
 
-  console.log('5. Public eligibility boundary (unknown / private / ineligible look identical)');
+  console.log('5. Any existing registry vehicle accepts a ride; nothing about its status changes (no auto-approve / auto-publish)');
   {
     const ctx = await makeApp();
-    const priv = mkVehicle(ctx, { plate: 'PRIV111', visibility: 'private' });
-    const noEvidence = mkVehicle(ctx, { plate: 'NOEV222', visibility: 'public', vin: null, origin: 'sighting' });
-    const receiptNoRide = mkVehicle(ctx, { plate: 'RCPT333', visibility: 'public', vin: VIN, origin: 'receipt' });
-    const before = ['PRIV111', 'NOEV222', 'RCPT333'].map(() => 0);
-    const snap = () => ctx.d1.query('SELECT id, visibility, last_seen_at, updated_at FROM robotaxi_vehicles ORDER BY id');
-    const s0 = JSON.stringify(snap());
-    const bodies = [];
-    for (const plate of ['PRIV111', 'NOEV222', 'RCPT333', 'NOPE000']) {
+    const modGet = async scope => (await (await worker.fetch(new Request(`https://x/api/moderation/robotaxi-vehicles?scope=${scope}`, { headers: { Authorization: 'Bearer session-mod', Origin: 'https://cybercabhunter.com' } }), ctx.env, {})).json()).vehicles || [];
+    const STATE = ['visibility', 'vin', 'vin_set_by_user_id', 'vin_set_at', 'model', 'color', 'service_area', 'verification_status', 'origin', 'license_plate', 'first_seen_at'];
+    const state = id => JSON.stringify(STATE.map(c => vrow(ctx, id)[c]));
+    const cases = [
+      ['PRIV111', { visibility: 'private', vin: null, origin: 'receipt' }],
+      ['PRIV222', { visibility: 'private', vin: VIN, origin: 'sighting' }],
+      ['PRIV333', { visibility: 'private', vin: null, origin: 'sighting' }]
+    ];
+    for (const [plate, opts] of cases) {
+      const id = mkVehicle(ctx, { plate, ...opts });
+      const before = state(id);
       const r = await post(ctx, { plate, date: '2026-09-01', miles: 2 });
-      bodies.push(r.status + ':' + JSON.stringify(await json(r)));
+      const b = await json(r);
+      check(`private/pending vehicle ${plate} (${opts.origin}, vin ${opts.vin ? 'set' : 'none'}) accepts a ride -> 201`, r.status === 201 && b.ok === true && b.vehicle.id === id && b.ride.miles === 2);
+      check(`${plate}: visibility, VIN, verification status, model, color, service area, origin and plate are byte-for-byte unchanged`, state(id) === before && vrow(ctx, id).visibility === 'private');
+      check(`${plate}: the ride is a system-owned muse_api ride with reviewed_by NULL`, count(ctx, `SELECT COUNT(*) n FROM trips t JOIN submissions s ON s.id = t.submission_id WHERE t.robotaxi_vehicle_id = ? AND t.source = 'muse_api' AND s.evidence_type = 'muse_api' AND s.reviewed_by IS NULL AND s.user_id = ? AND t.user_id = ?`, id, SYSTEM, SYSTEM) === 1);
+      const pub = await get(ctx, `/api/robotaxi-vehicles/${id}`);
+      check(`${plate}: still NOT public — its public page is 404`, pub.status === 404);
     }
-    check('a private vehicle, a public vehicle with no registry evidence, a public receipt vehicle with no counted ride, and an unknown plate are ALL 404 vehicle_not_found',
-      bodies.every(b => b === '404:{"ok":false,"error":"vehicle_not_found"}'));
-    check('the four responses are byte-identical, so existence is not leaked', new Set(bodies).size === 1);
-    check('nothing was written and no vehicle state changed (not even last_seen_at)', count(ctx, 'SELECT COUNT(*) n FROM trips') === 0 && JSON.stringify(snap()) === s0);
-    check('the ineligible public vehicle was NOT revived: it is still absent from the public list and stats', (await (await get(ctx, '/api/registry/stats')).json()).public_vehicles === 0);
-    void priv; void noEvidence; void receiptNoRide; void before;
-    // A public receipt vehicle that HAS a counted ride is eligible.
-    const withRide = mkVehicle(ctx, { plate: 'RIDE444', visibility: 'public', vin: VIN, origin: 'receipt' });
-    ctx.d1.prepare(`INSERT INTO submissions (id, user_id, submission_type, status, evidence_type) VALUES ('s-seed', 'rider', 'ride_receipt', 'approved', 'email_receipt')`)._exec();
-    ctx.d1.prepare(`INSERT INTO trips (id, submission_id, user_id, ride_date, distance, distance_unit, robotaxi_vehicle_id, source) VALUES ('t-seed', 's-seed', 'rider', '2026-01-01', 1, 'mi', ?, 'email')`).bind(withRide)._exec();
-    const ok = await post(ctx, { plate: 'RIDE444', date: '2026-09-01', miles: 2 });
-    check('a public vehicle backed by a counted ride is eligible and accepts a Muse ride', ok.status === 201);
-    // Eligibility is checked atomically INSIDE the write, not just beforehand.
-    const direct = await db.logManualRide(ctx.d1, { vehicleId: priv, ownerUserId: SYSTEM, source: 'muse_api', requirePublicEligible: true, rideDate: '2026-09-02', distance: 1 });
-    check('db.logManualRide with requirePublicEligible refuses a private vehicle itself (not_found, nothing written)', direct.status === 'not_found' && count(ctx, `SELECT COUNT(*) n FROM trips WHERE robotaxi_vehicle_id = '${priv}'`) === 0);
+    check('no vehicle was approved or published: the public list and stats are still empty', (await (await get(ctx, '/api/registry/stats')).json()).public_vehicles === 0 && (await (await get(ctx, '/api/robotaxi-vehicles')).json()).total === 0);
+    check('no approval/return review rows were written', count(ctx, 'SELECT COUNT(*) n FROM robotaxi_vehicle_reviews') === 0);
+    const cards = await modGet('private');
+    check('the moderator registry list still shows all three as PRIVATE (so the moderator can review them with the ride data in front of them)', cards.length === 3 && cards.every(v => v.visibility === 'private'));
+    check('the moderator card for a pending vehicle now shows its counted ride (the point of the change)', (cards.find(v => v.license_plate === 'PRIV222') || {}).counted_ride_count === 1);
+    check('a second ride on a pending vehicle still 201s and duplicates still 409', (await post(ctx, { plate: 'PRIV111', date: '2026-09-02' })).status === 201 && (await post(ctx, { plate: 'PRIV111', date: '2026-09-02' })).status === 409);
+    const nope = await post(ctx, { plate: 'NOPE000', date: '2026-09-01', miles: 2 });
+    check('a plate with no registry vehicle at all -> 404 vehicle_not_found', nope.status === 404 && (await json(nope)).error === 'vehicle_not_found');
+    check('and no vehicle is ever created', count(ctx, 'SELECT COUNT(*) n FROM robotaxi_vehicles') === 3);
+    // Public vehicles behave exactly as before.
+    const pubId = mkVehicle(ctx, { plate: 'PUB4444', visibility: 'public', vin: VIN, origin: 'sighting' });
+    const pubBefore = state(pubId);
+    const ok = await post(ctx, { plate: 'PUB4444', date: '2026-09-01', miles: 2 });
+    check('a public vehicle still accepts a ride exactly as before (201, status untouched)', ok.status === 201 && state(pubId) === pubBefore);
+    // Deleting a vehicle removes it entirely, so it is then "no vehicle" -> 404.
+    const gone = mkVehicle(ctx, { plate: 'GONE555', visibility: 'private', vin: null, origin: 'receipt' });
+    ctx.d1.prepare('DELETE FROM robotaxi_vehicles WHERE id = ?').bind(gone)._exec();
+    check('a deleted vehicle is 404 vehicle_not_found', (await post(ctx, { plate: 'GONE555', date: '2026-09-01' })).status === 404);
+    // The db layer keeps its optional eligibility switch (off for this route).
+    const direct = await db.logManualRide(ctx.d1, { vehicleId: vrowId(ctx, 'PRIV333'), ownerUserId: SYSTEM, source: 'muse_api', requirePublicEligible: true, rideDate: '2026-09-09', distance: 1 });
+    check('db.logManualRide still supports requirePublicEligible (refuses a private vehicle when asked)', direct.status === 'not_found');
+  }
+  {
+    // Documented consequence: a vehicle a moderator ALREADY made public (visibility stays exactly as set) but that has no
+    // registry evidence becomes evidence-backed by its first counted ride, exactly as with the moderator's Log ride.
+    const ctx = await makeApp();
+    const id = mkVehicle(ctx, { plate: 'NOEV222', visibility: 'public', vin: null, origin: 'sighting' });
+    const before = (await (await get(ctx, '/api/registry/stats')).json()).public_vehicles;
+    const r = await post(ctx, { plate: 'NOEV222', date: '2026-09-01', miles: 2 });
+    check('an already-public vehicle keeps visibility public after a Muse ride (never flipped either way)', r.status === 201 && vrow(ctx, id).visibility === 'public');
+    void before;
   }
   {
     const ctx = await makeApp();
@@ -283,7 +308,7 @@ const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
     const tr = ctx.d1.query('SELECT * FROM trips')[0];
     check('the moderator endpoint still works (201) and records manual_entry provenance with reviewed_by = the moderator and the system owner', r.status === 201 && s.evidence_type === 'manual_entry' && tr.source === 'manual_entry' && s.reviewed_by === 'mod' && s.user_id === SYSTEM && tr.user_id === SYSTEM);
     const muse = await post(ctx, { plate: 'XJR1903', date: '2026-09-02' });
-    check('and the Muse route still refuses that (private) vehicle', muse.status === 404);
+    check('and the Muse route now also accepts that (private) vehicle, leaving it private', muse.status === 201 && vrow(ctx, id).visibility === 'private');
   }
 
   console.log('9. Rate limiting (abuse brake only)');
@@ -323,7 +348,7 @@ const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
     check('no frontend file mentions the Muse rides route or token', !fs.readdirSync(`${ROOT}js`).some(f => /MUSE_RIDES|integrations\/muse/.test(fs.readFileSync(`${ROOT}js/${f}`, 'utf8'))));
     check('no migration was added', !fs.readdirSync(`${ROOT}migrations`).some(f => f.startsWith('0015')));
     const handler = fs.readFileSync(`${ROOT}worker/muse-rides.js`, 'utf8');
-    check("the route hard-codes provenance: reviewedBy null, source 'muse_api', requirePublicEligible true", /reviewedBy: null/.test(handler) && /source: 'muse_api'/.test(handler) && /requirePublicEligible: true/.test(handler));
+    check("the route hard-codes provenance: reviewedBy null, source 'muse_api'; and no longer requires public eligibility", /reviewedBy: null/.test(handler) && /source: 'muse_api'/.test(handler) && !/requirePublicEligible/.test(handler));
     check('the handler cannot create vehicles (no INSERT and no findOrCreate call)', !/INSERT|findOrCreate/i.test(handler));
     check('ride_key and the public aggregation are untouched', !/ride_key/.test(handler) && !/physicalRidesFrom/.test(handler));
     void src;
