@@ -64,7 +64,7 @@
   // other element on this page.
   function cybercabImage() {
     const img = document.createElement('img');
-    img.src = 'Cybercab2.png';
+    img.src = 'images/Cybercab2.png';
     img.alt = 'Cybercab (generic vehicle-type image, not a photo of this specific vehicle)';
     img.className = 'w-full h-32 object-contain mb-4';
     return img;

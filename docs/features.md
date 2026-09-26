@@ -1,6 +1,6 @@
 # Features
 
-## Shared across all pages (`js/main.js`, `css/style.css`)
+## Shared across all pages (`public/js/main.js`, `public/css/style.css`)
 
 - Sticky, blurred glass header with a sliding gold-to-cyan indicator under the active nav link (`CCC.initNav`)
 - "Link Tesla Account" button — a real link into Tesla's Fleet API OAuth flow (`/oauth/tesla/start`). Shares the rider's eligible Tesla vehicle info; it does not import Robotaxi ride history. Once linked, the button simply disappears from the header (unlinking happens from Rider Data instead)
@@ -15,7 +15,7 @@
 ## Homepage (`index.html`)
 
 - Hero section with Cybercab hero image
-- Real registry stats fetched from `GET /api/registry/stats` (`js/home-stats.js`), rendered with animated counters
+- Real registry stats fetched from `GET /api/registry/stats` (`public/js/home-stats.js`), rendered with animated counters
 - Interactive dark-mode MapLibre GL map (OpenFreeMap tiles)
 - Recent sightings feed
 - Submit Sighting drawer

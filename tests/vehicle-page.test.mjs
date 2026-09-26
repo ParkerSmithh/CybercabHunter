@@ -18,8 +18,8 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}vehicle.html`, 'utf8');
-const JS = fs.readFileSync(`${ROOT}js/vehicle.js`, 'utf8');
+const HTML = fs.readFileSync(`${ROOT}public/vehicle.html`, 'utf8');
+const JS = fs.readFileSync(`${ROOT}public/js/vehicle.js`, 'utf8');
 
 // Opens the page for a given vehicle id (as if navigated to /vehicle/<id>
 // directly). `intercept(url, init)` may return a Response (or throw) to
@@ -248,7 +248,7 @@ async function run() {
     check('the Cybercab badge shows once a moderator-verified vin is present', page.visible('vCybercabBadge') && page.text('vCybercabBadge') === 'Cybercab');
     check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
-    check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'Cybercab2.png');
+    check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'images/Cybercab2.png');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
     check('the plate still renders normally alongside the VIN', page.text('vLicensePlate') === 'CYB0010');
     check('still no session/token material leaks, even with a vin present', !/access_token|refresh_token|\bsession\b/i.test(page.d.body.innerHTML));

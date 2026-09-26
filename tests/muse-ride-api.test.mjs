@@ -345,7 +345,7 @@ const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
     check('no MUSE token or user id value is in wrangler.jsonc (secrets are never vars)', !/MUSE_RIDES_TOKEN|MUSE_CONNECTOR_TOKEN|MUSE_CONNECTOR_USER_ID/.test(cfg));
     const src = ['worker/muse-rides.js', 'worker/ride-input.js', 'worker/connector.js'].map(f => fs.readFileSync(`${ROOT}${f}`, 'utf8')).join('\n');
     check('the handler never logs (no console.* in the Muse route or shared validation)', !/console\./.test(fs.readFileSync(`${ROOT}worker/muse-rides.js`, 'utf8')) && !/console\./.test(fs.readFileSync(`${ROOT}worker/ride-input.js`, 'utf8')));
-    check('no frontend file mentions the Muse rides route or token', !fs.readdirSync(`${ROOT}js`).some(f => /MUSE_RIDES|integrations\/muse/.test(fs.readFileSync(`${ROOT}js/${f}`, 'utf8'))));
+    check('no frontend file mentions the Muse rides route or token', !fs.readdirSync(`${ROOT}public/js`).some(f => /MUSE_RIDES|integrations\/muse/.test(fs.readFileSync(`${ROOT}public/js/${f}`, 'utf8'))));
     check('no migration was added', !fs.readdirSync(`${ROOT}migrations`).some(f => f.startsWith('0015')));
     const handler = fs.readFileSync(`${ROOT}worker/muse-rides.js`, 'utf8');
     check("the route hard-codes provenance: reviewedBy null, source 'muse_api'; and no longer requires public eligibility", /reviewedBy: null/.test(handler) && /source: 'muse_api'/.test(handler) && !/requirePublicEligible/.test(handler));

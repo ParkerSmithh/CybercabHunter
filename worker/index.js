@@ -333,7 +333,17 @@ export default {
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
-    // Everything else falls through to the static site (same files GitHub Pages serves).
+    // The site's images moved from the web root into /images/. The old root
+    // URLs (/Cybercab2.png ...) are permanent redirects to the new place, so
+    // an external link, a cached page or a link preview that still points at
+    // them keeps working. Only these five known files: any other path falls
+    // through to the static site unchanged.
+    const legacyImage = url.pathname.match(/^\/(Cybercab|Cybercab2|CybercabFlipped|HeroImage|RedModelY)\.png$/);
+    if (legacyImage && (request.method === 'GET' || request.method === 'HEAD')) {
+      return Response.redirect(new URL(`/images/${legacyImage[1]}.png`, url), 301);
+    }
+
+    // Everything else falls through to the static site, served from ./public (see wrangler.jsonc).
     return env.ASSETS.fetch(request);
   },
 

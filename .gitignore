@@ -2,3 +2,4 @@
 .wrangler/
 private-key.pem
 node_modules/
+keys/private-key.pem

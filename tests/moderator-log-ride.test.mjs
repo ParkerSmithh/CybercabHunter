@@ -330,8 +330,8 @@ async function run() {
 
   console.log('7. Moderator page: the Log ride panel was removed from the cards (the API stays)');
   {
-    const modJs = fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8');
-    const modHtml = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
+    const modJs = fs.readFileSync(`${ROOT}public/js/moderation.js`, 'utf8');
+    const modHtml = fs.readFileSync(`${ROOT}public/moderation.html`, 'utf8');
     check('js/moderation.js renders no Log ride panel, inputs, button or submit code', !/log-ride|logRide|Log ride|LOG_RIDE|\/rides/i.test(modJs));
     check('moderation.html has no Log ride markup either', !/log-ride|Log ride/i.test(modHtml));
     check('the moderator endpoint itself is still routed (only the card UI was removed)', /apiLogVehicleRide/.test(fs.readFileSync(`${ROOT}worker/index.js`, 'utf8')));

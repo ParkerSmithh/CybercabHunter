@@ -15,7 +15,7 @@ import { sanitizeReturnPath } from '../worker/google-auth.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const read = f => fs.readFileSync(`${ROOT}${f}`, 'utf8');
+const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const CALC = read('js/calc.js'), MAIN = read('js/main.js'), MOD = read('js/moderation.js');
 const WORKER_ORIGIN = 'https://cybercabhunter.contactjoeclos.workers.dev';
 
@@ -174,7 +174,7 @@ async function run() {
   console.log('7. Account menu: a Moderation link for moderators only, beside Profile and Rider Data');
   {
     const ctx = await makeApp();
-    const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html') && read(f).includes('id="accountDrawer"'));
+    const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(f).includes('id="accountDrawer"'));
     check('several pages have the account menu', pages.length >= 6);
     for (const file of pages) {
       const m = await openPage(ctx, file, { url: `https://cybercabhunter.com/${file}`, session: 'session-mod' });
@@ -231,9 +231,9 @@ async function run() {
 
   console.log('9. Routing: /moderation is served by the existing static page, with no duplicate page');
   {
-    const htmls = fs.readdirSync(ROOT).filter(f => f.endsWith('.html'));
+    const htmls = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
     check('exactly one moderation page exists', htmls.filter(f => /moderation/i.test(f)).join() === 'moderation.html');
-    check('the Worker adds no route of its own for the page (Cloudflare static assets serve /moderation from moderation.html)', !/['"`]\/moderation['"`]/.test(read('worker/index.js')));
+    check('the Worker adds no route of its own for the page (Cloudflare static assets serve /moderation from moderation.html)', !/['"`]\/moderation['"`]/.test(fs.readFileSync(`${ROOT}worker/index.js`, 'utf8')));
     check('the page is not excluded from the static assets', !/moderation/i.test(read('.assetsignore')));
     check('the account link and the sign-in return both use the canonical path /moderation', /setAttribute\('href', '\/moderation'\)/.test(MAIN) && /returnTo=%2Fmoderation/.test(read('moderation.html')));
   }

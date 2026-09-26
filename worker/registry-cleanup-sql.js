@@ -3,7 +3,7 @@
 //
 // This file only PRODUCES SQL TEXT. It executes nothing, holds no database
 // handle, has no route, is not imported by the router, and lives under
-// worker/ (excluded from the static assets by .assetsignore). The operator
+// worker/ (outside public/, the only folder published as static assets). The operator
 // runs the generated files by hand, after reading them.
 //
 // Why it exists: every registry row created before Phase 3E was made

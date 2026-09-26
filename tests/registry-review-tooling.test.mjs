@@ -450,7 +450,7 @@ async function run() {
     const allWorker = fs.readdirSync(`${ROOT}worker`).filter(f => f.endsWith('.js') && !['registry-cleanup-sql.js', 'registry-preflight.js'].includes(f)).map(f => fs.readFileSync(`${ROOT}worker/${f}`, 'utf8')).join('\n');
     check('no worker module IMPORTS the cleanup builder or the preflight (they are operator tooling only; comments may name them)', !/(import|from)[^\n]*registry-(cleanup-sql|preflight)/.test(allWorker) && !/(import|from)[^\n]*registry-(cleanup-sql|preflight)/.test(index) && !/import\([^)]*registry-/.test(allWorker));
     check('the builder holds no database handle and executes nothing', !/\.prepare\(|\.exec\(|\.batch\(|fetch\(/.test(fs.readFileSync(`${ROOT}worker/registry-cleanup-sql.js`, 'utf8').replace(/\/\/.*$/gm, '')));
-    check('worker/ stays excluded from the public static assets', /^worker$/m.test(fs.readFileSync(`${ROOT}.assetsignore`, 'utf8')));
+    check('worker/ stays out of the public static assets: only ./public is published, and worker/ is not inside it', /"directory":\s*"\.\/public"/.test(fs.readFileSync(`${ROOT}wrangler.jsonc`, 'utf8')) && !fs.existsSync(`${ROOT}public/worker`));
     const migrations = fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort();
     check('Phase 3G itself added no migration: 0011 is immediately followed by 0012, the Phase 3H review-history table (later phases may add more after it)', migrations[10].startsWith('0011_') && migrations[11].startsWith('0012_robotaxi_vehicle_reviews'));
     const ctx = await makeApp({ mod: 'moderator' }); ctx.env.ASSETS = { fetch: async () => new Response('asset', { status: 404 }) };

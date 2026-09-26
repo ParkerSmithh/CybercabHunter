@@ -15,7 +15,7 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const read = f => fs.readFileSync(`${ROOT}${f}`, 'utf8');
+const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const WORKER_ORIGIN = 'https://cybercabhunter.contactjoeclos.workers.dev';
 const uuid = n => `${String(n).padStart(8, '0')}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -236,11 +236,11 @@ async function run() {
     check('two cards render (the Cybercab and the ordinary vehicle)', p.cards().length === 2);
     const cybercabCard = p.cards().find(a => /CYB0010/.test(a.textContent));
     const ordinaryCard = p.cards().find(a => /ORD0011/.test(a.textContent));
-    check('the Cybercab\'s card includes an <img src="Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="Cybercab2.png"]'));
-    check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="Cybercab2.png"]').getAttribute('alt') || '').length > 0);
+    check('the Cybercab\'s card includes an <img src="images/Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="images/Cybercab2.png"]'));
+    check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/Cybercab2.png"]').getAttribute('alt') || '').length > 0);
     check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
-    check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('Cybercab2.png'));
+    check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/Cybercab2.png'));
 
     // A confirmed Cybercab's card shows a compact gold/yellow BADGE, never
     // plain text — reusing the exact detail-page styling (vCybercabBadge in
@@ -256,7 +256,7 @@ async function run() {
 
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');
   {
-    const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html') && read(f).includes('data-nav="community"'));
+    const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(f).includes('data-nav="community"'));
     check('the header nav has a "Cars" tab linking to /vehicles on every page that has the nav (and on /vehicles itself)', pages.length >= 9 && pages.every(f => /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(read(f))));
     check('the tab is no longer labelled "Registry" anywhere in the header nav', pages.every(f => !/<a href="\/vehicles" data-nav="vehicles"[^>]*>Registry<\/a>/.test(read(f))));
     // infrastructure.html deliberately has no <footer> at all (it's a single

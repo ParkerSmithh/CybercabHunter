@@ -1,5 +1,5 @@
 const assert = require('assert');
-const CCC_CALC = require('../js/calc.js');
+const CCC_CALC = require('../public/js/calc.js');
 
 // dispatchETA
 {

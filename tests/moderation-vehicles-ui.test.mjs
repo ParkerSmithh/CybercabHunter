@@ -12,8 +12,8 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
-const COMBINED = `${fs.readFileSync(`${ROOT}js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8')}`;
+const HTML = fs.readFileSync(`${ROOT}public/moderation.html`, 'utf8');
+const COMBINED = `${fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}public/js/moderation.js`, 'utf8')}`;
 
 async function makeApp(users) {
   const ctx = await makeEnv({ users: Object.keys(users) });

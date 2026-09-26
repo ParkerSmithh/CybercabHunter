@@ -2,7 +2,7 @@
 //
 // Every query here is a plain SELECT. Nothing in this file writes, and nothing
 // exposes it: there is no route, it is not imported by the router, and the
-// worker/ directory is excluded from the static assets (.assetsignore). It
+// worker/ directory is outside public/, the only folder published as static assets. It
 // exists so an operator can look at REAL data before rolling out the
 // Phase 3E rules, and so the queries are tested rather than ad hoc.
 //

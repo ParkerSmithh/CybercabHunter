@@ -35,13 +35,13 @@ Not affiliated with Tesla, Inc. Vehicle sightings, receipts, and rider-submitted
 Frontend (no build step):
 
 ```bash
-open index.html
+open public/index.html
 ```
 
 or serve it (needed for clean relative paths / testing from another device on your network):
 
 ```bash
-python3 -m http.server 8123
+python3 -m http.server 8123 --directory public
 # then visit http://localhost:8123/index.html
 ```
 
@@ -55,36 +55,45 @@ See `docs/deployment-and-migrations.md` for the production deployment and migrat
 
 ## Project structure
 
+Everything a visitor can download lives under `public/` — that folder, and only that folder, is what `wrangler.jsonc` publishes (`assets.directory`). Nothing else in the repository is reachable from the web.
+
 ```
-index.html, dispatch-comparison.html, fleet-calculator.html, infrastructure.html,
-community.html, vehicles.html, vehicle.html, moderation.html, rider-data.html,
-profile.html, signin.html            — the 11 pages
+public/                     — the website (published as-is; URLs are the paths inside it)
+  index.html, dispatch-comparison.html, fleet-calculator.html, infrastructure.html,
+  community.html, vehicles.html, vehicle.html, moderation.html, rider-data.html,
+  profile.html, signin.html — the 11 pages (served extensionless: /vehicles, /moderation ...)
+  css/style.css             — glassmorphism panels, neon glows, and keyframes Tailwind can't express
+  images/                   — Cybercab.png, Cybercab2.png, CybercabFlipped.png, HeroImage.png, RedModelY.png
+  js/calc.js                — pure calculation functions (ETA, arrival odds, fleet ROI), no DOM dependency
+  js/main.js                — shared runtime: nav highlighting, session/account menu, Tesla-link button,
+                              scroll-reveal, counters, toasts, sighting drawer
+  js/home-stats.js          — fetches and renders real homepage stats from GET /api/registry/stats
+  js/vehicles.js            — renders the Cars registry list (vehicles.html)
+  js/vehicle.js             — renders a single vehicle detail page (vehicle.html)
+  js/moderation.js          — moderator page: sighting queue + registry vehicle review/delete
+  js/rider-data.js          — Rider Data page: ride history, vehicles ridden/discovered
+  .well-known/              — the Tesla Fleet API public key, at the exact path Tesla requires
 
-js/calc.js        — pure calculation functions (ETA, arrival odds, fleet ROI), no DOM dependency
-js/main.js        — shared runtime: nav highlighting, session/account menu, Tesla-link button,
-                     scroll-reveal, counters, toasts, sighting drawer
-js/home-stats.js  — fetches and renders real homepage stats from GET /api/registry/stats
-js/vehicles.js    — renders the Cars registry list (vehicles.html)
-js/vehicle.js     — renders a single vehicle detail page (vehicle.html)
-js/moderation.js  — moderator page: sighting queue + registry vehicle review/delete
-js/rider-data.js  — Rider Data page: ride history, vehicles ridden/discovered
+worker/                     — the Cloudflare Worker: routing (index.js), auth (tesla.js, google-auth.js),
+                              D1 queries (db.js, db-rides.js), the receipt ingestion pipeline
+                              (receipt-*.js, ride-ingest.js, ride-canonical.js), moderation
+                              (moderation.js), and the public registry (vehicles.js) — see
+                              docs/receipt-ingestion.md for the ingestion pipeline in depth
 
-worker/           — the Cloudflare Worker: routing (index.js), auth (tesla.js, google-auth.js),
-                     D1 queries (db.js, db-rides.js), the receipt ingestion pipeline
-                     (receipt-*.js, ride-ingest.js, ride-canonical.js), moderation
-                     (moderation.js), and the public registry (vehicles.js) — see
-                     docs/receipt-ingestion.md for the ingestion pipeline in depth
+migrations/                 — numbered D1 schema migrations, applied via wrangler (see
+                              docs/deployment-and-migrations.md)
 
-migrations/       — numbered D1 schema migrations, applied via wrangler (see
-                     docs/deployment-and-migrations.md)
+tests/                      — node:test suite; see Testing below
 
-tests/            — node:test suite; see Testing below
+docs/                       — deployment/migrations, receipt ingestion, registry reference docs,
+                              bugs.md (known limitations), features.md, and the spike-test video
 
-docs/             — deployment/migrations, receipt ingestion, and registry reference docs
+keys/                       — public-key.pem (tracked); private-key.pem lives here locally and is git-ignored
 
-css/style.css     — glassmorphism panels, neon glows, and keyframes Tailwind can't express
-HeroImage.png     — hero background image
+wrangler.jsonc, package.json, CNAME (GitHub Pages custom domain)
 ```
+
+Old root image URLs (`/Cybercab2.png` and the other four) permanently redirect to `/images/...` (see `worker/index.js`), so links that predate the move keep working. `tests/site-layout.test.mjs` guards this layout: it fails if a page points at a file that isn't in `public/`, or if anything private ends up under it.
 
 Every page duplicates the same header/footer markup (no server-side includes) and loads `js/calc.js` then `js/main.js` before its own inline script, which calls `CCC.init()` first.
 
@@ -109,13 +118,13 @@ Two independent layers:
 node tests/calc.test.js
 ```
 
-Unit tests for `dispatchETA`, `arrivalOdds`, and `fleetFinancials` in `js/calc.js` — pure functions, no DOM.
+Unit tests for `dispatchETA`, `arrivalOdds`, and `fleetFinancials` in `public/js/calc.js` — pure functions, no DOM.
 
 ```bash
 node --test tests/*.test.mjs
 ```
 
-The integration suite (31 files) — real SQL against an in-memory D1 database built from `migrations/`, the real Worker router, and jsdom for UI-level tests. Covers auth, receipt ingestion, moderation, the registry, and Rider Data.
+The integration suite — real SQL against an in-memory D1 database built from `migrations/`, the real Worker router, and jsdom for UI-level tests. Covers auth, receipt ingestion, moderation, the registry, and Rider Data.
 
 There's no automated test coverage for the simulator pages' DOM/UI behavior (sliders, map, drawers) — verify those by hand in a browser.
 
@@ -127,7 +136,7 @@ There's no automated test coverage for the simulator pages' DOM/UI behavior (sli
 
 ## Known limitations
 
-See `bugs.md`.
+See [`docs/bugs.md`](docs/bugs.md).
 
 ## My Spike Test
 

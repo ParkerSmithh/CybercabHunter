@@ -268,8 +268,8 @@ async function run() {
 
   console.log('10. Moderator page (jsdom): the Add to registry button and the card');
   {
-    const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
-    const COMBINED = `${fs.readFileSync(`${ROOT}js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8')}`;
+    const HTML = fs.readFileSync(`${ROOT}public/moderation.html`, 'utf8');
+    const COMBINED = `${fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}public/js/moderation.js`, 'utf8')}`;
     const ctx = await makeApp();
     seedVehicle(ctx.d1, { id: 'linked', plate: 'LNK1234' });
     await submit(ctx, { license_plate: 'XVF2567' });        // promotable
@@ -315,8 +315,8 @@ async function run() {
 
   console.log('11. Moderator card: a sighting-added vehicle that later gets a receipt shows BOTH provenances');
   {
-    const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
-    const COMBINED = `${fs.readFileSync(`${ROOT}js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8')}`;
+    const HTML = fs.readFileSync(`${ROOT}public/moderation.html`, 'utf8');
+    const COMBINED = `${fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8')}\nCCC.init();\n${fs.readFileSync(`${ROOT}public/js/moderation.js`, 'utf8')}`;
     const ctx = await makeApp();
     const id = crypto.randomUUID();
     ctx.d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, origin, visibility) VALUES ('${id}', 'HYB0001', 'sighting', 'private')`);

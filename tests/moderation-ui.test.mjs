@@ -14,10 +14,10 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}moderation.html`, 'utf8');
-const CALC = fs.readFileSync(`${ROOT}js/calc.js`, 'utf8');
-const MAIN = fs.readFileSync(`${ROOT}js/main.js`, 'utf8');
-const MOD = fs.readFileSync(`${ROOT}js/moderation.js`, 'utf8');
+const HTML = fs.readFileSync(`${ROOT}public/moderation.html`, 'utf8');
+const CALC = fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8');
+const MAIN = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
+const MOD = fs.readFileSync(`${ROOT}public/js/moderation.js`, 'utf8');
 const COMBINED = `${CALC}\n${MAIN}\nCCC.init();\n${MOD}`;
 
 async function makeApp(users) {

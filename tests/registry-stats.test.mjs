@@ -15,7 +15,7 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const read = f => fs.readFileSync(`${ROOT}${f}`, 'utf8');
+const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const WORKER_ORIGIN = 'https://cybercabhunter.contactjoeclos.workers.dev';
 const uuid = n => `${String(n).padStart(8, '0')}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 

@@ -13,7 +13,7 @@ import { makeCheck } from './helpers/env.mjs';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const read = f => fs.readFileSync(`${ROOT}${f}`, 'utf8');
+const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 
 // Claims about real-world launch status — must never appear anywhere in either file.
 const LAUNCH_CLAIMS = [

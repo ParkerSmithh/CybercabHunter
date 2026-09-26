@@ -16,9 +16,9 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}community.html`, 'utf8');
-const CALC = fs.readFileSync(`${ROOT}js/calc.js`, 'utf8');
-const MAIN = fs.readFileSync(`${ROOT}js/main.js`, 'utf8');
+const HTML = fs.readFileSync(`${ROOT}public/community.html`, 'utf8');
+const CALC = fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8');
+const MAIN = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
 const COMBINED = `${CALC}\n${MAIN}\nCCC.init();`;
 
 async function makeApp(users = ['u1']) {
@@ -97,7 +97,7 @@ async function run() {
 
     // The destination is the existing Google sign-in page.
     check('the navigation target is the existing sign-in page', /const SIGN_IN_PAGE = 'signin\.html'/.test(MAIN) && /window\.location\.href = SIGN_IN_PAGE/.test(MAIN));
-    check('that page exists and offers Google sign-in', fs.existsSync(`${ROOT}signin.html`) && /oauth\/google\/start/.test(fs.readFileSync(`${ROOT}signin.html`, 'utf8')));
+    check('that page exists and offers Google sign-in', fs.existsSync(`${ROOT}public/signin.html`) && /oauth\/google\/start/.test(fs.readFileSync(`${ROOT}public/signin.html`, 'utf8')));
 
     // The same holds for the hero submit button, where a page has one.
     const hero = page.d.getElementById('heroSightingBtn');
@@ -114,9 +114,9 @@ async function run() {
   }
   {
     // Every page that has the submit button loads the script that enforces this.
-    const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}${f}`, 'utf8').includes('id="openSightingDrawer"'));
+    const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
-    check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}${f}`, 'utf8'))));
+    check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
   }
 
   console.log('2. Authenticated submit: correct endpoint, correct JSON fields, no user_id, no "Unlisted" sentinel');

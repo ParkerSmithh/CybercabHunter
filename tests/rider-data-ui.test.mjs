@@ -16,8 +16,8 @@ import worker from '../worker/index.js';
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}rider-data.html`, 'utf8');
-const JS = fs.readFileSync(`${ROOT}js/rider-data.js`, 'utf8');
+const HTML = fs.readFileSync(`${ROOT}public/rider-data.html`, 'utf8');
+const JS = fs.readFileSync(`${ROOT}public/js/rider-data.js`, 'utf8');
 
 async function makeApp({ users = ['u1'] } = {}) {
   const ctx = await makeEnv({ users });
@@ -291,9 +291,9 @@ async function run() {
 
   console.log('Link Tesla Account button. Same header button as the other pages: shown only when signed in and not yet linked');
   {
-    const CALC = fs.readFileSync(`${ROOT}js/calc.js`, 'utf8');
-    const MAIN = fs.readFileSync(`${ROOT}js/main.js`, 'utf8');
-    const INDEX = fs.readFileSync(`${ROOT}index.html`, 'utf8');
+    const CALC = fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8');
+    const MAIN = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
+    const INDEX = fs.readFileSync(`${ROOT}public/index.html`, 'utf8');
     const tag = html => (html.match(/<a id="teslaLinkBtn"[^>]*>/) || [''])[0];
     check('the header has the button, hidden until the script decides (no flash for a signed-out visitor or a linked rider)', /id="teslaLinkBtn"/.test(HTML) && /class="hidden /.test(tag(HTML)));
     check('it is the identical element the other pages use', tag(HTML) !== '' && tag(HTML) === tag(INDEX));
