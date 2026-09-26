@@ -437,11 +437,14 @@
   // ---- Fleet Growth chart (Austin) ----
   //
   // What this plots: the cumulative count of Austin Cybercabs that have
-  // appeared in Cybercab Hunter's PUBLIC registry, stepped up on each
-  // vehicle's first_seen_at and bucketed by UTC calendar day. Every point
-  // comes straight from GET /api/robotaxi-vehicles — the exact same
-  // publicVehicleEligibleSql set the "Cybercabs Spotted" stat above and the
-  // Cars page already count — fetched with no session, same as js/home-stats.js.
+  // appeared in Cybercab Hunter's PUBLIC registry, stepped up at each
+  // vehicle's EXACT first_seen_at (not bucketed to a calendar day — a burst
+  // of registrations spread across many distinct minutes stays a fine real
+  // staircase instead of collapsing into one or two giant vertical jumps).
+  // Every point comes straight from GET /api/robotaxi-vehicles — the exact
+  // same publicVehicleEligibleSql set the "Cybercabs Spotted" stat above and
+  // the Cars page already count — fetched with no session, same as
+  // js/home-stats.js. No point is invented, smoothed, or redistributed.
   //
   // What this is NOT: Tesla's real fleet size. It's how much of the fleet
   // *we've documented*, which depends on crowdsourced sighting/receipt
@@ -456,8 +459,14 @@
 
     const GOLD = '#D4AF37';
     const RANGE_DAYS = { '90d': 90, '6m': 182, '1y': 365, all: Infinity };
-    const UTC_DAY = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
-    let series = null;       // [{date, count}] one point per UTC day the total changed, ascending
+    // The Austin chart's chosen analysis start date — a display anchor picked
+    // for this chart, NOT an asserted Tesla/DMV launch date. No range on this
+    // chart shows anything earlier than this, so a distant single receipt
+    // vehicle (or a rolling 90D/6M/1Y window) can't make the visible window
+    // start on some arbitrary, unrelated date.
+    const AUSTIN_FLOOR = new Date(Date.UTC(2026, 8, 3));
+    const UTC_DAY_TIME = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' };
+    let series = null;       // [{date, count}] one point per exact first_seen_at the total changed, ascending
     let activeRange = '90d';
     let tableOn = false;
 
@@ -486,14 +495,20 @@
       return out;
     }
 
-    function toDailySeries(dates) {
+    // One point per exact first_seen_at (only truly simultaneous timestamps
+    // merge) — NOT bucketed to whole days. Day-bucketing was collapsing a
+    // burst of registrations spread across many distinct minutes into one or
+    // two giant vertical jumps; plotting the real timestamps instead shows
+    // the actual (already real, already granular) shape of that burst as a
+    // fine staircase rather than flattening it into a cliff. Nothing here is
+    // invented or redistributed — every step is a real, distinct first_seen_at.
+    function toStepSeries(dates) {
       if (!dates.length) return [];
-      const dayKey = d => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
       const added = new Map();
-      for (const d of dates) added.set(dayKey(d), (added.get(dayKey(d)) || 0) + 1);
-      const days = [...added.keys()].sort((a, b) => a - b);
+      for (const d of dates) added.set(d.getTime(), (added.get(d.getTime()) || 0) + 1);
+      const stamps = [...added.keys()].sort((a, b) => a - b);
       let running = 0;
-      return days.map(k => { running += added.get(k); return { date: new Date(k), count: running }; });
+      return stamps.map(t => { running += added.get(t); return { date: new Date(t), count: running }; });
     }
 
     function niceTicks(max, targetCount) {
@@ -510,7 +525,15 @@
     function windowedPoints() {
       const now = new Date();
       const rangeDays = RANGE_DAYS[activeRange];
-      const rangeStart = rangeDays === Infinity ? series[0].date : new Date(now.getTime() - rangeDays * 86400000);
+      // "All" is anchored to AUSTIN_FLOOR itself (not the earliest real
+      // vehicle, which happens to be later) so it always reads as "since the
+      // chosen start date," honestly flat before the real data begins. The
+      // rolling windows (90D/6M/1Y) are clamped so they never reach further
+      // back than that same floor, however far back the arithmetic would
+      // otherwise put them.
+      const rangeStart = rangeDays === Infinity
+        ? AUSTIN_FLOOR
+        : (() => { const rolling = new Date(now.getTime() - rangeDays * 86400000); return rolling < AUSTIN_FLOOR ? AUSTIN_FLOOR : rolling; })();
       const before = series.filter(p => p.date < rangeStart);
       const inWindow = series.filter(p => p.date >= rangeStart && p.date <= now);
       const leadCount = before.length ? before[before.length - 1].count : 0;
@@ -538,7 +561,7 @@
         return;
       }
       const rows = real.slice().reverse().map(p =>
-        `<tr><td class="py-1 pr-4 text-slate-400">${p.date.toLocaleDateString('en-US', UTC_DAY)}</td><td class="py-1 font-semibold text-slate-100">${p.count}</td></tr>`
+        `<tr><td class="py-1 pr-4 text-slate-400 whitespace-nowrap">${p.date.toLocaleString('en-US', UTC_DAY_TIME)}</td><td class="py-1 font-semibold text-slate-100">${p.count}</td></tr>`
       ).join('');
       el.innerHTML = `<table class="text-xs w-full"><thead><tr class="text-slate-500 text-left"><th class="font-semibold pb-1 pr-4">Date</th><th class="font-semibold pb-1">Fleet size</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
@@ -618,7 +641,7 @@
         dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.style.display = '';
         catcher.setAttribute('aria-valuenow', String(idx));
         tooltip.classList.remove('hidden');
-        const dateStr = p.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+        const dateStr = p.date.toLocaleString('en-US', UTC_DAY_TIME);
         tooltip.innerHTML = `<div class="font-bold text-slate-100">${p.count} Cybercab${p.count === 1 ? '' : 's'}</div><div class="text-slate-400 mt-0.5">${dateStr}</div>`;
         const leftPct = px / w * 100;
         tooltip.style.left = leftPct > 65 ? 'auto' : `calc(${leftPct}% + 10px)`;
@@ -687,7 +710,7 @@
     setMessage('Loading…');
     fetchAustinFirstSeenDates()
       .then(dates => {
-        series = toDailySeries(dates);
+        series = toStepSeries(dates);
         if (!series.length) { setMessage('No Austin registry vehicles yet.'); return; }
         render();
       })
