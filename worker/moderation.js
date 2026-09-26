@@ -17,6 +17,8 @@ import { db, VEHICLE_VISIBILITY } from './db.js';
 import { VEHICLE_ID_RE } from './vehicles.js';
 import { normalizePlate } from './plate.js';
 import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
+import { readImportItems, runImport, runSummary, itemBase } from './receipt-import.js';
+import { rideReviewState } from './ride-status.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -599,4 +601,57 @@ export async function apiListRegistryVehicleReviews(request, env, vehicleId) {
   }
   const reviews = await db.getRobotaxiVehicleReviews(sql, vehicleId);
   return Response.json({ success: true, reviews });
+}
+
+// POST /api/moderation/receipt-import   { items: [{ kind: 'eml' | 'text', content }] }
+//
+// The moderator receipt-import page (moderation/import-receipt.html). Same
+// body, same limits and EXACTLY the same pipeline as POST /api/rides/import
+// (worker/receipt-import.js's readImportItems/runImport) — source
+// 'receipt_import', the moderator's own user id (resolved from the session,
+// never the body), the same parsing, dedupe, review status and
+// vehicle find-or-create (a new plate becomes a PRIVATE registry vehicle; no
+// VIN, model or visibility is ever set here). The only differences: the
+// caller must be a moderator (requireModerator: 401/403 otherwise), and each
+// result also reads back the stored ride and its vehicle's current registry
+// state so the page can show what was imported. Fare/distance/pickup time are
+// the moderator's own ride data; nothing is published by this endpoint.
+export async function apiModerationImportReceipts(request, env) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  const read = await readImportItems(request);
+  if (read.response) return read.response;
+
+  const sql = env.cybercabhunter_db;
+  const { counts, results } = await runImport(env, auth.userId, read.items);
+  const detailed = [];
+  for (let index = 0; index < results.length; index++) {
+    const result = results[index];
+    const item = { ...itemBase(result, index), ride: null, vehicle: null };
+    const row = result.tripId ? await db.getImportedRideSummary(sql, auth.userId, result.tripId) : null;
+    if (row) {
+      item.ride = {
+        ride_date: row.ride_date, pickup_time: row.pickup_time,
+        distance: row.distance, distance_unit: row.distance_unit,
+        fare_amount_cents: row.fare_amount_cents, currency: row.currency,
+        service_area: row.service_area, source: row.source,
+        review_state: rideReviewState(row.submission_status)
+      };
+      if (row.vehicle_id) {
+        item.vehicle = {
+          id: row.vehicle_id, license_plate: row.vehicle_plate,
+          // Only a call that actually inserted the row reports created; a
+          // duplicate receipt never created anything.
+          created: !!result.vehicleCreated,
+          visibility: row.vehicle_visibility,
+          has_vin: !!row.vehicle_has_vin,
+          publicly_eligible: !!row.vehicle_public_eligible
+        };
+      }
+    }
+    detailed.push(item);
+  }
+
+  return Response.json({ success: true, run: runSummary(counts), results: detailed });
 }

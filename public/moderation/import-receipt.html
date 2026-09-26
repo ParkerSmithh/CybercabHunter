@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Served at /moderation/import-receipt: resolve every relative URL from the site root. -->
+<base href="/">
+<link rel="icon" type="image/png" href="images/Cybercab2.png">
+<link rel="apple-touch-icon" href="images/Cybercab2.png">
+<title>Cybercab Hunter — Import Receipt</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
+        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
+      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
+    }}
+  }
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+
+<!-- Same minimal chrome as moderation.html. Authorization is never decided
+     here: the page asks GET /api/moderation/access only to pick which state
+     to show, and POST /api/moderation/receipt-import enforces the moderator
+     role itself on every request. -->
+<header class="border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-5xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <span class="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em]">Moderation</span>
+  </div>
+</header>
+
+<section class="py-16">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10">
+
+    <div id="impLoading" class="hidden" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Checking access…</span>
+      <div class="glass rounded-2xl p-7 h-56 animate-pulse"></div>
+    </div>
+
+    <div id="impSignedOut" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Sign in required</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">This page requires a moderator account.</p>
+      <a href="signin.html?returnTo=%2Fmoderation%2Fimport-receipt" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    </div>
+
+    <div id="impForbidden" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Not authorized</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Your account doesn't have moderator access.</p>
+      <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to Cybercab Hunter</a>
+    </div>
+
+    <div id="impError" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h1 class="font-display font-bold text-2xl mb-3">Couldn't check access</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server.</p>
+      <button id="impRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
+    </div>
+
+    <div id="impReady" class="hidden">
+      <a href="moderation#modVehicles" class="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-gold transition-colors mb-6">&larr; Registry Vehicles</a>
+      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Moderation</p>
+      <h1 class="font-display font-bold text-3xl tracking-tight mb-3">Import Receipt</h1>
+      <p class="text-slate-400 text-sm leading-relaxed mb-8 max-w-2xl">Adds a Tesla Robotaxi ride to your own Rider Data through the normal receipt pipeline. A plate the registry hasn't seen becomes a <span class="text-slate-200">private</span> registry vehicle. Nothing is made public here: to publish it, verify the vehicle, enter its VIN and use Approve Cybercab in Registry Vehicles.</p>
+
+      <form id="impForm" class="glass rounded-2xl p-6 sm:p-8 space-y-6" novalidate>
+        <div>
+          <label for="impFiles" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Receipt files</label>
+          <input id="impFiles" type="file" multiple accept=".eml,.txt,message/rfc822,text/plain" class="mt-2 block w-full min-w-0 text-sm text-slate-300 file:mr-4 file:px-4 file:py-2.5 file:rounded-lg file:border file:border-[rgba(212,175,55,0.35)] file:bg-panel file:text-slate-100 file:text-sm file:font-semibold hover:file:bg-white/5 file:cursor-pointer cursor-pointer">
+          <ul class="text-xs text-slate-500 leading-relaxed mt-3 space-y-1 list-disc pl-4">
+            <li><span class="text-slate-300">.eml</span> — the Tesla receipt email saved as a file (in Gmail: open the email, <span class="whitespace-nowrap">⋮ → Download message</span>). Best: the sender and headers help confirm it.</li>
+            <li><span class="text-slate-300">.txt</span> — the receipt email's text copied into a plain-text file.</li>
+            <li>Up to 25 files, about 2 MB each. PDFs and screenshots aren't supported.</li>
+          </ul>
+        </div>
+
+        <div>
+          <label for="impText" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or paste the receipt text <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+          <textarea id="impText" rows="5" spellcheck="false" placeholder="Paste the full text of the Tesla receipt email" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
+        </div>
+
+        <p id="impFormError" class="hidden text-sm text-crimson" role="alert"></p>
+
+        <button id="impSubmit" type="submit" class="btn-magnetic w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Import</button>
+      </form>
+
+      <div id="impResults" class="hidden mt-10" aria-live="polite">
+        <h2 class="font-display font-bold text-xl mb-1">Results</h2>
+        <p id="impSummary" class="text-xs text-slate-500 uppercase tracking-wider mb-4"></p>
+        <ul id="impList" class="space-y-4"></ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script src="js/calc.js?v=2"></script>
+<script src="js/main.js?v=3"></script>
+<script>
+  CCC.init();
+</script>
+<script src="js/import-receipt.js?v=1"></script>
+</body>
+</html>

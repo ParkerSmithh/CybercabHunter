@@ -356,6 +356,14 @@ async function findRobotaxiVehicleByPlate(sql, plate) {
 //
 // Returns null for a plate with nothing left after normalization.
 async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
+  const found = await findOrCreateRobotaxiVehicleByPlateDetailed(sql, plate);
+  return found ? found.id : null;
+}
+
+// The same find-or-create, also reporting whether THIS call inserted the row
+// ({ id, created }), so a caller (the moderator receipt import) can tell a
+// new private vehicle from an existing one without a second, racy lookup.
+async function findOrCreateRobotaxiVehicleByPlateDetailed(sql, plate) {
   const normalized = normalizePlate(plate);
   if (!normalized) return null;
 
@@ -367,7 +375,7 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
       SELECT 1 FROM robotaxi_vehicles WHERE ${sqlNormalizedPlate('license_plate')} = ?
     )
   `).bind(id, normalized, normalized).run();
-  if (inserted && inserted.meta && inserted.meta.changes > 0) return id;
+  if (inserted && inserted.meta && inserted.meta.changes > 0) return { id, created: true };
 
   const [existingId] = await lookupVehiclesByPlate(sql, normalized);
   // Every new ride of an already-known plate advances last_seen_at —
@@ -376,7 +384,7 @@ async function findOrCreateRobotaxiVehicleByPlate(sql, plate) {
   await sql.prepare(
     `UPDATE robotaxi_vehicles SET last_seen_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
   ).bind(existingId).run();
-  return existingId;
+  return { id: existingId, created: false };
 }
 
 // An accidental-double-submit guard only — the same rider, the same
@@ -699,6 +707,26 @@ async function logManualRide(sql, { vehicleId, reviewedBy = null, ownerUserId, s
 // are deliberately NOT counted here: the public sighting list de-duplicates by
 // day and area and caps each vehicle's list, so a raw total would not match
 // anything a visitor can verify.
+// The moderator receipt import's read-back of ONE ride it just ingested, for
+// the import page's result card. Scoped to the importing user's own trip
+// (the same ownership every ride read uses), and reports the linked
+// vehicle's CURRENT registry state — visibility, whether a VIN is on file,
+// and public eligibility by the one shared rule (publicVehicleEligibleSql).
+// Returns null if the trip is gone (e.g. a duplicate of a since-deleted ride).
+async function getImportedRideSummary(sql, userId, tripId) {
+  const row = await sql.prepare(`
+    SELECT t.id AS trip_id, t.ride_date, t.pickup_time, t.distance, t.distance_unit,
+           t.fare_amount_cents, t.currency, t.service_area, t.source, s.status AS submission_status,
+           v.id AS vehicle_id, v.license_plate AS vehicle_plate, v.visibility AS vehicle_visibility,
+           (v.vin IS NOT NULL AND v.vin <> '') AS vehicle_has_vin,
+           CASE WHEN v.id IS NULL THEN 0 WHEN ${publicVehicleEligibleSql('v')} THEN 1 ELSE 0 END AS vehicle_public_eligible
+    FROM ${RIDES_FROM}
+    LEFT JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
+    WHERE t.id = ? AND t.user_id = ?
+  `).bind(tripId, userId).first();
+  return row || null;
+}
+
 async function getPublicRegistryStats(sql) {
   const row = await sql.prepare(`
     SELECT
@@ -1353,6 +1381,8 @@ export const db = {
   rotateReceiptIngestionAddress,
   getUserIdByActiveReceiptToken,
   findOrCreateRobotaxiVehicleByPlate,
+  findOrCreateRobotaxiVehicleByPlateDetailed,
+  getImportedRideSummary,
   findRobotaxiVehicleByPlate,
   resolveRobotaxiVehicleByPlate,
   findRecentDuplicateSighting,

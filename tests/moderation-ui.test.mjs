@@ -178,15 +178,13 @@ async function run() {
     check('the raw innerHTML never contains an unescaped onerror attribute', !page.d.getElementById('modList').innerHTML.includes('<img src=x onerror='));
   }
 
-  console.log('6. Refresh reloads the queue');
+  console.log('6. Import Receipt replaces Refresh (see tests/moderator-receipt-import.test.mjs)');
   {
-    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const ctx = await makeApp({ mod: 'moderator' });
     const page = await openPage(ctx.env, 'session-mod');
-    await page.waitFor(() => page.visible('modQueue') && page.cards().length === 0, 'initial empty queue');
-    await submitSighting(ctx, 'rider', { license_plate: 'AAA1111' }); // arrives after the page already loaded
-    page.click(page.d.getElementById('modRefresh'));
-    await page.waitFor(() => page.cards().length === 1, 'the newly submitted sighting to appear after refresh');
-    check('Refresh picks up a sighting submitted after the initial load', page.cards().length === 1);
+    await page.waitFor(() => page.visible('modQueue'), 'queue to load');
+    const link = page.d.getElementById('modImportReceipt');
+    check('the queue header has an Import Receipt link to /moderation/import-receipt, and no Refresh button', !!link && link.getAttribute('href') === '/moderation/import-receipt' && !page.d.getElementById('modRefresh'));
   }
 
   t.finish();

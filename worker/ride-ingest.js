@@ -111,8 +111,11 @@ async function applyToExistingRide(sql, ctx, ride, existing) {
   }
 
   // The corrected receipt names the vehicle and the stored ride has none.
+  let vehicleCreated = false;
   if (!existing.robotaxi_vehicle_id && ride.licensePlate) {
-    changes.robotaxi_vehicle_id = await db.findOrCreateRobotaxiVehicleByPlate(sql, ride.licensePlate);
+    const found = await db.findOrCreateRobotaxiVehicleByPlateDetailed(sql, ride.licensePlate);
+    changes.robotaxi_vehicle_id = found ? found.id : null;
+    vehicleCreated = !!(found && found.created);
   }
   // The identity gained a plate it didn't have.
   if (ride.rideKey && ride.rideKey !== existing.ride_key && ride.licensePlate) {
@@ -155,6 +158,7 @@ async function applyToExistingRide(sql, ctx, ride, existing) {
     tripId: existing.id,
     submissionId: existing.submission_id,
     reviewStatus: statusUpgraded ? 'accepted' : ride.review.status,
+    vehicleCreated,
     // Set when this receipt disagreed with the ride but could not be shown
     // to be newer, so the stored values were kept.
     reason: heldBack ? 'kept_existing_values' : undefined
@@ -194,7 +198,8 @@ export async function ingestRide(env, ride, ctx) {
   const existing = await findExistingRide(sql, userId, ride);
   if (existing) return applyToExistingRide(sql, ctx, ride, existing);
 
-  const vehicleId = ride.licensePlate ? await db.findOrCreateRobotaxiVehicleByPlate(sql, ride.licensePlate) : null;
+  const vehicle = ride.licensePlate ? await db.findOrCreateRobotaxiVehicleByPlateDetailed(sql, ride.licensePlate) : null;
+  const vehicleId = vehicle ? vehicle.id : null;
   const evidenceRef = ctx.storeEvidence ? await ctx.storeEvidence() : null;
   const submissionId = newId();
   const tripId = newId();
@@ -223,5 +228,5 @@ export async function ingestRide(env, ride, ctx) {
     status: ride.review.status === 'accepted' ? 'accepted' : 'needs_review',
     outcome: 'created', submissionId, tripId
   });
-  return { outcome: 'created', tripId, submissionId, reviewStatus: ride.review.status };
+  return { outcome: 'created', tripId, submissionId, reviewStatus: ride.review.status, vehicleCreated: !!(vehicle && vehicle.created) };
 }

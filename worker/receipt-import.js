@@ -64,39 +64,46 @@ function toParsedMessage(item) {
   return parseRawEmail(item.content);
 }
 
-export async function apiImportReceipts(request, env, userId) {
+// Reads and validates an import request body: { items: [{ kind, content }] }.
+// Returns { items } or { response } (the error to send back as-is).
+export async function readImportItems(request) {
   // A present, honest Content-Length lets an oversized request be rejected
   // before reading anything — but it's only a fast path: readBodyWithLimit
   // below is what actually enforces the cap against the real byte stream,
   // so a request that omits it (e.g. chunked transfer) can't bypass it.
   const declared = Number(request.headers.get('Content-Length') || 0);
   if (declared > MAX_BODY_BYTES) {
-    return Response.json({ success: false, error: 'too_large' }, { status: 413 });
+    return { response: Response.json({ success: false, error: 'too_large' }, { status: 413 }) };
   }
 
   const { text, tooLarge } = await readBodyWithLimit(request, MAX_BODY_BYTES);
   if (tooLarge) {
-    return Response.json({ success: false, error: 'too_large' }, { status: 413 });
+    return { response: Response.json({ success: false, error: 'too_large' }, { status: 413 }) };
   }
 
   let body;
   try {
     body = JSON.parse(text);
   } catch (err) {
-    return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
+    return { response: Response.json({ success: false, error: 'invalid_body' }, { status: 400 }) };
   }
 
   const items = body && body.items;
-  if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) {
-    return Response.json({ success: false, error: 'invalid_items', max_items: MAX_ITEMS }, { status: 400 });
-  }
+  const invalid = () => ({ response: Response.json({ success: false, error: 'invalid_items', max_items: MAX_ITEMS }, { status: 400 }) });
+  if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) return invalid();
   for (const item of items) {
     const validKind = item && (item.kind === 'text' || item.kind === 'eml');
     if (!validKind || typeof item.content !== 'string' || item.content.trim() === '' || item.content.length > MAX_ITEM_CHARS) {
-      return Response.json({ success: false, error: 'invalid_items', max_items: MAX_ITEMS }, { status: 400 });
+      return invalid();
     }
   }
+  return { items };
+}
 
+// Runs every item through the one receipt pipeline as `userId`, inside one
+// sync run. Returns { counts, results } where each result is the raw
+// processReceiptMessage outcome (callers choose what to expose).
+export async function runImport(env, userId, items) {
   const sql = env.cybercabhunter_db;
   const runId = newId();
   await db.createSyncRun(sql, { id: runId, userId, source: 'receipt_import' });
@@ -114,26 +121,37 @@ export async function apiImportReceipts(request, env, userId) {
       result = { outcome: 'error', code: 'import_failed' };
     }
     addToCounts(counts, result);
-    results.push({
-      index,
-      outcome: result.outcome,
-      review_status: result.reviewStatus || null,
-      reason: result.outcome === 'error' ? result.code : (result.reason || null),
-      ride_date: result.rideDate || null
-    });
+    results.push(result);
   }
 
   await db.finishSyncRun(sql, runId, {
     status: runStatusFor(counts), ...counts, errorCode: counts.errors ? 'item_errors' : null
   });
+  return { counts, results };
+}
 
+export const runSummary = counts => ({
+  processed: counts.seen, added: counts.created, updated: counts.updated,
+  duplicates: counts.duplicates, needs_review: counts.review,
+  rejected: counts.rejected, errors: counts.errors
+});
+
+export const itemBase = (result, index) => ({
+  index,
+  outcome: result.outcome,
+  review_status: result.reviewStatus || null,
+  reason: result.outcome === 'error' ? result.code : (result.reason || null),
+  ride_date: result.rideDate || null
+});
+
+export async function apiImportReceipts(request, env, userId) {
+  const read = await readImportItems(request);
+  if (read.response) return read.response;
+
+  const { counts, results } = await runImport(env, userId, read.items);
   return Response.json({
     success: true,
-    run: {
-      processed: counts.seen, added: counts.created, updated: counts.updated,
-      duplicates: counts.duplicates, needs_review: counts.review,
-      rejected: counts.rejected, errors: counts.errors
-    },
-    results
+    run: runSummary(counts),
+    results: results.map(itemBase)
   });
 }

@@ -439,7 +439,15 @@
     vehicles = (resp.json && resp.json.vehicles) || [];
     setVehiclesView('ready');
     renderVehicles();
+    // Arriving via a #modVehicles link: the section was hidden while the page
+    // loaded, so the browser couldn't scroll to it. Do it once, now.
+    if (!scrolledToVehicles && location.hash === '#modVehicles') {
+      scrolledToVehicles = true;
+      const section = $('modVehicles');
+      if (section && section.scrollIntoView) section.scrollIntoView();
+    }
   }
+  let scrolledToVehicles = false;
 
   const replaceVehicle = fresh => { vehicles = vehicles.map(v => (v.id === fresh.id ? fresh : v)); };
 
@@ -622,7 +630,10 @@
     setupActions();
     setupVehicleActions();
     $('modRetry').addEventListener('click', () => loadQueue(true));
-    $('modRefresh').addEventListener('click', () => loadQueue(false));
+    // ?plate=XYZ (the receipt-import page's "Open in Registry Vehicles" link)
+    // pre-fills the registry plate search, so that vehicle is listed first.
+    const plate = new URLSearchParams(location.search).get('plate');
+    if (plate) $('modVehiclePlate').value = plate.slice(0, 40);
     loadQueue(true);
   }
 
