@@ -137,8 +137,13 @@ function parseTripSummaryDate(text) {
 // "2.8 mi · 14 min · XJR2195" — tolerant of whatever separates the three
 // tokens (·, |, dash, plain whitespace) since only proximity is required,
 // not an exact separator character. Plate length is not assumed.
+// A plate may contain hyphens ("XJR-2195"): the token is read whole (a
+// hyphenated run of letters/digits, or a plain 3-10 character one) and the
+// hyphens are stripped later by normalizePlate. Reading only up to the first
+// hyphen would turn "XJR-2195" into "XJR" — a different, wrong plate that
+// then creates a stray registry vehicle instead of matching the real one.
 function parseSummaryLine(text) {
-  const m = text.match(/(\d+(?:\.\d+)?)\s*mi(?:les)?\b[^\n]{0,25}?(\d+)\s*min(?:ute)?s?\b[^\n]{0,25}?([A-Za-z0-9]{3,10})\b/i);
+  const m = text.match(/(\d+(?:\.\d+)?)\s*mi(?:les)?\b[^\n]{0,25}?(\d+)\s*min(?:ute)?s?\b[^\n]{0,25}?((?:[A-Za-z0-9]{1,10}(?:-[A-Za-z0-9]{1,10})+)|[A-Za-z0-9]{3,10})\b/i);
   if (!m) return null;
   return {
     distance: parseFloat(m[1]),

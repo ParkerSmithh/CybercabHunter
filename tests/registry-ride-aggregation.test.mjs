@@ -229,6 +229,26 @@ async function run() {
     check('it stays publicly listed with the new aggregates', (await listEntry(ctx4, sid)).trip_count === 1 && (await stats(ctx4)).recorded_rides === 1);
   }
 
+  console.log('6b2. A receipt whose plate is printed with a hyphen still lands on the approved car, not a stray one');
+  {
+    const ctx5 = await makeApp();
+    const sid = crypto.randomUUID();
+    ctx5.d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, model, color, service_area, visibility, origin, vin, vin_set_by_user_id, vin_set_at)
+      VALUES ('${sid}', 'XVF3182', 'Cybercab', 'Gold', 'Austin', 'public', 'sighting', '${VIN}', 'mod', '2026-09-25 02:34:00')`);
+    const vehiclesBefore = ctx5.d1.query('SELECT COUNT(*) n FROM robotaxi_vehicles')[0].n;
+    const beforeProtected = protectedOf(vehicleRow(ctx5, sid));
+    const r = await ride(ctx5, 'u1', { plate: 'XVF-3182', date: 'October 12, 2026', pickupTime: '5:20 pm', miles: 3.2 });
+    check('the hyphenated-plate receipt is accepted and counted', r.item && r.item.outcome === 'created' && r.item.review_status === 'accepted');
+    const h = await history(ctx5, sid);
+    check('it aggregates onto the approved car: 1 ride, 3.2 mi', h.trip_count === 1 && h.total_distance === 3.2);
+    check('no stray vehicle was created (no "XVF" — the vehicle count is unchanged)', ctx5.d1.query('SELECT COUNT(*) n FROM robotaxi_vehicles')[0].n === vehiclesBefore && ctx5.d1.query(`SELECT COUNT(*) n FROM robotaxi_vehicles WHERE license_plate = 'XVF'`)[0].n === 0);
+    check("the ride's identity uses the whole normalized plate (XVF3182)", ctx5.d1.query('SELECT ride_key FROM trips')[0].ride_key === 'v1|2026-10-12|17:20|XVF3182');
+    check('the homepage total and the car\'s card both show it; the car was not otherwise changed', (await stats(ctx5)).recorded_rides === 1 && (await listEntry(ctx5, sid)).trip_count === 1 && protectedOf(vehicleRow(ctx5, sid)) === beforeProtected);
+    // The same physical ride typed without the hyphen by another rider is the SAME ride (one count).
+    await ride(ctx5, 'u2', { plate: 'XVF3182', date: 'October 12, 2026', pickupTime: '5:20 pm', miles: 3.2 });
+    check('the same ride from another rider with the plain plate is still ONE ride', (await history(ctx5, sid)).trip_count === 1 && (await stats(ctx5)).recorded_rides === 1);
+  }
+
   console.log('6c. Cross-user dedup: the same PHYSICAL ride submitted by two riders is ONE public ride');
   {
     const c = await makeApp();

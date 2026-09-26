@@ -164,6 +164,30 @@ async function run() {
     check('identical content also hashes identically as a second line of defense', hashA === hashB);
   }
 
+  console.log('12. Hyphenated plates are read whole ("XJR-2195" is XJR2195, never just "XJR")');
+  {
+    // The real-format fixture with only the plate token changed, so every other line is a real receipt.
+    const plateOf = async token => {
+      const msg = await parseRawEmail(fixture('tesla-receipt-real-format.eml').replace('2.8 mi · 14 min · XJR2195', `2.8 mi · 14 min · ${token}`));
+      const extraction = extractTeslaReceiptFieldsV2(msg);
+      return { plate: extraction.fields.license_plate, distance: extraction.fields.distance, minutes: extraction.fields.duration_minutes };
+    };
+    check('the unchanged plain plate still reads as before', (await plateOf('XJR2195')).plate === 'XJR2195');
+    const hy = await plateOf('XJR-2195');
+    check('a hyphenated plate is read in full, not cut at the hyphen', hy.plate === 'XJR-2195');
+    check('the distance and duration on that line are still read correctly', hy.distance === 2.8 && hy.minutes === 14);
+    check('a short first segment works too (AB-1234)', (await plateOf('AB-1234')).plate === 'AB-1234');
+    check('three segments work (A-BC-123)', (await plateOf('A-BC-123')).plate === 'A-BC-123');
+    // A dash used as the SEPARATOR between the tokens (the line is documented as separator-tolerant) must not be swallowed into the plate.
+    const dashSep = async line => {
+      const msg = await parseRawEmail(fixture('tesla-receipt-real-format.eml').replace('2.8 mi · 14 min · XJR2195', line));
+      return extractTeslaReceiptFieldsV2(msg).fields.license_plate;
+    };
+    check('"14 min - XJR2195" (dash as separator) still reads XJR2195', (await dashSep('2.8 mi - 14 min - XJR2195')) === 'XJR2195');
+    check('"14 min - XJR-2195" (dash separator AND hyphenated plate) reads XJR-2195', (await dashSep('2.8 mi - 14 min - XJR-2195')) === 'XJR-2195');
+    check('"14 min | XJR-2195" (pipe separator) reads XJR-2195', (await dashSep('2.8 mi | 14 min | XJR-2195')) === 'XJR-2195');
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail > 0) process.exit(1);
 }
