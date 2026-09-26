@@ -1,7 +1,8 @@
-/* Moderator receipt import (moderation/import-receipt.html). Sends receipt
-   files / pasted text to POST /api/moderation/receipt-import, which runs them
-   through the SAME pipeline as every other receipt (worker/receipt-import.js)
-   as the signed-in moderator. The server decides authorization on every
+/* Moderator receipt import (moderation/import-receipt.html). The moderator
+   picks a rider by display name (GET /api/moderation/riders), then sends
+   receipt files / pasted text to POST /api/moderation/receipt-import, which
+   runs them through the SAME pipeline as every other receipt
+   (worker/receipt-import.js) as that rider. The server decides authorization on every
    request (requireModerator); GET /api/moderation/access here only picks
    which state to show. Every server value is rendered with .textContent. */
 (function () {
@@ -14,6 +15,9 @@
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
   let sessionId = null;
   try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) { /* storage blocked */ }
+
+  let rider = null;          // { id, display_name, handle } once chosen
+  let riderSearchSeq = 0;    // drops a slow, stale search response
 
   function setView(view) {
     show('impLoading', view === 'loading');
@@ -140,6 +144,68 @@
     return li;
   }
 
+  // ---- rider picker ----
+  function riderStatus(msg) {
+    $('impRiderStatus').textContent = msg || '';
+    show('impRiderStatus', !!msg);
+  }
+
+  function chooseRider(r) {
+    rider = r;
+    $('impRiderName').textContent = r.display_name;
+    $('impRiderMeta').textContent = (r.handle ? '@' + r.handle + ' · ' : '') + 'ID ' + r.id;
+    show('impRiderPicker', false);
+    show('impRiderSelected', true);
+    formError('');
+  }
+
+  function clearRider() {
+    rider = null;
+    show('impRiderSelected', false);
+    show('impRiderPicker', true);
+    $('impRiderSearch').focus();
+  }
+
+  async function searchRiders() {
+    const q = $('impRiderSearch').value.trim();
+    const seq = ++riderSearchSeq;
+    const list = $('impRiderResults');
+    if (!q) { list.textContent = ''; riderStatus(''); return; }
+    let resp, body = null;
+    try {
+      resp = await fetch(WORKER + '/api/moderation/riders?display_name=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + sessionId } });
+      try { body = await resp.json(); } catch (e) { /* handled below */ }
+    } catch (e) {
+      if (seq === riderSearchSeq) riderStatus('Couldn\'t search riders. Check your connection.');
+      return;
+    }
+    if (seq !== riderSearchSeq) return;
+    if (resp.status === 401) { setView('signedOut'); return; }
+    if (resp.status === 403) { setView('forbidden'); return; }
+    if (!resp.ok || !body || !Array.isArray(body.riders)) { riderStatus('Couldn\'t search riders.'); return; }
+    list.textContent = '';
+    if (!body.riders.length) { riderStatus('No rider with that display name.'); return; }
+    riderStatus('');
+    for (const r of body.riders) {
+      const li = el('li');
+      const b = el('button', 'w-full text-left rounded-lg px-3 py-2.5 border border-[rgba(212,175,55,0.15)] hover:border-gold/60 hover:bg-white/5 transition-colors');
+      b.type = 'button';
+      b.dataset.riderId = r.id;
+      b.appendChild(el('div', 'text-sm font-semibold [overflow-wrap:anywhere]', r.display_name));
+      b.appendChild(el('div', 'text-xs text-slate-500 [overflow-wrap:anywhere]', (r.handle ? '@' + r.handle + ' · ' : '') + 'ID ' + r.id));
+      b.addEventListener('click', () => chooseRider(r));
+      li.appendChild(b);
+      list.appendChild(li);
+    }
+  }
+
+  let riderDebounce = null;
+  $('impRiderSearch').addEventListener('input', () => {
+    clearTimeout(riderDebounce);
+    riderDebounce = setTimeout(searchRiders, 250);
+  });
+  $('impRiderChange').addEventListener('click', clearRider);
+
   // ---- import ----
   function formError(msg) {
     $('impFormError').textContent = msg || '';
@@ -171,6 +237,7 @@
   async function onSubmit(e) {
     e.preventDefault();
     formError('');
+    if (!rider) { formError('Choose the rider this receipt belongs to.'); $('impRiderSearch').focus(); return; }
     let collected;
     try { collected = await collectItems(); } catch (err) { formError(err.message); return; }
     if (!collected.items.length) { formError('Choose a receipt file or paste the receipt text.'); return; }
@@ -183,7 +250,7 @@
         resp = await fetch(WORKER + '/api/moderation/receipt-import', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: collected.items })
+          body: JSON.stringify({ rider_user_id: rider.id, items: collected.items })
         });
       } catch (err) { formError('Couldn\'t reach the server. Check your connection and try again.'); return; }
       if (resp.status === 401) { setView('signedOut'); return; }
@@ -191,12 +258,16 @@
       let body = null;
       try { body = await resp.json(); } catch (err) { /* handled below */ }
       if (resp.status === 413) { formError('That upload is too large.'); return; }
+      if (body && body.error === 'rider_not_found') { clearRider(); formError('That rider no longer exists. Choose another.'); return; }
+      if (body && body.error === 'rider_has_no_display_name') { clearRider(); formError('That rider has no display name, so a receipt can\'t be imported for them.'); return; }
       if (!resp.ok || !body || !Array.isArray(body.results)) {
         formError(`The import failed (code ${resp.status}). Try again in a moment.`);
         return;
       }
       renderResults(body, collected.labels);
-      $('impForm').reset();
+      // Keep the chosen rider for the next receipt; clear only the receipts.
+      $('impFiles').value = '';
+      $('impText').value = '';
     } finally {
       btn.disabled = false; btn.textContent = 'Import';
     }
@@ -213,7 +284,8 @@
     if (run.needs_review) parts.push(`${run.needs_review} need review`);
     if (run.rejected) parts.push(`${run.rejected} rejected`);
     if (run.errors) parts.push(`${run.errors} failed`);
-    $('impSummary').textContent = parts.join(' · ');
+    const who = body.rider && body.rider.display_name ? `Added to ${body.rider.display_name}'s Rider Data · ` : '';
+    $('impSummary').textContent = who + parts.join(' · ');
     show('impResults', true);
   }
 

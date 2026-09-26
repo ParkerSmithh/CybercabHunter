@@ -148,6 +148,27 @@ async function getUserById(sql, userId) {
   return sql.prepare(`SELECT * FROM users WHERE id = ?`).bind(userId).first();
 }
 
+// Moderator-only rider lookup for the receipt-import page: users whose
+// display_name contains `query` (case-insensitive; LIKE wildcards in it are
+// literal). Users without a display name are never returned — the import
+// page attributes a ride by display name, so a nameless user can't be
+// chosen. Exact matches first, then alphabetical, then oldest account.
+// Selects identity fields only: no email, no connection or token data.
+async function searchUsersByDisplayName(sql, query, limit = 10) {
+  const text = String(query || '').trim().toLowerCase();
+  if (!text) return [];
+  const like = '%' + text.replace(/[\\%_]/g, c => '\\' + c) + '%';
+  const rows = await sql.prepare(`
+    SELECT id, display_name, handle, created_at
+    FROM users
+    WHERE display_name IS NOT NULL AND TRIM(display_name) <> ''
+      AND LOWER(display_name) LIKE ? ESCAPE '\\'
+    ORDER BY (LOWER(TRIM(display_name)) = ?) DESC, LOWER(display_name) ASC, created_at ASC, id ASC
+    LIMIT ?
+  `).bind(like, text, limit).all();
+  return rows.results || [];
+}
+
 // Google Sign-In identity — a separate account-creation path from
 // findOrCreateUserByTeslaIdentifier above, keyed by google_connections
 // instead of tesla_connections. name/avatarUrl are only applied when the
@@ -1370,6 +1391,7 @@ export const db = {
   getVehiclesByOwner,
   countVehiclesByOwner,
   getUserById,
+  searchUsersByDisplayName,
   findOrCreateUserByGoogleIdentity,
   updateUserSettings,
   touchUserSync,

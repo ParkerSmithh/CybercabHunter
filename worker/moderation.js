@@ -603,19 +603,40 @@ export async function apiListRegistryVehicleReviews(request, env, vehicleId) {
   return Response.json({ success: true, reviews });
 }
 
-// POST /api/moderation/receipt-import   { items: [{ kind: 'eml' | 'text', content }] }
+// GET /api/moderation/riders?display_name=<text>
+//
+// Moderator-only: riders whose display name contains the text, for choosing
+// whose Rider Data an imported receipt goes to. Returns id, display_name,
+// handle and created_at only (see db.searchUsersByDisplayName). At most 10.
+const MAX_RIDER_QUERY = 100;
+export async function apiModerationSearchRiders(request, env) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+
+  const q = (new URL(request.url).searchParams.get('display_name') || '').trim().slice(0, MAX_RIDER_QUERY);
+  const riders = q ? await db.searchUsersByDisplayName(env.cybercabhunter_db, q, 10) : [];
+  return Response.json({
+    success: true,
+    riders: riders.map(r => ({ id: r.id, display_name: r.display_name, handle: r.handle, created_at: r.created_at }))
+  });
+}
+
+// POST /api/moderation/receipt-import
+//   { rider_user_id: string, items: [{ kind: 'eml' | 'text', content }] }
 //
 // The moderator receipt-import page (moderation/import-receipt.html). Same
-// body, same limits and EXACTLY the same pipeline as POST /api/rides/import
+// items, same limits and EXACTLY the same pipeline as POST /api/rides/import
 // (worker/receipt-import.js's readImportItems/runImport) — source
-// 'receipt_import', the moderator's own user id (resolved from the session,
-// never the body), the same parsing, dedupe, review status and
+// 'receipt_import', the same parsing, dedupe, review status and
 // vehicle find-or-create (a new plate becomes a PRIVATE registry vehicle; no
-// VIN, model or visibility is ever set here). The only differences: the
-// caller must be a moderator (requireModerator: 401/403 otherwise), and each
-// result also reads back the stored ride and its vehicle's current registry
-// state so the page can show what was imported. Fare/distance/pickup time are
-// the moderator's own ride data; nothing is published by this endpoint.
+// VIN, model or visibility is ever set here). The differences: the caller
+// must be a moderator (requireModerator: 401/403 otherwise); the ride is
+// imported AS the rider the moderator chose (rider_user_id, required — the
+// rider must exist and have a display name, which is how the page picks
+// them), so it lands in THAT rider's Rider Data and dedupes against their
+// rides; and each result reads back the stored ride and its vehicle's
+// current registry state. Nothing is published by this endpoint.
+//   400 missing_rider | rider_has_no_display_name   404 rider_not_found
 export async function apiModerationImportReceipts(request, env) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
@@ -624,12 +645,24 @@ export async function apiModerationImportReceipts(request, env) {
   if (read.response) return read.response;
 
   const sql = env.cybercabhunter_db;
-  const { counts, results } = await runImport(env, auth.userId, read.items);
+  const riderId = read.body.rider_user_id;
+  if (typeof riderId !== 'string' || !riderId.trim() || riderId.length > 200) {
+    return Response.json({ success: false, error: 'missing_rider' }, { status: 400 });
+  }
+  const rider = await db.getUserById(sql, riderId);
+  if (!rider) {
+    return Response.json({ success: false, error: 'rider_not_found' }, { status: 404 });
+  }
+  if (!rider.display_name || !String(rider.display_name).trim()) {
+    return Response.json({ success: false, error: 'rider_has_no_display_name' }, { status: 400 });
+  }
+
+  const { counts, results } = await runImport(env, rider.id, read.items);
   const detailed = [];
   for (let index = 0; index < results.length; index++) {
     const result = results[index];
     const item = { ...itemBase(result, index), ride: null, vehicle: null };
-    const row = result.tripId ? await db.getImportedRideSummary(sql, auth.userId, result.tripId) : null;
+    const row = result.tripId ? await db.getImportedRideSummary(sql, rider.id, result.tripId) : null;
     if (row) {
       item.ride = {
         ride_date: row.ride_date, pickup_time: row.pickup_time,
@@ -653,5 +686,10 @@ export async function apiModerationImportReceipts(request, env) {
     detailed.push(item);
   }
 
-  return Response.json({ success: true, run: runSummary(counts), results: detailed });
+  return Response.json({
+    success: true,
+    rider: { id: rider.id, display_name: rider.display_name, handle: rider.handle },
+    run: runSummary(counts),
+    results: detailed
+  });
 }

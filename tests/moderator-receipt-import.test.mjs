@@ -21,12 +21,16 @@ const WORKER_ORIGIN = 'https://cybercabhunter.contactjoeclos.workers.dev';
 const VIN = '5YJSA1E14FF101183';
 const IMPORT = '/api/moderation/receipt-import';
 
+// Display names: two riders share one (the page picks by id, so they can't be
+// confused), one user has none (can never be chosen), one has LIKE wildcards.
+const NAMES = { mod: 'Parker Mod', rider: 'Alex Rider', rider2: 'Alex Rider', nameless: null, pct: 'Jamie 100%' };
 async function makeApp() {
-  const users = { mod: 'moderator', rider: 'user' };
+  const users = { mod: 'moderator', rider: 'user', rider2: 'user', nameless: 'user', pct: 'user' };
   const ctx = await makeEnv({ users: Object.keys(users) });
   for (const [id, role] of Object.entries(users)) {
     await ctx.env.TESLA_SESSIONS.put(`session:session-${id}`, JSON.stringify({ user_id: id }));
     if (role !== 'user') ctx.d1.exec(`UPDATE users SET role = '${role}' WHERE id = '${id}'`);
+    ctx.d1.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(NAMES[id], id)._exec();
   }
   ctx.env.ASSETS = { fetch: async req => new Response('static:' + new URL(req.url).pathname, { status: 200 }) };
   return ctx;
@@ -44,8 +48,9 @@ const receipt = (o = {}) => {
   const { plate = 'XJR2195', miles = 2.8, ...rest } = o;
   return receiptBody({ summary: `${miles} mi · 14 min · ${plate}`, ...rest });
 };
-const importAs = async (ctx, userId, items) => {
-  const r = await call(ctx, 'POST', IMPORT, userId, { items });
+// `userId` is the caller; `riderId` is whose Rider Data the receipt goes to.
+const importAs = async (ctx, userId, items, riderId = 'rider') => {
+  const r = await call(ctx, 'POST', IMPORT, userId, { rider_user_id: riderId, items });
   return { status: r.status, body: await json(r) };
 };
 const vehiclesFor = (ctx, plate) => ctx.d1.query(`SELECT * FROM robotaxi_vehicles WHERE UPPER(REPLACE(REPLACE(license_plate,'-',''),' ','')) = ?`, plate);
@@ -69,13 +74,33 @@ async function run() {
     check('bad bodies are rejected the same way as /api/rides/import', (await importAs(ctx, 'mod', [])).status === 400 && (await importAs(ctx, 'mod', [{ kind: 'pdf', content: 'x' }])).status === 400);
   }
 
-  console.log('2. A valid receipt imports through the existing pipeline, as the moderator');
+  console.log('1b. Riders: searched by display name, and required for an import');
+  {
+    const ctx = await makeApp();
+    const search = async (userId, q) => { const r = await call(ctx, 'GET', '/api/moderation/riders?display_name=' + encodeURIComponent(q), userId); return { status: r.status, body: await json(r) }; };
+    check('rider search: 401 signed out, 403 for a non-moderator', (await search(null, 'alex')).status === 401 && (await search('rider', 'alex')).status === 403);
+    const alex = await search('mod', 'alex');
+    check('matches are case-insensitive substrings, and same-name riders are both listed', alex.status === 200 && alex.body.riders.map(r => r.id).sort().join() === 'rider,rider2');
+    check('a rider entry carries only id, display name, handle and created_at (no email or connection data)', alex.body.riders.every(r => Object.keys(r).sort().join() === 'created_at,display_name,handle,id'));
+    check('a user without a display name is never returned', !(await search('mod', '')).body.riders.length && !JSON.stringify((await search('mod', 'a')).body).includes('nameless'));
+    check('LIKE wildcards are literal', (await search('mod', '%')).body.riders.map(r => r.id).join() === 'pct' && (await search('mod', '_')).body.riders.length === 0);
+    const items = [{ kind: 'text', content: receipt() }];
+    const none = await call(ctx, 'POST', IMPORT, 'mod', { items });
+    check('an import with no rider is refused (400 missing_rider)', none.status === 400 && (await json(none)).error === 'missing_rider');
+    const unknown = await importAs(ctx, 'mod', items, 'no-such-user');
+    check('an unknown rider is 404 rider_not_found', unknown.status === 404 && unknown.body.error === 'rider_not_found');
+    const nameless = await importAs(ctx, 'mod', items, 'nameless');
+    check('a rider without a display name is refused (400 rider_has_no_display_name)', nameless.status === 400 && nameless.body.error === 'rider_has_no_display_name');
+    check('none of the refused imports wrote anything', ctx.d1.query('SELECT COUNT(*) n FROM trips')[0].n === 0 && ctx.d1.query('SELECT COUNT(*) n FROM robotaxi_vehicles')[0].n === 0 && ctx.d1.query('SELECT COUNT(*) n FROM ride_sync_runs')[0].n === 0);
+  }
+
+  console.log('2. A valid receipt imports through the existing pipeline, into the chosen rider\'s Rider Data');
   const ctx = await makeApp();
   const statsBefore = await stats(ctx);
   let vid;
   {
     const r = await importAs(ctx, 'mod', [{ kind: 'eml', content: eml({ body: receipt({ plate: 'XJR2195' }) }) }]);
-    check('200 with one result', r.status === 200 && r.body.success === true && r.body.results.length === 1);
+    check('200 with one result, naming the rider', r.status === 200 && r.body.success === true && r.body.results.length === 1 && r.body.rider.id === 'rider' && r.body.rider.display_name === 'Alex Rider');
     const item = r.body.results[0];
     check('the ride was created', item.outcome === 'created' && item.review_status === 'accepted' && r.body.run.added === 1);
     check('parsed fields are preserved: ride date, pickup time, distance, fare', item.ride.ride_date === '2026-06-09' && item.ride.pickup_time === '13:04' && item.ride.distance === 2.8 && item.ride.fare_amount_cents === 692 && item.ride.currency === 'USD');
@@ -84,10 +109,10 @@ async function run() {
 
     const trip = ctx.d1.query('SELECT * FROM trips')[0];
     check('the ride uses receipt_import provenance (not manual_entry / muse_api)', trip.source === 'receipt_import');
-    check('the ride belongs to the moderator', trip.user_id === 'mod');
+    check('the ride belongs to the chosen rider, not the moderator', trip.user_id === 'rider');
     const sub = ctx.d1.query('SELECT * FROM submissions WHERE id = ?', trip.submission_id)[0];
     check('submission status follows the existing rule (accepted receipt -> pending)', sub.status === 'pending' && sub.evidence_type === 'pasted_receipt');
-    check('the sync run is a receipt_import run for the moderator', ctx.d1.query(`SELECT * FROM ride_sync_runs WHERE user_id = 'mod' AND source = 'receipt_import'`).length === 1);
+    check('the sync run is a receipt_import run for the rider', ctx.d1.query(`SELECT * FROM ride_sync_runs WHERE user_id = 'rider' AND source = 'receipt_import'`).length === 1);
 
     const vs = vehiclesFor(ctx, 'XJR2195');
     vid = vs[0].id;
@@ -95,9 +120,9 @@ async function run() {
     check('no VIN, model or approval was invented for it', vs[0].vin === null && vs[0].model === null && vs[0].verification_status !== 'verified' && ctx.d1.query('SELECT COUNT(*) n FROM robotaxi_vehicle_reviews')[0].n === 0);
     check('the ride is linked to that vehicle', trip.robotaxi_vehicle_id === vid && item.vehicle.id === vid);
 
-    const trips = await json(await call(ctx, 'GET', '/api/trips', 'mod'));
-    check('the ride appears in the moderator\'s Rider Data', trips.trips.length === 1 && trips.pagination.total === 1);
-    check('and not in another user\'s', (await json(await call(ctx, 'GET', '/api/trips', 'rider'))).trips.length === 0);
+    const trips = await json(await call(ctx, 'GET', '/api/trips', 'rider'));
+    check('the ride appears in the rider\'s Rider Data', trips.trips.length === 1 && trips.pagination.total === 1);
+    check('not in the moderator\'s, and not in the other same-name rider\'s', (await json(await call(ctx, 'GET', '/api/trips', 'mod'))).trips.length === 0 && (await json(await call(ctx, 'GET', '/api/trips', 'rider2'))).trips.length === 0);
 
     const modList = await json(await call(ctx, 'GET', '/api/moderation/robotaxi-vehicles?plate=XJR2195', 'mod'));
     check('the vehicle is listed in the moderator Registry Vehicles', modList.vehicles.some(v => v.id === vid && v.visibility === 'private'));
@@ -114,6 +139,11 @@ async function run() {
     check('the same receipt again is a duplicate, not a second ride', again.body.results[0].outcome === 'duplicate' && ctx.d1.query('SELECT COUNT(*) n FROM trips')[0].n === 1);
     check('a duplicate reports the existing vehicle, not a created one', again.body.results[0].vehicle.id === vid && again.body.results[0].vehicle.created === false);
     check('still one vehicle row for the plate', vehiclesFor(ctx, 'XJR2195').length === 1);
+    // Dedupe is per rider (the existing rule): the same receipt for a different
+    // rider is THEIR ride — but one physical ride on the vehicle (ride_key).
+    const other = await importAs(ctx, 'mod', [{ kind: 'text', content: receipt({ plate: 'XJR2195' }) }], 'rider2');
+    check('the same receipt for a different rider is added to their Rider Data', other.body.results[0].outcome === 'created' && (await json(await call(ctx, 'GET', '/api/trips', 'rider2'))).trips.length === 1);
+    check('and it is the same vehicle, still one row', other.body.results[0].vehicle.id === vid && vehiclesFor(ctx, 'XJR2195').length === 1);
   }
 
   console.log('4. An existing plate reuses the existing vehicle');
@@ -200,7 +230,7 @@ async function run() {
     w.fetch = async (u, init = {}) => {
       const path = String(u).replace(WORKER_ORIGIN, '');
       // The submit button's state while the import request is in flight.
-      requests.push({ path, method: init.method || 'GET', buttonBusy: d.getElementById('impSubmit').disabled && /Importing/.test(d.getElementById('impSubmit').textContent) });
+      requests.push({ path, method: init.method || 'GET', body: init.body, buttonBusy: d.getElementById('impSubmit').disabled && /Importing/.test(d.getElementById('impSubmit').textContent) });
       return worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com', ...(init.headers || {}) } }), env, {});
     };
     const d = w.document;
@@ -221,13 +251,27 @@ async function run() {
     check('moderator: the import form is shown', mod.vis('impReady') && !!mod.d.getElementById('impFiles') && !!mod.d.getElementById('impSubmit'));
     check('title, supported-file guidance and a link back to Registry Vehicles', /Import Receipt/.test(mod.d.querySelector('#impReady h1').textContent) && /\.eml/.test(mod.d.getElementById('impForm').textContent) && /PDFs/.test(mod.d.getElementById('impForm').textContent) && mod.d.querySelector('a[href="moderation#modVehicles"]'));
 
-    mod.d.getElementById('impSubmit').click();
-    await mod.waitFor(() => mod.vis('impFormError'));
-    check('importing nothing shows an error and sends nothing', mod.vis('impFormError') && !mod.requests.some(r => r.path === IMPORT));
-
-    // A file through the picker.
+    // The rider is required: a receipt with no rider chosen is not sent.
     const file = new mod.w.File([eml({ body: receipt({ plate: 'UIP777' }) })], 'receipt.eml', { type: 'message/rfc822' });
     Object.defineProperty(mod.d.getElementById('impFiles'), 'files', { value: [file], configurable: true });
+    mod.d.getElementById('impSubmit').click();
+    await mod.waitFor(() => mod.vis('impFormError'));
+    check('with no rider chosen, import shows "Choose the rider" and sends nothing', /Choose the rider/.test(mod.d.getElementById('impFormError').textContent) && !mod.requests.some(r => r.path === IMPORT));
+
+    // Search by display name; both "Alex Rider" accounts are offered, the nameless user never is.
+    const type = v => { const i = mod.d.getElementById('impRiderSearch'); i.value = v; i.dispatchEvent(new mod.w.Event('input')); };
+    type('alex');
+    await mod.waitFor(() => mod.d.querySelectorAll('#impRiderResults button').length === 2);
+    const options = [...mod.d.querySelectorAll('#impRiderResults button')];
+    check('searching "alex" lists both same-name riders, told apart by ID', options.map(b => b.dataset.riderId).sort().join() === 'rider,rider2' && options.every(b => /Alex Rider/.test(b.textContent) && /ID /.test(b.textContent)));
+    type('zzz');
+    await mod.waitFor(() => mod.vis('impRiderStatus'));
+    check('no match says so', /No rider with that display name/.test(mod.d.getElementById('impRiderStatus').textContent) && mod.d.querySelectorAll('#impRiderResults button').length === 0);
+    type('alex');
+    await mod.waitFor(() => mod.d.querySelectorAll('#impRiderResults button').length === 2);
+    mod.d.querySelector('#impRiderResults button[data-rider-id="rider"]').click();
+    check('choosing a rider shows them as selected and hides the search', mod.vis('impRiderSelected') && !mod.vis('impRiderPicker') && /Alex Rider/.test(mod.d.getElementById('impRiderName').textContent) && /ID rider/.test(mod.d.getElementById('impRiderMeta').textContent));
+
     mod.d.getElementById('impSubmit').click();
     await mod.waitFor(() => mod.vis('impResults'));
     check('the button shows a loading state while importing', mod.requests.some(r => r.path === IMPORT && r.buttonBusy));
@@ -236,7 +280,11 @@ async function run() {
     check('it says a new private vehicle was created and how to publish it', /New registry vehicle created/.test(card.textContent) && /Private/.test(card.textContent) && /VIN/.test(card.textContent));
     const open = card.querySelector('a');
     check('it links to that vehicle in Registry Vehicles', open && open.getAttribute('href') === 'moderation?plate=UIP777#modVehicles');
-    check('the upload was sent as an .eml item to the moderator endpoint', mod.requests.some(r => r.path === IMPORT && r.method === 'POST'));
+    const sent = JSON.parse(mod.requests.find(r => r.path === IMPORT && r.method === 'POST').body);
+    check('the upload was sent as an .eml item, for the chosen rider\'s id', sent.rider_user_id === 'rider' && sent.items[0].kind === 'eml');
+    check('the summary says whose Rider Data it went to', /Added to Alex Rider's Rider Data/.test(mod.d.getElementById('impSummary').textContent));
+    check('the ride is in that rider\'s Rider Data, not the moderator\'s', c.d1.query(`SELECT user_id FROM trips`).map(r => r.user_id).join() === 'rider');
+    check('the rider stays chosen for the next receipt', mod.vis('impRiderSelected'));
     check('the button is usable again afterwards', mod.d.getElementById('impSubmit').disabled === false);
 
     // Pasted text, as a duplicate.
@@ -256,6 +304,14 @@ async function run() {
     mod.d.getElementById('impSubmit').click();
     await mod.waitFor(() => /SAFE1/.test(mod.d.getElementById('impList').textContent));
     check('no markup from a receipt is ever rendered', mod.d.querySelectorAll('#impList img').length === 0 && mod.w.__pwned === undefined);
+
+    // Change rider.
+    mod.d.getElementById('impRiderChange').click();
+    check('Change clears the choice and brings the search back', !mod.vis('impRiderSelected') && mod.vis('impRiderPicker'));
+    mod.d.getElementById('impText').value = receipt({ plate: 'UIP888' });
+    mod.d.getElementById('impSubmit').click();
+    await mod.waitFor(() => mod.vis('impFormError'));
+    check('and import is blocked again until a rider is chosen', /Choose the rider/.test(mod.d.getElementById('impFormError').textContent) && !/UIP888/.test(mod.d.getElementById('impList').textContent));
   }
 
   console.log('10. Moderator page: ?plate= pre-fills the registry search');

@@ -7,7 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -156,9 +156,12 @@ export default {
     if (url.pathname === '/api/moderation/access' && request.method === 'GET') {
       return withCors(await apiModerationAccess(request, env), request);
     }
-    // Moderator receipt import: the same pipeline as /api/rides/import, as the moderator.
+    // Moderator receipt import: the same pipeline as /api/rides/import, as a chosen rider.
     if (url.pathname === '/api/moderation/receipt-import' && request.method === 'POST') {
       return withCors(await apiModerationImportReceipts(request, env), request);
+    }
+    if (url.pathname === '/api/moderation/riders' && request.method === 'GET') {
+      return withCors(await apiModerationSearchRiders(request, env), request);
     }
     if (url.pathname === '/api/moderation/vehicle-sightings' && request.method === 'GET') {
       return withCors(await apiListPendingVehicleSightings(request, env), request);

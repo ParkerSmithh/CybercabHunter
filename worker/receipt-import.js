@@ -65,7 +65,8 @@ function toParsedMessage(item) {
 }
 
 // Reads and validates an import request body: { items: [{ kind, content }] }.
-// Returns { items } or { response } (the error to send back as-is).
+// Returns { items, body } or { response } (the error to send back as-is);
+// `body` lets a caller read its own extra fields from the same request.
 export async function readImportItems(request) {
   // A present, honest Content-Length lets an oversized request be rejected
   // before reading anything — but it's only a fast path: readBodyWithLimit
@@ -97,7 +98,7 @@ export async function readImportItems(request) {
       return invalid();
     }
   }
-  return { items };
+  return { items, body };
 }
 
 // Runs every item through the one receipt pipeline as `userId`, inside one
