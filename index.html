@@ -444,14 +444,13 @@
   // Every point comes straight from GET /api/robotaxi-vehicles — the exact
   // same publicVehicleEligibleSql set the "Cybercabs Spotted" stat above and
   // the Cars page already count — fetched with no session, same as
-  // js/home-stats.js. No point is invented, smoothed, or redistributed.
+  // js/home-stats.js. No point is invented, smoothed, or redistributed, and
+  // this grows on its own as new vehicles are added — no manual editing.
   //
   // What this is NOT: Tesla's real fleet size. It's how much of the fleet
   // *we've documented*, which depends on crowdsourced sighting/receipt
   // activity, not on Tesla's actual deployment pace — hence "documented in
   // the registry" in the card's own subtitle rather than a bare "Fleet Size".
-  // No number here is invented: a vehicle only contributes once it clears the
-  // same public-eligibility bar as everywhere else on the site.
   function initFleetGrowthChart() {
     const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
     const mount = document.getElementById('fleetChartMount');
@@ -459,12 +458,13 @@
 
     const GOLD = '#D4AF37';
     const RANGE_DAYS = { '90d': 90, '6m': 182, '1y': 365, all: Infinity };
-    // The Austin chart's chosen analysis start date — a display anchor picked
-    // for this chart, NOT an asserted Tesla/DMV launch date. No range on this
-    // chart shows anything earlier than this, so a distant single receipt
-    // vehicle (or a rolling 90D/6M/1Y window) can't make the visible window
-    // start on some arbitrary, unrelated date.
-    const AUSTIN_FLOOR = new Date(Date.UTC(2026, 8, 3));
+    // The registry's real Austin data starts Sept 24, 2026 — nothing on this
+    // chart shows anything earlier than that, so a rolling 90D/6M/1Y window
+    // (or, later, some outlying old vehicle) can't drag the visible window
+    // back to an arbitrary date with nothing on it. As real vehicles keep
+    // getting added after this floor, "All" naturally keeps extending forward
+    // on its own — no code change needed for that.
+    const AUSTIN_FLOOR = new Date(Date.UTC(2026, 8, 24));
     const UTC_DAY_TIME = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' };
     let series = null;       // [{date, count}] one point per exact first_seen_at the total changed, ascending
     let activeRange = '90d';
