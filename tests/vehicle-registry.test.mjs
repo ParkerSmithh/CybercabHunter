@@ -254,6 +254,40 @@ async function run() {
     check('the underlying data/classification logic is unchanged — this is presentation only (the API still reports the same vin/model as before)', c.vin === VIN && r.body.vehicles.find(v => v.id === ordinary).vin === null);
   }
 
+  console.log('4c. Search: plate, VIN, model and city, across every public vehicle');
+  {
+    const ctx = await makeApp();
+    const VIN = '7SAYGDEE1RA000123';
+    const a = vehicle(ctx, 1, 'ABC-1234', { visibility: 'public', model: 'Model Y', serviceArea: 'Austin', seen: '2026-09-10 00:00:00' }); ride(ctx, a, { serviceArea: 'Austin' });
+    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Cybercab', vin: VIN, seen: '2026-09-11 00:00:00' }); ride(ctx, b, { serviceArea: 'Dallas' });
+    const hidden = vehicle(ctx, 3, 'ABC9999', { visibility: 'private' }); ride(ctx, hidden);
+    const ids = async q => (await list(ctx, '?q=' + encodeURIComponent(q))).body.vehicles.map(v => v.id).sort().join();
+    check('a plate matches ignoring case, hyphens and spaces', await ids('abc1234') === a && await ids('ABC-1234') === a && await ids('c 12') === a);
+    check('a partial VIN matches', await ids('a000123') === b && await ids(VIN) === b);
+    check('model and ride city match', await ids('cyber') === b && await ids('dallas') === b && await ids('austin') === a);
+    check('search never reveals a private vehicle', !(await ids('ABC')).includes(hidden) && await ids('ABC9999') === '');
+    const r = await list(ctx, '?q=zzz');
+    check('no match: an empty list with total 0, still 200', r.status === 200 && r.body.vehicles.length === 0 && r.body.total === 0);
+    check('LIKE wildcards are literal, not match-everything', await ids('%') === '' && await ids('_') === '');
+    check('a blank query is the full list', (await list(ctx, '?q=%20%20')).body.total === 2);
+    check('injection-style search input is just text', (await list(ctx, "?q=' OR 1=1 --")).body.total === 0 && (await list(ctx)).body.total === 2);
+    check('total counts the matches, not the registry', (await list(ctx, '?q=abc')).body.total === 1);
+
+    const p = await open(ctx, null);
+    check('the page has a search box', !!p.d.getElementById('regSearch'));
+    const type = async v => { const s = p.d.getElementById('regSearch'); s.value = v; s.dispatchEvent(new p.w.Event('input')); };
+    await type('xjr');
+    await p.waitFor(() => p.cards().length === 1 && /XJR1903/.test(p.cards()[0].textContent));
+    check('typing filters the list via the API (q= sent)', p.cards().length === 1 && p.requests.some(r => /[?&]q=xjr/.test(r.path)));
+    check('the count reflects the matches', p.d.getElementById('regCount').textContent === '1 vehicle');
+    await type('nothing-here');
+    await p.waitFor(() => p.vis('regNoMatch'));
+    check('no results shows "No matches" with the query as text, not the empty-registry message', p.vis('regNoMatch') && !p.vis('regEmpty') && /nothing-here/.test(p.d.getElementById('regNoMatchQuery').textContent));
+    await type('');
+    await p.waitFor(() => p.cards().length === 2);
+    check('clearing the search restores the full list', p.cards().length === 2 && p.vis('regLoaded'));
+  }
+
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(f).includes('data-nav="community"'));

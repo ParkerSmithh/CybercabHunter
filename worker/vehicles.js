@@ -45,6 +45,7 @@ export async function apiGetRegistryStats(request, env) {
 
 const LIST_DEFAULT_LIMIT = 50;
 const LIST_MAX_LIMIT = 100;
+const LIST_MAX_QUERY = 64;
 
 // Public: the registry list behind /vehicles. Same gate as apiGetVehicle (only
 // vehicles that are public AND have a counted ride) — see
@@ -57,8 +58,11 @@ export async function apiListVehicles(request, env) {
   const asInt = (raw, fallback) => (/^\d{1,6}$/.test(raw || '') ? Number(raw) : fallback);
   const limit = Math.min(Math.max(asInt(params.get('limit'), LIST_DEFAULT_LIMIT), 1), LIST_MAX_LIMIT);
   const offset = asInt(params.get('offset'), 0);
+  // Free-text search (plate, VIN, model, color, city); capped so a pasted
+  // essay can't become an expensive scan pattern.
+  const q = (params.get('q') || '').trim().slice(0, LIST_MAX_QUERY);
 
-  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset });
+  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset, q });
   return Response.json({
     vehicles: vehicles.map(v => ({
       id: v.id,
@@ -83,7 +87,7 @@ export async function apiListVehicles(request, env) {
       total_distance: v.total_distance,
       service_areas: v.service_areas
     })),
-    total, limit, offset
+    total, limit, offset, q
   }, {
     headers: { 'Cache-Control': 'public, max-age=60' }
   });

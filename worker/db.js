@@ -722,8 +722,33 @@ async function getPublicRegistryStats(sql) {
 // from the same counted-ride rule the detail page uses. Nothing private is
 // selected: no user/ride/submission ids, no fares, no addresses. Most recently
 // seen first, then plate, then id, so the order is stable between pages.
-async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
+//
+// `q` (optional) narrows the list to vehicles matching free text: the plate
+// and VIN compared with punctuation/spaces ignored (so "abc-123" finds
+// ABC123), and the model, color, service area and counted-ride cities as a
+// case-insensitive substring. It is always a bound parameter, and LIKE's own
+// wildcards in it are escaped so "%" or "_" match literally.
+async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '' } = {}) {
   const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
+  const text = String(q || '').trim();
+  const compact = normalizePlate(text);
+  let search = '';
+  const searchBinds = [];
+  if (text) {
+    const like = s => '%' + s.replace(/[\\%_]/g, c => '\\' + c) + '%';
+    const conds = [
+      `UPPER(v.model) LIKE ? ESCAPE '\\'`,
+      `UPPER(v.color) LIKE ? ESCAPE '\\'`,
+      `UPPER(v.service_area) LIKE ? ESCAPE '\\'`,
+      `EXISTS (SELECT 1 ${counted(` AND UPPER(t.service_area) LIKE ? ESCAPE '\\'`)})`
+    ];
+    searchBinds.push(...Array(4).fill(like(text.toUpperCase())));
+    if (compact) {
+      conds.push(`${sqlNormalizedPlate('v.license_plate')} LIKE ?`, `UPPER(v.vin) LIKE ?`);
+      searchBinds.push(like(compact), like(compact));   // already A-Z0-9 only: nothing to escape
+    }
+    search = ` AND (${conds.join(' OR ')})`;
+  }
   const rows = await sql.prepare(`
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
            v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
@@ -733,13 +758,13 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0 } = {}) {
            (SELECT SUM(distance) FROM ${physicalRidesFrom('v.id')}) AS total_distance,
            (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas
     FROM robotaxi_vehicles v
-    WHERE ${publicVehicleEligibleSql('v')}
+    WHERE ${publicVehicleEligibleSql('v')}${search}
     ORDER BY v.last_seen_at DESC, v.license_plate ASC, v.id ASC
     LIMIT ? OFFSET ?
-  `).bind(limit, offset).all();
+  `).bind(...searchBinds, limit, offset).all();
   const total = await sql.prepare(`
-    SELECT COUNT(*) AS n FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}
-  `).first();
+    SELECT COUNT(*) AS n FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}${search}
+  `).bind(...searchBinds).first();
   return { vehicles: rows.results || [], total: total ? total.n : 0 };
 }
 

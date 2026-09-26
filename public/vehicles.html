@@ -91,6 +91,13 @@
       <p class="text-slate-400 text-sm leading-relaxed max-w-2xl">Cybercabs reported by users.</p>
     </div>
 
+    <!-- Search: plate, VIN, model, color or city (server-side, across every public vehicle) -->
+    <form id="regSearchForm" role="search" class="relative max-w-xl mb-8" onsubmit="return false">
+      <label for="regSearch" class="sr-only">Search vehicles</label>
+      <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Search by plate, VIN, model or city" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
+    </form>
+
     <!-- Loading -->
     <div id="regLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true" aria-live="polite">
       <span class="sr-only">Loading vehicles…</span>
@@ -103,6 +110,12 @@
     <div id="regEmpty" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
       <h2 class="font-display font-bold text-2xl mb-3">NO VEHICLES FOUND</h2>
       <p class="text-slate-400 text-sm leading-relaxed">Vehicles appear here once a moderator approves them. Check back soon.</p>
+    </div>
+
+    <!-- Search found nothing (the registry itself is not empty) -->
+    <div id="regNoMatch" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
+      <h2 class="font-display font-bold text-2xl mb-3">No matches</h2>
+      <p class="text-slate-400 text-sm leading-relaxed">No vehicle matches <span id="regNoMatchQuery" class="text-slate-200 font-semibold [overflow-wrap:anywhere]"></span>. Try part of a plate or VIN.</p>
     </div>
 
     <!-- Network/server failure — NOT the same as empty -->
@@ -225,6 +238,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicles.js?v=1"></script>
+<script src="js/vehicles.js?v=2"></script>
 </body>
 </html>

@@ -33,10 +33,13 @@
   let loaded = 0;      // vehicles shown so far (the next offset)
   let total = 0;
   let busy = false;
+  let query = '';      // the search the current list reflects
+  let generation = 0;  // bumped per new search, so a slow older response is dropped
 
   function setView(view) {
     show('regLoading', view === 'loading');
     show('regEmpty', view === 'empty');
+    show('regNoMatch', view === 'nomatch');
     show('regError', view === 'error');
     show('regLoaded', view === 'loaded');
   }
@@ -114,7 +117,8 @@
   }
 
   async function fetchPage(offset) {
-    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}`);
+    const q = query ? '&q=' + encodeURIComponent(query) : '';
+    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}${q}`);
     if (!resp.ok) throw new Error('http_' + resp.status);
     const body = await resp.json();
     if (!body || !Array.isArray(body.vehicles)) throw new Error('bad_body');
@@ -122,35 +126,58 @@
   }
 
   async function loadFirst() {
+    const gen = ++generation;
     setView('loading');
     $('regList').textContent = '';
     loaded = 0;
+    busy = false;
     try {
       const body = await fetchPage(0);
+      if (gen !== generation) return;   // a newer search replaced this one
       total = Number(body.total) || 0;
-      if (!body.vehicles.length) { setView('empty'); return; }
+      if (!body.vehicles.length) {
+        if (query) { $('regNoMatchQuery').textContent = '\u201c' + query + '\u201d'; setView('nomatch'); }
+        else setView('empty');
+        return;
+      }
       render(body.vehicles);
       setView('loaded');
     } catch (e) {
-      setView('error');
+      if (gen === generation) setView('error');
     }
   }
 
   async function loadMore() {
     if (busy) return;
+    const gen = generation;
     busy = true; show('regMoreError', false);
     $('regMore').disabled = true;
     try {
       const body = await fetchPage(loaded);
+      if (gen !== generation) return;   // the search changed while this page was loading
       total = Number(body.total) || total;
       render(body.vehicles);
       if (!body.vehicles.length) show('regMore', false);   // nothing further (the list shrank)
     } catch (e) {
-      show('regMoreError', true);
+      if (gen === generation) show('regMoreError', true);
     } finally {
-      busy = false; $('regMore').disabled = false;
+      if (gen === generation) { busy = false; $('regMore').disabled = false; }
     }
   }
+
+  // Search as you type (debounced), searching the whole registry server-side
+  // rather than filtering only the cards already on the page.
+  let debounce = null;
+  function onSearchInput() {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      const next = $('regSearch').value.trim();
+      if (next === query) return;
+      query = next;
+      loadFirst();
+    }, 250);
+  }
+  $('regSearch').addEventListener('input', onSearchInput);
 
   $('regRetry').addEventListener('click', loadFirst);
   $('regMore').addEventListener('click', loadMore);
