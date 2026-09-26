@@ -469,8 +469,19 @@
       mount.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 text-center px-4">${text}</div>`;
     }
 
-    // Paginate the SAME public endpoint the rest of the site uses (LIST_MAX_LIMIT is 100 server-side).
-    async function fetchAustinFirstSeenDates() {
+    // HARD RULE, for this chart and any future per-city chart (Dallas etc.):
+    // each city's chart counts ONLY vehicles whose service_area is EXACTLY
+    // that one city — never "all vehicles," never another city's. This is
+    // the one place that decides which city this chart is, so a future
+    // Dallas chart calls the same fetchFirstSeenDatesForCity() with its own
+    // city string instead of copying this filter by hand and risking it
+    // drifting from Austin's.
+    const CHART_CITY = 'Austin';
+
+    // Paginate the SAME public endpoint the rest of the site uses
+    // (LIST_MAX_LIMIT is 100 server-side), keeping only vehicles whose
+    // service_area === city — see the CHART_CITY rule above.
+    async function fetchFirstSeenDatesForCity(city) {
       const out = [];
       let offset = 0;
       for (let page = 0; page < 20; page++) {
@@ -479,7 +490,7 @@
         const body = await r.json();
         const vehicles = Array.isArray(body.vehicles) ? body.vehicles : [];
         for (const v of vehicles) {
-          if (v.service_area === 'Austin' && v.first_seen_at) {
+          if (v.service_area === city && v.first_seen_at) {
             const dt = new Date(String(v.first_seen_at).replace(' ', 'T') + 'Z');
             if (!isNaN(dt)) out.push(dt);
           }
@@ -576,9 +587,6 @@
 
       const last = points[points.length - 1];
       const lastX = x(last.date.getTime());
-      const endLabelAnchor = lastX > w * 0.82 ? 'end' : 'start';
-      const endLabelX = endLabelAnchor === 'end' ? lastX - 8 : lastX + 8;
-      const endLabel = `<text x="${endLabelX.toFixed(1)}" y="${(y(last.count) - 8).toFixed(1)}" text-anchor="${endLabelAnchor}" font-size="11" font-weight="700" fill="#E2E8F0">${last.count}</text>`;
 
       mount.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="Cumulative Austin Cybercabs documented in the registry, currently ${last.count}">
@@ -587,7 +595,6 @@
           <path d="${d}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
           <circle cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2"/>
           ${yLabels}
-          ${endLabel}
           <line id="fleetCrosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="rgba(255,255,255,0.25)" stroke-width="1" style="display:none"/>
           <circle id="fleetHoverDot" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2" style="display:none"/>
           <rect id="fleetHoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" tabindex="0" role="slider" aria-label="Scrub the fleet growth chart" aria-valuemin="0" aria-valuemax="${points.length - 1}" aria-valuenow="${points.length - 1}" style="cursor:crosshair; outline:none;"/>
@@ -677,7 +684,7 @@
     }).observe(mount);
 
     setMessage('Loading…');
-    fetchAustinFirstSeenDates()
+    fetchFirstSeenDatesForCity(CHART_CITY)
       .then(dates => {
         series = toStepSeries(dates);
         if (!series.length) { setMessage('No Austin registry vehicles yet.'); return; }
