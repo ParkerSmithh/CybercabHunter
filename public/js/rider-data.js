@@ -99,12 +99,6 @@
     if (cov.rides > 0 && cov.withVehicle < cov.rides) notes.push(`Vehicle identified for ${cov.withVehicle} of ${cov.rides}.`);
     if (data.underReview > 0) notes.push(`${plural(data.underReview, 'ride')} under review ${data.underReview === 1 ? 'is' : 'are'} not counted yet.`);
     $('heroNote').textContent = notes.join(' ');
-
-    const empty = rs.trip_count === 0;
-    show('dataEmptyNotice', empty);
-    if (empty && data.underReview > 0) {
-      $('dataEmptyDetail').textContent = `${plural(data.underReview, 'ride')} ${data.underReview === 1 ? 'was' : 'were'} received but ${data.underReview === 1 ? 'is' : 'are'} not counted — the receipt didn't have enough detail to confirm ${data.underReview === 1 ? 'it' : 'them'}. You can remove ${data.underReview === 1 ? 'it' : 'them'} from Ride history below.`;
-    }
   }
 
   function renderSummary(data) {

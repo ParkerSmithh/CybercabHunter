@@ -71,14 +71,14 @@ async function run() {
     // A legacy-style ride with no date/pickup time: it can never be matched by a later receipt.
     seedRide(ctx.d1, { id: 'legacy', status: 'needs_review', rideDate: null, pickupTime: null, distance: null });
     const page = await openPage(ctx, 'u1');
-    const shown = [page.text('dataEmptyDetail'), page.text('heroNote')].join(' | ');
-    check('the empty-state text says the ride is not counted', /not counted/i.test(page.text('dataEmptyDetail')));
-    check('it points the rider at removal', /remove it from Ride history/i.test(page.text('dataEmptyDetail')));
+    const shown = page.text('heroNote');
+    check('the hero note says the ride is not counted', /1 ride under review is not counted yet/.test(shown));
     check('the old promise ("clearer copy … will update") is gone from every message', !/clearer copy|will update/i.test(shown));
+    check('the "No rides are counted yet" block is gone', !page.d.getElementById('dataEmptyNotice') && !/No rides are counted yet/.test(page.d.body.textContent));
     check('plural grammar', await (async () => {
       seedRide(ctx.d1, { id: 'legacy2', status: 'needs_review', rideDate: null, pickupTime: null });
       const p2 = await openPage(ctx, 'u1');
-      return /2 rides were received but are not counted/.test(p2.text('dataEmptyDetail')) && /remove them/.test(p2.text('dataEmptyDetail'));
+      return /2 rides under review are not counted yet/.test(p2.text('heroNote'));
     })());
   }
 
@@ -88,7 +88,7 @@ async function run() {
     await ctx.email('u1', { body: receiptBody({ date: '9 June 2026' }), date: sentAt(0) });
     const page = await openPage(ctx, 'u1');
     check('no ride row and no under-review ride exist', page.rows().length === 0 && !/under review/i.test(page.text('heroNote')));
-    check('the rider is told nothing counted yet', page.visible('dataEmptyNotice') && page.text('heroRideCount') === '0');
+    check('the ride count reads 0', page.text('heroRideCount') === '0');
   }
 
   console.log('Remove (UI). Each ride offers Remove; a confirmation is required; Cancel sends nothing');
