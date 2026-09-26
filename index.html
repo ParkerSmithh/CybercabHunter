@@ -190,10 +190,6 @@
              implies at that column width would win over the ratio and stretch
              the card back out (verified: it did, at the narrower sm breakpoint). -->
         <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2"></div>
-        <div class="flex justify-end mt-1">
-          <button id="fleetTableToggle" type="button" aria-expanded="false" aria-controls="fleetTableWrap" class="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors">View as table</button>
-        </div>
-        <div id="fleetTableWrap" class="hidden mt-2 max-h-40 overflow-y-auto border-t border-[rgba(212,175,55,0.1)] pt-2"></div>
       </div>
 
       <!-- Dallas: shown instead of BOTH cards above (spans their combined
@@ -468,7 +464,6 @@
     const UTC_DAY_TIME = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' };
     let series = null;       // [{date, count}] one point per exact first_seen_at the total changed, ascending
     let activeRange = '90d';
-    let tableOn = false;
 
     function setMessage(text) {
       mount.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 text-center px-4">${text}</div>`;
@@ -540,30 +535,15 @@
       // A synthetic point at the window's start (carrying whatever the true
       // count already was then, 0 if before the first vehicle) so the line
       // never floats disconnected from the left edge — it's a real value,
-      // just not a real *event*, so it never appears in the table.
-      const points = [{ date: rangeStart, count: leadCount, synthetic: true }, ...inWindow];
-      if (points[points.length - 1].date < now) points.push({ date: now, count: points[points.length - 1].count, synthetic: true });
-      return { points, real: inWindow };
+      // just not a real recorded event.
+      const points = [{ date: rangeStart, count: leadCount }, ...inWindow];
+      if (points[points.length - 1].date < now) points.push({ date: now, count: points[points.length - 1].count });
+      return points;
     }
 
     function render() {
       if (!series || !series.length) { setMessage('No Austin registry vehicles yet.'); return; }
-      const { points, real } = windowedPoints();
-      drawChart(points);
-      renderTable(real);
-    }
-
-    function renderTable(real) {
-      const el = document.getElementById('fleetTableWrap');
-      if (!el) return;
-      if (!real.length) {
-        el.innerHTML = '<p class="text-xs text-slate-500 px-1">No changes in this range.</p>';
-        return;
-      }
-      const rows = real.slice().reverse().map(p =>
-        `<tr><td class="py-1 pr-4 text-slate-400 whitespace-nowrap">${p.date.toLocaleString('en-US', UTC_DAY_TIME)}</td><td class="py-1 font-semibold text-slate-100">${p.count}</td></tr>`
-      ).join('');
-      el.innerHTML = `<table class="text-xs w-full"><thead><tr class="text-slate-500 text-left"><th class="font-semibold pb-1 pr-4">Date</th><th class="font-semibold pb-1">Fleet size</th></tr></thead><tbody>${rows}</tbody></table>`;
+      drawChart(windowedPoints());
     }
 
     function drawChart(points) {
@@ -685,17 +665,6 @@
       });
     });
 
-    // Table-view toggle — the WCAG-clean equivalent of the chart, always in sync with it.
-    const tableToggle = document.getElementById('fleetTableToggle');
-    const tableWrap = document.getElementById('fleetTableWrap');
-    if (tableToggle && tableWrap) {
-      tableToggle.addEventListener('click', () => {
-        tableOn = !tableOn;
-        tableWrap.classList.toggle('hidden', !tableOn);
-        tableToggle.textContent = tableOn ? 'Hide table' : 'View as table';
-        tableToggle.setAttribute('aria-expanded', String(tableOn));
-      });
-    }
 
     // The mount's box changes with the window (and once when the neighboring
     // map card's own height settles) — since drawChart() draws to that exact
