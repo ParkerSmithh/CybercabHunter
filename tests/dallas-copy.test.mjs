@@ -25,7 +25,7 @@ const LAUNCH_CLAIMS = [
 ];
 
 function run() {
-  for (const [file, panelId] of [['infrastructure.html', 'dallasContent'], ['dispatch-comparison.html', 'dallasContent']]) {
+  for (const [file, panelId] of [['infrastructure.html', 'dallasContent'], ['dispatch-comparison.html', 'dallasContent'], ['index.html', 'homeZoneDallasNote']]) {
     const html = read(file);
     const panelStart = html.indexOf(`id="${panelId}"`);
     check(`${file}: has a #${panelId} Dallas placeholder panel`, panelStart !== -1);

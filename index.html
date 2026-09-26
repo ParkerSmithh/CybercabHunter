@@ -100,7 +100,7 @@
       </h1>
       <p id="heroSubtitle" class="mt-6 text-base lg:text-lg text-slate-300 max-w-md leading-relaxed" style="min-height:5.6rem;"><span id="heroSubtitleText"></span><span class="typewriter-cursor">|</span></p>
       <div class="flex gap-3 mt-8">
-        <a href="#map" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">VIEW MAP →</a>
+        <a href="#map" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">CONTINUE →</a>
       </div>
     </div>
   </div>
@@ -126,17 +126,27 @@
     <div class="reveal-on-scroll mb-6">
       <h2 class="font-display font-bold text-3xl">SERVICE ZONES</h2>
     </div>
-    <div class="mb-8 reveal-on-scroll">
-      <a href="infrastructure.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
-        VIEW ZONES
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
+    <!-- One Austin/Dallas selector controls BOTH cards below (the mini map and
+         the fleet chart) — Dallas has no map or fleet data yet, so it swaps
+         both out for a single "not available" note rather than duplicating
+         the toggle per card. -->
+    <div class="mb-8 reveal-on-scroll flex items-center gap-3" id="homeCitySelector">
+      <button data-city="austin" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Austin</button>
+      <button data-city="dallas" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300">Dallas</button>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
 
-      <!-- Austin -->
-      <div class="service-zone-card reveal-on-scroll">
+      <!-- Austin mini map -->
+      <div id="homeZoneAustin" class="service-zone-card reveal-on-scroll">
         <div id="zoneMap-austin" class="service-zone-map"></div>
+        <a href="infrastructure.html" aria-label="Expand: view the full Austin map on the Zones page" title="View full map" class="absolute top-3 right-3 z-10 w-9 h-9 rounded-lg bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-black/70 hover:border-[rgba(212,175,55,0.4)] transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/>
+            <polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </a>
         <div class="service-zone-infocard">
           <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400"><span class="dot-gold-live"></span>Service Area</div>
           <div class="font-display font-bold text-3xl mt-1.5 text-white">Austin</div>
@@ -150,8 +160,52 @@
         </div>
       </div>
 
-      <!-- Add more city cards here as Cybercab expands: copy the block above, update the id/name/hours,
-           and add a matching initZoneMap('zoneMap-<id>', '<City Name>', [centerLng, centerLat], <zoneCoords>) call in the script below. -->
+      <!-- Austin fleet growth chart: cumulative count of Austin Cybercabs in
+           OUR public registry, by the date each was first documented (the
+           exact publicVehicleEligibleSql set /api/robotaxi-vehicles already
+           returns — the same vehicles the "Cybercabs Spotted" stat above and
+           the Cars page count). This is registry coverage, not Tesla's real
+           fleet size, so it's labeled that way rather than as an authoritative
+           fleet count. Nothing here is hard-coded; see initFleetGrowthChart(). -->
+      <!-- Wide/short like a typical line-chart dashboard card (~2:1), not
+           stretched to the square mini-map's height — sm:self-start opts out
+           of the grid row's default stretch so aspect-[2/1] actually governs
+           the height instead of being overridden by it. Mobile keeps a taller,
+           more usable ratio (no forced aspect-ratio there). -->
+      <div id="homeFleetChart" class="glass rounded-2xl p-5 reveal-on-scroll flex flex-col sm:aspect-[2/1] sm:self-start xl:col-span-2">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <div>
+            <h3 class="font-display font-bold text-lg">Fleet Growth</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Austin Cybercabs documented in the registry, over time</p>
+          </div>
+          <div class="flex items-center gap-1 shrink-0" id="fleetChartRange" role="group" aria-label="Time range">
+            <button data-range="90d" class="range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400">90D</button>
+            <button data-range="6m" class="range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400">6M</button>
+            <button data-range="1y" class="range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400">1Y</button>
+            <button data-range="all" class="range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400">All</button>
+          </div>
+        </div>
+        <!-- min-h only matters below sm, where the card has no fixed aspect
+             ratio — above it, a min-height taller than what aspect-[2/1]
+             implies at that column width would win over the ratio and stretch
+             the card back out (verified: it did, at the narrower sm breakpoint). -->
+        <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2"></div>
+        <div class="flex justify-end mt-1">
+          <button id="fleetTableToggle" type="button" aria-expanded="false" aria-controls="fleetTableWrap" class="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors">View as table</button>
+        </div>
+        <div id="fleetTableWrap" class="hidden mt-2 max-h-40 overflow-y-auto border-t border-[rgba(212,175,55,0.1)] pt-2"></div>
+      </div>
+
+      <!-- Dallas: shown instead of BOTH cards above (spans their combined
+           width) — there is no map or registry data for Dallas yet. -->
+      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center reveal-on-scroll">
+        <div class="font-display font-bold text-2xl text-gold mb-2">NOT YET AVAILABLE</div>
+        <p class="text-slate-400 text-sm max-w-sm mx-auto">Dallas zone and fleet information isn't available in Cybercab Hunter yet.</p>
+      </div>
+
+      <!-- Add more city cards here as Cybercab expands: copy the Austin map
+           block above, update the id/name/hours, and add a matching
+           initZoneMap('zoneMap-<id>', '<City Name>', [centerLng, centerLat], <zoneCoords>) call in the script below. -->
 
     </div>
   </div>
@@ -356,6 +410,290 @@
   }
   // Add one more initZoneMap(...) call per new city card, passing that city's own center + zone polygon.
   initZoneMap('zoneMap-austin', 'Austin', [-97.7431, 30.2672], serviceZoneCoords);
+
+  // ---- Home Austin/Dallas selector: controls BOTH the mini map and the fleet
+  // chart below. Dallas has no map or registry data yet, so selecting it just
+  // swaps both cards for one "not available" note (same wording used on the
+  // Zones and Fleet ETA pages, so it reads as one consistent disclosure, not
+  // three different claims about Dallas). -->
+  (function initHomeCitySelector() {
+    const cityBtns = document.querySelectorAll('#homeCitySelector .city-btn');
+    const austinMap = document.getElementById('homeZoneAustin');
+    const austinChart = document.getElementById('homeFleetChart');
+    const dallasNote = document.getElementById('homeZoneDallasNote');
+    if (!cityBtns.length || !austinMap || !austinChart || !dallasNote) return;
+    cityBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        cityBtns.forEach(b => b.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300');
+        btn.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
+        const isDallas = btn.dataset.city === 'dallas';
+        austinMap.classList.toggle('hidden', isDallas);
+        austinChart.classList.toggle('hidden', isDallas);
+        dallasNote.classList.toggle('hidden', !isDallas);
+      });
+    });
+  })();
+
+  // ---- Fleet Growth chart (Austin) ----
+  //
+  // What this plots: the cumulative count of Austin Cybercabs that have
+  // appeared in Cybercab Hunter's PUBLIC registry, stepped up on each
+  // vehicle's first_seen_at and bucketed by UTC calendar day. Every point
+  // comes straight from GET /api/robotaxi-vehicles — the exact same
+  // publicVehicleEligibleSql set the "Cybercabs Spotted" stat above and the
+  // Cars page already count — fetched with no session, same as js/home-stats.js.
+  //
+  // What this is NOT: Tesla's real fleet size. It's how much of the fleet
+  // *we've documented*, which depends on crowdsourced sighting/receipt
+  // activity, not on Tesla's actual deployment pace — hence "documented in
+  // the registry" in the card's own subtitle rather than a bare "Fleet Size".
+  // No number here is invented: a vehicle only contributes once it clears the
+  // same public-eligibility bar as everywhere else on the site.
+  function initFleetGrowthChart() {
+    const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+    const mount = document.getElementById('fleetChartMount');
+    if (!mount) return;
+
+    const GOLD = '#D4AF37';
+    const RANGE_DAYS = { '90d': 90, '6m': 182, '1y': 365, all: Infinity };
+    const UTC_DAY = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+    let series = null;       // [{date, count}] one point per UTC day the total changed, ascending
+    let activeRange = '90d';
+    let tableOn = false;
+
+    function setMessage(text) {
+      mount.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 text-center px-4">${text}</div>`;
+    }
+
+    // Paginate the SAME public endpoint the rest of the site uses (LIST_MAX_LIMIT is 100 server-side).
+    async function fetchAustinFirstSeenDates() {
+      const out = [];
+      let offset = 0;
+      for (let page = 0; page < 20; page++) {
+        const r = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=100&offset=${offset}`);
+        if (!r.ok) throw new Error('http_' + r.status);
+        const body = await r.json();
+        const vehicles = Array.isArray(body.vehicles) ? body.vehicles : [];
+        for (const v of vehicles) {
+          if (v.service_area === 'Austin' && v.first_seen_at) {
+            const dt = new Date(String(v.first_seen_at).replace(' ', 'T') + 'Z');
+            if (!isNaN(dt)) out.push(dt);
+          }
+        }
+        offset += vehicles.length;
+        if (vehicles.length === 0 || offset >= (Number(body.total) || 0)) break;
+      }
+      return out;
+    }
+
+    function toDailySeries(dates) {
+      if (!dates.length) return [];
+      const dayKey = d => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      const added = new Map();
+      for (const d of dates) added.set(dayKey(d), (added.get(dayKey(d)) || 0) + 1);
+      const days = [...added.keys()].sort((a, b) => a - b);
+      let running = 0;
+      return days.map(k => { running += added.get(k); return { date: new Date(k), count: running }; });
+    }
+
+    function niceTicks(max, targetCount) {
+      if (max <= 0) return [0];
+      const raw = max / targetCount;
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const norm = raw / mag;
+      const step = Math.max(1, (norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * mag);
+      const ticks = [];
+      for (let t = 0; t <= max + step / 2; t += step) ticks.push(Math.round(t));
+      return ticks.length > 1 ? ticks : [0, Math.round(max)];
+    }
+
+    function windowedPoints() {
+      const now = new Date();
+      const rangeDays = RANGE_DAYS[activeRange];
+      const rangeStart = rangeDays === Infinity ? series[0].date : new Date(now.getTime() - rangeDays * 86400000);
+      const before = series.filter(p => p.date < rangeStart);
+      const inWindow = series.filter(p => p.date >= rangeStart && p.date <= now);
+      const leadCount = before.length ? before[before.length - 1].count : 0;
+      // A synthetic point at the window's start (carrying whatever the true
+      // count already was then, 0 if before the first vehicle) so the line
+      // never floats disconnected from the left edge — it's a real value,
+      // just not a real *event*, so it never appears in the table.
+      const points = [{ date: rangeStart, count: leadCount, synthetic: true }, ...inWindow];
+      if (points[points.length - 1].date < now) points.push({ date: now, count: points[points.length - 1].count, synthetic: true });
+      return { points, real: inWindow };
+    }
+
+    function render() {
+      if (!series || !series.length) { setMessage('No Austin registry vehicles yet.'); return; }
+      const { points, real } = windowedPoints();
+      drawChart(points);
+      renderTable(real);
+    }
+
+    function renderTable(real) {
+      const el = document.getElementById('fleetTableWrap');
+      if (!el) return;
+      if (!real.length) {
+        el.innerHTML = '<p class="text-xs text-slate-500 px-1">No changes in this range.</p>';
+        return;
+      }
+      const rows = real.slice().reverse().map(p =>
+        `<tr><td class="py-1 pr-4 text-slate-400">${p.date.toLocaleDateString('en-US', UTC_DAY)}</td><td class="py-1 font-semibold text-slate-100">${p.count}</td></tr>`
+      ).join('');
+      el.innerHTML = `<table class="text-xs w-full"><thead><tr class="text-slate-500 text-left"><th class="font-semibold pb-1 pr-4">Date</th><th class="font-semibold pb-1">Fleet size</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function drawChart(points) {
+      // The viewBox is set to the mount's REAL pixel size (not a fixed 600x220
+      // stretched to fit) — this card's height comes from a CSS grid stretch
+      // to match its neighbor, whose aspect ratio has nothing to do with a
+      // chart's, so a fixed viewBox scaled non-uniformly would skew the
+      // circular end-dot into an ellipse and visibly distort the text. Reading
+      // the true box and drawing 1:1 into it means no scaling happens at all.
+      const w = Math.max(280, Math.round(mount.clientWidth) || 600);
+      const h = Math.max(160, Math.round(mount.clientHeight) || 220);
+      const padL = 30, padR = 10, padT = 14, padB = 8;
+      const plotW = w - padL - padR, plotH = h - padT - padB;
+      const minX = points[0].date.getTime(), maxX = points[points.length - 1].date.getTime();
+      const maxY = Math.max(1, ...points.map(p => p.count));
+      const x = t => padL + (maxX === minX ? 0 : (t - minX) / (maxX - minX) * plotW);
+      const y = c => padT + plotH - (c / maxY) * plotH;
+
+      // A step line: the count HOLDS between changes, it isn't interpolated.
+      let d = `M ${x(minX)} ${y(points[0].count)}`;
+      for (let i = 1; i < points.length; i++) {
+        const px = x(points[i].date.getTime());
+        d += ` L ${px} ${y(points[i - 1].count)} L ${px} ${y(points[i].count)}`;
+      }
+      const areaD = `${d} L ${x(maxX)} ${padT + plotH} L ${x(minX)} ${padT + plotH} Z`;
+
+      const yTicks = niceTicks(maxY, 3);
+      const gridLines = yTicks.map(t => `<line x1="${padL}" y1="${y(t).toFixed(1)}" x2="${w - padR}" y2="${y(t).toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`).join('');
+      const yLabels = yTicks.map(t => `<text x="${padL - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#64748B">${t}</text>`).join('');
+
+      const last = points[points.length - 1];
+      const lastX = x(last.date.getTime());
+      const endLabelAnchor = lastX > w * 0.82 ? 'end' : 'start';
+      const endLabelX = endLabelAnchor === 'end' ? lastX - 8 : lastX + 8;
+      const endLabel = `<text x="${endLabelX.toFixed(1)}" y="${(y(last.count) - 8).toFixed(1)}" text-anchor="${endLabelAnchor}" font-size="11" font-weight="700" fill="#E2E8F0">${last.count}</text>`;
+
+      mount.innerHTML = `
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="Cumulative Austin Cybercabs documented in the registry, currently ${last.count}">
+          ${gridLines}
+          <path d="${areaD}" fill="${GOLD}" fill-opacity="0.1" stroke="none"/>
+          <path d="${d}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2"/>
+          ${yLabels}
+          ${endLabel}
+          <line id="fleetCrosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="rgba(255,255,255,0.25)" stroke-width="1" style="display:none"/>
+          <circle id="fleetHoverDot" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2" style="display:none"/>
+          <rect id="fleetHoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" tabindex="0" role="slider" aria-label="Scrub the fleet growth chart" aria-valuemin="0" aria-valuemax="${points.length - 1}" aria-valuenow="${points.length - 1}" style="cursor:crosshair; outline:none;"/>
+        </svg>
+        <div id="fleetTooltip" class="absolute hidden pointer-events-none glass rounded-lg px-3 py-2 text-xs" style="z-index:5;"></div>
+      `;
+
+      wireHover(points, x, y, padL, plotW, w);
+    }
+
+    function wireHover(points, x, y, padL, plotW, w) {
+      const svg = document.getElementById('fleetSvg');
+      const catcher = document.getElementById('fleetHoverCatcher');
+      const crosshair = document.getElementById('fleetCrosshair');
+      const dot = document.getElementById('fleetHoverDot');
+      const tooltip = document.getElementById('fleetTooltip');
+      if (!svg || !catcher) return;
+      let idx = points.length - 1;
+
+      function nearestIndex(px) {
+        let best = 0;
+        for (let i = 0; i < points.length; i++) { if (x(points[i].date.getTime()) <= px) best = i; else break; }
+        return best;
+      }
+
+      function show(i) {
+        idx = Math.max(0, Math.min(points.length - 1, i));
+        const p = points[idx];
+        const px = x(p.date.getTime()), py = y(p.count);
+        crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px); crosshair.style.display = '';
+        dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.style.display = '';
+        catcher.setAttribute('aria-valuenow', String(idx));
+        tooltip.classList.remove('hidden');
+        const dateStr = p.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+        tooltip.innerHTML = `<div class="font-bold text-slate-100">${p.count} Cybercab${p.count === 1 ? '' : 's'}</div><div class="text-slate-400 mt-0.5">${dateStr}</div>`;
+        const leftPct = px / w * 100;
+        tooltip.style.left = leftPct > 65 ? 'auto' : `calc(${leftPct}% + 10px)`;
+        tooltip.style.right = leftPct > 65 ? `calc(${100 - leftPct}% + 10px)` : 'auto';
+        tooltip.style.top = '4px';
+      }
+      function hide() { crosshair.style.display = 'none'; dot.style.display = 'none'; tooltip.classList.add('hidden'); }
+
+      catcher.addEventListener('pointermove', e => {
+        const rect = svg.getBoundingClientRect();
+        const svgX = (e.clientX - rect.left) / rect.width * w;
+        show(nearestIndex(Math.max(padL, Math.min(padL + plotW, svgX))));
+      });
+      catcher.addEventListener('pointerleave', hide);
+      catcher.addEventListener('pointerdown', e => e.preventDefault());
+      // Keyboard: the hover layer is reachable without a mouse — arrow keys
+      // step point-to-point, focus/Enter shows the latest, blur hides it.
+      catcher.addEventListener('focus', () => show(points.length - 1));
+      catcher.addEventListener('blur', hide);
+      catcher.addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); show(idx - 1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); show(idx + 1); }
+        else if (e.key === 'Home') { e.preventDefault(); show(0); }
+        else if (e.key === 'End') { e.preventDefault(); show(points.length - 1); }
+        else if (e.key === 'Escape') { hide(); catcher.blur(); }
+      });
+    }
+
+    // Range buttons
+    const rangeBtns = document.querySelectorAll('#fleetChartRange .range-btn');
+    const INACTIVE_RANGE = 'range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400';
+    const ACTIVE_RANGE = 'range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-gold bg-[rgba(212,175,55,0.12)]';
+    rangeBtns.forEach(btn => {
+      btn.className = btn.dataset.range === activeRange ? ACTIVE_RANGE : INACTIVE_RANGE;
+      btn.addEventListener('click', () => {
+        if (!series) return;
+        rangeBtns.forEach(b => b.className = INACTIVE_RANGE);
+        btn.className = ACTIVE_RANGE;
+        activeRange = btn.dataset.range;
+        render();
+      });
+    });
+
+    // Table-view toggle — the WCAG-clean equivalent of the chart, always in sync with it.
+    const tableToggle = document.getElementById('fleetTableToggle');
+    const tableWrap = document.getElementById('fleetTableWrap');
+    if (tableToggle && tableWrap) {
+      tableToggle.addEventListener('click', () => {
+        tableOn = !tableOn;
+        tableWrap.classList.toggle('hidden', !tableOn);
+        tableToggle.textContent = tableOn ? 'Hide table' : 'View as table';
+        tableToggle.setAttribute('aria-expanded', String(tableOn));
+      });
+    }
+
+    // The mount's box changes with the window (and once when the neighboring
+    // map card's own height settles) — since drawChart() draws to that exact
+    // box, a resize needs a real redraw, not just a CSS rescale.
+    let resizeQueued = false;
+    new ResizeObserver(() => {
+      if (!series || resizeQueued) return;
+      resizeQueued = true;
+      requestAnimationFrame(() => { resizeQueued = false; render(); });
+    }).observe(mount);
+
+    setMessage('Loading…');
+    fetchAustinFirstSeenDates()
+      .then(dates => {
+        series = toDailySeries(dates);
+        if (!series.length) { setMessage('No Austin registry vehicles yet.'); return; }
+        render();
+      })
+      .catch(() => setMessage('Could not load fleet data.'));
+  }
+  initFleetGrowthChart();
 </script>
 </body>
 </html>

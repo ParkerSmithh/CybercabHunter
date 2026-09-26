@@ -259,7 +259,11 @@ async function run() {
     const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html') && read(f).includes('data-nav="community"'));
     check('the header nav has a "Cars" tab linking to /vehicles on every page that has the nav (and on /vehicles itself)', pages.length >= 9 && pages.every(f => /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(read(f))));
     check('the tab is no longer labelled "Registry" anywhere in the header nav', pages.every(f => !/<a href="\/vehicles" data-nav="vehicles"[^>]*>Registry<\/a>/.test(read(f))));
-    check('the footer (the only nav on phones) has it on every page too', pages.every(f => /<a href="\/vehicles" class="[^"]*">Cars<\/a>/.test(read(f))));
+    // infrastructure.html deliberately has no <footer> at all (it's a single
+    // full-screen map view with nothing below it to scroll to) — every other
+    // page still needs the link, since the footer is real in-flow nav there.
+    check('the footer has it on every other page too', pages.filter(f => f !== 'infrastructure.html').every(f => /<a href="\/vehicles" class="[^"]*">Cars<\/a>/.test(read(f))));
+    check('infrastructure.html has no footer at all (by design — see above), not a footer missing this link', !/<footer/.test(read('infrastructure.html')));
     const home = read('index.html');
     check('the homepage no longer has the Vehicle Registry promo card or its Browse Vehicles button', !/BROWSE VEHICLES|VEHICLE REGISTRY|id="registry"|Browse the robotaxis recorded/.test(home));
     check('the homepage still reaches the registry through its header tab (and the footer link)', /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(home) && /<a href="\/vehicles" class="[^"]*">Cars<\/a>/.test(home));

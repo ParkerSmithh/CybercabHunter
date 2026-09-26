@@ -84,25 +84,23 @@
   </a>
 </nav>
 
-<section class="py-16">
-  <div class="max-w-[1600px] mx-auto px-6 lg:px-10">
-    <div class="reveal-on-scroll mb-8 max-w-2xl">
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">ZONE <span class="text-gold">INFORMATION</span></h1>
-    </div>
+<!-- This page is a single map view, not a scrolling article: the map fills
+     the rest of the viewport below the header, and there is nothing below it
+     (no footer on this page) — see the closing <style> tweak that keeps the
+     page itself from scrolling past that. -->
+<section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
+  <!-- The floating panel is ALWAYS visible (city buttons live in it), so
+       switching to Dallas only swaps its inner content — never the panel
+       itself — otherwise there'd be no way back to Austin. The map is
+       hidden (not removed) for Dallas, since there's nothing to show it. -->
+  <div id="zoneContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100vh-6rem)] lg:min-h-[520px]">
+    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto space-y-5 reveal-on-scroll">
+      <div class="flex items-center gap-2" id="citySelector">
+        <button data-city="austin" class="city-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Austin</button>
+        <button data-city="dallas" class="city-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300">Dallas</button>
+      </div>
 
-    <div class="flex items-center gap-3 mb-8 reveal-on-scroll" id="citySelector">
-      <button data-city="austin" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Austin</button>
-      <button data-city="dallas" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300">Dallas</button>
-    </div>
-
-    <div id="dallasContent" class="hidden glass rounded-2xl p-16 text-center reveal-on-scroll">
-      <div class="font-display font-bold text-3xl text-gold mb-3">NOT YET AVAILABLE</div>
-      <p class="text-slate-400 text-base max-w-md mx-auto">Dallas zone information isn't available in Cybercab Hunter yet.</p>
-    </div>
-
-    <div id="austinContent" class="flex flex-col lg:flex-row lg:items-start gap-6">
-      <!-- Sidebar -->
-      <div class="glass rounded-2xl p-6 lg:w-96 shrink-0 space-y-8 reveal-on-scroll">
+      <div id="austinContent" class="space-y-5">
         <div>
           <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Legend</h3>
           <div class="flex flex-wrap gap-4 text-xs text-slate-400">
@@ -142,13 +140,33 @@
         </div>
       </div>
 
-      <!-- Map -->
-      <div class="glass rounded-2xl p-3 lg:flex-1 h-[420px] lg:h-[720px] reveal-on-scroll">
-        <div id="infraMap" class="rounded-xl overflow-hidden w-full h-full"></div>
+      <div id="dallasContent" class="hidden">
+        <div class="font-display font-bold text-lg text-gold mb-2">NOT YET AVAILABLE</div>
+        <p class="text-slate-400 text-xs leading-relaxed">Dallas zone information isn't available in Cybercab Hunter yet.</p>
       </div>
+    </div>
+
+    <!-- Map: a tall card on mobile, a full-bleed backdrop filling #zoneContent on lg+.
+         Hidden (not removed) while Dallas is selected, same as the panel above. -->
+    <div id="austinMapWrap" class="glass rounded-2xl p-3 h-[60vh] min-h-[380px] lg:p-0 lg:h-auto lg:absolute lg:inset-0 reveal-on-scroll">
+      <div id="infraMap" class="rounded-xl overflow-hidden w-full h-full lg:rounded-2xl"></div>
     </div>
   </div>
 </section>
+<style>
+  /* No footer on this page, and the map is meant to be the whole view — so
+     the page itself should never scroll past it, even if a viewport's exact
+     chrome height (address bar, safe areas) makes the calc() above a few
+     pixels off in either direction. Scoped to this page only. */
+  html, body{overflow-x:hidden;}
+  body{overflow-y:hidden; height:100dvh;}
+  @media (max-width:1023px){
+    /* Mobile stacks the panel above the map, which is taller than one
+       screen — that content still needs to scroll INTO view, so only the
+       page chrome around it (not the content itself) is locked. */
+    body{overflow-y:auto; height:auto; min-height:100dvh;}
+  }
+</style>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -211,40 +229,6 @@
   </form>
 </div>
 
-<footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
-    <div class="col-span-2">
-      <div class="flex items-center gap-2">
-        <img src="Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold">CYBERCAB HUNTER</span>
-      </div>
-      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
-        <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
-      </div>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
-      <a href="community.html" class="hover:text-white transition-colors">Community</a>
-      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
-      </div>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">About</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="#" class="hover:text-white transition-colors">How It Works</a>
-        <a href="#" class="hover:text-white transition-colors">Privacy</a>
-      </div>
-    </div>
-  </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
-</footer>
-
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=2"></script>
 <script src="js/main.js?v=3"></script>
@@ -262,13 +246,17 @@
   const cityBtns = document.querySelectorAll('.city-btn');
   const austinContent = document.getElementById('austinContent');
   const dallasContent = document.getElementById('dallasContent');
+  const austinMapWrap = document.getElementById('austinMapWrap');
   cityBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      cityBtns.forEach(b => b.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300');
-      btn.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
+      cityBtns.forEach(b => b.className = 'city-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300');
+      btn.className = 'city-btn flex-1 py-2 px-3 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
       const isDallas = btn.dataset.city === 'dallas';
+      // Only the panel's inner content and the map swap — the floating panel
+      // itself (and these buttons) stays put, so there's always a way back.
       austinContent.classList.toggle('hidden', isDallas);
       dallasContent.classList.toggle('hidden', !isDallas);
+      austinMapWrap.classList.toggle('hidden', isDallas);
       if (!isDallas) requestAnimationFrame(() => map.resize());
     });
   });
@@ -283,6 +271,14 @@
     center: [-97.72, 30.27],
     zoom: 11
   });
+
+  // The map container's size now comes from viewport-relative CSS (full-bleed
+  // on lg+, a tall card on mobile) rather than a fixed pixel height, so it
+  // changes on window resize and when crossing the lg breakpoint — not just
+  // on the explicit city-tab click that already called map.resize() below.
+  // MapLibre doesn't watch its container, so without this the canvas can be
+  // left stretched/blank after a resize until something else nudges it.
+  new ResizeObserver(() => map.resize()).observe(document.getElementById('infraMap'));
 
   // ---- Austin Robotaxi service zone (Tesla's real published geofence) ----
   const serviceZoneCoords = [
