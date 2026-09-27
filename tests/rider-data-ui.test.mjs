@@ -274,19 +274,18 @@ async function run() {
     check('the "Corrected" badge survives a later metadata-only revision', page.rows().length === 1 && /Corrected/.test(page.rows()[0].textContent));
   }
 
-  console.log('Receipt setup: only the rider\'s own forwarding address was restored (tests/receipt-address.test.mjs); the other old controls stay removed');
+  console.log('Receipt setup: the forwarding-address section is removed from Rider Data (forwarding itself still works)');
   {
     const ctx = await makeApp();
-    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
+    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });   // a receipt forwarded to the rider's address
     const addr = ctx.addressFor('u1');
     const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('fwdReady'), 'the receipt address to load');
-    const gone = ['receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
-    check('the old import box, rotate control, status pills and sync summary are still gone', gone.every(id => page.d.getElementById(id) === null));
-    check('their copy is still gone', !/Get your rides in|Import old receipts|Receipt sync|Choose \.eml files/.test(page.d.body.textContent));
-    check("the rider's own forwarding address is shown, with a Copy button", page.text('fwdAddress') === addr && !!page.d.getElementById('fwdCopyBtn'));
-    check('it reports that receipts are arriving', /Receiving/.test(page.text('fwdReceiving')));
-    check('the rest of the page still renders: the ride is listed and counted', page.rows().length === 1 && page.text('heroRideCount') === '1');
+    const gone = ['fwdCard', 'fwdAddress', 'fwdCopyBtn', 'fwdGmailSteps', 'fwdCodeBox', 'fwdReceiving',
+      'receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
+    check('the receipt-address card and every older receipt-setup control are absent', gone.every(id => page.d.getElementById(id) === null));
+    check('its copy is gone: no "Your receipt address", no forwarding steps, no private address', !/Your receipt address|Forward a receipt|forward new receipts automatically|Get your rides in|Import old receipts|Receipt sync/.test(page.d.body.textContent) && !page.d.body.textContent.includes(addr) && !/u_[0-9a-f]{32}@/.test(HTML));
+    check('the page no longer requests the address (so visiting it never creates one) or the forwarding status', !page.requests.some(r => r.path.startsWith('/api/receipt-ingestion/address') || r.path.startsWith('/api/rides/sync-status')));
+    check('a receipt forwarded by email still becomes a counted ride on the page', page.rows().length === 1 && page.text('heroRideCount') === '1');
     check('the empty-state and ride-list copy do not point at controls that do not exist', !/Forward or import a receipt above/i.test(HTML));
   }
 

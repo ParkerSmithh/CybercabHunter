@@ -563,12 +563,12 @@ async function run() {
   {
     const off = await makeApp({ configured: false });
     const p0 = await openPage(off, 'alice');
-    check('not configured: the Gmail card stays hidden; the forwarding card still shows', !p0.vis('gmailCard') && p0.vis('fwdCard'));
+    check('not configured: the Gmail card stays hidden (and there is no forwarding card on the page)', !p0.vis('gmailCard') && !p0.d.getElementById('fwdCard'));
 
     const c6 = await makeApp();
     const p1 = await openPage(c6, 'alice');
     check('configured, not connected: card visible with Connect Gmail, no Disconnect', p1.vis('gmailCard') && p1.vis('gmailConnectBtn') && !p1.vis('gmailDisconnectBtn') && /Not connected/.test(p1.text('gmailStatusText')));
-    check('it explains the 90-day import, the subject search, the privacy page and the forwarding fallback', /90 days/.test(p1.text('gmailCard')) && /Robotaxi Ride Receipt/.test(p1.text('gmailCard')) && !!p1.d.querySelector('#gmailCard a[href="privacy.html"]') && /Forwarding receipts to your private address below works too/.test(p1.text('gmailCard')));
+    check('it explains the 90-day import, the subject search, the privacy page and what disconnecting does', /90 days/.test(p1.text('gmailCard')) && /Robotaxi Ride Receipt/.test(p1.text('gmailCard')) && !!p1.d.querySelector('#gmailCard a[href="privacy.html"]') && /rides already added stay until you remove them/.test(p1.text('gmailCard')) && !/private address below/.test(p1.text('gmailCard')));
     p1.d.getElementById('gmailConnectBtn').click();
     await p1.waitFor(() => p1.requests.some(r => r.path === '/api/gmail/connect'));
     const cr = p1.requests.find(r => r.path === '/api/gmail/connect');
@@ -583,7 +583,7 @@ async function run() {
     const p2 = await openPage(c6, 'alice', '?gmail=connected');
     check('after connecting: ✓ Gmail connected, the address, last checked, last receipt, and Disconnect', /✓ Gmail connected/.test(p2.text('gmailStatusText')) && /alice@gmail\.com/.test(p2.text('gmailMeta')) && /Last checked/.test(p2.text('gmailMeta')) && /Last receipt found/.test(p2.text('gmailMeta')) && p2.vis('gmailDisconnectBtn') && !p2.vis('gmailConnectBtn'));
     check('the ?gmail=connected result is shown once, then removed from the URL', /Gmail connected/.test(p2.text('gmailNotice')) && p2.vis('gmailNotice') && !p2.w.location.search.includes('gmail='));
-    check('the forwarding card is still there', p2.vis('fwdCard') && /Your receipt address/.test(p2.text('fwdCard')));
+    check('the forwarding-address card is not on the page', !p2.d.getElementById('fwdCard') && !/Your receipt address/.test(p2.d.body.textContent));
     check('nothing token-like is in the page', !/\b(at|rt)-[a-z0-9]{6,}/.test(p2.d.body.innerHTML));
 
     const p3 = await openPage(c6, 'alice', '?gmail=wrong_account');
@@ -988,6 +988,32 @@ async function run() {
     check(`with the attempt marker, no run exceeded ${BUDGET.subrequests} subrequests or ${BUDGET.google} Google calls (max ${Math.max(...all.map(x => x.total))})`, all.every(x => x.total <= BUDGET.subrequests && x.google <= BUDGET.google));
     const cur = JSON.stringify(cursorOf(c, 'alice')) + JSON.stringify(cursorOf(k, 'alice')) + JSON.stringify(cursorOf(t3, 'alice'));
     check('cursors hold only ids, counters and time bounds — no token or message content', !/\b(at|rt)-[a-z0-9]{6,}|Trip Summary|Pick up|Payment|tesla\.com/.test(cur) && cur.length < 4000);
+  }
+
+  console.log('18. Connect Gmail lives in the same panel as "Tesla account connected"');
+  {
+    const linkTesla = c => c.d1.prepare(`INSERT INTO tesla_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status) VALUES ('tc-alice', 'alice', 'x', 'x', '2030-01-01T00:00:00Z', 'active')`)._exec();
+    const divided = p => ['mt-5', 'pt-5', 'border-t'].every(c => p.d.getElementById('gmailCard').classList.contains(c));
+    const both = await makeApp();
+    linkTesla(both);
+    const pb = await openPage(both, 'alice');
+    check('Tesla linked + Gmail configured: one panel holding both rows', pb.vis('accountsPanel') && pb.vis('dataUnlinkTeslaPrompt') && pb.vis('gmailCard'));
+    check('both rows are inside the same panel, Tesla first', pb.d.getElementById('accountsPanel').contains(pb.d.getElementById('dataUnlinkTeslaPrompt')) && pb.d.getElementById('accountsPanel').contains(pb.d.getElementById('gmailConnectBtn')) && pb.d.getElementById('dataUnlinkTeslaPrompt').compareDocumentPosition(pb.d.getElementById('gmailCard')) === 4);
+    check('…with Unlink Tesla Account and Connect Gmail, and a divider between the rows', pb.vis('teslaUnlinkBtn') && pb.vis('gmailConnectBtn') && /TESLA ACCOUNT CONNECTED/.test(pb.text('accountsPanel')) && /AUTOMATIC GMAIL IMPORT/.test(pb.text('accountsPanel')) && divided(pb));
+    check('there is no separate Gmail card anywhere else', pb.d.querySelectorAll('#gmailCard').length === 1 && !/Automatic Gmail import<\/h2>/.test(HTML));
+
+    const gmailOnly = await makeApp();
+    const pg = await openPage(gmailOnly, 'alice');
+    check('no Tesla link: the panel still shows Connect Gmail, without the Tesla row or a divider', pg.vis('accountsPanel') && !pg.vis('dataUnlinkTeslaPrompt') && pg.vis('gmailCard') && pg.vis('gmailConnectBtn') && !divided(pg));
+
+    const teslaOnly = await makeApp({ configured: false });
+    linkTesla(teslaOnly);
+    const pt = await openPage(teslaOnly, 'alice');
+    check('Gmail not configured: the panel shows only the Tesla row (as before)', pt.vis('accountsPanel') && pt.vis('dataUnlinkTeslaPrompt') && !pt.vis('gmailCard') && !divided(pt));
+
+    const neither = await makeApp({ configured: false });
+    const pn = await openPage(neither, 'alice');
+    check('neither: the whole panel stays hidden', !pn.vis('accountsPanel'));
   }
 
   console.log('15. Privacy page');

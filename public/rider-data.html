@@ -118,16 +118,41 @@
     <!-- Signed-in data -->
     <div id="dataSignedIn" class="hidden">
 
-      <!-- Only ever shown when connected. Linking happens from the header
-           button on every other page; unlinking clears the connection without
-           touching the account or session. The Fleet API connection exposes
-           vehicle information only — rides come from receipts, not from it. -->
-      <div id="dataUnlinkTeslaPrompt" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-        <div class="max-w-2xl">
-          <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
-          <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
+      <!-- Connected accounts. One panel, shown when either row is:
+           - Tesla (only when a Tesla account is linked). Linking happens from
+             the header button on every other page; unlinking clears the
+             connection without touching the account or session. The Fleet API
+             connection exposes vehicle information only — rides come from
+             receipts, not from it.
+           - Automatic Gmail import (GET /api/gmail/status; only when the server
+             reports Gmail import as configured).
+           updateAccountsPanel() in js/rider-data.js shows the panel and the
+           divider between rows. -->
+      <div id="accountsPanel" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6">
+        <div id="dataUnlinkTeslaPrompt" class="hidden flex items-center justify-between gap-4 flex-wrap">
+          <div class="max-w-2xl">
+            <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
+            <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
+          </div>
+          <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
         </div>
-        <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
+
+        <div id="gmailCard" class="hidden">
+          <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+            <div class="max-w-2xl min-w-0">
+              <div class="font-display font-bold text-base mb-1">AUTOMATIC GMAIL IMPORT</div>
+              <p class="text-slate-400 text-sm">Connect the Gmail account you signed in with, and Cybercab Hunter checks it about every 10 minutes for Tesla Robotaxi receipt emails (subject "Robotaxi Ride Receipt") and adds those rides here. When you first connect, matching receipts from the last 90 days are imported too. Cybercab Hunter only searches for and reads those receipt emails. <a href="privacy.html" class="text-cyan hover:underline">How Gmail data is handled</a></p>
+              <div class="flex items-center gap-2 mt-3"><span id="gmailDot" class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span><span id="gmailStatusText" class="text-sm font-semibold [overflow-wrap:anywhere]">Checking…</span></div>
+              <p id="gmailMeta" class="text-xs text-slate-500 mt-1 [overflow-wrap:anywhere]"></p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap shrink-0">
+              <button id="gmailConnectBtn" type="button" class="hidden btn-magnetic px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Connect Gmail</button>
+              <button id="gmailDisconnectBtn" type="button" class="hidden px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Disconnect Gmail</button>
+            </div>
+          </div>
+          <p id="gmailNotice" class="hidden text-sm rounded-lg border px-4 py-3 mt-4" role="status"></p>
+          <p class="text-xs text-slate-500 mt-3">Disconnecting stops the import; rides already added stay until you remove them.</p>
+        </div>
       </div>
 
       <!-- Overview hero — identity is kept minimal and read-only here for
@@ -178,81 +203,6 @@
           <div class="shrink-0 hidden lg:block relative">
             <div class="absolute inset-0 bg-gold/20 blur-3xl rounded-full"></div>
             <img src="images/CybercabFlipped.png" alt="Cybercab" class="relative w-80 xl:w-96 h-auto object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
-          </div>
-        </div>
-      </div>
-
-      <!-- Automatic Gmail import (GET /api/gmail/status): an optional second
-           way in, beside the forwarding address below, which stays available.
-           Hidden unless the server reports Gmail import as configured. -->
-      <div id="gmailCard" class="hidden glass rounded-2xl p-6 sm:p-7 lg:p-8 reveal-on-scroll mb-8">
-        <h2 class="font-display font-bold text-xl mb-1">Automatic Gmail import</h2>
-        <p class="text-sm text-slate-400 max-w-3xl mb-4">Connect the Gmail account you signed in with, and Cybercab Hunter checks it about every 10 minutes for Tesla Robotaxi receipt emails (subject "Robotaxi Ride Receipt") and adds those rides here. When you first connect, matching receipts from the last 90 days are imported too. Cybercab Hunter only searches for and reads those receipt emails. <a href="privacy.html" class="text-cyan hover:underline">How Gmail data is handled</a></p>
-
-        <p id="gmailNotice" class="hidden text-sm rounded-lg border px-4 py-3 mb-4" role="status"></p>
-
-        <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2"><span id="gmailDot" class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span><span id="gmailStatusText" class="text-sm font-semibold [overflow-wrap:anywhere]">Checking…</span></div>
-            <p id="gmailMeta" class="text-xs text-slate-500 mt-1 [overflow-wrap:anywhere]"></p>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap shrink-0">
-            <button id="gmailConnectBtn" type="button" class="hidden btn-magnetic px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Connect Gmail</button>
-            <button id="gmailDisconnectBtn" type="button" class="hidden px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Disconnect Gmail</button>
-          </div>
-        </div>
-        <p class="text-xs text-slate-500 mt-4">Prefer not to connect Gmail? Forwarding receipts to your private address below works too, and stays available either way. Disconnecting stops the import; rides already added stay until you remove them.</p>
-      </div>
-
-      <!-- Receipt address: the rider's own u_<token>@ forwarding address
-           (GET /api/receipt-ingestion/address issues it on first use), how to
-           forward to it, and the Gmail confirmation code once one arrives
-           (GET /api/rides/sync-status). Loaded separately from the rest of
-           the page, so a problem here never hides the rider's data. -->
-      <div id="fwdCard" class="glass rounded-2xl p-6 sm:p-7 lg:p-8 reveal-on-scroll mb-8">
-        <h2 class="font-display font-bold text-xl mb-1">Your receipt address</h2>
-        <p class="text-sm text-slate-400 max-w-3xl mb-5">Tesla emails each Robotaxi receipt to your own inbox — not to Cybercab Hunter — and Cybercab Hunter never reads your inbox. A ride appears here only when its receipt is forwarded to this private address: by you, or automatically by Gmail once you set that up below.</p>
-
-        <div id="fwdLoading" class="h-12 rounded-lg bg-white/5 animate-pulse" aria-busy="true"><span class="sr-only">Loading your receipt address…</span></div>
-        <p id="fwdError" class="hidden text-sm text-slate-400">Couldn't load your receipt address. <button id="fwdRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
-        <p id="fwdRevoked" class="hidden text-sm text-slate-400">Your receipt address has been turned off. Contact us if you need a new one.</p>
-
-        <div id="fwdReady" class="hidden">
-          <div class="flex flex-col sm:flex-row sm:items-stretch gap-2 mb-2">
-            <code id="fwdAddress" class="flex-1 min-w-0 break-all rounded-lg bg-panel border border-[rgba(212,175,55,0.25)] px-3 py-2.5 text-sm text-goldsoft"></code>
-            <button id="fwdCopyBtn" type="button" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Copy</button>
-          </div>
-          <p class="text-xs text-slate-500 mb-2">Treat this address like a password — anyone who has it can add rides to your account.</p>
-          <p id="fwdDomainNote" class="hidden text-xs text-amber-300/90 mb-2">Receipt email isn't switched on for this site yet, so this address can't receive mail.</p>
-          <p id="fwdReceiving" class="text-xs text-slate-400 mb-6"></p>
-
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-            <div>
-              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">1</span>Forward a receipt</h3>
-              <p class="text-sm text-slate-400">After a ride, open the Tesla Robotaxi receipt email and forward it to the address above. The ride appears on this page once it's processed. This always works, including for older receipts.</p>
-            </div>
-            <div id="fwdGmailSteps">
-              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">2</span>Optional: forward new receipts automatically with Gmail</h3>
-              <p class="text-sm text-slate-300 mb-3"><span class="font-semibold">Adding the address in Gmail doesn't forward anything by itself.</span> Receipts are forwarded automatically only after every step below is done.</p>
-              <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5">
-                <li>In Gmail, open <span class="text-slate-300">Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</span> and enter the address above.</li>
-                <li>Gmail emails a confirmation code to that address. It appears below on this page once it arrives.</li>
-                <li>Enter the code in Gmail to verify the address. Leave Gmail's own forwarding setting on <span class="text-slate-300">Disable forwarding</span> — the filter in the next steps forwards only receipts, not all of your mail.</li>
-                <li>Test the search first: in Gmail's search bar, search for <code class="inline-block text-goldsoft">subject:"Robotaxi Ride Receipt"</code> and check that the results are your Tesla Robotaxi receipts.</li>
-                <li>With that search still entered, open the search options and choose <span class="text-slate-300">Create filter</span>.</li>
-                <li>Tick <span class="text-slate-300">Forward it to</span>, choose the address above, and save with <span class="text-slate-300">Create filter</span>.</li>
-              </ol>
-              <ul class="text-xs text-slate-500 space-y-1.5 mt-3 list-disc pl-5">
-                <li>Filter by subject, not sender: Tesla sends receipts from <span class="break-all">noreply@tesla.com</span>, but relay services such as DuckDuckGo Email Protection can change the sender Gmail sees, so a sender-only filter can miss them.</li>
-                <li>The filter forwards new receipts as they arrive. It doesn't forward receipts already in your inbox — forward those by hand.</li>
-                <li>Once a receipt you didn't forward yourself shows up here, automatic forwarding is working.</li>
-              </ul>
-              <div id="fwdCodeBox" class="hidden mt-4 rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] p-4">
-                <div class="text-xs text-slate-400 mb-1">Gmail confirmation code</div>
-                <div id="fwdCode" class="font-display font-bold text-2xl tracking-widest text-goldsoft break-all"></div>
-                <div id="fwdCodeAt" class="text-xs text-slate-500 mt-1"></div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -465,6 +415,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=7"></script>
+<script src="js/rider-data.js?v=9"></script>
 </body>
 </html>
