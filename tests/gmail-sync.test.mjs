@@ -39,6 +39,9 @@ function fakeGoogle() {
     fail: {},              // message id -> HTTP status to return for messages.get
     failAll: null,         // HTTP status for every Gmail API call
     failSub: {},           // Google account sub -> HTTP status for its Gmail API calls
+    gets: {},              // message id -> messages.get attempts (successful or not)
+    onGet: null,           // test hook: called with the id before a messages.get is answered
+    ignoreSmaller: false,  // simulate Gmail NOT applying smaller: (defense-in-depth test)
     rotateRefresh: false,
     revoked: [],           // tokens posted to /revoke
     fetched: [],           // message ids downloaded with format=raw
@@ -110,8 +113,9 @@ function fakeGoogle() {
         g.queries.push(q);
         const after = Number((q.match(/after:(\d+)/) || [])[1] || 0);
         const before = Number((q.match(/before:(\d+)/) || [])[1] || Infinity);
+        const smaller = g.ignoreSmaller ? Infinity : Number((q.match(/smaller:(\d+)/) || [])[1] || Infinity);
         const hits = q.includes(RECEIPT_QUERY)
-          ? g.messages.filter(m => !m.deleted && m.subject.includes('Robotaxi Ride Receipt') && m.t >= after && m.t < before).sort((a, b) => b.t - a.t)
+          ? g.messages.filter(m => !m.deleted && m.subject.includes('Robotaxi Ride Receipt') && m.t >= after && m.t < before && m.raw.length < smaller).sort((a, b) => b.t - a.t)
           : [];
         const size = Number(url.searchParams.get('maxResults') || 100);
         const from = Number(url.searchParams.get('pageToken') || 0);
@@ -122,6 +126,8 @@ function fakeGoogle() {
       const m = path.match(/^\/messages\/([^/]+)$/);
       if (m) {
         const msg = g.messages.find(x => x.id === decodeURIComponent(m[1]));
+        g.gets[m[1]] = (g.gets[m[1]] || 0) + 1;
+        if (g.onGet) g.onGet(m[1]);
         if (g.fail[m[1]]) return json({ error: { message: 'fail' } }, g.fail[m[1]]);
         if (!msg || msg.deleted) return json({ error: { code: 404 } }, 404);
         g.fetched.push(msg.id);
@@ -177,7 +183,10 @@ const result = loc => new URL(loc).searchParams.get('gmail');
 // Counts, per Worker invocation, every Google HTTP call, every D1 statement
 // (each statement of a batch separately) and every KV call — the things the
 // Workers Free plan limits to 50 subrequests per invocation.
-const BUDGET = { subrequests: 34, google: 6 };
+// 35: the designed worst case of a step that succeeds; 37: when a D1 write
+// itself fails and the error path runs. Both well under the assumed 50.
+const BUDGET = { subrequests: 35, failurePath: 37, google: 6 };
+const SIZE_LIMIT = 256 * 1024;
 function instrument(ctx) {
   if (ctx.meter) return ctx.meter;
   const meter = { d1: 0, kv: 0, runs: [] };
@@ -350,7 +359,7 @@ async function run() {
   const done = await connect(ctx, 'alice');
   check('connecting schedules the first sync immediately (ctx.waitUntil)', done.pending.length === 1);
   const q0 = (g.queries[0] || '').match(/^(.*) after:(\d+) before:(\d+)$/);
-  check('the search is the receipt subject, bounded to 90 days', g.queries.length === 1 && q0 && q0[1] === RECEIPT_QUERY && Math.abs((q0[3] - q0[2]) - (90 * 86400 + 120)) <= 5);
+  check('the search is the receipt subject, size-bounded, and bounded to 90 days', g.queries.length === 1 && q0 && q0[1] === `${RECEIPT_QUERY} smaller:${SIZE_LIMIT}` && Math.abs((q0[3] - q0[2]) - (90 * 86400 + 120)) <= 5);
   check('that first step (in the callback invocation) only lists: nothing is downloaded yet, and the import is not finished', g.fetched.length === 0 && conn(ctx, 'alice').backfill_completed_at === null && cursorOf(ctx, 'alice').queue.length === 3);
   const first = await drain(ctx, 'alice');
   check('the scheduled steps then import one message each: 3 steps for 3 matches, no re-search', first.steps === 3 && first.out.complete && g.calls.list === 1);
@@ -820,8 +829,6 @@ async function run() {
     // Backstop: if a step were ever to need more Google calls than allowed, it stops
     // with a temporary error instead of running on — nothing is lost.
     addReceipts(c.g, 1, { days: 0, offset: 401 });
-    const tight = { limit: 2, used: 0 };
-    tight.spend = () => { if (tight.used >= tight.limit) { const e = new Error('x'); throw e; } tight.used++; };
     const { newBudgetForTest } = await import('../worker/gmail.js').then(m => ({ newBudgetForTest: m.gmail.newBudget }));
     const out = await syncUser(c.env, 'alice', { budget: newBudgetForTest(2) });
     check('a step that would exceed its Google-call budget stops with a temporary error (invocation_budget_reached)', out.error === 'invocation_budget_reached' && conn(c, 'alice').status === 'active' && !!conn(c, 'alice').encrypted_refresh_token);
@@ -865,6 +872,122 @@ async function run() {
     check('scope, token key and account check unchanged', /export const GMAIL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/gmail\.readonly';/.test(g2) && /key: env\.GMAIL_TOKEN_ENCRYPTION_KEY/.test(g2) && /profile\.sub !== saved\.google_sub/.test(g2));
     check('Gmail still enters the existing pipeline as gmail_api', /processReceiptMessage\(env, parsed, 'gmail_api'/.test(g2) && /parseRawEmail\(/.test(g2));
     check('no console output in the Gmail worker code (nothing token- or content-bearing can be logged)', !/console\./.test(g2) && !/console\./.test(fs.readFileSync(`${ROOT}worker/db-gmail.js`, 'utf8')));
+  }
+
+  console.log('25. Oversized Gmail messages never reach the parser');
+  {
+    const c = await makeApp();
+    const small = (date, time, age, subject) => c.g.addMessage({ body: receiptBody({ date, pickupTime: time, summary: '2.0 mi · 8 min · XVF2648' }), subject: subject || `Robotaxi Ride Receipt on ${date}`, ageDays: age });
+    const older = small('September 18, 2026', '8:10 am', 9);
+    // A forwarded receipt with photos (e.g. in Sent): matches the subject but is ~400 KB.
+    const big = c.g.addMessage({ body: receiptBody({ date: 'September 19, 2026', pickupTime: '9:20 am' }) + '\n' + 'P'.repeat(400 * 1024), subject: 'Fwd: Robotaxi Ride Receipt on September 19, 2026', ageDays: 8 });
+    const fwdSmall = small('September 20, 2026', '10:30 am', 7, 'Fwd: Robotaxi Ride Receipt on September 20, 2026');
+    const newer = small('September 21, 2026', '11:40 am', 6);
+    check('the oversized test message really is over the limit, the others under it', c.g.messages.find(m => m.id === big).raw.length > SIZE_LIMIT && [older, fwdSmall, newer].every(id => c.g.messages.find(m => m.id === id).raw.length < SIZE_LIMIT));
+    await connect(c, 'alice');
+    let guard = 0;
+    while (!conn(c, 'alice').backfill_completed_at && guard++ < 20) await cron(c);
+    check(`every Gmail search carries smaller:${SIZE_LIMIT}`, c.g.queries.length > 0 && c.g.queries.every(q => q.includes(`smaller:${SIZE_LIMIT}`) && q.startsWith(RECEIPT_QUERY)));
+    check('the oversized message is never listed, downloaded or recorded', !c.g.gets[big] && !processed(c, 'alice').some(p => p.gmail_message_id === big) && !(cursorOf(c, 'alice').queue || []).includes(big));
+    check('the valid receipts around it — including a small forwarded one ("Fwd: …") — are imported and the import completes',
+      [older, fwdSmall, newer].every(id => c.g.gets[id] === 1) && trips(c, 'alice').length === 3 && !!conn(c, 'alice').backfill_completed_at);
+    // Defense in depth: if Gmail ever listed it anyway, it is rejected on size before parsing.
+    const c2 = await makeApp();
+    c2.g.ignoreSmaller = true;
+    const big2 = c2.g.addMessage({ body: receiptBody({ date: 'September 19, 2026', pickupTime: '9:20 am' }) + '\n' + 'P'.repeat(400 * 1024), subject: 'Fwd: Robotaxi Ride Receipt on September 19, 2026', ageDays: 8 });
+    const ok2 = c2.g.addMessage({ body: receiptBody({ date: 'September 21, 2026', pickupTime: '11:40 am' }), subject: 'Robotaxi Ride Receipt on September 21, 2026', ageDays: 6 });
+    await connect(c2, 'alice');
+    guard = 0;
+    while (!conn(c2, 'alice').backfill_completed_at && guard++ < 20) await cron(c2);
+    const p2 = processed(c2, 'alice').find(p => p.gmail_message_id === big2);
+    check('…a listed oversized message is recorded as message_too_large without being parsed (no ingestion row), and the next receipt still imports',
+      p2 && p2.outcome === 'message_too_large' && c2.d1.query(`SELECT COUNT(*) n FROM receipt_ingestions WHERE user_id = 'alice'`)[0].n === 1 && c2.g.gets[ok2] === 1 && trips(c2, 'alice').length === 1);
+  }
+
+  console.log('26. A message that keeps failing cannot block the queue');
+  {
+    // (a) A message that fails the same way every time (a non-temporary Gmail error).
+    const c = await makeApp();
+    const ids = addReceipts(c.g, 3);
+    await connect(c, 'alice');
+    const bad = cursorOf(c, 'alice').queue[0];
+    c.g.fail[bad] = 400;
+    const r1 = await cron(c);
+    const cur1 = cursorOf(c, 'alice');
+    check('1st failure: the attempt is recorded in the cursor and the message stays first, retryable, not processed',
+      cur1.queue[0] === bad && cur1.attempt && cur1.attempt.id === bad && cur1.attempt.n === 1 && !processed(c, 'alice').some(p => p.gmail_message_id === bad) && (await status(c, 'alice')).state === 'error');
+    const r2 = await cron(c);
+    const skipRow = processed(c, 'alice').find(p => p.gmail_message_id === bad);
+    check('2nd failure: the message is skipped, recorded only as skipped_repeated_failure, and leaves the queue',
+      c.g.gets[bad] === 2 && skipRow && skipRow.outcome === 'skipped_repeated_failure' && cursorOf(c, 'alice').queue[0] !== bad && !cursorOf(c, 'alice').attempt);
+    check('the failing runs stayed within budget', r1.cost.total <= BUDGET.subrequests && r2.cost.total <= BUDGET.subrequests);
+    let guard = 0;
+    while (!conn(c, 'alice').backfill_completed_at && guard++ < 20) await cron(c);
+    check('the later receipts are then imported and the backfill completes', trips(c, 'alice').length === 2 && ids.filter(id => id !== bad).every(id => c.g.fetched.includes(id)) && (await status(c, 'alice')).state === 'connected');
+
+    // (b) A message whose runs are cut off (e.g. the CPU limit): no error handling runs at all.
+    const k = await makeApp();
+    addReceipts(k.g, 2);
+    await connect(k, 'alice');
+    const kill = cursorOf(k, 'alice').queue[0];
+    let atKill = null;
+    k.g.onGet = id => { if (id === kill) atKill = { ...conn(k, 'alice') }; };
+    k.g.fail[kill] = 500;
+    const cutOff = async () => {
+      await cron(k);
+      // Put back exactly what was persisted when the download started: nothing after it happened.
+      k.d1.prepare(`UPDATE gmail_connections SET sync_cursor = ?, last_error = ?, sync_lock_until = NULL WHERE user_id = 'alice'`).bind(atKill.sync_cursor, atKill.last_error)._exec();
+    };
+    await cutOff();
+    check('a cut-off run still leaves its attempt marker (saved before the download)', (cursorOf(k, 'alice').attempt || {}).id === kill && (cursorOf(k, 'alice').attempt || {}).n === 1);
+    await cutOff();
+    check('…which survives into the next invocation and counts again', (cursorOf(k, 'alice').attempt || {}).n === 2 && k.g.gets[kill] === 2);
+    await cron(k);
+    check('after two cut-off attempts the next run skips it WITHOUT downloading it again', k.g.gets[kill] === 2 && processed(k, 'alice').find(p => p.gmail_message_id === kill).outcome === 'skipped_repeated_failure');
+    k.g.onGet = null;
+    guard = 0;
+    while (!conn(k, 'alice').backfill_completed_at && guard++ < 20) await cron(k);
+    check('…and the other receipt imports; the backfill completes', trips(k, 'alice').length === 1 && !!conn(k, 'alice').backfill_completed_at);
+
+    // (c) Temporary errors are retried and do not count as hard failures…
+    const t2 = await makeApp();
+    addReceipts(t2.g, 2);
+    await connect(t2, 'alice');
+    const flaky = cursorOf(t2, 'alice').queue[0];
+    t2.g.fail[flaky] = 503;
+    for (let i = 0; i < 4; i++) await cron(t2);
+    const ct = cursorOf(t2, 'alice');
+    check('4 temporary failures in a row: still queued first, n = 0, t = 4 — not skipped', ct.queue[0] === flaky && (ct.attempt || {}).n === 0 && (ct.attempt || {}).t === 4 && !processed(t2, 'alice').some(p => p.gmail_message_id === flaky));
+    delete t2.g.fail[flaky];
+    await cron(t2);
+    check('once Gmail recovers it imports normally and the marker is cleared', processed(t2, 'alice').find(p => p.gmail_message_id === flaky).outcome === 'created' && !cursorOf(t2, 'alice').attempt);
+    // …but a message that NEVER stops failing temporarily is eventually skipped too.
+    const t3 = await makeApp();
+    addReceipts(t3.g, 2);
+    await connect(t3, 'alice');
+    const stuck = cursorOf(t3, 'alice').queue[0];
+    t3.g.fail[stuck] = 503;
+    let runs = 0;
+    while (!processed(t3, 'alice').some(p => p.gmail_message_id === stuck) && runs < 30) { await cron(t3); runs++; }
+    check('a permanently failing (temporary-error) message is skipped after 12 attempts, not kept forever', runs === 12 && t3.g.gets[stuck] === 12 && processed(t3, 'alice').find(p => p.gmail_message_id === stuck).outcome === 'skipped_repeated_failure');
+    guard = 0;
+    while (!conn(t3, 'alice').backfill_completed_at && guard++ < 20) await cron(t3);
+    check('…and the backfill then completes with the remaining receipt', trips(t3, 'alice').length === 1);
+
+    // (d) A normal duplicate is not a failure: no marker is left behind.
+    const d = await makeApp();
+    await connect(d, 'alice');
+    const body = receiptBody({ date: 'September 23, 2026', pickupTime: '4:00 pm' });
+    await worker.email(inboundMessage(eml({ to: d.addressFor('alice'), body, subject: 'Robotaxi Ride Receipt on September 23, 2026', messageId: '<dup-0923@tesla.com>' }), d.addressFor('alice')), d.env, {});
+    d.g.addMessage({ body, subject: 'Robotaxi Ride Receipt on September 23, 2026', messageId: '<dup-0923@tesla.com>', ageDays: 0 });
+    await drain(d, 'alice');
+    check('a Gmail duplicate is recorded as duplicate (not skipped), with no attempt marker left', processed(d, 'alice').some(p => p.outcome === 'duplicate') && !processed(d, 'alice').some(p => p.outcome === 'skipped_repeated_failure') && !cursorOf(d, 'alice').attempt);
+
+    // Budget: every run above — including the attempt-marker writes and failure paths — stayed bounded.
+    const all = [c, k, t2, t3, d].map(maxCost);
+    check(`with the attempt marker, no run exceeded ${BUDGET.subrequests} subrequests or ${BUDGET.google} Google calls (max ${Math.max(...all.map(x => x.total))})`, all.every(x => x.total <= BUDGET.subrequests && x.google <= BUDGET.google));
+    const cur = JSON.stringify(cursorOf(c, 'alice')) + JSON.stringify(cursorOf(k, 'alice')) + JSON.stringify(cursorOf(t3, 'alice'));
+    check('cursors hold only ids, counters and time bounds — no token or message content', !/\b(at|rt)-[a-z0-9]{6,}|Trip Summary|Pick up|Payment|tesla\.com/.test(cur) && cur.length < 4000);
   }
 
   console.log('15. Privacy page');

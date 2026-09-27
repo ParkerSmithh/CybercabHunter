@@ -9,7 +9,9 @@
 --   active: {"v":1,"mode":"backfill"|"incremental","lo":<epoch s>,
 --            "hi":<epoch s>,"span":<s>,"queue":[<gmail message id>…],
 --            "hist":<history id to store once the scan completes>,
---            "start":<epoch s>}
+--            "start":<epoch s>,
+--            "attempt":{"id":<queued message id>,"n":<failed attempts>,
+--                       "t":<temporary failures>}}  (attempt: optional)
 -- It holds only Gmail's opaque message ids and time bounds — never a token
 -- or any message content. NULL until the first sync; cleared on disconnect
 -- and reset on reconnect.

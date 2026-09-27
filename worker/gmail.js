@@ -54,6 +54,13 @@
 //      failure leaves the queued message at the front, so it is retried.
 //   4. Each downloaded message goes through the existing pipeline once, and
 //      its id is recorded in gmail_processed_messages.
+//   5. Two guards keep one message from wedging a rider's sync: messages
+//      over MAX_GMAIL_MESSAGE_BYTES are excluded by the search itself
+//      (Gmail's `smaller:`), so they are never downloaded or parsed; and an
+//      attempt marker saved in the cursor BEFORE each download lets a
+//      message that keeps failing — including one whose run is cut off —
+//      be skipped (recorded as 'skipped_repeated_failure') instead of
+//      blocking the queue forever.
 // Structured so Gmail push notifications (watch + Pub/Sub) could later call
 // syncUser() directly instead of waiting for the schedule.
 
@@ -80,7 +87,30 @@ export const RECEIPT_QUERY = 'subject:"Robotaxi Ride Receipt"';
 const STATE_TTL_SECONDS = 600;          // 10 minutes to finish Google's consent screen
 const BACKFILL_DAYS = 90;               // the one-time scan for existing receipts
 const DAY = 86400;
-const MAX_MESSAGE_BYTES = 10 * 1024 * 1024; // same cap as the forwarding path
+// Largest Gmail message the sync will download (Gmail's size: headers,
+// body and attachments). Enforced in the SEARCH (`smaller:`), so a larger
+// match — e.g. a forwarded receipt with photos in Sent — is never listed,
+// downloaded or parsed; re-checked after download as defense in depth.
+// Measured parse cost (JSON + base64 + MIME + extraction + hash, Node): a
+// ~60 KB receipt ~6 ms; 200 KB ~12 ms; 324 KB ~15 ms; 2 MB ~83 ms. 256 KiB
+// leaves ~4x headroom over a ~60 KB HTML receipt (room for a small PDF)
+// while bounding one step's parse to roughly the Free plan's CPU budget.
+// Larger receipts can still arrive through the forwarding address.
+const MAX_GMAIL_MESSAGE_BYTES = 256 * 1024;
+// A queued message is skipped (outcome SKIPPED_OUTCOME) after this many
+// failed attempts that point at the message itself: a non-Gmail error in
+// the pipeline, a Gmail error other than the temporary/config ones below,
+// or a run that was cut off (e.g. CPU limit) after the attempt was saved.
+// So such a failure is retried once.
+const MAX_HARD_ATTEMPTS = 2;
+// Temporary Gmail errors on the download (5xx, rate limit) don't count as
+// hard attempts, but a message that keeps getting them is skipped after
+// this many, so it can't block the queue indefinitely either.
+const MAX_TEMPORARY_FAILURES = 12;
+const TEMPORARY_ERRORS = new Set(['gmail_rate_limited', 'gmail_api_unavailable', 'google_token_unavailable']);
+// Not the message's fault at all: never counted against it.
+const NOT_MESSAGE_ERRORS = new Set(['gmail_api_disabled', 'invocation_budget_reached']);
+const SKIPPED_OUTCOME = 'skipped_repeated_failure';
 const LOCK_MINUTES = 5;                 // far longer than one bounded step takes
 const DUE_AFTER_MINUTES = 9;            // just under the 10-minute cron interval
 const PROCESSED_RETENTION_DAYS = 120;   // > BACKFILL_DAYS, so a scan never re-finds a pruned id
@@ -94,11 +124,12 @@ const PROCESSED_RETENTION_DAYS = 120;   // > BACKFILL_DAYS, so a scan never re-f
 //           token refresh (+ store a rotated refresh token)        1 fetch + 1 D1
 //           history page, or profile after a 404 (both at most)    2 fetch
 //           one window listed + one processed-ids query            1 fetch + 1 D1
-//           one message: already-processed check, download,
-//             existing pipeline (≤ 18 statements on its rarest
-//             path), record it                                     1 fetch + 20 D1
+//           one message: already-processed check, save the attempt
+//             marker, download, existing pipeline (≤ 18 statements
+//             on its rarest path), record it                       1 fetch + 21 D1
 //           sync-run open/close + save state                       3 D1
-//   total ≤ 34 (68% of 50); a typical step with a receipt is ~21.
+//   total ≤ 35 (70% of 50); ≤ 37 if a D1 write itself fails and the
+//   error path runs; a typical step with a receipt is ~22.
 // CPU: parsing one ~60 KB receipt (MIME + extraction + hash) measures ~5 ms,
 // so ONE message per invocation keeps well inside ~10 ms.
 const RIDERS_PER_INVOCATION = 1;        // one rider per cron run, round-robin
@@ -424,7 +455,7 @@ async function gmailJson(accessToken, path, budget) {
 // one page holds, so the window is too dense and must be narrowed.
 async function listWindow(accessToken, fromSec, toSec, budget) {
   const params = new URLSearchParams({
-    q: `${RECEIPT_QUERY} after:${fromSec - WINDOW_EDGE_SECONDS} before:${toSec + WINDOW_EDGE_SECONDS}`,
+    q: `${RECEIPT_QUERY} smaller:${MAX_GMAIL_MESSAGE_BYTES} after:${fromSec - WINDOW_EDGE_SECONDS} before:${toSec + WINDOW_EDGE_SECONDS}`,
     maxResults: String(LIST_PAGE_SIZE)
   });
   const body = await gmailJson(accessToken, `/messages?${params}`, budget);
@@ -461,8 +492,10 @@ function readCursor(text) {
   try { c = text ? JSON.parse(text) : null; } catch (e) { c = null; }
   if (!c || c.v !== 1) return { v: 1 };
   if (c.mode === 'backfill' || c.mode === 'incremental') {
-    if (Number.isFinite(c.lo) && Number.isFinite(c.hi) && Number.isFinite(c.span) && Array.isArray(c.queue)) return c;
-    return { v: 1 };
+    if (!(Number.isFinite(c.lo) && Number.isFinite(c.hi) && Number.isFinite(c.span) && Array.isArray(c.queue))) return { v: 1 };
+    const a = c.attempt;
+    if (!(a && typeof a.id === 'string' && Number.isFinite(a.n) && Number.isFinite(a.t))) delete c.attempt;
+    return c;
   }
   return Number.isFinite(c.since) ? { v: 1, since: c.since } : { v: 1 };
 }
@@ -493,14 +526,6 @@ function base64UrlToBytes(value) {
   return bytes;
 }
 
-// Days to search so the window reaches back past the last successful sync.
-function searchWindowDays(lastSuccessAt) {
-  const t = lastSuccessAt ? Date.parse(String(lastSuccessAt).replace(' ', 'T') + 'Z') : NaN;
-  if (!Number.isFinite(t)) return BACKFILL_DAYS;
-  const days = Math.ceil((Date.now() - t) / 86400000) + 1;
-  return Math.min(BACKFILL_DAYS, Math.max(MIN_SEARCH_DAYS, days));
-}
-
 // ------------------------------------------------------------------ sync
 
 // Fetches one message and runs it through the existing pipeline. Returns
@@ -511,7 +536,7 @@ async function processOneMessage(env, userId, accessToken, messageId, syncRunId,
   const msg = await gmailJson(accessToken, `/messages/${encodeURIComponent(messageId)}?format=raw`, budget);
   if (msg === null) return 'message_gone';                 // deleted since the search
   if (!msg.raw) return 'message_unreadable';
-  if ((msg.sizeEstimate || 0) > MAX_MESSAGE_BYTES) return 'message_too_large';
+  if ((msg.sizeEstimate || 0) > MAX_GMAIL_MESSAGE_BYTES) return 'message_too_large'; // the search already excludes these
 
   let parsed;
   try {
@@ -550,6 +575,7 @@ export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCAT
   let cursor = readCursor(row.sync_cursor);
   let processed = 0;
   let foundReceipt = false;
+  let attempting = null;   // { id, n, t } as they were BEFORE the attempt in progress
   try {
     const accessToken = await getAccessToken(env, row, budget);
 
@@ -604,14 +630,28 @@ export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCAT
       if (processed >= maxMessages) break;
       const id = cursor.queue[0];
       processed += 1;
-      if (await db.isGmailMessageProcessed(sql, userId, id)) { cursor.queue.shift(); continue; } // finished by an earlier, interrupted step
+      const prior = cursor.attempt && cursor.attempt.id === id ? cursor.attempt : { id, n: 0, t: 0 };
+      if (await db.isGmailMessageProcessed(sql, userId, id)) { dropHead(cursor); continue; } // finished by an earlier, interrupted step
+      if (prior.n >= MAX_HARD_ATTEMPTS || prior.t >= MAX_TEMPORARY_FAILURES) {
+        // Failed too often (e.g. its runs keep being cut off): stop retrying it.
+        await db.markGmailMessageProcessed(sql, userId, id, SKIPPED_OUTCOME);
+        dropHead(cursor);
+        continue;
+      }
+      // Save the attempt BEFORE downloading, so even a run that is cut off
+      // mid-message (and never reaches the error handling) counts it.
+      const marked = { ...cursor, attempt: { id, n: prior.n + 1, t: prior.t } };
+      await db.saveGmailSyncCursor(sql, userId, marked);
+      cursor = marked;
+      attempting = prior;
       if (!runId) {
         runId = crypto.randomUUID();
         await db.createSyncRun(sql, { id: runId, userId, source: 'gmail_api' });
       }
       const outcome = await processOneMessage(env, userId, accessToken, id, runId, budget);
       await db.markGmailMessageProcessed(sql, userId, id, outcome);
-      cursor.queue.shift();
+      dropHead(cursor);
+      attempting = null;
       addToCounts(counts, { outcome: ['message_gone', 'message_unreadable', 'message_too_large', 'parse_error'].includes(outcome) ? 'error' : outcome });
       if (outcome === 'created' || outcome === 'updated') foundReceipt = true;
     }
@@ -632,10 +672,34 @@ export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCAT
       await db.finishSyncRun(sql, runId, { status: 'failed', ...tally(counts), errorCode: 'sync_interrupted' }).catch(() => {});
     }
     const code = err instanceof GmailError ? err.code : 'sync_failed';
-    if (err instanceof GmailError && err.reauth) await db.markGmailReauthorizationRequired(sql, userId, code);
-    else await db.finishGmailSyncFailure(sql, userId, code, cursor.mode ? cursor : null);
-    return { error: code };
+    if (err instanceof GmailError && err.reauth) {
+      await db.markGmailReauthorizationRequired(sql, userId, code);
+      return { error: code };
+    }
+    // The message being attempted failed: classify it (see MAX_HARD_ATTEMPTS).
+    let skipped = false;
+    if (attempting && cursor.attempt && cursor.attempt.id === attempting.id) {
+      if (TEMPORARY_ERRORS.has(code)) cursor.attempt = { id: attempting.id, n: attempting.n, t: attempting.t + 1 };
+      else if (NOT_MESSAGE_ERRORS.has(code)) cursor.attempt = { ...attempting };
+      // otherwise the incremented hard-attempt count stands
+      if (cursor.attempt.n >= MAX_HARD_ATTEMPTS || cursor.attempt.t >= MAX_TEMPORARY_FAILURES) {
+        try {
+          await db.markGmailMessageProcessed(sql, userId, attempting.id, SKIPPED_OUTCOME);
+          dropHead(cursor);
+          skipped = true;
+        } catch (e) { /* the next run's check skips it instead */ }
+      }
+    }
+    await db.finishGmailSyncFailure(sql, userId, code, cursor.mode ? cursor : null);
+    return { error: code, skipped };
   }
+}
+
+// The queue's front message is done (imported, deduplicated, skipped or
+// already processed): drop it and its attempt marker.
+function dropHead(cursor) {
+  cursor.queue.shift();
+  delete cursor.attempt;
 }
 
 function tally(counts) {

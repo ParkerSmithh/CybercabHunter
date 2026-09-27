@@ -97,6 +97,15 @@ async function finishGmailSyncSuccess(sql, userId, { historyId, backfillDone, fo
   `).bind(historyId || null, cursor ? JSON.stringify(cursor) : null, backfillDone ? 1 : 0, foundReceipt ? 1 : 0, userId).run();
 }
 
+// Mid-step save of the sync cursor alone (the attempt marker written just
+// before a message is downloaded). Nothing else changes.
+async function saveGmailSyncCursor(sql, userId, cursor) {
+  await sql.prepare(`
+    UPDATE gmail_connections SET sync_cursor = ?, updated_at = datetime('now')
+    WHERE user_id = ? AND status = 'active'
+  `).bind(JSON.stringify(cursor), userId).run();
+}
+
 // A failed sync: history_id and backfill state are left exactly as they
 // were, so the next run retries from the same point. `cursor`, when given,
 // is progress made before the failure (e.g. a window already listed); the
@@ -194,6 +203,7 @@ export const gmailQueries = {
   acquireGmailSyncLock,
   finishGmailSyncSuccess,
   finishGmailSyncFailure,
+  saveGmailSyncCursor,
   markGmailReauthorizationRequired,
   updateGmailRefreshToken,
   disconnectGmailConnection,
