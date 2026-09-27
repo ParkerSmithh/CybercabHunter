@@ -990,6 +990,30 @@ async function run() {
     check('cursors hold only ids, counters and time bounds — no token or message content', !/\b(at|rt)-[a-z0-9]{6,}|Trip Summary|Pick up|Payment|tesla\.com/.test(cur) && cur.length < 4000);
   }
 
+  console.log('27. Gmail authorization URL and Google granular-consent scope handling');
+  {
+    const c = await makeApp();
+    // Sign-in's own client must never be used for the Gmail flow.
+    Object.assign(c.env, { GOOGLE_CLIENT_ID: 'signin-client', GOOGLE_CLIENT_SECRET: 'signin-secret' });
+    const r = await json(await call(c, 'POST', '/api/gmail/connect', 'alice'));
+    const u = new URL(r.authorize_url);
+    check('the authorization URL itself requests gmail.readonly (encoded exactly as sent to Google)',
+      u.search.includes('scope=openid+email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fgmail.readonly&') && u.searchParams.get('scope').split(' ').includes(GMAIL_SCOPE));
+    check('…with only the identity scopes it needs (openid, email) — no profile, no broader Gmail scope', u.searchParams.get('scope').split(' ').sort().join() === ['email', 'openid', GMAIL_SCOPE].sort().join());
+    check('it uses the Gmail client and the Gmail callback, never the sign-in client', u.searchParams.get('client_id') === 'gmail-client' && u.searchParams.get('redirect_uri') === 'https://cybercabhunter.com/api/gmail/callback' && !u.href.includes('signin-client'));
+    // Real Google token responses expand "email" and may order scopes differently.
+    const real = await connect(c, 'alice', { scope: `${GMAIL_SCOPE} openid https://www.googleapis.com/auth/userinfo.email` });
+    check("Google's real scope format (expanded userinfo.email, any order) connects", result(real.location) === 'connected' && conn(c, 'alice').status === 'active');
+    // Granular consent with the Gmail box left unticked: Google returns identity scopes only.
+    const c2 = await makeApp();
+    const unticked = await connect(c2, 'alice', { scope: 'openid https://www.googleapis.com/auth/userinfo.email' });
+    check('Gmail box unticked on Google\'s screen: missing_permission, nothing stored, the partial grant revoked', result(unticked.location) === 'missing_permission' && !conn(c2, 'alice') && c2.g.revoked.length === 1);
+    const pm = await openPage(c2, 'alice', '?gmail=missing_permission');
+    check('…and Rider Data tells the rider to tick "View your email messages and settings" and try again', /tick the box for "View your email messages and settings"/.test(pm.text('gmailNotice')) && /Connect Gmail again/.test(pm.text('gmailNotice')));
+    const signin = fs.readFileSync(`${ROOT}worker/google-auth.js`, 'utf8');
+    check('Google sign-in is untouched: its own scopes, no Gmail scope', /const SCOPES = 'openid email profile';/.test(signin) && !/gmail/i.test(signin));
+  }
+
   console.log('15. Privacy page');
   {
     const html = fs.readFileSync(`${ROOT}public/privacy.html`, 'utf8');

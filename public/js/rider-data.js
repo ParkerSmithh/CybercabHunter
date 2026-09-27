@@ -436,7 +436,7 @@
   const GMAIL_NOTICES = {
     connected: ['Gmail connected. Receipts from the last 90 days are being imported automatically in the background, a few at a time — this can take a while.', 'ok'],
     cancelled: ['Gmail wasn\'t connected — the Google screen was cancelled.', 'info'],
-    missing_permission: ['Gmail access wasn\'t granted, so nothing was connected.', 'info'],
+    missing_permission: ['Gmail wasn\'t connected: Google\'s screen came back without Gmail access. Click Connect Gmail again and, on Google\'s screen, tick the box for "View your email messages and settings" before you continue.', 'warn'],
     wrong_account: ['That Gmail isn\'t the Google account you signed in with. Connect that same account.', 'warn'],
     invalid_state: ['That connection attempt expired. Please try again.', 'warn'],
     expired_state: ['That connection attempt expired. Please try again.', 'warn'],

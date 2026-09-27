@@ -281,7 +281,11 @@ export async function handleCallback(request, env, ctx) {
   // unwanted grant is left behind on the rider's Google account.
   const refuse = async result => { await revokeToken(tokens.refresh_token || tokens.access_token); return riderDataRedirect(env, result); };
 
-  // Google's consent screen lets the rider untick individual permissions.
+  // Google's consent screen shows the Gmail permission as its own checkbox
+  // (granular consent), which the rider may leave unticked; Google then
+  // issues a token WITHOUT Gmail access, reported only in `scope`. Without
+  // gmail.readonly nothing can be read, so the grant is revoked and the rider
+  // is told to tick the box (Rider Data's 'missing_permission' notice).
   const granted = String(tokens.scope || '').split(/\s+/);
   if (!granted.includes(GMAIL_SCOPE)) return refuse('missing_permission');
   if (!tokens.refresh_token || !tokens.access_token) return refuse('error');
