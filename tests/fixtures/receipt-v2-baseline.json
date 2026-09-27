@@ -1,0 +1,144 @@
+{
+  "non-tesla-email.eml": {
+    "fields": {},
+    "fieldSources": {},
+    "signals": {
+      "mentionsRobotaxi": false,
+      "hasFare": false,
+      "hasDistance": false,
+      "hasRideId": false,
+      "hasPickupDropoff": false,
+      "hasTripDate": false,
+      "fareMismatch": false
+    }
+  },
+  "tesla-receipt-missing-fields.eml": {
+    "fields": {
+      "service_area": "Austin, TX"
+    },
+    "fieldSources": {
+      "service_area": "extracted"
+    },
+    "signals": {
+      "mentionsRobotaxi": true,
+      "hasFare": false,
+      "hasDistance": false,
+      "hasRideId": false,
+      "hasPickupDropoff": false,
+      "hasTripDate": false,
+      "fareMismatch": false
+    }
+  },
+  "tesla-receipt-real-format-forwarded.eml": {
+    "fields": {
+      "ride_date": "2026-06-09",
+      "distance": 2.8,
+      "duration_minutes": 14,
+      "license_plate": "XJR2195",
+      "fare_amount_cents": 692,
+      "pickup_description": "4301 Hanover St, Dallas, TX 75225",
+      "pickup_time": "13:04",
+      "dropoff_description": "NorthPark Center, 8687 N Central Expy, Dallas, TX 75225",
+      "dropoff_time": "13:18",
+      "service_area": "Dallas"
+    },
+    "fieldSources": {
+      "ride_date": "extracted",
+      "distance": "extracted",
+      "duration_minutes": "extracted",
+      "license_plate": "extracted",
+      "fare_amount_cents": "extracted",
+      "pickup_description": "extracted",
+      "pickup_time": "extracted",
+      "dropoff_description": "extracted",
+      "dropoff_time": "extracted",
+      "service_area": "extracted"
+    },
+    "signals": {
+      "mentionsRobotaxi": true,
+      "hasFare": true,
+      "hasDistance": true,
+      "hasRideId": false,
+      "hasPickupDropoff": true,
+      "hasTripDate": true,
+      "fareMismatch": false
+    }
+  },
+  "tesla-receipt-real-format.eml": {
+    "fields": {
+      "ride_date": "2026-06-09",
+      "distance": 2.8,
+      "duration_minutes": 14,
+      "license_plate": "XJR2195",
+      "fare_amount_cents": 692,
+      "pickup_description": "4301 Hanover St, Dallas, TX 75225",
+      "pickup_time": "13:04",
+      "dropoff_description": "NorthPark Center, 8687 N Central Expy, Dallas, TX 75225",
+      "dropoff_time": "13:18",
+      "service_area": "Dallas"
+    },
+    "fieldSources": {
+      "ride_date": "extracted",
+      "distance": "extracted",
+      "duration_minutes": "extracted",
+      "license_plate": "extracted",
+      "fare_amount_cents": "extracted",
+      "pickup_description": "extracted",
+      "pickup_time": "extracted",
+      "dropoff_description": "extracted",
+      "dropoff_time": "extracted",
+      "service_area": "extracted"
+    },
+    "signals": {
+      "mentionsRobotaxi": true,
+      "hasFare": true,
+      "hasDistance": true,
+      "hasRideId": false,
+      "hasPickupDropoff": true,
+      "hasTripDate": true,
+      "fareMismatch": false
+    }
+  },
+  "tesla-receipt-valid.eml": {
+    "fields": {
+      "fare_amount_cents": 1250,
+      "service_area": "Austin, TX",
+      "external_ride_id": "RT-998877"
+    },
+    "fieldSources": {
+      "fare_amount_cents": "extracted",
+      "service_area": "extracted",
+      "external_ride_id": "extracted"
+    },
+    "signals": {
+      "mentionsRobotaxi": true,
+      "hasFare": true,
+      "hasDistance": false,
+      "hasRideId": true,
+      "hasPickupDropoff": false,
+      "hasTripDate": false,
+      "fareMismatch": false
+    }
+  },
+  "tesla-receipt-with-attachment.eml": {
+    "fields": {
+      "fare_amount_cents": 900,
+      "service_area": "Austin, TX",
+      "external_ride_id": "RT-445566"
+    },
+    "fieldSources": {
+      "fare_amount_cents": "extracted",
+      "service_area": "extracted",
+      "external_ride_id": "extracted"
+    },
+    "signals": {
+      "mentionsRobotaxi": true,
+      "hasFare": true,
+      "hasDistance": false,
+      "hasRideId": true,
+      "hasPickupDropoff": false,
+      "hasTripDate": false,
+      "fareMismatch": false
+    }
+  }
+}

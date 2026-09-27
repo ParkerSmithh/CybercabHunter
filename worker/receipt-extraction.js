@@ -176,6 +176,17 @@ function splitLines(text) {
   return text.split('\n').map(l => l.trim()).filter(Boolean);
 }
 
+// A receipt forwarded as a quoted reply ("On ... Tesla wrote:") has every
+// line prefixed with an email quote marker: "> Pick up", "> 5:05 pm", and a
+// bare ">" for a blank line — nested quoting repeats it ("> > Pick up",
+// ">> Pick up"). The pickup/dropoff walk matches whole lines, so the marker
+// is removed before it runs; a line that was only a marker is dropped, like
+// any other blank line. A line that doesn't start with ">" is untouched, so
+// an unquoted receipt produces exactly the same lines as before.
+function unquoteLines(lines) {
+  return lines.map(l => l.replace(/^(?:>[ \t]*)+/, '')).filter(Boolean);
+}
+
 // Gmail's plain-text rendering of Tesla's HTML receipt turns each address
 // into a Google Maps hyperlink and precedes some lines with image
 // alt-text — neither is real location data, so both are stripped from any
@@ -321,7 +332,7 @@ export function extractTeslaReceiptFieldsV2(message) {
     fareMismatch = fare.mismatch;
   }
 
-  const stops = parsePickupDropoff(splitLines(text));
+  const stops = parsePickupDropoff(unquoteLines(splitLines(text)));
   if (stops.pickup_description) { fields.pickup_description = stops.pickup_description; fieldSources.pickup_description = 'extracted'; }
   if (stops.pickup_time) { fields.pickup_time = stops.pickup_time; fieldSources.pickup_time = 'extracted'; }
   if (stops.dropoff_description) { fields.dropoff_description = stops.dropoff_description; fieldSources.dropoff_description = 'extracted'; }

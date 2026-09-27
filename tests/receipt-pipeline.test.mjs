@@ -11,6 +11,7 @@ import { parseRawEmail } from '../worker/receipt-parser.js';
 import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from '../worker/receipt-extraction.js';
 import { classifyReceipt } from '../worker/receipt-validation.js';
 import { computeReceiptHash } from '../worker/receipt-dedupe.js';
+import { normalizeRide } from '../worker/ride-canonical.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixture = name => readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -186,6 +187,51 @@ async function run() {
     check('"14 min - XJR2195" (dash as separator) still reads XJR2195', (await dashSep('2.8 mi - 14 min - XJR2195')) === 'XJR2195');
     check('"14 min - XJR-2195" (dash separator AND hyphenated plate) reads XJR-2195', (await dashSep('2.8 mi - 14 min - XJR-2195')) === 'XJR-2195');
     check('"14 min | XJR-2195" (pipe separator) reads XJR-2195', (await dashSep('2.8 mi | 14 min | XJR-2195')) === 'XJR-2195');
+  }
+
+  console.log('13. A receipt forwarded as a quoted reply ("> " on every line) — the Sep 26, 2026 failure');
+  {
+    // Same structure as the real failing receipt (multipart/alternative,
+    // base64 text/plain, every line "> "-quoted, bare ">" blank lines);
+    // invented name, addresses and card digits.
+    const msg = await parseRawEmail(fixture('tesla-receipt-quoted-forward.eml'));
+    check('the fixture really is quoted: its "Pick up" line starts with "> "', /^> Pick up\s*$/m.test(msg.text));
+    const extraction = extractTeslaReceiptFieldsV2(msg);
+    const f = extraction.fields;
+    check('plate XVF2648 (already worked before the fix)', f.license_plate === 'XVF2648');
+    check('ride date 2026-09-26', f.ride_date === '2026-09-26');
+    check('pickup time 17:05 (was missing)', f.pickup_time === '17:05');
+    check('drop-off time 17:23', f.dropoff_time === '17:23');
+    check('distance 2.5 and duration 17', f.distance === 2.5 && f.duration_minutes === 17);
+    check('fare $15.10', f.fare_amount_cents === 1510 && extraction.fieldSources.fare_amount_cents === 'extracted');
+    check('pickup and drop-off descriptions carry no quote marker', f.pickup_description === '1000 Congress Ave, Austin, TX 78701' && f.dropoff_description === 'Zilker Metropolitan Park, 2100 Barton Springs Rd, Austin, TX 78746');
+    const review = classifyReceipt(msg, extraction);
+    const ride = normalizeRide({ extraction, receiptHash: 'h', review, messageId: msg.messageId, sentAt: null }, 'receipt_import');
+    check('no longer pickup_time_missing: the ride has a full identity', ride.identityIssue === null && ride.rideKey === 'v1|2026-09-26|17:05|XVF2648');
+    check('and it is accepted, not held for review', review.status === 'accepted');
+
+    // Nested quoting ("> > ", ">>") unquotes the same way.
+    const nested = async prefix => {
+      const m = await parseRawEmail(fixture('tesla-receipt-quoted-forward.eml'));
+      m.text = m.text.replace(/^>/gm, prefix);
+      return extractTeslaReceiptFieldsV2(m).fields;
+    };
+    for (const prefix of ['> >', '>>', '>  > >']) {
+      const n = await nested(prefix);
+      check(`nested quoting "${prefix} Pick up" still gives pickup 17:05 / drop-off 17:23`, n.pickup_time === '17:05' && n.dropoff_time === '17:23');
+    }
+  }
+
+  console.log('14. Unquoted receipts are unaffected: every existing fixture extracts exactly as before the quote fix');
+  {
+    // receipt-v2-baseline.json was captured from the parser BEFORE the fix.
+    const baseline = JSON.parse(fixture('receipt-v2-baseline.json'));
+    for (const [name, expected] of Object.entries(baseline)) {
+      const ex = extractTeslaReceiptFieldsV2(await parseRawEmail(fixture(name)));
+      const actual = { fields: ex.fields, fieldSources: ex.fieldSources, signals: ex.signals };
+      check(`${name}: fields, sources and signals identical to before`, JSON.stringify(actual) === JSON.stringify(expected));
+    }
+    check('the baseline covers every pre-existing fixture', Object.keys(baseline).length === 6);
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
