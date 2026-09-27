@@ -42,17 +42,23 @@ async function upsertGmailConnection(sql, { userId, googleSub, email, encryptedR
       last_success_at = NULL,
       last_receipt_at = NULL,
       last_error = NULL,
+      sync_cursor = NULL,
       connected_at = datetime('now'),
       updated_at = datetime('now')
   `).bind(newId(), userId, googleSub, email || null, encryptedRefreshToken, historyId || null).run();
 }
 
-// Active connections that haven't been checked recently, oldest first.
+// Active connections that haven't been checked recently and aren't mid-sync,
+// least recently checked first (never-checked first). last_checked_at is
+// stamped when a sync STARTS (acquireGmailSyncLock), so this ordering is a
+// strict round-robin: a rider whose run fails or is cut short still moves to
+// the back of the line, and can never hold the front of it.
 async function listGmailConnectionsDue(sql, { olderThanMinutes, limit }) {
   const rows = await sql.prepare(`
     SELECT user_id FROM gmail_connections
     WHERE status = 'active' AND encrypted_refresh_token IS NOT NULL
       AND (last_checked_at IS NULL OR last_checked_at <= datetime('now', ?))
+      AND (sync_lock_until IS NULL OR sync_lock_until <= datetime('now'))
     ORDER BY COALESCE(last_checked_at, '') ASC
     LIMIT ?
   `).bind(`-${olderThanMinutes} minutes`, limit).all();
@@ -60,21 +66,26 @@ async function listGmailConnectionsDue(sql, { olderThanMinutes, limit }) {
 }
 
 // A short lease so two overlapping runs never sync one mailbox at once.
-// Returns true only for the caller that obtained it.
+// Returns true only for the caller that obtained it. Also stamps
+// last_checked_at, which is what the scheduler's round-robin orders by.
 async function acquireGmailSyncLock(sql, userId, minutes) {
   const result = await sql.prepare(`
-    UPDATE gmail_connections SET sync_lock_until = datetime('now', ?)
+    UPDATE gmail_connections SET sync_lock_until = datetime('now', ?), last_checked_at = datetime('now')
     WHERE user_id = ? AND status = 'active' AND encrypted_refresh_token IS NOT NULL
       AND (sync_lock_until IS NULL OR sync_lock_until <= datetime('now'))
   `).bind(`+${minutes} minutes`, userId).run();
   return !!(result && result.meta && result.meta.changes > 0);
 }
 
-// A completed sync: the ONLY place history_id advances.
-async function finishGmailSyncSuccess(sql, userId, { historyId, backfillDone, foundReceipt }) {
+// A successful sync step: the ONLY place history_id advances. `historyId`
+// is null for a step that left work in `cursor` (the scan is not finished),
+// so the position never moves past messages not yet processed. `cursor` is
+// the resumable sync state (see worker/gmail.js), saved in the same write.
+async function finishGmailSyncSuccess(sql, userId, { historyId, backfillDone, foundReceipt, cursor }) {
   await sql.prepare(`
     UPDATE gmail_connections SET
       history_id = COALESCE(?, history_id),
+      sync_cursor = ?,
       backfill_completed_at = CASE WHEN ? THEN COALESCE(backfill_completed_at, datetime('now')) ELSE backfill_completed_at END,
       last_receipt_at = CASE WHEN ? THEN datetime('now') ELSE last_receipt_at END,
       last_checked_at = datetime('now'),
@@ -83,17 +94,20 @@ async function finishGmailSyncSuccess(sql, userId, { historyId, backfillDone, fo
       sync_lock_until = NULL,
       updated_at = datetime('now')
     WHERE user_id = ? AND status = 'active'
-  `).bind(historyId || null, backfillDone ? 1 : 0, foundReceipt ? 1 : 0, userId).run();
+  `).bind(historyId || null, cursor ? JSON.stringify(cursor) : null, backfillDone ? 1 : 0, foundReceipt ? 1 : 0, userId).run();
 }
 
 // A failed sync: history_id and backfill state are left exactly as they
-// were, so the next run retries from the same point.
-async function finishGmailSyncFailure(sql, userId, errorCode) {
+// were, so the next run retries from the same point. `cursor`, when given,
+// is progress made before the failure (e.g. a window already listed); the
+// message that failed is still at the front of its queue, so it is retried.
+async function finishGmailSyncFailure(sql, userId, errorCode, cursor) {
   await sql.prepare(`
     UPDATE gmail_connections SET
-      last_checked_at = datetime('now'), last_error = ?, sync_lock_until = NULL, updated_at = datetime('now')
+      last_checked_at = datetime('now'), last_error = ?, sync_lock_until = NULL,
+      sync_cursor = COALESCE(?, sync_cursor), updated_at = datetime('now')
     WHERE user_id = ?
-  `).bind(errorCode, userId).run();
+  `).bind(errorCode, cursor ? JSON.stringify(cursor) : null, userId).run();
 }
 
 // Google no longer accepts the authorization: clear the token (it is
@@ -101,7 +115,7 @@ async function finishGmailSyncFailure(sql, userId, errorCode) {
 async function markGmailReauthorizationRequired(sql, userId, errorCode) {
   await sql.prepare(`
     UPDATE gmail_connections SET
-      status = 'error', encrypted_refresh_token = NULL, sync_lock_until = NULL,
+      status = 'error', encrypted_refresh_token = NULL, sync_lock_until = NULL, sync_cursor = NULL,
       last_checked_at = datetime('now'), last_error = ?, updated_at = datetime('now')
     WHERE user_id = ?
   `).bind(errorCode, userId).run();
@@ -124,7 +138,7 @@ async function disconnectGmailConnection(sql, userId) {
     sql.prepare(`
       UPDATE gmail_connections SET
         status = 'revoked', encrypted_refresh_token = NULL, history_id = NULL,
-        backfill_completed_at = NULL, sync_lock_until = NULL, last_error = NULL,
+        backfill_completed_at = NULL, sync_lock_until = NULL, last_error = NULL, sync_cursor = NULL,
         updated_at = datetime('now')
       WHERE user_id = ?
     `).bind(userId),
@@ -136,6 +150,17 @@ async function isGmailMessageProcessed(sql, userId, gmailMessageId) {
   return !!(await sql.prepare(
     `SELECT 1 AS ok FROM gmail_processed_messages WHERE user_id = ? AND gmail_message_id = ?`
   ).bind(userId, gmailMessageId).first());
+}
+
+// Which of `ids` were already processed for this rider — ONE query for a
+// whole listed page (at most 50 ids + user_id, under D1's 100-parameter
+// limit), instead of one query per id.
+async function getGmailProcessedIds(sql, userId, ids) {
+  if (!ids.length) return new Set();
+  const rows = await sql.prepare(
+    `SELECT gmail_message_id FROM gmail_processed_messages WHERE user_id = ? AND gmail_message_id IN (${ids.map(() => '?').join(', ')})`
+  ).bind(userId, ...ids).all();
+  return new Set((rows.results || []).map(r => r.gmail_message_id));
 }
 
 // Idempotent: a message recorded twice keeps its first outcome.
@@ -173,6 +198,7 @@ export const gmailQueries = {
   updateGmailRefreshToken,
   disconnectGmailConnection,
   isGmailMessageProcessed,
+  getGmailProcessedIds,
   markGmailMessageProcessed,
   pruneGmailProcessedMessages,
   getGoogleIdentityForUser

@@ -1,7 +1,9 @@
-// Optional direct Gmail receipt import (worker/gmail.js + migration 0015):
-// the connect/callback OAuth flow, token encryption, the polling sync
+// Optional direct Gmail receipt import (worker/gmail.js + migrations 0015,
+// 0016): the connect/callback OAuth flow, token encryption, the polling sync
 // (backfill, history, expired-history fallback, failures), dedupe against
-// the forwarding path, disconnect, the status API and the Rider Data card.
+// the forwarding path, disconnect, the status API and the Rider Data card —
+// and the Workers Free plan budget: one bounded, resumable step per Worker
+// invocation, with every Google call, D1 statement and KV call counted.
 // Google (token, userinfo, revoke, Gmail API) is a local fake installed as
 // globalThis.fetch; everything else is the REAL Worker, real SQL (every
 // migration) and the real receipt pipeline.
@@ -36,24 +38,28 @@ function fakeGoogle() {
     minHistoryId: 0,       // history before this is "expired" (404)
     fail: {},              // message id -> HTTP status to return for messages.get
     failAll: null,         // HTTP status for every Gmail API call
+    failSub: {},           // Google account sub -> HTTP status for its Gmail API calls
     rotateRefresh: false,
     revoked: [],           // tokens posted to /revoke
     fetched: [],           // message ids downloaded with format=raw
+    total: 0,              // every Google HTTP call (token, userinfo, revoke, Gmail API)
     calls: { token: 0, refresh: 0, list: 0, history: 0, profile: 0 },
     queries: [],
     seq: 0
   };
   g.addAccount = (sub, email) => { g.accounts[sub] = { email }; };
   g.issueCode = (code, sub, scope = `openid email ${GMAIL_SCOPE}`) => { g.codes[code] = { sub, scope }; };
+  // `t` is Gmail's internalDate (epoch seconds), `ageDays` before now.
   g.addMessage = ({ subject = 'Robotaxi Ride Receipt on June 9, 2026', body = receiptBody(), from = 'Tesla <noreply@tesla.com>', ageDays = 1, messageId } = {}) => {
     g.historyId += 1;
     const id = 'gm' + (++g.seq);
     const raw = eml({ from, subject, body, messageId: messageId || `<${id}@tesla.com>` });
-    g.messages.push({ id, raw, subject, ageDays, historyId: g.historyId });
+    g.messages.push({ id, raw, subject, ageDays, t: Math.floor(Date.now() / 1000 - ageDays * 86400), historyId: g.historyId });
     return id;
   };
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   g.fetch = async (input, init = {}) => {
+    g.total++;
     const url = new URL(String(input));
     const auth = ((init.headers || {}).Authorization || '').replace('Bearer ', '');
     if (url.href === 'https://oauth2.googleapis.com/token') {
@@ -88,6 +94,7 @@ function fakeGoogle() {
     if (url.origin === 'https://gmail.googleapis.com') {
       if (!g.access[auth]) return json({ error: { code: 401 } }, 401);
       if (g.failAll) return json(g.failAllBody || { error: { message: 'fail' } }, g.failAll);
+      if (g.failSub[g.access[auth]]) return json({ error: { message: 'fail' } }, g.failSub[g.access[auth]]);
       const path = url.pathname.replace('/gmail/v1/users/me', '');
       if (path === '/profile') { g.calls.profile++; return json({ emailAddress: 'x', historyId: String(g.historyId) }); }
       if (path === '/history') {
@@ -101,9 +108,16 @@ function fakeGoogle() {
         g.calls.list++;
         const q = url.searchParams.get('q') || '';
         g.queries.push(q);
-        const days = Number((q.match(/newer_than:(\d+)d/) || [])[1] || 99999);
-        const hits = q.includes(RECEIPT_QUERY) ? g.messages.filter(m => !m.deleted && m.subject.includes('Robotaxi Ride Receipt') && m.ageDays <= days) : [];
-        return json({ messages: hits.slice().reverse().map(m => ({ id: m.id, threadId: m.id })), resultSizeEstimate: hits.length });
+        const after = Number((q.match(/after:(\d+)/) || [])[1] || 0);
+        const before = Number((q.match(/before:(\d+)/) || [])[1] || Infinity);
+        const hits = q.includes(RECEIPT_QUERY)
+          ? g.messages.filter(m => !m.deleted && m.subject.includes('Robotaxi Ride Receipt') && m.t >= after && m.t < before).sort((a, b) => b.t - a.t)
+          : [];
+        const size = Number(url.searchParams.get('maxResults') || 100);
+        const from = Number(url.searchParams.get('pageToken') || 0);
+        const page = hits.slice(from, from + size);
+        return json({ messages: page.map(m => ({ id: m.id, threadId: m.id })), resultSizeEstimate: hits.length,
+          ...(from + size < hits.length ? { nextPageToken: String(from + size) } : {}) });
       }
       const m = path.match(/^\/messages\/([^/]+)$/);
       if (m) {
@@ -158,6 +172,82 @@ async function connect(ctx, user, { authAs, scope, waitUntil } = {}) {
   return { location: resp.headers.get('Location'), status: resp.status, pending };
 }
 const result = loc => new URL(loc).searchParams.get('gmail');
+
+// ------------------------------------------------ Free-plan instrumentation
+// Counts, per Worker invocation, every Google HTTP call, every D1 statement
+// (each statement of a batch separately) and every KV call — the things the
+// Workers Free plan limits to 50 subrequests per invocation.
+const BUDGET = { subrequests: 34, google: 6 };
+function instrument(ctx) {
+  if (ctx.meter) return ctx.meter;
+  const meter = { d1: 0, kv: 0, runs: [] };
+  const real = ctx.d1;
+  ctx.env.cybercabhunter_db = {
+    prepare(sql) {
+      const st = real.prepare(sql);
+      for (const m of ['first', 'all', 'run']) { const f = st[m]; st[m] = (...a) => { meter.d1++; return f(...a); }; }
+      return st;
+    },
+    batch(stmts) { meter.d1 += stmts.length; return real.batch(stmts); }
+  };
+  const kv = ctx.env.TESLA_SESSIONS;
+  ctx.env.TESLA_SESSIONS = {
+    get: k => { meter.kv++; return kv.get(k); }, put: (k, v, o) => { meter.kv++; return kv.put(k, v, o); },
+    delete: k => { meter.kv++; return kv.delete(k); }, _store: kv._store
+  };
+  ctx.meter = meter;
+  return meter;
+}
+// Runs fn() as ONE invocation and records what it spent.
+async function measured(ctx, fn) {
+  const m = instrument(ctx);
+  const start = { g: ctx.g.total, d1: m.d1, kv: m.kv };
+  const out = await fn();
+  const cost = { google: ctx.g.total - start.g, d1: m.d1 - start.d1, kv: m.kv - start.kv };
+  cost.total = cost.google + cost.d1 + cost.kv;
+  m.runs.push(cost);
+  return { out, cost };
+}
+const maxCost = ctx => (ctx.meter ? ctx.meter.runs : []).reduce((a, c) => ({ total: Math.max(a.total, c.total), google: Math.max(a.google, c.google), d1: Math.max(a.d1, c.d1) }), { total: 0, google: 0, d1: 0 });
+// Simulates the next 10-minute cron for the scheduler (last checks are "old").
+const ageChecks = ctx => ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = datetime(last_checked_at, '-10 minutes') WHERE last_checked_at IS NOT NULL`);
+async function cron(ctx, { age = true } = {}) {
+  if (age) ageChecks(ctx);
+  const { out, cost } = await measured(ctx, async () => {
+    const pending = [];
+    await worker.scheduled({ cron: '*/10 * * * *' }, ctx.env, { waitUntil: p => pending.push(p) });
+    return (await Promise.all(pending))[0];
+  });
+  return { ...out, cost };
+}
+// Runs one-step syncs for `user` until its current scan finishes.
+async function drain(ctx, user, limit = 1000) {
+  let steps = 0, out;
+  do { out = (await measured(ctx, () => syncUser(ctx.env, user))).out; steps++; } while (!out.complete && !out.idle && !out.error && !out.skipped && steps < limit);
+  return { steps, out };
+}
+const cursorOf = (ctx, user) => JSON.parse(conn(ctx, user).sync_cursor || 'null');
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+// N distinct synthetic receipts spread over the last `days` days: every one a
+// different physical ride (unique date + pickup time), so each is one ride.
+function addReceipts(g, n, { days = 89, offset = 0 } = {}) {
+  const ids = [];
+  for (let k = 0; k < n; k++) {
+    const i = k + offset;
+    const ageDays = n === 1 ? 1 : (k * days) / (n - 1) + 0.01;
+    const d = new Date(Date.now() - ageDays * 86400000);
+    const date = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    const time = `${(i % 12) + 1}:${String(Math.floor(i / 12) % 60).padStart(2, '0')} ${Math.floor(i / 720) % 2 ? 'pm' : 'am'}`;
+    ids.push(g.addMessage({ body: receiptBody({ date, pickupTime: time, dropoffTime: time, summary: '2.1 mi · 9 min · XVF2648' }), subject: `Robotaxi Ride Receipt on ${date}`, ageDays }));
+  }
+  return ids;
+}
+async function addRider(ctx, user) {
+  seedUser(ctx.d1, user);
+  ctx.g.addAccount(`sub-${user}`, `${user}@gmail.com`);
+  ctx.d1.prepare(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`).bind(`gc-${user}`, user, `sub-${user}`, `${user}@gmail.com`)._exec();
+  await ctx.env.TESLA_SESSIONS.put(`session:session-${user}`, JSON.stringify({ user_id: user }));
+}
 
 async function run() {
   console.log('1. Not configured: everything is a harmless no-op');
@@ -247,7 +337,7 @@ async function run() {
     check('status: configured, syncing (the first import has not run), no token fields', s.configured && s.state === 'syncing' && s.initial_import_complete === false && !/token|refresh|access/i.test(Object.keys(s).join()));
   }
 
-  console.log('4. Initial import: a bounded 90-day search; only matching receipts are downloaded');
+  console.log('4. Initial import: a bounded 90-day scan; only matching receipts are downloaded');
   const ctx = await makeApp();
   const g = ctx.g;
   const rA = g.addMessage({ body: receiptBody({ date: 'September 20, 2026', pickupTime: '9:10 am', summary: '2.1 mi · 9 min · XVF2648' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
@@ -256,9 +346,14 @@ async function run() {
   const tooOld = g.addMessage({ body: receiptBody({ date: 'May 1, 2026' }), subject: 'Robotaxi Ride Receipt on May 1, 2026', ageDays: 140 });
   const unrelated = g.addMessage({ from: 'Friend <friend@example.com>', subject: 'Dinner Saturday?', body: 'See you then.', ageDays: 2 });
   const lookalike = g.addMessage({ from: 'Friend <friend@example.com>', subject: 'Re: Robotaxi Ride Receipt on September 22, 2026', body: 'lol that was fast', ageDays: 3 });
+  instrument(ctx);
   const done = await connect(ctx, 'alice');
   check('connecting schedules the first sync immediately (ctx.waitUntil)', done.pending.length === 1);
-  check('the search is the receipt subject, bounded to 90 days', g.queries.length >= 1 && g.queries[0] === `${RECEIPT_QUERY} newer_than:90d`);
+  const q0 = (g.queries[0] || '').match(/^(.*) after:(\d+) before:(\d+)$/);
+  check('the search is the receipt subject, bounded to 90 days', g.queries.length === 1 && q0 && q0[1] === RECEIPT_QUERY && Math.abs((q0[3] - q0[2]) - (90 * 86400 + 120)) <= 5);
+  check('that first step (in the callback invocation) only lists: nothing is downloaded yet, and the import is not finished', g.fetched.length === 0 && conn(ctx, 'alice').backfill_completed_at === null && cursorOf(ctx, 'alice').queue.length === 3);
+  const first = await drain(ctx, 'alice');
+  check('the scheduled steps then import one message each: 3 steps for 3 matches, no re-search', first.steps === 3 && first.out.complete && g.calls.list === 1);
   check('the unrelated email is never downloaded', !g.fetched.includes(unrelated));
   check('a receipt older than 90 days is not downloaded', !g.fetched.includes(tooOld));
   check('the two receipts and the subject look-alike were downloaded, once each', [rA, rB, lookalike].every(id => g.fetched.filter(x => x === id).length === 1) && g.fetched.length === 3);
@@ -271,7 +366,7 @@ async function run() {
   // The existing classifier decides: a chat reply with the receipt subject is
   // not a receipt (no ride) — 'rejected', or 'unidentified' since it has no date.
   check('each downloaded message is recorded as processed, with its outcome', processed(ctx, 'alice').length === 3 && processed(ctx, 'alice').some(p => p.gmail_message_id === lookalike && ['rejected', 'unidentified'].includes(p.outcome)));
-  check('a gmail_api sync run was recorded', ctx.d1.query(`SELECT * FROM ride_sync_runs WHERE user_id = 'alice' AND source = 'gmail_api'`).length === 1);
+  check('gmail_api sync runs were recorded (one per step that downloaded)', ctx.d1.query(`SELECT * FROM ride_sync_runs WHERE user_id = 'alice' AND source = 'gmail_api'`).length === 3);
   let s = await status(ctx, 'alice');
   check('status: connected, initial import complete, last checked and last receipt set', s.state === 'connected' && s.initial_import_complete && !!s.last_checked_at && !!s.last_receipt_at && s.email === 'alice@gmail.com');
   const rd = await json(await call(ctx, 'GET', '/api/trips', 'alice'));
@@ -294,8 +389,9 @@ async function run() {
     const rC = g.addMessage({ body: receiptBody({ date: 'September 26, 2026', pickupTime: '5:05 pm', summary: '2.5 mi · 17 min · XVF2648' }), subject: 'Robotaxi Ride Receipt on September 26, 2026', ageDays: 0 });
     g.addMessage({ from: 'News <news@example.com>', subject: 'Weekly digest', body: 'x', ageDays: 0 });
     const out = await syncUser(ctx.env, 'alice');
-    check('exactly the new receipt is downloaded and imported', out.processed === 1 && g.fetched[g.fetched.length - 1] === rC && trips(ctx, 'alice').length === 3);
-    check('the recurring search window is small, not 90 days', /newer_than:2d$/.test(g.queries[g.queries.length - 1]));
+    check('exactly the new receipt is downloaded and imported, in one step', out.processed === 1 && out.complete && g.fetched[g.fetched.length - 1] === rC && trips(ctx, 'alice').length === 3);
+    const w = g.queries[g.queries.length - 1].match(/after:(\d+) before:(\d+)$/);
+    check('the recurring search window is small (since the last scan began, plus a day), not 90 days', w && (w[2] - w[1]) <= 2 * 86400);
     check('the history position advanced after success', conn(ctx, 'alice').history_id === String(g.historyId) && conn(ctx, 'alice').history_id !== historyBefore);
     check('same vehicle as an earlier ride: no duplicate vehicle row', ctx.d1.query(`SELECT COUNT(*) n FROM robotaxi_vehicles WHERE license_plate = 'XVF2648'`)[0].n === 1);
   }
@@ -323,7 +419,8 @@ async function run() {
     const listBefore = g.calls.list;
     const out = await syncUser(ctx.env, 'alice');
     check('the new receipt is still found and imported', out.processed === 1 && g.fetched.includes(rE) && trips(ctx, 'alice').length === 5);
-    check('via a bounded search (not the whole mailbox)', g.calls.list > listBefore && /newer_than:\d+d$/.test(g.queries[g.queries.length - 1]) && Number(g.queries[g.queries.length - 1].match(/(\d+)d$/)[1]) <= 90);
+    const w = g.queries[g.queries.length - 1].match(/after:(\d+) before:(\d+)$/);
+    check('via a bounded search (not the whole mailbox)', g.calls.list === listBefore + 1 && w && (w[2] - w[1]) <= 90 * 86400 + 120);
     check('the history position is reset to the current mailbox position', conn(ctx, 'alice').history_id === String(g.historyId));
     g.minHistoryId = 0;
   }
@@ -390,6 +487,7 @@ async function run() {
     const c4 = await makeApp();
     c4.g.addMessage({ body: receiptBody({ date: 'September 20, 2026' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
     await connect(c4, 'alice');
+    await drain(c4, 'alice');
     const token = await tokenCrypto.decrypt(conn(c4, 'alice').encrypted_refresh_token, KEY);
     check('before: connected with a ride and processed ids', trips(c4, 'alice').length === 1 && processed(c4, 'alice').length === 1);
     check('disconnect requires a session', (await call(c4, 'POST', '/api/gmail/disconnect', null)).status === 401);
@@ -399,7 +497,7 @@ async function run() {
     const row = conn(c4, 'alice');
     check('disconnect succeeds', d.status === 200 && (await json(d)).state === 'not_connected');
     check('Google is asked to revoke the refresh token', c4.g.revoked.includes(token));
-    check('token, history and backfill state deleted; status revoked', row.status === 'revoked' && row.encrypted_refresh_token === null && row.history_id === null && row.backfill_completed_at === null);
+    check('token, history, backfill and sync-cursor state deleted; status revoked', row.status === 'revoked' && row.encrypted_refresh_token === null && row.history_id === null && row.backfill_completed_at === null && row.sync_cursor === null);
     check('processed-message records deleted', processed(c4, 'alice').length === 0);
     check('existing rides are NOT deleted', trips(c4, 'alice').length === 1);
     check('status reads not connected, with no email', (await status(c4, 'alice')).state === 'not_connected' && (await status(c4, 'alice')).email === null);
@@ -422,7 +520,9 @@ async function run() {
     const pending = [];
     await worker.scheduled({ cron: '*/10 * * * *' }, c5.env, { waitUntil: p => pending.push(p) });
     const runs = await Promise.all(pending);
-    check('the scheduled handler syncs every due connection', runs[0].due === 2 && runs[0].synced === 2);
+    check('one scheduled run syncs ONE due connection (Free-plan budget)', runs[0].due === 1 && runs[0].synced === 1);
+    const second = await runScheduledSync(c5.env);
+    check('the next run takes the other one (round-robin)', second.due === 1 && second.synced === 1 && !!conn(c5, 'alice').last_checked_at && !!conn(c5, 'bob').last_checked_at);
     check('then nothing is due until the next interval', (await runScheduledSync(c5.env)).due === 0);
     c5.d1.exec(`INSERT INTO gmail_processed_messages (user_id, gmail_message_id, processed_at, outcome) VALUES ('alice','old-1', datetime('now','-200 days'), 'created')`);
     await runScheduledSync(c5.env);
@@ -467,6 +567,10 @@ async function run() {
 
     c6.g.addMessage({ body: receiptBody({ date: 'September 20, 2026' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
     await connect(c6, 'alice');
+    const pMid = await openPage(c6, 'alice', '?gmail=connected');
+    check('right after connecting (import not finished): "importing existing receipts… continue importing automatically", not "✓ connected"', /importing existing receipts/.test(pMid.text('gmailStatusText')) && /continue importing automatically/.test(pMid.text('gmailStatusText')) && !/✓/.test(pMid.text('gmailStatusText')));
+    check('…and the connect notice says it happens in the background over time', /in the background/.test(pMid.text('gmailNotice')) && /can take a while/.test(pMid.text('gmailNotice')));
+    await drain(c6, 'alice');
     const p2 = await openPage(c6, 'alice', '?gmail=connected');
     check('after connecting: ✓ Gmail connected, the address, last checked, last receipt, and Disconnect', /✓ Gmail connected/.test(p2.text('gmailStatusText')) && /alice@gmail\.com/.test(p2.text('gmailMeta')) && /Last checked/.test(p2.text('gmailMeta')) && /Last receipt found/.test(p2.text('gmailMeta')) && p2.vis('gmailDisconnectBtn') && !p2.vis('gmailConnectBtn'));
     check('the ?gmail=connected result is shown once, then removed from the URL', /Gmail connected/.test(p2.text('gmailNotice')) && p2.vis('gmailNotice') && !p2.w.location.search.includes('gmail='));
@@ -495,6 +599,7 @@ async function run() {
     const c7 = await makeApp();
     c7.g.addMessage({ body: receiptBody({ date: 'September 20, 2026' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
     await connect(c7, 'alice');
+    await drain(c7, 'alice');
     const before = conn(c7, 'alice');
     // Google's real shape for a disabled API: 403, reason accessNotConfigured, status SERVICE_DISABLED.
     c7.g.failAll = 403;
@@ -548,6 +653,218 @@ async function run() {
     set(`last_error = NULL`);
     const pr = await openPage(c8, 'alice');
     check('while the first import genuinely runs, the card says importing', /importing existing receipts/.test(pr.text('gmailStatusText')));
+  }
+
+  console.log('18. Free plan: the first import is resumable, one message per invocation, for any mailbox size');
+  for (const n of [0, 1, 3, 49, 50, 51, 120, 230]) {
+    const c = await makeApp();
+    const ids = addReceipts(c.g, n);
+    instrument(c);
+    const cb = await measured(c, () => connect(c, 'alice'));
+    let runs = 0, stalled = false, midway = null;
+    const lists0 = c.g.calls.list;
+    while (!conn(c, 'alice').backfill_completed_at && runs < n + 40) {
+      const before = trips(c, 'alice').length;
+      const r = await cron(c);
+      runs++;
+      if (r.due !== 1) stalled = true;
+      if (runs === 3 && n >= 10) midway = { cursor: cursorOf(c, 'alice'), trips: trips(c, 'alice').length, s: await status(c, 'alice'), before };
+    }
+    const fetchedOnce = ids.every(id => c.g.fetched.filter(x => x === id).length === 1);
+    const all = trips(c, 'alice');
+    const label = `${n} receipt${n === 1 ? '' : 's'}`;
+    check(`${label}: every receipt imported exactly once (${all.length} rides, each message downloaded once)`, all.length === n && fetchedOnce && c.g.fetched.length === n && !stalled);
+    // One download per run, plus a few runs that only list a window (or halve a dense one).
+    const listing = c.g.calls.list - lists0 + 1;
+    check(`${label}: finished in ${runs} scheduled runs — at most one message each (≤ ${n} + listing runs)`, runs >= Math.max(0, n - 0) && runs <= n + listing && (n > 0 || runs === 0));
+    check(`${label}: no window is searched again once queued (${listing} listing calls in total)`, listing <= Math.ceil(n / 25) + 8);
+    const worst = maxCost(c);
+    check(`${label}: every invocation within budget — max ${worst.total} subrequests (≤ ${BUDGET.subrequests}), ${worst.google} Google calls (≤ ${BUDGET.google})`, worst.total <= BUDGET.subrequests && worst.google <= BUDGET.google);
+    check(`${label}: the callback invocation itself stays small (${cb.cost.total} subrequests, ${cb.cost.google} Google calls)`, cb.cost.total <= 20 && cb.cost.google <= BUDGET.google);
+    if (midway) {
+      check(`${label}: progress is saved between invocations (after 3 runs: a backfill cursor with a queue, not finished, status "syncing")`,
+        midway.cursor && midway.cursor.mode === 'backfill' && Array.isArray(midway.cursor.queue) && midway.s.state === 'syncing' && midway.s.initial_import_complete === false && midway.trips >= 1 && midway.trips <= 3);
+    }
+    const s = await status(c, 'alice');
+    check(`${label}: the import reaches completion (initial import complete, connected, cursor idle)`, s.state === 'connected' && s.initial_import_complete && !cursorOf(c, 'alice').mode);
+    if (n === 51) {
+      check('51 receipts: the too-dense 90-day window was halved rather than paged through', c.g.queries.some(q => { const m = q.match(/after:(\d+) before:(\d+)$/); return m && (m[2] - m[1]) < 50 * 86400; }));
+    }
+  }
+
+  console.log('19. Free plan: an interrupted import resumes where it left off');
+  {
+    const c = await makeApp();
+    const ids = addReceipts(c.g, 12);
+    await connect(c, 'alice');
+    await cron(c); await cron(c);
+    const mid = cursorOf(c, 'alice');
+    const listsBefore = c.g.calls.list;
+    // A temporary Gmail outage mid-import.
+    c.g.failAll = 503;
+    const failed = await cron(c);
+    const afterFail = cursorOf(c, 'alice');
+    check('a temporary failure mid-import keeps the saved queue and the unfinished backfill', afterFail.mode === 'backfill' && JSON.stringify(afterFail.queue) === JSON.stringify(mid.queue) && conn(c, 'alice').backfill_completed_at === null && failed.cost.total <= BUDGET.subrequests);
+    check('…and the rider sees a retrying error, not a finished import', (await status(c, 'alice')).state === 'error');
+    c.g.failAll = null;
+    // A step cut off before it saved (e.g. the Worker was stopped): simulate by
+    // importing a message but restoring the older cursor.
+    const saved = conn(c, 'alice').sync_cursor;
+    await cron(c);
+    c.d1.prepare(`UPDATE gmail_connections SET sync_cursor = ? WHERE user_id = 'alice'`).bind(saved)._exec();
+    const tripsNow = trips(c, 'alice').length;
+    const fetchedNow = c.g.fetched.length;
+    await cron(c);
+    check('a message already imported by a cut-off step is skipped, not imported or downloaded twice', trips(c, 'alice').length === tripsNow && c.g.fetched.length === fetchedNow);
+    let guard = 0;
+    while (!conn(c, 'alice').backfill_completed_at && guard++ < 40) await cron(c);
+    check('the import then completes with every receipt once, without re-searching the queued window', trips(c, 'alice').length === 12 && ids.every(id => c.g.fetched.filter(x => x === id).length === 1) && c.g.calls.list <= listsBefore + 1);
+  }
+
+  console.log('20. Free plan: incremental sync after the import');
+  {
+    const c = await makeApp();
+    addReceipts(c.g, 2);
+    await connect(c, 'alice');
+    await drain(c, 'alice');
+    const pos0 = conn(c, 'alice').history_id;
+    // One new receipt: one run.
+    const [one] = addReceipts(c.g, 1, { days: 0, offset: 100 });
+    let r = await cron(c);
+    check('1 new receipt: imported in the next run, history advanced', trips(c, 'alice').length === 3 && c.g.fetched.includes(one) && conn(c, 'alice').history_id !== pos0 && r.cost.total <= BUDGET.subrequests);
+    // More new receipts than one run handles.
+    const pos1 = conn(c, 'alice').history_id;
+    const many = addReceipts(c.g, 4, { days: 0.2, offset: 200 });
+    r = await cron(c);
+    const q1 = cursorOf(c, 'alice');
+    check('4 new receipts: the first run imports ONE and queues the rest', trips(c, 'alice').length === 4 && q1.mode === 'incremental' && q1.queue.length === 3);
+    check('…and the history position is NOT advanced while work is queued', conn(c, 'alice').history_id === pos1);
+    // A temporary failure on the next queued message.
+    c.g.fail[q1.queue[0]] = 500;
+    r = await cron(c);
+    check('a temporary failure leaves that message queued and history unmoved', r.cost.total <= BUDGET.subrequests && cursorOf(c, 'alice').queue[0] === q1.queue[0] && conn(c, 'alice').history_id === pos1 && trips(c, 'alice').length === 4);
+    delete c.g.fail[q1.queue[0]];
+    const listBefore = c.g.calls.list;
+    await cron(c); await cron(c);
+    check('the remaining receipts continue on the following runs, without re-searching', trips(c, 'alice').length === 6 && c.g.calls.list === listBefore && conn(c, 'alice').history_id === pos1);
+    await cron(c);
+    check('once the queue is drained the history position advances', trips(c, 'alice').length === 7 && conn(c, 'alice').history_id === String(c.g.historyId) && !cursorOf(c, 'alice').mode && many.every(id => c.g.fetched.filter(x => x === id).length === 1));
+    // Mail arriving DURING a long import is found afterwards.
+    const c2 = await makeApp();
+    addReceipts(c2.g, 5);
+    await connect(c2, 'alice');
+    await cron(c2);
+    const [late] = addReceipts(c2.g, 1, { days: 0, offset: 300 });
+    let guard = 0;
+    while (!conn(c2, 'alice').backfill_completed_at && guard++ < 20) await cron(c2);
+    await cron(c2);
+    check('a receipt that arrived during the import is picked up once it finishes', c2.g.fetched.includes(late) && trips(c2, 'alice').length === 6);
+    const idle = await cron(c2);
+    check('an idle run with no new mail: 2 Google calls (token + history), no search', idle.cost.google === 2 && idle.cost.total <= 10);
+  }
+
+  console.log('21. Free plan: many riders — one per invocation, round-robin, none starved');
+  {
+    const c = await makeApp();
+    const riders = ['alice', 'bob', 'r3', 'r4', 'r5'];
+    for (const u of riders.slice(2)) await addRider(c, u);
+    addReceipts(c.g, 3);
+    for (const u of riders) await connect(c, u);
+    // r5's Gmail keeps failing (a problematic rider).
+    c.g.failSub['sub-r5'] = 500;
+    instrument(c);
+    const order = [];
+    let guard = 0;
+    const healthy = riders.slice(0, 4);
+    while (healthy.some(u => !conn(c, u).backfill_completed_at) && guard++ < 100) {
+      ageChecks(c);
+      const before = Object.fromEntries(riders.map(u => [u, conn(c, u).last_checked_at]));
+      const r = await cron(c, { age: false });
+      const touched = riders.filter(u => conn(c, u).last_checked_at !== before[u]);
+      order.push(touched);
+      if (r.due !== 1 || touched.length !== 1) { order.bad = true; }
+    }
+    check('every scheduled run touches exactly one rider', !order.bad);
+    const firstRounds = order.slice(0, riders.length * 2).map(t => t[0]);
+    const fair = [0, 1].every(k => new Set(firstRounds.slice(k * riders.length, (k + 1) * riders.length)).size === riders.length);
+    check('round-robin: in every 5 consecutive runs each of the 5 riders gets exactly one turn', fair);
+    check('the healthy riders all finish their imports (each ride imported once per rider)', healthy.every(u => trips(c, u).length === 3 && !!conn(c, u).backfill_completed_at));
+    check('the failing rider keeps its turns but never blocks anyone, and is shown as retrying', [Math.floor(order.length / riders.length), Math.ceil(order.length / riders.length)].includes(order.filter(t => t[0] === 'r5').length) && (await status(c, 'r5')).state === 'error' && conn(c, 'r5').status === 'active');
+    const worst = maxCost(c);
+    check(`no run exceeds the budget across all riders (max ${worst.total} subrequests, ${worst.google} Google calls)`, worst.total <= BUDGET.subrequests && worst.google <= BUDGET.google);
+    // A rider whose run was cut off mid-step (lock still held) is skipped, not waited on.
+    c.d1.exec(`UPDATE gmail_connections SET sync_lock_until = datetime('now', '+4 minutes') WHERE user_id = 'alice'`);
+    c.d1.exec(`UPDATE gmail_connections SET last_checked_at = datetime('now', '-3 hours') WHERE user_id = 'alice'`);
+    ageChecks(c);
+    const snap = Object.fromEntries(riders.map(u => [u, conn(c, u).last_checked_at]));
+    const r = await cron(c, { age: false });
+    const served = riders.filter(u => conn(c, u).last_checked_at !== snap[u]);
+    check('a rider still locked by a cut-off run is skipped and another rider is served', r.due === 1 && served.length === 1 && served[0] !== 'alice' && conn(c, 'alice').sync_lock_until !== null);
+    const lim = fs.readFileSync(`${ROOT}worker/gmail.js`, 'utf8');
+    check('the per-invocation limits are explicit constants: 1 rider, 1 message, 6 Google calls, 50 ids per listing',
+      /const RIDERS_PER_INVOCATION = 1;/.test(lim) && /const MESSAGES_PER_INVOCATION = 1;/.test(lim) && /const GOOGLE_CALLS_PER_INVOCATION = 6;/.test(lim) && /const LIST_PAGE_SIZE = 50;/.test(lim));
+  }
+
+  console.log('22. Free plan: worst-case step and the Google-call backstop');
+  {
+    const c = await makeApp();
+    await connect(c, 'alice');
+    await drain(c, 'alice');
+    // Rotated refresh token + expired history (404 → profile) + a receipt to import, all in one step.
+    c.g.rotateRefresh = true;
+    addReceipts(c.g, 1, { days: 0, offset: 400 });
+    c.g.minHistoryId = c.g.historyId + 1;
+    const r = await cron(c);
+    check(`rotation + expired history + an import in one run: ${r.cost.total} subrequests, ${r.cost.google} Google calls (within budget)`, r.cost.total <= BUDGET.subrequests && r.cost.google === 5 && trips(c, 'alice').length === 1);
+    c.g.rotateRefresh = false; c.g.minHistoryId = 0;
+    // Backstop: if a step were ever to need more Google calls than allowed, it stops
+    // with a temporary error instead of running on — nothing is lost.
+    addReceipts(c.g, 1, { days: 0, offset: 401 });
+    const tight = { limit: 2, used: 0 };
+    tight.spend = () => { if (tight.used >= tight.limit) { const e = new Error('x'); throw e; } tight.used++; };
+    const { newBudgetForTest } = await import('../worker/gmail.js').then(m => ({ newBudgetForTest: m.gmail.newBudget }));
+    const out = await syncUser(c.env, 'alice', { budget: newBudgetForTest(2) });
+    check('a step that would exceed its Google-call budget stops with a temporary error (invocation_budget_reached)', out.error === 'invocation_budget_reached' && conn(c, 'alice').status === 'active' && !!conn(c, 'alice').encrypted_refresh_token);
+    const again = await drain(c, 'alice');
+    check('…and the next run completes the work normally', again.out.complete && trips(c, 'alice').length === 2);
+  }
+
+  console.log('23. Duplicates across Gmail and forwarding (existing dedupe, unchanged)');
+  {
+    const c = await makeApp();
+    await connect(c, 'alice');
+    const body = receiptBody({ date: 'September 24, 2026', pickupTime: '3:15 pm', summary: '1.9 mi · 8 min · XVF2648' });
+    // Gmail → Gmail: the same email twice in the mailbox (e.g. a copy in another label) and a re-listed window.
+    c.g.addMessage({ body, subject: 'Robotaxi Ride Receipt on September 24, 2026', messageId: '<same-0924@tesla.com>', ageDays: 0 });
+    c.g.addMessage({ body, subject: 'Robotaxi Ride Receipt on September 24, 2026', messageId: '<same-0924@tesla.com>', ageDays: 0 });
+    await drain(c, 'alice'); await drain(c, 'alice');
+    check('Gmail → Gmail: two copies of one email are one ride', trips(c, 'alice').length === 1 && processed(c, 'alice').some(p => p.outcome === 'duplicate'));
+    // Gmail → forwarding: the same receipt later forwarded to the rider's address.
+    await worker.email(inboundMessage(eml({ to: c.addressFor('alice'), body, subject: 'Robotaxi Ride Receipt on September 24, 2026', messageId: '<same-0924@tesla.com>' }), c.addressFor('alice')), c.env, {});
+    check('Gmail → forwarding: the forwarded copy is not a second ride', trips(c, 'alice').length === 1);
+    // Forwarding → Gmail: a different receipt forwarded first, then read from Gmail.
+    const body2 = receiptBody({ date: 'September 25, 2026', pickupTime: '9:40 am', summary: '3.0 mi · 11 min · XJR2195' });
+    await worker.email(inboundMessage(eml({ to: c.addressFor('alice'), body: body2, subject: 'Robotaxi Ride Receipt on September 25, 2026', messageId: '<fwd-0925@tesla.com>' }), c.addressFor('alice')), c.env, {});
+    c.g.addMessage({ body: body2, subject: 'Robotaxi Ride Receipt on September 25, 2026', messageId: '<fwd-0925@tesla.com>', ageDays: 0 });
+    await drain(c, 'alice');
+    check('forwarding → Gmail: the Gmail copy is not a second ride', trips(c, 'alice').length === 2);
+    // Different Gmail Message-IDs carrying the same physical receipt.
+    c.g.addMessage({ body: body2, subject: 'Robotaxi Ride Receipt on September 25, 2026', messageId: '<resend-a@tesla.com>', ageDays: 0 });
+    c.g.addMessage({ body: body2, subject: 'Robotaxi Ride Receipt on September 25, 2026', messageId: '<resend-b@tesla.com>', ageDays: 0 });
+    await drain(c, 'alice'); await drain(c, 'alice');
+    check('different Message-IDs, same physical receipt: still one ride', trips(c, 'alice').length === 2 && c.d1.query(`SELECT COUNT(DISTINCT ride_key) n FROM trips WHERE user_id = 'alice'`)[0].n === 2);
+  }
+
+  console.log('24. Free-plan changes stay inside the Gmail sync');
+  {
+    const mig = fs.readFileSync(`${ROOT}migrations/0016_gmail_sync_cursor.sql`, 'utf8').replace(/^--.*$/gm, '').trim();
+    check('migration 0016 only adds one nullable column', mig === 'ALTER TABLE gmail_connections ADD COLUMN sync_cursor TEXT;');
+    const cfg = fs.readFileSync(`${ROOT}wrangler.jsonc`, 'utf8');
+    check('the cron is still every 10 minutes', /"crons":\s*\["\*\/10 \* \* \* \*"\]/.test(cfg));
+    const g2 = fs.readFileSync(`${ROOT}worker/gmail.js`, 'utf8');
+    check('scope, token key and account check unchanged', /export const GMAIL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/gmail\.readonly';/.test(g2) && /key: env\.GMAIL_TOKEN_ENCRYPTION_KEY/.test(g2) && /profile\.sub !== saved\.google_sub/.test(g2));
+    check('Gmail still enters the existing pipeline as gmail_api', /processReceiptMessage\(env, parsed, 'gmail_api'/.test(g2) && /parseRawEmail\(/.test(g2));
+    check('no console output in the Gmail worker code (nothing token- or content-bearing can be logged)', !/console\./.test(g2) && !/console\./.test(fs.readFileSync(`${ROOT}worker/db-gmail.js`, 'utf8')));
   }
 
   console.log('15. Privacy page');

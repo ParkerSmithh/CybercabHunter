@@ -20,24 +20,40 @@
 // verification and security assessment; nothing here implies that approval.
 //
 // What is stored: an AES-256-GCM-encrypted refresh token, the rider's Gmail
-// address, Gmail's opaque history position, and opaque ids of messages
-// already processed. Access tokens live only in memory for one operation.
+// address, Gmail's opaque history position, opaque ids of messages already
+// processed or queued for processing, and the time bounds of the scan in
+// progress. Access tokens live only in memory for one operation.
 // Message bodies are parsed in memory and discarded, exactly as for
 // forwarded mail; only the structured ride fields the pipeline extracts are
 // kept. Nothing token- or content-bearing is ever logged or returned.
 //
-// Sync strategy (polling, every ~10 minutes via the scheduled handler):
-//   1. First time: a bounded search for receipts from the last 90 days.
+// Sync strategy (polling, every 10 minutes via the scheduled handler), built
+// to stay far inside the Cloudflare Workers FREE plan's per-invocation
+// limits (50 subrequests — fetch, D1 and KV calls alike — and ~10 ms of
+// CPU). Work is done in small, resumable steps: ONE rider and at most ONE
+// message per invocation, continued on the next run from saved progress.
+//
+//   * Progress lives in gmail_connections.sync_cursor (migration 0016). A
+//     "scan" covers a time range [lo, hi) of the mailbox and walks it from
+//     newest to oldest in windows: each window is listed ONCE with the
+//     receipt subject search (after:/before: epoch bounds, at most 50 ids);
+//     the ids not yet processed are saved as a queue; each run then
+//     downloads and imports one queued message. When the queue is empty the
+//     window moves back; a window with more than 50 matches is halved first.
+//     No window is ever searched again once its queue has been saved.
+//   1. First time: a scan of the last 90 days (the backfill), started right
+//      after connecting. backfill_completed_at is set only when it finishes,
+//      however many runs that takes.
 //   2. After that: users.history.list(messageAdded) since the stored
-//      history position — used only to learn THAT new mail arrived; the
-//      receipts themselves are found with a subject search, so unrelated
-//      mail is never downloaded.
-//   3. If Gmail no longer has that history (404), a bounded search covering
-//      the time since the last successful sync.
-//   4. Each matching message not yet processed is fetched once (raw MIME)
-//      and run through the pipeline; the message id is then recorded.
-//   5. The history position advances only when a sync completes; any
-//      temporary failure leaves it where it was, so the next run retries.
+//      history position — used only to learn THAT new mail arrived. If it
+//      did (or Gmail no longer has that history, 404), a small scan covering
+//      the time since the previous scan began (plus a day of overlap) finds
+//      the receipts, so unrelated mail is never downloaded.
+//   3. The history position advances only when a scan completes (or history
+//      shows nothing new), never past messages still queued. A temporary
+//      failure leaves the queued message at the front, so it is retried.
+//   4. Each downloaded message goes through the existing pipeline once, and
+//      its id is recorded in gmail_processed_messages.
 // Structured so Gmail push notifications (watch + Pub/Sub) could later call
 // syncUser() directly instead of waiting for the schedule.
 
@@ -62,17 +78,36 @@ const SCOPES = `openid email ${GMAIL_SCOPE}`;
 export const RECEIPT_QUERY = 'subject:"Robotaxi Ride Receipt"';
 
 const STATE_TTL_SECONDS = 600;          // 10 minutes to finish Google's consent screen
-const BACKFILL_DAYS = 90;               // the one-time search for existing receipts
-const MIN_SEARCH_DAYS = 2;              // a recurring search always overlaps the last one
-const MAX_MESSAGES_PER_SYNC = 50;       // per rider per run; the rest continue next run
-const MAX_LIST_PAGES = 5;               // messages.list pages per search (100 ids each)
-const MAX_HISTORY_PAGES = 10;
+const BACKFILL_DAYS = 90;               // the one-time scan for existing receipts
+const DAY = 86400;
 const MAX_MESSAGE_BYTES = 10 * 1024 * 1024; // same cap as the forwarding path
-const LOCK_MINUTES = 10;
-const DUE_AFTER_MINUTES = 9;
-const RIDERS_PER_RUN = 25;
-const RUN_BUDGET_MS = 25 * 1000;
-const PROCESSED_RETENTION_DAYS = 120;   // > BACKFILL_DAYS, so a search never re-finds a pruned id
+const LOCK_MINUTES = 5;                 // far longer than one bounded step takes
+const DUE_AFTER_MINUTES = 9;            // just under the 10-minute cron interval
+const PROCESSED_RETENTION_DAYS = 120;   // > BACKFILL_DAYS, so a scan never re-finds a pruned id
+
+// ---- Workers Free plan budget (one invocation) ----
+// Hard caps, not timers: CPU time can't be measured from inside a Worker.
+// Worst case per scheduled invocation, counting every fetch, D1 statement
+// (each statement of a batch) and KV call against ONE pool of 50:
+//   scheduled run: prune + pick the rider                          2 D1
+//   rider:  lock + read row                                        2 D1
+//           token refresh (+ store a rotated refresh token)        1 fetch + 1 D1
+//           history page, or profile after a 404 (both at most)    2 fetch
+//           one window listed + one processed-ids query            1 fetch + 1 D1
+//           one message: already-processed check, download,
+//             existing pipeline (≤ 18 statements on its rarest
+//             path), record it                                     1 fetch + 20 D1
+//           sync-run open/close + save state                       3 D1
+//   total ≤ 34 (68% of 50); a typical step with a receipt is ~21.
+// CPU: parsing one ~60 KB receipt (MIME + extraction + hash) measures ~5 ms,
+// so ONE message per invocation keeps well inside ~10 ms.
+const RIDERS_PER_INVOCATION = 1;        // one rider per cron run, round-robin
+const MESSAGES_PER_INVOCATION = 1;      // messages downloaded + imported per run
+const GOOGLE_CALLS_PER_INVOCATION = 6;  // backstop: every Google HTTP call counts
+const LIST_PAGE_SIZE = 50;              // ids per window listing (one call, one IN query)
+const WINDOW_EDGE_SECONDS = 60;         // windows overlap slightly; processed ids are filtered
+const MIN_WINDOW_SECONDS = 3600;        // a dense window is halved down to one hour
+const INCREMENTAL_OVERLAP_SECONDS = DAY; // a new scan starts a day before the last one began
 
 function config(env) {
   return {
@@ -86,6 +121,20 @@ function config(env) {
 export function isGmailConfigured(env) {
   const cfg = config(env);
   return !!(cfg.clientId && cfg.clientSecret && cfg.key);
+}
+
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+// Counts Google HTTP calls in one Worker invocation. Past the cap the call is
+// refused as a TEMPORARY error, so nothing is lost: the step simply ends and
+// the next scheduled run continues from the saved state.
+function newBudget(limit = GOOGLE_CALLS_PER_INVOCATION) {
+  const budget = { limit, used: 0 };
+  budget.spend = () => {
+    if (budget.used >= budget.limit) throw new GmailError('invocation_budget_reached');
+    budget.used += 1;
+  };
+  return budget;
 }
 
 function randomToken() {
@@ -177,8 +226,12 @@ export async function handleCallback(request, env, ctx) {
   if (!(saved.exp > Date.now())) return riderDataRedirect(env, 'expired_state');
 
   const cfg = config(env);
+  // This invocation's Google calls: code exchange, userinfo, profile, then
+  // the first (discovery-only) sync step below.
+  const budget = newBudget();
   let tokens;
   try {
+    budget.spend();
     const resp = await fetch(TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -204,6 +257,7 @@ export async function handleCallback(request, env, ctx) {
 
   let profile;
   try {
+    budget.spend();
     const resp = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
     if (!resp.ok) throw new Error('userinfo_failed');
     profile = await resp.json();
@@ -220,7 +274,7 @@ export async function handleCallback(request, env, ctx) {
   // Record where the mailbox is now, so later syncs only look at new mail.
   let historyId;
   try {
-    historyId = (await gmailJson(tokens.access_token, '/profile')).historyId || null;
+    historyId = (await gmailJson(tokens.access_token, '/profile', budget)).historyId || null;
   } catch (err) {
     return refuse('error');
   }
@@ -231,10 +285,12 @@ export async function handleCallback(request, env, ctx) {
     encryptedRefreshToken, historyId: historyId ? String(historyId) : null
   });
 
-  // Start the one-time search for existing receipts right away rather than
-  // waiting for the next scheduled run.
+  // Start the 90-day import right away: this first step only lists the
+  // newest window (and finishes at once if there are no receipts). Messages
+  // are imported by the scheduled runs, one per run, so this invocation —
+  // which has already spent calls on the OAuth exchange — stays small.
   if (ctx && typeof ctx.waitUntil === 'function') {
-    ctx.waitUntil(syncUser(env, saved.user_id).catch(() => {}));
+    ctx.waitUntil(syncUser(env, saved.user_id, { maxMessages: 0, budget }).catch(() => {}));
   }
   return riderDataRedirect(env, 'connected');
 }
@@ -297,7 +353,7 @@ export async function apiDisconnect(request, env, userId) {
 // ------------------------------------------------------------- Gmail API
 
 // A fresh access token from the stored refresh token. Kept in memory only.
-async function getAccessToken(env, row) {
+async function getAccessToken(env, row, budget) {
   const cfg = config(env);
   let refreshToken;
   try {
@@ -306,6 +362,7 @@ async function getAccessToken(env, row) {
     throw new GmailError('stored_token_unreadable', { reauth: true });
   }
   let resp;
+  budget.spend();
   try {
     resp = await fetch(TOKEN_URL, {
       method: 'POST',
@@ -336,8 +393,9 @@ async function getAccessToken(env, row) {
 
 // GET a Gmail API path. Returns the JSON body, or null for 404 (the caller
 // decides what "not found" means). Everything else becomes a GmailError.
-async function gmailJson(accessToken, path) {
+async function gmailJson(accessToken, path, budget) {
   let resp;
+  budget.spend();
   try {
     resp = await fetch(GMAIL_API + path, { headers: { Authorization: `Bearer ${accessToken}` } });
   } catch (err) {
@@ -360,41 +418,71 @@ async function gmailJson(accessToken, path) {
   throw new GmailError(resp.status >= 500 ? 'gmail_api_unavailable' : 'gmail_api_error');
 }
 
-// Ids of messages matching the receipt search within the last `days` days,
-// newest first as Gmail returns them.
-async function searchReceiptIds(accessToken, days) {
+// One window of the receipt search: ids matching the subject between two
+// epoch-second bounds (edges widened slightly; already-processed ids are
+// filtered by the caller). One call. `full` means Gmail has more matches than
+// one page holds, so the window is too dense and must be narrowed.
+async function listWindow(accessToken, fromSec, toSec, budget) {
+  const params = new URLSearchParams({
+    q: `${RECEIPT_QUERY} after:${fromSec - WINDOW_EDGE_SECONDS} before:${toSec + WINDOW_EDGE_SECONDS}`,
+    maxResults: String(LIST_PAGE_SIZE)
+  });
+  const body = await gmailJson(accessToken, `/messages?${params}`, budget);
   const ids = [];
-  let pageToken = null;
-  for (let page = 0; page < MAX_LIST_PAGES; page++) {
-    const params = new URLSearchParams({ q: `${RECEIPT_QUERY} newer_than:${days}d`, maxResults: '100' });
-    if (pageToken) params.set('pageToken', pageToken);
-    const body = await gmailJson(accessToken, `/messages?${params}`);
-    for (const m of (body && body.messages) || []) if (m && m.id) ids.push(m.id);
-    pageToken = body && body.nextPageToken;
-    if (!pageToken) break;
-  }
-  return ids;
+  for (const m of (body && body.messages) || []) if (m && m.id && !ids.includes(m.id)) ids.push(m.id);
+  return { ids, full: !!(body && body.nextPageToken) };
 }
 
 // Whether any message was added since `startHistoryId`, and the mailbox's
-// current history position. `expired: true` when Gmail no longer has that
-// history (404) — the caller falls back to a bounded search.
-async function readHistory(accessToken, startHistoryId) {
-  let pageToken = null;
-  let added = false;
-  let latest = null;
-  for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
-    const params = new URLSearchParams({ startHistoryId, historyTypes: 'messageAdded', maxResults: '500' });
-    if (pageToken) params.set('pageToken', pageToken);
-    const body = await gmailJson(accessToken, `/history?${params}`);
-    if (body === null) return { expired: true };
-    if ((body.history || []).some(h => (h.messagesAdded || []).length > 0)) added = true;
-    if (body.historyId) latest = String(body.historyId);
-    pageToken = body.nextPageToken;
-    if (!pageToken) break;
-    if (added) break; // the answer is already "yes"; the position is still current
+// current history position. One page only: any record on it — or a further
+// page — means "yes". `expired: true` when Gmail no longer has that history
+// (404); the caller then falls back to a bounded scan.
+async function readHistory(accessToken, startHistoryId, budget) {
+  const params = new URLSearchParams({ startHistoryId, historyTypes: 'messageAdded', maxResults: '500' });
+  const body = await gmailJson(accessToken, `/history?${params}`, budget);
+  if (body === null) return { expired: true };
+  const added = !!body.nextPageToken || (body.history || []).some(h => (h.messagesAdded || []).length > 0);
+  return { expired: false, added, historyId: body.historyId ? String(body.historyId) : null };
+}
+
+async function currentHistoryId(accessToken, budget) {
+  const profile = await gmailJson(accessToken, '/profile', budget);
+  return profile && profile.historyId ? String(profile.historyId) : null;
+}
+
+// ------------------------------------------------------------ sync state
+
+// gmail_connections.sync_cursor (migration 0016). Idle: { since } — when the
+// last completed scan began. Scanning: see newScan. Anything unreadable is
+// treated as idle, which at worst re-lists a window (processed ids are
+// filtered), never skips one.
+function readCursor(text) {
+  let c = null;
+  try { c = text ? JSON.parse(text) : null; } catch (e) { c = null; }
+  if (!c || c.v !== 1) return { v: 1 };
+  if (c.mode === 'backfill' || c.mode === 'incremental') {
+    if (Number.isFinite(c.lo) && Number.isFinite(c.hi) && Number.isFinite(c.span) && Array.isArray(c.queue)) return c;
+    return { v: 1 };
   }
-  return { expired: false, added, historyId: latest };
+  return Number.isFinite(c.since) ? { v: 1, since: c.since } : { v: 1 };
+}
+
+// A scan of [lo, hi), walked newest-first in windows of `span` seconds.
+// `hist` is the history position to store once the whole scan completes;
+// `start` becomes the next scan's reference point.
+function newScan(mode, lo, hi, hist) {
+  return { v: 1, mode, lo, hi, span: Math.max(MIN_WINDOW_SECONDS, hi - lo), queue: [], hist: hist || null, start: hi };
+}
+
+// Where an incremental scan begins: a day before the previous scan began,
+// never further back than the backfill horizon.
+function incrementalFloor(cursor, row, now) {
+  let since = Number.isFinite(cursor.since) ? cursor.since : NaN;
+  if (!Number.isFinite(since) && row.last_success_at) {
+    since = Math.floor(Date.parse(String(row.last_success_at).replace(' ', 'T') + 'Z') / 1000);
+  }
+  if (!Number.isFinite(since)) since = now - BACKFILL_DAYS * DAY;
+  return Math.max(now - BACKFILL_DAYS * DAY, since - INCREMENTAL_OVERLAP_SECONDS);
 }
 
 function base64UrlToBytes(value) {
@@ -418,9 +506,9 @@ function searchWindowDays(lastSuccessAt) {
 // Fetches one message and runs it through the existing pipeline. Returns
 // the outcome recorded for it. Throws GmailError only for temporary Gmail
 // failures (so the message is NOT marked processed and is retried).
-async function processOneMessage(env, userId, accessToken, messageId, syncRunId) {
+async function processOneMessage(env, userId, accessToken, messageId, syncRunId, budget) {
   const sql = env.cybercabhunter_db;
-  const msg = await gmailJson(accessToken, `/messages/${encodeURIComponent(messageId)}?format=raw`);
+  const msg = await gmailJson(accessToken, `/messages/${encodeURIComponent(messageId)}?format=raw`, budget);
   if (msg === null) return 'message_gone';                 // deleted since the search
   if (!msg.raw) return 'message_unreadable';
   if ((msg.sizeEstimate || 0) > MAX_MESSAGE_BYTES) return 'message_too_large';
@@ -442,84 +530,110 @@ async function processOneMessage(env, userId, accessToken, messageId, syncRunId)
   return result.outcome || 'error';
 }
 
-// One rider's sync. Safe to call at any time: it takes a short lease, and a
-// second concurrent call simply returns { skipped: 'locked' }.
-export async function syncUser(env, userId) {
+// One bounded step of one rider's sync — see the header. Safe to call at
+// any time: it takes a short lease, and a second concurrent call simply
+// returns { skipped: 'locked' }. `maxMessages` (default 1) caps downloads in
+// this step; 0 only lists (used right after connecting). `budget` is the
+// invocation's Google-call budget, shared with the caller.
+export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCATION, budget = newBudget() } = {}) {
   const sql = env.cybercabhunter_db;
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
+  if (!(await db.acquireGmailSyncLock(sql, userId, LOCK_MINUTES))) {
+    const row = await db.getGmailConnectionStatus(sql, userId);
+    return { skipped: !row || row.status !== 'active' ? 'not_connected' : 'locked' };
+  }
   const row = await db.getGmailConnectionForSync(sql, userId);
   if (!row || row.status !== 'active' || !row.encrypted_refresh_token) return { skipped: 'not_connected' };
-  if (!(await db.acquireGmailSyncLock(sql, userId, LOCK_MINUTES))) return { skipped: 'locked' };
 
   const counts = newCounts();
   let runId = null;
+  let cursor = readCursor(row.sync_cursor);
+  let processed = 0;
+  let foundReceipt = false;
   try {
-    const accessToken = await getAccessToken(env, row);
-    const backfill = !row.backfill_completed_at;
+    const accessToken = await getAccessToken(env, row, budget);
 
-    // 1. Decide which window to search, and the history position to store
-    //    if this sync completes — always read BEFORE searching, so a message
-    //    arriving mid-sync is picked up next time rather than missed.
-    let nextHistoryId = row.history_id;
-    let searchDays = null;
-    if (backfill || !row.history_id) {
-      if (!row.history_id) {
-        const profile = await gmailJson(accessToken, '/profile');
-        nextHistoryId = profile && profile.historyId ? String(profile.historyId) : null;
-      }
-      searchDays = BACKFILL_DAYS;
-    } else {
-      const history = await readHistory(accessToken, row.history_id);
-      if (history.expired) {
-        const profile = await gmailJson(accessToken, '/profile');
-        nextHistoryId = profile && profile.historyId ? String(profile.historyId) : null;
-        searchDays = searchWindowDays(row.last_success_at);
+    // 1. No scan in progress: decide whether one is needed. A new scan's
+    //    upper bound is taken AFTER reading the history position it will
+    //    store, so every message that position covers is inside the scan.
+    if (!cursor.mode) {
+      if (!row.backfill_completed_at) {
+        const hist = row.history_id || await currentHistoryId(accessToken, budget);
+        const now = nowSeconds();
+        cursor = newScan('backfill', now - BACKFILL_DAYS * DAY, now, hist);
       } else {
-        if (history.historyId) nextHistoryId = history.historyId;
-        if (history.added) searchDays = searchWindowDays(row.last_success_at);
+        const history = row.history_id ? await readHistory(accessToken, row.history_id, budget) : { expired: true };
+        if (history.expired) {
+          const hist = await currentHistoryId(accessToken, budget);
+          const now = nowSeconds();
+          cursor = newScan('incremental', incrementalFloor(cursor, row, now), now, hist);
+        } else if (history.added) {
+          const now = nowSeconds();
+          cursor = newScan('incremental', incrementalFloor(cursor, row, now), now, history.historyId || row.history_id);
+        } else {
+          // Nothing new: move the position forward (nothing is skipped).
+          await db.finishGmailSyncSuccess(sql, userId, { historyId: history.historyId, backfillDone: false, foundReceipt: false, cursor });
+          return { processed: 0, idle: true };
+        }
       }
     }
 
-    // 2. Find matching receipts not yet processed.
-    let pending = [];
-    if (searchDays !== null) {
-      const ids = await searchReceiptIds(accessToken, searchDays);
-      for (const id of ids) {
-        if (!(await db.isGmailMessageProcessed(sql, userId, id))) pending.push(id);
+    // 2. Advance the scan by at most one window listing and `maxMessages`
+    //    downloads. Each branch either spends a bounded call or ends the step.
+    let listed = false;
+    let complete = false;
+    for (;;) {
+      if (cursor.queue.length === 0) {
+        if (cursor.hi <= cursor.lo) { complete = true; break; }
+        if (listed || processed > 0) break;            // one listing per step, and never after a download
+        const windowLo = Math.max(cursor.lo, cursor.hi - cursor.span);
+        const { ids, full } = await listWindow(accessToken, windowLo, cursor.hi, budget);
+        listed = true;
+        if (full && cursor.span > MIN_WINDOW_SECONDS) {
+          cursor.span = Math.max(MIN_WINDOW_SECONDS, Math.floor(cursor.span / 2));
+          continue;                                     // narrower window, listed on the next step
+        }
+        const done = await db.getGmailProcessedIds(sql, userId, ids);
+        const pending = ids.filter(id => !done.has(id)).reverse(); // Gmail lists newest first; import oldest first
+        cursor.queue = pending;
+        // A window is finished once its ids are queued. (Only a one-hour window
+        // holding more than 50 receipts would stay put and be re-listed.)
+        if (!full || pending.length === 0) cursor.hi = windowLo;
+        continue;
       }
-    }
-    const truncated = pending.length > MAX_MESSAGES_PER_SYNC;
-    pending = pending.slice(0, MAX_MESSAGES_PER_SYNC).reverse(); // oldest first
-
-    // 3. Run each through the existing pipeline, recording it once done.
-    let foundReceipt = false;
-    if (pending.length) {
-      runId = crypto.randomUUID();
-      await db.createSyncRun(sql, { id: runId, userId, source: 'gmail_api' });
-      for (const id of pending) {
-        const outcome = await processOneMessage(env, userId, accessToken, id, runId);
-        await db.markGmailMessageProcessed(sql, userId, id, outcome);
-        addToCounts(counts, { outcome: ['message_gone', 'message_unreadable', 'message_too_large', 'parse_error'].includes(outcome) ? 'error' : outcome });
-        if (outcome === 'created' || outcome === 'updated') foundReceipt = true;
+      if (processed >= maxMessages) break;
+      const id = cursor.queue[0];
+      processed += 1;
+      if (await db.isGmailMessageProcessed(sql, userId, id)) { cursor.queue.shift(); continue; } // finished by an earlier, interrupted step
+      if (!runId) {
+        runId = crypto.randomUUID();
+        await db.createSyncRun(sql, { id: runId, userId, source: 'gmail_api' });
       }
-      await db.finishSyncRun(sql, runId, { status: runStatusFor(counts), ...tally(counts), errorCode: counts.errors ? 'item_errors' : null });
+      const outcome = await processOneMessage(env, userId, accessToken, id, runId, budget);
+      await db.markGmailMessageProcessed(sql, userId, id, outcome);
+      cursor.queue.shift();
+      addToCounts(counts, { outcome: ['message_gone', 'message_unreadable', 'message_too_large', 'parse_error'].includes(outcome) ? 'error' : outcome });
+      if (outcome === 'created' || outcome === 'updated') foundReceipt = true;
     }
+    if (runId) await db.finishSyncRun(sql, runId, { status: runStatusFor(counts), ...tally(counts), errorCode: counts.errors ? 'item_errors' : null });
 
-    // 4. Complete. If more matches remain than one run handles, keep the
-    //    history position (and backfill flag) so the next run continues.
-    if (truncated) {
-      await db.finishGmailSyncFailure(sql, userId, null);
+    // 3. Save. Only a completed scan moves the history position (and marks
+    //    the backfill done); otherwise the progress is kept for the next run.
+    if (complete) {
+      await db.finishGmailSyncSuccess(sql, userId, {
+        historyId: cursor.hist, backfillDone: cursor.mode === 'backfill', foundReceipt, cursor: { v: 1, since: cursor.start }
+      });
     } else {
-      await db.finishGmailSyncSuccess(sql, userId, { historyId: nextHistoryId, backfillDone: backfill, foundReceipt });
+      await db.finishGmailSyncSuccess(sql, userId, { historyId: null, backfillDone: false, foundReceipt, cursor });
     }
-    return { processed: pending.length, truncated, counts };
+    return { processed, complete, remaining: cursor.queue.length, counts };
   } catch (err) {
     if (runId) {
       await db.finishSyncRun(sql, runId, { status: 'failed', ...tally(counts), errorCode: 'sync_interrupted' }).catch(() => {});
     }
     const code = err instanceof GmailError ? err.code : 'sync_failed';
     if (err instanceof GmailError && err.reauth) await db.markGmailReauthorizationRequired(sql, userId, code);
-    else await db.finishGmailSyncFailure(sql, userId, code);
+    else await db.finishGmailSyncFailure(sql, userId, code, cursor.mode ? cursor : null);
     return { error: code };
   }
 }
@@ -531,21 +645,26 @@ function tally(counts) {
   };
 }
 
-// The scheduled handler's entry point: riders not checked in the last few
-// minutes, a bounded number per run, within a time budget.
+// The scheduled handler's entry point. Free-plan safe by construction: ONE
+// rider per invocation (RIDERS_PER_INVOCATION), one bounded step for it.
+// Fairness is a strict round-robin — the connected rider checked least
+// recently goes next, and a rider's turn is stamped when its step STARTS,
+// so a rider whose step fails (or is cut short) goes to the back of the line
+// like everyone else. With N connected riders each gets a step at least
+// every N runs (N × 10 minutes); no rider — not even one with a long
+// backfill — can hold the front. Riders mid-step (locked) are skipped.
 export async function runScheduledSync(env) {
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
   const sql = env.cybercabhunter_db;
-  const started = Date.now();
+  const budget = newBudget();
   await db.pruneGmailProcessedMessages(sql, PROCESSED_RETENTION_DAYS);
-  const due = await db.listGmailConnectionsDue(sql, { olderThanMinutes: DUE_AFTER_MINUTES, limit: RIDERS_PER_RUN });
+  const due = await db.listGmailConnectionsDue(sql, { olderThanMinutes: DUE_AFTER_MINUTES, limit: RIDERS_PER_INVOCATION });
   let synced = 0;
   for (const userId of due) {
-    if (Date.now() - started > RUN_BUDGET_MS) break;
-    try { await syncUser(env, userId); } catch (err) { /* one rider never stops the rest */ }
+    try { await syncUser(env, userId, { budget }); } catch (err) { /* one rider never stops the rest */ }
     synced++;
   }
   return { due: due.length, synced };
 }
 
-export const gmail = { apiConnect, handleCallback, apiStatus, apiDisconnect, syncUser, runScheduledSync, isGmailConfigured };
+export const gmail = { apiConnect, handleCallback, apiStatus, apiDisconnect, syncUser, runScheduledSync, isGmailConfigured, newBudget };

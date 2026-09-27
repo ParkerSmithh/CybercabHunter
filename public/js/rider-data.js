@@ -434,7 +434,7 @@
   // carries only the bearer session; tokens never reach the browser. The card
   // stays hidden unless the server says Gmail import is configured.
   const GMAIL_NOTICES = {
-    connected: ['Gmail connected. Receipts from the last 90 days are being imported now.', 'ok'],
+    connected: ['Gmail connected. Receipts from the last 90 days are being imported automatically in the background, a few at a time — this can take a while.', 'ok'],
     cancelled: ['Gmail wasn\'t connected — the Google screen was cancelled.', 'info'],
     missing_permission: ['Gmail access wasn\'t granted, so nothing was connected.', 'info'],
     wrong_account: ['That Gmail isn\'t the Google account you signed in with. Connect that same account.', 'warn'],
@@ -461,7 +461,7 @@
     const dot = $('gmailDot');
     const views = {
       not_connected: ['Not connected', 'bg-slate-600'],
-      syncing: [st.initial_import_complete ? 'Gmail connected — checking now…' : 'Gmail connected — importing existing receipts…', 'bg-cyan animate-pulse'],
+      syncing: [st.initial_import_complete ? 'Gmail connected — checking now…' : 'Gmail connected — importing existing receipts… Older receipts continue importing automatically.', 'bg-cyan animate-pulse'],
       connected: ['✓ Gmail connected', 'bg-emerald-400'],
       error: ['Gmail connected — the last check didn\'t finish. It will retry automatically.', 'bg-amber-400'],
       reconnect_required: ['Gmail connection needs attention — Google no longer accepts it. Reconnect to resume importing.', 'bg-crimson']

@@ -1,0 +1,16 @@
+-- Resumable Gmail sync for the Workers Free plan (worker/gmail.js). Additive
+-- only: one nullable column on the table created by 0015; no existing table,
+-- column or row is otherwise touched.
+--
+-- gmail_connections.sync_cursor — small JSON written and read only by
+-- worker/gmail.js, so a sync can do one small, bounded step per Worker
+-- invocation and continue on the next scheduled run instead of redoing work:
+--   idle:   {"v":1,"since":<epoch s>}  — when the last completed scan began
+--   active: {"v":1,"mode":"backfill"|"incremental","lo":<epoch s>,
+--            "hi":<epoch s>,"span":<s>,"queue":[<gmail message id>…],
+--            "hist":<history id to store once the scan completes>,
+--            "start":<epoch s>}
+-- It holds only Gmail's opaque message ids and time bounds — never a token
+-- or any message content. NULL until the first sync; cleared on disconnect
+-- and reset on reconnect.
+ALTER TABLE gmail_connections ADD COLUMN sync_cursor TEXT;
