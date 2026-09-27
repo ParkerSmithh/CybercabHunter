@@ -132,11 +132,15 @@ function tally(counts) {
 }
 
 // Authenticated API: returns (creating if needed) this user's receipt
-// ingestion address. Only the local-part is meaningful until a domain is
-// configured for Email Routing — `domain_configured: false` tells the
-// frontend not to present this as a working address until RECEIPT_DOMAIN is set.
+// ingestion address. `userId` is always the caller's own, resolved from the
+// bearer session by the router — nothing in the request can name another
+// user. Only the local-part is meaningful until a domain is configured for
+// Email Routing — `domain_configured: false` tells the frontend not to
+// present this as a working address until RECEIPT_DOMAIN is set.
+// 409 address_revoked: the rider's address was turned off and is not re-issued here.
 export async function apiGetIngestionAddress(request, env, userId) {
   const token = await db.findOrCreateReceiptIngestionAddress(env.cybercabhunter_db, userId);
+  if (!token) return Response.json({ success: false, error: 'address_revoked' }, { status: 409 });
   const domain = env.RECEIPT_DOMAIN;
   if (!domain) {
     return Response.json({ success: true, local_part: `u_${token}`, domain_configured: false });
@@ -152,6 +156,7 @@ export async function apiGetIngestionAddress(request, env, userId) {
 // neither is keyed by the token.
 export async function apiRotateIngestionAddress(request, env, userId) {
   const token = await db.rotateReceiptIngestionAddress(env.cybercabhunter_db, userId);
+  if (!token) return Response.json({ success: false, error: 'address_revoked' }, { status: 409 });
   const domain = env.RECEIPT_DOMAIN;
   if (!domain) {
     return Response.json({ success: true, local_part: `u_${token}`, domain_configured: false });

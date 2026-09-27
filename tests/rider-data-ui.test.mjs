@@ -274,19 +274,20 @@ async function run() {
     check('the "Corrected" badge survives a later metadata-only revision', page.rows().length === 1 && /Corrected/.test(page.rows()[0].textContent));
   }
 
-  console.log('Receipt setup block removed. The page no longer offers forwarding-address or import controls');
+  console.log('Receipt setup: only the rider\'s own forwarding address was restored (tests/receipt-address.test.mjs); the other old controls stay removed');
   {
     const ctx = await makeApp();
     await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
     const addr = ctx.addressFor('u1');
     const page = await openPage(ctx, 'u1');
-    const gone = ['receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdCopyBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
-    check('none of the removed elements exist in the page', gone.every(id => page.d.getElementById(id) === null));
-    check('the removed copy is gone', !/Get your rides in|Forward new receipts|Import old receipts|Receipt forwarding|Receipt sync|Choose \.eml files/.test(page.d.body.textContent));
-    check("the rider's forwarding address is not shown anywhere on the page", !page.d.body.textContent.includes(addr) && !/@cybercabhunter\.com/.test(page.d.body.textContent));
+    await page.waitFor(() => page.visible('fwdReady'), 'the receipt address to load');
+    const gone = ['receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
+    check('the old import box, rotate control, status pills and sync summary are still gone', gone.every(id => page.d.getElementById(id) === null));
+    check('their copy is still gone', !/Get your rides in|Import old receipts|Receipt sync|Choose \.eml files/.test(page.d.body.textContent));
+    check("the rider's own forwarding address is shown, with a Copy button", page.text('fwdAddress') === addr && !!page.d.getElementById('fwdCopyBtn'));
+    check('it reports that receipts are arriving', /Receiving/.test(page.text('fwdReceiving')));
     check('the rest of the page still renders: the ride is listed and counted', page.rows().length === 1 && page.text('heroRideCount') === '1');
-    check('the page no longer requests the receipt sync status', !page.requests.some(r => r.path === '/api/rides/sync-status'));
-    check('the empty-state and ride-list copy no longer point at controls that do not exist', !/private address below|Forward or import a receipt above/i.test(HTML));
+    check('the empty-state and ride-list copy do not point at controls that do not exist', !/Forward or import a receipt above/i.test(HTML));
   }
 
   console.log('Link Tesla Account button. Same header button as the other pages: shown only when signed in and not yet linked');

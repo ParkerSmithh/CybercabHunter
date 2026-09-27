@@ -265,18 +265,27 @@ async function deleteSubmission(sql, submissionId, userId) {
 
 // ---- Receipt-email ingestion ----
 
+// The rider's active receipt token, issuing one on first use. One row per
+// rider (UNIQUE user_id): the insert is a no-op if a row already exists, so
+// two first requests racing each other (e.g. two open tabs) both end up with
+// the SAME token instead of one of them failing. Returns null when the
+// rider's row exists but is revoked — a revoked address is never silently
+// re-issued; that stays a deliberate, manual decision.
 async function findOrCreateReceiptIngestionAddress(sql, userId) {
-  const existing = await sql.prepare(
+  const active = () => sql.prepare(
     `SELECT opaque_token FROM receipt_ingestion_addresses WHERE user_id = ? AND status = 'active'`
   ).bind(userId).first();
+  const existing = await active();
   if (existing) return existing.opaque_token;
 
   const token = crypto.randomUUID().replace(/-/g, '');
   await sql.prepare(`
     INSERT INTO receipt_ingestion_addresses (id, user_id, opaque_token, status)
     VALUES (?, ?, ?, 'active')
+    ON CONFLICT(user_id) DO NOTHING
   `).bind(newId(), userId, token).run();
-  return token;
+  const row = await active();
+  return row ? row.opaque_token : null;
 }
 
 async function getUserIdByActiveReceiptToken(sql, token) {

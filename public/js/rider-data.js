@@ -361,6 +361,74 @@
     });
   }
 
+  // ---------- receipt address ----------
+  // The rider's OWN forwarding address. Both calls carry only the bearer
+  // session; the server resolves the user from it, so there is no id here
+  // for anyone to change. GET .../address issues the address on first use.
+  let fwdSeq = 0;
+  function fwdView(view) {
+    show('fwdLoading', view === 'loading');
+    show('fwdError', view === 'error');
+    show('fwdRevoked', view === 'revoked');
+    show('fwdReady', view === 'ready');
+  }
+
+  async function loadForwarding() {
+    const seq = ++fwdSeq;
+    fwdView('loading');
+    let addr, sync;
+    try {
+      addr = await api('/api/receipt-ingestion/address');
+      if (seq !== fwdSeq) return;
+      if (addr.status === 401) { setView('signedOut'); return; }
+      if (addr.status === 409 && addr.json && addr.json.error === 'address_revoked') { fwdView('revoked'); return; }
+      if (!addr.ok || !addr.json) { fwdView('error'); return; }
+      sync = await api('/api/rides/sync-status');
+    } catch (e) {
+      if (seq === fwdSeq) fwdView('error');
+      return;
+    }
+    if (seq !== fwdSeq) return;
+
+    const a = addr.json;
+    const text = a.address || a.local_part || '';
+    $('fwdAddress').textContent = text;
+    show('fwdDomainNote', !a.domain_configured);
+
+    // Status and the Gmail code are extras: if sync-status fails, the address still shows.
+    const f = sync && sync.ok && sync.json && sync.json.forwarding;
+    $('fwdReceiving').textContent = !f ? ''
+      : f.receiving
+        ? 'Receiving — last receipt arrived ' + fmtDateTime(f.last_received_at) + '.'
+        : 'No receipt has arrived at this address yet.';
+    show('fwdCodeBox', !!(f && f.confirmation_code));
+    if (f && f.confirmation_code) {
+      $('fwdCode').textContent = f.confirmation_code;
+      $('fwdCodeAt').textContent = 'Received ' + fmtDateTime(f.confirmation_code_received_at);
+    }
+    fwdView('ready');
+  }
+
+  function setupForwarding() {
+    $('fwdRetry').addEventListener('click', loadForwarding);
+    $('fwdCopyBtn').addEventListener('click', async () => {
+      const btn = $('fwdCopyBtn');
+      const text = $('fwdAddress').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied';
+      } catch (e) {
+        // No clipboard access: select the address so the rider can copy it by hand.
+        const range = document.createRange();
+        range.selectNodeContents($('fwdAddress'));
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = 'Selected — copy it';
+      }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+    });
+  }
+
   // ---------- load ----------
   async function refreshAll(showSkeleton) {
     if (showSkeleton) setView('loading');
@@ -392,11 +460,14 @@
     renderRides(rides.json);
     show('dataUnlinkTeslaPrompt', !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected));
     setView('data');
+    // The address only on a full load (or Retry) — not on the quiet refresh
+    // after removing a ride, which would flash the card back to loading.
+    if (showSkeleton) loadForwarding();
   }
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupUnlink(); setupRideActions();
+    setupUnlink(); setupRideActions(); setupForwarding();
     $('dataRetry').addEventListener('click', () => refreshAll(true));
     $('ridesPrev').addEventListener('click', () => loadRides(ridesPage - 1));
     $('ridesNext').addEventListener('click', () => loadRides(ridesPage + 1));

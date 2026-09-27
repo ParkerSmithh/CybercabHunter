@@ -182,6 +182,50 @@
         </div>
       </div>
 
+      <!-- Receipt address: the rider's own u_<token>@ forwarding address
+           (GET /api/receipt-ingestion/address issues it on first use), how to
+           forward to it, and the Gmail confirmation code once one arrives
+           (GET /api/rides/sync-status). Loaded separately from the rest of
+           the page, so a problem here never hides the rider's data. -->
+      <div id="fwdCard" class="glass rounded-2xl p-6 sm:p-7 lg:p-8 reveal-on-scroll mb-8">
+        <h2 class="font-display font-bold text-xl mb-1">Your receipt address</h2>
+        <p class="text-sm text-slate-400 max-w-3xl mb-5">Rides reach Cybercab Hunter from your Tesla Robotaxi receipts. Forward each receipt email to this private address and the ride is added here automatically.</p>
+
+        <div id="fwdLoading" class="h-12 rounded-lg bg-white/5 animate-pulse" aria-busy="true"><span class="sr-only">Loading your receipt address…</span></div>
+        <p id="fwdError" class="hidden text-sm text-slate-400">Couldn't load your receipt address. <button id="fwdRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
+        <p id="fwdRevoked" class="hidden text-sm text-slate-400">Your receipt address has been turned off. Contact us if you need a new one.</p>
+
+        <div id="fwdReady" class="hidden">
+          <div class="flex flex-col sm:flex-row sm:items-stretch gap-2 mb-2">
+            <code id="fwdAddress" class="flex-1 min-w-0 break-all rounded-lg bg-panel border border-[rgba(212,175,55,0.25)] px-3 py-2.5 text-sm text-goldsoft"></code>
+            <button id="fwdCopyBtn" type="button" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Copy</button>
+          </div>
+          <p class="text-xs text-slate-500 mb-2">Treat this address like a password — anyone who has it can add rides to your account.</p>
+          <p id="fwdDomainNote" class="hidden text-xs text-amber-300/90 mb-2">Receipt email isn't switched on for this site yet, so this address can't receive mail.</p>
+          <p id="fwdReceiving" class="text-xs text-slate-400 mb-6"></p>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            <div>
+              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">1</span>Forward a receipt</h3>
+              <p class="text-sm text-slate-400">After a ride, open the Tesla Robotaxi receipt email and forward it to the address above. The ride appears on this page once it's processed.</p>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">2</span>Optional: forward automatically with Gmail</h3>
+              <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5">
+                <li>In Gmail, open <span class="text-slate-300">Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</span> and enter the address above.</li>
+                <li>Gmail sends a confirmation code to that address. It will appear below — enter it in Gmail to confirm.</li>
+                <li>Create a filter for mail from <span class="text-slate-300 break-all">robotaxi@tesla.com</span> and choose <span class="text-slate-300">Forward it to</span> your address.</li>
+              </ol>
+              <div id="fwdCodeBox" class="hidden mt-4 rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] p-4">
+                <div class="text-xs text-slate-400 mb-1">Gmail confirmation code</div>
+                <div id="fwdCode" class="font-display font-bold text-2xl tracking-widest text-goldsoft break-all"></div>
+                <div id="fwdCodeAt" class="text-xs text-slate-500 mt-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Ride history summary -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
@@ -390,6 +434,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=3"></script>
+<script src="js/rider-data.js?v=5"></script>
 </body>
 </html>
