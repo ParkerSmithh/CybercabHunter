@@ -346,6 +346,7 @@ const CCC = (() => {
   const TESLA_ICON_SVG = '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>';
 
   const TESLA_SESSION_KEY = 'teslaSessionId';
+  let googleSignInJustCompleted = false;   // set by initTeslaLink on ?signin=success
 
   function initTeslaLink() {
     // The callback hands back a one-time session ID in the URL fragment
@@ -386,6 +387,7 @@ const CCC = (() => {
     // (worker/google-auth.js's callback uses ?signin= instead of ?tesla=
     // since it's not Tesla-specific).
     const signinResult = params.get('signin');
+    if (signinResult === 'success') googleSignInJustCompleted = true;   // for initGmailOnboarding
     if (signinResult) {
       const messages = {
         success: ['SIGNED IN', 'success'],
@@ -569,6 +571,115 @@ const CCC = (() => {
       .catch(() => showSignedOut());
   }
 
+  /* ---------------- Gmail onboarding (right after Google sign-in) ----------------
+     Offered once, straight after a successful Google sign-in, to an account
+     whose Gmail import is available (the server reports it configured) and not
+     connected. Gmail stays optional: "Connect Gmail" runs the SAME flow as
+     Rider Data's button (POST /api/gmail/connect → Google's own consent page,
+     where the rider grants or refuses Gmail access), and "Skip for now" just
+     closes it. Either choice is remembered per account in this browser
+     (gmailOnboardingDone:<userId>) — the account has no server-side field for
+     it — so the prompt doesn't return on every sign-in; Rider Data keeps its
+     own Connect Gmail for later. Built with the site's existing .modal-backdrop
+     / .modal-panel styles; every string is set with textContent. */
+  const GMAIL_ONBOARDING_KEY = 'gmailOnboardingDone:';
+
+  function gmailOnboardingDone(userId) {
+    try { return localStorage.getItem(GMAIL_ONBOARDING_KEY + userId) === '1'; } catch (e) { return false; }
+  }
+  function markGmailOnboardingDone(userId) {
+    try { localStorage.setItem(GMAIL_ONBOARDING_KEY + userId, '1'); } catch (e) { /* storage blocked: it may be offered again */ }
+  }
+
+  async function initGmailOnboarding() {
+    if (!googleSignInJustCompleted) return;
+    let sessionId = null;
+    try { sessionId = localStorage.getItem(TESLA_SESSION_KEY); } catch (e) { return; }
+    if (!sessionId) return;
+    const get = path => fetch(TESLA_WORKER_URL + path, { headers: { Authorization: 'Bearer ' + sessionId } })
+      .then(r => (r.ok ? r.json() : null)).catch(() => null);
+    const [me, gmail] = await Promise.all([get('/api/me'), get('/api/gmail/status')]);
+    const userId = me && me.authenticated && me.user && me.user.id;
+    if (!userId || !gmail || !gmail.configured || gmail.state !== 'not_connected') return;
+    if (gmailOnboardingDone(userId)) return;
+    showGmailOnboarding(sessionId, userId);
+  }
+
+  function showGmailOnboarding(sessionId, userId) {
+    const el = (tag, className, text) => {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      if (text != null) e.textContent = text;
+      return e;
+    };
+    const backdrop = el('div', 'modal-backdrop fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4');
+    backdrop.id = 'gmailOnboarding';
+    const panel = el('div', 'modal-panel glass-strong rounded-2xl w-full max-w-md p-6 sm:p-7');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'gmailOnboardingTitle');
+    panel.appendChild(el('p', 'text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2', 'Welcome'));
+    const title = el('h2', 'font-display font-bold text-2xl tracking-tight mb-2', 'Automatically import your Tesla Robotaxi receipts?');
+    title.id = 'gmailOnboardingTitle';
+    panel.appendChild(title);
+    panel.appendChild(el('p', 'text-sm text-slate-400 leading-relaxed mb-5', 'Connect Gmail to automatically find your Robotaxi receipt emails and add your rides to Cybercab Hunter.'));
+
+    const connect = el('button', 'btn-magnetic w-full px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50', 'Connect Gmail');
+    connect.type = 'button';
+    connect.id = 'gmailOnboardingConnect';
+    panel.appendChild(connect);
+    panel.appendChild(el('p', 'text-xs text-slate-500 mt-2 mb-4', 'Only the Robotaxi receipt emails needed for your ride history are imported.'));
+
+    const skip = el('button', 'w-full px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors', 'Skip for now');
+    skip.type = 'button';
+    skip.id = 'gmailOnboardingSkip';
+    panel.appendChild(skip);
+    panel.appendChild(el('p', 'text-xs text-slate-500 mt-2', 'You can connect Gmail later from Rider Data.'));
+
+    const error = el('p', 'hidden text-sm text-amber-200 mt-4', '');
+    error.id = 'gmailOnboardingError';
+    error.setAttribute('role', 'alert');
+    panel.appendChild(error);
+    panel.appendChild(el('p', 'text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]', "Gmail is optional. Signing in with Google doesn't give Cybercab Hunter access to your Gmail — if you choose Connect Gmail, Google asks for your permission first."));
+
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+    requestAnimationFrame(() => backdrop.classList.add('is-open'));
+
+    const close = () => {
+      markGmailOnboardingDone(userId);
+      document.removeEventListener('keydown', onKey);
+      backdrop.classList.remove('is-open');
+      setTimeout(() => backdrop.remove(), 350);
+    };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    skip.addEventListener('click', close);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+    connect.addEventListener('click', () => {
+      connect.disabled = true;
+      connect.textContent = 'Connecting…';
+      error.classList.add('hidden');
+      markGmailOnboardingDone(userId);   // offered and taken up; Rider Data covers any retry
+      fetch(TESLA_WORKER_URL + '/api/gmail/connect', { method: 'POST', headers: { Authorization: 'Bearer ' + sessionId } })
+        .then(r => r.json().catch(() => null).then(body => ({ ok: r.ok, body })))
+        .catch(() => ({ ok: false, body: null }))
+        .then(({ ok, body }) => {
+          const url = ok && body && body.authorize_url;
+          // Only ever navigate to Google's own authorization page.
+          if (url && /^https:\/\/accounts\.google\.com\//.test(url)) { location.assign(url); return; }
+          connect.disabled = false;
+          connect.textContent = 'Connect Gmail';
+          error.textContent = body && body.error === 'google_signin_required'
+            ? 'Gmail import needs an account that signs in with Google.'
+            : "Couldn't start connecting Gmail. You can skip for now and try again later from Rider Data.";
+          error.classList.remove('hidden');
+        });
+    });
+    connect.focus();
+  }
+
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
@@ -578,7 +689,8 @@ const CCC = (() => {
     initRipple();
     initTeslaLink();
     initAccountMenu();
+    initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init };
 })();
