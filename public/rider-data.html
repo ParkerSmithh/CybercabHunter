@@ -142,11 +142,11 @@
 
       <!-- Overview hero — identity is kept minimal and read-only here for
            orientation only; editing lives on profile.html. -->
-      <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-8 lg:p-10">
+      <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-6 lg:px-8 lg:py-6">
         <div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gold/10 blur-3xl pointer-events-none"></div>
-        <div class="relative flex flex-col lg:flex-row items-center gap-10">
+        <div class="relative flex flex-col lg:flex-row items-center gap-6">
           <div class="flex-1 w-full">
-            <div class="flex items-center gap-4 mb-7">
+            <div class="flex items-center gap-4 mb-5">
               <div id="dataAvatar" class="w-12 h-12 rounded-xl flex items-center justify-center font-display font-bold text-base bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] shrink-0"></div>
               <div>
                 <div id="dataName" class="font-display font-bold text-lg leading-tight"></div>
@@ -154,8 +154,8 @@
               </div>
             </div>
 
-            <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-4">Rider Overview</p>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-6 border-t border-[rgba(212,175,55,0.12)] max-w-lg">
+            <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-3">Rider Overview</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-[rgba(212,175,55,0.12)] max-w-lg">
               <div>
                 <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Distance</div>
                 <div id="statMiles" class="font-display font-bold text-xl">—</div>
@@ -173,12 +173,12 @@
                 <div id="statContributions" class="font-display font-bold text-xl">—</div>
               </div>
             </div>
-            <p id="heroNote" class="text-xs text-slate-500 mt-4 max-w-lg leading-relaxed"></p>
+            <p id="heroNote" class="text-xs text-slate-500 mt-3 max-w-lg leading-relaxed empty:hidden"></p>
           </div>
 
           <div class="shrink-0 hidden lg:block relative">
             <div class="absolute inset-0 bg-gold/20 blur-3xl rounded-full"></div>
-            <img src="images/CybercabFlipped.png" alt="Cybercab" class="relative w-80 xl:w-96 h-auto object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
+            <img src="images/CybercabFlipped.png" alt="Cybercab" class="relative w-60 xl:w-64 h-auto object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)]">
           </div>
         </div>
       </div>
