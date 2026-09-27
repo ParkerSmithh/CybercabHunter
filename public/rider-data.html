@@ -154,16 +154,7 @@
               </div>
             </div>
 
-            <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Rider Overview</p>
-            <div class="flex items-end gap-3 mb-3">
-              <span id="heroRideCount" class="font-display font-bold text-6xl leading-none">0</span>
-              <span class="text-lg text-slate-400 mb-1.5">rides on record</span>
-            </div>
-            <div id="heroFirstRide" class="hidden items-center gap-2 text-sm text-slate-300 mb-7">
-              <svg class="w-4 h-4 text-gold shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.6L19.5 9l-5.7 1.4L12 16l-1.8-5.6L4.5 9l5.7-1.4L12 2z"/></svg>
-              <span id="heroFirstRideText"></span>
-            </div>
-
+            <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-4">Rider Overview</p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-6 border-t border-[rgba(212,175,55,0.12)] max-w-lg">
               <div>
                 <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Distance</div>
@@ -236,32 +227,11 @@
         <p id="monthlyNote" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Cities -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
-          <div id="citiesList" class="space-y-3 text-sm"></div>
-          <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
-        </div>
-
-        <!-- Vehicles ridden -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-1">Vehicles Ridden</h2>
-          <p class="text-xs text-slate-500 mb-5">Identified by the license plate on your receipts.</p>
-          <div id="vehiclesList" class="space-y-3 text-sm"></div>
-          <div id="vehiclesEmpty" class="hidden text-sm text-slate-500">No vehicles identified yet — receipts that show a plate link a ride to a vehicle.</div>
-          <p id="vehiclesModels" class="text-xs text-slate-500 mt-4 leading-relaxed"></p>
-        </div>
-
-        <!-- Vehicles discovered — a separate, crowdsourced credit: this rider's
-             own counted ride was the EARLIEST one on record for the vehicle.
-             Not a claim of ownership or in-person verification. -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-1">Vehicles You Discovered</h2>
-          <p class="text-xs text-slate-500 mb-5">Your ride was the first one on record for these vehicles.</p>
-          <div id="discoveredList" class="space-y-3 text-sm"></div>
-          <div id="discoveredEmpty" class="hidden text-sm text-slate-500">No vehicles discovered yet.</div>
-        </div>
+      <!-- Cities -->
+      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
+        <h2 class="font-display font-bold text-xl mb-5">Cities</h2>
+        <div id="citiesList" class="space-y-3 text-sm"></div>
+        <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
       </div>
 
       <!-- Ride list -->
@@ -400,6 +370,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=10"></script>
+<script src="js/rider-data.js?v=13"></script>
 </body>
 </html>

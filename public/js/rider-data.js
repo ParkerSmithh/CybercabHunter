@@ -78,21 +78,12 @@
     $('dataName').textContent = name;
     $('dataJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
 
-    $('heroRideCount').textContent = fmtInt(rs.trip_count);
     $('statMiles').textContent = fmtMiles(rs.total_distance);
     // Vehicles RIDDEN (unique vehicles across counted rides) — not the
     // crowdsourced "vehicles discovered" figure.
     $('statVehiclesRidden').textContent = fmtInt(rs.unique_vehicles);
     $('statCitiesCount').textContent = fmtInt(data.cities.length);
     $('statContributions').textContent = fmtInt(data.contributions);
-
-    const first = $('heroFirstRide');
-    if (rs.first_ride_date) {
-      $('heroFirstRideText').textContent = `${data.firstVehicleModel ? `First ${data.firstVehicleModel} ride` : 'First ride'} · ${fmtDate(rs.first_ride_date)}`;
-      first.classList.remove('hidden'); first.classList.add('flex');
-    } else {
-      first.classList.add('hidden'); first.classList.remove('flex');
-    }
 
     const notes = [];
     if (cov.rides > 0 && cov.withDistance < cov.rides) notes.push(`Distance recorded for ${cov.withDistance} of ${plural(cov.rides, 'ride')}.`);
@@ -196,61 +187,6 @@
         <div class="text-xs text-slate-500 mt-1">${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
       </div>`;
     }).join('');
-  }
-
-  function renderVehicles(data) {
-    const vs = data.vehicleStats;
-    if (!vs.length) { show('vehiclesEmpty', true); $('vehiclesList').innerHTML = ''; $('vehiclesModels').textContent = ''; return; }
-    show('vehiclesEmpty', false);
-    const shown = vs.slice(0, 8);
-    $('vehiclesList').innerHTML = shown.map(v => {
-      const dist = v.rides_with_distance > 0 ? ' · ' + fmtMiles(v.total_distance) : '';
-      return `<div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-        <div class="flex items-center justify-between">
-          <span class="font-display font-bold">${esc(v.license_plate)}</span>
-          <span class="font-display font-bold text-slate-300">${esc(plural(v.ride_count, 'ride'))}</span>
-        </div>
-        <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${esc(dist)}</div>
-        ${publicVehicleLink(v.public_eligible, v.vehicle_id)}
-      </div>`;
-    }).join('') + (vs.length > shown.length ? `<div class="text-xs text-slate-500">+ ${vs.length - shown.length} more</div>` : '');
-
-    const bits = [];
-    if (data.modelBreakdown.length) bits.push(data.modelBreakdown.map(m => `${m.model}: ${plural(m.ride_count, 'ride')} in ${plural(m.vehicle_count, 'vehicle')}`).join(' · '));
-    if (data.unknownModelVehicles > 0) bits.push(`Model isn't confirmed for ${plural(data.unknownModelVehicles, 'vehicle')} — receipts don't state it.`);
-    $('vehiclesModels').textContent = bits.join(' ');
-  }
-
-  // A link to the public /vehicle/<id> page, shown only when the API says
-  // this vehicle is currently public-eligible (worker/ride-status.js
-  // publicVehicleEligibleSql — the SAME rule the registry/vehicle pages
-  // enforce server-side; this is a navigation convenience only, never the
-  // authority — the public page re-checks eligibility itself regardless of
-  // what this link is or isn't shown). Never rendered for a private or
-  // ineligible vehicle, and never implies ownership or that Tesla has
-  // verified anything about the car.
-  function publicVehicleLink(eligible, id) {
-    if (!eligible || !id) return '';
-    return `<div class="mt-1.5"><a href="/vehicle/${esc(encodeURIComponent(id))}" class="text-xs text-cyan hover:underline">View on Cars →</a></div>`;
-  }
-
-  // Vehicles this rider's OWN counted ride was the earliest on record for
-  // (see the "Crowdsourced concept" comment on this query in
-  // worker/db-rides.js) — a data-provenance credit, not a claim of
-  // ownership or that the rider physically verified the car in person.
-  function renderDiscovered(data) {
-    const list = data.discoveredVehicles;
-    if (!list.length) { show('discoveredEmpty', true); $('discoveredList').innerHTML = ''; return; }
-    show('discoveredEmpty', false);
-    $('discoveredList').innerHTML = list.map(v => `
-      <div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
-        <div class="flex items-center justify-between">
-          <span class="font-display font-bold">${esc(v.license_plate || 'Plate unknown')}</span>
-          <span class="text-xs text-slate-500">${esc(fmtDate(v.discovered_ride_date))}</span>
-        </div>
-        <div class="text-xs text-slate-500 mt-1">${esc(v.model || 'Model not confirmed')}${v.service_area ? ' · ' + esc(v.service_area) : ''}</div>
-        ${publicVehicleLink(v.public_eligible, v.id)}
-      </div>`).join('');
   }
 
   const SOURCE_LABELS = { receipt_email: 'Email receipt', receipt_import: 'Imported receipt' };
@@ -472,8 +408,6 @@
     renderSpending(data);
     renderMonthly(data);
     renderCities(data);
-    renderVehicles(data);
-    renderDiscovered(data);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
     teslaLinked = !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected);

@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { makeEnv, makeCheck, seedRide, seedVehicle, approveVehicle } from './helpers/env.mjs';
+import { makeEnv, makeCheck, seedRide, approveVehicle } from './helpers/env.mjs';
 import { receiptBody, eml, inboundMessage, sentAt } from './helpers/receipts.mjs';
 import { handleIncomingEmail } from '../worker/receipt-ingestion.js';
 import worker from '../worker/index.js';
@@ -61,6 +61,9 @@ async function openPage(ctx, userId, intercept) {
   return page;
 }
 
+// Counted rides as Rider Data shows them (the Ride History card's Total rides;
+// its empty state means 0). The overview's large "rides on record" count was removed.
+const countedRides = page => (page.visible('rideSummaryEmpty') ? '0' : page.text('rsTotalRides'));
 const removeBtn = (page, i = 0) => page.rows()[i].querySelector('button[data-action="ask-remove"]');
 const tripsOf = (ctx, uid) => ctx.d1.query('SELECT id FROM trips WHERE user_id = ?', uid).map(r => r.id);
 
@@ -88,7 +91,8 @@ async function run() {
     await ctx.email('u1', { body: receiptBody({ date: '9 June 2026' }), date: sentAt(0) });
     const page = await openPage(ctx, 'u1');
     check('no ride row and no under-review ride exist', page.rows().length === 0 && !/under review/i.test(page.text('heroNote')));
-    check('the ride count reads 0', page.text('heroRideCount') === '0');
+    check('the ride count reads 0', countedRides(page) === '0');
+    check('the overview no longer shows "rides on record" or a "First … ride" line', !page.d.getElementById('heroRideCount') && !page.d.getElementById('heroFirstRide') && !/rides on record|First ride ·|First \w+ ride ·/.test(page.d.body.textContent));
   }
 
   console.log('Remove (UI). Each ride offers Remove; a confirmation is required; Cancel sends nothing');
@@ -98,7 +102,7 @@ async function run() {
     await ctx.email('u1', { from: 'rider@example.com', subject: 'r', body: receiptBody({ date: 'June 10, 2026', fare: null, summary: null }), date: sentAt(1) }); // needs_review
     const page = await openPage(ctx, 'u1');
     check('two rides listed, each with a Remove button', page.rows().length === 2 && page.rows().every(r => r.querySelector('button[data-action="ask-remove"]')));
-    check('one is counted and one is under review', page.text('heroRideCount') === '1' && page.rows().filter(r => /Under review/.test(r.textContent)).length === 1);
+    check('one is counted and one is under review', countedRides(page) === '1' && page.rows().filter(r => /Under review/.test(r.textContent)).length === 1);
 
     page.click(removeBtn(page, 0));
     check('clicking Remove asks for confirmation instead of deleting', /Remove this ride\?/.test(page.rows()[0].textContent) && tripsOf(ctx, 'u1').length === 2);
@@ -124,7 +128,7 @@ async function run() {
     const del = page.requests.filter(r => r.method === 'DELETE');
     check('exactly one DELETE, to that ride\'s id, with the rider\'s bearer session', del.length === 1 && del[0].path === `/api/trips/${reviewId}` && del[0].auth === 'Bearer session-u1');
     check('the ride is gone from the database', !tripsOf(ctx, 'u1').includes(reviewId) && tripsOf(ctx, 'u1').length === 1);
-    check('the counted ride is untouched and still counted', page.text('heroRideCount') === '1' && !/Under review/.test(page.rows()[0].textContent));
+    check('the counted ride is untouched and still counted', countedRides(page) === '1' && !/Under review/.test(page.rows()[0].textContent));
     check('the under-review figures and note refreshed', !page.rows().some(r => /Under review/.test(r.textContent)) && !/under review/i.test(page.text('heroNote')));
     check('no error is shown', !page.visible('ridesActionError'));
 
@@ -132,7 +136,7 @@ async function run() {
     page.click(removeBtn(page, 0));
     page.click(page.rows()[0].querySelector('button[data-action="confirm-remove"]'));
     await page.waitFor(() => page.visible('ridesEmpty'), 'empty state');
-    check('removing the last ride shows the empty state and zero stats', page.visible('ridesEmpty') && !page.visible('ridesTableWrap') && page.text('heroRideCount') === '0' && tripsOf(ctx, 'u1').length === 0);
+    check('removing the last ride shows the empty state and zero stats', page.visible('ridesEmpty') && !page.visible('ridesTableWrap') && countedRides(page) === '0' && tripsOf(ctx, 'u1').length === 0);
     // A receipt for a deleted ride can be received again.
     await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
     check('the same receipt can come back in after the ride was removed', tripsOf(ctx, 'u1').length === 1);
@@ -147,7 +151,7 @@ async function run() {
     page.click(removeBtn(page)); page.click(page.rows()[0].querySelector('button[data-action="confirm-remove"]'));
     await page.waitFor(() => page.visible('ridesActionError'), 'error message');
     check('a server error is shown', /nothing was changed/i.test(page.text('ridesActionError')));
-    check('the ride is still listed, still counted, and the prompt is closed', page.rows().length === 1 && page.text('heroRideCount') === '1' && !!removeBtn(page));
+    check('the ride is still listed, still counted, and the prompt is closed', page.rows().length === 1 && countedRides(page) === '1' && !!removeBtn(page));
     check('the ride still exists in the database', tripsOf(ctx, 'u1').length === 1);
 
     page = await openPage(ctx, 'u1', (path, init) => { if (init.method === 'DELETE') throw new TypeError('network down'); return null; });
@@ -285,7 +289,7 @@ async function run() {
     check('the receipt-address card and every older receipt-setup control are absent', gone.every(id => page.d.getElementById(id) === null));
     check('its copy is gone: no "Your receipt address", no forwarding steps, no private address', !/Your receipt address|Forward a receipt|forward new receipts automatically|Get your rides in|Import old receipts|Receipt sync/.test(page.d.body.textContent) && !page.d.body.textContent.includes(addr) && !/u_[0-9a-f]{32}@/.test(HTML));
     check('the page no longer requests the address (so visiting it never creates one) or the forwarding status', !page.requests.some(r => r.path.startsWith('/api/receipt-ingestion/address') || r.path.startsWith('/api/rides/sync-status')));
-    check('a receipt forwarded by email still becomes a counted ride on the page', page.rows().length === 1 && page.text('heroRideCount') === '1');
+    check('a receipt forwarded by email still becomes a counted ride on the page', page.rows().length === 1 && countedRides(page) === '1');
     check('the empty-state and ride-list copy do not point at controls that do not exist', !/Forward or import a receipt above/i.test(HTML));
   }
 
@@ -374,89 +378,19 @@ async function run() {
     check('the coverage note discloses that the duration was calculated, not receipt-stated', /1 duration calculated from pickup and dropoff times/.test(page.text('rsCoverage')));
   }
 
-  console.log('Vehicles You Discovered (UI). Shown separately from Vehicles Ridden, empty state, no private/other-rider leakage');
-  {
-    const ctx = await makeApp({ users: ['u1', 'u2'] });
-    // u1 rides a plain vehicle (v1) but is NOT its first rider. u1 IS the
-    // first rider of v2, so v2 alone should appear as "discovered."
-    await ctx.email('u2', { body: receiptBody(), date: sentAt(0) });                                        // u2 rides v1 first (XJR2195)
-    await ctx.email('u1', { body: receiptBody({ date: 'June 10, 2026' }), date: sentAt(60) });               // u1 rides v1 too, but second
-    await ctx.email('u1', { body: receiptBody({ summary: '3.4 mi · 20 min · ZKR8842', date: 'June 11, 2026' }), date: sentAt(0) }); // u1 discovers v2
-    const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('vehiclesList') || page.visible('discoveredList'), 'vehicle sections to render');
-
-    check('Vehicles Ridden lists both vehicles u1 actually rode', page.text('vehiclesList').includes('XJR2195') && page.text('vehiclesList').includes('ZKR8842'));
-    check('Vehicles You Discovered lists only the one u1 was first to ride', page.text('discoveredList').includes('ZKR8842') && !page.text('discoveredList').includes('XJR2195'));
-    check('the discovered section is a visually distinct block from Vehicles Ridden (separate ids)', page.d.getElementById('discoveredList') !== page.d.getElementById('vehiclesList'));
-    check('no other rider (u2) identity or id appears anywhere in the discovered section', !/u2\b/i.test(page.d.getElementById('discoveredList').innerHTML));
-    check('no pickup/dropoff address text leaks into the discovered section', !/Hanover|NorthPark/i.test(page.d.getElementById('discoveredList').innerHTML));
-  }
+  console.log('Vehicle sections (UI). Vehicles You Discovered and Vehicles Ridden are removed from Rider Data');
   {
     const ctx = await makeApp();
-    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
-    const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('discoveredList'), 'discovered list to render');
-    check('a rider who discovered a vehicle sees the section, not the empty state', page.visible('discoveredList') && !page.visible('discoveredEmpty'));
-    check('the correct vehicle (plate, model fallback) renders', /XJR2195/.test(page.text('discoveredList')) && /Model not confirmed/.test(page.text('discoveredList')));
-    // The receipt's own ride date (June 9, 2026) — NOT today, the real wall-clock moment this test
-    // actually ran and the registry row was created. This is the exact bug reported: an old receipt
-    // imported "now" must still show the RIDE's date here, not the import/ingestion moment.
-    const todayFormatted = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    check('the discovered date shown is the receipt\'s OWN ride date (Jun 9, 2026)', /Jun 9, 2026/.test(page.text('discoveredList')));
-    check('...not today\'s date (the ingestion/row-creation timestamp)', !page.text('discoveredList').includes(todayFormatted) || todayFormatted === 'Jun 9, 2026');
-  }
-  {
-    const ctx = await makeApp({ users: ['u1', 'u2'] });
-    // u2 is first to ride the only vehicle; u1 rides nothing at all.
-    await ctx.email('u2', { body: receiptBody(), date: sentAt(0) });
-    const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('discoveredEmpty'), 'the discovered empty state to render');
-    check('a rider with no discovered vehicles sees the concise empty state, not an error', page.visible('discoveredEmpty') && page.d.getElementById('discoveredList').innerHTML === '' && /No vehicles discovered yet/i.test(page.text('discoveredEmpty')));
-    check('the empty state is not styled or worded as an error', !/error|failed|wrong/i.test(page.text('discoveredEmpty')));
-  }
-
-  console.log('View on Cars link (UI). Shown only for a currently public, eligible vehicle — Candidate B');
-  {
-    // A freshly-ingested vehicle is PRIVATE by default (worker/db.js
-    // findOrCreateRobotaxiVehicleByPlate) — the common case, and it must
-    // produce no public link in either section even though it has a
-    // counted ride and appears in both lists.
-    const ctx = await makeApp();
-    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) }); // XJR2195, private
-    let page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('vehiclesList') && page.visible('discoveredList'), 'vehicle sections to render');
-    check('a private vehicle: no "View on Cars" link in Vehicles Ridden, even though it is listed', page.text('vehiclesList').includes('XJR2195') && !/View on Cars/.test(page.d.getElementById('vehiclesList').innerHTML));
-    check('a private vehicle: no "View on Cars" link in Vehicles Discovered either', page.text('discoveredList').includes('XJR2195') && !/View on Cars/.test(page.d.getElementById('discoveredList').innerHTML));
-
-    // The exact same vehicle, made public by a moderator (the ONLY way this
-    // ever happens in production — see worker/moderation.js) — the counted
-    // ride from ingestion above already satisfies the ride half of
-    // publicVehicleEligibleSql, so this alone should now make it eligible.
+    await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });   // XJR2195
     const vehicleId = ctx.d1.query("SELECT id FROM robotaxi_vehicles WHERE license_plate = 'XJR2195'")[0].id;
-    approveVehicle(ctx.d1, vehicleId);
-    page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('vehiclesList') && page.visible('discoveredList'), 'vehicle sections to render');
-
-    const riddenLink = page.d.querySelector(`#vehiclesList a[href="/vehicle/${vehicleId}"]`);
-    check('now public+eligible: Vehicles Ridden shows "View on Cars →" linking to the correct /vehicle/<id>', !!riddenLink && /View on Cars/.test(riddenLink.textContent));
-    const discoveredLink = page.d.querySelector(`#discoveredList a[href="/vehicle/${vehicleId}"]`);
-    check('now public+eligible: Vehicles Discovered shows the same link', !!discoveredLink && /View on Cars/.test(discoveredLink.textContent));
-    check('the link makes no ownership/verification claim — plain navigation text only', riddenLink.textContent.trim() === 'View on Cars →' && !/verified|owner|confirmed by tesla/i.test(riddenLink.textContent));
-  }
-  {
-    // A vehicle that is visibility='public' but has NO counted ride at all
-    // (only a needs_review one) must not appear in either list in the first
-    // place — there is structurally no row to attach a link to, which is
-    // itself the guarantee that "zero counted rides" can never produce a
-    // public link. Confirmed directly against the API response used to
-    // render these sections (js/rider-data.js reads exactly this).
-    const ctx = await makeApp();
-    const vehicleId = seedVehicle(ctx.d1, { id: 'zero-counted-v1', plate: 'XJR2195' }); // visibility defaults to 'public' — the interesting case
-    seedRide(ctx.d1, { userId: 'u1', vehicleId, status: 'needs_review' }); // never counted — see worker/ride-status.js
+    approveVehicle(ctx.d1, vehicleId);                                  // public + eligible: previously produced a "View on Cars" link
     const page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.visible('vehiclesEmpty') || page.visible('discoveredEmpty'), 'empty vehicle sections to render');
-    check('a public vehicle with zero counted rides appears in neither list (nothing for a link to attach to)', !page.text('vehiclesList').includes('XJR2195') && !page.text('discoveredList').includes('XJR2195'));
-    check('...so of course no "View on Cars" link renders anywhere on the page', !/View on Cars/.test(page.d.body.innerHTML));
+    await page.waitFor(() => page.visible('citiesList'), 'cities to render');
+    check('no "Vehicles You Discovered" section, list or empty state', !page.d.getElementById('discoveredList') && !page.d.getElementById('discoveredEmpty') && !/Vehicles You Discovered|first one on record|No vehicles discovered yet/.test(page.d.body.textContent));
+    check('no "Vehicles Ridden" card, list, empty state or model line', !page.d.getElementById('vehiclesList') && !page.d.getElementById('vehiclesEmpty') && !page.d.getElementById('vehiclesModels') && !/Identified by the license plate on your receipts/.test(page.d.body.textContent));
+    check('no "View on Cars" link anywhere on the page', !/View on Cars/.test(page.d.body.innerHTML));
+    check('the Vehicles Ridden count in the ride summary is kept', page.text('rsUniqueVehicles') === '1');
+    check('the Cities card still renders', page.text('citiesList').length > 0);
   }
 
   t.finish();
