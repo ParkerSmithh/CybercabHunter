@@ -357,16 +357,18 @@
       btn.disabled = true; btn.textContent = 'Unlinking…';
       fetch(WORKER + '/api/tesla/disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + sessionId } })
         .then(() => location.reload())
-        .catch(() => { btn.disabled = false; btn.textContent = 'Unlink Tesla Account'; });
+        .catch(() => { btn.disabled = false; btn.textContent = 'Unlink Tesla'; });
     });
   }
 
-  // ---------- automatic Gmail import ----------
-  // The rider's own optional Gmail connection (worker/gmail.js). Every call
-  // carries only the bearer session; tokens never reach the browser. The card
-  // stays hidden unless the server says Gmail import is configured.
+  // ---------- connected accounts: Tesla + Gmail buttons ----------
+  // The Gmail button sits next to Unlink Tesla and is shown only when the
+  // server reports Gmail import as configured. Connected → "Unlink Gmail"
+  // (POST /api/gmail/disconnect); otherwise → "Connect Gmail" (the existing
+  // POST /api/gmail/connect → Google's consent page). Every call carries only
+  // the bearer session; tokens never reach the browser.
   const GMAIL_NOTICES = {
-    connected: ['Gmail connected. Receipts from the last 90 days are being imported automatically in the background, a few at a time — this can take a while.', 'ok'],
+    connected: ['Gmail connected. Your Robotaxi receipts are being imported in the background — this can take a while.', 'ok'],
     cancelled: ['Gmail wasn\'t connected — the Google screen was cancelled.', 'info'],
     missing_permission: ['Gmail access wasn\'t granted, so nothing was connected.', 'info'],
     wrong_account: ['That Gmail isn\'t the Google account you signed in with. Connect that same account.', 'warn'],
@@ -374,73 +376,55 @@
     expired_state: ['That connection attempt expired. Please try again.', 'warn'],
     google_signin_required: ['Gmail import needs an account that signs in with Google.', 'warn'],
     unavailable: ['Gmail import isn\'t available yet.', 'info'],
+    unlinked: ['Gmail unlinked. Rides already added stay until you remove them.', 'info'],
+    unlink_failed: ['Couldn\'t unlink Gmail. Please try again.', 'warn'],
     error: ['Couldn\'t connect Gmail. Please try again.', 'warn']
   };
   const NOTICE_STYLE = {
     ok: 'border-emerald-400/40 text-emerald-200', info: 'border-slate-500/40 text-slate-300', warn: 'border-amber-400/40 text-amber-200'
   };
-  let gmailPollsLeft = 0;
-  let gmailDisconnectArmed = false;
+  let teslaLinked = false;
+  let gmailShown = false;
+  let gmailConnected = false;
 
   function gmailNotice(key) {
     const [text, kind] = GMAIL_NOTICES[key] || GMAIL_NOTICES.error;
     const el = $('gmailNotice');
     el.textContent = text;
-    el.className = 'text-sm rounded-lg border px-4 py-3 mb-4 ' + NOTICE_STYLE[kind];
+    el.className = 'w-full text-sm rounded-lg border px-4 py-3 ' + NOTICE_STYLE[kind];
   }
 
-  function renderGmail(st) {
-    const dot = $('gmailDot');
-    const views = {
-      not_connected: ['Not connected', 'bg-slate-600'],
-      syncing: [st.initial_import_complete ? 'Gmail connected — checking now…' : 'Gmail connected — importing existing receipts… Older receipts continue importing automatically.', 'bg-cyan animate-pulse'],
-      connected: ['✓ Gmail connected', 'bg-emerald-400'],
-      error: ['Gmail connected — the last check didn\'t finish. It will retry automatically.', 'bg-amber-400'],
-      reconnect_required: ['Gmail connection needs attention — Google no longer accepts it. Reconnect to resume importing.', 'bg-crimson']
-    };
-    const [label, dotClass] = views[st.state] || views.not_connected;
-    $('gmailStatusText').textContent = label;
-    dot.className = 'w-2 h-2 rounded-full shrink-0 ' + dotClass;
-    const meta = [];
-    if (st.email && st.state !== 'not_connected') meta.push(st.email);
-    if (st.last_checked_at) meta.push('Last checked ' + fmtDateTime(st.last_checked_at));
-    if (st.last_receipt_at) meta.push('Last receipt found ' + fmtDateTime(st.last_receipt_at));
-    $('gmailMeta').textContent = meta.join(' · ');
-
-    const connect = $('gmailConnectBtn');
-    connect.textContent = st.state === 'reconnect_required' ? 'Reconnect Gmail' : 'Connect Gmail';
-    show('gmailConnectBtn', st.state === 'not_connected' || st.state === 'reconnect_required');
-    show('gmailDisconnectBtn', st.state !== 'not_connected');
-    gmailDisconnectArmed = false;
-    $('gmailDisconnectBtn').textContent = 'Disconnect Gmail';
-  }
-
-  // The Tesla and Gmail rows share one "connected accounts" panel: it shows
-  // when either row does, with a divider only when both are visible.
   function updateAccountsPanel() {
-    const tesla = !$('dataUnlinkTeslaPrompt').classList.contains('hidden');
-    const gmail = !$('gmailCard').classList.contains('hidden');
-    show('accountsPanel', tesla || gmail);
-    for (const c of ['mt-5', 'pt-5', 'border-t', 'border-[rgba(212,175,55,0.12)]']) $('gmailCard').classList.toggle(c, tesla && gmail);
+    show('dataUnlinkTeslaPrompt', teslaLinked);
+    show('teslaUnlinkBtn', teslaLinked);
+    show('gmailToggleBtn', gmailShown);
+    const noticeShown = !$('gmailNotice').classList.contains('hidden');
+    show('accountsPanel', teslaLinked || gmailShown || noticeShown);
   }
 
   async function loadGmail() {
     let resp;
-    try { resp = await api('/api/gmail/status'); } catch (e) { return; }
-    if (!resp.ok || !resp.json || !resp.json.configured) { show('gmailCard', false); updateAccountsPanel(); return; }
-    show('gmailCard', true);
+    try { resp = await api('/api/gmail/status'); } catch (e) { resp = null; }
+    gmailShown = !!(resp && resp.ok && resp.json && resp.json.configured);
+    // Anything but "not connected" / "reconnect required" is a live connection to unlink.
+    gmailConnected = gmailShown && !['not_connected', 'reconnect_required'].includes(resp.json.state);
+    $('gmailToggleBtn').textContent = gmailConnected ? 'Unlink Gmail' : 'Connect Gmail';
     updateAccountsPanel();
-    renderGmail(resp.json);
-    if (resp.json.state === 'syncing' && gmailPollsLeft > 0) {
-      gmailPollsLeft -= 1;
-      setTimeout(loadGmail, 15000);
-    }
   }
 
   function setupGmail() {
-    $('gmailConnectBtn').addEventListener('click', async () => {
-      const btn = $('gmailConnectBtn');
+    $('gmailToggleBtn').addEventListener('click', async () => {
+      const btn = $('gmailToggleBtn');
       btn.disabled = true;
+      if (gmailConnected) {
+        let resp;
+        try { resp = await api('/api/gmail/disconnect', { method: 'POST' }); } catch (e) { resp = null; }
+        show('gmailNotice', true);
+        gmailNotice(resp && resp.ok ? 'unlinked' : 'unlink_failed');
+        await loadGmail();
+        btn.disabled = false;
+        return;
+      }
       let resp;
       try { resp = await api('/api/gmail/connect', { method: 'POST' }); } catch (e) { resp = null; }
       const url = resp && resp.ok && resp.json && resp.json.authorize_url;
@@ -449,15 +433,7 @@
       btn.disabled = false;
       show('gmailNotice', true);
       gmailNotice(resp && resp.json && resp.json.error === 'google_signin_required' ? 'google_signin_required' : 'error');
-    });
-    $('gmailDisconnectBtn').addEventListener('click', async () => {
-      const btn = $('gmailDisconnectBtn');
-      if (!gmailDisconnectArmed) { gmailDisconnectArmed = true; btn.textContent = 'Confirm disconnect'; return; }
-      btn.disabled = true;
-      try { await api('/api/gmail/disconnect', { method: 'POST' }); } catch (e) { /* status reload shows the truth */ }
-      btn.disabled = false;
-      show('gmailNotice', false);
-      await loadGmail();
+      updateAccountsPanel();
     });
     // One-time result of the Google round trip (?gmail=…), then scrubbed.
     const params = new URLSearchParams(location.search);
@@ -465,7 +441,6 @@
     if (result) {
       gmailNotice(result);
       show('gmailNotice', true);
-      if (result === 'connected') gmailPollsLeft = 8;
       params.delete('gmail');
       const query = params.toString();
       history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
@@ -501,7 +476,7 @@
     renderDiscovered(data);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
-    show('dataUnlinkTeslaPrompt', !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected));
+    teslaLinked = !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected);
     updateAccountsPanel();
     setView('data');
     // The address only on a full load (or Retry) — not on the quiet refresh

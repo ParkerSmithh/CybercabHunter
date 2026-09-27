@@ -118,41 +118,26 @@
     <!-- Signed-in data -->
     <div id="dataSignedIn" class="hidden">
 
-      <!-- Connected accounts. One panel, shown when either row is:
-           - Tesla (only when a Tesla account is linked). Linking happens from
-             the header button on every other page; unlinking clears the
-             connection without touching the account or session. The Fleet API
-             connection exposes vehicle information only — rides come from
-             receipts, not from it.
-           - Automatic Gmail import (GET /api/gmail/status; only when the server
-             reports Gmail import as configured).
-           updateAccountsPanel() in js/rider-data.js shows the panel and the
-           divider between rows. -->
-      <div id="accountsPanel" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6">
-        <div id="dataUnlinkTeslaPrompt" class="hidden flex items-center justify-between gap-4 flex-wrap">
-          <div class="max-w-2xl">
-            <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
-            <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
-          </div>
-          <button id="teslaUnlinkBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla Account</button>
+      <!-- Connected accounts: the Tesla account (text + Unlink Tesla, only when
+           linked) and a Gmail button beside it (only when the server reports
+           Gmail import as configured): "Unlink Gmail" when connected, "Connect
+           Gmail" otherwise — the existing /api/gmail/connect and
+           /api/gmail/disconnect. Linking Tesla happens from the header button
+           on every other page; unlinking clears the connection without
+           touching the account or session. The Fleet API connection exposes
+           vehicle information only — rides come from receipts, not from it.
+           updateAccountsPanel() in js/rider-data.js shows the panel when either
+           part applies. -->
+      <div id="accountsPanel" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
+        <div id="dataUnlinkTeslaPrompt" class="hidden max-w-2xl">
+          <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
+          <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
         </div>
-
-        <div id="gmailCard" class="hidden">
-          <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-            <div class="max-w-2xl min-w-0">
-              <div class="font-display font-bold text-base mb-1">AUTOMATIC GMAIL IMPORT</div>
-              <p class="text-slate-400 text-sm">Connect the Gmail account you signed in with, and Cybercab Hunter checks it about every 10 minutes for Tesla Robotaxi receipt emails (subject "Robotaxi Ride Receipt") and adds those rides here. When you first connect, matching receipts from the last 90 days are imported too. Cybercab Hunter only searches for and reads those receipt emails. <a href="privacy.html" class="text-cyan hover:underline">How Gmail data is handled</a></p>
-              <div class="flex items-center gap-2 mt-3"><span id="gmailDot" class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span><span id="gmailStatusText" class="text-sm font-semibold [overflow-wrap:anywhere]">Checking…</span></div>
-              <p id="gmailMeta" class="text-xs text-slate-500 mt-1 [overflow-wrap:anywhere]"></p>
-            </div>
-            <div class="flex items-center gap-2 flex-wrap shrink-0">
-              <button id="gmailConnectBtn" type="button" class="hidden btn-magnetic px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Connect Gmail</button>
-              <button id="gmailDisconnectBtn" type="button" class="hidden px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Disconnect Gmail</button>
-            </div>
-          </div>
-          <p id="gmailNotice" class="hidden text-sm rounded-lg border px-4 py-3 mt-4" role="status"></p>
-          <p class="text-xs text-slate-500 mt-3">Disconnecting stops the import; rides already added stay until you remove them.</p>
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <button id="gmailToggleBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Connect Gmail</button>
+          <button id="teslaUnlinkBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla</button>
         </div>
+        <p id="gmailNotice" class="hidden w-full text-sm rounded-lg border px-4 py-3" role="status"></p>
       </div>
 
       <!-- Overview hero — identity is kept minimal and read-only here for
@@ -415,6 +400,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=9"></script>
+<script src="js/rider-data.js?v=10"></script>
 </body>
 </html>

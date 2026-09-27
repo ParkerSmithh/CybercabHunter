@@ -561,46 +561,50 @@ async function run() {
     return p;
   }
   {
+    const btnText = p => p.text('gmailToggleBtn');
     const off = await makeApp({ configured: false });
     const p0 = await openPage(off, 'alice');
-    check('not configured: the Gmail card stays hidden (and there is no forwarding card on the page)', !p0.vis('gmailCard') && !p0.d.getElementById('fwdCard'));
+    check('not configured: no Gmail button (and no forwarding card)', !p0.vis('gmailToggleBtn') && !p0.d.getElementById('fwdCard'));
 
     const c6 = await makeApp();
     const p1 = await openPage(c6, 'alice');
-    check('configured, not connected: card visible with Connect Gmail, no Disconnect', p1.vis('gmailCard') && p1.vis('gmailConnectBtn') && !p1.vis('gmailDisconnectBtn') && /Not connected/.test(p1.text('gmailStatusText')));
-    check('it explains the 90-day import, the subject search, the privacy page and what disconnecting does', /90 days/.test(p1.text('gmailCard')) && /Robotaxi Ride Receipt/.test(p1.text('gmailCard')) && !!p1.d.querySelector('#gmailCard a[href="privacy.html"]') && /rides already added stay until you remove them/.test(p1.text('gmailCard')) && !/private address below/.test(p1.text('gmailCard')));
-    p1.d.getElementById('gmailConnectBtn').click();
+    check('configured, not connected: a "Connect Gmail" button', p1.vis('gmailToggleBtn') && btnText(p1) === 'Connect Gmail');
+    check('the old Gmail import block is gone: no explanation, status line, meta or disconnect note', !/AUTOMATIC GMAIL IMPORT|every 10 minutes|Not connected|Disconnecting stops the import/.test(p1.d.body.textContent) && ['gmailCard', 'gmailStatusText', 'gmailMeta', 'gmailDot', 'gmailConnectBtn', 'gmailDisconnectBtn'].every(id => !p1.d.getElementById(id)));
+    p1.d.getElementById('gmailToggleBtn').click();
     await p1.waitFor(() => p1.requests.some(r => r.path === '/api/gmail/connect'));
     const cr = p1.requests.find(r => r.path === '/api/gmail/connect');
-    check('Connect Gmail POSTs with the session only (no user id)', cr.method === 'POST' && cr.auth === 'Bearer session-alice' && !/user/.test(cr.path));
+    check('Connect Gmail POSTs to the existing /api/gmail/connect with the session only', cr.method === 'POST' && cr.auth === 'Bearer session-alice' && !/user/.test(cr.path));
 
     c6.g.addMessage({ body: receiptBody({ date: 'September 20, 2026' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
     await connect(c6, 'alice');
     const pMid = await openPage(c6, 'alice', '?gmail=connected');
-    check('right after connecting (import not finished): "importing existing receipts… continue importing automatically", not "✓ connected"', /importing existing receipts/.test(pMid.text('gmailStatusText')) && /continue importing automatically/.test(pMid.text('gmailStatusText')) && !/✓/.test(pMid.text('gmailStatusText')));
-    check('…and the connect notice says it happens in the background over time', /in the background/.test(pMid.text('gmailNotice')) && /can take a while/.test(pMid.text('gmailNotice')));
+    check('right after connecting (import still running): the button reads "Unlink Gmail"', btnText(pMid) === 'Unlink Gmail');
+    check('the ?gmail=connected result is shown once, then removed from the URL', /Gmail connected/.test(pMid.text('gmailNotice')) && pMid.vis('gmailNotice') && /in the background/.test(pMid.text('gmailNotice')) && !pMid.w.location.search.includes('gmail='));
     await drain(c6, 'alice');
-    const p2 = await openPage(c6, 'alice', '?gmail=connected');
-    check('after connecting: ✓ Gmail connected, the address, last checked, last receipt, and Disconnect', /✓ Gmail connected/.test(p2.text('gmailStatusText')) && /alice@gmail\.com/.test(p2.text('gmailMeta')) && /Last checked/.test(p2.text('gmailMeta')) && /Last receipt found/.test(p2.text('gmailMeta')) && p2.vis('gmailDisconnectBtn') && !p2.vis('gmailConnectBtn'));
-    check('the ?gmail=connected result is shown once, then removed from the URL', /Gmail connected/.test(p2.text('gmailNotice')) && p2.vis('gmailNotice') && !p2.w.location.search.includes('gmail='));
-    check('the forwarding-address card is not on the page', !p2.d.getElementById('fwdCard') && !/Your receipt address/.test(p2.d.body.textContent));
+    const p2 = await openPage(c6, 'alice');
+    check('connected: "Unlink Gmail"; no result message on a normal visit', btnText(p2) === 'Unlink Gmail' && !p2.vis('gmailNotice'));
     check('nothing token-like is in the page', !/\b(at|rt)-[a-z0-9]{6,}/.test(p2.d.body.innerHTML));
 
     const p3 = await openPage(c6, 'alice', '?gmail=wrong_account');
     check('wrong_account result explains it', /isn't the Google account you signed in with/.test(p3.text('gmailNotice')));
 
-    p2.d.getElementById('gmailDisconnectBtn').click();
-    check('Disconnect asks for confirmation first', /Confirm disconnect/.test(p2.text('gmailDisconnectBtn')) && conn(c6, 'alice').status === 'active');
-    p2.d.getElementById('gmailDisconnectBtn').click();
-    await p2.waitFor(() => /Not connected/.test(p2.text('gmailStatusText')));
-    check('confirming disconnects and the card returns to Connect Gmail', conn(c6, 'alice').status === 'revoked' && p2.vis('gmailConnectBtn'));
+    p2.d.getElementById('gmailToggleBtn').click();
+    await p2.waitFor(() => btnText(p2) === 'Connect Gmail');
+    check('Unlink Gmail disconnects (existing /api/gmail/disconnect) and the button becomes "Connect Gmail"', conn(c6, 'alice').status === 'revoked' && btnText(p2) === 'Connect Gmail' && p2.requests.some(r => r.path === '/api/gmail/disconnect' && r.method === 'POST'));
+    check('…with a short confirmation that rides stay', /Gmail unlinked/.test(p2.text('gmailNotice')) && /Rides already added stay/.test(p2.text('gmailNotice')));
 
     for (const k of Object.keys(c6.g.refresh)) c6.g.refresh[k].revoked = true;
     await connect(c6, 'alice');
     for (const k of Object.keys(c6.g.refresh)) c6.g.refresh[k].revoked = true;
     await syncUser(c6.env, 'alice');
     const p4 = await openPage(c6, 'alice');
-    check('reconnect required: "needs attention" with a Reconnect Gmail button', /needs attention/.test(p4.text('gmailStatusText')) && p4.vis('gmailConnectBtn') && /Reconnect Gmail/.test(p4.text('gmailConnectBtn')));
+    check('Google no longer accepts the connection: the button offers "Connect Gmail" again', btnText(p4) === 'Connect Gmail');
+    const failing = await makeApp();
+    const pf = await openPage(failing, 'alice');
+    failing.env.GMAIL_CLIENT_ID = '';   // connect now answers 503 gmail_not_configured
+    pf.d.getElementById('gmailToggleBtn').click();
+    await pf.waitFor(() => pf.vis('gmailNotice'));
+    check('a failed connect shows a message and the button stays usable', /Couldn't connect Gmail/.test(pf.text('gmailNotice')) && !pf.d.getElementById('gmailToggleBtn').disabled);
   }
 
   console.log('16. Gmail API disabled in the project (403 accessNotConfigured) is a config error, not a reconnect');
@@ -655,13 +659,13 @@ async function run() {
     set(`last_error = 'gmail_rate_limited'`);
     check('   completed import with a later temporary error → error (unchanged)', (await status(c8, 'alice')).state === 'error');
 
-    // The Rider Data card: a failed first import shows the error, not "importing…".
+    // Rider Data only shows the button: a connected account (importing, failed or done) can always be unlinked.
     set(`backfill_completed_at = NULL, last_error = 'gmail_api_unavailable', sync_lock_until = NULL`);
     const pf = await openPage(c8, 'alice');
-    check('the card shows the error instead of "importing existing receipts…"', !/importing existing receipts/.test(pf.text('gmailStatusText')) && /didn't finish/.test(pf.text('gmailStatusText')));
+    check('first import failed: still connected, so the button reads "Unlink Gmail"', pf.text('gmailToggleBtn') === 'Unlink Gmail');
     set(`last_error = NULL`);
     const pr = await openPage(c8, 'alice');
-    check('while the first import genuinely runs, the card says importing', /importing existing receipts/.test(pr.text('gmailStatusText')));
+    check('first import still running: "Unlink Gmail"', pr.text('gmailToggleBtn') === 'Unlink Gmail');
   }
 
   console.log('18. Free plan: the first import is resumable, one message per invocation, for any mailbox size');
@@ -990,26 +994,27 @@ async function run() {
     check('cursors hold only ids, counters and time bounds — no token or message content', !/\b(at|rt)-[a-z0-9]{6,}|Trip Summary|Pick up|Payment|tesla\.com/.test(cur) && cur.length < 4000);
   }
 
-  console.log('18. Connect Gmail lives in the same panel as "Tesla account connected"');
+  console.log('18. Rider Data: the Gmail button sits next to "Unlink Tesla"');
   {
     const linkTesla = c => c.d1.prepare(`INSERT INTO tesla_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status) VALUES ('tc-alice', 'alice', 'x', 'x', '2030-01-01T00:00:00Z', 'active')`)._exec();
-    const divided = p => ['mt-5', 'pt-5', 'border-t'].every(c => p.d.getElementById('gmailCard').classList.contains(c));
     const both = await makeApp();
     linkTesla(both);
     const pb = await openPage(both, 'alice');
-    check('Tesla linked + Gmail configured: one panel holding both rows', pb.vis('accountsPanel') && pb.vis('dataUnlinkTeslaPrompt') && pb.vis('gmailCard'));
-    check('both rows are inside the same panel, Tesla first', pb.d.getElementById('accountsPanel').contains(pb.d.getElementById('dataUnlinkTeslaPrompt')) && pb.d.getElementById('accountsPanel').contains(pb.d.getElementById('gmailConnectBtn')) && pb.d.getElementById('dataUnlinkTeslaPrompt').compareDocumentPosition(pb.d.getElementById('gmailCard')) === 4);
-    check('…with Unlink Tesla Account and Connect Gmail, and a divider between the rows', pb.vis('teslaUnlinkBtn') && pb.vis('gmailConnectBtn') && /TESLA ACCOUNT CONNECTED/.test(pb.text('accountsPanel')) && /AUTOMATIC GMAIL IMPORT/.test(pb.text('accountsPanel')) && divided(pb));
-    check('there is no separate Gmail card anywhere else', pb.d.querySelectorAll('#gmailCard').length === 1 && !/Automatic Gmail import<\/h2>/.test(HTML));
+    check('Tesla linked + Gmail configured: Tesla text, "Unlink Tesla" and "Connect Gmail"', pb.vis('accountsPanel') && pb.vis('dataUnlinkTeslaPrompt') && pb.vis('teslaUnlinkBtn') && pb.vis('gmailToggleBtn') && pb.text('gmailToggleBtn') === 'Connect Gmail');
+    check('the Tesla button is renamed "Unlink Tesla"', pb.text('teslaUnlinkBtn') === 'Unlink Tesla' && !/Unlink Tesla Account/.test(pb.d.body.textContent));
+    check('the Gmail button is next to it (same button group, Gmail first)', pb.d.getElementById('gmailToggleBtn').parentElement === pb.d.getElementById('teslaUnlinkBtn').parentElement && pb.d.getElementById('gmailToggleBtn').nextElementSibling === pb.d.getElementById('teslaUnlinkBtn'));
+    await connect(both, 'alice');
+    const pc = await openPage(both, 'alice');
+    check('once Gmail is connected: "Unlink Gmail" next to "Unlink Tesla"', pc.text('gmailToggleBtn') === 'Unlink Gmail' && pc.text('teslaUnlinkBtn') === 'Unlink Tesla');
 
     const gmailOnly = await makeApp();
     const pg = await openPage(gmailOnly, 'alice');
-    check('no Tesla link: the panel still shows Connect Gmail, without the Tesla row or a divider', pg.vis('accountsPanel') && !pg.vis('dataUnlinkTeslaPrompt') && pg.vis('gmailCard') && pg.vis('gmailConnectBtn') && !divided(pg));
+    check('no Tesla link: the panel shows just the Gmail button (no Tesla text or Unlink Tesla)', pg.vis('accountsPanel') && !pg.vis('dataUnlinkTeslaPrompt') && !pg.vis('teslaUnlinkBtn') && pg.vis('gmailToggleBtn'));
 
     const teslaOnly = await makeApp({ configured: false });
     linkTesla(teslaOnly);
     const pt = await openPage(teslaOnly, 'alice');
-    check('Gmail not configured: the panel shows only the Tesla row (as before)', pt.vis('accountsPanel') && pt.vis('dataUnlinkTeslaPrompt') && !pt.vis('gmailCard') && !divided(pt));
+    check('Gmail not configured: only the Tesla text and "Unlink Tesla"', pt.vis('accountsPanel') && pt.vis('teslaUnlinkBtn') && !pt.vis('gmailToggleBtn'));
 
     const neither = await makeApp({ configured: false });
     const pn = await openPage(neither, 'alice');
@@ -1021,7 +1026,7 @@ async function run() {
     const html = fs.readFileSync(`${ROOT}public/privacy.html`, 'utf8');
     const text = new JSDOM(html).window.document.body.textContent.replace(/\s+/g, ' ');
     check('it is clearly marked as a draft pending legal review', /Draft — pending legal review/.test(text));
-    check('it describes the Gmail permission, why, what is read, what is kept, token protection and revocation', /gmail\.readonly/.test(text) && /Robotaxi Ride Receipt/.test(text) && /Email contents are not stored/.test(text) && /AES-256-GCM/.test(text) && /Disconnect Gmail/.test(text) && /myaccount\.google\.com\/permissions/.test(text));
+    check('it describes the Gmail permission, why, what is read, what is kept, token protection and revocation', /gmail\.readonly/.test(text) && /Robotaxi Ride Receipt/.test(text) && /Email contents are not stored/.test(text) && /AES-256-GCM/.test(text) && /Unlink Gmail/.test(text) && /myaccount\.google\.com\/permissions/.test(text));
     check('open questions are flagged, not asserted', /To be confirmed/.test(text) && /Limited Use/.test(text));
   }
 

@@ -151,9 +151,9 @@ async function run() {
   {
     const ctx = await makeApp();
     const rd = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-alice' } });
-    await rd.waitFor(() => !rd.d.getElementById('gmailCard').classList.contains('hidden'));
-    check('the Rider Data Gmail section is shown with Connect Gmail (no onboarding prompt on a normal visit)', !rd.d.getElementById('gmailConnectBtn').classList.contains('hidden') && !rd.modal());
-    rd.d.getElementById('gmailConnectBtn').dispatchEvent(new rd.w.MouseEvent('click', { bubbles: true }));
+    await rd.waitFor(() => !rd.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
+    check('the Rider Data "Connect Gmail" button is shown (no onboarding prompt on a normal visit)', rd.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail' && !rd.modal());
+    rd.d.getElementById('gmailToggleBtn').dispatchEvent(new rd.w.MouseEvent('click', { bubbles: true }));
     await rd.waitFor(() => rd.requests.some(r => r.path === '/api/gmail/connect'));
     check('its Connect Gmail still calls /api/gmail/connect', rd.requests.some(r => r.path === '/api/gmail/connect' && r.method === 'POST'));
   }
