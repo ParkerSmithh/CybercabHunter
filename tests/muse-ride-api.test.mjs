@@ -346,7 +346,8 @@ const frozen = row => JSON.stringify(FROZEN.map(c => row[c]));
     const src = ['worker/muse-rides.js', 'worker/ride-input.js', 'worker/connector.js'].map(f => fs.readFileSync(`${ROOT}${f}`, 'utf8')).join('\n');
     check('the handler never logs (no console.* in the Muse route or shared validation)', !/console\./.test(fs.readFileSync(`${ROOT}worker/muse-rides.js`, 'utf8')) && !/console\./.test(fs.readFileSync(`${ROOT}worker/ride-input.js`, 'utf8')));
     check('no frontend file mentions the Muse rides route or token', !fs.readdirSync(`${ROOT}public/js`).some(f => /MUSE_RIDES|integrations\/muse/.test(fs.readFileSync(`${ROOT}public/js/${f}`, 'utf8'))));
-    check('no migration was added', !fs.readdirSync(`${ROOT}migrations`).some(f => f.startsWith('0015')));
+    // This feature added no migration; 0015 belongs to the later Gmail import.
+    check('no migration was added', !fs.readdirSync(`${ROOT}migrations`).some(f => f.startsWith('0015') && f !== '0015_gmail_connections.sql'));
     const handler = fs.readFileSync(`${ROOT}worker/muse-rides.js`, 'utf8');
     check("the route hard-codes provenance: reviewedBy null, source 'muse_api'; and no longer requires public eligibility", /reviewedBy: null/.test(handler) && /source: 'muse_api'/.test(handler) && !/requirePublicEligible/.test(handler));
     check('the handler cannot create vehicles (no INSERT and no findOrCreate call)', !/INSERT|findOrCreate/i.test(handler));

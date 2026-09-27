@@ -13,6 +13,7 @@ import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
+import { gmail } from './gmail.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -156,6 +157,30 @@ export default {
     if (url.pathname === '/api/moderation/access' && request.method === 'GET') {
       return withCors(await apiModerationAccess(request, env), request);
     }
+    // Optional direct Gmail receipt import (worker/gmail.js) — a second,
+    // separate Google authorization run by an already signed-in rider.
+    // Connect/status/disconnect resolve the rider from the bearer session;
+    // the callback is Google's redirect (a full navigation, no CORS) and
+    // identifies the rider only by the single-use state from /connect.
+    if (url.pathname === '/api/gmail/connect' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await gmail.apiConnect(request, env, userId), request);
+    }
+    if (url.pathname === '/api/gmail/callback' && request.method === 'GET') {
+      return gmail.handleCallback(request, env, ctx);
+    }
+    if (url.pathname === '/api/gmail/status' && request.method === 'GET') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await gmail.apiStatus(request, env, userId), request);
+    }
+    if (url.pathname === '/api/gmail/disconnect' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await gmail.apiDisconnect(request, env, userId), request);
+    }
+
     // Moderator receipt import: the same pipeline as /api/rides/import, as a chosen rider.
     if (url.pathname === '/api/moderation/receipt-import' && request.method === 'POST') {
       return withCors(await apiModerationImportReceipts(request, env), request);
@@ -360,5 +385,13 @@ export default {
   // and tested against synthetic messages in the meantime).
   async email(message, env, ctx) {
     return handleIncomingEmail(message, env);
+  },
+
+  // Cron trigger (wrangler.jsonc "triggers.crons"): polls connected Gmail
+  // accounts for new receipts. Does nothing until Gmail import is
+  // configured (GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET /
+  // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));
   }
 };

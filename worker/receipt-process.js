@@ -22,7 +22,7 @@ function extractFields(parsedMessage) {
   return extraction;
 }
 
-// source: 'receipt_email' | 'receipt_import'
+// source: 'receipt_email' | 'receipt_import' | 'gmail_api'
 // options: { userId, syncRunId, evidenceType, storeEvidence }
 // Returns the ingestRide result, or { outcome: 'error', code } if
 // extraction itself blew up.

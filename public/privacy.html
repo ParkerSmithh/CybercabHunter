@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/Cybercab2.png">
+<link rel="apple-touch-icon" href="images/Cybercab2.png">
+<title>Cybercab Hunter — Privacy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
+        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
+      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
+    }}
+  }
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+
+<header class="border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <a href="rider-data" class="text-sm text-slate-400 hover:text-gold transition-colors">Rider Data</a>
+  </div>
+</header>
+
+<!-- DRAFT: describes what the code does today. It has NOT been reviewed by a
+     lawyer and makes no legal or compliance claims. Items marked "To be
+     confirmed" need a decision before this is published as the policy. -->
+<main class="py-14">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed">
+
+    <div id="privacyDraftNotice" class="rounded-xl border border-amber-400/40 bg-amber-400/5 px-5 py-4 text-amber-200">
+      <strong>Draft — pending legal review.</strong> This page describes how Cybercab Hunter currently handles data. It is not yet a reviewed privacy policy, and sections marked “To be confirmed” are still open.
+    </div>
+
+    <div>
+      <h1 class="font-display font-bold text-3xl tracking-tight mb-3 text-slate-100">Privacy</h1>
+      <p>Cybercab Hunter is a community tracker for Tesla Robotaxi rides and vehicles. This page explains what information it uses and how.</p>
+    </div>
+
+    <section>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Your account</h2>
+      <p>If you sign in with Google, Cybercab Hunter receives your Google account identifier, email address, name and profile picture, and uses them to create and recognize your account. Normal sign-in does not give Cybercab Hunter any access to your Gmail.</p>
+    </section>
+
+    <section>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Ride receipts</h2>
+      <p class="mb-2">Your rides come from Tesla Robotaxi receipt emails. A receipt can reach Cybercab Hunter by being forwarded to your private receipt address, by being imported, or — only if you choose to connect it — directly from Gmail (below).</p>
+      <p>From each receipt, Cybercab Hunter keeps the ride details it needs for Rider Data: the ride date, pickup and drop-off times, pickup and drop-off locations, distance, duration, fare and the vehicle’s license plate. The email itself is read to extract those details and is not stored. Your name and payment details that appear in a receipt are not kept.</p>
+    </section>
+
+    <section id="gmail">
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Optional Gmail connection</h2>
+      <ul class="list-disc pl-5 space-y-2">
+        <li><strong>What it is.</strong> From Rider Data you can choose to connect the Gmail account you signed in with. This is separate from signing in and asks Google for read-only Gmail access (the “gmail.readonly” permission).</li>
+        <li><strong>Why.</strong> So your Tesla Robotaxi receipts are added to Rider Data automatically, without forwarding them yourself.</li>
+        <li><strong>What is read.</strong> About every 10 minutes, Cybercab Hunter searches your Gmail for emails whose subject contains “Robotaxi Ride Receipt”, and reads only those matching emails. When you first connect, the search covers the last 90 days. Other emails are not downloaded.</li>
+        <li><strong>What is kept.</strong> The ride details listed above for receipts that are valid Tesla Robotaxi receipts; your Gmail address; Gmail’s internal identifiers for the receipt emails already processed (so they are not imported twice — kept for up to 120 days); and Gmail’s internal position marker for your mailbox. Email contents are not stored.</li>
+        <li><strong>How the authorization is protected.</strong> The long-lived authorization Google issues is stored encrypted (AES-256-GCM) with a key used only for Gmail. Short-lived access tokens are used in memory and never stored. Tokens are never shown in the website or written to logs.</li>
+        <li><strong>How to stop it.</strong> Choose “Disconnect Gmail” on Rider Data: Cybercab Hunter asks Google to revoke the authorization, deletes the stored authorization and sync records, and stops reading your Gmail. You can also remove access at any time from your Google Account’s third-party access page (<a class="text-cyan hover:underline" href="https://myaccount.google.com/permissions" rel="noopener noreferrer">myaccount.google.com/permissions</a>). Rides already imported stay in Rider Data until you remove them there.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">What is public</h2>
+      <p class="mb-2">Cybercab Hunter publishes a public registry of Robotaxi vehicles. A vehicle appears there only after a moderator has reviewed and approved it, and the public pages show vehicle-level information (such as the license plate and ride counts) derived from receipts. Your name, email, receipt contents, fares and addresses are not shown publicly.</p>
+      <p class="text-amber-200/90">To be confirmed: whether ride details from receipts obtained through the Gmail connection may contribute to the public registry, pending review of Google’s API Services User Data Policy (Limited Use requirements) and Google’s verification of the Gmail connection.</p>
+    </section>
+
+    <section>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Deleting your data</h2>
+      <p>Rider Data lets you remove individual rides or all of your rides.</p>
+      <p class="text-amber-200/90 mt-2">To be confirmed: account deletion process, data retention periods for other data, and a contact address for privacy questions.</p>
+    </section>
+
+    <section>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Google API Services</h2>
+      <p class="text-amber-200/90">To be confirmed after legal review: the statement describing Cybercab Hunter’s use of information received from Google APIs under the Google API Services User Data Policy, including the Limited Use requirements.</p>
+    </section>
+
+  </div>
+</main>
+</body>
+</html>

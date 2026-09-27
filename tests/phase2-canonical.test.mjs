@@ -75,8 +75,10 @@ async function run() {
     check('a currency the receipt actually states is EXTRACTED', explicit.currency === 'EUR' && explicit.currencySource === 'extracted');
     check('junk numbers are rejected to null (negative distance, NaN fare)', normalizeRide({ ...base, extraction: { ...base.extraction, fields: { distance: -3, fare_amount_cents: NaN } } }, 'receipt_import').distance === null);
     let threw = false; try { normalizeRide(base, 'tesla_mobile_api'); } catch (e) { threw = true; }
-    check('an unknown source is refused — the undocumented Tesla API is NOT a registered source', threw && !Object.keys(RIDE_SOURCES).some(k => /api|mobile|fleet/i.test(k)));
-    check('the two receipt sources are the only ones registered', Object.keys(RIDE_SOURCES).sort().join() === 'receipt_email,receipt_import');
+    check('an unknown source is refused — the undocumented Tesla API is NOT a registered source', threw && !Object.keys(RIDE_SOURCES).some(k => /tesla|mobile|fleet/i.test(k)));
+    // gmail_api (worker/gmail.js) is the same Tesla receipt email, read from the rider's Gmail.
+    check('only receipt sources are registered: forwarded email, import, and Gmail', Object.keys(RIDE_SOURCES).sort().join() === 'gmail_api,receipt_email,receipt_import'
+      && RIDE_SOURCES.gmail_api === RIDE_SOURCES.receipt_email && RIDE_SOURCES.receipt_import === RIDE_SOURCES.receipt_email);
   }
 
   console.log('6. Trust: authorization is the token; validity is the message itself');

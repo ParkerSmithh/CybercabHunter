@@ -3,6 +3,7 @@
 // callers must resolve that from the session first; never from request input.
 
 import { rideQueries } from './db-rides.js';
+import { gmailQueries } from './db-gmail.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 
@@ -1389,6 +1390,7 @@ export { VEHICLE_VISIBILITY };
 
 export const db = {
   ...rideQueries,
+  ...gmailQueries,
   findOrCreateUserByTeslaIdentifier,
   upsertTeslaConnection,
   getTeslaConnectionByUserId,

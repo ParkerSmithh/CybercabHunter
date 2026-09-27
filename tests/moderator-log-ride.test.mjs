@@ -342,7 +342,7 @@ async function run() {
     const dbSrc = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
     const fn = dbSrc.slice(dbSrc.indexOf('async function logModeratorRide'), dbSrc.indexOf('// Public registry AGGREGATES for the homepage'));
     check('logModeratorRide only ever UPDATEs last_seen_at/updated_at on the vehicle — never visibility, vin, model, color, service_area, verification_status', /UPDATE robotaxi_vehicles SET last_seen_at = datetime\('now'\), updated_at = datetime\('now'\)/.test(fn) && (fn.match(/UPDATE robotaxi_vehicles/g) || []).length === 1);
-    check('it adds no ride_key (no new identity scheme) and no migration was added', !/ride_key/.test(fn.replace(/\/\/.*$/gm, '')) && !fs.readdirSync(`${ROOT}migrations`).some(f => /^0015/.test(f)));
+    check('it adds no ride_key (no new identity scheme) and no migration was added', !/ride_key/.test(fn.replace(/\/\/.*$/gm, '')) && !fs.readdirSync(`${ROOT}migrations`).some(f => /^0015/.test(f) && f !== '0015_gmail_connections.sql')); // 0015 is the later Gmail import
     const connectorSrc = fs.readFileSync(`${ROOT}worker/connector.js`, 'utf8');
     check('the Muse connector code does not reference the ride-logging function', !/logModeratorRide/.test(connectorSrc));
   }

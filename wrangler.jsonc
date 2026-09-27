@@ -12,7 +12,13 @@
 		"TESLA_RIDES_REDIRECT_URI": "https://cybercabhunter.com/api/tesla/rides/callback",
 		"TESLA_RIDES_AUDIENCE": "https://fleet-api.prd.na.vn.cloud.tesla.com",
 		"TESLA_RIDES_SCOPES": "openid offline_access",
-		"GOOGLE_REDIRECT_URI": "https://cybercabhunter.com/oauth/google/callback"
+		"GOOGLE_REDIRECT_URI": "https://cybercabhunter.com/oauth/google/callback",
+		"GMAIL_REDIRECT_URI": "https://cybercabhunter.com/api/gmail/callback"
+	},
+	// Polls connected Gmail accounts for new receipts (worker/gmail.js). A
+	// no-op until the GMAIL_* secrets are set.
+	"triggers": {
+		"crons": ["*/10 * * * *"]
 	},
 	"kv_namespaces": [
 		{

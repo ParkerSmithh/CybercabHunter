@@ -196,7 +196,10 @@ function fromReceipt(raw, source) {
 
 export const RIDE_SOURCES = {
   receipt_email: fromReceipt,
-  receipt_import: fromReceipt
+  receipt_import: fromReceipt,
+  // A receipt read straight from the rider's Gmail (worker/gmail.js): the
+  // same email, the same adapter — only how it arrived differs.
+  gmail_api: fromReceipt
 };
 
 export function normalizeRide(raw, source) {

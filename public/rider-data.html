@@ -182,6 +182,28 @@
         </div>
       </div>
 
+      <!-- Automatic Gmail import (GET /api/gmail/status): an optional second
+           way in, beside the forwarding address below, which stays available.
+           Hidden unless the server reports Gmail import as configured. -->
+      <div id="gmailCard" class="hidden glass rounded-2xl p-6 sm:p-7 lg:p-8 reveal-on-scroll mb-8">
+        <h2 class="font-display font-bold text-xl mb-1">Automatic Gmail import</h2>
+        <p class="text-sm text-slate-400 max-w-3xl mb-4">Connect the Gmail account you signed in with, and Cybercab Hunter checks it about every 10 minutes for Tesla Robotaxi receipt emails (subject "Robotaxi Ride Receipt") and adds those rides here. When you first connect, matching receipts from the last 90 days are imported too. Cybercab Hunter only searches for and reads those receipt emails. <a href="privacy.html" class="text-cyan hover:underline">How Gmail data is handled</a></p>
+
+        <p id="gmailNotice" class="hidden text-sm rounded-lg border px-4 py-3 mb-4" role="status"></p>
+
+        <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2"><span id="gmailDot" class="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span><span id="gmailStatusText" class="text-sm font-semibold [overflow-wrap:anywhere]">Checking…</span></div>
+            <p id="gmailMeta" class="text-xs text-slate-500 mt-1 [overflow-wrap:anywhere]"></p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <button id="gmailConnectBtn" type="button" class="hidden btn-magnetic px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Connect Gmail</button>
+            <button id="gmailDisconnectBtn" type="button" class="hidden px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Disconnect Gmail</button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mt-4">Prefer not to connect Gmail? Forwarding receipts to your private address below works too, and stays available either way. Disconnecting stops the import; rides already added stay until you remove them.</p>
+      </div>
+
       <!-- Receipt address: the rider's own u_<token>@ forwarding address
            (GET /api/receipt-ingestion/address issues it on first use), how to
            forward to it, and the Gmail confirmation code once one arrives
@@ -443,6 +465,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=5"></script>
+<script src="js/rider-data.js?v=6"></script>
 </body>
 </html>
