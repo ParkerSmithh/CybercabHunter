@@ -189,7 +189,7 @@
            the page, so a problem here never hides the rider's data. -->
       <div id="fwdCard" class="glass rounded-2xl p-6 sm:p-7 lg:p-8 reveal-on-scroll mb-8">
         <h2 class="font-display font-bold text-xl mb-1">Your receipt address</h2>
-        <p class="text-sm text-slate-400 max-w-3xl mb-5">Rides reach Cybercab Hunter from your Tesla Robotaxi receipts. Forward each receipt email to this private address and the ride is added here automatically.</p>
+        <p class="text-sm text-slate-400 max-w-3xl mb-5">Tesla emails each Robotaxi receipt to your own inbox — not to Cybercab Hunter — and Cybercab Hunter never reads your inbox. A ride appears here only when its receipt is forwarded to this private address: by you, or automatically by Gmail once you set that up below.</p>
 
         <div id="fwdLoading" class="h-12 rounded-lg bg-white/5 animate-pulse" aria-busy="true"><span class="sr-only">Loading your receipt address…</span></div>
         <p id="fwdError" class="hidden text-sm text-slate-400">Couldn't load your receipt address. <button id="fwdRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
@@ -207,15 +207,24 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             <div>
               <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">1</span>Forward a receipt</h3>
-              <p class="text-sm text-slate-400">After a ride, open the Tesla Robotaxi receipt email and forward it to the address above. The ride appears on this page once it's processed.</p>
+              <p class="text-sm text-slate-400">After a ride, open the Tesla Robotaxi receipt email and forward it to the address above. The ride appears on this page once it's processed. This always works, including for older receipts.</p>
             </div>
-            <div>
-              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">2</span>Optional: forward automatically with Gmail</h3>
+            <div id="fwdGmailSteps">
+              <h3 class="font-display font-bold text-base mb-2"><span class="text-gold mr-1.5">2</span>Optional: forward new receipts automatically with Gmail</h3>
+              <p class="text-sm text-slate-300 mb-3"><span class="font-semibold">Adding the address in Gmail doesn't forward anything by itself.</span> Receipts are forwarded automatically only after every step below is done.</p>
               <ol class="text-sm text-slate-400 space-y-2 list-decimal pl-5">
                 <li>In Gmail, open <span class="text-slate-300">Settings → See all settings → Forwarding and POP/IMAP → Add a forwarding address</span> and enter the address above.</li>
-                <li>Gmail sends a confirmation code to that address. It will appear below — enter it in Gmail to confirm.</li>
-                <li>Create a filter for mail from <span class="text-slate-300 break-all">robotaxi@tesla.com</span> and choose <span class="text-slate-300">Forward it to</span> your address.</li>
+                <li>Gmail emails a confirmation code to that address. It appears below on this page once it arrives.</li>
+                <li>Enter the code in Gmail to verify the address. Leave Gmail's own forwarding setting on <span class="text-slate-300">Disable forwarding</span> — the filter in the next steps forwards only receipts, not all of your mail.</li>
+                <li>Test the search first: in Gmail's search bar, search for <code class="inline-block text-goldsoft">subject:"Robotaxi Ride Receipt"</code> and check that the results are your Tesla Robotaxi receipts.</li>
+                <li>With that search still entered, open the search options and choose <span class="text-slate-300">Create filter</span>.</li>
+                <li>Tick <span class="text-slate-300">Forward it to</span>, choose the address above, and save with <span class="text-slate-300">Create filter</span>.</li>
               </ol>
+              <ul class="text-xs text-slate-500 space-y-1.5 mt-3 list-disc pl-5">
+                <li>Filter by subject, not sender: Tesla sends receipts from <span class="break-all">noreply@tesla.com</span>, but relay services such as DuckDuckGo Email Protection can change the sender Gmail sees, so a sender-only filter can miss them.</li>
+                <li>The filter forwards new receipts as they arrive. It doesn't forward receipts already in your inbox — forward those by hand.</li>
+                <li>Once a receipt you didn't forward yourself shows up here, automatic forwarding is working.</li>
+              </ul>
               <div id="fwdCodeBox" class="hidden mt-4 rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] p-4">
                 <div class="text-xs text-slate-400 mb-1">Gmail confirmation code</div>
                 <div id="fwdCode" class="font-display font-bold text-2xl tracking-widest text-goldsoft break-all"></div>

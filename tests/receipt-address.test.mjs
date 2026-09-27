@@ -229,6 +229,31 @@ async function run() {
     check('a revoked address shows "turned off", not an address or an error', revoked.vis('fwdRevoked') && !revoked.vis('fwdReady') && !revoked.vis('fwdError'));
   }
   {
+    // The Gmail forwarding instructions, as rendered for a signed-in rider.
+    const ctx = await makeApp();
+    const p = await openPage(ctx, 'old');
+    const card = p.d.getElementById('fwdCard').textContent.replace(/\s+/g, ' ');
+    const steps = [...p.d.querySelectorAll('#fwdGmailSteps ol > li')].map(li => li.textContent.replace(/\s+/g, ' '));
+    check('the wrong sender filter (robotaxi@tesla.com) is gone from the page and its script', !/robotaxi@tesla\.com/i.test(HTML + JS));
+    check('the filter uses the receipt subject: subject:"Robotaxi Ride Receipt"', card.includes('subject:"Robotaxi Ride Receipt"'));
+    // Real Tesla receipts are "Robotaxi Ride Receipt on <date>" (the fixture below
+    // is modeled on the real Sep 26 receipt; the real Jun 9 one reads the same).
+    const realSubject = (fs.readFileSync(`${ROOT}tests/fixtures/tesla-receipt-quoted-forward.eml`, 'utf8').match(/^Subject: (.*)$/m) || [])[1] || '';
+    check('that phrase is in the real-format receipt subject', realSubject.includes('Robotaxi Ride Receipt'));
+    check('it says Cybercab Hunter never reads the inbox and receipts go to the rider first', /never reads your inbox/.test(card) && /Tesla emails each Robotaxi receipt to your own inbox/.test(card));
+    check('it says a ride only arrives when the receipt is forwarded (by hand or by Gmail)', /appears here only when its receipt is forwarded/.test(card));
+    check('it says adding the address alone does not forward anything', /Adding the address in Gmail doesn't forward anything by itself/.test(card));
+    check('the Gmail steps run in order: add → confirmation code → verify → test search → create filter → Forward it to + save', steps.length === 6
+      && /Add a forwarding address/.test(steps[0]) && /confirmation code/.test(steps[1]) && /verify the address/.test(steps[2])
+      && /Test the search first/.test(steps[3]) && /Create filter/.test(steps[4]) && /Forward it to/.test(steps[5]) && /Create filter/.test(steps[5]));
+    check('it warns against forwarding all mail (keep Gmail forwarding disabled; the filter forwards only receipts)', /Disable forwarding/.test(steps[2]) && /only receipts/.test(steps[2]));
+    check('it explains why not to filter by sender: noreply@tesla.com and relays like DuckDuckGo', /noreply@tesla\.com/.test(card) && /DuckDuckGo Email Protection/.test(card));
+    check('it says old receipts are not forwarded by the filter', /doesn't forward receipts already in your inbox/.test(card));
+    check('manual forwarding is still offered, including for older receipts', /Forward a receipt/.test(card) && /forward it to the address above/.test(card) && /including for older receipts/.test(card));
+    check('the private address, Copy button and confirmation-code box are still there', p.vis('fwdReady') && p.d.getElementById('fwdAddress').textContent === ctx.addressFor('old') && !!p.d.getElementById('fwdCopyBtn') && !!p.d.getElementById('fwdCodeBox'));
+    check('no Gmail API / inbox-scanning language is introduced', !/Gmail API|connect (your )?Gmail|sign in (with|to) Gmail|we (scan|read|check|poll)|scans your|syncs? (with )?your (Gmail|inbox)|automatically (imports?|scans?|detects?)/i.test(card));
+  }
+  {
     // The markup: mobile-friendly and never truncating the address.
     const d = new JSDOM(HTML).window.document;
     const code = d.getElementById('fwdAddress');
