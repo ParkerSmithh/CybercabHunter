@@ -8,23 +8,7 @@
 <base href="/">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<!-- share-tags -->
-<!-- Generic share tags. For a PUBLIC vehicle the Worker replaces everything
-     between these markers with that vehicle's tags (worker/og-card.js);
-     private and nonexistent vehicles are served this block unchanged. -->
 <title>Cybercab Hunter — Vehicle</title>
-<meta name="description" content="Tesla robotaxis spotted in Austin, TX — tracked live by the Cybercab Hunter community.">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Cybercab Hunter">
-<meta property="og:title" content="Cybercab Hunter">
-<meta property="og:description" content="Tesla robotaxis spotted in Austin, TX — tracked live by the Cybercab Hunter community.">
-<meta property="og:url" content="https://cybercabhunter.com/">
-<meta property="og:image" content="https://cybercabhunter.com/images/og-default.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://cybercabhunter.com/images/og-default.png">
-<!-- /share-tags -->
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -139,25 +123,11 @@
 
     <!-- Loaded vehicle -->
     <div id="vehicleLoaded" class="hidden">
-      <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4 relative z-10">
+      <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-3 mb-3">
             <h1 id="vLicensePlate" class="font-display font-bold text-3xl sm:text-4xl tracking-tight bg-black/30 border border-[rgba(212,175,55,0.2)] rounded-xl px-5 py-2.5 [overflow-wrap:anywhere]"></h1>
             <span id="vCybercabBadge" class="hidden text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide">Cybercab</span>
-            <!-- Share: the native share sheet where supported (mobile), else
-                 this small menu of share links + copy link (js/vehicle.js). -->
-            <div class="relative">
-              <button id="vShareBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="vShareMenu" class="inline-flex items-center gap-2 min-h-[44px] px-4 rounded-lg text-sm font-semibold border border-[rgba(0,229,255,0.35)] text-cyan hover:bg-cyan/10 transition-colors">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
-                Share this spot
-              </button>
-              <div id="vShareMenu" class="hidden absolute left-0 top-full mt-2 z-40 w-52 bg-panel rounded-xl border border-[rgba(212,175,55,0.2)] p-1.5 shadow-xl">
-                <a id="vShareX" target="_blank" rel="noopener noreferrer" class="flex items-center min-h-[44px] px-3 rounded-lg text-sm text-slate-200 hover:bg-white/5">Share on X</a>
-                <a id="vShareFacebook" target="_blank" rel="noopener noreferrer" class="flex items-center min-h-[44px] px-3 rounded-lg text-sm text-slate-200 hover:bg-white/5">Share on Facebook</a>
-                <button id="vShareCopy" type="button" class="w-full text-left flex items-center min-h-[44px] px-3 rounded-lg text-sm text-slate-200 hover:bg-white/5">Copy link</button>
-                <a id="vShareDownload" download class="flex items-center min-h-[44px] px-3 rounded-lg text-sm text-slate-200 hover:bg-white/5">Download card</a>
-              </div>
-            </div>
           </div>
           <p id="vSummaryLine" class="hidden text-sm text-slate-400 [overflow-wrap:anywhere]"></p>
         </div>
@@ -280,6 +250,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicle.js?v=4"></script>
+<script src="js/vehicle.js?v=5"></script>
 </body>
 </html>

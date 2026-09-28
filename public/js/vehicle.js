@@ -77,91 +77,6 @@
       : 'No service area recorded for these rides yet.';
 
     document.title = `${v.license_plate || 'Vehicle'} — Cybercab Hunter`;
-    setShare(v);
-  }
-
-  // ---------- share ----------
-  // Same wording rules as the share card (worker/og-card.js): "Cybercab" only
-  // with a moderator-recorded VIN, the city only when it's a known one.
-  const CITIES = { austin: 'Austin, TX', dallas: 'Dallas, TX', houston: 'Houston, TX', 'san antonio': 'San Antonio, TX' };
-  let share = null;
-
-  function setShare(v) {
-    const city = CITIES[String(v.service_area || '').trim().replace(/\s+/g, ' ').toLowerCase()];
-    const kind = v.vin ? 'Tesla Cybercab' : 'Tesla Robotaxi';
-    const plate = v.license_plate || 'a vehicle';
-    // The canonical page URL: no query string or fragment from however this
-    // visit arrived.
-    const url = `${location.origin}/vehicle/${encodeURIComponent(v.id)}`;
-    const text = `I spotted ${plate} — a ${kind}${city ? ` in ${city}` : ''}`;
-    // The share card image (worker/og-card.js) — same origin as this page,
-    // so it can be fetched into a File and saved with a download link.
-    const cardUrl = `${location.origin}/api/og/vehicle/${encodeURIComponent(v.id)}.png`;
-    const fileName = `${String(v.license_plate || 'vehicle').replace(/[^A-Za-z0-9-]/g, '')}-cybercab-hunter.png`;
-    share = { title: `${plate} — Cybercab Hunter`, text, url, cardUrl, fileName, file: null };
-    $('vShareDownload').href = cardUrl;
-    $('vShareDownload').setAttribute('download', fileName);
-    prepareCardFile(share);
-    $('vShareX').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-    $('vShareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-  }
-
-  function note(message, type) {
-    if (typeof CCC !== 'undefined' && CCC.toast) CCC.toast(message, type);
-  }
-
-  function setMenu(open) {
-    show('vShareMenu', open);
-    $('vShareBtn').setAttribute('aria-expanded', String(open));
-  }
-
-  // Phones that can share files (Web Share API level 2) get the card image
-  // itself, so it can go straight into Instagram, X, Facebook or Messages.
-  // Fetched ahead of time: the share must start inside the tap, and some
-  // browsers (iOS Safari) cancel it if a download is awaited first.
-  async function prepareCardFile(s) {
-    if (!navigator.canShare) return;
-    try {
-      const resp = await fetch(s.cardUrl);
-      if (!resp.ok) return;
-      const file = new File([await resp.arrayBuffer()], s.fileName, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) s.file = file;
-    } catch (e) { /* link sharing still works */ }
-  }
-
-  async function onShare() {
-    if (!share) return;
-    if (share.file) {
-      // Apps that take an image (Instagram) ignore the text; the others keep
-      // the link in it.
-      try { await navigator.share({ files: [share.file], title: share.title, text: `${share.text} ${share.url}` }); return; }
-      catch (e) { if (e && e.name === 'AbortError') return; }  // otherwise fall back to sharing the link
-    }
-    if (navigator.share) {
-      try { await navigator.share(share); return; }
-      catch (e) { if (e && e.name === 'AbortError') return; }  // dismissed: nothing to do
-    }
-    setMenu($('vShareMenu').classList.contains('hidden'));
-  }
-
-  async function copyLink() {
-    setMenu(false);
-    try {
-      await navigator.clipboard.writeText(share.url);
-      note('Link copied', 'success');
-    } catch (e) {
-      window.prompt('Copy this link:', share.url);
-    }
-  }
-
-  function initShare() {
-    $('vShareBtn').addEventListener('click', onShare);
-    $('vShareCopy').addEventListener('click', copyLink);
-    ['vShareX', 'vShareFacebook', 'vShareDownload'].forEach(id => $(id).addEventListener('click', () => setMenu(false)));
-    document.addEventListener('click', e => {
-      if (!e.target.closest('#vShareBtn, #vShareMenu')) setMenu(false);
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
   }
 
   async function load(vehicleId) {
@@ -200,7 +115,6 @@
   function init() {
     const vehicleId = extractVehicleId();
     if (!vehicleId) { setView('invalid'); return; }
-    initShare();
     $('vehicleRetry').addEventListener('click', () => load(vehicleId));
     load(vehicleId);
   }
