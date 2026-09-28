@@ -135,6 +135,16 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 @media (max-width:1023px){
   body:has(#mobileBottomNav){padding-bottom:4.5rem;}
 }
+/* Active item: gold, like the desktop #navIndicator. Keyed on aria-current
+   (set by CCC.initNav) rather than the .text-gold class it also adds, since
+   the link's own text-slate-400 utility wins over .text-gold in the
+   generated Tailwind CSS. The 2px bar mirrors the desktop indicator. */
+#mobileBottomNav a{position:relative;}
+#mobileBottomNav a[aria-current="page"]{color:var(--gold);}
+#mobileBottomNav a[aria-current="page"]::before{
+  content:''; position:absolute; top:-1px; left:25%; right:25%; height:2px;
+  background:var(--gold); border-radius:2px;
+}
 #navIndicator{
   position:absolute; bottom:-1px; height:2px;
   background:var(--gold);
