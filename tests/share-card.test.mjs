@@ -157,10 +157,9 @@ async function run() {
     check('a phone without file sharing still gets the link (checked above)', mobile.shared[0].files === undefined);
 
     const desktop = await openPage({ nativeShare: false });
-    const preview = desktop.d.getElementById('vCardPreview');
-    check('the page shows a preview of the card', preview.getAttribute('src') === cardUrl && /^Share card: I spotted XVF2569/.test(preview.alt));
-    const dl = desktop.d.getElementById('vCardDownload'), dlMenu = desktop.d.getElementById('vShareDownload');
-    check('Download card (page + menu) links the card image with a plate file name', [dl, dlMenu].every(a => a.href === cardUrl && a.getAttribute('download') === 'XVF2569-cybercab-hunter.png'));
+    check('no separate Share Card section on the page', !desktop.d.getElementById('vCardPreview') && !desktop.d.getElementById('vCardDownload') && !/Share Card/.test(desktop.d.body.textContent));
+    const dlMenu = desktop.d.getElementById('vShareDownload');
+    check('Download card is in the share menu, linking the card image with a plate file name', dlMenu.closest('#vShareMenu') && dlMenu.href === cardUrl && dlMenu.getAttribute('download') === 'XVF2569-cybercab-hunter.png');
     const btn = desktop.d.getElementById('vShareBtn');
     desktop.click(btn);
     check('without it: the fallback menu opens (aria-expanded true)', !desktop.d.getElementById('vShareMenu').classList.contains('hidden') && btn.getAttribute('aria-expanded') === 'true');

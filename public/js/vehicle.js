@@ -99,9 +99,8 @@
     const cardUrl = `${location.origin}/api/og/vehicle/${encodeURIComponent(v.id)}.png`;
     const fileName = `${String(v.license_plate || 'vehicle').replace(/[^A-Za-z0-9-]/g, '')}-cybercab-hunter.png`;
     share = { title: `${plate} — Cybercab Hunter`, text, url, cardUrl, fileName, file: null };
-    $('vCardPreview').src = cardUrl;
-    $('vCardPreview').alt = `Share card: ${text}`;
-    ['vCardDownload', 'vShareDownload'].forEach(id => { $(id).href = cardUrl; $(id).setAttribute('download', fileName); });
+    $('vShareDownload').href = cardUrl;
+    $('vShareDownload').setAttribute('download', fileName);
     prepareCardFile(share);
     $('vShareX').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     $('vShareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
