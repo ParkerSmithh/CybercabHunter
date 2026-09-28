@@ -94,7 +94,15 @@
     // visit arrived.
     const url = `${location.origin}/vehicle/${encodeURIComponent(v.id)}`;
     const text = `I spotted ${plate} — a ${kind}${city ? ` in ${city}` : ''}`;
-    share = { title: `${plate} — Cybercab Hunter`, text, url };
+    // The share card image (worker/og-card.js) — same origin as this page,
+    // so it can be fetched into a File and saved with a download link.
+    const cardUrl = `${location.origin}/api/og/vehicle/${encodeURIComponent(v.id)}.png`;
+    const fileName = `${String(v.license_plate || 'vehicle').replace(/[^A-Za-z0-9-]/g, '')}-cybercab-hunter.png`;
+    share = { title: `${plate} — Cybercab Hunter`, text, url, cardUrl, fileName, file: null };
+    $('vCardPreview').src = cardUrl;
+    $('vCardPreview').alt = `Share card: ${text}`;
+    ['vCardDownload', 'vShareDownload'].forEach(id => { $(id).href = cardUrl; $(id).setAttribute('download', fileName); });
+    prepareCardFile(share);
     $('vShareX').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     $('vShareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
   }
@@ -108,8 +116,28 @@
     $('vShareBtn').setAttribute('aria-expanded', String(open));
   }
 
+  // Phones that can share files (Web Share API level 2) get the card image
+  // itself, so it can go straight into Instagram, X, Facebook or Messages.
+  // Fetched ahead of time: the share must start inside the tap, and some
+  // browsers (iOS Safari) cancel it if a download is awaited first.
+  async function prepareCardFile(s) {
+    if (!navigator.canShare) return;
+    try {
+      const resp = await fetch(s.cardUrl);
+      if (!resp.ok) return;
+      const file = new File([await resp.arrayBuffer()], s.fileName, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) s.file = file;
+    } catch (e) { /* link sharing still works */ }
+  }
+
   async function onShare() {
     if (!share) return;
+    if (share.file) {
+      // Apps that take an image (Instagram) ignore the text; the others keep
+      // the link in it.
+      try { await navigator.share({ files: [share.file], title: share.title, text: `${share.text} ${share.url}` }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }  // otherwise fall back to sharing the link
+    }
     if (navigator.share) {
       try { await navigator.share(share); return; }
       catch (e) { if (e && e.name === 'AbortError') return; }  // dismissed: nothing to do
@@ -130,7 +158,7 @@
   function initShare() {
     $('vShareBtn').addEventListener('click', onShare);
     $('vShareCopy').addEventListener('click', copyLink);
-    ['vShareX', 'vShareFacebook'].forEach(id => $(id).addEventListener('click', () => setMenu(false)));
+    ['vShareX', 'vShareFacebook', 'vShareDownload'].forEach(id => $(id).addEventListener('click', () => setMenu(false)));
     document.addEventListener('click', e => {
       if (!e.target.closest('#vShareBtn, #vShareMenu')) setMenu(false);
     });

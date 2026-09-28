@@ -120,17 +120,19 @@ async function run() {
   console.log('4. Share button (js/vehicle.js in jsdom)');
   {
     const { env, pub } = await setup();
-    async function openPage({ nativeShare }) {
+    async function openPage({ nativeShare, fileShare = false }) {
       const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: `https://cybercabhunter.com/vehicle/${pub}?ref=abc#x`, pretendToBeVisual: true });
       const w = dom.window;
       w.fetch = async fetchUrl => worker.fetch(new Request(`https://x${String(fetchUrl).replace(/^https:\/\/[^/]+/, '')}`), env, {});
       const shared = [], copied = [];
       Object.defineProperty(w.navigator, 'share', { configurable: true, value: nativeShare ? async data => { shared.push(data); } : undefined });
+      Object.defineProperty(w.navigator, 'canShare', { configurable: true, value: fileShare ? data => !!(data.files && data.files.length) : undefined });
       Object.defineProperty(w.navigator, 'clipboard', { configurable: true, value: { writeText: async s => { copied.push(s); } } });
       w.eval(JS);
       const d = w.document;
       const end = Date.now() + 3000;
       while (Date.now() < end && d.getElementById('vehicleLoaded').classList.contains('hidden')) await new Promise(r => setTimeout(r, 10));
+      await new Promise(r => setTimeout(r, 100));   // the card image prefetch
       const click = el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
       return { w, d, shared, copied, click };
     }
@@ -143,7 +145,22 @@ async function run() {
     check('...and the "I spotted" text', mobile.shared[0].text === 'I spotted XVF2569 — a Tesla Cybercab in Austin, TX');
     check('...and the fallback menu stays closed', mobile.d.getElementById('vShareMenu').classList.contains('hidden'));
 
+    const cardUrl = `https://cybercabhunter.com/api/og/vehicle/${pub}.png`;
+    const phone = await openPage({ nativeShare: true, fileShare: true });
+    phone.click(phone.d.getElementById('vShareBtn'));
+    await new Promise(r => setTimeout(r, 20));
+    const sent = phone.shared[0] || {};
+    const file = sent.files && sent.files[0];
+    check('a phone that can share files gets the card IMAGE in the share sheet', phone.shared.length === 1 && !!file);
+    check('...a PNG named after the plate, with real card bytes', file && file.name === 'XVF2569-cybercab-hunter.png' && file.type === 'image/png' && file.size > 100000);
+    check('...and the text still carries the canonical link', sent.text === `I spotted XVF2569 — a Tesla Cybercab in Austin, TX ${canonical}`);
+    check('a phone without file sharing still gets the link (checked above)', mobile.shared[0].files === undefined);
+
     const desktop = await openPage({ nativeShare: false });
+    const preview = desktop.d.getElementById('vCardPreview');
+    check('the page shows a preview of the card', preview.getAttribute('src') === cardUrl && /^Share card: I spotted XVF2569/.test(preview.alt));
+    const dl = desktop.d.getElementById('vCardDownload'), dlMenu = desktop.d.getElementById('vShareDownload');
+    check('Download card (page + menu) links the card image with a plate file name', [dl, dlMenu].every(a => a.href === cardUrl && a.getAttribute('download') === 'XVF2569-cybercab-hunter.png'));
     const btn = desktop.d.getElementById('vShareBtn');
     desktop.click(btn);
     check('without it: the fallback menu opens (aria-expanded true)', !desktop.d.getElementById('vShareMenu').classList.contains('hidden') && btn.getAttribute('aria-expanded') === 'true');
