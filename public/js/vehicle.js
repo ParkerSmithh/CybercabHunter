@@ -77,6 +77,64 @@
       : 'No service area recorded for these rides yet.';
 
     document.title = `${v.license_plate || 'Vehicle'} — Cybercab Hunter`;
+    setShare(v);
+  }
+
+  // ---------- share ----------
+  // Same wording rules as the share card (worker/og-card.js): "Cybercab" only
+  // with a moderator-recorded VIN, the city only when it's a known one.
+  const CITIES = { austin: 'Austin, TX', dallas: 'Dallas, TX', houston: 'Houston, TX', 'san antonio': 'San Antonio, TX' };
+  let share = null;
+
+  function setShare(v) {
+    const city = CITIES[String(v.service_area || '').trim().replace(/\s+/g, ' ').toLowerCase()];
+    const kind = v.vin ? 'Tesla Cybercab' : 'Tesla Robotaxi';
+    const plate = v.license_plate || 'a vehicle';
+    // The canonical page URL: no query string or fragment from however this
+    // visit arrived.
+    const url = `${location.origin}/vehicle/${encodeURIComponent(v.id)}`;
+    const text = `I spotted ${plate} — a ${kind}${city ? ` in ${city}` : ''}`;
+    share = { title: `${plate} — Cybercab Hunter`, text, url };
+    $('vShareX').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    $('vShareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  }
+
+  function note(message, type) {
+    if (typeof CCC !== 'undefined' && CCC.toast) CCC.toast(message, type);
+  }
+
+  function setMenu(open) {
+    show('vShareMenu', open);
+    $('vShareBtn').setAttribute('aria-expanded', String(open));
+  }
+
+  async function onShare() {
+    if (!share) return;
+    if (navigator.share) {
+      try { await navigator.share(share); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }  // dismissed: nothing to do
+    }
+    setMenu($('vShareMenu').classList.contains('hidden'));
+  }
+
+  async function copyLink() {
+    setMenu(false);
+    try {
+      await navigator.clipboard.writeText(share.url);
+      note('Link copied', 'success');
+    } catch (e) {
+      window.prompt('Copy this link:', share.url);
+    }
+  }
+
+  function initShare() {
+    $('vShareBtn').addEventListener('click', onShare);
+    $('vShareCopy').addEventListener('click', copyLink);
+    ['vShareX', 'vShareFacebook'].forEach(id => $(id).addEventListener('click', () => setMenu(false)));
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#vShareBtn, #vShareMenu')) setMenu(false);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
   }
 
   async function load(vehicleId) {
@@ -115,6 +173,7 @@
   function init() {
     const vehicleId = extractVehicleId();
     if (!vehicleId) { setView('invalid'); return; }
+    initShare();
     $('vehicleRetry').addEventListener('click', () => load(vehicleId));
     load(vehicleId);
   }

@@ -7,6 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
+import { apiVehicleCard, serveVehiclePage } from './og-card.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders } from './moderation.js';
 import { apiCreateVehicleSighting } from './sightings.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
@@ -297,6 +298,13 @@ export default {
     if (vehicleIdMatch && request.method === 'GET') {
       return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);
     }
+    // The shareable card image for a public vehicle (worker/og-card.js):
+    // same gate and the same 400/404 responses as the route above. Fetched
+    // by link-preview crawlers, so it is a plain public GET (no CORS needed).
+    const vehicleCardMatch = url.pathname.match(/^\/api\/og\/vehicle\/([^/]+)\.png$/);
+    if (vehicleCardMatch && request.method === 'GET') {
+      return await apiVehicleCard(request, env, vehicleCardMatch[1]);
+    }
 
     // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API
     // routes above and from the earlier /oauth/robotaxi/* experiment. See
@@ -359,10 +367,14 @@ export default {
     // /vehicle/:id sent the visitor to /vehicle. '/vehicle' is the canonical
     // URL of vehicle.html and is served directly with a 200.
     const vehiclePageMatch = url.pathname.match(/^\/vehicle\/([^/]+)$/);
+    // For a PUBLIC vehicle the shell also gets that vehicle's Open Graph /
+    // Twitter Card tags (worker/og-card.js); private and nonexistent ids get
+    // the page's generic tags, identically.
     if (vehiclePageMatch && request.method === 'GET') {
       const assetUrl = new URL(request.url);
       assetUrl.pathname = '/vehicle';
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      const shell = await env.ASSETS.fetch(new Request(assetUrl, request));
+      return serveVehiclePage(request, env, vehiclePageMatch[1], shell);
     }
 
     // The site's images moved from the web root into /images/. The old root
