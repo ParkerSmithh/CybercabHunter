@@ -70,6 +70,8 @@ async function openPage(env, sessionId, intercept) {
   return page;
 }
 
+const requestsDeleted = page => page.requests.filter(r => r.method === 'DELETE').length;
+
 async function run() {
   console.log('1. Loading/empty/signed-out/forbidden/error states');
   {
@@ -212,6 +214,13 @@ async function run() {
     await page.waitFor(() => d.getElementById('modImageList').querySelectorAll('[data-submission-id]').length === 1, 'the approved image to leave the grid');
     check('approving from the Images grid works like anywhere else', page.reviews().length === 1 && page.text('modCountImages') === '1');
     check('the choice is saved for next time', page.w.localStorage.getItem('moderationTab') === 'images');
+    const left = d.getElementById('modImageList').querySelector('[data-submission-id]');
+    const delBtn = left.querySelector('button[data-action="delete-photo"]');
+    check('each image card has a red Delete button over its photo (hover-revealed)', !!delBtn && /bg-crimson/.test(delBtn.className) && !!left.querySelector('.mod-photo .mod-photo-shade'));
+    page.w.confirm = () => true;
+    page.click(delBtn);
+    await page.waitFor(() => d.getElementById('modImageList').querySelectorAll('[data-submission-id]').length === 0, 'the deleted image to leave the grid');
+    check('Delete removes the photo and the card, and the Images count clears', requestsDeleted(page) === 1 && page.text('modCountImages') === '' && page.visible('modImagesEmpty') && ctx.env.EVIDENCE_BUCKET._objects.size === 1);
   }
 
   t.finish();

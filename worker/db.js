@@ -601,6 +601,42 @@ async function clearSightingPhotos(sql, submissionIds) {
   ]);
 }
 
+// Moderator "delete photo": the photo is already gone from R2; record it.
+// Clears the storage key on both rows, and a still-pending sighting is
+// closed as rejected (it has nothing left to review), with the moderator
+// and reason recorded. An approved sighting stays approved — it simply has
+// no photo any more, so it leaves the public gallery. Everything else is
+// kept as history. Returns whether anything changed.
+async function deleteSightingPhotoRecord(sql, { submissionId, moderatorId }) {
+  const pending = `EXISTS (SELECT 1 FROM submissions WHERE id = ? AND status IN ('pending', 'needs_review'))`;
+  const [, submissionResult] = await sql.batch([
+    sql.prepare(`
+      UPDATE vehicle_observations
+      SET evidence_ref = NULL,
+          verification_status = CASE WHEN ${pending} THEN 'rejected' ELSE verification_status END
+      WHERE submission_id = ?
+    `).bind(submissionId, submissionId),
+    sql.prepare(`
+      UPDATE submissions SET
+        evidence_ref = NULL,
+        reviewed_at = CASE WHEN status IN ('pending', 'needs_review') THEN datetime('now') ELSE reviewed_at END,
+        reviewed_by = CASE WHEN status IN ('pending', 'needs_review') THEN ? ELSE reviewed_by END,
+        rejection_reason = CASE WHEN status IN ('pending', 'needs_review') THEN 'Photo deleted by a moderator' ELSE rejection_reason END,
+        status = CASE WHEN status IN ('pending', 'needs_review') THEN 'rejected' ELSE status END,
+        updated_at = datetime('now')
+      WHERE id = ? AND submission_type = 'vehicle_sighting' AND evidence_type = 'photo'
+    `).bind(moderatorId, submissionId)
+  ]);
+  return !!(submissionResult && submissionResult.meta && submissionResult.meta.changes);
+}
+
+// The submission behind a public gallery id (any status/age) — for the
+// moderator delete control on the Sightings page.
+async function getSubmissionIdByPublicId(sql, publicId) {
+  const row = await sql.prepare(`SELECT submission_id FROM vehicle_observations WHERE public_id = ?`).bind(publicId).first();
+  return row ? row.submission_id : null;
+}
+
 // A sighting's photo key for the moderation queue (any status).
 async function getSightingPhotoRef(sql, submissionId) {
   const row = await sql.prepare(`
@@ -1542,6 +1578,8 @@ export const db = {
   listExpiredSightingPhotos,
   clearSightingPhotos,
   getSightingPhotoRef,
+  deleteSightingPhotoRecord,
+  getSubmissionIdByPublicId,
   promoteSightingToRegistryVehicle,
   logModeratorRide,
   logManualRide,

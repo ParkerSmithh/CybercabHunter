@@ -109,9 +109,13 @@
   function imageCard(s) {
     const facts = [s.service_area || 'Area unknown', fmtDateTime(s.observed_at)];
     return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
-      <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] rounded-lg overflow-hidden bg-black/30">
-        <img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full h-full object-cover">
-      </a>
+      <div class="mod-photo relative rounded-lg overflow-hidden">
+        <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] bg-black/30">
+          <img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full h-full object-cover">
+        </a>
+        <div class="mod-photo-shade absolute inset-0 bg-black/55"></div>
+        <button type="button" data-action="delete-photo" ${busy.has(s.submission_id) ? 'disabled' : ''} aria-label="Delete this photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
+      </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(s.license_plate || 'Plate not given')}</div>
       <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
       ${s.approx_location ? `<div class="text-[11px] text-slate-400 leading-snug">Near: ${esc(s.approx_location)}</div>` : ''}
@@ -188,6 +192,28 @@
     renderQueue();
     setView('queue');
     loadVehicles();
+  }
+
+  // Permanently deletes a sighting's photo (a pending one is also closed as
+  // rejected — nothing is left to review). See worker/sightings-public.js.
+  async function deletePhoto(submissionId) {
+    if (!window.confirm('Delete this photo? It is removed permanently and can’t be undone.')) return;
+    busy.add(submissionId);
+    renderQueue();
+    let resp;
+    try {
+      resp = await api(`/api/moderation/vehicle-sightings/${encodeURIComponent(submissionId)}/photo`, { method: 'DELETE' });
+    } catch (e) {
+      resp = null;
+    }
+    busy.delete(submissionId);
+    if (resp && resp.ok) {
+      queue = queue.filter(s => s.submission_id !== submissionId);
+      CCC.toast('Photo deleted.', 'success');
+    } else {
+      CCC.toast("Couldn't delete the photo. Please try again.", 'error');
+    }
+    renderQueue();
   }
 
   async function review(submissionId, action, rejectionReason) {
@@ -301,6 +327,8 @@
       } else if (action === 'cancel-reject') {
         pendingReject.delete(submissionId);
         renderQueue();
+      } else if (action === 'delete-photo') {
+        deletePhoto(submissionId);
       } else if (action === 'confirm-reject') {
         const textarea = card.querySelector('[data-reject-reason]');
         const reason = textarea.value.trim();

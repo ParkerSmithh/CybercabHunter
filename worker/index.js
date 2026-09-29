@@ -7,7 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
@@ -234,6 +234,13 @@ export default {
     const moderationSightingPhotoMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)\/photo$/);
     if (moderationSightingPhotoMatch && request.method === 'GET') {
       return withCors(await apiGetVehicleSightingPhoto(request, env, moderationSightingPhotoMatch[1]), request);
+    }
+    if (moderationSightingPhotoMatch && request.method === 'DELETE') {
+      return withCors(await apiDeleteVehicleSightingPhoto(request, env, moderationSightingPhotoMatch[1]), request);
+    }
+    const moderationPublicPhotoMatch = url.pathname.match(/^\/api\/moderation\/sightings\/([^/]+)\/photo$/);
+    if (moderationPublicPhotoMatch && request.method === 'DELETE') {
+      return withCors(await apiDeletePublicSightingPhoto(request, env, moderationPublicPhotoMatch[1]), request);
     }
     const moderationReviewMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)$/);
     if (moderationReviewMatch && request.method === 'PATCH') {

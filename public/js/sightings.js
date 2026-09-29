@@ -15,6 +15,8 @@
   let cursor = null;
   let loading = false;
   let generation = 0;   // bumps on every filter change; stale responses are dropped
+  let isModerator = false;   // moderators get a Delete button on each photo (the server checks too)
+  const SESSION_KEY = 'teslaSessionId';
 
   function fmtSpotted(iso) {
     const d = new Date(iso);
@@ -47,7 +49,20 @@
     img.addEventListener('error', () => article.remove());
     open.addEventListener('click', () => openViewer(img.src, img.alt, caption, open));
     open.appendChild(img);
-    article.appendChild(open);
+    const frame = el('div', 'relative');
+    frame.appendChild(open);
+    // Moderators only: hovering darkens the photo and shows a red Delete
+    // button. Nothing is added to the page for anyone else.
+    if (isModerator) {
+      frame.classList.add('mod-photo');
+      frame.appendChild(el('div', 'mod-photo-shade absolute inset-0 bg-black/55'));
+      const del = el('button', 'mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 focus-visible:ring-2 focus-visible:ring-white', 'Delete');
+      del.type = 'button';
+      del.setAttribute('aria-label', 'Delete this photo');
+      del.addEventListener('click', () => deletePhoto(s.id, article, del));
+      frame.appendChild(del);
+    }
+    article.appendChild(frame);
 
     const body = el('div', 'p-3 flex flex-col gap-1.5');
     const top = el('div', 'flex items-center justify-between gap-2 flex-wrap');
@@ -63,6 +78,46 @@
     }
     if (body.childNodes.length) article.appendChild(body);
     return article;
+  }
+
+  // ---------- moderator delete ----------
+  function note(message, type) {
+    if (typeof CCC !== 'undefined' && CCC.toast) CCC.toast(message, type);
+  }
+
+  async function checkModerator() {
+    let session = null;
+    try { session = localStorage.getItem(SESSION_KEY); } catch (e) { /* none */ }
+    if (!session) return false;
+    try {
+      const resp = await fetch(`${WORKER}/api/moderation/access`, { headers: { Authorization: 'Bearer ' + session } });
+      const body = resp.ok ? await resp.json() : null;
+      return !!(body && body.moderator === true);
+    } catch (e) { return false; }
+  }
+
+  async function deletePhoto(publicId, article, button) {
+    if (!window.confirm('Delete this photo? It is removed permanently and can’t be undone.')) return;
+    let session = null;
+    try { session = localStorage.getItem(SESSION_KEY); } catch (e) { /* none */ }
+    button.disabled = true;
+    let resp = null;
+    try {
+      resp = await fetch(`${WORKER}/api/moderation/sightings/${encodeURIComponent(publicId)}/photo`, {
+        method: 'DELETE', headers: { Authorization: 'Bearer ' + session }
+      });
+    } catch (e) { resp = null; }
+    button.disabled = false;
+    if (resp && resp.ok) {
+      article.remove();
+      const current = Number(String($('seenNumber').textContent).replace(/,/g, ''));
+      if (Number.isFinite(current) && current > 0) setSeen(current - 1);
+      note('Photo deleted.', 'success');
+    } else if (resp && (resp.status === 401 || resp.status === 403)) {
+      note('Only moderators can delete photos.', 'error');
+    } else {
+      note("Couldn't delete the photo. Please try again.", 'error');
+    }
   }
 
   // ---------- expanded photo ----------
@@ -178,7 +233,9 @@
     }
 
     const initial = (new URLSearchParams(location.search).get('city') || 'all').toLowerCase();
-    selectCity(initial);
+    // Moderator status first, so cards render with (or without) the delete
+    // control from the start.
+    checkModerator().then(mod => { isModerator = mod; selectCity(initial); });
   }
 
   init();

@@ -354,3 +354,13 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 .city-filter{border-color:rgba(212,175,55,0.25); color:#cbd5e1; background:rgba(15,20,28,0.6);}
 .city-filter:hover{color:#fff; border-color:rgba(212,175,55,0.5);}
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{background:linear-gradient(to right,var(--goldsoft),var(--gold)); color:#1a1204; border-color:transparent; box-shadow:0 8px 20px -10px rgba(212,175,55,0.65);}
+
+/* ---------- Moderator photo delete (sightings.html, moderation.html) ----------
+   Rendered for moderators only. On hover (or keyboard focus) the photo
+   darkens and a red Delete button appears; touch screens can't hover, so
+   there the button is simply always shown. */
+.mod-photo .mod-photo-shade, .mod-photo .mod-photo-delete{opacity:0; transition:opacity .2s ease;}
+.mod-photo .mod-photo-shade{pointer-events:none;}
+.mod-photo:hover .mod-photo-shade, .mod-photo:focus-within .mod-photo-shade,
+.mod-photo:hover .mod-photo-delete, .mod-photo:focus-within .mod-photo-delete{opacity:1;}
+@media (hover: none){ .mod-photo .mod-photo-delete{opacity:1;} }

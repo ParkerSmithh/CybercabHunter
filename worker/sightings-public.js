@@ -152,3 +152,31 @@ export async function expireSightingPhotos(env, { limit = EXPIRY_BATCH } = {}) {
   await db.clearSightingPhotos(sql, deleted);
   return { due: due.length, deleted: deleted.length };
 }
+
+// Moderator "delete photo" (the caller, worker/moderation.js, checks the role
+// first): deletes the R2 object, then records it (db.deleteSightingPhotoRecord).
+// A failed R2 delete changes nothing, so it can simply be retried.
+export async function deleteSightingPhoto(env, submissionId, moderatorId) {
+  const sql = env.cybercabhunter_db;
+  const ref = await db.getSightingPhotoRef(sql, submissionId);
+  if (!ref) return notFound();
+  try {
+    await env.EVIDENCE_BUCKET.delete(ref);
+  } catch (e) {
+    return Response.json({ success: false, error: 'delete_failed' }, { status: 502 });
+  }
+  try {
+    await db.deleteSightingPhotoRecord(sql, { submissionId, moderatorId });
+  } catch (e) {
+    // The object is gone; the public photo route also clears a missing photo.
+    return Response.json({ success: false, error: 'record_update_failed' }, { status: 500 });
+  }
+  return Response.json({ success: true, deleted: true });
+}
+
+export async function deleteSightingPhotoByPublicId(env, publicId, moderatorId) {
+  if (!PUBLIC_ID_RE.test(publicId)) return notFound();
+  const submissionId = await db.getSubmissionIdByPublicId(env.cybercabhunter_db, publicId);
+  if (!submissionId) return notFound();
+  return deleteSightingPhoto(env, submissionId, moderatorId);
+}

@@ -19,7 +19,7 @@ import { normalizePlate } from './plate.js';
 import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
 import { readImportItems, runImport, runSummary, itemBase } from './receipt-import.js';
 import { rideReviewState } from './ride-status.js';
-import { sightingPhotoForModerator } from './sightings-public.js';
+import { sightingPhotoForModerator, deleteSightingPhoto, deleteSightingPhotoByPublicId } from './sightings-public.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -94,6 +94,22 @@ export async function apiGetVehicleSightingPhoto(request, env, submissionId) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
   return sightingPhotoForModerator(env, submissionId);
+}
+
+// DELETE /api/moderation/vehicle-sightings/:submissionId/photo (moderation
+// page) and DELETE /api/moderation/sightings/:publicId/photo (the Sightings
+// page's hover button): permanently deletes a sighting's photo. Moderators
+// only. See worker/sightings-public.js deleteSightingPhoto.
+export async function apiDeleteVehicleSightingPhoto(request, env, submissionId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  return deleteSightingPhoto(env, submissionId, auth.userId);
+}
+
+export async function apiDeletePublicSightingPhoto(request, env, publicId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  return deleteSightingPhotoByPublicId(env, publicId, auth.userId);
 }
 
 const MAX_REJECTION_REASON = 280; // matches worker/profile.js's existing MAX_BIO precedent

@@ -249,6 +249,36 @@ async function run() {
     check('...and it is recorded as gone: Seen 2 -> 1, metadata kept', (await list(ctx)).json.seen === 1 && ctx.d1.query('SELECT status FROM submissions WHERE id = ?', a)[0].status === 'approved');
   }
 
+  console.log('9b. Moderator photo delete (API)');
+  {
+    const ctx = await makeApp();
+    const approved = await submit(ctx, { service_area: 'Austin', approx_location: 'Keep me' });
+    const other = await submit(ctx, { service_area: 'Austin' });
+    const pending = await submit(ctx, { service_area: 'Dallas' });
+    await approve(ctx, approved); await approve(ctx, other);
+    const pub = publicIdOf(ctx, approved);
+    const ref = ctx.d1.query('SELECT evidence_ref FROM submissions WHERE id = ?', approved)[0].evidence_ref;
+    const del = (path, user) => req(ctx, 'DELETE', path, { user });
+    check('signed out: 401, nothing deleted', (await del(`/api/moderation/sightings/${pub}/photo`)).status === 401 && ctx.env.EVIDENCE_BUCKET._objects.has(ref));
+    check('a rider (not a moderator): 403, nothing deleted', (await del(`/api/moderation/sightings/${pub}/photo`, 'rider')).status === 403 && ctx.env.EVIDENCE_BUCKET._objects.has(ref));
+    check('an unknown or malformed public id: 404', (await del(`/api/moderation/sightings/${'f'.repeat(32)}/photo`, 'mod')).status === 404 && (await del('/api/moderation/sightings/nope/photo', 'mod')).status === 404);
+    const ok = await del(`/api/moderation/sightings/${pub}/photo`, 'mod');
+    check('a moderator deletes a public photo by its gallery id: 200', ok.status === 200 && (await ok.json()).deleted === true);
+    check('the R2 object is gone and it left the gallery (Seen 2 -> 1)', !ctx.env.EVIDENCE_BUCKET._objects.has(ref) && (await list(ctx)).json.seen === 1 && (await req(ctx, 'GET', `/api/sightings/${pub}/photo`)).status === 404);
+    const row = ctx.d1.query('SELECT s.status, s.evidence_ref, o.evidence_ref AS oref, o.approx_location FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id WHERE s.id = ?', approved)[0];
+    check('an approved sighting stays approved; only its photo key is cleared, metadata kept', row.status === 'approved' && row.evidence_ref === null && row.oref === null && row.approx_location === 'Keep me');
+    check('deleting again: 404 (nothing left to delete)', (await del(`/api/moderation/sightings/${pub}/photo`, 'mod')).status === 404);
+
+    const pres = await del(`/api/moderation/vehicle-sightings/${pending}/photo`, 'mod');
+    const p = ctx.d1.query('SELECT s.status, s.reviewed_by, s.rejection_reason, s.evidence_ref, o.verification_status FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id WHERE s.id = ?', pending)[0];
+    check('from the moderation page (by submission id): a PENDING photo sighting is deleted and closed as rejected', pres.status === 200 && p.status === 'rejected' && p.reviewed_by === 'mod' && p.rejection_reason === 'Photo deleted by a moderator' && p.evidence_ref === null && p.verification_status === 'rejected');
+    check('...so it leaves the review queue', !(await (await req(ctx, 'GET', '/api/moderation/vehicle-sightings', { user: 'mod' })).json()).sightings.some(x => x.submission_id === pending));
+    check('a rider cannot use that route either: 403', (await del(`/api/moderation/vehicle-sightings/${other}/photo`, 'rider')).status === 403);
+    ctx.env.EVIDENCE_BUCKET.delete = async () => { throw new Error('r2 down'); };
+    const fail = await del(`/api/moderation/vehicle-sightings/${other}/photo`, 'mod');
+    check('an R2 failure: 502 and nothing recorded (safe to retry)', fail.status === 502 && ctx.d1.query('SELECT evidence_ref FROM submissions WHERE id = ?', other)[0].evidence_ref !== null);
+  }
+
   console.log('10. The page (js/sightings.js in jsdom)');
   {
     const ctx = await makeApp();
@@ -257,11 +287,12 @@ async function run() {
     await approve(ctx, await submit(ctx, { service_area: 'Houston' }));
     const html = fs.readFileSync(`${ROOT}public/sightings.html`, 'utf8');
     const js = fs.readFileSync(`${ROOT}public/js/sightings.js`, 'utf8');
-    async function open(url) {
+    async function open(url, session) {
       const dom = new JSDOM(html, { runScripts: 'outside-only', url, pretendToBeVisual: true });
       const w = dom.window;
+      if (session) w.localStorage.setItem('teslaSessionId', session);
       const calls = [];
-      w.fetch = async u => { const path = String(u).replace(/^https:\/\/[^/]+/, ''); calls.push(path); return worker.fetch(new Request(`https://x${path}`), ctx.env, {}); };
+      w.fetch = async (u, init) => { const path = String(u).replace(/^https:\/\/[^/]+/, ''); calls.push(path); return worker.fetch(new Request(`https://x${path}`, init), ctx.env, {}); };
       w.eval(js);
       const d = w.document;
       const settle = async () => { for (let i = 0; i < 100 && d.getElementById('sightingsLoading').className.indexOf('hidden') < 0; i++) await new Promise(r => setTimeout(r, 10)); await new Promise(r => setTimeout(r, 20)); };
@@ -304,6 +335,25 @@ async function run() {
 
     const direct = await open('https://cybercabhunter.com/sightings?city=orlando');
     check('opening ?city=orlando starts on Orlando', direct.d.querySelector('[data-city="orlando"]').getAttribute('aria-pressed') === 'true' && direct.calls[0] === '/api/sightings?city=orlando');
+
+    check('a visitor who is not a moderator gets no Delete control on any photo', p.d.querySelectorAll('.mod-photo-delete, .mod-photo').length === 0);
+    const riderView = await open('https://cybercabhunter.com/sightings', 'session-rider');
+    check('...nor does a signed-in rider', riderView.cards().length === 3 && riderView.d.querySelectorAll('.mod-photo-delete').length === 0);
+    const modView = await open('https://cybercabhunter.com/sightings', 'session-mod');
+    const buttons = [...modView.d.querySelectorAll('.mod-photo-delete')];
+    check('a moderator gets a red Delete button over every photo, with the darkening layer', buttons.length === 3 && buttons.every(b => /bg-crimson/.test(b.className) && b.textContent === 'Delete') && modView.d.querySelectorAll('.mod-photo .mod-photo-shade').length === 3);
+    check('the hover behaviour lives in the stylesheet (darken + reveal on hover)', /\.mod-photo:hover \.mod-photo-shade/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
+    modView.w.confirm = () => false;
+    buttons[0].click();
+    await new Promise(r => setTimeout(r, 30));
+    check('cancelling the confirmation deletes nothing', modView.cards().length === 3 && modView.seen() === '3 Seen');
+    modView.w.confirm = () => true;
+    buttons[0].click();
+    await modView.settle();
+    await new Promise(r => setTimeout(r, 50));
+    check('confirming deletes it: the card goes and the counter drops to "2 Seen"', modView.cards().length === 2 && modView.seen() === '2 Seen');
+    check('...and the server agrees', (await list(ctx)).json.seen === 2);
+    check('clicking Delete does not also open the expanded view', modView.d.getElementById('sightingViewer').classList.contains('hidden'));
 
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;   // point the page at an empty database
