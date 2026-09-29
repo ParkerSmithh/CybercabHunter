@@ -20,7 +20,11 @@
 - Recent sightings feed
 - Submit Sighting drawer
 
-## Fleet ETA — Dispatch Comparison Simulator (`dispatch-comparison.html`)
+## Simulation (`simulation.html`)
+
+Two tools on one page, switched with the **Fleet ROI** and **Fleet ETA** buttons (the choice is kept in the URL as `?view=eta`). The old `/fleet-calculator` and `/dispatch-comparison` URLs permanently redirect here.
+
+### Fleet ETA — Dispatch Comparison Simulator
 
 - Austin/Dallas city selector. Dallas shows an explicit "isn't available in Cybercab Hunter yet" state rather than any simulated data.
 - Austin: Active Cybercabs (45), Active Model Y Fleet (114), and Service Radius (264 mi²) are shown as fixed values, not adjustable sliders. The one adjustable control besides Passenger Demand is Trip Distance (0–30 mi, range slider), which drives the estimated fare shown per fleet, not the ETA itself.
@@ -29,13 +33,13 @@
 - Dual-colored (gold vs. crimson) Arrival Odds bar computed as `fleetA / (fleetA + fleetB)`
 - Radar-sweep graphic per fleet whose spin speed scales with that fleet's ETA
 
-## Fleet ROI — Fleet Investor Sandbox (`fleet-calculator.html`)
+### Fleet ROI — Fleet Dashboard
 
 - Adjustable inputs: fleet size, electricity rate, and daily miles/cab (range sliders), plus an inductive-loss toggle (defaults to 8%)
 - Passenger Fare, Tesla Network Cut, and Cost per Unit are shown as fixed assumptions, not adjustable inputs
 - Animated output cards: Monthly Energy Overhead, Gross Fleet Revenue, Net Operating Income
 - Breakeven-timeline meter
-- "Export Investment Prospectus" button generates a PDF client-side via `jsPDF` (loaded from a CDN) — not a `.txt` file
+- "Export" button generates a PDF client-side via `jsPDF` (loaded from a CDN) — not a `.txt` file
 
 ## Zones (`infrastructure.html`)
 

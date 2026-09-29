@@ -293,7 +293,7 @@ async function run() {
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(f).includes('data-nav="sightings"'));
-    check('the header nav has a "Cars" tab linking to /vehicles on every page that has the nav (and on /vehicles itself)', pages.length >= 9 && pages.every(f => /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(read(f))));
+    check('the header nav has a "Cars" tab linking to /vehicles on every page that has the nav (and on /vehicles itself)', pages.length >= 8 && pages.every(f => /<a href="\/vehicles" data-nav="vehicles"[^>]*>Cars<\/a>/.test(read(f))));
     check('the tab is no longer labelled "Registry" anywhere in the header nav', pages.every(f => !/<a href="\/vehicles" data-nav="vehicles"[^>]*>Registry<\/a>/.test(read(f))));
     // infrastructure.html deliberately has no <footer> at all (it's a single
     // full-screen map view with nothing below it to scroll to) — every other

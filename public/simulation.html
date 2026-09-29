@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Fleet Dashboard</title>
+<title>Cybercab Hunter — Simulation</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -26,6 +26,7 @@
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:#232733; outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 0 10px rgba(212,175,55,0.7); cursor:pointer; margin-top:-7px;}
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#232733;}
   input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); border:none; box-shadow:0 0 10px rgba(212,175,55,0.7); cursor:pointer;}
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
@@ -52,8 +53,7 @@
       <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
-      <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ETA</a>
-      <a href="fleet-calculator.html" data-nav="fleet-calculator" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
+      <a href="/simulation" data-nav="simulation" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Simulation</a>
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
@@ -85,22 +85,31 @@
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Sightings</span>
   </a>
-  <a href="dispatch-comparison.html" data-nav="dispatch-comparison" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">ETA</span>
-  </a>
-  <a href="fleet-calculator.html" data-nav="fleet-calculator" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+  <a href="/simulation" data-nav="simulation" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4 3 2.5 4.5-5.5"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">ROI</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wide">Simulation</span>
   </a>
 </nav>
 
+<!-- Simulation: two tools on one page, switched with the buttons below
+     (Fleet ROI = the fleet investment calculator, Fleet ETA = the dispatch
+     comparison). The choice is kept in the URL (?view=eta). -->
+<section class="pt-8">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div id="simTabs" role="tablist" aria-label="Simulation" class="flex flex-wrap gap-2">
+      <button id="simTabRoi" type="button" role="tab" data-view="roi" aria-selected="true" aria-controls="simPanelRoi" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border transition-colors">Fleet ROI</button>
+      <button id="simTabEta" type="button" role="tab" data-view="eta" aria-selected="false" aria-controls="simPanelEta" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border transition-colors">Fleet ETA</button>
+    </div>
+  </div>
+</section>
+
+<div id="simPanelRoi" role="tabpanel" aria-labelledby="simTabRoi">
 <section class="relative overflow-hidden border-b border-[rgba(212,175,55,0.12)]">
   <div class="absolute inset-0 z-0" style="background:radial-gradient(ellipse 55% 75% at 82% 50%, rgba(212,175,55,0.16), transparent 65%);"></div>
   <div class="relative z-[1] max-w-7xl mx-auto px-6 lg:px-10 py-8 flex items-center justify-center gap-16">
     <div class="max-w-xl">
       <div class="inline-flex items-center gap-2 text-xs font-semibold text-gold uppercase tracking-wider mb-4 px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.08)]">Investor Tools</div>
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Fleet <span class="text-gold">Dashboard</span></h1>
+      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET <span class="text-gold">DASHBOARD</span></h1>
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg">Model monthly economics for a prospective Cybercab fleet — energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
     </div>
     <img src="images/Cybercab2.png" alt="Cybercab" class="hidden lg:block w-[420px] shrink-0" style="filter:drop-shadow(0 30px 40px rgba(0,0,0,0.55)) drop-shadow(0 0 50px rgba(212,175,55,0.22));">
@@ -161,6 +170,10 @@
           <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inductive Loss Factor <span id="lossLabel" class="text-slate-300">(8%)</span></label>
           <div id="lossToggle" class="toggle on"><div class="toggle-dot"></div></div>
         </div>
+        <button id="exportBtn" class="btn-magnetic w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19h14"/></svg>
+          Export
+        </button>
       </div>
       </div>
 
@@ -191,13 +204,102 @@
           <svg id="cashFlowChart" viewBox="0 0 600 200" class="w-full h-auto mt-2" preserveAspectRatio="none"></svg>
           <div class="text-xs text-slate-500 mt-2">Projected net cash position from initial fleet capital outlay through recovery.</div>
         </div>
-
-        <button id="exportBtn" class="btn-magnetic w-full py-4 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Export Investment Prospectus</button>
       </div>
       </div>
     </div>
   </div>
 </section>
+</div>
+
+<div id="simPanelEta" role="tabpanel" aria-labelledby="simTabEta" class="hidden">
+<section class="py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-8 max-w-2xl">
+      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET <span class="text-gold">ETA</span></h1>
+      <p class="mt-4 text-slate-400 text-base leading-relaxed">Model expected wait times for Cybercab vs. Model Y dispatch as fleet size, coverage area, and demand shift.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Controls (always visible) -->
+      <div class="lg:col-span-1">
+      <div class="glass rounded-2xl p-7 space-y-8 h-fit">
+        <div class="flex items-center gap-3" id="citySelector">
+          <button data-city="austin" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Austin</button>
+          <button data-city="dallas" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300">Dallas</button>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Cybercabs</label>
+            <input type="number" id="cybercabCount" min="0" max="500" step="1" value="45" readonly class="font-display font-bold text-gold text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Model Y Fleet</label>
+            <input type="number" id="modelyCount" min="0" max="500" step="1" value="114" readonly class="font-display font-bold text-crimson text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Service Radius</label>
+            <div class="flex items-center gap-1">
+              <input type="number" id="radius" value="264" readonly class="font-display font-bold text-cyan text-lg bg-transparent w-12 text-right outline-none border-b border-transparent cursor-default">
+              <span class="text-cyan text-sm font-bold">mi²</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trip Distance</label>
+            <div class="flex items-center gap-1">
+              <input type="number" id="tripMilesLabel" min="0" max="30" step="0.01" value="0" class="font-display font-bold text-gold text-lg bg-transparent w-12 text-right outline-none border-b border-transparent focus:border-gold">
+              <span class="text-gold text-sm font-bold">mi</span>
+            </div>
+          </div>
+          <input type="range" id="tripMiles" min="0" max="30" step="0.01" value="0">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Passenger Demand</label>
+          <div class="grid grid-cols-3 gap-2" id="demandGroup">
+            <button data-demand="0.8" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300">Low</button>
+            <button data-demand="1.0" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Normal</button>
+            <button data-demand="1.5" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300">Surge</button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Cockpit displays -->
+      <div class="lg:col-span-2">
+      <div id="austinContent" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-7">
+          <div class="text-xs uppercase tracking-wider text-gold font-semibold mb-4 pb-3 border-b border-[rgba(212,175,55,0.12)]">Cybercab ETA</div>
+          <div class="font-display font-black text-5xl tabular-nums"><span id="cybercabEta">0.0</span><span class="text-base text-slate-500 font-medium ml-1">min</span></div>
+          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="cybercabFare" class="font-semibold text-gold">$0.00</span></div>
+          <div class="text-[11px] text-slate-500 mt-1">$3 fee per ride + $1.40 per mile</div>
+          <div id="cybercabRadar" class="radar-sweep w-full h-64 mt-6"><img src="images/Cybercab.png" alt="Cybercab" class="radar-vehicle-img"></div>
+        </div>
+        <div class="glass rounded-2xl p-7">
+          <div class="text-xs uppercase tracking-wider text-crimson font-semibold mb-4 pb-3 border-b border-[rgba(232,33,39,0.12)]">Model Y ETA</div>
+          <div class="font-display font-black text-5xl tabular-nums"><span id="modelyEta">0.0</span><span class="text-base text-slate-500 font-medium ml-1">min</span></div>
+          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="modelyFare" class="font-semibold text-crimson">$0.00</span></div>
+          <div class="text-[11px] text-slate-500 mt-1">$3 fee per ride + $1.40 per mile</div>
+          <div id="modelyRadar" class="radar-sweep w-full h-64 mt-6"><img src="images/RedModelY.png" alt="Model Y" class="radar-vehicle-img"></div>
+        </div>
+      </div>
+
+      <div id="dallasContent" class="hidden glass rounded-2xl p-16 text-center flex items-center justify-center">
+        <div>
+          <div class="font-display font-bold text-3xl text-gold mb-3">NOT YET AVAILABLE</div>
+          <p class="text-slate-400 text-base max-w-md mx-auto">Dallas Fleet ETA simulation isn't available in Cybercab Hunter yet.</p>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -306,8 +408,7 @@
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="dispatch-comparison.html" class="hover:text-white transition-colors">Fleet ETA</a>
-        <a href="fleet-calculator.html" class="hover:text-white transition-colors">Fleet ROI</a>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="/simulation" class="hover:text-white transition-colors">Simulation</a>
       </div>
     </div>
     <div>
@@ -334,218 +435,324 @@
 <script>
   CCC.init();
 
-  const fleetSize = document.getElementById('fleetSize');
-  const electricityRate = document.getElementById('electricityRate');
-  const dailyMiles = document.getElementById('dailyMiles');
-  const lossToggle = document.getElementById('lossToggle');
-  let lossOn = true;
+  // ---- Fleet ROI | Fleet ETA ----
+  (function () {
+    const tabs = { roi: document.getElementById('simTabRoi'), eta: document.getElementById('simTabEta') };
+    const panels = { roi: document.getElementById('simPanelRoi'), eta: document.getElementById('simPanelEta') };
+    function show(view) {
+      view = view === 'eta' ? 'eta' : 'roi';
+      for (const k of ['roi', 'eta']) {
+        tabs[k].setAttribute('aria-selected', String(k === view));
+        panels[k].classList.toggle('hidden', k !== view);
+      }
+      try {
+        const url = new URL(location.href);
+        if (view === 'roi') url.searchParams.delete('view'); else url.searchParams.set('view', view);
+        history.replaceState(null, '', url);
+      } catch (e) { /* not essential */ }
+    }
+    tabs.roi.addEventListener('click', () => show('roi'));
+    tabs.eta.addEventListener('click', () => show('eta'));
+    show(new URLSearchParams(location.search).get('view'));
+  })();
 
-  // Locked assumptions — not user-editable.
-  const NETWORK_CUT_PCT = 25;
-  const COST_PER_CAB = 30000;
-  const BASE_FARE = 3.00;
-  const PER_MILE_RATE = 1.40;
-  const AVG_TRIP_MILES = 5;
+  // ---- Fleet ROI (each tool in its own scope: both define recompute() etc.) ----
+  (function () {
+    const fleetSize = document.getElementById('fleetSize');
+    const electricityRate = document.getElementById('electricityRate');
+    const dailyMiles = document.getElementById('dailyMiles');
+    const lossToggle = document.getElementById('lossToggle');
+    let lossOn = true;
 
-  // Count up the locked assumption cards on page load, like the homepage stats bar.
-  CCC.animateCounter(document.getElementById('networkCutOut'), 0, NETWORK_CUT_PCT, 1400);
-  CCC.animateCounter(document.getElementById('costPerCabOut'), 0, COST_PER_CAB, 1400);
-  CCC.animateCounter(document.getElementById('baseFareOut'), 0, BASE_FARE, 1400, v => v.toFixed(2));
-  CCC.animateCounter(document.getElementById('perMileFareOut'), 0, PER_MILE_RATE, 1400, v => v.toFixed(2));
+    // Locked assumptions — not user-editable.
+    const NETWORK_CUT_PCT = 25;
+    const COST_PER_CAB = 30000;
+    const BASE_FARE = 3.00;
+    const PER_MILE_RATE = 1.40;
+    const AVG_TRIP_MILES = 5;
 
-  let last = { energy: 0, revenue: 0, noi: 0 };
+    // Count up the locked assumption cards on page load, like the homepage stats bar.
+    CCC.animateCounter(document.getElementById('networkCutOut'), 0, NETWORK_CUT_PCT, 1400);
+    CCC.animateCounter(document.getElementById('costPerCabOut'), 0, COST_PER_CAB, 1400);
+    CCC.animateCounter(document.getElementById('baseFareOut'), 0, BASE_FARE, 1400, v => v.toFixed(2));
+    CCC.animateCounter(document.getElementById('perMileFareOut'), 0, PER_MILE_RATE, 1400, v => v.toFixed(2));
 
-  function fmt(n) { return Math.round(n).toLocaleString(); }
+    let last = { energy: 0, revenue: 0, noi: 0 };
 
-  // Shrink/grow a number input to fit exactly what's typed in it, so any
-  // prefix/suffix beside it stays snug regardless of value length.
-  function fitNumberWidth(el) {
-    el.style.width = Math.max(1, el.value.length) + 1 + 'ch';
-  }
+    function fmt(n) { return Math.round(n).toLocaleString(); }
 
-  // Keep a range slider and its typeable number field in sync in both directions.
-  function linkSliderAndNumber(rangeEl, numberEl) {
-    rangeEl.addEventListener('input', () => {
-      numberEl.value = rangeEl.value;
-      fitNumberWidth(numberEl);
-      recompute();
-    });
-    numberEl.addEventListener('input', () => {
-      if (numberEl.value === '') return;
-      rangeEl.value = numberEl.value;
-      fitNumberWidth(numberEl);
-      recompute();
-    });
-  }
-
-  function fmtSigned(n) {
-    return (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
-  }
-
-  // Draws the cumulative net-cash-position line from month 0 (−total fleet
-  // capital) through the projection window, shading the loss/profit zones
-  // on either side of the month it crosses zero (breakeven).
-  function renderCashFlowChart(totalCapital, noi, breakevenMonths) {
-    const svg = document.getElementById('cashFlowChart');
-    const W = 600, H = 200, left = 64, right = 16, top = 16, bottom = 28;
-    const plotW = W - left - right, plotH = H - top - bottom;
-
-    const maxMonths = isFinite(breakevenMonths) && breakevenMonths > 0
-      ? Math.min(60, Math.max(6, Math.ceil(breakevenMonths * 1.3)))
-      : 24;
-    const startVal = -totalCapital;
-    const endVal = startVal + noi * maxMonths;
-
-    let yMin = Math.min(startVal, endVal, 0);
-    let yMax = Math.max(startVal, endVal, 0);
-    if (yMin === yMax) { yMin -= 1; yMax += 1; }
-    const pad = (yMax - yMin) * 0.1;
-    yMin -= pad; yMax += pad;
-
-    const xScale = m => left + (m / maxMonths) * plotW;
-    const yScale = v => top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
-    const zeroY = yScale(0);
-
-    const hasCrossing = isFinite(breakevenMonths) && breakevenMonths > 0 && breakevenMonths <= maxMonths && totalCapital > 0;
-    const beX = hasCrossing ? xScale(breakevenMonths) : null;
-
-    let areas = '';
-    if (hasCrossing) {
-      areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${beX},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
-      areas += `<polygon points="${beX},${zeroY} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY}" fill="rgba(212,175,55,0.18)"></polygon>`;
-    } else if (totalCapital > 0) {
-      areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
+    // Shrink/grow a number input to fit exactly what's typed in it, so any
+    // prefix/suffix beside it stays snug regardless of value length.
+    function fitNumberWidth(el) {
+      el.style.width = Math.max(1, el.value.length) + 1 + 'ch';
     }
 
-    const linePath = `M ${xScale(0)} ${yScale(startVal)} L ${hasCrossing ? beX + ' ' + zeroY + ' L ' : ''}${xScale(maxMonths)} ${yScale(endVal)}`;
-    const lineColor = totalCapital <= 0 ? '#64748B' : '#D4AF37';
+    // Keep a range slider and its typeable number field in sync in both directions.
+    function linkSliderAndNumber(rangeEl, numberEl) {
+      rangeEl.addEventListener('input', () => {
+        numberEl.value = rangeEl.value;
+        fitNumberWidth(numberEl);
+        recompute();
+      });
+      numberEl.addEventListener('input', () => {
+        if (numberEl.value === '') return;
+        rangeEl.value = numberEl.value;
+        fitNumberWidth(numberEl);
+        recompute();
+      });
+    }
 
-    const marker = hasCrossing
-      ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#D4AF37" stroke="#07090E" stroke-width="2"></circle>
-         <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" fill="#D4AF37">${breakevenMonths} mo</text>`
-      : '';
+    function fmtSigned(n) {
+      return (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
+    }
 
-    svg.innerHTML = `
-      <line x1="${left}" y1="${zeroY}" x2="${W - right}" y2="${zeroY}" stroke="#2A3140" stroke-width="1" stroke-dasharray="4 4"></line>
-      ${areas}
-      <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5"></path>
-      ${marker}
-      <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMax)}</text>
-      <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMin)}</text>
-      <text x="${left}" y="${H - 8}" font-size="10" fill="#64748B">0 mo</text>
-      <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" fill="#64748B">${maxMonths} mo</text>
-    `;
-  }
+    // Draws the cumulative net-cash-position line from month 0 (−total fleet
+    // capital) through the projection window, shading the loss/profit zones
+    // on either side of the month it crosses zero (breakeven).
+    function renderCashFlowChart(totalCapital, noi, breakevenMonths) {
+      const svg = document.getElementById('cashFlowChart');
+      const W = 600, H = 200, left = 64, right = 16, top = 16, bottom = 28;
+      const plotW = W - left - right, plotH = H - top - bottom;
 
-  function recompute() {
-    document.getElementById('lossLabel').textContent = lossOn ? '(8%)' : '(0%)';
+      const maxMonths = isFinite(breakevenMonths) && breakevenMonths > 0
+        ? Math.min(60, Math.max(6, Math.ceil(breakevenMonths * 1.3)))
+        : 24;
+      const startVal = -totalCapital;
+      const endVal = startVal + noi * maxMonths;
 
-    const r = CCC_CALC.fleetFinancials({
-      fleetSize: parseInt(fleetSize.value, 10),
-      electricityRate: parseFloat(electricityRate.value),
-      dailyMiles: parseInt(dailyMiles.value, 10),
-      baseFare: BASE_FARE,
-      perMileRate: PER_MILE_RATE,
-      avgTripMiles: AVG_TRIP_MILES,
-      inductiveLossFactor: lossOn ? 0.08 : 0,
-      networkCutPct: NETWORK_CUT_PCT,
-      costPerCab: COST_PER_CAB
-    });
+      let yMin = Math.min(startVal, endVal, 0);
+      let yMax = Math.max(startVal, endVal, 0);
+      if (yMin === yMax) { yMin -= 1; yMax += 1; }
+      const pad = (yMax - yMin) * 0.1;
+      yMin -= pad; yMax += pad;
 
-    CCC.animateCounter(document.getElementById('energyOut'), last.energy, r.monthlyEnergyOverhead, 700, fmt);
-    CCC.animateCounter(document.getElementById('revenueOut'), last.revenue, r.grossRevenue, 700, fmt);
-    CCC.animateCounter(document.getElementById('noiOut'), last.noi, r.netOperatingIncome, 700, fmt);
-    last = { energy: r.monthlyEnergyOverhead, revenue: r.grossRevenue, noi: r.netOperatingIncome };
+      const xScale = m => left + (m / maxMonths) * plotW;
+      const yScale = v => top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+      const zeroY = yScale(0);
 
-    const months = r.breakevenMonths;
-    document.getElementById('breakevenLabel').textContent = isFinite(months) ? months + ' mo' : '—';
-    const totalCapital = parseInt(fleetSize.value, 10) * COST_PER_CAB;
-    renderCashFlowChart(totalCapital, r.netOperatingIncome, months);
-  }
+      const hasCrossing = isFinite(breakevenMonths) && breakevenMonths > 0 && breakevenMonths <= maxMonths && totalCapital > 0;
+      const beX = hasCrossing ? xScale(breakevenMonths) : null;
 
-  linkSliderAndNumber(fleetSize, document.getElementById('fleetSizeLabel'));
-  linkSliderAndNumber(electricityRate, document.getElementById('electricityLabel'));
-  linkSliderAndNumber(dailyMiles, document.getElementById('milesLabel'));
-  fitNumberWidth(document.getElementById('electricityLabel'));
-  fitNumberWidth(document.getElementById('milesLabel'));
-  lossToggle.addEventListener('click', () => { lossOn = !lossOn; lossToggle.classList.toggle('on', lossOn); recompute(); });
+      let areas = '';
+      if (hasCrossing) {
+        areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${beX},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
+        areas += `<polygon points="${beX},${zeroY} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY}" fill="rgba(212,175,55,0.18)"></polygon>`;
+      } else if (totalCapital > 0) {
+        areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
+      }
 
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-    const marginX = 56;
-    let y = 72;
+      const linePath = `M ${xScale(0)} ${yScale(startVal)} L ${hasCrossing ? beX + ' ' + zeroY + ' L ' : ''}${xScale(maxMonths)} ${yScale(endVal)}`;
+      const lineColor = totalCapital <= 0 ? '#64748B' : '#D4AF37';
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text('CYBERCAB HUNTER', marginX, y);
-    y += 24;
-    doc.setFontSize(14);
-    doc.setTextColor(150, 120, 40);
-    doc.text('Investment Prospectus', marginX, y);
-    doc.setTextColor(0, 0, 0);
-    y += 20;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
-    y += 28;
+      const marker = hasCrossing
+        ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#D4AF37" stroke="#07090E" stroke-width="2"></circle>
+           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" fill="#D4AF37">${breakevenMonths} mo</text>`
+        : '';
 
-    doc.setDrawColor(212, 175, 55);
-    doc.line(marginX, y, 556, y);
-    y += 24;
+      svg.innerHTML = `
+        <line x1="${left}" y1="${zeroY}" x2="${W - right}" y2="${zeroY}" stroke="#2A3140" stroke-width="1" stroke-dasharray="4 4"></line>
+        ${areas}
+        <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5"></path>
+        ${marker}
+        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMax)}</text>
+        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMin)}</text>
+        <text x="${left}" y="${H - 8}" font-size="10" fill="#64748B">0 mo</text>
+        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" fill="#64748B">${maxMonths} mo</text>
+      `;
+    }
 
-    const rows = [
-      ['Fleet Size', `${fleetSize.value} Cybercabs`],
-      ['Electricity Rate', `$${parseFloat(electricityRate.value).toFixed(2)}/kWh`],
-      ['Daily Miles per Cab', `${dailyMiles.value} mi`],
-      ['Passenger Fare', `$${BASE_FARE.toFixed(2)} + $${PER_MILE_RATE.toFixed(2)}/mi`],
-      ['Tesla Network Cut', `${NETWORK_CUT_PCT}%`],
-      ['Cost per Cybercab', `$${fmt(COST_PER_CAB)}`],
-      ['Inductive Loss Factor', lossOn ? '8%' : '0%']
-    ];
-    doc.setFontSize(11);
-    rows.forEach(([label, value]) => {
+    function recompute() {
+      document.getElementById('lossLabel').textContent = lossOn ? '(8%)' : '(0%)';
+
+      const r = CCC_CALC.fleetFinancials({
+        fleetSize: parseInt(fleetSize.value, 10),
+        electricityRate: parseFloat(electricityRate.value),
+        dailyMiles: parseInt(dailyMiles.value, 10),
+        baseFare: BASE_FARE,
+        perMileRate: PER_MILE_RATE,
+        avgTripMiles: AVG_TRIP_MILES,
+        inductiveLossFactor: lossOn ? 0.08 : 0,
+        networkCutPct: NETWORK_CUT_PCT,
+        costPerCab: COST_PER_CAB
+      });
+
+      CCC.animateCounter(document.getElementById('energyOut'), last.energy, r.monthlyEnergyOverhead, 700, fmt);
+      CCC.animateCounter(document.getElementById('revenueOut'), last.revenue, r.grossRevenue, 700, fmt);
+      CCC.animateCounter(document.getElementById('noiOut'), last.noi, r.netOperatingIncome, 700, fmt);
+      last = { energy: r.monthlyEnergyOverhead, revenue: r.grossRevenue, noi: r.netOperatingIncome };
+
+      const months = r.breakevenMonths;
+      document.getElementById('breakevenLabel').textContent = isFinite(months) ? months + ' mo' : '—';
+      const totalCapital = parseInt(fleetSize.value, 10) * COST_PER_CAB;
+      renderCashFlowChart(totalCapital, r.netOperatingIncome, months);
+    }
+
+    linkSliderAndNumber(fleetSize, document.getElementById('fleetSizeLabel'));
+    linkSliderAndNumber(electricityRate, document.getElementById('electricityLabel'));
+    linkSliderAndNumber(dailyMiles, document.getElementById('milesLabel'));
+    fitNumberWidth(document.getElementById('electricityLabel'));
+    fitNumberWidth(document.getElementById('milesLabel'));
+    lossToggle.addEventListener('click', () => { lossOn = !lossOn; lossToggle.classList.toggle('on', lossOn); recompute(); });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+      const marginX = 56;
+      let y = 72;
+
       doc.setFont('helvetica', 'bold');
-      doc.text(label, marginX, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(value, marginX + 200, y);
+      doc.setFontSize(20);
+      doc.text('CYBERCAB HUNTER', marginX, y);
+      y += 24;
+      doc.setFontSize(14);
+      doc.setTextColor(150, 120, 40);
+      doc.text('Investment Prospectus', marginX, y);
+      doc.setTextColor(0, 0, 0);
       y += 20;
-    });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
+      y += 28;
 
-    y += 12;
-    doc.line(marginX, y, 556, y);
-    y += 24;
+      doc.setDrawColor(212, 175, 55);
+      doc.line(marginX, y, 556, y);
+      y += 24;
 
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Financial Outlook', marginX, y);
-    y += 22;
+      const rows = [
+        ['Fleet Size', `${fleetSize.value} Cybercabs`],
+        ['Electricity Rate', `$${parseFloat(electricityRate.value).toFixed(2)}/kWh`],
+        ['Daily Miles per Cab', `${dailyMiles.value} mi`],
+        ['Passenger Fare', `$${BASE_FARE.toFixed(2)} + $${PER_MILE_RATE.toFixed(2)}/mi`],
+        ['Tesla Network Cut', `${NETWORK_CUT_PCT}%`],
+        ['Cost per Cybercab', `$${fmt(COST_PER_CAB)}`],
+        ['Inductive Loss Factor', lossOn ? '8%' : '0%']
+      ];
+      doc.setFontSize(11);
+      rows.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, marginX, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, marginX + 200, y);
+        y += 20;
+      });
 
-    const outputs = [
-      ['Monthly Energy Overhead', `$${document.getElementById('energyOut').textContent}`],
-      ['Gross Fleet Revenue', `$${document.getElementById('revenueOut').textContent}`],
-      ['Net Operating Income', `$${document.getElementById('noiOut').textContent}`],
-      ['Breakeven Timeline', document.getElementById('breakevenLabel').textContent]
-    ];
-    doc.setFontSize(11);
-    outputs.forEach(([label, value]) => {
+      y += 12;
+      doc.line(marginX, y, 556, y);
+      y += 24;
+
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text(label, marginX, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(value, marginX + 200, y);
-      y += 20;
+      doc.text('Financial Outlook', marginX, y);
+      y += 22;
+
+      const outputs = [
+        ['Monthly Energy Overhead', `$${document.getElementById('energyOut').textContent}`],
+        ['Gross Fleet Revenue', `$${document.getElementById('revenueOut').textContent}`],
+        ['Net Operating Income', `$${document.getElementById('noiOut').textContent}`],
+        ['Breakeven Timeline', document.getElementById('breakevenLabel').textContent]
+      ];
+      doc.setFontSize(11);
+      outputs.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, marginX, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, marginX + 200, y);
+        y += 20;
+      });
+
+      y += 24;
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text('Not affiliated with Tesla, Inc. Figures are simulated estimates for planning purposes only.', marginX, y, { maxWidth: 500 });
+
+      doc.save('cybercab-central-prospectus.pdf');
+      CCC.toast('Prospectus exported as PDF.', 'success');
     });
 
-    y += 24;
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text('Not affiliated with Tesla, Inc. Figures are simulated estimates for planning purposes only.', marginX, y, { maxWidth: 500 });
+    recompute();
+  })();
 
-    doc.save('cybercab-central-prospectus.pdf');
-    CCC.toast('Prospectus exported as PDF.', 'success');
-  });
+  // ---- Fleet ETA ----
+  (function () {
+    // ---- City selector ----
+    const cityBtns = document.querySelectorAll('.city-btn');
+    const austinContent = document.getElementById('austinContent');
+    const dallasContent = document.getElementById('dallasContent');
+    cityBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        cityBtns.forEach(b => b.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300');
+        btn.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
+        const isDallas = btn.dataset.city === 'dallas';
+        austinContent.classList.toggle('hidden', isDallas);
+        dallasContent.classList.toggle('hidden', !isDallas);
+      });
+    });
 
-  recompute();
+    const cybercabCount = document.getElementById('cybercabCount');
+    const modelyCount = document.getElementById('modelyCount');
+    const radius = document.getElementById('radius');
+    const tripMiles = document.getElementById('tripMiles');
+    const demandBtns = document.querySelectorAll('.demand-btn');
+    let demand = 1.0;
+
+    // Count up the locked fleet stats on page load, like the homepage stats bar.
+    CCC.animateCounter(cybercabCount, 0, parseInt(cybercabCount.value, 10), 1400);
+    CCC.animateCounter(modelyCount, 0, parseInt(modelyCount.value, 10), 1400);
+    CCC.animateCounter(radius, 0, parseInt(radius.value, 10), 1400);
+
+    let lastCybercabEta = 0, lastModelyEta = 0;
+
+    // Keep a range slider and its typeable number field in sync in both directions.
+    function linkSliderAndNumber(rangeEl, numberEl) {
+      rangeEl.addEventListener('input', () => {
+        numberEl.value = rangeEl.value;
+        recompute();
+      });
+      numberEl.addEventListener('input', () => {
+        if (numberEl.value === '') return;
+        rangeEl.value = numberEl.value;
+        recompute();
+      });
+    }
+
+    function recompute() {
+      const cc = parseFloat(cybercabCount.value);
+      const my = parseFloat(modelyCount.value);
+      const area = parseFloat(radius.value);
+      const miles = parseFloat(tripMiles.value);
+
+      const ccEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: cc, demandFactor: demand });
+      const myEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: my, demandFactor: demand });
+
+      if (cc <= 0) {
+        document.getElementById('cybercabEta').textContent = '0.0';
+      } else {
+        CCC.animateCounter(document.getElementById('cybercabEta'), isFinite(lastCybercabEta) ? lastCybercabEta : 0, ccEta, 700, v => v.toFixed(1));
+      }
+      if (my <= 0) {
+        document.getElementById('modelyEta').textContent = '0.0';
+      } else {
+        CCC.animateCounter(document.getElementById('modelyEta'), isFinite(lastModelyEta) ? lastModelyEta : 0, myEta, 700, v => v.toFixed(1));
+      }
+      lastCybercabEta = ccEta; lastModelyEta = myEta;
+
+      const fare = miles <= 0 ? 0 : CCC_CALC.estimateFare({ tripMiles: miles, baseFare: 3.00 });
+      document.getElementById('cybercabFare').textContent = '$' + fare.toFixed(2);
+      document.getElementById('modelyFare').textContent = '$' + fare.toFixed(2);
+    }
+
+    linkSliderAndNumber(tripMiles, document.getElementById('tripMilesLabel'));
+    demandBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        demand = parseFloat(btn.dataset.demand);
+        demandBtns.forEach(b => b.className = 'demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300');
+        btn.className = 'demand-btn py-2.5 rounded-lg text-xs font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
+        recompute();
+      });
+    });
+
+    recompute();
+  })();
 </script>
 </body>
 </html>

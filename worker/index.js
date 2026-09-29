@@ -404,6 +404,16 @@ export default {
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
+    // Fleet ETA and Fleet ROI are now two views of one Simulation page. Their
+    // old URLs (with or without .html) are permanent redirects there, so old
+    // links, bookmarks and link previews keep working.
+    const oldSimulationPage = url.pathname.match(/^\/(dispatch-comparison|fleet-calculator)(?:\.html)?$/);
+    if (oldSimulationPage && (request.method === 'GET' || request.method === 'HEAD')) {
+      const target = new URL('/simulation', url);
+      if (oldSimulationPage[1] === 'dispatch-comparison') target.searchParams.set('view', 'eta');
+      return Response.redirect(target, 301);
+    }
+
     // The site's images moved from the web root into /images/. The old root
     // URLs (/Cybercab2.png ...) are permanent redirects to the new place, so
     // an external link, a cached page or a link preview that still points at
