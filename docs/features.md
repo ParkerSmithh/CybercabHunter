@@ -43,10 +43,6 @@
 - Austin: a MapLibre GL map showing Tesla's actual published Robotaxi service-zone geofence as a polygon, plus two named, real charging-location markers (St. Elmo Robotaxi Charging Hub, Ridgepoint Robotaxi Charging Site) with popup details
 - Austin "Services in Austin" (coverage in mi², launch date) and "Fleet & Fares" (Cybercab count, median/average fare, per-mile rate) figures. **These are manually maintained, hardcoded numbers written directly into the page's own script**, shown with the same animated count-up effect used for real stats elsewhere — they are not fetched from any API and are not live telemetry.
 
-## Community (`community.html`)
-
-Placeholder page only. The previously described City Showdown voting, Cybercab Bingo, and Spotter Leaderboard features have been removed and do not exist in the current page. Current copy: *"The spotter leaderboard isn't live yet... Rankings will only be shown once they can be based on real, moderated contributions."*
-
 ## Sign-in (`signin.html`)
 
 - Google Sign-In entry point for the account system

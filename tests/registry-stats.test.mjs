@@ -240,21 +240,15 @@ async function run() {
     check('reduced motion: the final value is shown immediately and never rewritten', still.v() === '3' && still.r() === '6' && stillChanges.n === 0);
   }
 
-  console.log('6. Community page: the invented leaderboard is gone');
+  console.log('6. Community page: removed entirely (its invented leaderboard stays gone)');
   {
-    const COMM = read('community.html');
+    check('community.html no longer exists', !fs.existsSync(`${ROOT}public/community.html`));
+    const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
+    check('no page links to it any more (nav, bottom nav or footer)', pages.every(f => !/community\.html|data-nav="community"/.test(read(f))));
     const names = ['atx_spotter', 'dfw_watcher', 'cabhunter22', 'sillicon_hills', 'railyardryan'];
-    const everything = ['community.html', 'index.html', 'js/main.js', 'js/home-stats.js', 'js/vehicles.js', 'js/vehicle.js'].map(read).join('\n');
+    const everything = ['index.html', 'js/main.js', 'js/home-stats.js', 'js/vehicles.js', 'js/vehicle.js'].map(read).join('\n');
     check('none of the invented spotter names appear anywhere in the site source', names.every(n => !everything.includes(n)));
-    check('none of the invented scores appear', !/\b1820\b|\b1,820\b|\b1390\b|\b1,390\b|\b1204\b|\b1,204\b|\b990\b|\b812\b/.test(COMM));
-    check('the leaderboard list and its render script are gone', !/leaderboardList|CCC\.data\.leaderboard/.test(COMM + MAIN));
-    check('the page says plainly that nothing is ranked yet, and shows no names or scores', /Nothing is ranked yet/.test(COMM) && /isn't live yet/.test(COMM));
-    const dom = new JSDOM(COMM, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community.html', pretendToBeVisual: true });
-    dom.window.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
-    let threw = null, leaderboardType = null; try { leaderboardType = dom.window.eval(`${CALC}\n${MAIN}\nCCC.init(); typeof CCC.data.leaderboard;`); } catch (e) { threw = e; }
-    check('the page still initializes without errors', threw === null);
-    check('the shared data no longer carries a leaderboard', leaderboardType === 'undefined');
-    check('the rendered page contains no rank rows or scores', !/#1\b|#2\b/.test(dom.window.document.body.textContent));
+    check('the shared script carries no leaderboard', !/leaderboardList|CCC\.data\.leaderboard/.test(MAIN));
   }
 
   t.finish();

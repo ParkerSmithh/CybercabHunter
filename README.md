@@ -12,7 +12,6 @@ Not affiliated with Tesla, Inc. Vehicle sightings, receipts, and rider-submitted
 | `dispatch-comparison.html` | Fleet ETA — Cybercab vs. Model Y dispatch simulator (Austin only; Dallas is explicitly marked unavailable) |
 | `fleet-calculator.html` | Fleet ROI — investor sandbox for energy overhead, gross revenue, NOI, and a breakeven timeline; exports a PDF (jsPDF) |
 | `infrastructure.html` | Zones — Austin/Dallas selector, a real Tesla Robotaxi service-zone map and charging-location markers for Austin; Dallas is explicitly marked unavailable |
-| `community.html` | Community — placeholder page; rankings aren't shown until they can be based on real, moderated contributions |
 | `vehicles.html` (served at `/vehicles`) | Cars — the public vehicle registry: every moderator-approved, publicly eligible vehicle |
 | `vehicle.html` (served at `/vehicle/:id`) | Vehicle detail — a single public vehicle's record |
 | `moderation.html` (served at `/moderation`) | Moderator page — vehicle-sighting review queue, and registry vehicle approve/return/delete |
@@ -60,8 +59,8 @@ Everything a visitor can download lives under `public/` — that folder, and onl
 ```
 public/                     — the website (published as-is; URLs are the paths inside it)
   index.html, dispatch-comparison.html, fleet-calculator.html, infrastructure.html,
-  community.html, vehicles.html, vehicle.html, moderation.html, rider-data.html,
-  profile.html, signin.html — the 11 pages (served extensionless: /vehicles, /moderation ...)
+  vehicles.html, vehicle.html, sightings.html, moderation.html, rider-data.html,
+  profile.html, signin.html, privacy.html — the 12 pages (served extensionless: /vehicles, /moderation ...)
   css/style.css             — glassmorphism panels, neon glows, and keyframes Tailwind can't express
   images/                   — Cybercab.png, Cybercab2.png, CybercabFlipped.png, HeroImage.png, RedModelY.png
   js/calc.js                — pure calculation functions (ETA, arrival odds, fleet ROI), no DOM dependency

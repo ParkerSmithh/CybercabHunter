@@ -90,7 +90,7 @@ async function run() {
     // An unrelated path is unaffected by the new route.
     let calledAssets = false;
     const fakeEnv = { ASSETS: { fetch: async () => { calledAssets = true; return new Response('root', { status: 200 }); } } };
-    const resp = await worker.fetch(new Request('https://x/community.html'), fakeEnv, {});
+    const resp = await worker.fetch(new Request('https://x/sightings'), fakeEnv, {});
     check('a normal static page still falls through to ASSETS unchanged', resp.status === 200 && calledAssets);
   }
 

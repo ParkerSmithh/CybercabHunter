@@ -310,7 +310,7 @@ async function run() {
       return { w, d, calls, settle, seen: () => d.getElementById('seenCounter').textContent.replace(/\s+/g, ' ').trim(), cards: () => [...d.querySelectorAll('#sightingsGrid article')] };
     }
     const p = await open('https://cybercabhunter.com/sightings');
-    check('the title is "Sightings"', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'Sightings' && p.d.title === 'Cybercab Hunter — Sightings');
+    check('the title is "SIGHTINGS", in white', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'SIGHTINGS' && p.d.querySelector('h1').classList.contains('text-white') && p.d.title === 'Cybercab Hunter — Sightings');
     check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls[p.calls.length - 1] === '/api/sightings?city=austin');
     check('the counter reads "2 Seen" (Austin)', p.seen() === '2 Seen');
     check('two Austin cards', p.cards().length === 2);
@@ -368,7 +368,7 @@ async function run() {
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;   // point the page at an empty database
     const none = await open('https://cybercabhunter.com/sightings');
-    check('no sightings: "0 Seen" and the "No sightings yet" message, no cards', none.seen() === '0 Seen' && none.cards().length === 0 && /No sightings yet/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
+    check('no sightings: "0 Seen" and the "No sightings yet" message, no cards', none.seen() === '0 Seen' && none.cards().length === 0 && /NO SIGHTINGS YET/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
     check('the page has a Sightings nav entry marked for the nav highlight', /data-nav="sightings"/.test(html));
   }
 

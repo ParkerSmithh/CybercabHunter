@@ -121,9 +121,9 @@ async function run() {
   console.log('4. The drawer: type, pick from the suggestions, submit');
   {
     const ctx = await makeApp();
-    const HTML = fs.readFileSync(`${ROOT}public/community.html`, 'utf8');
+    const HTML = fs.readFileSync(`${ROOT}public/sightings.html`, 'utf8');
     const COMBINED = `${fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8')}\n${fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8')}\nCCC.init();`;
-    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community.html', pretendToBeVisual: true });
+    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/sightings', pretendToBeVisual: true });
     const w = dom.window, d = w.document;
     w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
     w.localStorage.setItem('teslaSessionId', 'session-rider');

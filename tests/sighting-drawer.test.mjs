@@ -21,7 +21,7 @@ installPhotonStub();
 const t = makeCheck();
 const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
-const HTML = fs.readFileSync(`${ROOT}public/community.html`, 'utf8');
+const HTML = fs.readFileSync(`${ROOT}public/sightings.html`, 'utf8');
 const CALC = fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8');
 const MAIN = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
 const COMBINED = `${CALC}\n${MAIN}\nCCC.init();`;
@@ -47,7 +47,7 @@ async function toNodeInit(w, init) {
   return { ...init, body: fd };
 }
 
-// Opens community.html (representative — the drawer markup/behavior is
+// Opens sightings.html (representative — the drawer markup/behavior is
 // identical across every page that has it) with an optional session and an
 // optional fetch intercept.
 async function openPage(env, sessionId, intercept) {
@@ -56,7 +56,7 @@ async function openPage(env, sessionId, intercept) {
   const navigations = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', err => { if (/navigation/i.test(err.message)) navigations.push(err.message); });
-  const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community.html', pretendToBeVisual: true, virtualConsole });
+  const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/sightings', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   if (sessionId) w.localStorage.setItem('teslaSessionId', sessionId);
