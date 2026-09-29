@@ -216,8 +216,15 @@
     </div>
     <div>
       <label for="sightingLoc" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingLoc" placeholder="e.g. S Congress Ave" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
-      <p class="text-[11px] text-slate-500 mt-1.5">Approximate location — no exact address needed.</p>
+      <!-- Only a real place can be chosen: type, then pick from the suggestions
+           (GET /api/places, OpenStreetMap via worker/places.js). -->
+      <div class="relative mt-2">
+        <input id="sightingLoc" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="sightingLocOptions" aria-describedby="sightingLocHelp" placeholder="Search an address or place" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+        <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
+      </div>
+      <input id="sightingLocId" type="hidden">
+      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Start typing, then choose the place from the list. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
       <label for="sightingDate" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -282,7 +289,7 @@
 </footer>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=5"></script>
+<script src="js/main.js?v=6"></script>
 <script>
   CCC.init();
 </script>

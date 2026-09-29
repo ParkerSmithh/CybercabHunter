@@ -12,6 +12,9 @@ import { JSDOM } from 'jsdom';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import worker from '../worker/index.js';
 import { expireSightingPhotos } from '../worker/sightings-public.js';
+import { installPhotonStub, placeIdFor } from './helpers/places.mjs';
+
+installPhotonStub();
 
 const t = makeCheck();
 const { check } = t;
@@ -36,6 +39,8 @@ async function submit(ctx, fields = {}) {
   const fd = new FormData();
   fd.append('photo', new File([PNG], 'p.png', { type: 'image/png' }));
   for (const [k, v] of Object.entries(fields)) if (v != null) fd.append(k, v);
+  // A location is always one picked from the suggestions (see helpers/places.mjs).
+  if (fields.approx_location && !fields.location_id) fd.append('location_id', placeIdFor(fields.approx_location));
   const res = await req(ctx, 'POST', '/api/vehicle-sightings/photo', { user: 'rider', body: fd });
   return (await res.json()).submission_id;
 }
@@ -77,7 +82,13 @@ async function run() {
     const textId = (await text.json()).submission_id;
     await approve(ctx, textId);
     check('an approved sighting WITHOUT a photo is not in the gallery (and gets no public id)', (await list(ctx)).json.seen === 0 && publicIdOf(ctx, textId) === null);
+    // A pending photo sighting from before new plates were registered on
+    // submission (like one whose plate has no registry vehicle): promoting it
+    // with "Add to registry" approves it too.
     const viaPromote = await submit(ctx, { service_area: 'Dallas', license_plate: 'QJH8021' });
+    const autoVehicle = ctx.d1.query('SELECT robotaxi_vehicle_id FROM vehicle_observations WHERE submission_id = ?', viaPromote)[0].robotaxi_vehicle_id;
+    ctx.d1.exec(`UPDATE vehicle_observations SET robotaxi_vehicle_id = NULL WHERE submission_id = '${viaPromote}'`);
+    ctx.d1.exec(`DELETE FROM robotaxi_vehicles WHERE id = '${autoVehicle}'`);
     await req(ctx, 'POST', `/api/moderation/vehicle-sightings/${viaPromote}/promote`, { user: 'mod' });
     const after = (await list(ctx)).json;
     check('a photo sighting approved by promoting it to the registry appears too', after.seen === 1 && after.sightings[0].plate === 'QJH8021');

@@ -188,6 +188,8 @@ const CCC = (() => {
     invalid_observed_at: "That doesn't look like a valid date and time.",
     missing_photo: 'Please add a photo of the Cybercab.',
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
+    invalid_location: 'Choose the location from the suggestions list.',
+    location_unavailable: "Location search isn't available right now. Try again, or leave Location empty.",
     invalid_form_data: "That sighting couldn't be submitted — check the fields and try again.",
     invalid_body: "That sighting couldn't be submitted — check the fields and try again."
   };
@@ -241,6 +243,9 @@ const CCC = (() => {
     const notesField = document.getElementById('sightingNotes');
     const plateField = document.getElementById('sightingVehicle');
     const success = document.getElementById('sightingSuccess');
+    const locIdField = document.getElementById('sightingLocId');
+    const locOptions = document.getElementById('sightingLocOptions');
+    const locError = document.getElementById('sightingLocError');
     let inFlight = false;
     let previewUrl = null;
 
@@ -270,6 +275,105 @@ const CCC = (() => {
       form.reset();
       clearPhoto();
       showPhotoError('');
+      if (locIdField) locIdField.value = '';
+      showLocError('');
+      closeLocOptions();
+    }
+
+    // ---- Location: real places only (search + pick from the list) ----
+    // Typing searches GET /api/places (worker/places.js); a place counts only
+    // once it is picked from the list, which sets sightingLocId. Typing again
+    // afterwards un-picks it. The server re-checks the picked place.
+    let locResults = [];
+    let locActive = -1;
+    let locTimer = null;
+    let locSeq = 0;
+
+    function showLocError(message) {
+      if (!locError) return;
+      locError.textContent = message || '';
+      locError.classList.toggle('hidden', !message);
+    }
+
+    function closeLocOptions() {
+      if (!locOptions) return;
+      locOptions.classList.add('hidden');
+      locOptions.replaceChildren();
+      locationField.setAttribute('aria-expanded', 'false');
+      locationField.removeAttribute('aria-activedescendant');
+      locResults = [];
+      locActive = -1;
+    }
+
+    function renderLocOptions(message) {
+      locOptions.replaceChildren();
+      if (message) {
+        const li = document.createElement('li');
+        li.className = 'px-3 py-2.5 text-xs text-slate-500';
+        li.textContent = message;
+        locOptions.appendChild(li);
+      }
+      locResults.forEach((place, i) => {
+        const li = document.createElement('li');
+        li.id = `sightingLocOption${i}`;
+        li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', String(i === locActive));
+        li.className = 'px-3 py-2.5 text-sm cursor-pointer text-slate-200 hover:bg-white/5' + (i === locActive ? ' bg-white/10' : '');
+        li.textContent = place.label;
+        // mousedown (not click) so the choice lands before the input blurs.
+        li.addEventListener('mousedown', e => { e.preventDefault(); pickPlace(i); });
+        locOptions.appendChild(li);
+      });
+      locOptions.classList.remove('hidden');
+      locationField.setAttribute('aria-expanded', 'true');
+      if (locActive >= 0) locationField.setAttribute('aria-activedescendant', `sightingLocOption${locActive}`);
+      else locationField.removeAttribute('aria-activedescendant');
+    }
+
+    function pickPlace(i) {
+      const place = locResults[i];
+      if (!place) return;
+      locationField.value = place.label;
+      locIdField.value = place.id;
+      // Fill the city from the place if the visitor hasn't typed one.
+      if (place.city && !serviceAreaField.value.trim()) serviceAreaField.value = place.city;
+      showLocError('');
+      closeLocOptions();
+    }
+
+    async function searchPlaces(query) {
+      const seq = ++locSeq;
+      const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
+      let places = null;
+      try {
+        const resp = await fetch(TESLA_WORKER_URL + '/api/places?q=' + encodeURIComponent(query), {
+          headers: { Authorization: 'Bearer ' + sessionId }
+        });
+        if (resp.ok) places = ((await resp.json()) || {}).places || [];
+      } catch (e) { places = null; }
+      if (seq !== locSeq || locationField.value.trim() !== query) return;   // a newer search superseded this one
+      locResults = places || [];
+      locActive = -1;
+      renderLocOptions(places === null ? "Location search isn't available right now." : (locResults.length ? '' : 'No matching places — try a street, landmark or city.'));
+    }
+
+    if (locationField && locIdField && locOptions) {
+      locationField.addEventListener('input', () => {
+        locIdField.value = '';          // typed text is never a chosen place
+        showLocError('');
+        clearTimeout(locTimer);
+        const query = locationField.value.trim().replace(/\s+/g, ' ');
+        if (query.length < 3) { locSeq++; closeLocOptions(); return; }
+        locTimer = setTimeout(() => searchPlaces(query), 250);
+      });
+      locationField.addEventListener('keydown', e => {
+        if (locOptions.classList.contains('hidden') || !locResults.length) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); locActive = (locActive + 1) % locResults.length; renderLocOptions(''); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); locActive = (locActive - 1 + locResults.length) % locResults.length; renderLocOptions(''); }
+        else if (e.key === 'Enter' && locActive >= 0) { e.preventDefault(); pickPlace(locActive); }
+        else if (e.key === 'Escape') { closeLocOptions(); }
+      });
+      locationField.addEventListener('blur', () => setTimeout(closeLocOptions, 150));
     }
 
     // Signed out: the drawer is never opened. The visitor goes straight to the
@@ -333,6 +437,11 @@ const CCC = (() => {
 
       const picked = photoField.files && photoField.files[0];
       if (!picked) { showPhotoError(SIGHTING_ERROR_MESSAGES.missing_photo); return; }
+      // A typed location that wasn't picked from the list isn't a real place.
+      if (locationField.value.trim() && !(locIdField && locIdField.value)) {
+        showLocError(SIGHTING_ERROR_MESSAGES.invalid_location);
+        return;
+      }
 
       setSubmitting(true);
       const photo = await preparePhoto(picked);
@@ -354,6 +463,7 @@ const CCC = (() => {
         const spotted = new Date(dateField.value);   // local time from the picker -> UTC
         if (!isNaN(spotted)) fields.observed_at = spotted.toISOString();
       }
+      if (fields.approx_location && locIdField) fields.location_id = locIdField.value;
       Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
 
       let resp;
@@ -382,11 +492,16 @@ const CCC = (() => {
         const code = json && json.error;
         const message = (code && SIGHTING_ERROR_MESSAGES[code]) || SIGHTING_ERROR_MESSAGES.invalid_body;
         if (code === 'missing_photo' || code === 'unsupported_file_type') showPhotoError(message);
+        else if (code === 'invalid_location') showLocError(message);
         else toast(message, 'error');
         return;
       }
       if (resp.status === 413) {
         showPhotoError('That photo is too large — please choose one under 10 MB.');
+        return;
+      }
+      if (resp.status === 502 && json && json.error === 'location_unavailable') {
+        showLocError(SIGHTING_ERROR_MESSAGES.location_unavailable);
         return;
       }
       if (!resp.ok) {

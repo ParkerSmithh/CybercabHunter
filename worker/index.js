@@ -9,6 +9,7 @@ import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
+import { apiSearchPlaces } from './places.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -127,6 +128,13 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiDeleteSubmission(request, env, userId, submissionIdMatch[1]), request);
+    }
+
+    // Location search for the sighting form (worker/places.js). Signed in only.
+    if (url.pathname === '/api/places' && request.method === 'GET') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiSearchPlaces(request, env), request);
     }
 
     // Photo sighting (worker/sightings.js): multipart — a required photo

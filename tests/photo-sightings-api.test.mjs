@@ -7,6 +7,9 @@
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import { db } from '../worker/db.js';
 import worker from '../worker/index.js';
+import { installPhotonStub, placeIdFor } from './helpers/places.mjs';
+
+installPhotonStub();
 
 const t = makeCheck();
 const { check } = t;
@@ -97,7 +100,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const res = await post(ctx.env, form({
-      service_area: ' Austin ', approx_location: 'S Congress Ave', notes: 'Gold Cybercab at the light',
+      service_area: ' Austin ', approx_location: 'S Congress Ave', location_id: placeIdFor('S Congress Ave'), notes: 'Gold Cybercab at the light',
       observed_at: '2026-09-20T19:30:00.000Z', license_plate: 'xjr-2195'
     }, { bytes: PNG, name: '../../etc/passwd.png', type: 'text/plain' }));
     check('201 with the new ids and status "pending"', res.status === 201 && res.json.success === true && res.json.duplicate === false && res.json.status === 'pending' && !!res.json.submission_id && !!res.json.observation_id);
@@ -113,7 +116,9 @@ async function run() {
     check('observation: date spotted stored in the schema\'s UTC format', obs.observed_at === '2026-09-20 19:30:00');
     const stored = ctx.env.EVIDENCE_BUCKET._objects.get(sub.evidence_ref);
     check('R2 holds exactly the uploaded bytes', stored && Buffer.from(stored).equals(Buffer.from(PNG)));
-    check('the registry is untouched (no vehicle created from an unreviewed sighting)', ctx.d1.query('SELECT COUNT(*) n FROM robotaxi_vehicles')[0].n === 0);
+    const vehicles = ctx.d1.query('SELECT * FROM robotaxi_vehicles');
+    check('a plate not in the registry creates ONE private registry vehicle for moderators to review (never public)', vehicles.length === 1 && vehicles[0].license_plate === 'XJR2195' && vehicles[0].visibility === 'private' && vehicles[0].origin === 'sighting');
+    check('...linked to the sighting, which stays pending and unverified', ctx.d1.query('SELECT robotaxi_vehicle_id FROM vehicle_observations WHERE id = ?', res.json.observation_id)[0].robotaxi_vehicle_id === vehicles[0].id && ctx.d1.query('SELECT status FROM submissions WHERE id = ?', res.json.submission_id)[0].status === 'pending');
     check('the response exposes no storage key or internal detail', !JSON.stringify(res.json).includes('evidence/'));
     const evidence = await worker.fetch(new Request(`https://x/api/submissions/${sub.id}/evidence`, { headers: { Authorization: 'Bearer session-u1' } }), ctx.env, {});
     check('the submitter can fetch their photo through the existing owner-only evidence route', evidence.status === 200);

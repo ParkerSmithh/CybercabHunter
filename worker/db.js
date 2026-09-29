@@ -746,7 +746,7 @@ async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, 
 // the sighting, so the observation is left 'unverified' (never asserted
 // verified) and the submission is closed with no reviewer (reviewed_by NULL —
 // the audit trail shows it was not a moderator's decision).
-async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId = null, auto = false }) {
+async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId = null, auto = false, keepPending = false }) {
   const vehicleId = newId();
   const plateOfObservation = sqlNormalizedPlate('o.license_plate');
   const pending = `EXISTS (SELECT 1 FROM submissions WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review'))`;
@@ -780,7 +780,10 @@ async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId 
       AND EXISTS (SELECT 1 FROM robotaxi_vehicles WHERE id = ? AND origin = 'sighting')
   `).bind(reviewerId, submissionId, vehicleId);
 
-  const [inserted] = await sql.batch([insertStmt, linkStmt, approveStmt]);
+  // keepPending (a photo sighting with a new plate, worker/sightings.js): the
+  // private vehicle is created and linked, but the sighting itself stays
+  // pending for a moderator to review its photo.
+  const [inserted] = await sql.batch(keepPending ? [insertStmt, linkStmt] : [insertStmt, linkStmt, approveStmt]);
   const applied = !!(inserted && inserted.meta && inserted.meta.changes > 0);
   return { applied, vehicleId: applied ? vehicleId : null };
 }

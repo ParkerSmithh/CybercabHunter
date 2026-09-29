@@ -14,6 +14,9 @@ import fs from 'node:fs';
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import worker from '../worker/index.js';
+import { installPhotonStub, placeIdFor } from './helpers/places.mjs';
+
+installPhotonStub();
 
 const t = makeCheck();
 const { check } = t;
@@ -93,6 +96,8 @@ async function openPage(env, sessionId, intercept) {
     fill: ({ area = '', loc = '', plate = '', notes = '', date = '' } = {}) => {
       d.getElementById('sightingServiceArea').value = area;
       d.getElementById('sightingLoc').value = loc;
+      // As if the place had been picked from the suggestions list.
+      d.getElementById('sightingLocId').value = loc ? placeIdFor(loc) : '';
       d.getElementById('sightingVehicle').value = plate;
       d.getElementById('sightingNotes').value = notes;
       d.getElementById('sightingDate').value = date;
@@ -173,7 +178,7 @@ async function run() {
     const req = page.requests[0];
     check('POSTs to the photo endpoint', req.path === '/api/vehicle-sightings/photo' && req.method === 'POST');
     check('carries the bearer session and lets the browser set the multipart Content-Type', req.headers.Authorization === 'Bearer session-u1' && !('Content-Type' in req.headers));
-    check('sends the photo and exactly the fields filled in', Object.keys(req.fields).sort().join() === 'approx_location,license_plate,notes,observed_at,photo,service_area');
+    check('sends the photo and exactly the fields filled in (plus the picked place\'s id)', Object.keys(req.fields).sort().join() === 'approx_location,license_plate,location_id,notes,observed_at,photo,service_area' && req.fields.location_id === placeIdFor('S Congress Ave'));
     check('the photo is the picked image', req.fields.photo.type === 'image/png' && req.fields.photo.size === PNG.length);
     check('text fields are sent as entered (normalization is the backend\'s job)', req.fields.service_area === 'Dallas' && req.fields.approx_location === 'S Congress Ave' && req.fields.license_plate === 'xjr-2195' && req.fields.notes === 'Parked by the curb');
     check('the date spotted is sent as a full ISO instant', req.fields.observed_at === new page.w.Date('2026-09-20T14:30').toISOString());

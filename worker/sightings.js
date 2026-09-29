@@ -27,6 +27,7 @@
 
 import { normalizePlate } from './plate.js';
 import { db } from './db.js';
+import { verifyPlace } from './places.js';
 
 const MAX_PLATE_RAW = 20;
 const MAX_SERVICE_AREA = 100;
@@ -248,7 +249,25 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   }
   const parsed = parseSightingFields(body, { requireServiceArea: false });
   if (parsed.error) return bad(parsed.error);
-  const { licensePlate, serviceArea, approxLocation, notes, observedAt } = parsed.fields;
+  const { licensePlate, serviceArea, notes, observedAt } = parsed.fields;
+
+  // Location must be a REAL place chosen from the search suggestions
+  // (worker/places.js): the form sends the place's OpenStreetMap id; it is
+  // looked up again here and Photon's own label is stored — never the text
+  // that was typed.
+  let approxLocation = null;
+  if (parsed.fields.approxLocation) {
+    const placeId = form.get('location_id');
+    if (typeof placeId !== 'string' || !placeId) return bad('invalid_location');
+    let place;
+    try {
+      place = await verifyPlace(placeId, parsed.fields.approxLocation);
+    } catch (err) {
+      return bad('location_unavailable', 502);
+    }
+    if (!place) return bad('invalid_location');
+    approxLocation = place.label;
+  }
 
   const sql = env.cybercabhunter_db;
   const robotaxiVehicleId = licensePlate ? await db.findRobotaxiVehicleByPlate(sql, licensePlate) : null;
@@ -285,6 +304,17 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     // an orphan, and don't claim success.
     try { await env.EVIDENCE_BUCKET.delete(objectKey); } catch (cleanupErr) { /* best effort */ }
     return bad('sighting_create_failed', 500);
+  }
+
+  // A plate that isn't in the registry yet becomes a PRIVATE registry vehicle
+  // (origin 'sighting'), linked to this sighting, for a moderator to review
+  // on the moderation page. It is never public until a moderator approves it
+  // (and it meets the registry's usual rules); the sighting stays pending.
+  // Best effort: the sighting is already saved either way.
+  if (licensePlate && !robotaxiVehicleId) {
+    try {
+      await db.promoteSightingToRegistryVehicle(sql, { submissionId: result.submissionId, auto: true, keepPending: true });
+    } catch (err) { /* a moderator can still add it with "Add to registry" */ }
   }
 
   return Response.json({

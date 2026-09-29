@@ -15,6 +15,7 @@
 // description, or moderation data.
 
 import { db } from './db.js';
+import { publicLocation } from './places.js';
 
 // The city filter buttons. "All" (no city) covers every city, including
 // future ones without a button and sightings with no city.
@@ -81,7 +82,7 @@ export async function apiListPublicSightings(request, env) {
       id: r.public_id,
       image_url: `/api/sightings/${r.public_id}/photo`,
       city: displayCity(r.service_area),
-      location: r.approx_location || null,
+      location: publicLocation(r.approx_location),   // street/place + city, never a house number
       plate: r.license_plate || null,
       spotted_at: toIso(r.observed_at)
     })),
