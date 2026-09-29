@@ -7,8 +7,9 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
+import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -230,6 +231,10 @@ export default {
     if (moderationPromoteMatch && request.method === 'POST') {
       return withCors(await apiPromoteVehicleSighting(request, env, moderationPromoteMatch[1]), request);
     }
+    const moderationSightingPhotoMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)\/photo$/);
+    if (moderationSightingPhotoMatch && request.method === 'GET') {
+      return withCors(await apiGetVehicleSightingPhoto(request, env, moderationSightingPhotoMatch[1]), request);
+    }
     const moderationReviewMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)$/);
     if (moderationReviewMatch && request.method === 'PATCH') {
       return withCors(await apiReviewVehicleSighting(request, env, moderationReviewMatch[1]), request);
@@ -284,6 +289,16 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiUpdateProfile(request, env, userId), request);
+    }
+
+    // Public Cybercab Sightings gallery (worker/sightings-public.js): approved
+    // photo sightings only, and their photos by random public id. Public GETs.
+    if (url.pathname === '/api/sightings' && request.method === 'GET') {
+      return withCors(await apiListPublicSightings(request, env), request);
+    }
+    const sightingPhotoMatch = url.pathname.match(/^\/api\/sightings\/([^/]+)\/photo$/);
+    if (sightingPhotoMatch && request.method === 'GET') {
+      return withCors(await apiGetPublicSightingPhoto(request, env, sightingPhotoMatch[1]), request);
     }
 
     // Public robotaxi vehicle info (worker/vehicles.js) — deliberately the
@@ -402,5 +417,8 @@ export default {
   // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));
+    // Sighting photos are kept 30 days (worker/sightings-public.js); a small
+    // bounded batch per run, independent of the Gmail sync above.
+    ctx.waitUntil(expireSightingPhotos(env).catch(() => {}));
   }
 };

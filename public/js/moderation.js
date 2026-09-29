@@ -60,14 +60,20 @@
     if (s.model) details.push(`Model: ${esc(s.model)}`);
     if (s.color) details.push(`Color: ${esc(s.color)}`);
     if (s.approx_location) details.push(`Near: ${esc(s.approx_location)}`);
-    if (s.evidence_ref) details.push('Evidence attached');
     // Only a sighting with a plate and no registry vehicle yet can become one.
     const canPromote = !!s.license_plate && !s.robotaxi_vehicle_id;
     const vehicleLine = s.robotaxi_vehicle_id
       ? `<a href="vehicle/${esc(s.robotaxi_vehicle_id)}" class="text-cyan hover:underline" target="_blank" rel="noopener">Linked to an existing registry vehicle →</a>`
       : '<span class="text-slate-500">No matching vehicle in the registry — plate is unrecognized</span>';
 
+    // A photo sighting's image, loaded with the moderator's session by
+    // loadPhotos() below (an <img> can't send the Authorization header).
+    const photo = s.evidence_ref
+      ? `<img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full max-h-80 object-contain rounded-xl bg-black/30 mb-4">`
+      : '';
+
     return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
+      ${photo}
       <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
         <div class="min-w-0 max-w-full">
           <div class="font-display font-bold text-xl">${esc(s.license_plate || 'Plate not given')}</div>
@@ -99,6 +105,25 @@
 
   function renderQueue() {
     $('modList').innerHTML = queue.map(sightingCard).join('');
+    loadPhotos();
+  }
+
+  // Photo blobs are fetched once per sighting and reused across re-renders.
+  const photoUrls = new Map();
+  function loadPhotos() {
+    document.querySelectorAll('#modList img[data-sighting-photo]').forEach(async img => {
+      const id = img.dataset.sightingPhoto;
+      try {
+        if (!photoUrls.has(id)) {
+          photoUrls.set(id, (async () => {
+            const resp = await fetch(`${WORKER}/api/moderation/vehicle-sightings/${encodeURIComponent(id)}/photo`, { headers: { Authorization: 'Bearer ' + sessionId } });
+            return resp.ok ? URL.createObjectURL(await resp.blob()) : null;
+          })());
+        }
+        const url = await photoUrls.get(id);
+        if (url) { img.src = url; img.classList.remove('hidden'); }
+      } catch (e) { /* the card still works without its photo */ }
+    });
   }
 
   async function loadQueue(showSkeleton) {

@@ -78,10 +78,16 @@ export function fakeKV() {
 
 export function fakeR2() {
   const objects = new Map();
+  const meta = new Map();
   return {
-    async put(key, value) { objects.set(key, value); },
-    async delete(key) { objects.delete(key); },
-    async get(key) { return objects.has(key) ? { body: objects.get(key) } : null; },
+    // Like real R2, an object keeps the metadata it was stored with.
+    async put(key, value, options = {}) { objects.set(key, value); meta.set(key, options); },
+    async delete(key) { objects.delete(key); meta.delete(key); },
+    async get(key) {
+      if (!objects.has(key)) return null;
+      const { httpMetadata, customMetadata } = meta.get(key) || {};
+      return { body: objects.get(key), httpMetadata, customMetadata };
+    },
     _objects: objects
   };
 }

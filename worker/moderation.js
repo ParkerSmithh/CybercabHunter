@@ -19,6 +19,7 @@ import { normalizePlate } from './plate.js';
 import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
 import { readImportItems, runImport, runSummary, itemBase } from './receipt-import.js';
 import { rideReviewState } from './ride-status.js';
+import { sightingPhotoForModerator } from './sightings-public.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -84,6 +85,15 @@ export async function apiListPendingVehicleSightings(request, env) {
       robotaxi_vehicle_id: r.robotaxi_vehicle_id
     }))
   });
+}
+
+// GET /api/moderation/vehicle-sightings/:submissionId/photo — the photo of a
+// sighting in the review queue, so a moderator can see what they approve.
+// Moderators only; never cached (worker/sightings-public.js).
+export async function apiGetVehicleSightingPhoto(request, env, submissionId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  return sightingPhotoForModerator(env, submissionId);
 }
 
 const MAX_REJECTION_REASON = 280; // matches worker/profile.js's existing MAX_BIO precedent

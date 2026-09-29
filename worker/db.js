@@ -510,6 +510,110 @@ async function getVehicleSightingSubmission(sql, submissionId) {
   return row || null;
 }
 
+// ---- Public Cybercab Sightings gallery (worker/sightings-public.js) ----
+// A photo sighting is publicly displayable ONLY while all of this holds:
+// moderator-approved, a photo sighting, its photo still stored (evidence_ref
+// is cleared when the photo is deleted), a public gallery id (assigned on
+// approval), and submitted within the last 30 days (the photo retention
+// window — so a photo stops showing at 30 days even before the scheduled
+// cleanup has deleted it). Pending, rejected and expired sightings never match.
+// The ONE definition used by the gallery, its Seen counter and the photo route.
+const SIGHTING_PHOTO_RETENTION_DAYS = 30;
+const PUBLIC_PHOTO_SIGHTING_SQL = `
+  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'
+  AND o.evidence_ref IS NOT NULL AND o.public_id IS NOT NULL
+  AND s.submitted_at > datetime('now', '-${SIGHTING_PHOTO_RETENTION_DAYS} days')`;
+
+// City filter: the trimmed, case-insensitive service area equals the city,
+// or starts with "<city>," (e.g. "Austin, TX"). No filter = every city,
+// including unlisted ones and sightings with no city at all.
+function publicSightingCityFilter(city) {
+  return city ? { sql: ` AND (lower(trim(o.service_area)) = ? OR lower(trim(o.service_area)) LIKE ?)`, binds: [city, `${city},%`] } : { sql: '', binds: [] };
+}
+
+// Newest first by date spotted (observed_at, which defaults to the
+// submission time), then public_id as a stable tie-break. `after` is the
+// keyset cursor { observedAt, publicId } of the previous page's last item.
+// Only public fields are selected — never user, submission or observation
+// ids, the storage key, or any moderation data.
+async function getPublicPhotoSightings(sql, { city = null, limit, after = null }) {
+  const filter = publicSightingCityFilter(city);
+  const cursorSql = after ? ` AND (o.observed_at < ? OR (o.observed_at = ? AND o.public_id < ?))` : '';
+  const cursorBinds = after ? [after.observedAt, after.observedAt, after.publicId] : [];
+  const rows = await sql.prepare(`
+    SELECT o.public_id, o.service_area, o.approx_location, o.license_plate, o.observed_at
+    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
+    ORDER BY o.observed_at DESC, o.public_id DESC
+    LIMIT ?
+  `).bind(...filter.binds, ...cursorBinds, limit).all();
+  return rows.results || [];
+}
+
+async function countPublicPhotoSightings(sql, { city = null } = {}) {
+  const filter = publicSightingCityFilter(city);
+  const row = await sql.prepare(`
+    SELECT COUNT(*) AS n FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}
+  `).bind(...filter.binds).first();
+  return row ? row.n : 0;
+}
+
+// The storage key for ONE publicly displayable photo, by its public id —
+// null for anything not currently public (the photo route's only lookup).
+async function getPublicSightingPhoto(sql, publicId) {
+  return (await sql.prepare(`
+    SELECT s.id AS submission_id, o.evidence_ref
+    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE o.public_id = ? AND ${PUBLIC_PHOTO_SIGHTING_SQL}
+  `).bind(publicId).first()) || null;
+}
+
+// Photo sightings (any status) whose photo is past the retention window and
+// still stored — the scheduled cleanup's work list, oldest first.
+async function listExpiredSightingPhotos(sql, limit) {
+  const rows = await sql.prepare(`
+    SELECT id AS submission_id, evidence_ref FROM submissions
+    WHERE submission_type = 'vehicle_sighting' AND evidence_type = 'photo' AND evidence_ref IS NOT NULL
+      AND submitted_at <= datetime('now', '-${SIGHTING_PHOTO_RETENTION_DAYS} days')
+    ORDER BY submitted_at ASC
+    LIMIT ?
+  `).bind(limit).all();
+  return rows.results || [];
+}
+
+// Records that these sightings' photos are gone (deleted, or found missing):
+// clears the storage key on both rows. Everything else — city, location,
+// plate, dates, status, public_id — stays as history. Photo sightings only.
+async function clearSightingPhotos(sql, submissionIds) {
+  if (!submissionIds.length) return;
+  const marks = submissionIds.map(() => '?').join(', ');
+  await sql.batch([
+    sql.prepare(`
+      UPDATE vehicle_observations SET evidence_ref = NULL
+      WHERE submission_id IN (${marks})
+        AND submission_id IN (SELECT id FROM submissions WHERE submission_type = 'vehicle_sighting' AND evidence_type = 'photo')
+    `).bind(...submissionIds),
+    sql.prepare(`
+      UPDATE submissions SET evidence_ref = NULL, updated_at = datetime('now')
+      WHERE id IN (${marks}) AND submission_type = 'vehicle_sighting' AND evidence_type = 'photo'
+    `).bind(...submissionIds)
+  ]);
+}
+
+// A sighting's photo key for the moderation queue (any status).
+async function getSightingPhotoRef(sql, submissionId) {
+  const row = await sql.prepare(`
+    SELECT evidence_ref FROM submissions
+    WHERE id = ? AND submission_type = 'vehicle_sighting' AND evidence_type = 'photo'
+  `).bind(submissionId).first();
+  return row && row.evidence_ref ? row.evidence_ref : null;
+}
+
+// A fresh public gallery id for an approved photo sighting: 32 random hex
+// characters (128 bits), unrelated to any internal id or storage key.
+const NEW_PUBLIC_ID_SQL = 'lower(hex(randomblob(16)))';
+
 // Approves or rejects a pending/needs_review vehicle-sighting submission.
 // Atomic and race-safe: every statement runs in ONE batch (one transaction),
 // and each is independently gated by the submission's status at the START
@@ -538,15 +642,19 @@ async function getVehicleSightingSubmission(sql, submissionId) {
 async function reviewVehicleSighting(sql, { submissionId, decision, reviewerId, rejectionReason }) {
   const observationStatus = decision === 'approved' ? 'verified' : 'rejected';
 
+  // An approved PHOTO sighting also gets its public gallery id (see
+  // migrations/0017 and worker/sightings-public.js); nothing else does.
   const observationStmt = sql.prepare(`
     UPDATE vehicle_observations
-    SET verification_status = ?
+    SET verification_status = ?,
+        public_id = CASE WHEN ? = 'verified' AND evidence_ref IS NOT NULL
+                         THEN COALESCE(public_id, ${NEW_PUBLIC_ID_SQL}) ELSE public_id END
     WHERE submission_id = ?
       AND EXISTS (
         SELECT 1 FROM submissions
         WHERE id = ? AND submission_type = 'vehicle_sighting' AND status IN ('pending', 'needs_review')
       )
-  `).bind(observationStatus, submissionId, submissionId);
+  `).bind(observationStatus, observationStatus, submissionId, submissionId);
 
   const submissionStmt = sql.prepare(`
     UPDATE submissions
@@ -623,7 +731,8 @@ async function promoteSightingToRegistryVehicle(sql, { submissionId, reviewerId 
 
   const linkStmt = sql.prepare(`
     UPDATE vehicle_observations
-    SET robotaxi_vehicle_id = ?, verification_status = ${auto ? 'verification_status' : "'verified'"}
+    SET robotaxi_vehicle_id = ?, verification_status = ${auto ? 'verification_status' : "'verified'"}${auto ? '' : `,
+        public_id = CASE WHEN evidence_ref IS NOT NULL THEN COALESCE(public_id, ${NEW_PUBLIC_ID_SQL}) ELSE public_id END`}
     WHERE submission_id = ? AND ${pending}
       AND EXISTS (SELECT 1 FROM robotaxi_vehicles WHERE id = ? AND origin = 'sighting')
   `).bind(vehicleId, submissionId, submissionId, vehicleId);
@@ -1427,6 +1536,12 @@ export const db = {
   getPendingVehicleSightings,
   getVehicleSightingSubmission,
   reviewVehicleSighting,
+  getPublicPhotoSightings,
+  countPublicPhotoSightings,
+  getPublicSightingPhoto,
+  listExpiredSightingPhotos,
+  clearSightingPhotos,
+  getSightingPhotoRef,
   promoteSightingToRegistryVehicle,
   logModeratorRide,
   logManualRide,
