@@ -939,7 +939,20 @@ async function getPublicRegistryStats(sql) {
 // ABC123), and the model, color, service area and counted-ride cities as a
 // case-insensitive substring. It is always a bound parameter, and LIKE's own
 // wildcards in it are escaped so "%" or "_" match literally.
-async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '' } = {}) {
+// Registry list orders (the Cars page's sort menu). "Recently used" is the
+// latest ride date; on the same day, whichever vehicle's receipt data
+// arrived most recently (a new ride or new data moves a car to the top).
+// Vehicles with no counted ride yet always sit at the end.
+const RECENT_FIRST = `(last_ride_date IS NULL), last_ride_date DESC, last_data_at DESC`;
+export const REGISTRY_SORTS = {
+  recent: RECENT_FIRST,
+  least_recent: `(last_ride_date IS NULL), last_ride_date ASC, last_data_at ASC`,
+  most_miles: `(total_distance IS NULL), total_distance DESC, ${RECENT_FIRST}`,
+  most_rides: `trip_count DESC, ${RECENT_FIRST}`
+};
+
+async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent' } = {}) {
+  const order = REGISTRY_SORTS[sort] || REGISTRY_SORTS.recent;
   const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
   const text = String(q || '').trim();
   const compact = normalizePlate(text);
@@ -960,17 +973,22 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '' }
     }
     search = ` AND (${conds.join(' OR ')})`;
   }
+  // last_data_at (when this vehicle's newest counted receipt data arrived) is
+  // used only for ordering; the API does not return it.
   const rows = await sql.prepare(`
-    SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
-           v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
-           (SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')}) AS trip_count,
-           (SELECT MIN(ride_date) FROM ${physicalRidesFrom('v.id')}) AS first_ride_date,
-           (SELECT MAX(ride_date) FROM ${physicalRidesFrom('v.id')}) AS last_ride_date,
-           (SELECT SUM(distance) FROM ${physicalRidesFrom('v.id')}) AS total_distance,
-           (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas
-    FROM robotaxi_vehicles v
-    WHERE ${publicVehicleEligibleSql('v')}${search}
-    ORDER BY v.last_seen_at DESC, v.license_plate ASC, v.id ASC
+    SELECT * FROM (
+      SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
+             v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
+             (SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')}) AS trip_count,
+             (SELECT MIN(ride_date) FROM ${physicalRidesFrom('v.id')}) AS first_ride_date,
+             (SELECT MAX(ride_date) FROM ${physicalRidesFrom('v.id')}) AS last_ride_date,
+             (SELECT SUM(distance) FROM ${physicalRidesFrom('v.id')}) AS total_distance,
+             (SELECT GROUP_CONCAT(DISTINCT t.service_area) ${counted()}) AS service_areas,
+             (SELECT MAX(MAX(t.created_at, t.updated_at)) ${counted()}) AS last_data_at
+      FROM robotaxi_vehicles v
+      WHERE ${publicVehicleEligibleSql('v')}${search}
+    )
+    ORDER BY ${order}, license_plate ASC, id ASC
     LIMIT ? OFFSET ?
   `).bind(...searchBinds, limit, offset).all();
   const total = await sql.prepare(`

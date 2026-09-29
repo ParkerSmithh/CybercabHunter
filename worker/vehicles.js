@@ -21,7 +21,7 @@
 // money). Everything else getRobotaxiVehicleHistory returns is forwarded
 // as-is.
 
-import { db } from './db.js';
+import { db, REGISTRY_SORTS } from './db.js';
 
 export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -61,8 +61,10 @@ export async function apiListVehicles(request, env) {
   // Free-text search (plate, VIN, model, color, city); capped so a pasted
   // essay can't become an expensive scan pattern.
   const q = (params.get('q') || '').trim().slice(0, LIST_MAX_QUERY);
+  // Order (the Cars page's sort menu); anything unrecognized = most recently used.
+  const sort = REGISTRY_SORTS[params.get('sort')] ? params.get('sort') : 'recent';
 
-  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset, q });
+  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset, q, sort });
   return Response.json({
     vehicles: vehicles.map(v => ({
       id: v.id,
@@ -87,7 +89,7 @@ export async function apiListVehicles(request, env) {
       total_distance: v.total_distance,
       service_areas: v.service_areas
     })),
-    total, limit, offset, q
+    total, limit, offset, q, sort
   }, {
     headers: { 'Cache-Control': 'public, max-age=60' }
   });

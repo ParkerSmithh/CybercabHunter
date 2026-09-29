@@ -161,12 +161,14 @@ async function run() {
     vehicle(ctx, 3, 'HIDDEN33', { visibility: 'private' }); const hid = uuid(3); ride(ctx, hid);
     const p = await open(ctx, null);
     check('the loaded state is shown (not empty, not error, not loading)', p.vis('regLoaded') && !p.vis('regEmpty') && !p.vis('regError') && !p.vis('regLoading'));
-    check('one card per public vehicle, newest first', p.cards().length === 2 && /XJR1903/.test(p.cards()[0].textContent) && /XFY4946/.test(p.cards()[1].textContent));
-    check('each card links to the correct /vehicle/<id>', p.cards()[0].getAttribute('href') === `/vehicle/${b}` && p.cards()[1].getAttribute('href') === `/vehicle/${a}`);
-    check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(p.cards()[1].textContent) && /Model not confirmed/.test(p.cards()[1].textContent) && /Model Y/.test(p.cards()[0].textContent));
-    check('service area falls back to the cities of the counted rides', /Austin/.test(p.cards()[1].textContent) && /Dallas/.test(p.cards()[0].textContent));
+    // Order: most recently RIDDEN first (a's ride is Aug 5, b's Jul 4) — not
+    // by when the registry row was last touched (b's is later).
+    check('one card per public vehicle, most recently ridden first', p.cards().length === 2 && /XFY4946/.test(p.cards()[0].textContent) && /XJR1903/.test(p.cards()[1].textContent));
+    check('each card links to the correct /vehicle/<id>', p.cards()[0].getAttribute('href') === `/vehicle/${a}` && p.cards()[1].getAttribute('href') === `/vehicle/${b}`);
+    check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(p.cards()[0].textContent) && /Model not confirmed/.test(p.cards()[0].textContent) && /Model Y/.test(p.cards()[1].textContent));
+    check('service area falls back to the cities of the counted rides', /Austin/.test(p.cards()[0].textContent) && /Dallas/.test(p.cards()[1].textContent));
     check('ride count is shown', /Rides\s*1/.test(p.cards()[0].textContent));
-    check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Jul 4, 2026/.test(p.cards()[0].textContent) && /Aug 5, 2026/.test(p.cards()[1].textContent));
+    check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Aug 5, 2026/.test(p.cards()[0].textContent) && /Jul 4, 2026/.test(p.cards()[1].textContent));
     check('the ingestion timestamps are NOT what is displayed for First/Last seen', !/Sep 19, 2026|Sep 20, 2026/.test(p.cards()[0].textContent + p.cards()[1].textContent));
     check('the count line says "2 vehicles"', p.d.getElementById('regCount').textContent === '2 vehicles');
     check('a private vehicle is not on the page, in text or links', !/HIDDEN33/.test(p.d.body.textContent) && ![...p.d.querySelectorAll('a')].some(x => (x.getAttribute('href') || '').includes(hid)));

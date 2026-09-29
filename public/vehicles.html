@@ -92,11 +92,21 @@
     </div>
 
     <!-- Search: plate, VIN, model, color or city (server-side, across every public vehicle) -->
-    <form id="regSearchForm" role="search" class="relative max-w-xl mb-8" onsubmit="return false">
+    <div class="flex flex-col sm:flex-row gap-3 mb-8">
+    <form id="regSearchForm" role="search" class="relative flex-1 max-w-xl" onsubmit="return false">
       <label for="regSearch" class="sr-only">Search vehicles</label>
       <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Search by plate, VIN, model or city" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
     </form>
+    <!-- Order of the list (GET /api/robotaxi-vehicles?sort=...) -->
+    <label for="regSort" class="sr-only">Sort vehicles</label>
+    <select id="regSort" class="sm:w-56 bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-3 text-sm [color-scheme:dark]">
+      <option value="recent">Recently Used</option>
+      <option value="least_recent">Used Least Recently</option>
+      <option value="most_miles">Most Miles</option>
+      <option value="most_rides">Most Rides</option>
+    </select>
+    </div>
 
     <!-- Loading -->
     <div id="regLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" aria-busy="true" aria-live="polite">
@@ -272,6 +282,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicles.js?v=2"></script>
+<script src="js/vehicles.js?v=3"></script>
 </body>
 </html>

@@ -118,7 +118,7 @@
 
   async function fetchPage(offset) {
     const q = query ? '&q=' + encodeURIComponent(query) : '';
-    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}${q}`);
+    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}&sort=${encodeURIComponent(sort)}${q}`);
     if (!resp.ok) throw new Error('http_' + resp.status);
     const body = await resp.json();
     if (!body || !Array.isArray(body.vehicles)) throw new Error('bad_body');
@@ -178,6 +178,25 @@
     }, 250);
   }
   $('regSearch').addEventListener('input', onSearchInput);
+
+  // Sort menu: Recently Used (default), Used Least Recently, Most Miles, Most
+  // Rides — applied server-side across the whole registry, kept in the URL.
+  const SORTS = ['recent', 'least_recent', 'most_miles', 'most_rides'];
+  let sort = 'recent';
+  try {
+    const fromUrl = new URLSearchParams(location.search).get('sort');
+    if (SORTS.includes(fromUrl)) sort = fromUrl;
+  } catch (e) { /* default */ }
+  $('regSort').value = sort;
+  $('regSort').addEventListener('change', () => {
+    sort = SORTS.includes($('regSort').value) ? $('regSort').value : 'recent';
+    try {
+      const url = new URL(location.href);
+      if (sort === 'recent') url.searchParams.delete('sort'); else url.searchParams.set('sort', sort);
+      history.replaceState(null, '', url);
+    } catch (e) { /* not essential */ }
+    loadFirst();
+  });
 
   $('regRetry').addEventListener('click', loadFirst);
   $('regMore').addEventListener('click', loadMore);
