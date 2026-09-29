@@ -106,27 +106,25 @@ async function run() {
     check('dates are ISO UTC instants', got.every(g => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(g)));
   }
 
-  console.log('3. City filters + Seen per filter; unlisted cities appear under All');
+  console.log('3. City filters (Austin, Dallas) + Seen per filter; only Austin/Dallas can be submitted');
   {
     const ctx = await makeApp();
-    const areas = ['Austin', 'austin', '  AUSTIN, TX ', 'Dallas', 'Miami', 'Orlando', 'Orlando', 'Houston', null, 'Austinville'];
-    for (const a of areas) await approve(ctx, await submit(ctx, { service_area: a }));
+    for (const a of ['Austin', 'austin', ' AUSTIN ', 'Dallas', null]) await approve(ctx, await submit(ctx, { service_area: a }));
     await submit(ctx, { service_area: 'Austin' });   // pending: never counted anywhere
     const seen = async c => (await list(ctx, `?city=${c}`)).json;
-    const all = await seen('all');
-    check('All: every approved sighting, from every city', all.seen === 10 && all.sightings.length === 10);
-    check('All includes an unlisted city (Houston) and a sighting with no city', all.sightings.some(s => s.city === 'Houston') && all.sightings.some(s => s.city === null));
     const austin = await seen('austin');
-    check('Austin: "Austin", "austin" and "AUSTIN, TX" — not "Austinville"', austin.seen === 3 && austin.sightings.every(s => s.city === 'Austin'));
+    check('Austin: every spelling of Austin, shown as "Austin"', austin.seen === 3 && austin.sightings.every(s => s.city === 'Austin'));
     check('Dallas: 1', (await seen('dallas')).seen === 1);
-    check('Miami: 1', (await seen('miami')).seen === 1);
-    check('Orlando: 2', (await seen('orlando')).seen === 2);
-    check('no city parameter = All', (await list(ctx)).json.seen === 10);
+    check('the API\'s city=all still covers every sighting, including one with no city', (await seen('all')).seen === 5 && (await seen('all')).sightings.some(s => s.city === null));
     check('city names are case-insensitive in the query', (await list(ctx, '?city=AUSTIN')).json.seen === 3);
-    const bad = await list(ctx, '?city=houston');
-    check('a city without a filter button is a 400 (it is only shown under All)', bad.status === 400 && bad.json.error === 'invalid_city');
+    for (const c of ['miami', 'orlando', 'houston']) {
+      const bad = await list(ctx, `?city=${c}`);
+      check(`${c}: not a filter any more (400 invalid_city)`, bad.status === 400 && bad.json.error === 'invalid_city');
+    }
+    const rejected = await req(ctx, 'POST', '/api/vehicle-sightings/photo', { user: 'rider', body: (() => { const fd = new FormData(); fd.append('photo', new File([PNG], 'p.png', { type: 'image/png' })); fd.append('service_area', 'Miami'); return fd; })() });
+    check('submitting a city other than Austin or Dallas: 400 invalid_service_area', rejected.status === 400 && (await rejected.json()).error === 'invalid_service_area');
     const empty = await makeApp();
-    const none = (await list(empty, '?city=miami')).json;
+    const none = (await list(empty, '?city=dallas')).json;
     check('an empty filter: Seen 0 and no sightings', none.seen === 0 && none.sightings.length === 0 && none.next_cursor === null);
   }
 
@@ -295,8 +293,8 @@ async function run() {
   {
     const ctx = await makeApp();
     await approve(ctx, await submit(ctx, { service_area: 'Austin', approx_location: 'S Congress Ave', license_plate: 'XVF2569', observed_at: '2026-09-20T19:30:00Z' }));
+    await approve(ctx, await submit(ctx, { service_area: 'Austin', observed_at: '2026-09-18T12:00:00Z' }));
     await approve(ctx, await submit(ctx, { service_area: 'Dallas' }));
-    await approve(ctx, await submit(ctx, { service_area: 'Houston' }));
     const html = fs.readFileSync(`${ROOT}public/sightings.html`, 'utf8');
     const js = fs.readFileSync(`${ROOT}public/js/sightings.js`, 'utf8');
     async function open(url, session) {
@@ -312,16 +310,16 @@ async function run() {
       return { w, d, calls, settle, seen: () => d.getElementById('seenCounter').textContent.replace(/\s+/g, ' ').trim(), cards: () => [...d.querySelectorAll('#sightingsGrid article')] };
     }
     const p = await open('https://cybercabhunter.com/sightings');
-    check('the title is "Cybercab Sightings"', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'Cybercab Sightings');
-    check('the counter reads "3 Seen"', p.seen() === '3 Seen');
-    check('three cards, newest first', p.cards().length === 3);
+    check('the title is "Sightings"', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'Sightings' && p.d.title === 'Cybercab Hunter — Sightings');
+    check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls[p.calls.length - 1] === '/api/sightings?city=austin');
+    check('the counter reads "2 Seen" (Austin)', p.seen() === '2 Seen');
+    check('two Austin cards', p.cards().length === 2);
     const austin = p.cards().find(c => /Austin/.test(c.textContent));
     check('a card shows the photo, city, location, plate and date', austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
     check('the time is shown in the area\'s local time with its zone (19:30 UTC -> 2:30 PM CDT in Austin)', /Sep 20, 2026 · 2:30 PM CDT/.test(austin.textContent));
-    const dallas = p.cards().find(c => /Dallas/.test(c.textContent));
-    check('a card without location/plate has no empty lines for them', dallas.querySelectorAll('p').length === 0 && !/null|undefined/.test(dallas.textContent));
+    const plain = p.cards().find(c => !/XVF2569/.test(c.textContent));
+    check('a card without location/plate has no empty lines for them', plain.querySelectorAll('p').length === 0 && !/null|undefined/.test(plain.textContent));
     check('images load lazily', p.cards().every(c => c.querySelector('img').loading === 'lazy'));
-    check('All is the active filter', p.d.querySelector('[data-city="all"]').getAttribute('aria-pressed') === 'true');
 
     const viewer = p.d.getElementById('sightingViewer');
     check('the expanded-photo viewer starts closed', viewer.classList.contains('hidden'));
@@ -341,37 +339,36 @@ async function run() {
     p.d.querySelector('[data-city="dallas"]').click();
     await p.settle();
     check('Dallas: the counter and cards update ("1 Seen")', p.seen() === '1 Seen' && p.cards().length === 1 && /Dallas/.test(p.cards()[0].textContent));
-    check('...Dallas is now the active filter, and the URL remembers it', p.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && p.d.querySelector('[data-city="all"]').getAttribute('aria-pressed') === 'false' && p.w.location.search === '?city=dallas');
-    p.d.querySelector('[data-city="miami"]').click();
-    await p.settle();
-    check('Miami (none yet): "0 Seen" and the "No sightings yet" message, no cards', p.seen() === '0 Seen' && p.cards().length === 0 && !p.d.getElementById('sightingsEmpty').classList.contains('hidden') && /No sightings yet/.test(p.d.getElementById('sightingsEmpty').textContent) && /Miami/.test(p.d.getElementById('sightingsEmptyText').textContent));
+    check('...Dallas is now the active filter, and the URL remembers it', p.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'false' && p.w.location.search === '?city=dallas');
 
-    const direct = await open('https://cybercabhunter.com/sightings?city=orlando');
-    check('opening ?city=orlando starts on Orlando', direct.d.querySelector('[data-city="orlando"]').getAttribute('aria-pressed') === 'true' && direct.calls[0] === '/api/sightings?city=orlando');
+    const direct = await open('https://cybercabhunter.com/sightings?city=dallas');
+    check('opening ?city=dallas starts on Dallas', direct.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && direct.calls.includes('/api/sightings?city=dallas'));
+    const old = await open('https://cybercabhunter.com/sightings?city=miami');
+    check('an old ?city=miami link falls back to Austin', old.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true');
 
     check('a visitor who is not a moderator gets no Delete control on any photo', p.d.querySelectorAll('.mod-photo-delete, .mod-photo').length === 0);
     const riderView = await open('https://cybercabhunter.com/sightings', 'session-rider');
-    check('...nor does a signed-in rider', riderView.cards().length === 3 && riderView.d.querySelectorAll('.mod-photo-delete').length === 0);
+    check('...nor does a signed-in rider', riderView.cards().length === 2 && riderView.d.querySelectorAll('.mod-photo-delete').length === 0);
     const modView = await open('https://cybercabhunter.com/sightings', 'session-mod');
     const buttons = [...modView.d.querySelectorAll('.mod-photo-delete')];
-    check('a moderator gets a red Delete button over every photo, with the darkening layer', buttons.length === 3 && buttons.every(b => /bg-crimson/.test(b.className) && b.textContent === 'Delete') && modView.d.querySelectorAll('.mod-photo .mod-photo-shade').length === 3);
+    check('a moderator gets a red Delete button over every photo, with the darkening layer', buttons.length === 2 && buttons.every(b => /bg-crimson/.test(b.className) && b.textContent === 'Delete') && modView.d.querySelectorAll('.mod-photo .mod-photo-shade').length === 2);
     check('the hover behaviour lives in the stylesheet (darken + reveal on hover)', /\.mod-photo:hover \.mod-photo-shade/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
     modView.w.confirm = () => false;
     buttons[0].click();
     await new Promise(r => setTimeout(r, 30));
-    check('cancelling the confirmation deletes nothing', modView.cards().length === 3 && modView.seen() === '3 Seen');
+    check('cancelling the confirmation deletes nothing', modView.cards().length === 2 && modView.seen() === '2 Seen');
     modView.w.confirm = () => true;
     buttons[0].click();
     await modView.settle();
     await new Promise(r => setTimeout(r, 50));
-    check('confirming deletes it: the card goes and the counter drops to "2 Seen"', modView.cards().length === 2 && modView.seen() === '2 Seen');
+    check('confirming deletes it: the card goes and the counter drops to "1 Seen"', modView.cards().length === 1 && modView.seen() === '1 Seen');
     check('...and the server agrees', (await list(ctx)).json.seen === 2);
     check('clicking Delete does not also open the expanded view', modView.d.getElementById('sightingViewer').classList.contains('hidden'));
 
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;   // point the page at an empty database
     const none = await open('https://cybercabhunter.com/sightings');
-    check('All with no sightings: "0 Seen" and an All-specific empty message', none.seen() === '0 Seen' && /No Cybercab sightings have been shared yet/.test(none.d.getElementById('sightingsEmptyText').textContent));
+    check('no sightings: "0 Seen" and the "No sightings yet" message, no cards', none.seen() === '0 Seen' && none.cards().length === 0 && /No sightings yet/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
     check('the page has a Sightings nav entry marked for the nav highlight', /data-nav="sightings"/.test(html));
   }
 

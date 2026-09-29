@@ -18,9 +18,10 @@ import { db } from './db.js';
 import { publicLocation } from './places.js';
 import { timeZoneFor } from './timezones.js';
 
-// The city filter buttons. "All" (no city) covers every city, including
-// future ones without a button and sightings with no city.
-export const SIGHTING_CITIES = { austin: 'Austin', dallas: 'Dallas', miami: 'Miami', orlando: 'Orlando' };
+// The city filter buttons (Austin, Dallas). The API also answers city=all
+// (every city, including sightings with no city), which the page no longer
+// offers as a button.
+export const SIGHTING_CITIES = { austin: 'Austin', dallas: 'Dallas' };
 const DISPLAY_CITIES = { ...SIGHTING_CITIES, houston: 'Houston', 'san antonio': 'San Antonio' };
 
 const DEFAULT_LIMIT = 24;
@@ -53,7 +54,7 @@ function decodeCursor(raw) {
   return null;
 }
 
-// GET /api/sightings?city=all|austin|dallas|miami|orlando&limit=&cursor=
+// GET /api/sightings?city=all|austin|dallas&limit=&cursor=
 // -> { seen, sightings: [...], next_cursor }. `seen` is the live count for
 // the selected filter (not just this page).
 export async function apiListPublicSightings(request, env) {

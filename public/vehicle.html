@@ -184,7 +184,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">SUBMIT A CYBERCAB SIGHTING</h3>
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -204,15 +204,11 @@
     </div>
     <div>
       <label for="sightingServiceArea" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingServiceArea" list="sightingServiceAreaOptions" placeholder="e.g. Austin" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
-      <datalist id="sightingServiceAreaOptions">
-        <option value="Austin"></option>
-        <option value="Dallas"></option>
-        <option value="Houston"></option>
-        <option value="San Antonio"></option>
-        <option value="Miami"></option>
-        <option value="Orlando"></option>
-      </datalist>
+      <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+        <option value="">Choose a city</option>
+        <option value="Austin">Austin</option>
+        <option value="Dallas">Dallas</option>
+      </select>
     </div>
     <div>
       <label for="sightingLoc" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -239,7 +235,7 @@
       <label for="sightingVehicle" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
-    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit Sighting</button>
+    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
     <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
@@ -290,7 +286,7 @@
 </footer>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=7"></script>
+<script src="js/main.js?v=9"></script>
 <script>
   CCC.init();
 </script>

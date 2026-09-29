@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Cybercab Sightings</title>
+<title>Cybercab Hunter — Sightings</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -92,18 +92,15 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="mb-8">
       <div>
-        <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Cybercab <span class="text-gold">Sightings</span></h1>
+        <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-gold">Sightings</h1>
         <!-- Live count of the photos currently shown for the selected city (GET /api/sightings "seen"). -->
         <p id="seenCounter" class="mt-3 font-display font-bold text-2xl text-slate-100" aria-live="polite"><span id="seenNumber" class="text-gold">—</span> Seen</p>
       </div>
     </div>
 
     <div id="cityFilters" role="group" aria-label="Filter sightings by city" class="flex flex-wrap gap-2 mb-8">
-      <button type="button" data-city="all" aria-pressed="true" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">All</button>
-      <button type="button" data-city="austin" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
+      <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
       <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Dallas</button>
-      <button type="button" data-city="miami" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Miami</button>
-      <button type="button" data-city="orlando" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Orlando</button>
     </div>
 
     <div id="sightingsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
@@ -172,7 +169,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">SUBMIT A CYBERCAB SIGHTING</h3>
+    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -192,15 +189,11 @@
     </div>
     <div>
       <label for="sightingServiceArea" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingServiceArea" list="sightingServiceAreaOptions" placeholder="e.g. Austin" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
-      <datalist id="sightingServiceAreaOptions">
-        <option value="Austin"></option>
-        <option value="Dallas"></option>
-        <option value="Houston"></option>
-        <option value="San Antonio"></option>
-        <option value="Miami"></option>
-        <option value="Orlando"></option>
-      </datalist>
+      <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+        <option value="">Choose a city</option>
+        <option value="Austin">Austin</option>
+        <option value="Dallas">Dallas</option>
+      </select>
     </div>
     <div>
       <label for="sightingLoc" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -227,7 +220,7 @@
       <label for="sightingVehicle" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
-    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit Sighting</button>
+    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
     <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
@@ -278,10 +271,10 @@
 </footer>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=7"></script>
+<script src="js/main.js?v=9"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=4"></script>
+<script src="js/sightings.js?v=5"></script>
 </body>
 </html>

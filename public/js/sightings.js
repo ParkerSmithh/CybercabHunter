@@ -6,12 +6,12 @@
    the API goes in through textContent / attributes, never innerHTML. */
 (function () {
   const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
-  const CITY_NAMES = { all: 'All', austin: 'Austin', dallas: 'Dallas', miami: 'Miami', orlando: 'Orlando' };
+  const CITY_NAMES = { austin: 'Austin', dallas: 'Dallas' };   // the filter buttons; the page opens on Austin
 
   const $ = id => document.getElementById(id);
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
 
-  let city = 'all';
+  let city = 'austin';
   let cursor = null;
   let loading = false;
   let generation = 0;   // bumps on every filter change; stale responses are dropped
@@ -198,21 +198,19 @@
     }
 
     if (reset && body.sightings.length === 0) {
-      $('sightingsEmptyText').textContent = city === 'all'
-        ? 'No Cybercab sightings have been shared yet. Spotted one? Submit a photo and it will appear here once it has been reviewed.'
-        : `No Cybercab sightings from ${CITY_NAMES[city]} yet. Spotted one there? Submit a photo.`;
+      $('sightingsEmptyText').textContent = `No Cybercab sightings from ${CITY_NAMES[city]} yet. Spotted one there? Submit a photo.`;
       show('sightingsEmpty', true);
     }
   }
 
   function selectCity(next) {
-    if (!CITY_NAMES[next]) next = 'all';
+    if (!CITY_NAMES[next]) next = 'austin';
     city = next;
     setActiveFilter();
     // Keep the choice in the URL, so a filtered view can be shared or reloaded.
     try {
       const url = new URL(location.href);
-      if (city === 'all') url.searchParams.delete('city'); else url.searchParams.set('city', city);
+      if (city === 'austin') url.searchParams.delete('city'); else url.searchParams.set('city', city);
       history.replaceState(null, '', url);
     } catch (e) { /* not essential */ }
     loadPage(true);
@@ -236,7 +234,7 @@
       }, { rootMargin: '600px 0px' }).observe($('sightingsSentinel'));
     }
 
-    const initial = (new URLSearchParams(location.search).get('city') || 'all').toLowerCase();
+    const initial = (new URLSearchParams(location.search).get('city') || 'austin').toLowerCase();
     // Moderator status first, so cards render with (or without) the delete
     // control from the start.
     checkModerator().then(mod => { isModerator = mod; selectCity(initial); });

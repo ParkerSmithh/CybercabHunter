@@ -184,7 +184,7 @@ const CCC = (() => {
      only for fast, friendly feedback. */
   const SIGHTING_ERROR_MESSAGES = {
     invalid_license_plate: "That doesn't look like a valid license plate.",
-    invalid_service_area: 'Please enter a city or service area.',
+    invalid_service_area: 'Please choose Austin or Dallas.',
     invalid_observed_at: "That doesn't look like a valid date and time.",
     missing_photo: 'Please add a photo of the Cybercab.',
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
@@ -335,8 +335,9 @@ const CCC = (() => {
       if (!place) return;
       locationField.value = place.label;
       locIdField.value = place.id;
-      // Fill the city from the place if the visitor hasn't typed one.
-      if (place.city && !serviceAreaField.value.trim()) serviceAreaField.value = place.city;
+      // Fill the city from the place if none is chosen yet and it's one of
+      // the form's cities (Austin, Dallas).
+      if (place.city && !serviceAreaField.value && [...serviceAreaField.options].some(o => o.value === place.city)) serviceAreaField.value = place.city;
       showLocError('');
       closeLocOptions();
     }
@@ -422,7 +423,7 @@ const CCC = (() => {
     function setSubmitting(submitting) {
       inFlight = submitting;
       submitBtn.disabled = submitting;
-      submitBtn.textContent = submitting ? 'Uploading…' : 'Submit Sighting';
+      submitBtn.textContent = submitting ? 'Uploading…' : 'Submit';
     }
 
     form.addEventListener('submit', async (e) => {

@@ -139,7 +139,7 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
-    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A CYBERCAB SIGHTING') && s.includes('id="sightingSuccess"'); }));
+    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A SIGHTING') && s.includes('id="sightingSuccess"'); }));
   }
 
   console.log('2. The form: photo (required), then optional City, Location, Date spotted, Description, License plate');
@@ -152,9 +152,11 @@ async function run() {
     const photo = d.getElementById('sightingPhoto');
     check('the photo input is a file picker limited to JPEG, PNG and WebP', photo.type === 'file' && photo.accept === 'image/jpeg,image/png,image/webp');
     check('City / Service Area is no longer required', !d.getElementById('sightingServiceArea').required);
+    const city = d.getElementById('sightingServiceArea');
+    check('City is a dropdown whose only choices are Austin and Dallas (or none)', city.tagName === 'SELECT' && [...city.options].map(o => o.value).join() === ',Austin,Dallas' && !d.getElementById('sightingServiceAreaOptions'));
     check('Date spotted is a DATE picker (no time — that is recorded automatically), capped at today', d.getElementById('sightingDate').type === 'date' && /^\d{4}-\d\d-\d\d$/.test(d.getElementById('sightingDate').max) && /time is recorded automatically/i.test(d.getElementById('sightingDateHelp').textContent));
     check('Description is a short text area (280 characters, matching the server)', d.getElementById('sightingNotes').maxLength === 280);
-    check('the button reads "Submit Sighting"', d.getElementById('sightingSubmitBtn').textContent.trim() === 'Submit Sighting');
+    check('the button reads "Submit"', d.getElementById('sightingSubmitBtn').textContent.trim() === 'Submit');
 
     page.submit();
     await new Promise(r => setTimeout(r, 30));
@@ -316,7 +318,7 @@ async function run() {
     release();
     await page.waitFor(() => sightingRows(ctx).length > 0, 'the held request to complete');
     check('the held request completed normally', sightingRows(ctx).length === 1 && ctx.env.EVIDENCE_BUCKET._objects.size === 1);
-    check('the button is re-enabled afterward', !btn.disabled && btn.textContent === 'Submit Sighting');
+    check('the button is re-enabled afterward', !btn.disabled && btn.textContent === 'Submit');
   }
 
   t.finish();

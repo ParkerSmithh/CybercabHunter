@@ -209,6 +209,7 @@ export async function apiCreateVehicleSighting(request, env, userId) {
 // read-only plate lookup as above).
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;   // same cap as worker/submissions.js evidence
+const PHOTO_SIGHTING_CITIES = { austin: 'Austin', dallas: 'Dallas' };   // the form's City choices
 
 // The file type is decided from the file's own first bytes — never the
 // browser-supplied MIME type or filename — and is the ONLY source of the
@@ -250,7 +251,13 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   }
   const parsed = parseSightingFields(body, { requireServiceArea: false });
   if (parsed.error) return bad(parsed.error);
-  const { licensePlate, serviceArea, notes } = parsed.fields;
+  const { licensePlate, notes } = parsed.fields;
+  // City / Service Area is a fixed choice on the form: Austin or Dallas.
+  let serviceArea = null;
+  if (parsed.fields.serviceArea) {
+    serviceArea = PHOTO_SIGHTING_CITIES[parsed.fields.serviceArea.toLowerCase()] || null;
+    if (!serviceArea) return bad('invalid_service_area');
+  }
   let observedAt = parsed.fields.observedAt;   // only from an older form that still sends observed_at
 
   // Location must be a REAL place chosen from the search suggestions

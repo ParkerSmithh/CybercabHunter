@@ -69,15 +69,15 @@ async function run() {
     const austin = await submit(ctx, { service_area: 'Austin', observed_date: '2026-09-20', time_zone: 'America/Los_Angeles' });
     const a = wall(observedOf(ctx, austin.json.observation_id), 'America/Chicago');
     check('Austin: stored as Sep 20 at the current Central time (the city beats the browser\'s zone)', austin.status === 201 && a.date === '2026-09-20' && closeTo(a.minutes, nowMinutesIn('America/Chicago')));
-    const miami = await submit(ctx, { service_area: 'Miami', observed_date: '2026-09-21' });
-    const m = wall(observedOf(ctx, miami.json.observation_id), 'America/New_York');
-    check('Miami: Sep 21 at the current Eastern time', m.date === '2026-09-21' && closeTo(m.minutes, nowMinutesIn('America/New_York')));
+    const dallas = await submit(ctx, { service_area: 'Dallas', observed_date: '2026-09-21', time_zone: 'America/New_York' });
+    const m = wall(observedOf(ctx, dallas.json.observation_id), 'America/Chicago');
+    check('Dallas: Sep 21 at the current Central time', m.date === '2026-09-21' && closeTo(m.minutes, nowMinutesIn('America/Chicago')));
     const placed = await submit(ctx, { approx_location: HANOVER.label, location_id: HANOVER.id, observed_date: '2026-09-22' });
     const p = wall(observedOf(ctx, placed.json.observation_id), 'America/Chicago');
     check('no city, but a Dallas, TX place: Central time', p.date === '2026-09-22' && closeTo(p.minutes, nowMinutesIn('America/Chicago')));
-    const unknown = await submit(ctx, { service_area: 'Somewhere', observed_date: '2026-09-23', time_zone: 'America/Los_Angeles' });
+    const unknown = await submit(ctx, { observed_date: '2026-09-23', time_zone: 'America/Los_Angeles' });
     const u = wall(observedOf(ctx, unknown.json.observation_id), 'America/Los_Angeles');
-    check('an unknown area: the submitter\'s own zone (Pacific here)', u.date === '2026-09-23' && closeTo(u.minutes, nowMinutesIn('America/Los_Angeles')));
+    check('no city and no location: the submitter\'s own zone (Pacific here)', u.date === '2026-09-23' && closeTo(u.minutes, nowMinutesIn('America/Los_Angeles')));
     const none = await submit(ctx, { service_area: 'Austin' });
     const n = new Date(observedOf(ctx, none.json.observation_id).replace(' ', 'T') + 'Z').getTime();
     check('no date: the time of submission', Math.abs(n - Date.now()) < 120000);
@@ -88,13 +88,13 @@ async function run() {
   console.log('4. The public page shows the time in the area\'s zone');
   {
     const ctx = await makeApp();
-    for (const c of ['Miami', 'Houston', null]) {
+    for (const c of ['Austin', 'Dallas', null]) {
       const r = await submit(ctx, { service_area: c, observed_date: '2026-09-20' });
       await worker.fetch(new Request(`https://x/api/moderation/vehicle-sightings/${r.json.submission_id}`, { method: 'PATCH', headers: { Authorization: 'Bearer session-mod', 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) }), ctx.env, {});
     }
     const list = await (await worker.fetch(new Request('https://x/api/sightings'), ctx.env, {})).json();
     const zoneOf = city => list.sightings.find(s => s.city === city).time_zone;
-    check('each sighting carries its area\'s zone: Miami Eastern, Houston Central, none when unknown', zoneOf('Miami') === 'America/New_York' && zoneOf('Houston') === 'America/Chicago' && zoneOf(null) === null);
+    check('each sighting carries its area\'s zone: Austin and Dallas Central, none when unknown', zoneOf('Austin') === 'America/Chicago' && zoneOf('Dallas') === 'America/Chicago' && zoneOf(null) === null);
   }
 
   t.finish();
