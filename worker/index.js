@@ -10,6 +10,7 @@ import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryS
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiSearchPlaces } from './places.js';
+import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -128,6 +129,12 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiDeleteSubmission(request, env, userId, submissionIdMatch[1]), request);
+    }
+
+    // The supported service areas (worker/service-areas.js) — public; the
+    // pages build their City dropdown and city filters from it.
+    if (url.pathname === '/api/service-areas' && request.method === 'GET') {
+      return withCors(apiListServiceAreas(), request);
     }
 
     // Location search for the sighting form (worker/places.js). Signed in only.

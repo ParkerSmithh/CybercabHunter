@@ -2,18 +2,25 @@
 // (https://photon.komoot.io — OpenStreetMap data, the same data the site's
 // maps use; free, no API key, built for search-as-you-type).
 //
-//   GET /api/places?q=...   (signed in) -> { places: [{ id, label, city }] }
+//   GET /api/places?q=...&area=austin   (signed in) -> { places: [{ id, label, city }] }
 //
-// The browser never talks to Photon directly: this proxy keeps visitors' IP
-// addresses away from the provider and lets the server decide what a place
-// looks like. A submitted location is then VERIFIED here too
-// (verifyPlace): the form sends the chosen place's OpenStreetMap id, the
-// server looks it up again, and stores Photon's own label — never text the
-// visitor typed. So the Location can only ever be a real place.
+// Searches are limited to ONE service area (worker/service-areas.js): the
+// area's metro box is passed to Photon, and every result is re-checked here
+// (coordinates inside the box, same state) — so "Austin" only ever offers
+// Austin-area places. The browser never talks to Photon directly: this proxy
+// keeps visitors' IP addresses away from the provider and lets the server
+// decide what a place looks like. A submitted location is then VERIFIED here
+// too (verifyPlace): the form sends the chosen place's OpenStreetMap id, the
+// server looks it up again within the chosen area, and stores Photon's own
+// label — never text the visitor typed. So the Location can only ever be a
+// real place inside the chosen City's area. Coordinates are used only for
+// that check; they are never stored or returned.
 //
 // Privacy: the full label (it may include a house number) is kept for
 // moderators; the public gallery shows publicLocation() — street/place and
 // city only, never the house number.
+
+import { serviceAreaFor, isInServiceArea, bboxParam } from './service-areas.js';
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 const US_BBOX = '-125.0,24.0,-66.5,49.5';            // contiguous United States
@@ -35,7 +42,8 @@ const STATES = {
   wisconsin: 'WI', wyoming: 'WY', 'district of columbia': 'DC'
 };
 
-// One Photon feature -> { id, label, city }, or null if it has no usable id.
+// One Photon feature -> { id, label, city, lon, lat, state }, or null if it
+// has no usable id. lon/lat/state are for the area check only.
 function toPlace(feature) {
   const p = (feature && feature.properties) || {};
   if (!['N', 'W', 'R'].includes(p.osm_type) || !Number.isFinite(Number(p.osm_id))) return null;
@@ -51,11 +59,21 @@ function toPlace(feature) {
     if (text && !parts.includes(text)) parts.push(text);
   }
   if (!parts.length) return null;
-  return { id: `${p.osm_type}:${p.osm_id}`, label: parts.join(', ').slice(0, 200), city: city || null };
+  const coords = feature.geometry && Array.isArray(feature.geometry.coordinates) ? feature.geometry.coordinates : [];
+  return {
+    id: `${p.osm_type}:${p.osm_id}`, label: parts.join(', ').slice(0, 200), city: city || null,
+    lon: Number(coords[0]), lat: Number(coords[1]), state
+  };
 }
 
-async function photonSearch(query, limit) {
-  const params = new URLSearchParams({ q: query, limit: String(limit), lang: 'en', bbox: US_BBOX });
+// A place belongs to an area when its coordinates are inside the area's box
+// and (when the place names one) it is in the area's state.
+export function placeInArea(place, area) {
+  return !!place && isInServiceArea(area, place.lon, place.lat) && (!place.state || place.state === area.state);
+}
+
+async function photonSearch(query, limit, bbox = US_BBOX) {
+  const params = new URLSearchParams({ q: query, limit: String(limit), lang: 'en', bbox });
   const resp = await fetch(`${PHOTON_URL}?${params}`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: AbortSignal.timeout(TIMEOUT_MS)
@@ -70,29 +88,52 @@ async function photonSearch(query, limit) {
   return places;
 }
 
-// GET /api/places?q=  — suggestions for the Location field (the caller has
-// already checked the visitor is signed in).
+// GET /api/places?q=&area=  — suggestions for the Location field, only from
+// inside the chosen service area (the caller has already checked the visitor
+// is signed in). Only { id, label, city } leave the server.
 export async function apiSearchPlaces(request, env) {
-  const q = (new URL(request.url).searchParams.get('q') || '').trim().replace(/\s+/g, ' ');
+  const params = new URL(request.url).searchParams;
+  const area = serviceAreaFor(params.get('area'));
+  if (!area) return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
+  const q = (params.get('q') || '').trim().replace(/\s+/g, ' ');
   if (q.length < MIN_QUERY) return Response.json({ places: [] });
   if (q.length > MAX_QUERY) return Response.json({ success: false, error: 'query_too_long' }, { status: 400 });
   try {
-    const places = await photonSearch(q, MAX_RESULTS);
+    const places = (await photonSearch(q, MAX_RESULTS, bboxParam(area)))
+      .filter(p => placeInArea(p, area))
+      .map(({ id, label, city }) => ({ id, label, city }));
     return Response.json({ places }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (e) {
     return Response.json({ success: false, error: 'places_unavailable' }, { status: 502 });
   }
 }
 
-// Confirms that `id` is a real place by searching Photon again for the label
-// the visitor picked and finding that same id. Returns the place (with
-// Photon's own label) or null; throws if Photon can't be reached.
-export async function verifyPlace(id, query) {
-  if (!PLACE_ID_RE.test(String(id || ''))) return null;
-  const q = String(query || '').trim().slice(0, MAX_QUERY);
-  if (!q) return null;
-  const places = await photonSearch(q, 10);
-  return places.find(p => p.id === id) || null;
+// Confirms that `id` is a real place INSIDE `area`: re-runs a Photon search
+// within the area and finds that same id, then checks its coordinates/state
+// against the area here — never trusting Photon's own box filter alone.
+// `queries` are tried in order: first the exact search text the page used to
+// offer the place (the same search returns the same places — a street split
+// into many same-named segments may not come back for a search by its label),
+// then the picked label (older pages send only that). Returns { place } (with
+// Photon's own label), or { error: 'invalid_location' } (not a real/known
+// place) or { error: 'location_outside_area' } (real, but not in this area).
+// Throws if Photon can't be reached.
+export async function verifyPlace(id, queries, area) {
+  if (!area || !PLACE_ID_RE.test(String(id || ''))) return { error: 'invalid_location' };
+  const qs = [...new Set((Array.isArray(queries) ? queries : [queries])
+    .map(q => String(q || '').trim().replace(/\s+/g, ' ').slice(0, MAX_QUERY))
+    .filter(q => q.length >= MIN_QUERY))];
+  if (!qs.length) return { error: 'invalid_location' };
+  for (const q of qs) {
+    const inArea = (await photonSearch(q, 10, bboxParam(area))).find(p => p.id === id);
+    if (inArea) return placeInArea(inArea, area) ? { place: inArea } : { error: 'location_outside_area' };
+  }
+  // Not found inside the area: tell "real but elsewhere" from "not a place"
+  // (the label, which names the place's city and state, finds it best).
+  for (const q of [...qs].reverse()) {
+    if ((await photonSearch(q, 10)).some(p => p.id === id)) return { error: 'location_outside_area' };
+  }
+  return { error: 'invalid_location' };
 }
 
 // The public version of a stored location: the street or place and the city,

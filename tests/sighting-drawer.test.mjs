@@ -86,7 +86,13 @@ async function openPage(env, sessionId, intercept) {
       return root && root.lastElementChild ? root.lastElementChild.textContent.trim() : '';
     },
     photoError: () => (page.visible('sightingPhotoError') ? d.getElementById('sightingPhotoError').textContent : ''),
-    openDrawer: () => d.getElementById('openSightingDrawer').click(),
+    // Opens the drawer and, when it opened, waits for the City dropdown to be
+    // filled from GET /api/service-areas.
+    openDrawer: async () => {
+      d.getElementById('openSightingDrawer').click();
+      if (!page.drawerOpen()) return;
+      await page.waitFor(() => d.getElementById('sightingServiceArea').options.length > 1, 'the City options to load');
+    },
     pickPhoto: (bytes = PNG, name = 'cybercab.png', type = 'image/png') => {
       const input = d.getElementById('sightingPhoto');
       const file = new w.File([bytes], name, { type });
@@ -120,7 +126,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, null);
-    page.openDrawer();
+    await page.openDrawer();
     await new Promise(r => setTimeout(r, 30));
     check('clicking the submit button leaves the page (one navigation attempt)', page.navigations.length === 1);
     check('the submit drawer and its backdrop are not opened', !page.drawerOpen());
@@ -146,14 +152,15 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    page.openDrawer();
+    await page.openDrawer();
     const d = page.d;
     check('the form is shown for a signed-in visitor, and the visitor stays on the page', page.visible('sightingForm') && page.drawerOpen() && page.navigations.length === 0);
     const photo = d.getElementById('sightingPhoto');
     check('the photo input is a file picker limited to JPEG, PNG and WebP', photo.type === 'file' && photo.accept === 'image/jpeg,image/png,image/webp');
     check('City / Service Area is no longer required', !d.getElementById('sightingServiceArea').required);
     const city = d.getElementById('sightingServiceArea');
-    check('City is a dropdown whose only choices are Austin and Dallas (or none)', city.tagName === 'SELECT' && [...city.options].map(o => o.value).join() === ',Austin,Dallas' && !d.getElementById('sightingServiceAreaOptions'));
+    check('City is a dropdown built from the service areas: (none), Austin, Dallas', city.tagName === 'SELECT' && [...city.options].map(o => o.value).join() === ',Austin,Dallas' && [...city.options].slice(1).map(o => o.dataset.key).join() === 'austin,dallas' && !d.getElementById('sightingServiceAreaOptions'));
+    check('Location is disabled until a City is chosen', d.getElementById('sightingLoc').disabled && /Choose a city first/.test(d.getElementById('sightingLoc').placeholder));
     check('Date spotted is a DATE picker (no time — that is recorded automatically), capped at today', d.getElementById('sightingDate').type === 'date' && /^\d{4}-\d\d-\d\d$/.test(d.getElementById('sightingDate').max) && /time is recorded automatically/i.test(d.getElementById('sightingDateHelp').textContent));
     check('Description is a short text area (280 characters, matching the server)', d.getElementById('sightingNotes').maxLength === 280);
     check('the button reads "Submit"', d.getElementById('sightingSubmitBtn').textContent.trim() === 'Submit');
@@ -172,7 +179,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    page.openDrawer();
+    await page.openDrawer();
     page.pickPhoto();
     page.fill({ area: 'Dallas', loc: 'S Congress Ave', plate: 'xjr-2195', notes: 'Parked by the curb', date: '2026-09-20' });
     page.submit();
@@ -189,7 +196,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    page.openDrawer();
+    await page.openDrawer();
     page.pickPhoto();
     page.submit();   // photo only
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');
@@ -200,7 +207,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    page.openDrawer();
+    await page.openDrawer();
     page.pickPhoto();
     page.fill({ area: 'Austin', notes: 'Near the Domain' });
     page.submit();
@@ -217,7 +224,7 @@ async function run() {
     page.d.getElementById('sightingAnother').click();
     check('"Submit another" brings the empty form back', page.visible('sightingForm') && !page.visible('sightingSuccess'));
     page.d.getElementById('closeSightingDrawer').click();
-    page.openDrawer();
+    await page.openDrawer();
     check('reopening the drawer shows the form, not a stale confirmation', page.visible('sightingForm') && !page.visible('sightingSuccess'));
     page.pickPhoto();
     page.submit();
@@ -230,7 +237,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    page.openDrawer();
+    await page.openDrawer();
     page.pickPhoto();
     page.fill({ area: 'Dallas', plate: 'XJR2195' });
     page.submit();
@@ -250,7 +257,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', failWith(400, { success: false, error: 'invalid_license_plate' }));
-    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St', plate: '!!!' }); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St', plate: '!!!' }); page.submit();
     await page.waitFor(() => page.toastText().length > 0, '400 handled');
     check('a 400 shows a human-readable message, not raw JSON', /doesn't look like a valid license plate/i.test(page.toastText()) && !/"success":false/.test(page.toastText()));
     check('the drawer stays open and every field is preserved', page.drawerOpen() && page.val('sightingServiceArea') === 'Dallas' && page.val('sightingLoc') === 'Main St' && page.val('sightingVehicle') === '!!!');
@@ -258,21 +265,21 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', failWith(400, { success: false, error: 'unsupported_file_type' }));
-    page.openDrawer(); page.pickPhoto(); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.submit();
     await page.waitFor(() => page.photoError().length > 0, 'photo 400 handled');
     check('a rejected photo is reported next to the photo field', /JPEG, PNG or WebP/.test(page.photoError()));
   }
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', failWith(401, { authenticated: false }));
-    page.openDrawer(); page.pickPhoto(); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.submit();
     await page.waitFor(() => page.visible('sightingSignInRequired'), '401 -> sign-in state');
     check('a 401 mid-flow shows the sign-in requirement and clears the stale session', !page.visible('sightingForm') && page.w.localStorage.getItem('teslaSessionId') === null);
   }
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', failWith(413, { success: false, error: 'file_too_large' }));
-    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas' }); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas' }); page.submit();
     await page.waitFor(() => page.photoError().length > 0, '413 handled');
     check('a 413 says the photo is too large (under 10 MB)', /too large.*10 MB/i.test(page.photoError()));
     check('fields are preserved on a 413', page.val('sightingServiceArea') === 'Dallas');
@@ -280,7 +287,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', failWith(502, { success: false, error: 'upload_failed' }));
-    page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' }); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' }); page.submit();
     await page.waitFor(() => page.toastText().length > 0, '502 handled');
     check('a server/storage failure shows the friendly "try again" message', /couldn't submit the sighting.*try again/i.test(page.toastText()));
     check('fields survive it', page.val('sightingVehicle') === 'XJR2195' && page.d.getElementById('sightingPhoto').files.length === 1);
@@ -288,7 +295,7 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1', path => { if (path.includes('/api/vehicle-sightings')) throw new TypeError('network down'); return null; });
-    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St' }); page.submit();
+    await page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St' }); page.submit();
     await page.waitFor(() => /couldn't submit/i.test(page.toastText()), 'network failure handled');
     check('a network failure shows the same friendly message, with no exception text', /try again/i.test(page.toastText()) && !/TypeError|network down/.test(page.toastText()));
     check('the drawer stays open with everything preserved, ready to retry', page.drawerOpen() && page.val('sightingLoc') === 'Main St' && !page.d.getElementById('sightingSubmitBtn').disabled);
@@ -306,7 +313,7 @@ async function run() {
       await gate;
       return null;
     });
-    page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' });
+    await page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' });
     check('the submit button starts enabled', !page.d.getElementById('sightingSubmitBtn').disabled);
     page.submit();
     await page.waitFor(() => calls === 1, 'the first request to start');

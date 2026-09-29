@@ -28,6 +28,7 @@
 import { normalizePlate } from './plate.js';
 import { db } from './db.js';
 import { verifyPlace } from './places.js';
+import { serviceAreaFor } from './service-areas.js';
 import { timeZoneFor, resolveObservedAt } from './timezones.js';
 
 const MAX_PLATE_RAW = 20;
@@ -209,7 +210,6 @@ export async function apiCreateVehicleSighting(request, env, userId) {
 // read-only plate lookup as above).
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;   // same cap as worker/submissions.js evidence
-const PHOTO_SIGHTING_CITIES = { austin: 'Austin', dallas: 'Dallas' };   // the form's City choices
 
 // The file type is decided from the file's own first bytes — never the
 // browser-supplied MIME type or filename — and is the ONLY source of the
@@ -252,30 +252,38 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   const parsed = parseSightingFields(body, { requireServiceArea: false });
   if (parsed.error) return bad(parsed.error);
   const { licensePlate, notes } = parsed.fields;
-  // City / Service Area is a fixed choice on the form: Austin or Dallas.
-  let serviceArea = null;
+  // City / Service Area must be one of the supported service areas
+  // (worker/service-areas.js); stored under its canonical name.
+  let area = null;
   if (parsed.fields.serviceArea) {
-    serviceArea = PHOTO_SIGHTING_CITIES[parsed.fields.serviceArea.toLowerCase()] || null;
-    if (!serviceArea) return bad('invalid_service_area');
+    area = serviceAreaFor(parsed.fields.serviceArea);
+    if (!area) return bad('invalid_service_area');
   }
+  const serviceArea = area ? area.name : null;
   let observedAt = parsed.fields.observedAt;   // only from an older form that still sends observed_at
 
-  // Location must be a REAL place chosen from the search suggestions
-  // (worker/places.js): the form sends the place's OpenStreetMap id; it is
-  // looked up again here and Photon's own label is stored — never the text
-  // that was typed.
+  // Location must be a REAL place chosen from the search suggestions AND
+  // inside the chosen City's service area (worker/places.js verifyPlace):
+  // the form sends the place's OpenStreetMap id; it is looked up again within
+  // that area, its coordinates/state are checked against the area's box here,
+  // and Photon's own label is stored — never the text that was typed. A
+  // Location needs a City: there is no area to check it against otherwise.
+  // All of this happens before the photo is stored or any record is written.
   let approxLocation = null;
   if (parsed.fields.approxLocation) {
+    if (!area) return bad('invalid_service_area');
     const placeId = form.get('location_id');
     if (typeof placeId !== 'string' || !placeId) return bad('invalid_location');
-    let place;
+    let verified;
     try {
-      place = await verifyPlace(placeId, parsed.fields.approxLocation);
+      // The search text the page used to offer this place, then its label.
+      const searchedFor = form.get('location_query');
+      verified = await verifyPlace(placeId, [typeof searchedFor === 'string' ? searchedFor : '', parsed.fields.approxLocation], area);
     } catch (err) {
       return bad('location_unavailable', 502);
     }
-    if (!place) return bad('invalid_location');
-    approxLocation = place.label;
+    if (verified.error) return bad(verified.error);
+    approxLocation = verified.place.label;
   }
 
   // Date spotted: the form sends only the DATE; the time is the exact moment

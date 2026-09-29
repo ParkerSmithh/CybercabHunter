@@ -17,11 +17,13 @@
 import { db } from './db.js';
 import { publicLocation } from './places.js';
 import { timeZoneFor } from './timezones.js';
+import { SERVICE_AREAS } from './service-areas.js';
 
 // The city filter buttons (Austin, Dallas). The API also answers city=all
 // (every city, including sightings with no city), which the page no longer
 // offers as a button.
-export const SIGHTING_CITIES = { austin: 'Austin', dallas: 'Dallas' };
+// The filter cities are the service areas (worker/service-areas.js).
+export const SIGHTING_CITIES = Object.fromEntries(SERVICE_AREAS.map(a => [a.key, a.name]));
 const DISPLAY_CITIES = { ...SIGHTING_CITIES, houston: 'Houston', 'san antonio': 'San Antonio' };
 
 const DEFAULT_LIMIT = 24;
@@ -63,7 +65,8 @@ export async function apiListPublicSightings(request, env) {
   if (cityParam !== 'all' && !SIGHTING_CITIES[cityParam]) {
     return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   }
-  const city = cityParam === 'all' ? null : cityParam;
+  // Matched against the stored City, which is always the area's canonical name.
+  const city = cityParam === 'all' ? null : SIGHTING_CITIES[cityParam].toLowerCase();
   const rawLimit = params.get('limit');
   const limit = /^\d{1,3}$/.test(rawLimit || '') ? Math.min(Math.max(Number(rawLimit), 1), MAX_LIMIT) : DEFAULT_LIMIT;
   let after = null;

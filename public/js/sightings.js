@@ -6,7 +6,10 @@
    the API goes in through textContent / attributes, never innerHTML. */
 (function () {
   const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
-  const CITY_NAMES = { austin: 'Austin', dallas: 'Dallas' };   // the filter buttons; the page opens on Austin
+  // The filter buttons: one per supported service area (GET /api/service-areas,
+  // worker/service-areas.js), in that order; the page opens on the first.
+  let CITY_NAMES = {};
+  let defaultCity = null;
 
   const $ = id => document.getElementById(id);
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -204,24 +207,45 @@
   }
 
   function selectCity(next) {
-    if (!CITY_NAMES[next]) next = 'austin';
+    if (!CITY_NAMES[next]) next = defaultCity;
     city = next;
     setActiveFilter();
     // Keep the choice in the URL, so a filtered view can be shared or reloaded.
     try {
       const url = new URL(location.href);
-      if (city === 'austin') url.searchParams.delete('city'); else url.searchParams.set('city', city);
+      if (city === defaultCity) url.searchParams.delete('city'); else url.searchParams.set('city', city);
       history.replaceState(null, '', url);
     } catch (e) { /* not essential */ }
     loadPage(true);
   }
 
-  function init() {
-    document.querySelectorAll('#cityFilters [data-city]').forEach(btn => {
-      btn.addEventListener('click', () => selectCity(btn.dataset.city));
+  // Builds the city filter buttons from the supported service areas.
+  async function loadCities() {
+    let areas = null;
+    try {
+      const resp = await fetch(`${WORKER}/api/service-areas`);
+      if (resp.ok) areas = ((await resp.json()) || {}).areas;
+    } catch (e) { areas = null; }
+    if (!Array.isArray(areas) || !areas.length) return false;
+    const box = $('cityFilters');
+    box.replaceChildren();
+    CITY_NAMES = {};
+    areas.forEach(a => {
+      CITY_NAMES[a.key] = a.name;
+      const btn = el('button', 'city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors', a.name);
+      btn.type = 'button';
+      btn.dataset.city = a.key;
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', () => selectCity(a.key));
+      box.appendChild(btn);
     });
+    defaultCity = areas[0].key;
+    return true;
+  }
+
+  function init() {
     $('sightingsMore').addEventListener('click', () => loadPage(false));
-    $('sightingsRetry').addEventListener('click', () => loadPage(true));
+    $('sightingsRetry').addEventListener('click', () => (defaultCity ? loadPage(true) : start()));
     $('sightingViewerClose').addEventListener('click', closeViewer);
     // A click anywhere outside the photo itself closes it.
     $('sightingViewer').addEventListener('click', e => { if (e.target !== $('sightingViewerImg')) closeViewer(); });
@@ -234,10 +258,19 @@
       }, { rootMargin: '600px 0px' }).observe($('sightingsSentinel'));
     }
 
-    const initial = (new URLSearchParams(location.search).get('city') || 'austin').toLowerCase();
-    // Moderator status first, so cards render with (or without) the delete
-    // control from the start.
-    checkModerator().then(mod => { isModerator = mod; selectCity(initial); });
+    start();
+  }
+
+  // Cities and moderator status first, so the filters exist and cards render
+  // with (or without) the delete control from the start.
+  async function start() {
+    show('sightingsError', false);
+    show('sightingsLoading', true);
+    const [ok, mod] = await Promise.all([loadCities(), checkModerator()]);
+    isModerator = mod;
+    if (!ok) { show('sightingsLoading', false); show('sightingsError', true); return; }
+    const initial = (new URLSearchParams(location.search).get('city') || defaultCity).toLowerCase();
+    selectCity(initial);
   }
 
   init();

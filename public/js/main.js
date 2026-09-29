@@ -184,7 +184,8 @@ const CCC = (() => {
      only for fast, friendly feedback. */
   const SIGHTING_ERROR_MESSAGES = {
     invalid_license_plate: "That doesn't look like a valid license plate.",
-    invalid_service_area: 'Please choose Austin or Dallas.',
+    invalid_service_area: 'Choose a city from the list first.',
+    location_outside_area: "That location isn't in the city you chose. Pick a location in that city's area.",
     invalid_observed_at: "That doesn't look like a valid date and time.",
     missing_photo: 'Please add a photo of the Cybercab.',
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
@@ -278,13 +279,65 @@ const CCC = (() => {
       if (locIdField) locIdField.value = '';
       showLocError('');
       closeLocOptions();
+      syncLocationToCity();
     }
+
+    // ---- City first: the City dropdown is built from the supported service
+    // areas (GET /api/service-areas, worker/service-areas.js), and Location
+    // stays disabled until a City is chosen. Location suggestions come only
+    // from that City's area; changing the City clears the Location.
+    const selectedArea = () => {
+      const value = serviceAreaField.value;
+      if (!value) return null;
+      const opt = [...serviceAreaField.options].find(o => o.value === value);
+      return { key: (opt && opt.dataset.key) || value.toLowerCase(), name: value };
+    };
+
+    function syncLocationToCity() {
+      if (!locationField) return;
+      const area = selectedArea();
+      locationField.disabled = !area;
+      locationField.placeholder = area ? `Search an address or place in ${area.name}` : 'Choose a city first';
+    }
+
+    let areasLoaded = false;
+    async function loadServiceAreas() {
+      if (areasLoaded) return;
+      try {
+        const resp = await fetch(TESLA_WORKER_URL + '/api/service-areas');
+        const areas = resp.ok ? ((await resp.json()) || {}).areas : null;
+        if (!Array.isArray(areas)) return;
+        const current = serviceAreaField.value;
+        [...serviceAreaField.options].slice(1).forEach(o => o.remove());   // keep "Choose a city"
+        areas.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.name;
+          opt.dataset.key = a.key;
+          opt.textContent = a.name;
+          serviceAreaField.appendChild(opt);
+        });
+        if (current) serviceAreaField.value = current;
+        areasLoaded = true;
+        syncLocationToCity();
+      } catch (e) { /* retried the next time the drawer opens */ }
+    }
+
+    serviceAreaField.addEventListener('change', () => {
+      // A picked Location may not be in the new City: start it over.
+      locationField.value = '';
+      if (locIdField) locIdField.value = '';
+      showLocError('');
+      closeLocOptions();
+      syncLocationToCity();
+    });
 
     // ---- Location: real places only (search + pick from the list) ----
     // Typing searches GET /api/places (worker/places.js); a place counts only
     // once it is picked from the list, which sets sightingLocId. Typing again
     // afterwards un-picks it. The server re-checks the picked place.
     let locResults = [];
+    let locQuery = '';        // the search text that produced locResults
+    let pickedQuery = '';     // ...and the one the picked place came from (sent so the server can re-run it)
     let locActive = -1;
     let locTimer = null;
     let locSeq = 0;
@@ -335,27 +388,28 @@ const CCC = (() => {
       if (!place) return;
       locationField.value = place.label;
       locIdField.value = place.id;
-      // Fill the city from the place if none is chosen yet and it's one of
-      // the form's cities (Austin, Dallas).
-      if (place.city && !serviceAreaField.value && [...serviceAreaField.options].some(o => o.value === place.city)) serviceAreaField.value = place.city;
+      pickedQuery = locQuery;
       showLocError('');
       closeLocOptions();
     }
 
     async function searchPlaces(query) {
       const seq = ++locSeq;
+      const area = selectedArea();
+      if (!area) return;
       const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
       let places = null;
       try {
-        const resp = await fetch(TESLA_WORKER_URL + '/api/places?q=' + encodeURIComponent(query), {
+        const resp = await fetch(TESLA_WORKER_URL + '/api/places?q=' + encodeURIComponent(query) + '&area=' + encodeURIComponent(area.key), {
           headers: { Authorization: 'Bearer ' + sessionId }
         });
         if (resp.ok) places = ((await resp.json()) || {}).places || [];
       } catch (e) { places = null; }
       if (seq !== locSeq || locationField.value.trim() !== query) return;   // a newer search superseded this one
       locResults = places || [];
+      locQuery = query;
       locActive = -1;
-      renderLocOptions(places === null ? "Location search isn't available right now." : (locResults.length ? '' : 'No matching places — try a street, landmark or city.'));
+      renderLocOptions(places === null ? "Location search isn't available right now." : (locResults.length ? '' : `No matching places in ${area.name} — try a street or landmark.`));
     }
 
     if (locationField && locIdField && locOptions) {
@@ -388,6 +442,7 @@ const CCC = (() => {
         const now = new Date();
         dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       }
+      loadServiceAreas();
       drawer.classList.add('is-open'); backdrop.classList.add('is-open');
     }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
@@ -438,6 +493,11 @@ const CCC = (() => {
 
       const picked = photoField.files && photoField.files[0];
       if (!picked) { showPhotoError(SIGHTING_ERROR_MESSAGES.missing_photo); return; }
+      // A location needs a city (only that city's places are allowed).
+      if (locationField.value.trim() && !selectedArea()) {
+        showLocError(SIGHTING_ERROR_MESSAGES.invalid_service_area);
+        return;
+      }
       // A typed location that wasn't picked from the list isn't a real place.
       if (locationField.value.trim() && !(locIdField && locIdField.value)) {
         showLocError(SIGHTING_ERROR_MESSAGES.invalid_location);
@@ -465,7 +525,7 @@ const CCC = (() => {
       // browser's own time zone is sent as a fallback for an unknown area.
       if (dateField && dateField.value) fields.observed_date = dateField.value;
       try { fields.time_zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* optional */ }
-      if (fields.approx_location && locIdField) fields.location_id = locIdField.value;
+      if (fields.approx_location && locIdField) { fields.location_id = locIdField.value; fields.location_query = pickedQuery; }
       Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
 
       let resp;
@@ -494,7 +554,7 @@ const CCC = (() => {
         const code = json && json.error;
         const message = (code && SIGHTING_ERROR_MESSAGES[code]) || SIGHTING_ERROR_MESSAGES.invalid_body;
         if (code === 'missing_photo' || code === 'unsupported_file_type') showPhotoError(message);
-        else if (code === 'invalid_location') showLocError(message);
+        else if (code === 'invalid_location' || code === 'location_outside_area') showLocError(message);
         else toast(message, 'error');
         return;
       }

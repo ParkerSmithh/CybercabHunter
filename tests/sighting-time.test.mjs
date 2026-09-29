@@ -72,9 +72,9 @@ async function run() {
     const dallas = await submit(ctx, { service_area: 'Dallas', observed_date: '2026-09-21', time_zone: 'America/New_York' });
     const m = wall(observedOf(ctx, dallas.json.observation_id), 'America/Chicago');
     check('Dallas: Sep 21 at the current Central time', m.date === '2026-09-21' && closeTo(m.minutes, nowMinutesIn('America/Chicago')));
-    const placed = await submit(ctx, { approx_location: HANOVER.label, location_id: HANOVER.id, observed_date: '2026-09-22' });
+    const placed = await submit(ctx, { service_area: 'Dallas', approx_location: HANOVER.label, location_id: HANOVER.id, observed_date: '2026-09-22', time_zone: 'America/Los_Angeles' });
     const p = wall(observedOf(ctx, placed.json.observation_id), 'America/Chicago');
-    check('no city, but a Dallas, TX place: Central time', p.date === '2026-09-22' && closeTo(p.minutes, nowMinutesIn('America/Chicago')));
+    check('Dallas + a Dallas place: Central time (not the browser\'s Pacific)', p.date === '2026-09-22' && closeTo(p.minutes, nowMinutesIn('America/Chicago')));
     const unknown = await submit(ctx, { observed_date: '2026-09-23', time_zone: 'America/Los_Angeles' });
     const u = wall(observedOf(ctx, unknown.json.observation_id), 'America/Los_Angeles');
     check('no city and no location: the submitter\'s own zone (Pacific here)', u.date === '2026-09-23' && closeTo(u.minutes, nowMinutesIn('America/Los_Angeles')));
