@@ -86,7 +86,17 @@
         <a id="modImportReceipt" href="/moderation/import-receipt" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Import Receipt</a>
       </div>
 
+      <!-- Two review sections, switched with these buttons (js/moderation.js):
+           Vehicles = sightings without a photo + the registry below;
+           Images = photo sightings, as a compact grid. -->
+      <div id="modTabs" role="tablist" aria-label="Moderation sections" class="flex flex-wrap gap-2 mb-8">
+        <button id="modTabVehicles" type="button" role="tab" data-tab="vehicles" aria-selected="true" aria-controls="modPanelVehicles" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Vehicles <span id="modCountVehicles" class="text-xs opacity-70"></span></button>
+        <button id="modTabImages" type="button" role="tab" data-tab="images" aria-selected="false" aria-controls="modPanelImages" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Images <span id="modCountImages" class="text-xs opacity-70"></span></button>
+      </div>
+
+      <div id="modPanelVehicles" role="tabpanel" aria-labelledby="modTabVehicles">
       <div id="modList" class="space-y-4"></div>
+      <div id="modListEmpty" class="hidden glass rounded-2xl p-8 text-center text-sm text-slate-400">No vehicle sightings waiting for review.</div>
 
       <!-- Registry vehicle visibility (Phase 3E). Kept apart from the sighting
            queue: a receipt creates a registry vehicle internally, and only a
@@ -111,6 +121,12 @@
         <div id="modVehiclesEmpty" class="hidden glass rounded-2xl p-8 text-center text-sm text-slate-400">No registry vehicles match.</div>
         <div id="modVehicleList" class="space-y-4"></div>
       </div>
+      </div>
+
+      <div id="modPanelImages" role="tabpanel" aria-labelledby="modTabImages" class="hidden">
+        <div id="modImageList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+        <div id="modImagesEmpty" class="hidden glass rounded-2xl p-8 text-center text-sm text-slate-400">No images waiting for review.</div>
+      </div>
     </div>
 
   </div>
@@ -121,6 +137,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/moderation.js?v=3"></script>
+<script src="js/moderation.js?v=4"></script>
 </body>
 </html>

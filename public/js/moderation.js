@@ -53,38 +53,14 @@
     show('modQueue', view === 'queue');
   }
 
-  function sightingCard(s) {
+  // Approve / Add to registry / Reject (with its inline reason box) — the
+  // same controls on a vehicle sighting card and on a compact image card.
+  function actionsHtml(s) {
     const rejecting = pendingReject.has(s.submission_id);
     const isBusy = busy.has(s.submission_id);
-    const details = [];
-    if (s.model) details.push(`Model: ${esc(s.model)}`);
-    if (s.color) details.push(`Color: ${esc(s.color)}`);
-    if (s.approx_location) details.push(`Near: ${esc(s.approx_location)}`);
     // Only a sighting with a plate and no registry vehicle yet can become one.
     const canPromote = !!s.license_plate && !s.robotaxi_vehicle_id;
-    const vehicleLine = s.robotaxi_vehicle_id
-      ? `<a href="vehicle/${esc(s.robotaxi_vehicle_id)}" class="text-cyan hover:underline" target="_blank" rel="noopener">Linked to an existing registry vehicle →</a>`
-      : '<span class="text-slate-500">No matching vehicle in the registry — plate is unrecognized</span>';
-
-    // A photo sighting's image, loaded with the moderator's session by
-    // loadPhotos() below (an <img> can't send the Authorization header).
-    const photo = s.evidence_ref
-      ? `<img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full max-h-80 object-contain rounded-xl bg-black/30 mb-4">`
-      : '';
-
-    return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
-      ${photo}
-      <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
-        <div class="min-w-0 max-w-full">
-          <div class="font-display font-bold text-xl">${esc(s.license_plate || 'Plate not given')}</div>
-          <div class="text-xs text-slate-500 mt-1">Submitted ${esc(fmtDateTime(s.submitted_at))} · Observed ${esc(fmtDateTime(s.observed_at))}</div>
-        </div>
-        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(s.service_area || 'Area unknown')}</span>
-      </div>
-      <div class="text-sm mb-3">${vehicleLine}</div>
-      ${details.length ? `<div class="text-xs text-slate-400 space-y-1 mb-3">${details.map(d => `<div>${d}</div>`).join('')}</div>` : ''}
-      ${s.notes ? `<div class="text-sm text-slate-300 bg-white/5 rounded-lg p-3 mb-4">${esc(s.notes)}</div>` : ''}
-      <div class="flex items-center gap-2 flex-wrap pt-3 border-t border-[rgba(212,175,55,0.1)]">
+    return `<div class="flex items-center gap-2 flex-wrap pt-3 border-t border-[rgba(212,175,55,0.1)]">
         ${rejecting ? `
           <div class="w-full">
             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rejection reason</label>
@@ -99,19 +75,79 @@
           ${canPromote ? `<button type="button" data-action="promote" ${isBusy ? 'disabled' : ''} title="Creates a private registry vehicle from this sighting and approves the sighting. No ride is created." class="text-xs font-bold px-4 py-2.5 rounded-lg border border-cyan/50 text-cyan hover:bg-cyan/10 disabled:opacity-50">Add to registry</button>` : ''}
           <button type="button" data-action="ask-reject" ${isBusy ? 'disabled' : ''} class="text-xs font-bold px-4 py-2.5 rounded-lg border border-crimson/50 text-crimson hover:bg-crimson/10 disabled:opacity-50">Reject</button>
         `}
+      </div>`;
+  }
+
+  function sightingCard(s) {
+    const details = [];
+    if (s.model) details.push(`Model: ${esc(s.model)}`);
+    if (s.color) details.push(`Color: ${esc(s.color)}`);
+    if (s.approx_location) details.push(`Near: ${esc(s.approx_location)}`);
+    const vehicleLine = s.robotaxi_vehicle_id
+      ? `<a href="vehicle/${esc(s.robotaxi_vehicle_id)}" class="text-cyan hover:underline" target="_blank" rel="noopener">Linked to an existing registry vehicle →</a>`
+      : '<span class="text-slate-500">No matching vehicle in the registry — plate is unrecognized</span>';
+
+    return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
+        <div class="min-w-0 max-w-full">
+          <div class="font-display font-bold text-xl">${esc(s.license_plate || 'Plate not given')}</div>
+          <div class="text-xs text-slate-500 mt-1">Submitted ${esc(fmtDateTime(s.submitted_at))} · Observed ${esc(fmtDateTime(s.observed_at))}</div>
+        </div>
+        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(s.service_area || 'Area unknown')}</span>
       </div>
+      <div class="text-sm mb-3">${vehicleLine}</div>
+      ${details.length ? `<div class="text-xs text-slate-400 space-y-1 mb-3">${details.map(d => `<div>${d}</div>`).join('')}</div>` : ''}
+      ${s.notes ? `<div class="text-sm text-slate-300 bg-white/5 rounded-lg p-3 mb-4">${esc(s.notes)}</div>` : ''}
+      ${actionsHtml(s)}
+    </div>`;
+  }
+
+  // A photo sighting in the Images grid: a small thumbnail (tap it to open
+  // the full photo) with the key facts and the same actions. The photo is
+  // loaded with the moderator's session by loadPhotos() below (an <img>
+  // can't send the Authorization header).
+  function imageCard(s) {
+    const facts = [s.service_area || 'Area unknown', fmtDateTime(s.observed_at)];
+    return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
+      <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] rounded-lg overflow-hidden bg-black/30">
+        <img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full h-full object-cover">
+      </a>
+      <div class="font-display font-bold text-sm leading-tight">${esc(s.license_plate || 'Plate not given')}</div>
+      <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
+      ${s.approx_location ? `<div class="text-[11px] text-slate-400 leading-snug">Near: ${esc(s.approx_location)}</div>` : ''}
+      ${s.notes ? `<div class="text-[11px] text-slate-300 bg-white/5 rounded-md px-2 py-1.5 leading-snug">${esc(s.notes)}</div>` : ''}
+      <div class="mt-auto [&>div]:pt-2 [&>div]:gap-1.5">${actionsHtml(s)}</div>
     </div>`;
   }
 
   function renderQueue() {
-    $('modList').innerHTML = queue.map(sightingCard).join('');
+    const images = queue.filter(s => s.evidence_ref);
+    const vehicles = queue.filter(s => !s.evidence_ref);
+    $('modList').innerHTML = vehicles.map(sightingCard).join('');
+    $('modImageList').innerHTML = images.map(imageCard).join('');
+    show('modListEmpty', vehicles.length === 0);
+    show('modImagesEmpty', images.length === 0);
+    $('modCountVehicles').textContent = vehicles.length ? String(vehicles.length) : '';
+    $('modCountImages').textContent = images.length ? String(images.length) : '';
     loadPhotos();
+  }
+
+  // Vehicles | Images section buttons. The choice is remembered per browser.
+  let activeTab = 'vehicles';
+  try { if (localStorage.getItem('moderationTab') === 'images') activeTab = 'images'; } catch (e) { /* default */ }
+  function setTab(tab) {
+    activeTab = tab === 'images' ? 'images' : 'vehicles';
+    $('modTabVehicles').setAttribute('aria-selected', String(activeTab === 'vehicles'));
+    $('modTabImages').setAttribute('aria-selected', String(activeTab === 'images'));
+    show('modPanelVehicles', activeTab === 'vehicles');
+    show('modPanelImages', activeTab === 'images');
+    try { localStorage.setItem('moderationTab', activeTab); } catch (e) { /* not essential */ }
   }
 
   // Photo blobs are fetched once per sighting and reused across re-renders.
   const photoUrls = new Map();
   function loadPhotos() {
-    document.querySelectorAll('#modList img[data-sighting-photo]').forEach(async img => {
+    document.querySelectorAll('img[data-sighting-photo]').forEach(async img => {
       const id = img.dataset.sightingPhoto;
       try {
         if (!photoUrls.has(id)) {
@@ -121,7 +157,12 @@
           })());
         }
         const url = await photoUrls.get(id);
-        if (url) { img.src = url; img.classList.remove('hidden'); }
+        if (url) {
+          img.src = url;
+          img.classList.remove('hidden');
+          const link = img.closest('a[data-sighting-photo-link]');
+          if (link) link.href = url;
+        }
       } catch (e) { /* the card still works without its photo */ }
     });
   }
@@ -241,7 +282,9 @@
   }
 
   function setupActions() {
-    $('modList').addEventListener('click', e => {
+    ['modTabVehicles', 'modTabImages'].forEach(id => $(id).addEventListener('click', () => setTab($(id).dataset.tab)));
+    setTab(activeTab);
+    const onQueueClick = e => {
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       const card = btn.closest('[data-submission-id]');
@@ -264,7 +307,9 @@
         if (!reason) { CCC.toast('A rejection reason is required.', 'error'); return; }
         review(submissionId, 'reject', reason);
       }
-    });
+    };
+    $('modList').addEventListener('click', onQueueClick);
+    $('modImageList').addEventListener('click', onQueueClick);
   }
 
   // ---------- registry vehicle review (Phase 3E visibility, Phase 3H approval) ----------

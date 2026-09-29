@@ -279,6 +279,21 @@ async function run() {
     check('images load lazily', p.cards().every(c => c.querySelector('img').loading === 'lazy'));
     check('All is the active filter', p.d.querySelector('[data-city="all"]').getAttribute('aria-pressed') === 'true');
 
+    const viewer = p.d.getElementById('sightingViewer');
+    check('the expanded-photo viewer starts closed', viewer.classList.contains('hidden'));
+    austin.querySelector('button').click();
+    check('clicking a photo expands it: same photo, with its details', !viewer.classList.contains('hidden') && p.d.getElementById('sightingViewerImg').src === austin.querySelector('img').src && /Austin · S Congress Ave · XVF2569/.test(p.d.getElementById('sightingViewerCaption').textContent));
+    p.d.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape' }));
+    check('Escape closes it', viewer.classList.contains('hidden'));
+    austin.querySelector('button').click();
+    p.d.getElementById('sightingViewerImg').click();
+    check('clicking the photo itself keeps it open', !viewer.classList.contains('hidden'));
+    viewer.click();
+    check('clicking outside the photo closes it', viewer.classList.contains('hidden'));
+    austin.querySelector('button').click();
+    p.d.getElementById('sightingViewerClose').click();
+    check('the × button closes it', viewer.classList.contains('hidden'));
+
     p.d.querySelector('[data-city="dallas"]').click();
     await p.settle();
     check('Dallas: the counter and cards update ("1 Seen")', p.seen() === '1 Seen' && p.cards().length === 1 && /Dallas/.test(p.cards()[0].textContent));

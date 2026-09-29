@@ -90,16 +90,12 @@
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+    <div class="mb-8">
       <div>
         <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">Cybercab <span class="text-gold">Sightings</span></h1>
         <!-- Live count of the photos currently shown for the selected city (GET /api/sightings "seen"). -->
         <p id="seenCounter" class="mt-3 font-display font-bold text-2xl text-slate-100" aria-live="polite"><span id="seenNumber" class="text-gold">—</span> Seen</p>
       </div>
-      <button id="heroSightingBtn" type="button" class="btn-magnetic self-start sm:self-auto inline-flex items-center gap-2 min-h-[44px] px-5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
-        Submit a sighting
-      </button>
     </div>
 
     <div id="cityFilters" role="group" aria-label="Filter sightings by city" class="flex flex-wrap gap-2 mb-8">
@@ -110,13 +106,13 @@
       <button type="button" data-city="orlando" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Orlando</button>
     </div>
 
-    <div id="sightingsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="sightingsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
 
-    <div id="sightingsLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true">
+    <div id="sightingsLoading" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" aria-busy="true">
       <span class="sr-only">Loading sightings…</span>
-      <div class="glass rounded-2xl overflow-hidden animate-pulse"><div class="aspect-[4/3] bg-white/5"></div><div class="p-5 space-y-3"><div class="h-3 w-24 rounded bg-white/10"></div><div class="h-3 w-40 rounded bg-white/5"></div></div></div>
-      <div class="glass rounded-2xl overflow-hidden animate-pulse hidden sm:block"><div class="aspect-[4/3] bg-white/5"></div><div class="p-5 space-y-3"><div class="h-3 w-24 rounded bg-white/10"></div><div class="h-3 w-40 rounded bg-white/5"></div></div></div>
-      <div class="glass rounded-2xl overflow-hidden animate-pulse hidden lg:block"><div class="aspect-[4/3] bg-white/5"></div><div class="p-5 space-y-3"><div class="h-3 w-24 rounded bg-white/10"></div><div class="h-3 w-40 rounded bg-white/5"></div></div></div>
+      <div class="glass rounded-2xl overflow-hidden animate-pulse"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
+      <div class="glass rounded-2xl overflow-hidden animate-pulse"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
+      <div class="glass rounded-2xl overflow-hidden animate-pulse hidden sm:block"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
     </div>
 
     <div id="sightingsEmpty" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
@@ -136,6 +132,16 @@
     <div id="sightingsSentinel" aria-hidden="true" class="h-px"></div>
   </div>
 </section>
+
+<!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
+     Closes with the × button, a click outside the photo, or Escape. -->
+<div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
+  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full glass flex items-center justify-center text-2xl leading-none text-slate-200 hover:text-white">&times;</button>
+  <figure class="flex flex-col items-center gap-3 max-w-full">
+    <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
+    <figcaption id="sightingViewerCaption" class="text-sm text-slate-300 text-center"></figcaption>
+  </figure>
+</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -268,6 +274,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=1"></script>
+<script src="js/sightings.js?v=2"></script>
 </body>
 </html>

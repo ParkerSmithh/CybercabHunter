@@ -187,6 +187,33 @@ async function run() {
     check('the queue header has an Import Receipt link to /moderation/import-receipt, and no Refresh button', !!link && link.getAttribute('href') === '/moderation/import-receipt' && !page.d.getElementById('modRefresh'));
   }
 
+  console.log('N. Vehicles | Images sections: photo sightings are reviewed in their own compact grid');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    await submitSighting(ctx, 'rider', { license_plate: 'TEXT001' });   // no photo -> Vehicles
+    const PNG = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+    for (const plate of ['PHOTO01', 'PHOTO02']) {
+      const fd = new FormData();
+      fd.append('photo', new File([PNG], 'p.png', { type: 'image/png' }));
+      fd.append('license_plate', plate);
+      await worker.fetch(new Request('https://x/api/vehicle-sightings/photo', { method: 'POST', headers: { Authorization: 'Bearer session-rider' }, body: fd }), ctx.env, {});
+    }
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.visible('modQueue'), 'queue to load');
+    const d = page.d;
+    check('two section buttons, Vehicles selected by default', d.getElementById('modTabVehicles').getAttribute('aria-selected') === 'true' && d.getElementById('modTabImages').getAttribute('aria-selected') === 'false');
+    check('Vehicles shows the sighting without a photo, and the registry section', page.visible('modPanelVehicles') && !page.visible('modPanelImages') && d.getElementById('modList').querySelectorAll('[data-submission-id]').length === 1 && /TEXT001/.test(page.text('modList')) && d.getElementById('modPanelVehicles').contains(d.getElementById('modVehicles')));
+    check('Images holds the two photo sightings, as compact cards with a thumbnail slot', d.getElementById('modImageList').querySelectorAll('[data-submission-id]').length === 2 && d.getElementById('modImageList').querySelectorAll('img[data-sighting-photo]').length === 2 && !/PHOTO0/.test(page.text('modList')));
+    check('each button shows its count', page.text('modCountVehicles') === '1' && page.text('modCountImages') === '2');
+    page.click(d.getElementById('modTabImages'));
+    check('the Images button switches sections', page.visible('modPanelImages') && !page.visible('modPanelVehicles') && d.getElementById('modTabImages').getAttribute('aria-selected') === 'true');
+    const card = d.getElementById('modImageList').querySelector('[data-submission-id]');
+    page.click(card.querySelector('button[data-action="approve"]'));
+    await page.waitFor(() => d.getElementById('modImageList').querySelectorAll('[data-submission-id]').length === 1, 'the approved image to leave the grid');
+    check('approving from the Images grid works like anywhere else', page.reviews().length === 1 && page.text('modCountImages') === '1');
+    check('the choice is saved for next time', page.w.localStorage.getItem('moderationTab') === 'images');
+  }
+
   t.finish();
 }
 

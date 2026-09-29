@@ -30,34 +30,58 @@
     return node;
   }
 
-  // One card. Fields that weren't provided are simply left out.
+  // One card: a smallish photo (click it to expand) and the facts provided.
+  // Fields that weren't provided are simply left out.
   function card(s) {
     const article = el('article', 'glass rounded-2xl overflow-hidden flex flex-col');
-    const frame = el('div', 'aspect-[4/3] bg-panel overflow-hidden');
-    const img = el('img', 'w-full h-full object-cover');
+    const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at)].filter(Boolean).join(' · ');
+    const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
+    open.type = 'button';
+    open.setAttribute('aria-label', 'View larger photo');
+    const img = el('img', 'w-full h-full object-cover transition-transform duration-300 hover:scale-105');
     img.loading = 'lazy';
     img.decoding = 'async';
     img.src = WORKER + s.image_url;
     img.alt = s.city ? `Cybercab spotted in ${s.city}` : 'Cybercab sighting';
     // A photo that can't load (e.g. it just expired) is removed, never shown broken.
     img.addEventListener('error', () => article.remove());
-    frame.appendChild(img);
-    article.appendChild(frame);
+    open.addEventListener('click', () => openViewer(img.src, img.alt, caption, open));
+    open.appendChild(img);
+    article.appendChild(open);
 
-    const body = el('div', 'p-5 flex flex-col gap-2.5');
-    const top = el('div', 'flex items-center justify-between gap-3 flex-wrap');
-    if (s.city) top.appendChild(el('span', 'text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-gold uppercase tracking-wider', s.city));
+    const body = el('div', 'p-3 flex flex-col gap-1.5');
+    const top = el('div', 'flex items-center justify-between gap-2 flex-wrap');
+    if (s.city) top.appendChild(el('span', 'text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-gold uppercase tracking-wider', s.city));
+    if (s.plate) top.appendChild(el('span', 'font-display font-bold text-xs tracking-wider px-2 py-0.5 rounded bg-black/30 border border-[rgba(212,175,55,0.2)]', s.plate));
+    if (top.childNodes.length) body.appendChild(top);
+    if (s.location) body.appendChild(el('p', 'text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]', s.location));
     const when = fmtSpotted(s.spotted_at);
     if (when) {
-      const time = el('time', 'text-xs text-slate-500', when);
+      const time = el('time', 'text-[11px] text-slate-500', when);
       time.dateTime = s.spotted_at;
-      top.appendChild(time);
+      body.appendChild(time);
     }
-    if (top.childNodes.length) body.appendChild(top);
-    if (s.location) body.appendChild(el('p', 'text-sm text-slate-300 [overflow-wrap:anywhere]', s.location));
-    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-wider px-3 py-1 rounded-md bg-black/30 border border-[rgba(212,175,55,0.2)]', s.plate));
     if (body.childNodes.length) article.appendChild(body);
     return article;
+  }
+
+  // ---------- expanded photo ----------
+  let returnFocus = null;
+  function openViewer(src, alt, caption, trigger) {
+    $('sightingViewerImg').src = src;
+    $('sightingViewerImg').alt = alt;
+    $('sightingViewerCaption').textContent = caption;
+    returnFocus = trigger || null;
+    show('sightingViewer', true);
+    document.body.style.overflow = 'hidden';
+    $('sightingViewerClose').focus();
+  }
+  function closeViewer() {
+    if ($('sightingViewer').classList.contains('hidden')) return;
+    show('sightingViewer', false);
+    document.body.style.overflow = '';
+    $('sightingViewerImg').removeAttribute('src');
+    if (returnFocus && returnFocus.isConnected) returnFocus.focus();
   }
 
   function setSeen(n) {
@@ -141,6 +165,10 @@
     });
     $('sightingsMore').addEventListener('click', () => loadPage(false));
     $('sightingsRetry').addEventListener('click', () => loadPage(true));
+    $('sightingViewerClose').addEventListener('click', closeViewer);
+    // A click anywhere outside the photo itself closes it.
+    $('sightingViewer').addEventListener('click', e => { if (e.target !== $('sightingViewerImg')) closeViewer(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
 
     // Infinite scroll: load the next page as the end of the list comes into view.
     if ('IntersectionObserver' in window) {
