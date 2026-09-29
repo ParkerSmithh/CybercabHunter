@@ -441,20 +441,24 @@ async function findRecentDuplicateSighting(sql, userId, normalizedPlate) {
 // robotaxiVehicleId is null when the observed plate didn't match an
 // existing registry vehicle — the caller decides that with a read-only
 // lookup; this function never creates or mutates a robotaxi_vehicles row.
-async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt }) {
+async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt, evidenceRef }) {
   const submissionId = newId();
   const observationId = newId();
 
+  // A photo sighting (worker/sightings.js apiCreatePhotoSighting) also
+  // records its R2 key: evidence_type 'photo' + evidence_ref on the
+  // submission (the owner can fetch it via GET /api/submissions/:id/evidence),
+  // and the same key on the observation. Without a photo both stay NULL.
   const submissionStmt = sql.prepare(`
-    INSERT INTO submissions (id, user_id, submission_type, status, submitted_at)
-    VALUES (?, ?, 'vehicle_sighting', 'pending', datetime('now'))
-  `).bind(submissionId, userId);
+    INSERT INTO submissions (id, user_id, submission_type, status, evidence_type, evidence_ref, submitted_at)
+    VALUES (?, ?, 'vehicle_sighting', 'pending', ?, ?, datetime('now'))
+  `).bind(submissionId, userId, evidenceRef ? 'photo' : null, evidenceRef || null);
 
   // observed_at is only included when the caller supplied one — binding an
   // explicit NULL would violate the column's NOT NULL constraint instead of
   // letting its own datetime('now') default apply.
-  const columns = ['id', 'robotaxi_vehicle_id', 'user_id', 'submission_id', 'service_area', 'approx_location', 'license_plate', 'model', 'color', 'verification_status', 'notes'];
-  const values = [observationId, robotaxiVehicleId || null, userId, submissionId, serviceArea, approxLocation || null, licensePlate || null, model || null, color || null, 'unverified', notes || null];
+  const columns = ['id', 'robotaxi_vehicle_id', 'user_id', 'submission_id', 'service_area', 'approx_location', 'license_plate', 'model', 'color', 'verification_status', 'notes', 'evidence_ref'];
+  const values = [observationId, robotaxiVehicleId || null, userId, submissionId, serviceArea || null, approxLocation || null, licensePlate || null, model || null, color || null, 'unverified', notes || null, evidenceRef || null];
   if (observedAt) { columns.push('observed_at'); values.push(observedAt); }
 
   const observationStmt = sql.prepare(`

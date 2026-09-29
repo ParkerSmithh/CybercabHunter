@@ -8,7 +8,7 @@ import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders } from './moderation.js';
-import { apiCreateVehicleSighting } from './sightings.js';
+import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -126,6 +126,15 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiDeleteSubmission(request, env, userId, submissionIdMatch[1]), request);
+    }
+
+    // Photo sighting (worker/sightings.js): multipart — a required photo
+    // (stored in R2) plus the same sighting fields. What the sighting drawer
+    // submits; creates the same pending, private sighting records.
+    if (url.pathname === '/api/vehicle-sightings/photo' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiCreatePhotoSighting(request, env, userId), request);
     }
 
     // Structured JSON sighting submission (worker/sightings.js) — separate

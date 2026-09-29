@@ -174,21 +174,50 @@ const CCC = (() => {
   }
 
   /* ---------------- Sighting drawer (shared across pages) ----------------
-     Real submission as of Phase 3D-B: POST /api/vehicle-sightings
-     (worker/sightings.js), authenticated with the same bearer session
-     Tesla/Google sign-in and the account menu already use (TESLA_SESSION_KEY).
-     Nothing here is written to localStorage any more — the old
-     cybercabCentral.sightings entries some browsers still have from before
-     this change are simply never read or added to by this function again.
-     Submitting a sighting only ever queues it for review; nothing about it
-     is public, and no vehicle is created or changed by it (that trust
-     boundary lives entirely in the backend — see worker/sightings.js). */
+     POST /api/vehicle-sightings/photo (worker/sightings.js): a required photo
+     plus the optional sighting fields, as multipart/form-data, authenticated
+     with the same bearer session Tesla/Google sign-in and the account menu
+     already use (TESLA_SESSION_KEY). Submitting only ever queues a PENDING,
+     private sighting for review; nothing about it is public, and no vehicle
+     is created or changed by it (that trust boundary lives entirely in the
+     backend). The server validates the photo itself; the checks here are
+     only for fast, friendly feedback. */
   const SIGHTING_ERROR_MESSAGES = {
     invalid_license_plate: "That doesn't look like a valid license plate.",
     invalid_service_area: 'Please enter a city or service area.',
-    invalid_observed_at: "That doesn't look like a valid time.",
+    invalid_observed_at: "That doesn't look like a valid date and time.",
+    missing_photo: 'Please add a photo of the Cybercab.',
+    unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
+    invalid_form_data: "That sighting couldn't be submitted — check the fields and try again.",
     invalid_body: "That sighting couldn't be submitted — check the fields and try again."
   };
+
+  const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_PHOTO_BYTES = 10 * 1024 * 1024;       // the server's limit (worker/sightings.js)
+  const MAX_PICKED_BYTES = 40 * 1024 * 1024;      // larger picks are shrunk below before upload
+  const MAX_PHOTO_EDGE = 2560;
+
+  // Re-encodes the photo as a JPEG no larger than MAX_PHOTO_EDGE on its long
+  // edge. This keeps phone photos well under the upload limit, bakes in the
+  // camera's rotation, and drops embedded metadata (EXIF, including any GPS
+  // position) — nothing about the photo beyond its pixels is needed. Falls
+  // back to the original file where the browser can't do this.
+  async function preparePhoto(file) {
+    try {
+      if (!window.createImageBitmap) return file;
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, MAX_PHOTO_EDGE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      if (bitmap.close) bitmap.close();
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      return blob ? new File([blob], 'sighting.jpg', { type: 'image/jpeg' }) : file;
+    } catch (err) {
+      return file;
+    }
+  }
 
   const SIGN_IN_PAGE = 'signin.html';   // relative on purpose: vehicle.html's <base href="/"> makes it resolve from the site root
 
@@ -202,10 +231,18 @@ const CCC = (() => {
     const openBtns = [document.getElementById('openSightingDrawer'), document.getElementById('heroSightingBtn')].filter(Boolean);
     const closeBtn = document.getElementById('closeSightingDrawer');
     const submitBtn = document.getElementById('sightingSubmitBtn');
+    const photoField = document.getElementById('sightingPhoto');
+    const photoPreview = document.getElementById('sightingPhotoPreview');
+    const photoPrompt = document.getElementById('sightingPhotoPrompt');
+    const photoError = document.getElementById('sightingPhotoError');
     const serviceAreaField = document.getElementById('sightingServiceArea');
     const locationField = document.getElementById('sightingLoc');
+    const dateField = document.getElementById('sightingDate');
+    const notesField = document.getElementById('sightingNotes');
     const plateField = document.getElementById('sightingVehicle');
+    const success = document.getElementById('sightingSuccess');
     let inFlight = false;
+    let previewUrl = null;
 
     // Re-checked every time the drawer opens (not just once at page load) so
     // signing in/out between openings is reflected without a page reload.
@@ -213,7 +250,26 @@ const CCC = (() => {
       const signedIn = !!localStorage.getItem(TESLA_SESSION_KEY);
       signInRequired.classList.toggle('hidden', signedIn);
       form.classList.toggle('hidden', !signedIn);
+      if (success) success.classList.add('hidden');
       return signedIn;
+    }
+
+    function showPhotoError(message) {
+      photoError.textContent = message || '';
+      photoError.classList.toggle('hidden', !message);
+    }
+
+    function clearPhoto() {
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+      photoPreview.removeAttribute('src');
+      photoPreview.classList.add('hidden');
+      photoPrompt.textContent = 'Upload Photo';
+    }
+
+    function resetForm() {
+      form.reset();
+      clearPhoto();
+      showPhotoError('');
     }
 
     // Signed out: the drawer is never opened. The visitor goes straight to the
@@ -222,6 +278,11 @@ const CCC = (() => {
     // session that turns out to be rejected while the drawer is already open.
     function open() {
       if (!refreshAuthGate()) { window.location.href = SIGN_IN_PAGE; return; }
+      // No future dates in the picker (the server rejects them too).
+      if (dateField) {
+        const now = new Date();
+        dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      }
       drawer.classList.add('is-open'); backdrop.classList.add('is-open');
     }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
@@ -230,10 +291,34 @@ const CCC = (() => {
     if (closeBtn) closeBtn.addEventListener('click', close);
     backdrop.addEventListener('click', close);
 
+    // Preview + quick type/size check as soon as a photo is picked.
+    photoField.addEventListener('change', () => {
+      clearPhoto();
+      showPhotoError('');
+      const file = photoField.files && photoField.files[0];
+      if (!file) return;
+      if (!PHOTO_TYPES.includes(file.type)) { showPhotoError(SIGHTING_ERROR_MESSAGES.unsupported_file_type); photoField.value = ''; return; }
+      if (file.size > MAX_PICKED_BYTES) { showPhotoError('That photo is too large — please choose one under 10 MB.'); photoField.value = ''; return; }
+      try {
+        previewUrl = URL.createObjectURL(file);
+        photoPreview.src = previewUrl;
+        photoPreview.classList.remove('hidden');
+      } catch (err) { /* no preview; the upload still works */ }
+      photoPrompt.textContent = 'Change Photo';
+    });
+
+    if (success) {
+      document.getElementById('sightingAnother').addEventListener('click', () => {
+        success.classList.add('hidden');
+        form.classList.remove('hidden');
+      });
+      document.getElementById('sightingDone').addEventListener('click', close);
+    }
+
     function setSubmitting(submitting) {
       inFlight = submitting;
       submitBtn.disabled = submitting;
-      submitBtn.textContent = submitting ? 'Submitting…' : 'Log Sighting';
+      submitBtn.textContent = submitting ? 'Uploading…' : 'Submit Sighting';
     }
 
     form.addEventListener('submit', async (e) => {
@@ -246,28 +331,42 @@ const CCC = (() => {
       const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
       if (!sessionId) { refreshAuthGate(); return; }
 
-      const serviceArea = serviceAreaField.value.trim();
-      if (!serviceArea) return; // required attribute already guards this; defensive backstop only
-
-      const approxLocation = locationField.value.trim();
-      const licensePlate = plateField.value.trim();
-
-      const payload = { service_area: serviceArea };
-      if (approxLocation) payload.approx_location = approxLocation;
-      if (licensePlate) payload.license_plate = licensePlate; // never the old "Unlisted" fallback — missing stays missing
+      const picked = photoField.files && photoField.files[0];
+      if (!picked) { showPhotoError(SIGHTING_ERROR_MESSAGES.missing_photo); return; }
 
       setSubmitting(true);
+      const photo = await preparePhoto(picked);
+      if (photo.size > MAX_PHOTO_BYTES) {
+        setSubmitting(false);
+        showPhotoError('That photo is too large — please choose one under 10 MB.');
+        return;
+      }
+
+      const body = new FormData();
+      body.append('photo', photo, photo.name || 'sighting.jpg');
+      const fields = {
+        service_area: serviceAreaField.value.trim(),
+        approx_location: locationField.value.trim(),
+        notes: notesField ? notesField.value.trim() : '',
+        license_plate: plateField.value.trim()   // never the old "Unlisted" fallback — missing stays missing
+      };
+      if (dateField && dateField.value) {
+        const spotted = new Date(dateField.value);   // local time from the picker -> UTC
+        if (!isNaN(spotted)) fields.observed_at = spotted.toISOString();
+      }
+      Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
+
       let resp;
       try {
-        resp = await fetch(TESLA_WORKER_URL + '/api/vehicle-sightings', {
+        resp = await fetch(TESLA_WORKER_URL + '/api/vehicle-sightings/photo', {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          headers: { Authorization: 'Bearer ' + sessionId },   // the browser sets the multipart Content-Type
+          body
         });
       } catch (err) {
         setSubmitting(false);
         toast("Couldn't submit the sighting. Please try again.", 'error');
-        return; // entered fields are left exactly as typed
+        return; // entered fields and the chosen photo are left as they were
       }
 
       let json = null;
@@ -281,11 +380,13 @@ const CCC = (() => {
       }
       if (resp.status === 400) {
         const code = json && json.error;
-        toast((code && SIGHTING_ERROR_MESSAGES[code]) || SIGHTING_ERROR_MESSAGES.invalid_body, 'error');
+        const message = (code && SIGHTING_ERROR_MESSAGES[code]) || SIGHTING_ERROR_MESSAGES.invalid_body;
+        if (code === 'missing_photo' || code === 'unsupported_file_type') showPhotoError(message);
+        else toast(message, 'error');
         return;
       }
       if (resp.status === 413) {
-        toast("That sighting is too large to submit.", 'error');
+        showPhotoError('That photo is too large — please choose one under 10 MB.');
         return;
       }
       if (!resp.ok) {
@@ -295,11 +396,14 @@ const CCC = (() => {
 
       if (json && json.duplicate) {
         toast('That sighting was already submitted.', 'info');
-      } else {
-        toast('Sighting submitted for review.', 'success');
+        close();
+        resetForm();
+        return;
       }
-      close();
-      form.reset();
+      resetForm();
+      form.classList.add('hidden');
+      if (success) success.classList.remove('hidden');
+      else { toast('Sighting submitted!', 'success'); close(); }
     });
   }
 

@@ -1,11 +1,13 @@
-// Tests for the real sighting-drawer submission (js/main.js:initSightingDrawer,
-// Phase 3D-B) — the first tests in this project to exercise js/main.js at
-// all. Real SQL + the REAL Worker router (worker/index.js -> worker/sightings.js),
-// via jsdom. calc.js + main.js are combined into ONE eval() call (jsdom does
-// not share let/const script-scope bindings for CCC across separate eval()
-// calls the way a browser shares scope across separate <script> tags), and
-// IntersectionObserver is stubbed since jsdom doesn't implement it — neither
-// is app behavior, both are just what it takes to run this file in Node.
+// Tests for the real sighting-drawer submission (js/main.js:initSightingDrawer)
+// — a required photo plus optional fields, POSTed as multipart/form-data to
+// /api/vehicle-sightings/photo. Real SQL + the REAL Worker router
+// (worker/index.js -> worker/sightings.js), via jsdom. calc.js + main.js are
+// combined into ONE eval() call (jsdom does not share let/const script-scope
+// bindings for CCC across separate eval() calls the way a browser shares
+// scope across separate <script> tags), and IntersectionObserver is stubbed
+// since jsdom doesn't implement it. jsdom has no createImageBitmap, so the
+// photo is uploaded as picked (the browser-only re-encode step falls back to
+// the original file, exactly as it does in a browser without that API).
 // Run: node tests/sighting-drawer.test.mjs
 
 import fs from 'node:fs';
@@ -21,19 +23,33 @@ const CALC = fs.readFileSync(`${ROOT}public/js/calc.js`, 'utf8');
 const MAIN = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
 const COMBINED = `${CALC}\n${MAIN}\nCCC.init();`;
 
+// A tiny but real PNG (the server checks the file's own bytes).
+const PNG = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
+
 async function makeApp(users = ['u1']) {
   const ctx = await makeEnv({ users });
   for (const u of users) await ctx.env.TESLA_SESSIONS.put(`session:session-${u}`, JSON.stringify({ user_id: u }));
   return ctx;
 }
 
+// jsdom's FormData/File are not Node's; rebuild the body so the real Worker
+// parses exactly what a browser would send.
+async function toNodeInit(w, init) {
+  if (!(init.body instanceof w.FormData)) return init;
+  const fd = new FormData();
+  for (const [key, value] of init.body.entries()) {
+    if (typeof value === 'string') fd.append(key, value);
+    else fd.append(key, new File([new Uint8Array(await value.arrayBuffer())], value.name, { type: value.type }));
+  }
+  return { ...init, body: fd };
+}
+
 // Opens community.html (representative — the drawer markup/behavior is
 // identical across every page that has it) with an optional session and an
-// optional fetch intercept, matching rider-data-ui.test.mjs's own pattern.
+// optional fetch intercept.
 async function openPage(env, sessionId, intercept) {
   // jsdom cannot navigate, and reports every attempt as a "not implemented:
-  // navigation" error. That is exactly the signal wanted here: it counts the
-  // times the page tried to leave for another URL.
+  // navigation" error — used here to count attempts to leave the page.
   const navigations = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', err => { if (/navigation/i.test(err.message)) navigations.push(err.message); });
@@ -41,15 +57,18 @@ async function openPage(env, sessionId, intercept) {
   const w = dom.window;
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   if (sessionId) w.localStorage.setItem('teslaSessionId', sessionId);
-  // Only /api/vehicle-sightings calls are tracked here — a signed-in visitor
-  // also triggers initAccountMenu()'s own unrelated /api/me request, which
-  // must not be mistaken for (or block waiting on) the sighting submission.
+  // Only sighting calls are tracked — a signed-in visitor also triggers the
+  // account menu's own unrelated /api/me request.
   const requests = [];
   w.fetch = async (url, init = {}) => {
     const path = String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '');
-    if (path.startsWith('/api/vehicle-sightings')) requests.push({ path, method: init.method, body: init.body, headers: init.headers || {} });
+    if (path.startsWith('/api/vehicle-sightings')) {
+      const fields = {};
+      if (init.body instanceof w.FormData) for (const [k, v] of init.body.entries()) fields[k] = typeof v === 'string' ? v : { name: v.name, type: v.type, size: v.size };
+      requests.push({ path, method: init.method, fields, headers: init.headers || {} });
+    }
     if (intercept) { const r = await intercept(path, init); if (r) return r; }
-    return worker.fetch(new Request(`https://x${path}`, init), env, {});
+    return worker.fetch(new Request(`https://x${path}`, await toNodeInit(w, init)), env, {});
   };
   w.eval(COMBINED);
   await new Promise(r => setTimeout(r, 20));
@@ -57,23 +76,29 @@ async function openPage(env, sessionId, intercept) {
   const page = {
     w, d, requests, navigations,
     drawerOpen: () => d.getElementById('sightingDrawer').classList.contains('is-open') && d.getElementById('sightingBackdrop').classList.contains('is-open'),
-    text: id => d.getElementById(id).textContent.replace(/\s+/g, ' ').trim(),
     visible: id => !d.getElementById(id).classList.contains('hidden'),
-    // Only the MOST RECENT toast — toast() leaves each one in the DOM for
-    // ~3.2s, so within a fast test a root can hold more than one at once.
+    val: id => d.getElementById(id).value,
     toastText: () => {
       const root = d.getElementById('toastRoot');
-      if (!root || !root.lastElementChild) return '';
-      return root.lastElementChild.textContent.trim();
+      return root && root.lastElementChild ? root.lastElementChild.textContent.trim() : '';
     },
+    photoError: () => (page.visible('sightingPhotoError') ? d.getElementById('sightingPhotoError').textContent : ''),
     openDrawer: () => d.getElementById('openSightingDrawer').click(),
-    fill: (serviceArea, loc, plate) => {
-      d.getElementById('sightingServiceArea').value = serviceArea == null ? '' : serviceArea;
-      d.getElementById('sightingLoc').value = loc == null ? '' : loc;
-      d.getElementById('sightingVehicle').value = plate == null ? '' : plate;
+    pickPhoto: (bytes = PNG, name = 'cybercab.png', type = 'image/png') => {
+      const input = d.getElementById('sightingPhoto');
+      const file = new w.File([bytes], name, { type });
+      Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+      input.dispatchEvent(new w.Event('change', { bubbles: true }));
+    },
+    fill: ({ area = '', loc = '', plate = '', notes = '', date = '' } = {}) => {
+      d.getElementById('sightingServiceArea').value = area;
+      d.getElementById('sightingLoc').value = loc;
+      d.getElementById('sightingVehicle').value = plate;
+      d.getElementById('sightingNotes').value = notes;
+      d.getElementById('sightingDate').value = date;
     },
     submit: () => d.getElementById('sightingForm').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true })),
-    async waitFor(cond, label, ms = 1000) {
+    async waitFor(cond, label, ms = 1500) {
       const end = Date.now() + ms;
       while (Date.now() < end) { if (cond()) return true; await new Promise(r => setTimeout(r, 5)); }
       console.log(`    (timed out waiting for: ${label})`);
@@ -94,183 +119,199 @@ async function run() {
     await new Promise(r => setTimeout(r, 30));
     check('clicking the submit button leaves the page (one navigation attempt)', page.navigations.length === 1);
     check('the submit drawer and its backdrop are not opened', !page.drawerOpen());
-
-    // The destination is the existing Google sign-in page.
     check('the navigation target is the existing sign-in page', /const SIGN_IN_PAGE = 'signin\.html'/.test(MAIN) && /window\.location\.href = SIGN_IN_PAGE/.test(MAIN));
-    check('that page exists and offers Google sign-in', fs.existsSync(`${ROOT}public/signin.html`) && /oauth\/google\/start/.test(fs.readFileSync(`${ROOT}public/signin.html`, 'utf8')));
-
-    // The same holds for the hero submit button, where a page has one.
     const hero = page.d.getElementById('heroSightingBtn');
     if (hero) { hero.click(); check('the hero submit button behaves the same', page.navigations.length === 2 && !page.drawerOpen()); }
-
-    // Even a direct dispatch of submit (bypassing the UI entirely) must not
-    // silently "succeed" for a signed-out visitor.
-    page.fill('Dallas', 'S Congress Ave', 'XJR2195');
+    // Even a direct dispatch of submit must not silently "succeed".
+    page.pickPhoto();
+    page.fill({ area: 'Dallas', plate: 'XJR2195' });
     page.submit();
     await new Promise(r => setTimeout(r, 30));
     check('no request was sent while signed out', page.requests.length === 0);
-    check('no localStorage sighting entry was written', page.w.localStorage.getItem('cybercabCentral.sightings') === null);
-    check('no success toast appeared', !/submitted for review/i.test(page.toastText()));
+    check('nothing was recorded', sightingRows(ctx).length === 0);
   }
   {
-    // Every page that has the submit button loads the script that enforces this.
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
+    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A CYBERCAB SIGHTING') && s.includes('id="sightingSuccess"'); }));
   }
 
-  console.log('2. Authenticated submit: correct endpoint, correct JSON fields, no user_id, no "Unlisted" sentinel');
+  console.log('2. The form: photo (required), then optional City, Location, Date spotted, Description, License plate');
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
     page.openDrawer();
-    check('the form is shown for a signed-in visitor', page.visible('sightingForm') && !page.visible('sightingSignInRequired'));
-    check('the drawer opens and the visitor stays on the page', page.drawerOpen() && page.navigations.length === 0);
-    page.fill('Dallas', 'S Congress Ave', 'xjr-2195');
+    const d = page.d;
+    check('the form is shown for a signed-in visitor, and the visitor stays on the page', page.visible('sightingForm') && page.drawerOpen() && page.navigations.length === 0);
+    const photo = d.getElementById('sightingPhoto');
+    check('the photo input is a file picker limited to JPEG, PNG and WebP', photo.type === 'file' && photo.accept === 'image/jpeg,image/png,image/webp');
+    check('City / Service Area is no longer required', !d.getElementById('sightingServiceArea').required);
+    check('Date spotted is a date-time picker capped at now', d.getElementById('sightingDate').type === 'datetime-local' && /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(d.getElementById('sightingDate').max));
+    check('Description is a short text area (280 characters, matching the server)', d.getElementById('sightingNotes').maxLength === 280);
+    check('the button reads "Submit Sighting"', d.getElementById('sightingSubmitBtn').textContent.trim() === 'Submit Sighting');
+
+    page.submit();
+    await new Promise(r => setTimeout(r, 30));
+    check('submitting without a photo is stopped in the form, with a clear message', page.requests.length === 0 && /add a photo/i.test(page.photoError()));
+
+    page.pickPhoto(new Uint8Array([1, 2, 3]), 'notes.txt', 'text/plain');
+    check('picking a non-image shows a file-type message and clears the pick', /JPEG, PNG or WebP/.test(page.photoError()) && d.getElementById('sightingPhoto').value === '');
+    page.pickPhoto();
+    check('picking a valid photo clears the message and offers "Change Photo"', page.photoError() === '' && d.getElementById('sightingPhotoPrompt').textContent === 'Change Photo');
+  }
+
+  console.log('3. Authenticated submit: correct endpoint, multipart fields, no user_id');
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx.env, 'session-u1');
+    page.openDrawer();
+    page.pickPhoto();
+    page.fill({ area: 'Dallas', loc: 'S Congress Ave', plate: 'xjr-2195', notes: 'Parked by the curb', date: '2026-09-20T14:30' });
     page.submit();
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');
     const req = page.requests[0];
-    check('POSTs to the correct endpoint', req.path === '/api/vehicle-sightings' && req.method === 'POST');
-    check('carries the bearer session, matching every other authenticated request', req.headers.Authorization === 'Bearer session-u1');
-    const body = JSON.parse(req.body);
-    check('sends exactly the fields the drawer collects — service_area, approx_location, license_plate', Object.keys(body).sort().join() === 'approx_location,license_plate,service_area');
-    check('service_area is sent as entered', body.service_area === 'Dallas');
-    check('approx_location carries the free-text location field', body.approx_location === 'S Congress Ave');
-    check('license_plate is sent as-is — normalization is the backend\'s job, not duplicated here', body.license_plate === 'xjr-2195');
-    check('no user_id is ever sent from the client', !('user_id' in body));
+    check('POSTs to the photo endpoint', req.path === '/api/vehicle-sightings/photo' && req.method === 'POST');
+    check('carries the bearer session and lets the browser set the multipart Content-Type', req.headers.Authorization === 'Bearer session-u1' && !('Content-Type' in req.headers));
+    check('sends the photo and exactly the fields filled in', Object.keys(req.fields).sort().join() === 'approx_location,license_plate,notes,observed_at,photo,service_area');
+    check('the photo is the picked image', req.fields.photo.type === 'image/png' && req.fields.photo.size === PNG.length);
+    check('text fields are sent as entered (normalization is the backend\'s job)', req.fields.service_area === 'Dallas' && req.fields.approx_location === 'S Congress Ave' && req.fields.license_plate === 'xjr-2195' && req.fields.notes === 'Parked by the curb');
+    check('the date spotted is sent as a full ISO instant', req.fields.observed_at === new page.w.Date('2026-09-20T14:30').toISOString());
+    check('no user_id is ever sent from the client', !('user_id' in req.fields));
   }
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
     page.openDrawer();
-    page.fill('Austin', '', ''); // no location, no plate
-    page.submit();
+    page.pickPhoto();
+    page.submit();   // photo only
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');
-    const body = JSON.parse(page.requests[0].body);
-    check('an empty plate is simply omitted — never the old "Unlisted" fallback string', !('license_plate' in body) && !/Unlisted/i.test(page.requests[0].body));
-    check('an empty approx_location is omitted too, not sent as an empty string', !('approx_location' in body));
-    check('service_area alone is still a valid, sendable submission', body.service_area === 'Austin');
+    check('a photo alone is a valid submission — empty optional fields are simply omitted', Object.keys(page.requests[0].fields).join() === 'photo');
   }
 
-  console.log('3. Success: correct wording, form resets/closes, nothing written to localStorage');
+  console.log('4. Success: the confirmation panel, the record is pending, nothing public or local');
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
     page.openDrawer();
-    page.fill('Dallas', '', 'XJR2195');
+    page.pickPhoto();
+    page.fill({ area: 'Austin', notes: 'Near the Domain' });
     page.submit();
-    await page.waitFor(() => sightingRows(ctx).length > 0, 'the sighting to be recorded');
-    check('the success toast explains the sighting was submitted for review, not verified or public', /submitted for review/i.test(page.toastText()));
-    check('the toast does NOT claim verification or public visibility', !/verified|public|added to the fleet/i.test(page.toastText()));
-    await page.waitFor(() => !page.d.getElementById('sightingDrawer').classList.contains('is-open'), 'drawer to close');
-    check('the drawer closes on success', !page.d.getElementById('sightingDrawer').classList.contains('is-open'));
-    check('the form is reset', page.d.getElementById('sightingServiceArea').value === '');
+    await page.waitFor(() => page.visible('sightingSuccess'), 'the confirmation');
+    check('shows "Sighting submitted!"', /Sighting submitted!/.test(page.d.getElementById('sightingSuccess').textContent));
+    check('...and "Your photo has been received and is awaiting review."', /Your photo has been received and is awaiting review\./.test(page.d.getElementById('sightingSuccess').textContent));
+    check('the form is hidden behind the confirmation and the drawer stays open (no redirect)', !page.visible('sightingForm') && page.drawerOpen() && page.navigations.length === 0);
+    check('the form was reset for next time', page.val('sightingServiceArea') === '' && page.val('sightingNotes') === '' && page.d.getElementById('sightingPhotoPrompt').textContent === 'Upload Photo');
+    const rows = sightingRows(ctx);
+    const sub = ctx.d1.query('SELECT * FROM submissions')[0];
+    check('exactly one pending sighting with its photo was recorded', rows.length === 1 && sub.status === 'pending' && sub.evidence_type === 'photo' && ctx.env.EVIDENCE_BUCKET._objects.has(sub.evidence_ref));
     check('nothing was written to the old localStorage key', page.w.localStorage.getItem('cybercabCentral.sightings') === null);
-    check('exactly one real observation was recorded server-side', sightingRows(ctx).length === 1);
+
+    page.d.getElementById('sightingAnother').click();
+    check('"Submit another" brings the empty form back', page.visible('sightingForm') && !page.visible('sightingSuccess'));
+    page.d.getElementById('closeSightingDrawer').click();
+    page.openDrawer();
+    check('reopening the drawer shows the form, not a stale confirmation', page.visible('sightingForm') && !page.visible('sightingSuccess'));
+    page.pickPhoto();
+    page.submit();
+    await page.waitFor(() => page.visible('sightingSuccess'), 'the second confirmation');
+    page.d.getElementById('sightingDone').click();
+    check('"Done" on the confirmation closes the drawer', !page.drawerOpen() && sightingRows(ctx).length === 2);
   }
 
-  console.log('4. Duplicate: distinct wording, no second local record, no extra request caused by the UI itself');
+  console.log('5. Duplicate: distinct wording, nothing new recorded, no extra request caused by the UI itself');
   {
     const ctx = await makeApp();
     const page = await openPage(ctx.env, 'session-u1');
-    // First, a real submission…
     page.openDrawer();
-    page.fill('Dallas', '', 'XJR2195');
+    page.pickPhoto();
+    page.fill({ area: 'Dallas', plate: 'XJR2195' });
     page.submit();
-    await page.waitFor(() => sightingRows(ctx).length > 0, 'first sighting recorded');
-    // …then immediately the same plate again (the backend's own accidental-
-    // duplicate guard from 3D-A kicks in — this is not new UI-side dedupe).
-    page.openDrawer();
-    page.fill('Dallas', '', 'xjr2195');
+    await page.waitFor(() => page.visible('sightingSuccess'), 'first sighting recorded');
+    page.d.getElementById('sightingAnother').click();
+    page.pickPhoto();
+    page.fill({ area: 'Dallas', plate: 'xjr2195' });
     page.submit();
-    await page.waitFor(() => /already submitted/i.test(page.toastText()), 'the duplicate toast to appear');
-    check('the duplicate gets its own distinct message, not the normal success wording', /already submitted/i.test(page.toastText()) && !/submitted for review/i.test(page.toastText()));
-    check('still only one real observation exists — the duplicate created nothing new', sightingRows(ctx).length === 1);
-    check('exactly two requests were sent total — the UI itself never silently retries or double-posts', page.requests.length === 2);
+    await page.waitFor(() => /already submitted/i.test(page.toastText()), 'the duplicate toast');
+    check('the duplicate gets its own distinct message', /already submitted/i.test(page.toastText()));
+    check('still only one observation and one stored photo', sightingRows(ctx).length === 1 && ctx.env.EVIDENCE_BUCKET._objects.size === 1);
+    check('exactly two requests were sent total', page.requests.length === 2);
   }
 
-  console.log('5. Errors: 400, 401, 413, 500, and a network failure — entered fields survive every one of them');
+  console.log('6. Errors: 400, 401, 413, 502, and a network failure — the photo and fields survive every one of them');
+  const failWith = (status, body) => path => (path.includes('/api/vehicle-sightings') ? new Response(JSON.stringify(body), { status }) : null);
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx.env, 'session-u1', (path) => (path.includes('/api/vehicle-sightings') ? new Response(JSON.stringify({ success: false, error: 'invalid_license_plate' }), { status: 400 }) : null));
-    page.openDrawer();
-    page.fill('Dallas', 'Main St', '!!!');
-    page.submit();
-    await page.waitFor(() => page.toastText().length > 0, '400 response handled');
-    check('a 400 shows a human-readable message, not a raw JSON dump', /doesn't look like a valid license plate/i.test(page.toastText()) && !/"success":false/i.test(page.toastText()));
-    check('the drawer stays open on error', page.d.getElementById('sightingDrawer').classList.contains('is-open'));
-    check('every entered field is preserved — nothing has to be retyped', page.d.getElementById('sightingServiceArea').value === 'Dallas' && page.d.getElementById('sightingLoc').value === 'Main St' && page.d.getElementById('sightingVehicle').value === '!!!');
+    const page = await openPage(ctx.env, 'session-u1', failWith(400, { success: false, error: 'invalid_license_plate' }));
+    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St', plate: '!!!' }); page.submit();
+    await page.waitFor(() => page.toastText().length > 0, '400 handled');
+    check('a 400 shows a human-readable message, not raw JSON', /doesn't look like a valid license plate/i.test(page.toastText()) && !/"success":false/.test(page.toastText()));
+    check('the drawer stays open and every field is preserved', page.drawerOpen() && page.val('sightingServiceArea') === 'Dallas' && page.val('sightingLoc') === 'Main St' && page.val('sightingVehicle') === '!!!');
   }
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx.env, 'session-u1', (path) => (path.includes('/api/vehicle-sightings') ? new Response(JSON.stringify({ authenticated: false }), { status: 401 }) : null));
-    page.openDrawer();
-    page.fill('Dallas', '', 'XJR2195');
-    page.submit();
+    const page = await openPage(ctx.env, 'session-u1', failWith(400, { success: false, error: 'unsupported_file_type' }));
+    page.openDrawer(); page.pickPhoto(); page.submit();
+    await page.waitFor(() => page.photoError().length > 0, 'photo 400 handled');
+    check('a rejected photo is reported next to the photo field', /JPEG, PNG or WebP/.test(page.photoError()));
+  }
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx.env, 'session-u1', failWith(401, { authenticated: false }));
+    page.openDrawer(); page.pickPhoto(); page.submit();
     await page.waitFor(() => page.visible('sightingSignInRequired'), '401 -> sign-in state');
-    check('a 401 mid-flow shows the sign-in requirement, not a generic error', page.visible('sightingSignInRequired') && !page.visible('sightingForm'));
-    check('the stale session token is cleared', page.w.localStorage.getItem('teslaSessionId') === null);
+    check('a 401 mid-flow shows the sign-in requirement and clears the stale session', !page.visible('sightingForm') && page.w.localStorage.getItem('teslaSessionId') === null);
   }
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx.env, 'session-u1', (path) => (path.includes('/api/vehicle-sightings') ? new Response(JSON.stringify({ success: false, error: 'too_large' }), { status: 413 }) : null));
-    page.openDrawer();
-    page.fill('Dallas', 'x'.repeat(50), 'XJR2195');
-    page.submit();
-    await page.waitFor(() => page.toastText().length > 0, '413 handled');
-    check('a 413 tells the user the submission is too large', /too large/i.test(page.toastText()));
-    check('fields are preserved on a 413 too', page.d.getElementById('sightingServiceArea').value === 'Dallas');
+    const page = await openPage(ctx.env, 'session-u1', failWith(413, { success: false, error: 'file_too_large' }));
+    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas' }); page.submit();
+    await page.waitFor(() => page.photoError().length > 0, '413 handled');
+    check('a 413 says the photo is too large (under 10 MB)', /too large.*10 MB/i.test(page.photoError()));
+    check('fields are preserved on a 413', page.val('sightingServiceArea') === 'Dallas');
   }
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx.env, 'session-u1', (path) => (path.includes('/api/vehicle-sightings') ? new Response('{"success":false}', { status: 500 }) : null));
-    page.openDrawer();
-    page.fill('Dallas', '', 'XJR2195');
-    page.submit();
-    await page.waitFor(() => page.toastText().length > 0, '500 handled');
-    check('a 500 shows the friendly "couldn\'t submit, try again" message', /couldn't submit the sighting.*try again/i.test(page.toastText()));
-    check('no internal detail leaks', !/"success":false/i.test(page.toastText()));
-    check('fields survive a server error', page.d.getElementById('sightingVehicle').value === 'XJR2195');
+    const page = await openPage(ctx.env, 'session-u1', failWith(502, { success: false, error: 'upload_failed' }));
+    page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' }); page.submit();
+    await page.waitFor(() => page.toastText().length > 0, '502 handled');
+    check('a server/storage failure shows the friendly "try again" message', /couldn't submit the sighting.*try again/i.test(page.toastText()));
+    check('fields survive it', page.val('sightingVehicle') === 'XJR2195' && page.d.getElementById('sightingPhoto').files.length === 1);
   }
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx.env, 'session-u1', (path) => { if (path.includes('/api/vehicle-sightings')) throw new TypeError('network down'); return null; });
-    page.openDrawer();
-    page.fill('Dallas', 'Main St', 'XJR2195');
-    page.submit();
+    const page = await openPage(ctx.env, 'session-u1', path => { if (path.includes('/api/vehicle-sightings')) throw new TypeError('network down'); return null; });
+    page.openDrawer(); page.pickPhoto(); page.fill({ area: 'Dallas', loc: 'Main St' }); page.submit();
     await page.waitFor(() => /couldn't submit/i.test(page.toastText()), 'network failure handled');
-    check('a network failure shows the same friendly message', /couldn't submit the sighting.*try again/i.test(page.toastText()));
-    check('no exception text leaks into the toast', !/TypeError|network down/i.test(page.toastText()));
-    check('fields are fully preserved after a network failure', page.d.getElementById('sightingServiceArea').value === 'Dallas' && page.d.getElementById('sightingLoc').value === 'Main St' && page.d.getElementById('sightingVehicle').value === 'XJR2195');
-    check('the drawer remains open so the rider can just retry', page.d.getElementById('sightingDrawer').classList.contains('is-open'));
+    check('a network failure shows the same friendly message, with no exception text', /try again/i.test(page.toastText()) && !/TypeError|network down/.test(page.toastText()));
+    check('the drawer stays open with everything preserved, ready to retry', page.drawerOpen() && page.val('sightingLoc') === 'Main St' && !page.d.getElementById('sightingSubmitBtn').disabled);
   }
 
-  console.log('6. Double submit: a rapid repeated submit results in exactly one in-flight request');
+  console.log('7. Double submit: the button is disabled while uploading; repeated submits send one request');
   {
     const ctx = await makeApp();
-    let resolveFirst;
-    const gate = new Promise(r => { resolveFirst = r; });
+    let release;
+    const gate = new Promise(r => { release = r; });
     let calls = 0;
-    const page = await openPage(ctx.env, 'session-u1', async (path) => {
+    const page = await openPage(ctx.env, 'session-u1', async path => {
       if (!path.includes('/api/vehicle-sightings')) return null;
       calls += 1;
-      await gate; // hold the first request open until we've tried to double-submit
-      return null; // let it fall through to the real worker once released
+      await gate;
+      return null;
     });
-    page.openDrawer();
-    page.fill('Dallas', '', 'XJR2195');
+    page.openDrawer(); page.pickPhoto(); page.fill({ plate: 'XJR2195' });
     check('the submit button starts enabled', !page.d.getElementById('sightingSubmitBtn').disabled);
     page.submit();
     await page.waitFor(() => calls === 1, 'the first request to start');
-    check('the submit button is disabled while the request is in flight', page.d.getElementById('sightingSubmitBtn').disabled);
-    page.submit(); // a rapid second submit while the first is still pending
-    page.submit();
+    const btn = page.d.getElementById('sightingSubmitBtn');
+    check('the button is disabled and reads "Uploading…" while in flight', btn.disabled && btn.textContent === 'Uploading…');
+    page.submit(); page.submit();
     await new Promise(r => setTimeout(r, 20));
-    check('only one request was actually sent despite three submit attempts', calls === 1);
-    resolveFirst();
-    await page.waitFor(() => sightingRows(ctx).length > 0, 'the held request to finally complete');
-    check('the held request completed normally once released', sightingRows(ctx).length === 1);
-    check('the submit button is re-enabled afterward', !page.d.getElementById('sightingSubmitBtn').disabled);
+    check('only one request was sent despite three submit attempts', calls === 1);
+    release();
+    await page.waitFor(() => sightingRows(ctx).length > 0, 'the held request to complete');
+    check('the held request completed normally', sightingRows(ctx).length === 1 && ctx.env.EVIDENCE_BUCKET._objects.size === 1);
+    check('the button is re-enabled afterward', !btn.disabled && btn.textContent === 'Submit Sighting');
   }
 
   t.finish();
