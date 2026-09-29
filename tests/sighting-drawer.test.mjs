@@ -152,7 +152,7 @@ async function run() {
     const photo = d.getElementById('sightingPhoto');
     check('the photo input is a file picker limited to JPEG, PNG and WebP', photo.type === 'file' && photo.accept === 'image/jpeg,image/png,image/webp');
     check('City / Service Area is no longer required', !d.getElementById('sightingServiceArea').required);
-    check('Date spotted is a date-time picker capped at now', d.getElementById('sightingDate').type === 'datetime-local' && /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(d.getElementById('sightingDate').max));
+    check('Date spotted is a DATE picker (no time — that is recorded automatically), capped at today', d.getElementById('sightingDate').type === 'date' && /^\d{4}-\d\d-\d\d$/.test(d.getElementById('sightingDate').max) && /time is recorded automatically/i.test(d.getElementById('sightingDateHelp').textContent));
     check('Description is a short text area (280 characters, matching the server)', d.getElementById('sightingNotes').maxLength === 280);
     check('the button reads "Submit Sighting"', d.getElementById('sightingSubmitBtn').textContent.trim() === 'Submit Sighting');
 
@@ -172,16 +172,16 @@ async function run() {
     const page = await openPage(ctx.env, 'session-u1');
     page.openDrawer();
     page.pickPhoto();
-    page.fill({ area: 'Dallas', loc: 'S Congress Ave', plate: 'xjr-2195', notes: 'Parked by the curb', date: '2026-09-20T14:30' });
+    page.fill({ area: 'Dallas', loc: 'S Congress Ave', plate: 'xjr-2195', notes: 'Parked by the curb', date: '2026-09-20' });
     page.submit();
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');
     const req = page.requests[0];
     check('POSTs to the photo endpoint', req.path === '/api/vehicle-sightings/photo' && req.method === 'POST');
     check('carries the bearer session and lets the browser set the multipart Content-Type', req.headers.Authorization === 'Bearer session-u1' && !('Content-Type' in req.headers));
-    check('sends the photo and exactly the fields filled in (plus the picked place\'s id)', Object.keys(req.fields).sort().join() === 'approx_location,license_plate,location_id,notes,observed_at,photo,service_area' && req.fields.location_id === placeIdFor('S Congress Ave'));
+    check('sends the photo and exactly the fields filled in (plus the picked place\'s id and the browser time zone)', Object.keys(req.fields).sort().join() === 'approx_location,license_plate,location_id,notes,observed_date,photo,service_area,time_zone' && req.fields.location_id === placeIdFor('S Congress Ave'));
     check('the photo is the picked image', req.fields.photo.type === 'image/png' && req.fields.photo.size === PNG.length);
     check('text fields are sent as entered (normalization is the backend\'s job)', req.fields.service_area === 'Dallas' && req.fields.approx_location === 'S Congress Ave' && req.fields.license_plate === 'xjr-2195' && req.fields.notes === 'Parked by the curb');
-    check('the date spotted is sent as a full ISO instant', req.fields.observed_at === new page.w.Date('2026-09-20T14:30').toISOString());
+    check('only the chosen DATE is sent — never a client-chosen time', req.fields.observed_date === '2026-09-20' && !('observed_at' in req.fields) && req.fields.time_zone === Intl.DateTimeFormat().resolvedOptions().timeZone);
     check('no user_id is ever sent from the client', !('user_id' in req.fields));
   }
   {
@@ -191,7 +191,7 @@ async function run() {
     page.pickPhoto();
     page.submit();   // photo only
     await page.waitFor(() => page.requests.length > 0, 'the request to be sent');
-    check('a photo alone is a valid submission — empty optional fields are simply omitted', Object.keys(page.requests[0].fields).join() === 'photo');
+    check('a photo alone is a valid submission — empty optional fields are simply omitted', Object.keys(page.requests[0].fields).sort().join() === 'photo,time_zone');
   }
 
   console.log('4. Success: the confirmation panel, the record is pending, nothing public or local');

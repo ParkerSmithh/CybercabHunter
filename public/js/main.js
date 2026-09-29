@@ -385,7 +385,7 @@ const CCC = (() => {
       // No future dates in the picker (the server rejects them too).
       if (dateField) {
         const now = new Date();
-        dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       }
       drawer.classList.add('is-open'); backdrop.classList.add('is-open');
     }
@@ -459,10 +459,11 @@ const CCC = (() => {
         notes: notesField ? notesField.value.trim() : '',
         license_plate: plateField.value.trim()   // never the old "Unlisted" fallback — missing stays missing
       };
-      if (dateField && dateField.value) {
-        const spotted = new Date(dateField.value);   // local time from the picker -> UTC
-        if (!isNaN(spotted)) fields.observed_at = spotted.toISOString();
-      }
+      // Only the DATE is chosen; the server records the exact time of
+      // submission in the area's local time (worker/timezones.js). The
+      // browser's own time zone is sent as a fallback for an unknown area.
+      if (dateField && dateField.value) fields.observed_date = dateField.value;
+      try { fields.time_zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* optional */ }
       if (fields.approx_location && locIdField) fields.location_id = locIdField.value;
       Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
 

@@ -16,6 +16,7 @@
 
 import { db } from './db.js';
 import { publicLocation } from './places.js';
+import { timeZoneFor } from './timezones.js';
 
 // The city filter buttons. "All" (no city) covers every city, including
 // future ones without a button and sightings with no city.
@@ -84,7 +85,10 @@ export async function apiListPublicSightings(request, env) {
       city: displayCity(r.service_area),
       location: publicLocation(r.approx_location),   // street/place + city, never a house number
       plate: r.license_plate || null,
-      spotted_at: toIso(r.observed_at)
+      spotted_at: toIso(r.observed_at),
+      // The area's local time zone, so the time is shown as it was there
+      // (e.g. Austin in US Central); null when the area is unknown.
+      time_zone: timeZoneFor({ serviceArea: r.service_area, location: r.approx_location })
     })),
     next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null
   }, { headers: { 'Cache-Control': 'public, max-age=60' } });

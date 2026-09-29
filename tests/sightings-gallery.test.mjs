@@ -159,7 +159,8 @@ async function run() {
     check('every field of a full sighting', full.location === 'NorthPark area' && full.plate === 'XJR2195' && full.spotted_at === '2026-09-20T19:30:00Z' && /^[0-9a-f]{32}$/.test(full.id) && full.image_url === `/api/sightings/${full.id}/photo`);
     check('no plate -> plate null', bare.plate === null);
     check('no approximate location -> location null', bare.location === null);
-    check('each sighting has exactly the public fields', json.sightings.every(s => Object.keys(s).sort().join() === 'city,id,image_url,location,plate,spotted_at'));
+    check('each sighting has exactly the public fields', json.sightings.every(s => Object.keys(s).sort().join() === 'city,id,image_url,location,plate,spotted_at,time_zone'));
+    check('each carries its area\'s time zone (Dallas and Austin are US Central)', full.time_zone === 'America/Chicago' && bare.time_zone === 'America/Chicago');
     const raw = JSON.stringify(json);
     const sub = ctx.d1.query('SELECT * FROM submissions')[0], obs = ctx.d1.query('SELECT * FROM vehicle_observations')[0];
     check('no user id, submission id, observation id, R2 key, description or moderation data', !raw.includes('rider') && !raw.includes('"mod"') && !raw.includes(sub.id) && !raw.includes(obs.id) && !raw.includes('evidence/') && !raw.includes('555-0100') && !/reviewed|status|user|evidence|notes/.test(raw));
@@ -316,6 +317,7 @@ async function run() {
     check('three cards, newest first', p.cards().length === 3);
     const austin = p.cards().find(c => /Austin/.test(c.textContent));
     check('a card shows the photo, city, location, plate and date', austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
+    check('the time is shown in the area\'s local time with its zone (19:30 UTC -> 2:30 PM CDT in Austin)', /Sep 20, 2026 · 2:30 PM CDT/.test(austin.textContent));
     const dallas = p.cards().find(c => /Dallas/.test(c.textContent));
     check('a card without location/plate has no empty lines for them', dallas.querySelectorAll('p').length === 0 && !/null|undefined/.test(dallas.textContent));
     check('images load lazily', p.cards().every(c => c.querySelector('img').loading === 'lazy'));

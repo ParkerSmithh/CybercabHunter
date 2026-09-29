@@ -28,6 +28,7 @@
 import { normalizePlate } from './plate.js';
 import { db } from './db.js';
 import { verifyPlace } from './places.js';
+import { timeZoneFor, resolveObservedAt } from './timezones.js';
 
 const MAX_PLATE_RAW = 20;
 const MAX_SERVICE_AREA = 100;
@@ -249,7 +250,8 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   }
   const parsed = parseSightingFields(body, { requireServiceArea: false });
   if (parsed.error) return bad(parsed.error);
-  const { licensePlate, serviceArea, notes, observedAt } = parsed.fields;
+  const { licensePlate, serviceArea, notes } = parsed.fields;
+  let observedAt = parsed.fields.observedAt;   // only from an older form that still sends observed_at
 
   // Location must be a REAL place chosen from the search suggestions
   // (worker/places.js): the form sends the place's OpenStreetMap id; it is
@@ -267,6 +269,18 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     }
     if (!place) return bad('invalid_location');
     approxLocation = place.label;
+  }
+
+  // Date spotted: the form sends only the DATE; the time is the exact moment
+  // of submission in the local time zone of the area being documented
+  // (worker/timezones.js — from the city, else the picked place's state,
+  // else the submitter's own time zone). No date means today, i.e. now.
+  const observedDate = form.get('observed_date');
+  if (typeof observedDate === 'string' && observedDate.trim()) {
+    const zone = timeZoneFor({ serviceArea, location: approxLocation, fallback: form.get('time_zone') }) || 'UTC';
+    const resolved = resolveObservedAt({ date: observedDate.trim(), zone });
+    if (resolved.error) return bad(resolved.error);
+    observedAt = resolved.observedAt;
   }
 
   const sql = env.cybercabhunter_db;

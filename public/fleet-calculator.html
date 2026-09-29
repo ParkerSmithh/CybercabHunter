@@ -277,7 +277,8 @@
     </div>
     <div>
       <label for="sightingDate" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingDate" type="datetime-local" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <p id="sightingDateHelp" class="text-[11px] text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
       <label for="sightingNotes" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -339,7 +340,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=6"></script>
+<script src="js/main.js?v=7"></script>
 <script>
   CCC.init();
 

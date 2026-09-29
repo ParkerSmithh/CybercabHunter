@@ -18,11 +18,15 @@
   let isModerator = false;   // moderators get a Delete button on each photo (the server checks too)
   const SESSION_KEY = 'teslaSessionId';
 
-  function fmtSpotted(iso) {
+  // In the sighting area's own time zone when known (e.g. "4:10 PM CDT" for
+  // Austin), otherwise the viewer's.
+  function fmtSpotted(iso, zone) {
     const d = new Date(iso);
     if (isNaN(d)) return '';
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' +
-      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const tz = {};
+    if (zone) { try { new Intl.DateTimeFormat('en-US', { timeZone: zone }); tz.timeZone = zone; } catch (e) { /* unknown zone */ } }
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...tz }) + ' · ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', ...tz, ...(tz.timeZone ? { timeZoneName: 'short' } : {}) });
   }
 
   function el(tag, className, text) {
@@ -36,7 +40,7 @@
   // Fields that weren't provided are simply left out.
   function card(s) {
     const article = el('article', 'glass rounded-2xl overflow-hidden flex flex-col');
-    const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at)].filter(Boolean).join(' · ');
+    const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
     open.setAttribute('aria-label', 'View larger photo');
@@ -70,7 +74,7 @@
     if (s.plate) top.appendChild(el('span', 'font-display font-bold text-xs tracking-wider px-2 py-0.5 rounded bg-black/30 border border-[rgba(212,175,55,0.2)]', s.plate));
     if (top.childNodes.length) body.appendChild(top);
     if (s.location) body.appendChild(el('p', 'text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]', s.location));
-    const when = fmtSpotted(s.spotted_at);
+    const when = fmtSpotted(s.spotted_at, s.time_zone);
     if (when) {
       const time = el('time', 'text-[11px] text-slate-500', when);
       time.dateTime = s.spotted_at;
