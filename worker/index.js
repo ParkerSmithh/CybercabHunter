@@ -13,6 +13,7 @@ import { apiSearchPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
+import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -331,6 +332,16 @@ export default {
       return withCors(await apiGetPublicSightingPhoto(request, env, sightingPhotoMatch[1]), request);
     }
 
+    // Community page (worker/community.js): the leaderboard and public rider
+    // profiles. Public GETs; only opted-in riders are ever identified.
+    if (url.pathname === '/api/community/leaderboard' && request.method === 'GET') {
+      return withCors(await apiCommunityLeaderboard(request, env, ctx), request);
+    }
+    const riderApiMatch = url.pathname.match(/^\/api\/riders\/([^/]+)$/);
+    if (riderApiMatch && request.method === 'GET') {
+      return withCors(await apiGetRiderProfile(request, env, ctx, riderApiMatch[1]), request);
+    }
+
     // Camera-watch Cybercab detections for the Zones map (worker/camera-sightings.js):
     // public GETs; the POST is the hourly watch's bearer-token upload
     // (server-to-server, no CORS).
@@ -426,6 +437,13 @@ export default {
     // redirect was being handed straight back to the browser, so every
     // /vehicle/:id sent the visitor to /vehicle. '/vehicle' is the canonical
     // URL of vehicle.html and is served directly with a 200.
+    // /rider/:handle serves rider.html the same way (requested as '/rider').
+    const riderPageMatch = url.pathname.match(/^\/rider\/([^/]+)$/);
+    if (riderPageMatch && request.method === 'GET') {
+      const assetUrl = new URL(request.url);
+      assetUrl.pathname = '/rider';
+      return env.ASSETS.fetch(new Request(assetUrl, request));
+    }
     const vehiclePageMatch = url.pathname.match(/^\/vehicle\/([^/]+)$/);
     if (vehiclePageMatch && request.method === 'GET') {
       const assetUrl = new URL(request.url);

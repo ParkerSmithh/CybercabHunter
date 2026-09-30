@@ -240,15 +240,16 @@ async function run() {
     check('reduced motion: the final value is shown immediately and never rewritten', still.v() === '3' && still.r() === '6' && stillChanges.n === 0);
   }
 
-  console.log('6. Community page: removed entirely (its invented leaderboard stays gone)');
+  console.log('6. Community page: real data only (the old invented leaderboard stays gone)');
   {
-    check('community.html no longer exists', !fs.existsSync(`${ROOT}public/community.html`));
-    const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
-    check('no page links to it any more (nav, bottom nav or footer)', pages.every(f => !/community\.html|data-nav="community"/.test(read(f))));
+    // The first Community page showed made-up spotters and scores; it was
+    // removed, and the page that replaced it ranks real discoveries from
+    // GET /api/community/leaderboard (tests/community.test.mjs).
     const names = ['atx_spotter', 'dfw_watcher', 'cabhunter22', 'sillicon_hills', 'railyardryan'];
-    const everything = ['index.html', 'js/main.js', 'js/home-stats.js', 'js/vehicles.js', 'js/vehicle.js'].map(read).join('\n');
+    const everything = ['index.html', 'community.html', 'rider.html', 'js/main.js', 'js/home-stats.js', 'js/vehicles.js', 'js/vehicle.js', 'js/community.js', 'js/rider.js'].map(read).join('\n');
     check('none of the invented spotter names appear anywhere in the site source', names.every(n => !everything.includes(n)));
-    check('the shared script carries no leaderboard', !/leaderboardList|CCC\.data\.leaderboard/.test(MAIN));
+    check('the shared script carries no leaderboard (no hard-coded data)', !/leaderboardList|CCC\.data\.leaderboard/.test(MAIN));
+    check('the Community page renders only what the leaderboard API returns', /\/api\/community\/leaderboard/.test(read('js/community.js')) && !/<li[^>]*>[^<]*\d+\s*vehicles/i.test(read('community.html')));
   }
 
   t.finish();

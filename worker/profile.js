@@ -20,6 +20,8 @@ export async function apiGetProfile(request, env, userId) {
       handle: user.handle,
       bio: user.bio,
       profile_visibility: user.profile_visibility,
+      // The Community leaderboard / public profile switch (worker/community.js).
+      leaderboard_opt_in: Number(user.leaderboard_opt_in) === 1,
       avatar_url: user.avatar_url,
       joined_at: user.created_at
     },
@@ -69,6 +71,10 @@ export async function apiUpdateProfile(request, env, userId) {
   const displayName = typeof body.display_name === 'string' ? (body.display_name.trim().slice(0, MAX_DISPLAY_NAME) || null) : null;
   const bio = typeof body.bio === 'string' ? (body.bio.trim().slice(0, MAX_BIO) || null) : null;
   const profileVisibility = body.profile_visibility === 'public' ? 'public' : 'private';
+  // Explicit consent to appear by name and photo on the Community page: only
+  // a literal true turns it on; anything else (including an older page that
+  // doesn't send it) leaves the rider private.
+  const leaderboardOptIn = body.leaderboard_opt_in === true;
 
   let handle = null;
   if (typeof body.handle === 'string' && body.handle.trim() !== '') {
@@ -79,7 +85,7 @@ export async function apiUpdateProfile(request, env, userId) {
   }
 
   try {
-    await db.updateUserSettings(env.cybercabhunter_db, userId, { displayName, handle, bio, profileVisibility });
+    await db.updateUserSettings(env.cybercabhunter_db, userId, { displayName, handle, bio, profileVisibility, leaderboardOptIn });
   } catch (err) {
     const message = String((err && err.message) || '');
     if (message.includes('UNIQUE') && message.includes('handle')) {
@@ -90,6 +96,6 @@ export async function apiUpdateProfile(request, env, userId) {
 
   return Response.json({
     success: true,
-    user: { display_name: displayName, handle, bio, profile_visibility: profileVisibility }
+    user: { display_name: displayName, handle, bio, profile_visibility: profileVisibility, leaderboard_opt_in: leaderboardOptIn }
   });
 }

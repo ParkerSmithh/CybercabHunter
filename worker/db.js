@@ -191,22 +191,23 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
   return id;
 }
 
-// Always sets all four fields at once (rather than a dynamic partial
+// Always sets every settings field at once (rather than a dynamic partial
 // UPDATE) so a deliberate "clear this field" (null) can't be confused with
 // "field not sent" — the caller (apiUpdateProfile) always resolves the
 // full set first. Throws on the existing unique-handle constraint if
 // `handle` is already taken by a different user; the caller translates
 // that into a clean error rather than a raw D1 message.
-async function updateUserSettings(sql, userId, { displayName, handle, bio, profileVisibility }) {
+async function updateUserSettings(sql, userId, { displayName, handle, bio, profileVisibility, leaderboardOptIn = false }) {
   await sql.prepare(`
     UPDATE users SET
       display_name = ?,
       handle = ?,
       bio = ?,
       profile_visibility = ?,
+      leaderboard_opt_in = ?,
       updated_at = datetime('now')
     WHERE id = ?
-  `).bind(displayName, handle, bio, profileVisibility, userId).run();
+  `).bind(displayName, handle, bio, profileVisibility, leaderboardOptIn ? 1 : 0, userId).run();
 }
 
 async function touchUserSync(sql, userId) {

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Profile</title>
+<title>Cybercab Hunter — Community</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -23,27 +23,6 @@
   }
 </script>
 <link rel="stylesheet" href="css/style.css">
-<style>
-  /* Locked = looks like plain text (no box); unlocked = looks like a normal
-     input, toggled by swapping these two classes in js when Edit Profile
-     is clicked. Font/color/size come from the Tailwind classes already on
-     each element — only the box chrome changes here. */
-  .field-locked, .field-unlocked {
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0;
-    display: block;
-    transition: background-color 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
-  }
-  .field-locked { cursor: default; }
-  .field-unlocked {
-    background: #0F141C;
-    border-color: rgba(212,175,55,0.2);
-    padding: 0.5rem 0.75rem;
-    cursor: text;
-  }
-  .field-unlocked:focus { outline: none; border-color: #D4AF37; }
-</style>
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -105,61 +84,51 @@
 </nav>
 
 <section class="py-16">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10">
+    <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
+    <p class="mt-3 text-sm text-slate-400 leading-relaxed">The spotters who found Cybercabs first. Only vehicles in the public registry count.</p>
 
-    <!-- Signed-out state -->
-    <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
-      <h1 class="font-display font-bold text-2xl mb-3">Sign in to customize your profile</h1>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">Set your name, username, and bio once you're signed in.</p>
-      <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
-    </div>
+    <!-- Leaderboards (js/community.js). The boards come from the server; the tab
+         buttons appear only once there is more than one board. -->
+    <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mt-8 flex flex-wrap gap-2"></div>
 
-    <!-- Signed-in profile — ONE section that locks/unlocks in place. Locked:
-         every field is a readonly/disabled input styled as plain text.
-         Clicking Edit Profile removes readonly/disabled and turns the
-         button into Save (disabled until something actually changes).
-         Rider ride data/stats live entirely on rider-data.html, not here. -->
-    <div id="profileSignedIn" class="hidden max-w-2xl mx-auto">
-      <div class="reveal-on-scroll glass rounded-2xl p-8">
-        <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
-          <div class="flex items-center gap-5 flex-1 min-w-0">
-            <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] shrink-0"></div>
-            <div class="flex-1 min-w-0">
-              <input id="fieldDisplayName" readonly maxlength="60" placeholder="Cybercab Hunter Rider" class="field-locked font-display font-bold text-3xl tracking-tight w-full rounded-lg placeholder:text-slate-500">
-              <div class="flex items-center mt-0.5">
-                <span class="text-sm text-gold">@</span>
-                <input id="fieldHandle" readonly maxlength="20" placeholder="No username set" class="field-locked text-sm text-gold w-full rounded-lg placeholder:text-slate-500">
-              </div>
-            </div>
-          </div>
-          <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Edit Profile</button>
-        </div>
+    <div class="glass rounded-2xl p-4 sm:p-6 mt-8">
+      <div class="flex items-baseline justify-between gap-3">
+        <h2 id="boardTitle" class="font-display font-bold text-lg tracking-wide">MOST VEHICLES DISCOVERED</h2>
+        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Top 6</span>
+      </div>
+      <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
 
-        <div class="mb-6">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</div>
-          <textarea id="fieldBio" readonly rows="2" maxlength="280" placeholder="No bio yet." class="field-locked text-sm text-slate-300 w-full rounded-lg resize-none placeholder:text-slate-500"></textarea>
-        </div>
-
-        <div class="flex items-center justify-between gap-4 pt-6 border-t border-[rgba(212,175,55,0.12)]">
-          <div>
-            <div id="visibilityLabel" class="text-sm font-semibold">Community leaderboard &amp; public profile</div>
-            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name and photo on the Community leaderboard and a public profile. When off, you appear as “Private spotter”.</p>
-            <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
-          </div>
-          <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
-            <span id="visibilityToggleKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-4 flex-wrap mt-6">
-          <p id="profileJoined" class="text-xs text-slate-500"></p>
-          <p id="editProfileError" class="text-xs text-crimson"></p>
-        </div>
+      <div id="boardLoading" class="mt-4 space-y-2" aria-busy="true">
+        <span class="sr-only">Loading the leaderboard…</span>
+        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
+        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
+        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
+      </div>
+      <ol id="boardList" class="hidden mt-4 space-y-2"></ol>
+      <div id="boardEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
+        <div class="font-display font-bold text-gold tracking-wide">NO DISCOVERIES YET</div>
+        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Be the first: ride in a Cybercab and add your receipt, or submit a sighting of one that isn't in the registry yet.</p>
+      </div>
+      <div id="boardError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
+        <div class="font-display font-bold tracking-wide">WE COULDN'T LOAD THE LEADERBOARD</div>
+        <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
     </div>
 
+    <p class="text-xs text-slate-500 mt-4 leading-relaxed">Want your name here? Turn on <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a>. Until then you appear as “Private spotter”.</p>
   </div>
 </section>
+
+<!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
+     Closes with the × button, a click outside the photo, or Escape. -->
+<div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
+  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full glass flex items-center justify-center text-2xl leading-none text-slate-200 hover:text-white">&times;</button>
+  <figure class="flex flex-col items-center gap-3 max-w-full">
+    <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
+    <figcaption id="sightingViewerCaption" class="text-sm text-slate-300 text-center"></figcaption>
+  </figure>
+</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -300,194 +269,7 @@
 <script src="js/main.js?v=11"></script>
 <script>
   CCC.init();
-
-  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
-  const TESLA_SESSION_KEY = 'teslaSessionId';
-
-  function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-  function initials(name) {
-    if (!name) return 'CH';
-    return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-  }
-
-  let currentUser = null;
-
-  // Opted in without a username: nameable on the leaderboard, but a public
-  // profile page needs a username.
-  function syncHandleHint(optedIn, handle) {
-    document.getElementById('communityHandleHint').classList.toggle('hidden', !(optedIn && !String(handle).trim()));
-  }
-
-  function renderProfile(user) {
-    currentUser = user;
-    document.getElementById('profileSignedIn').classList.remove('hidden');
-
-    document.getElementById('profileAvatar').textContent = initials(user.display_name || user.handle);
-    document.getElementById('fieldDisplayName').value = user.display_name || '';
-    document.getElementById('fieldHandle').value = user.handle || '';
-    document.getElementById('fieldBio').value = user.bio || '';
-    document.getElementById('profileJoined').textContent = 'Joined ' + fmtDate((user.joined_at || '').slice(0, 10));
-
-    // The Community opt-in (users.leaderboard_opt_in) — explicit consent to be
-    // shown by name and photo. profile_visibility is left as it is.
-    const isPublic = !!user.leaderboard_opt_in;
-    syncHandleHint(isPublic, user.handle || '');
-    const toggle = document.getElementById('visibilityToggle');
-    const toggleKnob = document.getElementById('visibilityToggleKnob');
-    toggle.setAttribute('aria-checked', String(isPublic));
-    toggle.classList.toggle('bg-gold', isPublic);
-    toggleKnob.classList.toggle('translate-x-5', isPublic);
-    toggleKnob.classList.toggle('bg-[#1a1204]', isPublic);
-    toggleKnob.classList.toggle('bg-slate-400', !isPublic);
-  }
-
-  function initEditProfilePanel(sessionId) {
-    const editBtn = document.getElementById('editProfileBtn');
-    const errorEl = document.getElementById('editProfileError');
-    const nameField = document.getElementById('fieldDisplayName');
-    const handleField = document.getElementById('fieldHandle');
-    const bioField = document.getElementById('fieldBio');
-    const toggle = document.getElementById('visibilityToggle');
-    const toggleKnob = document.getElementById('visibilityToggleKnob');
-    const fields = [nameField, handleField, bioField];
-    if (!editBtn) return;
-
-    let editing = false;
-    let isPublic = false;
-    let original = null; // snapshot taken when editing starts, for change detection
-
-    function renderToggle() {
-      toggle.setAttribute('aria-checked', String(isPublic));
-      toggle.classList.toggle('bg-gold', isPublic);
-      toggleKnob.classList.toggle('translate-x-5', isPublic);
-      toggleKnob.classList.toggle('bg-[#1a1204]', isPublic);
-      toggleKnob.classList.toggle('bg-slate-400', !isPublic);
-      syncHandleHint(isPublic, handleField.value);
-    }
-
-    function hasChanges() {
-      if (!original) return false;
-      return nameField.value !== original.name || handleField.value !== original.handle ||
-        bioField.value !== original.bio || isPublic !== original.isPublic;
-    }
-
-    function updateSaveEnabled() {
-      if (!editing) return;
-      editBtn.disabled = !hasChanges();
-    }
-
-    function lockFields() {
-      fields.forEach(f => { f.readOnly = true; f.classList.remove('field-unlocked'); f.classList.add('field-locked'); });
-      toggle.disabled = true;
-    }
-    function unlockFields() {
-      fields.forEach(f => { f.readOnly = false; f.classList.remove('field-locked'); f.classList.add('field-unlocked'); });
-      toggle.disabled = false;
-    }
-
-    function setSaveStyle(isSaveMode) {
-      editBtn.classList.toggle('border', !isSaveMode);
-      editBtn.classList.toggle('border-[rgba(212,175,55,0.35)]', !isSaveMode);
-      editBtn.classList.toggle('text-slate-100', !isSaveMode);
-      editBtn.classList.toggle('hover:bg-white/5', !isSaveMode);
-      editBtn.classList.toggle('bg-gradient-to-r', isSaveMode);
-      editBtn.classList.toggle('from-goldsoft', isSaveMode);
-      editBtn.classList.toggle('to-gold', isSaveMode);
-      editBtn.classList.toggle('text-[#1a1204]', isSaveMode);
-    }
-
-    function enterEditMode() {
-      if (!currentUser) return;
-      editing = true;
-      errorEl.textContent = '';
-      isPublic = !!currentUser.leaderboard_opt_in;
-      renderToggle();
-      unlockFields();
-      original = { name: nameField.value, handle: handleField.value, bio: bioField.value, isPublic };
-      editBtn.textContent = 'Save';
-      setSaveStyle(true);
-      editBtn.disabled = true; // nothing changed yet
-      nameField.focus();
-    }
-
-    function exitEditMode() {
-      editing = false;
-      original = null;
-      lockFields();
-      editBtn.textContent = 'Edit Profile';
-      setSaveStyle(false);
-      editBtn.disabled = false;
-    }
-
-    toggle.addEventListener('click', () => {
-      if (!editing) return;
-      isPublic = !isPublic;
-      renderToggle();
-      updateSaveEnabled();
-    });
-    fields.forEach(f => f.addEventListener('input', updateSaveEnabled));
-    handleField.addEventListener('input', () => { if (editing) syncHandleHint(isPublic, handleField.value); });
-
-    editBtn.addEventListener('click', () => {
-      if (!editing) { enterEditMode(); return; }
-      if (editBtn.disabled) return; // Save, but nothing changed
-
-      errorEl.textContent = '';
-      editBtn.disabled = true;
-      editBtn.textContent = 'Saving…';
-
-      fetch(TESLA_WORKER_URL + '/api/profile', {
-        method: 'PATCH',
-        headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          display_name: nameField.value,
-          handle: handleField.value,
-          bio: bioField.value,
-          profile_visibility: currentUser.profile_visibility === 'public' ? 'public' : 'private',
-          leaderboard_opt_in: isPublic
-        })
-      })
-        .then(async r => {
-          const body = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(body.error || 'update_failed');
-          return body;
-        })
-        .then(body => {
-          renderProfile(Object.assign({}, currentUser, body.user));
-          exitEditMode();
-        })
-        .catch(err => {
-          const messages = {
-            handle_taken: 'That username is already taken.',
-            invalid_handle: 'Usernames must be 3-20 characters: lowercase letters, numbers, and underscores only.',
-            invalid_body: 'Something went wrong — please try again.'
-          };
-          errorEl.textContent = messages[err.message] || 'Something went wrong — please try again.';
-          editBtn.textContent = 'Save';
-          editBtn.disabled = !hasChanges();
-        });
-    });
-  }
-
-  const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
-  initEditProfilePanel(sessionId);
-
-  if (!sessionId) {
-    document.getElementById('profileSignedOut').classList.remove('hidden');
-  } else {
-    fetch(TESLA_WORKER_URL + '/api/profile', { headers: { Authorization: 'Bearer ' + sessionId } })
-      .then(r => {
-        if (!r.ok) throw new Error('not authenticated');
-        return r.json();
-      })
-      .then(data => renderProfile(data.user))
-      .catch(() => {
-        document.getElementById('profileSignedOut').classList.remove('hidden');
-      });
-  }
 </script>
+<script src="js/community.js?v=1"></script>
 </body>
 </html>
