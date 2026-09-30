@@ -69,6 +69,10 @@ async function run() {
     const b = p.btn();
     check('the play control is a real <button type="button">', b && b.tagName === 'BUTTON' && b.type === 'button');
     check('it starts as "Play" with an aria-label', b.getAttribute('aria-label') === 'Play fleet growth timelapse' && b.dataset.state === 'idle');
+    check('the button reads "Timelapse" with the play icon beside it', b.textContent.trim() === 'Timelapse' && b.querySelector('#fleetPlayIcon svg'));
+    b.click();
+    check('the "Timelapse" text stays while the icon switches to pause', b.textContent.trim() === 'Timelapse' && b.querySelectorAll('#fleetPlayIcon rect').length === 2);
+    b.click(); p.range('90d');
     check('the readout is hidden before playing', p.readout().classList.contains('hidden'));
     const before = p.fetches.length;
     b.click(); p.advance(5000); p.range('all'); p.btn().click(); p.advance(9000);

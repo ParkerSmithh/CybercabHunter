@@ -646,8 +646,10 @@
           <rect id="fleetHoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" tabindex="0" role="slider" aria-label="Scrub the fleet growth chart" aria-valuemin="0" aria-valuemax="${points.length - 1}" aria-valuenow="${points.length - 1}" style="cursor:crosshair; outline:none;"/>
         </svg>
         <div id="fleetTooltip" class="absolute hidden pointer-events-none glass rounded-lg px-3 py-2 text-xs" style="z-index:5;"></div>
-        <div id="fleetPlayReadout" class="absolute hidden pointer-events-none whitespace-nowrap text-sm tabular-nums" style="right:${padR + 46}px; bottom:${padB + 13}px; z-index:6;"></div>
-        <button type="button" id="fleetPlayBtn" class="absolute w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" style="right:${padR + 6}px; bottom:${padB + 6}px; z-index:6; background:${GOLD}; color:#0F141C;"></button>
+        <div class="absolute flex items-center gap-3" style="right:${padR + 6}px; bottom:${padB + 6}px; z-index:6;">
+          <div id="fleetPlayReadout" class="hidden pointer-events-none whitespace-nowrap text-sm tabular-nums"></div>
+          <button type="button" id="fleetPlayBtn" class="h-8 pl-3.5 pr-3 rounded-full flex items-center gap-2 text-xs font-semibold transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" style="background:${GOLD}; color:#0F141C;"><span>Timelapse</span><span id="fleetPlayIcon" class="flex items-center"></span></button>
+        </div>
       `;
 
       wireHover(points, x, y, padL, plotW, w);
@@ -736,7 +738,7 @@
         : anim.state === 'paused' ? ['play', 'Resume fleet growth timelapse']
         : anim.state === 'done' ? ['replay', 'Replay fleet growth timelapse']
         : ['play', 'Play fleet growth timelapse'];
-      btn.innerHTML = PLAY_ICONS[icon];
+      document.getElementById('fleetPlayIcon').innerHTML = PLAY_ICONS[icon];
       btn.setAttribute('aria-label', label);
       btn.dataset.state = anim.state;
       const readout = document.getElementById('fleetPlayReadout');
