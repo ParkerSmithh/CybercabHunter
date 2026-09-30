@@ -122,8 +122,72 @@ async function run() {
     const old = ctx.d1.query("SELECT s.id FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id WHERE o.observed_at < datetime('now', '-9 days')")[0].id;
     ctx.d1.exec(`UPDATE submissions SET submitted_at = datetime('now', '-40 days') WHERE id = '${old}'`);   // its photo has expired
     const after = await list(ctx, '?city=austin&stats=1');
-    check('an expired photo leaves the gallery (Seen) but stays in the history stats', after.seen === 2 && after.stats.total === 3);
+    check('an expired photo leaves the gallery AND the stats (they count exactly what is listed)', after.seen === 2 && after.stats.total === 2 && after.sightings.length === 2);
     check('stats never carry plates, ids or locations', !/plate|public_id|location|evidence/.test(JSON.stringify(after.stats)));
+  }
+
+  // Regression (Sep 30, 2026: the Austin stats read 7 / today 4 while 5
+  // cards were listed): stats and list share one predicate, and day buckets
+  // follow the area's local time. Both run through the real router with the
+  // JS clock pinned to a known local time today (SQLite's own clock is real).
+  const Z = 'America/Chicago';
+  const sqlTime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const localMidnight = () => {                       // start of today in Austin, as UTC ms
+    const p = usLocalParts(Date.now(), Z);
+    return Date.UTC(p.y, p.m - 1, p.d) - p.offset * 3600000;
+  };
+  async function withClock(ms, fn) {
+    const real = Date.now;
+    Date.now = () => ms;
+    try { return await fn(); } finally { Date.now = real; }
+  }
+  async function at(ctx, ms) {
+    const id = await submit(ctx, { service_area: 'Austin' });
+    await approve(ctx, id);
+    ctx.d1.exec(`UPDATE vehicle_observations SET observed_at = '${sqlTime(ms)}' WHERE submission_id = '${id}'`);
+    return id;
+  }
+
+  console.log('3b. Regression: day buckets follow Austin time across local midnight, not UTC');
+  {
+    const ctx = await makeApp();
+    const M = localMidnight();
+    const before = await at(ctx, M - 30 * 60000);     // 11:30 PM yesterday (Austin)
+    const after = await at(ctx, M + 30 * 60000);      // 12:30 AM today (Austin)
+    check('(both fall on the same UTC day, so UTC bucketing would call both "today")', new Date(M - 30 * 60000).toISOString().slice(0, 10) === new Date(M + 30 * 60000).toISOString().slice(0, 10));
+    const r = await withClock(M + 2 * 3600000, () => list(ctx, '?city=austin&stats=1'));
+    const s = r.stats;
+    const today = usLocalParts(M + 3600000, Z), yesterday = usLocalParts(M - 3600000, Z);
+    const iso = p => `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+    check('"today" counts only the 12:30 AM sighting', s.today === 1, JSON.stringify(s));
+    check('the two land on two different local days (best day is a one-sighting day: today, the later of the tie)', s.best_day && s.best_day.count === 1 && s.best_day.date === iso(today));
+    check('"this month" follows the local month too', s.this_month === (today.m === yesterday.m ? 2 : 1));
+    check('the list shows both, and every total agrees with it', r.sightings.length === 2 && s.total === 2 && s.last_7_days === 2);
+    check('(sanity: the sightings are the ones inserted)', !!before && !!after);
+  }
+
+  console.log('3c. Regression: deleting a sighting\'s photo decrements every stat at once');
+  {
+    const ctx = await makeApp();
+    const M = localMidnight();
+    const h = (hh, mm) => M + (hh * 60 + mm) * 60000;   // a local time today
+    await at(ctx, h(10, 5));
+    const target = await at(ctx, h(10, 40));
+    await at(ctx, h(10, 50));
+    await at(ctx, h(8, 15));
+    const stats = () => withClock(h(13, 0), () => list(ctx, '?city=austin&stats=1'));
+    const b = await stats();
+    check('before: 4 listed, and the stats agree (total / 7 days / today / month 4, best day today 4, peak 10 AM with 3)',
+      b.sightings.length === 4 && b.stats.total === 4 && b.stats.last_7_days === 4 && b.stats.today === 4 && b.stats.this_month === 4 &&
+      b.stats.best_day.count === 4 && b.stats.peak_hour && b.stats.peak_hour.hour === 10 && b.stats.peak_hour.count === 3, JSON.stringify(b.stats));
+    const del = await req(ctx, 'DELETE', `/api/moderation/vehicle-sightings/${target}/photo`, { user: 'mod' });
+    const a = await stats();
+    check('the moderator delete succeeds; the sighting stays approved (just without its photo)', del.status === 200 && ctx.d1.query(`SELECT status FROM submissions WHERE id = '${target}'`)[0].status === 'approved');
+    check('after: 3 listed, and EVERY stat drops by one (total, 7 days, today, month, best day, peak hour)',
+      a.sightings.length === 3 && a.stats.total === 3 && a.stats.last_7_days === 3 && a.stats.today === 3 && a.stats.this_month === 3 &&
+      a.stats.best_day.count === 3 && a.stats.peak_hour && a.stats.peak_hour.hour === 10 && a.stats.peak_hour.count === 2, JSON.stringify(a.stats));
+    const pub = (await list(ctx, '?city=austin&stats=1'));
+    check('the gallery count and the stats total never disagree', pub.seen === pub.stats.total);
   }
 
   console.log('4. Visibility: a plate appears only from a PUBLICLY ELIGIBLE registry vehicle');
@@ -204,7 +268,7 @@ async function run() {
     const p = await open('https://cybercabhunter.com/sightings');
     check('LIVE with a pulsing yellow dot, top right of the page header', /LIVE/.test(p.text('liveIndicator')) && p.d.getElementById('liveDot').classList.contains('live-dot') && /\.live-dot\{[^}]*#facc15[^}]*animation:live-pulse/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
     check('the pulse is switched off for reduced motion', /prefers-reduced-motion: reduce\)\{\s*\.live-dot, \.live-dot\.live-flash\{animation:none;\}/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
-    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'Not enough data yet' && /clear busiest hour/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
+    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'TBD' && /clear busiest hour/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
     check('Most recent is selected by default and requested', p.d.querySelector('[data-order="desc"]').getAttribute('aria-pressed') === 'true' && p.calls.some(c => c.includes('order=desc&stats=1')));
     check('polling is scheduled every 60 seconds', p.timers.set.includes(60000));
 

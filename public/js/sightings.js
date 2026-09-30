@@ -183,7 +183,7 @@
       $('statPeakCount').textContent = plural(peak.count, 'sighting', 'sightings');
     } else if (ok && isCount(stats.total)) {
       // No sightings yet, or no clear busiest hour yet (too few, or a tie).
-      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'Not enough data yet';
+      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'TBD';
       $('statPeakCount').textContent = stats.total === 0 ? '' : 'Needs more sightings to show a clear busiest hour';
     } else {
       $('statPeakHour').textContent = '—';

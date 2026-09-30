@@ -582,24 +582,24 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
   return rows.results || [];
 }
 
-// Sightings STATS (the Sightings page's stat cards) cover every approved photo
-// sighting — including ones whose photo has since expired or been removed —
-// because "best day" and "this month" are history, not what is on screen.
-// Still only approved (public_id is assigned on approval) photo sightings.
-const APPROVED_PHOTO_SIGHTING_SQL = `
-  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'
-  AND o.public_id IS NOT NULL`;
-
+// Sightings STATS (the Sightings page's stat cards) count exactly the
+// sightings the page lists: the same PUBLIC_PHOTO_SIGHTING_SQL as the list,
+// its count and the photo route, so a stat can never include a sighting the
+// list doesn't show (e.g. one whose photo a moderator deleted, which stays
+// approved but leaves the gallery) — it drops out of every stat at once.
+//
 // One grouped query: sighting counts per UTC hour of observed_at (the stored
 // 'YYYY-MM-DD HH:MM:SS' UTC), plus how many in each bucket fall in the exact
-// trailing 7×24 hours. The caller converts buckets to local time.
+// trailing 7×24 hours. The caller converts buckets to the area's local time
+// (sightings-public.js buildSightingStats) — US zones are whole-hour offsets,
+// so every UTC hour maps to exactly one local hour and day.
 async function getApprovedPhotoSightingHourBuckets(sql, { city = null } = {}) {
   const filter = publicSightingCityFilter(city);
   const rows = await sql.prepare(`
     SELECT substr(o.observed_at, 1, 13) AS utc_hour, COUNT(*) AS n,
            SUM(o.observed_at > datetime('now', '-7 days')) AS last_7_days
     FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
-    WHERE ${APPROVED_PHOTO_SIGHTING_SQL}${filter.sql}
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}
     GROUP BY utc_hour
   `).bind(...filter.binds).all();
   return rows.results || [];
