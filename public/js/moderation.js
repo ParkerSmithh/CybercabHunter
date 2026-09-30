@@ -140,9 +140,13 @@
       ? '<div class="text-[11px] font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
       : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.45)] text-gold hover:bg-[rgba(212,175,55,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
     return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-approved-id="${esc(a.submission_id)}">
-      <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] bg-black/30 rounded-lg overflow-hidden">
-        <img data-sighting-photo="${esc(a.submission_id)}" alt="Approved sighting photo" class="hidden w-full h-full object-cover">
-      </a>
+      <div class="mod-photo relative rounded-lg overflow-hidden">
+        <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] bg-black/30">
+          <img data-sighting-photo="${esc(a.submission_id)}" alt="Approved sighting photo" class="hidden w-full h-full object-cover">
+        </a>
+        <div class="mod-photo-shade absolute inset-0 bg-black/55"></div>
+        <button type="button" data-approved-action="delete-photo" ${busy.has(a.submission_id) ? 'disabled' : ''} aria-label="Delete this approved photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
+      </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(a.license_plate || 'Plate not given')}</div>
       <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
       ${cameraLine(a)}
@@ -294,10 +298,14 @@
 
   // Permanently deletes a sighting's photo (a pending one is also closed as
   // rejected — nothing is left to review). See worker/sightings-public.js.
+  // Works the same from the review queue and the Approved Images list: an
+  // approved photo is removed from the public Sightings gallery and the Zones
+  // map (the sighting itself stays approved).
   async function deletePhoto(submissionId) {
     if (!window.confirm('Delete this photo? It is removed permanently and can’t be undone.')) return;
     busy.add(submissionId);
     renderQueue();
+    renderApproved();
     let resp;
     try {
       resp = await api(`/api/moderation/vehicle-sightings/${encodeURIComponent(submissionId)}/photo`, { method: 'DELETE' });
@@ -307,11 +315,13 @@
     busy.delete(submissionId);
     if (resp && resp.ok) {
       queue = queue.filter(s => s.submission_id !== submissionId);
+      approved = approved.filter(a => a.submission_id !== submissionId);
       CCC.toast('Photo deleted.', 'success');
     } else {
       CCC.toast("Couldn't delete the photo. Please try again.", 'error');
     }
     renderQueue();
+    renderApproved();
   }
 
   async function review(submissionId, action, rejectionReason) {
@@ -446,8 +456,11 @@
     $('modList').addEventListener('click', onQueueClick);
     $('modImageList').addEventListener('click', onQueueClick);
     $('modApprovedList').addEventListener('click', e => {
-      const btn = e.target.closest('button[data-approved-action="add-to-map"]');
-      if (btn) openMapDialog(btn.closest('[data-approved-id]').dataset.approvedId);
+      const btn = e.target.closest('button[data-approved-action]');
+      if (!btn) return;
+      const id = btn.closest('[data-approved-id]').dataset.approvedId;
+      if (btn.dataset.approvedAction === 'add-to-map') openMapDialog(id);
+      else if (btn.dataset.approvedAction === 'delete-photo') deletePhoto(id);
     });
     $('modMapCancel').addEventListener('click', closeMapDialog);
     $('modMapForm').addEventListener('submit', e => {

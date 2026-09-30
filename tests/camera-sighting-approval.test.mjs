@@ -281,7 +281,7 @@ async function run() {
     check('a pending camera sighting shows its traffic camera', pendingCard && pendingCard.textContent.includes('Traffic camera: SH 71 SVRD / CARDINAL LOOP (PRESIDENTIAL BLVD)'));
     const card = id => d.querySelector(`#modApprovedList [data-approved-id="${id}"]`);
     check('the approved list is shown', !d.getElementById('modApproved').classList.contains('hidden'));
-    check('an approved camera sighting reads "On the Zones map ✓" (no button)', card(onMap).querySelector('[data-on-map]').textContent === 'On the Zones map ✓' && !card(onMap).querySelector('[data-approved-action]'));
+    check('an approved camera sighting reads "On the Zones map ✓" (no Add to map button)', card(onMap).querySelector('[data-on-map]').textContent === 'On the Zones map ✓' && !card(onMap).querySelector('[data-approved-action="add-to-map"]'));
     check('one approved without a camera has "Add to map"', card(plain).querySelector('button[data-approved-action="add-to-map"]').textContent.trim() === 'Add to map');
 
     pendingCard.querySelector('button[data-action="approve"]').click();
@@ -298,6 +298,26 @@ async function run() {
     await new Promise(r => setTimeout(r, 150));
     check('choosing a camera places it: the card now reads "On the Zones map ✓"', !dialog.hasAttribute('open') && card(plain).textContent.includes('On the Zones map ✓') && rows(ctx).some(r => r.source_submission_id === plain && r.camera_id === '538'));
     check('three map rows in all (one per approved sighting, no duplicates)', rows(ctx).length === 3);
+
+    // Deleting an approved photo from its card.
+    const delBtn = card(onMap).querySelector('button[data-approved-action="delete-photo"]');
+    check('every approved card has a Delete button on its photo', delBtn && delBtn.textContent.trim() === 'Delete' && d.querySelectorAll('#modApprovedList button[data-approved-action="delete-photo"]').length === 3);
+    const copy = rows(ctx).find(r => r.source_submission_id === onMap).image_r2_key;
+    const photoKey = sub(ctx, onMap).evidence_ref;
+    w.confirm = () => false;
+    delBtn.click();
+    await new Promise(r => setTimeout(r, 80));
+    check('cancelling the confirmation deletes nothing', card(onMap) && ctx.env.EVIDENCE_BUCKET._objects.has(photoKey));
+    w.confirm = () => true;
+    card(onMap).querySelector('button[data-approved-action="delete-photo"]').click();
+    await new Promise(r => setTimeout(r, 150));
+    check('confirming deletes the photo: gone from storage, the card leaves the list', !ctx.env.EVIDENCE_BUCKET._objects.has(photoKey) && !card(onMap) && /Photo deleted/.test(d.getElementById('toastRoot').lastElementChild.textContent));
+    check('the sighting stays approved (just without its photo)', sub(ctx, onMap).status === 'approved' && sub(ctx, onMap).evidence_ref === null);
+    check('...and it leaves the Zones map (row and copied image removed)', !rows(ctx).some(r => r.source_submission_id === onMap) && !ctx.env.EVIDENCE_BUCKET._objects.has(copy));
+    const gallery = (await call(ctx, '/api/sightings', { session: null })).json;
+    check('...and the public Sightings gallery', gallery.sightings.length === 2);
+    const rider = await call(ctx, `/api/moderation/vehicle-sightings/${plain}/photo`, { method: 'DELETE', session: 'session-rider' });
+    check('an ordinary user cannot delete an approved photo (403)', rider.status === 403 && !!sub(ctx, plain).evidence_ref);
     w.close();
   }
 
