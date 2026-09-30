@@ -237,6 +237,42 @@ async function run() {
       !/Your name, email, receipt contents, fares and addresses are not shown publicly/.test(privacy) && /Your email, receipt contents, fares, ride dates and times, and addresses are never shown publicly/.test(privacy));
   }
 
+  console.log('7b. Usernames from Google names');
+  {
+    const { db, handleBaseFromName } = await import('../worker/db.js');
+    check('the base: lowercased, accents and symbols removed, 3-20 characters',
+      handleBaseFromName('Blair Hayes') === 'blairhayes' && handleBaseFromName('José Núñez') === 'josenunez' && handleBaseFromName("Mary-Jane O'Neil") === 'maryjaneoneil' &&
+      handleBaseFromName('Al') === 'alrider' && handleBaseFromName('李雷') === 'rider' && handleBaseFromName('A Very Long Name That Exceeds Twenty').length === 20);
+    const ctx = await makeApp([]);
+    const handleOf = id => ctx.d1.query('SELECT handle FROM users WHERE id = ?', id)[0].handle;
+    const signIn = (sub, name) => db.findOrCreateUserByGoogleIdentity(ctx.d1, { googleSub: sub, email: `${sub}@example.com`, name, avatarUrl: null });
+    const a = await signIn('s-a', 'Blair Hayes');
+    check('a new Google account gets a username from its Google name', handleOf(a) === 'blairhayes');
+    const b = await signIn('s-b', 'Blair Hayes');
+    check('a taken name gets digits added (still a valid username)', /^blairhayes\d{4}$/.test(handleOf(b)) && handleOf(b) !== handleOf(a));
+    ctx.d1.exec(`INSERT INTO users (id, display_name) VALUES ('old-google', 'Old Rider')`);
+    ctx.d1.exec(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES ('gc-old', 'old-google', 's-old', 'old@example.com')`);
+    await signIn('s-old', 'Old Rider');
+    check('an existing account without a username gets one at its next sign-in', handleOf('old-google') === 'oldrider');
+    ctx.d1.exec(`UPDATE users SET handle = 'mychoice' WHERE id = '${a}'`);
+    await signIn('s-a', 'Blair Hayes');
+    check('a username the rider chose is never replaced', handleOf(a) === 'mychoice');
+    await ctx.env.TESLA_SESSIONS.put('session:session-a', JSON.stringify({ user_id: a }));
+    const r = await worker.fetch(new Request('https://x/api/profile', { method: 'PATCH', headers: { Authorization: 'Bearer session-a', 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: 'Blair', handle: 'blair_h', bio: '', profile_visibility: 'public', leaderboard_opt_in: true }) }), ctx.env, {});
+    check('...and they can change it on Profile as before', r.status === 200 && handleOf(a) === 'blair_h');
+    check('a generated username makes the profile page work', (await get(ctx, '/api/riders/oldrider')).status === 404 && (ctx.d1.exec(`UPDATE users SET leaderboard_opt_in = 1 WHERE id = 'old-google'`), (await get(ctx, '/api/riders/oldrider')).status === 200));
+
+    // migrations/0022 (existing accounts, now).
+    const m = await makeApp([]);
+    m.d1.exec(`INSERT INTO users (id, display_name, handle) VALUES ('g1', 'Blair Hayes', NULL), ('g2', 'José Núñez', NULL), ('g3', 'Keep Mine', 'kept'), ('t1', 'Tesla Only', NULL), ('g4', 'Kept', NULL)`);
+    for (const id of ['g1', 'g2', 'g3', 'g4']) m.d1.exec(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES ('gc-${id}', '${id}', 'sub-${id}', '${id}@example.com')`);
+    m.d1.exec(fs.readFileSync(`${ROOT}migrations/0022_usernames_from_google_names.sql`, 'utf8'));
+    const h = id => m.d1.query('SELECT handle FROM users WHERE id = ?', id)[0].handle;
+    check('the backfill: Google accounts with a plain name get it now', h('g1') === 'blairhayes');
+    check('...never overwrites, skips non-Google accounts, and skips clashes and accented names (those get one at sign-in)',
+      h('g3') === 'kept' && h('t1') === null && h('g4') === null && h('g2') === null);
+  }
+
   console.log('8. Pages and routing');
   {
     const ctx = await makeApp(['alice']);

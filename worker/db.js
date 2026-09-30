@@ -172,16 +172,58 @@ async function searchUsersByDisplayName(sql, query, limit = 10) {
   return rows.results || [];
 }
 
+// A username from a Google name: "Blair Hayes" -> "blairhayes". Accents are
+// dropped and anything outside a-z/0-9 removed, then fitted to the Profile
+// page's rule (3-20 of a-z, 0-9, _). Empty (e.g. a name in a non-Latin
+// script) falls back to "rider". Not unique by itself — see assignHandleFromName.
+export function handleBaseFromName(name) {
+  const base = String(name || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+  return base.length >= 3 ? base : (base + 'rider').slice(0, 20);
+}
+
+// Gives a user with NO username one derived from their Google name: the base
+// if it is free, else the base plus a few random digits (a handful of tries).
+// Never overwrites an existing username (a rider can always change it on
+// Profile), and a race with another sign-in claiming the same name just moves
+// on to the next candidate. Returns the username, or null if none was set.
+async function assignHandleFromName(sql, userId, name) {
+  const base = handleBaseFromName(name);
+  const candidates = [base];
+  for (let i = 0; i < 6; i++) candidates.push(`${base.slice(0, 16)}${Math.floor(1000 + Math.random() * 9000)}`);
+  for (const handle of candidates) {
+    try {
+      const r = await sql.prepare(`
+        UPDATE users SET handle = ?, updated_at = datetime('now')
+        WHERE id = ? AND handle IS NULL AND NOT EXISTS (SELECT 1 FROM users WHERE handle = ?)
+      `).bind(handle, userId, handle).run();
+      if (r && r.meta && r.meta.changes > 0) return handle;
+      const current = await sql.prepare(`SELECT handle FROM users WHERE id = ?`).bind(userId).first();
+      if (!current || current.handle) return null;   // gone, or already has one
+    } catch (err) { /* unique race: try the next candidate */ }
+  }
+  return null;
+}
+
 // Google Sign-In identity — a separate account-creation path from
 // findOrCreateUserByTeslaIdentifier above, keyed by google_connections
 // instead of tesla_connections. name/avatarUrl are only applied when the
 // user is first created, so a later Google sign-in never clobbers a
-// display_name/avatar_url the user has since customized on Profile.
+// display_name/avatar_url the user has since customized on Profile. A user
+// without a username gets one from their Google name (assignHandleFromName) —
+// at account creation, and on a later sign-in if they still have none.
 async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, avatarUrl }) {
   const existing = await sql.prepare(
     `SELECT user_id FROM google_connections WHERE google_sub = ?`
   ).bind(googleSub).first();
-  if (existing) return existing.user_id;
+  if (existing) {
+    if (name) {
+      try {
+        const user = await sql.prepare(`SELECT handle FROM users WHERE id = ?`).bind(existing.user_id).first();
+        if (user && !user.handle) await assignHandleFromName(sql, existing.user_id, name);
+      } catch (err) { /* sign-in never fails over this */ }
+    }
+    return existing.user_id;
+  }
 
   const id = newId();
   await sql.prepare(
@@ -190,6 +232,9 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
   await sql.prepare(
     `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
   ).bind(newId(), id, googleSub, email || null).run();
+  if (name) {
+    try { await assignHandleFromName(sql, id, name); } catch (err) { /* sign-in never fails over this */ }
+  }
   return id;
 }
 
