@@ -10,9 +10,11 @@
 // shows tab buttons only once there is more than one.
 //
 // PRIVACY (hard rules):
-//   - Nobody is public until they opt in: users.leaderboard_opt_in = 1 (the
-//     profile page's switch). profile_visibility is NOT consent and is not read.
-//   - A rider who hasn't opted in is a "Private spotter": rank and count only —
+//   - A rider is shown only while users.leaderboard_opt_in = 1: on by default
+//     (new accounts, and existing ones via migrations/0021, as the privacy
+//     page states), off with the Profile page's switch. profile_visibility is
+//     not read.
+//   - A rider who has turned it off is a "Private spotter": rank and count only —
 //     no name, handle, photo, id or link ever leaves the server for them.
 //   - A public profile needs the opt-in AND a handle; anything else is a 404,
 //     identical to an unknown handle (existence isn't revealed).

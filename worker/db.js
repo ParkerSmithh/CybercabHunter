@@ -49,7 +49,9 @@ async function findOrCreateUserByTeslaIdentifier(sql, teslaAccountIdentifier) {
     if (existing) return existing.user_id;
   }
   const id = newId();
-  await sql.prepare(`INSERT INTO users (id, profile_visibility) VALUES (?, 'public')`).bind(id).run();
+  // New accounts are on the Community leaderboard by default (they can turn
+  // it off on their Profile page) — see the privacy page's "What is public".
+  await sql.prepare(`INSERT INTO users (id, profile_visibility, leaderboard_opt_in) VALUES (?, 'public', 1)`).bind(id).run();
   return id;
 }
 
@@ -183,7 +185,7 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
 
   const id = newId();
   await sql.prepare(
-    `INSERT INTO users (id, display_name, avatar_url, profile_visibility) VALUES (?, ?, ?, 'public')`
+    `INSERT INTO users (id, display_name, avatar_url, profile_visibility, leaderboard_opt_in) VALUES (?, ?, ?, 'public', 1)`
   ).bind(id, name || null, avatarUrl || null).run();
   await sql.prepare(
     `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
@@ -197,7 +199,7 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
 // full set first. Throws on the existing unique-handle constraint if
 // `handle` is already taken by a different user; the caller translates
 // that into a clean error rather than a raw D1 message.
-async function updateUserSettings(sql, userId, { displayName, handle, bio, profileVisibility, leaderboardOptIn = false }) {
+async function updateUserSettings(sql, userId, { displayName, handle, bio, profileVisibility, leaderboardOptIn }) {
   await sql.prepare(`
     UPDATE users SET
       display_name = ?,

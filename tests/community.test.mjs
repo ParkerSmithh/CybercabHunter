@@ -203,22 +203,38 @@ async function run() {
     check('deleting a vehicle (moderator) drops its discovery credit', del.status === 200 && await name() === 'Bob:1', `${del.status} ${await name()}`);
   }
 
-  console.log('7. Profile page opt-in');
+  console.log('7. Community profile: on by default, the Profile switch turns it off');
   {
     const ctx = await makeApp(['alice']);
     const me = async () => (await get(ctx, '/api/profile', 'session-alice')).json.user;
-    check('everyone starts opted out (even with profile_visibility "public")', (await me()).leaderboard_opt_in === false);
+    const { db } = await import('../worker/db.js');
+    const g = await db.findOrCreateUserByGoogleIdentity(ctx.d1, { googleSub: 'new-google', email: 'new@example.com', name: 'New Rider', avatarUrl: 'https://lh3.googleusercontent.com/a/new' });
+    const tsl = await db.findOrCreateUserByTeslaIdentifier(ctx.d1, 'tesla-new');
+    const flag = id => ctx.d1.query('SELECT leaderboard_opt_in AS f FROM users WHERE id = ?', id)[0].f;
+    check('new accounts (Google and Tesla sign-in) start ON', flag(g) === 1 && flag(tsl) === 1);
+
+    // migrations/0021: existing accounts switch on — unless changed since the Community launch.
+    ctx.d1.exec(`INSERT INTO users (id, display_name, updated_at) VALUES ('old1', 'Old One', '2026-09-20 10:00:00'), ('recent', 'Turned Off', '2026-09-30 19:00:00')`);
+    ctx.d1.exec(fs.readFileSync(`${ROOT}migrations/0021_community_profiles_default_on.sql`, 'utf8'));
+    check('the migration turns existing accounts on', flag('old1') === 1);
+    check('...but not one changed since the Community launch (e.g. someone who switched it off)', flag('recent') === 0);
+
     const patch = body => worker.fetch(new Request('https://x/api/profile', { method: 'PATCH', headers: { Authorization: 'Bearer session-alice', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), ctx.env, {});
+    await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: false });
+    check('turning the switch off opts out (profile_visibility untouched)', (await me()).leaderboard_opt_in === false && (await me()).profile_visibility === 'private');
+    await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private' });
+    check('an older page that omits the field keeps the current setting (still off)', (await me()).leaderboard_opt_in === false);
     await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: true });
-    check('turning the switch on opts in (profile_visibility untouched)', (await me()).leaderboard_opt_in === true && (await me()).profile_visibility === 'private');
-    await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: 'yes' });
-    check('only a literal true opts in', (await me()).leaderboard_opt_in === false);
-    await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'public' });
-    check('an older page that omits it leaves the rider private', (await me()).leaderboard_opt_in === false);
+    await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: 'no' });
+    check('...and a non-boolean value keeps it too (still on)', (await me()).leaderboard_opt_in === true);
     const html = read('public/profile.html');
-    check('the switch carries the consent wording', /Show my name and photo on the Community leaderboard and a public profile/.test(html));
+    check('the switch says it is on by default and how to turn it off', /Show my name and photo on the Community leaderboard and a public profile\. On by default — turn it off to appear as “Private spotter”\./.test(html));
     check('the page sends leaderboard_opt_in from the switch, and keeps profile_visibility as it was', /leaderboard_opt_in: isPublic/.test(html) && /profile_visibility: currentUser\.profile_visibility === 'public'/.test(html));
     check('opted in without a username: a prompt to set one', /id="communityHandleHint"[^>]*>Set a username to get a public profile page\./.test(html));
+    const privacy = read('public/privacy.html');
+    check('the privacy page states what is public by default, and how to turn it off',
+      /unless you turn it off, your display name, username, profile picture/.test(privacy) && /on by default for every account/.test(privacy) && /Private spotter/.test(privacy) &&
+      !/Your name, email, receipt contents, fares and addresses are not shown publicly/.test(privacy) && /Your email, receipt contents, fares, ride dates and times, and addresses are never shown publicly/.test(privacy));
   }
 
   console.log('8. Pages and routing');

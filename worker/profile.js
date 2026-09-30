@@ -71,10 +71,10 @@ export async function apiUpdateProfile(request, env, userId) {
   const displayName = typeof body.display_name === 'string' ? (body.display_name.trim().slice(0, MAX_DISPLAY_NAME) || null) : null;
   const bio = typeof body.bio === 'string' ? (body.bio.trim().slice(0, MAX_BIO) || null) : null;
   const profileVisibility = body.profile_visibility === 'public' ? 'public' : 'private';
-  // Explicit consent to appear by name and photo on the Community page: only
-  // a literal true turns it on; anything else (including an older page that
-  // doesn't send it) leaves the rider private.
-  const leaderboardOptIn = body.leaderboard_opt_in === true;
+  // Shown by name and photo on the Community page (on by default; the
+  // Profile switch turns it off). A boolean sets it; a page that doesn't send
+  // it (an older cached copy) keeps the rider's current setting.
+  const leaderboardOptIn = typeof body.leaderboard_opt_in === 'boolean' ? body.leaderboard_opt_in : Number(user.leaderboard_opt_in) === 1;
 
   let handle = null;
   if (typeof body.handle === 'string' && body.handle.trim() !== '') {
