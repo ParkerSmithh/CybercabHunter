@@ -536,17 +536,49 @@ function publicSightingCityFilter(city) {
 // keyset cursor { observedAt, publicId } of the previous page's last item.
 // Only public fields are selected — never user, submission or observation
 // ids, the storage key, or any moderation data.
-async function getPublicPhotoSightings(sql, { city = null, limit, after = null }) {
+async function getPublicPhotoSightings(sql, { city = null, limit, after = null, order = 'desc' }) {
   const filter = publicSightingCityFilter(city);
-  const cursorSql = after ? ` AND (o.observed_at < ? OR (o.observed_at = ? AND o.public_id < ?))` : '';
+  const asc = order === 'asc';
+  const cmp = asc ? '>' : '<';
+  const dir = asc ? 'ASC' : 'DESC';
+  const cursorSql = after ? ` AND (o.observed_at ${cmp} ? OR (o.observed_at = ? AND o.public_id ${cmp} ?))` : '';
   const cursorBinds = after ? [after.observedAt, after.observedAt, after.publicId] : [];
   const rows = await sql.prepare(`
-    SELECT o.public_id, o.service_area, o.approx_location, o.license_plate, o.observed_at
+    SELECT o.public_id, o.service_area, o.approx_location, o.observed_at,
+           -- The plate (and Cybercab label) only from a PUBLICLY ELIGIBLE registry
+           -- vehicle — never the submitter's text, never a private vehicle's plate
+           -- (the same gate as the public vehicle page). A primary-key lookup per row.
+           pv.license_plate AS public_plate,
+           (pv.vin IS NOT NULL AND pv.vin <> '') AS public_cybercab
     FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
-    ORDER BY o.observed_at DESC, o.public_id DESC
+    ORDER BY o.observed_at ${dir}, o.public_id ${dir}
     LIMIT ?
   `).bind(...filter.binds, ...cursorBinds, limit).all();
+  return rows.results || [];
+}
+
+// Sightings STATS (the Sightings page's stat cards) cover every approved photo
+// sighting — including ones whose photo has since expired or been removed —
+// because "best day" and "this month" are history, not what is on screen.
+// Still only approved (public_id is assigned on approval) photo sightings.
+const APPROVED_PHOTO_SIGHTING_SQL = `
+  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'
+  AND o.public_id IS NOT NULL`;
+
+// One grouped query: sighting counts per UTC hour of observed_at (the stored
+// 'YYYY-MM-DD HH:MM:SS' UTC), plus how many in each bucket fall in the exact
+// trailing 7×24 hours. The caller converts buckets to local time.
+async function getApprovedPhotoSightingHourBuckets(sql, { city = null } = {}) {
+  const filter = publicSightingCityFilter(city);
+  const rows = await sql.prepare(`
+    SELECT substr(o.observed_at, 1, 13) AS utc_hour, COUNT(*) AS n,
+           SUM(o.observed_at > datetime('now', '-7 days')) AS last_7_days
+    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE ${APPROVED_PHOTO_SIGHTING_SQL}${filter.sql}
+    GROUP BY utc_hour
+  `).bind(...filter.binds).all();
   return rows.results || [];
 }
 
@@ -1594,6 +1626,7 @@ export const db = {
   getVehicleSightingSubmission,
   reviewVehicleSighting,
   getPublicPhotoSightings,
+  getApprovedPhotoSightingHourBuckets,
   countPublicPhotoSightings,
   getPublicSightingPhoto,
   listExpiredSightingPhotos,

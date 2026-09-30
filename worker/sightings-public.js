@@ -16,8 +16,8 @@
 
 import { db } from './db.js';
 import { publicLocation } from './places.js';
-import { timeZoneFor } from './timezones.js';
-import { SERVICE_AREAS } from './service-areas.js';
+import { timeZoneFor, usLocalParts } from './timezones.js';
+import { SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
 
 // The city filter buttons (Austin, Dallas). The API also answers city=all
 // (every city, including sightings with no city), which the page no longer
@@ -44,22 +44,86 @@ function displayCity(raw) {
 // observed_at is stored as UTC 'YYYY-MM-DD HH:MM:SS'.
 const toIso = t => (t ? `${String(t).replace(' ', 'T')}Z` : null);
 
-function encodeCursor(row) {
-  return btoa(`${row.observed_at}|${row.public_id}`).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+// The cursor carries the sort order it was made for, so a "most recent" page
+// cursor can never be reused for "least recent" (it would skip or repeat).
+function encodeCursor(row, order) {
+  return btoa(`${row.observed_at}|${row.public_id}|${order}`).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-function decodeCursor(raw) {
+function decodeCursor(raw, order) {
   try {
-    const [observedAt, publicId] = atob(raw.replace(/-/g, '+').replace(/_/g, '/')).split('|');
-    if (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(observedAt) && PUBLIC_ID_RE.test(publicId)) return { observedAt, publicId };
+    const [observedAt, publicId, cursorOrder = 'desc'] = atob(raw.replace(/-/g, '+').replace(/_/g, '/')).split('|');
+    if (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(observedAt) && PUBLIC_ID_RE.test(publicId) && cursorOrder === order) return { observedAt, publicId };
   } catch (e) { /* invalid */ }
   return null;
 }
 
-// GET /api/sightings?city=all|austin|dallas&limit=&cursor=
-// -> { seen, sightings: [...], next_cursor }. `seen` is the live count for
+const STATS_DEFAULT_ZONE = 'America/Chicago';   // Austin and Dallas; also used for "all"
+const pad2 = n => String(n).padStart(2, '0');
+
+// The Sightings page's stat cards, from sighting timestamps (observed_at) in
+// the city's local time: counts per UTC hour (db) are mapped to local
+// date/hour with the US daylight-saving rule (timezones.js usLocalParts) —
+// cheap enough for the Workers Free plan however long the history grows.
+//   last_7_days  — exact trailing 7×24 h (counted in SQL)
+//   today        — local calendar day
+//   this_month   — local calendar month
+//   peak_hour    — busiest local hour of day over all history {hour 0-23, count}
+//   best_day     — local date with the most sightings {date YYYY-MM-DD, count}
+// Ties: the earlier hour; the more recent day.
+export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
+  const now = usLocalParts(nowMs, zone);
+  const today = `${now.y}-${pad2(now.m)}-${pad2(now.d)}`;
+  const month = `${now.y}-${pad2(now.m)}`;
+  const hours = new Array(24).fill(0);
+  const days = new Map();
+  let total = 0, last7 = 0;
+  for (const b of buckets) {
+    const n = Number(b.n) || 0;
+    const ms = Date.parse(`${String(b.utc_hour).replace(' ', 'T')}:00:00Z`);
+    if (!n || Number.isNaN(ms)) continue;
+    const local = usLocalParts(ms, zone);
+    const date = `${local.y}-${pad2(local.m)}-${pad2(local.d)}`;
+    total += n;
+    last7 += Number(b.last_7_days) || 0;
+    hours[local.h] += n;
+    days.set(date, (days.get(date) || 0) + n);
+  }
+  let peak = null;
+  hours.forEach((count, hour) => { if (count > 0 && (!peak || count > peak.count)) peak = { hour, count }; });
+  let best = null;
+  for (const [date, count] of days) if (!best || count > best.count || (count === best.count && date > best.date)) best = { date, count };
+  let thisMonth = 0;
+  for (const [date, count] of days) if (date.startsWith(month)) thisMonth += count;
+  return {
+    time_zone: zone,
+    total,
+    last_7_days: last7,
+    today: days.get(today) || 0,
+    this_month: thisMonth,
+    peak_hour: peak,
+    best_day: best
+  };
+}
+
+// GET /api/sightings?city=all|austin|dallas&order=desc|asc&limit=&cursor=&stats=1
+// -> { seen, order, stats?, sightings: [...], next_cursor }. `stats` (with
+// stats=1): see buildSightingStats. `seen` is the live count for
 // the selected filter (not just this page).
-export async function apiListPublicSightings(request, env) {
+// Responses are cached at the edge for LIST_CACHE_SECONDS (Cache API; works on
+// the custom domain, where the Sightings page calls it). This protects D1's
+// daily rows-read allowance from many open tabs polling once a minute — each
+// poll's stats query scans the sighting history. It does NOT reduce Worker
+// request counts: a request answered from the cache is still a request.
+const LIST_CACHE_SECONDS = 30;
+
+export async function apiListPublicSightings(request, env, ctx) {
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
   const params = new URL(request.url).searchParams;
   const cityParam = (params.get('city') || 'all').toLowerCase();
   if (cityParam !== 'all' && !SIGHTING_CITIES[cityParam]) {
@@ -69,33 +133,47 @@ export async function apiListPublicSightings(request, env) {
   const city = cityParam === 'all' ? null : SIGHTING_CITIES[cityParam].toLowerCase();
   const rawLimit = params.get('limit');
   const limit = /^\d{1,3}$/.test(rawLimit || '') ? Math.min(Math.max(Number(rawLimit), 1), MAX_LIMIT) : DEFAULT_LIMIT;
+  // Order: most recent first (default) or least recent first.
+  const order = params.get('order') === 'asc' ? 'asc' : 'desc';
   let after = null;
   if (params.get('cursor')) {
-    after = decodeCursor(params.get('cursor'));
+    after = decodeCursor(params.get('cursor'), order);
     if (!after) return Response.json({ success: false, error: 'invalid_cursor' }, { status: 400 });
   }
+  const wantStats = params.get('stats') === '1';
 
   const sql = env.cybercabhunter_db;
-  const [seen, rows] = await Promise.all([
+  const [seen, rows, buckets] = await Promise.all([
     db.countPublicPhotoSightings(sql, { city }),
-    db.getPublicPhotoSightings(sql, { city, limit: limit + 1, after })
+    db.getPublicPhotoSightings(sql, { city, limit: limit + 1, after, order }),
+    wantStats ? db.getApprovedPhotoSightingHourBuckets(sql, { city }) : null
   ]);
   const page = rows.slice(0, limit);
-  return Response.json({
+  const area = cityParam === 'all' ? null : serviceAreaFor(cityParam);
+  const statsZone = area && usLocalParts(0, area.timeZone) ? area.timeZone : STATS_DEFAULT_ZONE;
+  const response = Response.json({
     seen,
+    order,
+    ...(wantStats ? { stats: buildSightingStats(buckets, statsZone) } : {}),
     sightings: page.map(r => ({
       id: r.public_id,
       image_url: `/api/sightings/${r.public_id}/photo`,
       city: displayCity(r.service_area),
       location: publicLocation(r.approx_location),   // street/place + city, never a house number
-      plate: r.license_plate || null,
+      plate: r.public_plate || null,                   // only a publicly eligible registry vehicle's plate
+      cybercab: !!r.public_cybercab,                   // that vehicle has a VIN on file (the registry's Cybercab label)
       spotted_at: toIso(r.observed_at),
       // The area's local time zone, so the time is shown as it was there
       // (e.g. Austin in US Central); null when the area is unknown.
       time_zone: timeZoneFor({ serviceArea: r.service_area, location: r.approx_location })
     })),
-    next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null
-  }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+    next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1], order) : null
+  }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });
+  if (cache) {
+    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  }
+  return response;
 }
 
 const notFound = () => Response.json({ success: false, error: 'not_found' }, { status: 404 });

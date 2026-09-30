@@ -1,11 +1,16 @@
 /* Cybercab Sightings gallery (sightings.html). Public: no session, only the
    public GET /api/sightings list and each photo's public URL
-   (worker/sightings-public.js). Newest first, 24 per page, more loaded as the
-   visitor scrolls (or taps "Load more"); photos load lazily. The "Seen"
-   number is the server's live count for the selected city. Every value from
-   the API goes in through textContent / attributes, never innerHTML. */
+   (worker/sightings-public.js). Most or least recent first (the choice is
+   remembered), 24 per page, more loaded as the visitor scrolls (or taps "Load
+   more"); photos load lazily. The "Seen" number and the stat cards are the
+   server's figures for the selected city, re-checked every minute while the
+   tab is visible (LIVE): new sightings are added without a reload. A stat that
+   could not be loaded shows an em dash, never 0. Every value from the API goes
+   in through textContent / attributes, never innerHTML. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  // Same origin (cybercabhunter.com): the list/stats responses are edge-cached
+  // there (worker/sightings-public.js), which workers.dev would bypass.
+  const WORKER = '';
   // The filter buttons: one per supported service area (GET /api/service-areas,
   // worker/service-areas.js), in that order; the page opens on the first.
   let CITY_NAMES = {};
@@ -20,6 +25,12 @@
   let generation = 0;   // bumps on every filter change; stale responses are dropped
   let isModerator = false;   // moderators get a Delete button on each photo (the server checks too)
   const SESSION_KEY = 'teslaSessionId';
+  const ORDER_KEY = 'sightingsOrder';
+  const POLL_MS = 60 * 1000;
+  let order = 'desc';          // 'desc' = most recent first, 'asc' = least recent first
+  const shown = new Set();     // public ids of the cards on the page
+  let pollTimer = null;
+  try { if (localStorage.getItem(ORDER_KEY) === 'asc') order = 'asc'; } catch (e) { /* default */ }
 
   // In the sighting area's own time zone when known (e.g. "4:10 PM CDT" for
   // Austin), otherwise the viewer's.
@@ -75,6 +86,7 @@
     const top = el('div', 'flex items-center justify-between gap-2 flex-wrap');
     if (s.city) top.appendChild(el('span', 'text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-gold uppercase tracking-wider', s.city));
     if (s.plate) top.appendChild(el('span', 'font-display font-bold text-xs tracking-wider px-2 py-0.5 rounded bg-black/30 border border-[rgba(212,175,55,0.2)]', s.plate));
+    if (s.cybercab) top.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
     if (top.childNodes.length) body.appendChild(top);
     if (s.location) body.appendChild(el('p', 'text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]', s.location));
     const when = fmtSpotted(s.spotted_at, s.time_zone);
@@ -146,8 +158,73 @@
     if (returnFocus && returnFocus.isConnected) returnFocus.focus();
   }
 
+  // ---------- stat cards ----------
+  const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
+  const plural = (n, one, many) => `${Number(n).toLocaleString('en-US')} ${n === 1 ? one : many}`;
+  const fmtHour = h => `${(h % 12) || 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
+  function fmtDay(ymd) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
+    if (!m) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+
+  // Any value that isn't a proper count stays (or goes back to) an em dash.
+  function renderStats(stats) {
+    const ok = stats && typeof stats === 'object';
+    const num = (id, n) => { $(id).textContent = ok && isCount(n) ? n.toLocaleString('en-US') : '—'; };
+    num('statWeek', ok && stats.last_7_days);
+    num('statToday', ok && stats.today);
+    $('statTodayLabel').textContent = ok && stats.today === 1 ? 'Cybercab spotted today' : 'Cybercabs spotted today';
+    num('statMonth', ok && stats.this_month);
+    let monthName = '';
+    try { monthName = new Date().toLocaleDateString('en-US', { month: 'long', timeZone: (ok && stats.time_zone) || 'America/Chicago' }); } catch (e) { /* plain label */ }
+    $('statMonthLabel').textContent = monthName ? `sightings in ${monthName}` : 'sightings this month';
+    const peak = ok && stats.peak_hour;
+    if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
+      $('statPeakHour').textContent = `${fmtHour(peak.hour)} – ${fmtHour((peak.hour + 1) % 24)}`;
+      $('statPeakCount').textContent = plural(peak.count, 'sighting', 'sightings');
+    } else {
+      $('statPeakHour').textContent = ok && stats.total === 0 ? 'None yet' : '—';
+      $('statPeakCount').textContent = '';
+    }
+    const best = ok && stats.best_day;
+    const bestDay = best && fmtDay(best.date);
+    if (bestDay && isCount(best.count)) {
+      $('statBestDay').textContent = bestDay;
+      $('statBestCount').textContent = plural(best.count, 'sighting', 'sightings');
+    } else {
+      $('statBestDay').textContent = ok && stats.total === 0 ? 'None yet' : '—';
+      $('statBestCount').textContent = '';
+    }
+  }
+
+  // ---------- LIVE ----------
+  function setLive(healthy) {
+    $('liveIndicator').classList.toggle('is-stale', !healthy);
+    $('liveIndicator').title = healthy ? 'Checking for new sightings every minute' : "Couldn't check for new sightings — retrying";
+  }
+  function flashLive() {
+    const dot = $('liveDot');
+    dot.classList.remove('live-flash');
+    void dot.offsetWidth;   // restart the animation
+    dot.classList.add('live-flash');
+  }
+
   function setSeen(n) {
     $('seenNumber').textContent = Number(n).toLocaleString('en-US');
+  }
+
+  function setActiveOrder() {
+    document.querySelectorAll('#sortToggle [data-order]').forEach(btn => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.order === order));
+    });
+  }
+
+  function selectOrder(next) {
+    order = next === 'asc' ? 'asc' : 'desc';
+    try { localStorage.setItem(ORDER_KEY, order); } catch (e) { /* not essential */ }
+    setActiveOrder();
+    loadPage(true);
   }
 
   function setActiveFilter() {
@@ -162,6 +239,7 @@
     loading = true;
     if (reset) {
       cursor = null;
+      shown.clear();
       $('sightingsGrid').replaceChildren();
       show('sightingsEmpty', false);
       show('sightingsError', false);
@@ -170,8 +248,9 @@
     }
     $('sightingsMore').disabled = true;
 
-    const params = new URLSearchParams({ city });
+    const params = new URLSearchParams({ city, order });
     if (cursor) params.set('cursor', cursor);
+    if (reset) params.set('stats', '1');
     let body = null;
     try {
       const resp = await fetch(`${WORKER}/api/sightings?${params}`);
@@ -183,14 +262,15 @@
     $('sightingsMore').disabled = false;
 
     if (!body || !Array.isArray(body.sightings)) {
-      if (reset) { $('seenNumber').textContent = '—'; show('sightingsError', true); }
+      if (reset) { $('seenNumber').textContent = '—'; renderStats(null); setLive(false); show('sightingsError', true); }
       else show('sightingsMore', true);   // keep what's shown; the button retries
       return;
     }
 
     setSeen(body.seen);
+    if (reset) { renderStats(body.stats); setLive(true); }
     const grid = $('sightingsGrid');
-    body.sightings.forEach(s => grid.appendChild(card(s)));
+    body.sightings.forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
     cursor = body.next_cursor || null;
     show('sightingsMore', !!cursor);
     // The observer only fires on a change, so if the end of the list is still
@@ -204,6 +284,43 @@
       $('sightingsEmptyText').textContent = `No Cybercab sightings from ${CITY_NAMES[city]} yet. Spotted one there? Submit a photo.`;
       show('sightingsEmpty', true);
     }
+  }
+
+  // Every minute (while the tab is visible): refresh Seen and the stats, and
+  // add any sightings not on the page yet — at the top when showing the most
+  // recent first; at the end when showing the least recent first and the
+  // whole list is already loaded (otherwise they arrive with "Load more").
+  async function poll() {
+    if (loading || !defaultCity) return;
+    const mine = generation;
+    let body = null;
+    try {
+      const resp = await fetch(`${WORKER}/api/sightings?${new URLSearchParams({ city, order: 'desc', stats: '1' })}`);
+      if (resp.ok) body = await resp.json();
+    } catch (e) { body = null; }
+    if (mine !== generation || loading) return;   // the view changed meanwhile
+    if (!body || !Array.isArray(body.sightings)) { setLive(false); return; }   // keep what's shown
+    setLive(true);
+    setSeen(body.seen);
+    renderStats(body.stats);
+    const fresh = body.sightings.filter(s => !shown.has(s.id));
+    if (!fresh.length) return;
+    const grid = $('sightingsGrid');
+    if (order === 'desc') {
+      fresh.slice().reverse().forEach(s => { shown.add(s.id); grid.prepend(card(s)); });
+    } else if (!cursor) {
+      fresh.slice().reverse().forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
+    }
+    show('sightingsEmpty', false);
+    flashLive();
+  }
+
+  function startPolling() {
+    stopPolling();
+    if (!document.hidden) pollTimer = setInterval(poll, POLL_MS);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
   function selectCity(next) {
@@ -244,6 +361,15 @@
   }
 
   function init() {
+    setActiveOrder();
+    document.querySelectorAll('#sortToggle [data-order]').forEach(btn => {
+      btn.addEventListener('click', () => selectOrder(btn.dataset.order));
+    });
+    // Pause while the tab is hidden; catch up at once when it's shown again.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopPolling();
+      else { poll(); startPolling(); }
+    });
     $('sightingsMore').addEventListener('click', () => loadPage(false));
     $('sightingsRetry').addEventListener('click', () => (defaultCity ? loadPage(true) : start()));
     $('sightingViewerClose').addEventListener('click', closeViewer);
@@ -268,9 +394,10 @@
     show('sightingsLoading', true);
     const [ok, mod] = await Promise.all([loadCities(), checkModerator()]);
     isModerator = mod;
-    if (!ok) { show('sightingsLoading', false); show('sightingsError', true); return; }
+    if (!ok) { show('sightingsLoading', false); renderStats(null); setLive(false); show('sightingsError', true); return; }
     const initial = (new URLSearchParams(location.search).get('city') || defaultCity).toLowerCase();
     selectCity(initial);
+    startPolling();
   }
 
   init();

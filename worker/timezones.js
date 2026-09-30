@@ -89,3 +89,39 @@ export function resolveObservedAt({ date = null, zone, now = Date.now() }) {
   if (`${y}-${pad(mo)}-${pad(d)}` > `${today.y}-${pad(today.m)}-${pad(today.d)}`) return { error: 'invalid_observed_at' };
   return { observedAt: toSql(localToUtc({ y, m: mo, d, h: today.h, mi: today.mi, s: today.s }, zone)) };
 }
+
+// ---- Fast local time for US zones (the Sightings stats) ----
+// Converting thousands of timestamps with Intl would not fit the Workers Free
+// plan's 10 ms CPU budget, so this applies the US daylight-saving rule
+// directly: DST runs from 2:00 local time on the second Sunday of March to
+// 2:00 local time on the first Sunday of November (since 2007). Checked
+// against Intl in tests/sightings-stats.test.mjs.
+const US_STANDARD_OFFSET_HOURS = {
+  'America/New_York': -5, 'America/Chicago': -6, 'America/Denver': -7, 'America/Los_Angeles': -8,
+  'America/Phoenix': -7   // no daylight saving
+};
+const NO_DST = new Set(['America/Phoenix']);
+
+// UTC ms of the nth Sunday (1-based) of a month, at `localHour` local standard/daylight time.
+function nthSundayUtc(year, month, n, hourUtc) {
+  const first = new Date(Date.UTC(year, month, 1));
+  const day = 1 + ((7 - first.getUTCDay()) % 7) + (n - 1) * 7;
+  return Date.UTC(year, month, day, hourUtc);
+}
+
+// The local wall-clock parts of instant `ms` in a supported US zone, or null
+// for any other zone (callers then fall back to Intl).
+export function usLocalParts(ms, zone) {
+  const std = US_STANDARD_OFFSET_HOURS[zone];
+  if (std === undefined) return null;
+  let offset = std;
+  if (!NO_DST.has(zone)) {
+    const year = new Date(ms).getUTCFullYear();
+    // 2:00 local standard time = (2 - std) UTC; 2:00 local daylight time = (2 - std - 1) UTC.
+    const start = nthSundayUtc(year, 2, 2, 2 - std);
+    const end = nthSundayUtc(year, 10, 1, 2 - std - 1);
+    if (ms >= start && ms < end) offset = std + 1;
+  }
+  const d = new Date(ms + offset * 3600000);
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), offset };
+}

@@ -9,7 +9,7 @@
 
 import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
-import { makeEnv, makeCheck } from './helpers/env.mjs';
+import { makeEnv, makeCheck, approveVehicle } from './helpers/env.mjs';
 import worker from '../worker/index.js';
 import { expireSightingPhotos } from '../worker/sightings-public.js';
 import { installPhotonStub, placeIdFor } from './helpers/places.mjs';
@@ -57,6 +57,14 @@ async function list(ctx, query = '') {
 }
 
 const age = (ctx, id, days) => ctx.d1.exec(`UPDATE submissions SET submitted_at = datetime('now', '-${days} days') WHERE id = '${id}'`);
+// Makes the registry vehicle holding `plate` publicly eligible (public + a
+// counted ride), optionally with a VIN (the registry's Cybercab label).
+const makePublic = (ctx, plate, vin = null) => {
+  const id = ctx.d1.query('SELECT id FROM robotaxi_vehicles WHERE license_plate = ?', plate)[0].id;
+  approveVehicle(ctx.d1, id, { withRide: true });
+  if (vin) ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '${vin}' WHERE id = '${id}'`);
+  return id;
+};
 const publicIdOf = (ctx, id) => ctx.d1.query('SELECT public_id FROM vehicle_observations WHERE submission_id = ?', id)[0].public_id;
 
 async function run() {
@@ -69,7 +77,7 @@ async function run() {
     await review(ctx, rejected, 'reject');
     await approve(ctx, approved);
     const { status, json, cache } = await list(ctx);
-    check('200 with a short public cache', status === 200 && cache === 'public, max-age=60');
+    check('200 with a short public cache (30 s, also the edge-cache lifetime)', status === 200 && cache === 'public, max-age=30');
     check('only the approved sighting is listed', json.sightings.length === 1 && json.sightings[0].location === 'Approved St');
     check('pending and rejected never appear', !JSON.stringify(json).includes('Pending St') && !JSON.stringify(json).includes('Rejected St'));
     check('Seen counts only the approved one', json.seen === 1);
@@ -91,7 +99,7 @@ async function run() {
     ctx.d1.exec(`DELETE FROM robotaxi_vehicles WHERE id = '${autoVehicle}'`);
     await req(ctx, 'POST', `/api/moderation/vehicle-sightings/${viaPromote}/promote`, { user: 'mod' });
     const after = (await list(ctx)).json;
-    check('a photo sighting approved by promoting it to the registry appears too', after.seen === 1 && after.sightings[0].plate === 'QJH8021');
+    check('a photo sighting approved by promoting it to the registry appears too (its private vehicle\'s plate is not shown)', after.seen === 1 && after.sightings[0].plate === null);
   }
 
   console.log('2. Newest -> oldest, by date spotted');
@@ -152,12 +160,16 @@ async function run() {
     const ctx = await makeApp();
     await approve(ctx, await submit(ctx, { service_area: 'Dallas', approx_location: 'NorthPark area', license_plate: 'xjr-2195', notes: 'my phone number is 555-0100', observed_at: '2026-09-20T19:30:00Z' }));
     await approve(ctx, await submit(ctx, { service_area: 'Austin' }));
+    const before = (await list(ctx)).json.sightings.find(s => s.city === 'Dallas');
+    check('while its registry vehicle is private, the plate is NOT shown (no private-vehicle leak)', before.plate === null && before.cybercab === false && !JSON.stringify((await list(ctx)).json).includes('XJR2195'));
+    makePublic(ctx, 'XJR2195', '5YJ3E1EA0KF000009');
     const { json } = await list(ctx);
     const full = json.sightings.find(s => s.city === 'Dallas'), bare = json.sightings.find(s => s.city === 'Austin');
+    check('once the vehicle is publicly eligible, its plate and the Cybercab label (VIN on file) are shown', full.plate === 'XJR2195' && full.cybercab === true && bare.cybercab === false);
     check('every field of a full sighting', full.location === 'NorthPark area' && full.plate === 'XJR2195' && full.spotted_at === '2026-09-20T19:30:00Z' && /^[0-9a-f]{32}$/.test(full.id) && full.image_url === `/api/sightings/${full.id}/photo`);
     check('no plate -> plate null', bare.plate === null);
     check('no approximate location -> location null', bare.location === null);
-    check('each sighting has exactly the public fields', json.sightings.every(s => Object.keys(s).sort().join() === 'city,id,image_url,location,plate,spotted_at,time_zone'));
+    check('each sighting has exactly the public fields', json.sightings.every(s => Object.keys(s).sort().join() === 'city,cybercab,id,image_url,location,plate,spotted_at,time_zone'));
     check('each carries its area\'s time zone (Dallas and Austin are US Central)', full.time_zone === 'America/Chicago' && bare.time_zone === 'America/Chicago');
     const raw = JSON.stringify(json);
     const sub = ctx.d1.query('SELECT * FROM submissions')[0], obs = ctx.d1.query('SELECT * FROM vehicle_observations')[0];
@@ -293,13 +305,16 @@ async function run() {
   {
     const ctx = await makeApp();
     await approve(ctx, await submit(ctx, { service_area: 'Austin', approx_location: 'S Congress Ave', license_plate: 'XVF2569', observed_at: '2026-09-20T19:30:00Z' }));
+    makePublic(ctx, 'XVF2569', '5YJ3E1EA0KF000010');
     await approve(ctx, await submit(ctx, { service_area: 'Austin', observed_at: '2026-09-18T12:00:00Z' }));
     await approve(ctx, await submit(ctx, { service_area: 'Dallas' }));
     const html = fs.readFileSync(`${ROOT}public/sightings.html`, 'utf8');
     const js = fs.readFileSync(`${ROOT}public/js/sightings.js`, 'utf8');
+    const opened = [];   // closed at the end: the page polls every minute, which would keep Node running
     async function open(url, session) {
       const dom = new JSDOM(html, { runScripts: 'outside-only', url, pretendToBeVisual: true });
       const w = dom.window;
+      opened.push(w);
       if (session) w.localStorage.setItem('teslaSessionId', session);
       const calls = [];
       w.fetch = async (u, init) => { const path = String(u).replace(/^https:\/\/[^/]+/, ''); calls.push(path); return worker.fetch(new Request(`https://x${path}`, init), ctx.env, {}); };
@@ -311,7 +326,7 @@ async function run() {
     }
     const p = await open('https://cybercabhunter.com/sightings');
     check('the title is "SIGHTINGS", in white', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'SIGHTINGS' && p.d.querySelector('h1').classList.contains('text-white') && p.d.title === 'Cybercab Hunter — Sightings');
-    check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls[p.calls.length - 1] === '/api/sightings?city=austin');
+    check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls.includes('/api/sightings?city=austin&order=desc&stats=1'));
     check('the counter reads "2 Seen" (Austin)', p.seen() === '2 Seen');
     check('two Austin cards', p.cards().length === 2);
     const austin = p.cards().find(c => /Austin/.test(c.textContent));
@@ -342,7 +357,7 @@ async function run() {
     check('...Dallas is now the active filter, and the URL remembers it', p.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'false' && p.w.location.search === '?city=dallas');
 
     const direct = await open('https://cybercabhunter.com/sightings?city=dallas');
-    check('opening ?city=dallas starts on Dallas', direct.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && direct.calls.includes('/api/sightings?city=dallas'));
+    check('opening ?city=dallas starts on Dallas', direct.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && direct.calls.some(c => c.startsWith('/api/sightings?city=dallas&')));
     const old = await open('https://cybercabhunter.com/sightings?city=miami');
     check('an old ?city=miami link falls back to Austin', old.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true');
 
@@ -370,6 +385,7 @@ async function run() {
     const none = await open('https://cybercabhunter.com/sightings');
     check('no sightings: "0 Seen" and the "No sightings yet" message, no cards', none.seen() === '0 Seen' && none.cards().length === 0 && /NO SIGHTINGS YET/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
     check('the page has a Sightings nav entry marked for the nav highlight', /data-nav="sightings"/.test(html));
+    opened.forEach(w => w.close());
   }
 
   t.finish();

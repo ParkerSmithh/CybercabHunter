@@ -316,7 +316,7 @@ export default {
     // Public Cybercab Sightings gallery (worker/sightings-public.js): approved
     // photo sightings only, and their photos by random public id. Public GETs.
     if (url.pathname === '/api/sightings' && request.method === 'GET') {
-      return withCors(await apiListPublicSightings(request, env), request);
+      return withCors(await apiListPublicSightings(request, env, ctx), request);
     }
     const sightingPhotoMatch = url.pathname.match(/^\/api\/sightings\/([^/]+)\/photo$/);
     if (sightingPhotoMatch && request.method === 'GET') {

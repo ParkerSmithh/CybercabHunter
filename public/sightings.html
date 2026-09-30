@@ -80,16 +80,56 @@
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-8">
-      <div>
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div class="min-w-0">
         <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">SIGHTINGS</h1>
         <!-- Live count of the photos currently shown for the selected city (GET /api/sightings "seen"). -->
         <p id="seenCounter" class="mt-3 font-display font-bold text-2xl text-slate-100" aria-live="polite"><span id="seenNumber" class="text-gold">—</span> Seen</p>
       </div>
+      <!-- LIVE: the page re-checks for new sightings every minute (js/sightings.js). -->
+      <div id="liveIndicator" class="live-indicator shrink-0 mt-2 inline-flex items-center gap-2 text-xs font-bold tracking-[0.2em] text-gold" title="Checking for new sightings every minute">
+        <span id="liveDot" class="live-dot" aria-hidden="true"></span>LIVE
+      </div>
     </div>
 
-    <!-- One button per supported service area (GET /api/service-areas), built by js/sightings.js. -->
-    <div id="cityFilters" role="group" aria-label="Filter sightings by city" class="flex flex-wrap gap-2 mb-8 min-h-[44px]"></div>
+    <!-- Stats for the selected city, from sighting timestamps in Austin time (GET /api/sightings?stats=1).
+         Each value starts as an em dash and only becomes a number the server sent. -->
+    <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Last 7 days</div>
+        <div id="statWeek" class="mt-1.5 font-display font-bold text-2xl text-gold">—</div>
+        <div class="text-[11px] text-slate-500">seen in the last 7 days</div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Today</div>
+        <div id="statToday" class="mt-1.5 font-display font-bold text-2xl text-gold">—</div>
+        <div id="statTodayLabel" class="text-[11px] text-slate-500">Cybercabs spotted today</div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0 col-span-2 sm:col-span-1">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Peak sightings hour</div>
+        <div id="statPeakHour" class="mt-1.5 font-display font-bold text-lg text-gold leading-snug">—</div>
+        <div id="statPeakCount" class="text-[11px] text-slate-500"></div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">All-time best day</div>
+        <div id="statBestDay" class="mt-1.5 font-display font-bold text-lg text-gold leading-snug">—</div>
+        <div id="statBestCount" class="text-[11px] text-slate-500"></div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">This month</div>
+        <div id="statMonth" class="mt-1.5 font-display font-bold text-2xl text-gold">—</div>
+        <div id="statMonthLabel" class="text-[11px] text-slate-500">sightings this month</div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-8">
+      <!-- One button per supported service area (GET /api/service-areas), built by js/sightings.js. -->
+      <div id="cityFilters" role="group" aria-label="Filter sightings by city" class="flex flex-wrap gap-2 min-h-[44px]"></div>
+      <div id="sortToggle" role="group" aria-label="Sort sightings" class="flex gap-2">
+        <button type="button" data-order="desc" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors">Most recent</button>
+        <button type="button" data-order="asc" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors">Least recent</button>
+      </div>
+    </div>
 
     <div id="sightingsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
 
@@ -260,6 +300,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=6"></script>
+<script src="js/sightings.js?v=8"></script>
 </body>
 </html>
