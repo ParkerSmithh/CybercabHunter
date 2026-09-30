@@ -129,8 +129,6 @@
     button.disabled = false;
     if (resp && resp.ok) {
       article.remove();
-      const current = Number(String($('seenNumber').textContent).replace(/,/g, ''));
-      if (Number.isFinite(current) && current > 0) setSeen(current - 1);
       note('Photo deleted.', 'success');
     } else if (resp && (resp.status === 401 || resp.status === 403)) {
       note('Only moderators can delete photos.', 'error');
@@ -210,10 +208,6 @@
     dot.classList.add('live-flash');
   }
 
-  function setSeen(n) {
-    $('seenNumber').textContent = Number(n).toLocaleString('en-US');
-  }
-
   function setActiveOrder() {
     document.querySelectorAll('#sortToggle [data-order]').forEach(btn => {
       btn.setAttribute('aria-pressed', String(btn.dataset.order === order));
@@ -262,12 +256,11 @@
     $('sightingsMore').disabled = false;
 
     if (!body || !Array.isArray(body.sightings)) {
-      if (reset) { $('seenNumber').textContent = '—'; renderStats(null); setLive(false); show('sightingsError', true); }
+      if (reset) { renderStats(null); setLive(false); show('sightingsError', true); }
       else show('sightingsMore', true);   // keep what's shown; the button retries
       return;
     }
 
-    setSeen(body.seen);
     if (reset) { renderStats(body.stats); setLive(true); }
     const grid = $('sightingsGrid');
     body.sightings.forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
@@ -301,7 +294,6 @@
     if (mine !== generation || loading) return;   // the view changed meanwhile
     if (!body || !Array.isArray(body.sightings)) { setLive(false); return; }   // keep what's shown
     setLive(true);
-    setSeen(body.seen);
     renderStats(body.stats);
     const fresh = body.sightings.filter(s => !shown.has(s.id));
     if (!fresh.length) return;

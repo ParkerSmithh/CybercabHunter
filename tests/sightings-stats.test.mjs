@@ -216,7 +216,7 @@ async function run() {
     live.d.dispatchEvent(new live.w.Event('visibilitychange'));   // tab shown again -> immediate check
     await new Promise(r => setTimeout(r, 150));
     check('a new sighting is added at the top without a reload', live.cards().length === before + 1);
-    check('Seen and the stats update with it', live.text('seenCounter') === '3 Seen' && live.text('statWeek') === '2');
+    check('the stats update with it', live.text('statWeek') === '2');
     check('the LIVE dot flashes', live.d.getElementById('liveDot').classList.contains('live-flash'));
     Object.defineProperty(live.d, 'hidden', { configurable: true, get: () => true });
     const clearedBefore = live.timers.cleared;
@@ -224,7 +224,7 @@ async function run() {
     check('polling pauses while the tab is hidden', live.timers.cleared > clearedBefore);
 
     const failed = await open('https://cybercabhunter.com/sightings', { failApi: true });
-    check('a failed load shows em dashes, never 0', ['statWeek', 'statToday', 'statMonth', 'statPeakHour', 'statBestDay'].every(id => failed.text(id) === '—') && failed.text('seenNumber') === '—');
+    check('a failed load shows em dashes, never 0', ['statWeek', 'statToday', 'statMonth', 'statPeakHour', 'statBestDay'].every(id => failed.text(id) === '—'));
     check('...and LIVE shows it could not check', failed.d.getElementById('liveIndicator').classList.contains('is-stale'));
 
     const emptyCtx = await makeApp();

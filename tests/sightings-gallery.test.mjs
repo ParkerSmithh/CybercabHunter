@@ -322,12 +322,12 @@ async function run() {
       const d = w.document;
       const settle = async () => { for (let i = 0; i < 100 && d.getElementById('sightingsLoading').className.indexOf('hidden') < 0; i++) await new Promise(r => setTimeout(r, 10)); await new Promise(r => setTimeout(r, 20)); };
       await settle();
-      return { w, d, calls, settle, seen: () => d.getElementById('seenCounter').textContent.replace(/\s+/g, ' ').trim(), cards: () => [...d.querySelectorAll('#sightingsGrid article')] };
+      return { w, d, calls, settle, cards: () => [...d.querySelectorAll('#sightingsGrid article')] };
     }
     const p = await open('https://cybercabhunter.com/sightings');
     check('the title is "SIGHTINGS", in white', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'SIGHTINGS' && p.d.querySelector('h1').classList.contains('text-white') && p.d.title === 'Cybercab Hunter — Sightings');
     check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls.includes('/api/sightings?city=austin&order=desc&stats=1'));
-    check('the counter reads "2 Seen" (Austin)', p.seen() === '2 Seen');
+    check('there is no "Seen" counter on the page', !p.d.getElementById('seenCounter') && !/\bSeen\b/.test(p.d.querySelector('section').textContent));
     check('two Austin cards', p.cards().length === 2);
     const austin = p.cards().find(c => /Austin/.test(c.textContent));
     check('a card shows the photo, city, location, plate and date', austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
@@ -353,7 +353,7 @@ async function run() {
 
     p.d.querySelector('[data-city="dallas"]').click();
     await p.settle();
-    check('Dallas: the counter and cards update ("1 Seen")', p.seen() === '1 Seen' && p.cards().length === 1 && /Dallas/.test(p.cards()[0].textContent));
+    check('Dallas: the cards update', p.cards().length === 1 && /Dallas/.test(p.cards()[0].textContent));
     check('...Dallas is now the active filter, and the URL remembers it', p.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'false' && p.w.location.search === '?city=dallas');
 
     const direct = await open('https://cybercabhunter.com/sightings?city=dallas');
@@ -371,19 +371,19 @@ async function run() {
     modView.w.confirm = () => false;
     buttons[0].click();
     await new Promise(r => setTimeout(r, 30));
-    check('cancelling the confirmation deletes nothing', modView.cards().length === 2 && modView.seen() === '2 Seen');
+    check('cancelling the confirmation deletes nothing', modView.cards().length === 2);
     modView.w.confirm = () => true;
     buttons[0].click();
     await modView.settle();
     await new Promise(r => setTimeout(r, 50));
-    check('confirming deletes it: the card goes and the counter drops to "1 Seen"', modView.cards().length === 1 && modView.seen() === '1 Seen');
+    check('confirming deletes it: the card goes', modView.cards().length === 1);
     check('...and the server agrees', (await list(ctx)).json.seen === 2);
     check('clicking Delete does not also open the expanded view', modView.d.getElementById('sightingViewer').classList.contains('hidden'));
 
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;   // point the page at an empty database
     const none = await open('https://cybercabhunter.com/sightings');
-    check('no sightings: "0 Seen" and the "No sightings yet" message, no cards', none.seen() === '0 Seen' && none.cards().length === 0 && /NO SIGHTINGS YET/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
+    check('no sightings: the "No sightings yet" message, no cards', none.cards().length === 0 && /NO SIGHTINGS YET/.test(none.d.getElementById('sightingsEmpty').textContent) && /from Austin/.test(none.d.getElementById('sightingsEmptyText').textContent));
     check('the page has a Sightings nav entry marked for the nav highlight', /data-nav="sightings"/.test(html));
     opened.forEach(w => w.close());
   }
