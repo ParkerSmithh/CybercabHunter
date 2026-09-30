@@ -157,16 +157,15 @@
         </div>
       </div>
 
-      <!-- Danger zone: permanently delete this account (DELETE /api/account,
+      <!-- Delete account: permanently delete this account (DELETE /api/account,
            worker/account.js). Two steps: the button opens the explanation,
            and the delete only runs once DELETE has been typed. -->
-      <div id="dangerZone" class="mt-6 rounded-2xl border border-crimson/40 bg-crimson/[0.04] p-6">
-        <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-crimson">Danger zone</h2>
-        <div class="flex items-center justify-between gap-4 flex-wrap mt-3">
+      <div id="dangerZone" class="mt-6 px-2">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
           <p class="text-sm text-slate-300">Permanently delete your account and all of your data.</p>
           <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-white hover:brightness-110">Delete account</button>
         </div>
-        <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-crimson/30">
+        <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-white/[0.08]">
           <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
           <p class="text-xs text-slate-400 mt-2">Deleting your account removes:</p>
           <ul class="text-xs text-slate-400 mt-1.5 space-y-1 list-disc pl-5">
@@ -501,7 +500,7 @@
     });
   }
 
-  // Danger zone: DELETE /api/account for the signed-in account only.
+  // Delete account: DELETE /api/account for the signed-in account only.
   function initDeleteAccount(sessionId) {
     const openBtn = document.getElementById('deleteAccountBtn');
     const panel = document.getElementById('deleteAccountPanel');
