@@ -176,13 +176,17 @@
     num('statMonth', ok && stats.this_month);
     let monthName = '';
     try { monthName = new Date().toLocaleDateString('en-US', { month: 'long', timeZone: (ok && stats.time_zone) || 'America/Chicago' }); } catch (e) { /* plain label */ }
-    $('statMonthLabel').textContent = monthName ? `sightings in ${monthName}` : 'sightings this month';
+    $('statMonthLabel').textContent = monthName ? `Sightings in ${monthName}` : 'Sightings this month';
     const peak = ok && stats.peak_hour;
     if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
       $('statPeakHour').textContent = `${fmtHour(peak.hour)} – ${fmtHour((peak.hour + 1) % 24)}`;
       $('statPeakCount').textContent = plural(peak.count, 'sighting', 'sightings');
+    } else if (ok && isCount(stats.total)) {
+      // No sightings yet, or no clear busiest hour yet (too few, or a tie).
+      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'Not enough data yet';
+      $('statPeakCount').textContent = stats.total === 0 ? '' : 'Needs more sightings to show a clear busiest hour';
     } else {
-      $('statPeakHour').textContent = ok && stats.total === 0 ? 'None yet' : '—';
+      $('statPeakHour').textContent = '—';
       $('statPeakCount').textContent = '';
     }
     const best = ok && stats.best_day;

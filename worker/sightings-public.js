@@ -59,6 +59,7 @@ function decodeCursor(raw, order) {
 }
 
 const STATS_DEFAULT_ZONE = 'America/Chicago';   // Austin and Dallas; also used for "all"
+const PEAK_HOUR_MIN_SIGHTINGS = 2;
 const pad2 = n => String(n).padStart(2, '0');
 
 // The Sightings page's stat cards, from sighting timestamps (observed_at) in
@@ -68,9 +69,13 @@ const pad2 = n => String(n).padStart(2, '0');
 //   last_7_days  — exact trailing 7×24 h (counted in SQL)
 //   today        — local calendar day
 //   this_month   — local calendar month
-//   peak_hour    — busiest local hour of day over all history {hour 0-23, count}
+//   peak_hour    — busiest local hour of day over all history {hour 0-23, count},
+//                  ONLY when the data shows a clear one: that hour has at least
+//                  PEAK_HOUR_MIN_SIGHTINGS sightings and more than any other
+//                  hour. Otherwise null ("Not enough data yet") — never a
+//                  tie-break guess.
 //   best_day     — local date with the most sightings {date YYYY-MM-DD, count}
-// Ties: the earlier hour; the more recent day.
+// Best-day ties: the more recent day.
 export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   const now = usLocalParts(nowMs, zone);
   const today = `${now.y}-${pad2(now.m)}-${pad2(now.d)}`;
@@ -91,6 +96,9 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   }
   let peak = null;
   hours.forEach((count, hour) => { if (count > 0 && (!peak || count > peak.count)) peak = { hour, count }; });
+  // A peak only when the data clearly shows one: enough sightings in that
+  // hour and no other hour tied with it.
+  if (peak && (peak.count < PEAK_HOUR_MIN_SIGHTINGS || hours.filter(c => c === peak.count).length > 1)) peak = null;
   let best = null;
   for (const [date, count] of days) if (!best || count > best.count || (count === best.count && date > best.date)) best = { date, count };
   let thisMonth = 0;

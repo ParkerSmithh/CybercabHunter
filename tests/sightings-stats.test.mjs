@@ -64,7 +64,13 @@ async function run() {
     check('best day = Sep 28 with 7', s.best_day.date === '2026-09-28' && s.best_day.count === 7);
     check('last 7 days = the exact count from SQL', s.last_7_days === 13 && s.total === 17 && s.time_zone === Z);
     const tie = buildSightingStats([{ utc_hour: '2026-09-20T15', n: 2, last_7_days: 0 }, { utc_hour: '2026-09-21T20', n: 2, last_7_days: 0 }], Z, now);
-    check('ties: the earlier hour; the more recent day', tie.peak_hour.hour === 10 && tie.best_day.date === '2026-09-21');
+    check('a tied busiest hour is NOT a peak (no tie-break guess); best-day ties go to the more recent day', tie.peak_hour === null && tie.best_day.date === '2026-09-21');
+    const prod = buildSightingStats([{ utc_hour: '2026-09-28T17', n: 1, last_7_days: 1 }, { utc_hour: '2026-09-30T01', n: 1, last_7_days: 1 }], Z, now);
+    check('the production case (12:39 PM and 8:47 PM, one each): no peak hour, "not enough data"', prod.peak_hour === null && prod.total === 2);
+    const single = buildSightingStats([{ utc_hour: '2026-09-28T22', n: 1, last_7_days: 1 }], Z, now);
+    check('a single sighting is not a peak', single.peak_hour === null);
+    const clear = buildSightingStats([{ utc_hour: '2026-09-28T22', n: 2, last_7_days: 2 }, { utc_hour: '2026-09-27T15', n: 1, last_7_days: 1 }], Z, now);
+    check('a clear busiest hour (2 sightings vs 1) is shown: 5 PM', clear.peak_hour.hour === 17 && clear.peak_hour.count === 2);
     const none = buildSightingStats([], Z, now);
     check('no sightings: real zeros and no peak/best', none.today === 0 && none.this_month === 0 && none.last_7_days === 0 && none.peak_hour === null && none.best_day === null);
     let mismatches = 0;
@@ -198,7 +204,7 @@ async function run() {
     const p = await open('https://cybercabhunter.com/sightings');
     check('LIVE with a pulsing yellow dot, top right of the page header', /LIVE/.test(p.text('liveIndicator')) && p.d.getElementById('liveDot').classList.contains('live-dot') && /\.live-dot\{[^}]*#facc15[^}]*animation:live-pulse/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
     check('the pulse is switched off for reduced motion', /prefers-reduced-motion: reduce\)\{\s*\.live-dot, \.live-dot\.live-flash\{animation:none;\}/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
-    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && /^\d{1,2}:00 (AM|PM) – \d{1,2}:00 (AM|PM)$/.test(p.text('statPeakHour')) && /sighting/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
+    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'Not enough data yet' && /clear busiest hour/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
     check('Most recent is selected by default and requested', p.d.querySelector('[data-order="desc"]').getAttribute('aria-pressed') === 'true' && p.calls.some(c => c.includes('order=desc&stats=1')));
     check('polling is scheduled every 60 seconds', p.timers.set.includes(60000));
 
@@ -226,6 +232,15 @@ async function run() {
     const failed = await open('https://cybercabhunter.com/sightings', { failApi: true });
     check('a failed load shows em dashes, never 0', ['statWeek', 'statToday', 'statMonth', 'statPeakHour', 'statBestDay'].every(id => failed.text(id) === '—'));
     check('...and LIVE shows it could not check', failed.d.getElementById('liveIndicator').classList.contains('is-stale'));
+
+    // Two sightings in the same hour (3 hours ago) + one elsewhere: a clear peak.
+    const peakCtx = await makeApp();
+    await sighting(peakCtx, { service_area: 'Austin' }, 3);
+    await sighting(peakCtx, { service_area: 'Austin' }, 3);
+    await sighting(peakCtx, { service_area: 'Austin' }, 24 * 9);
+    ctx.env = peakCtx.env;
+    const peakPage = await open('https://cybercabhunter.com/sightings');
+    check('a clear busiest hour is shown as a range with its count', /^\d{1,2}:00 (AM|PM) – \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && peakPage.text('statPeakCount') === '2 sightings');
 
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;

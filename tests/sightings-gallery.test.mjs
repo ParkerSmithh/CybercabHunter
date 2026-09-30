@@ -327,7 +327,7 @@ async function run() {
     const p = await open('https://cybercabhunter.com/sightings');
     check('the title is "SIGHTINGS", in white', p.d.querySelector('h1').textContent.replace(/\s+/g, ' ').trim() === 'SIGHTINGS' && p.d.querySelector('h1').classList.contains('text-white') && p.d.title === 'Cybercab Hunter — Sightings');
     check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls.includes('/api/sightings?city=austin&order=desc&stats=1'));
-    check('there is no "Seen" counter on the page', !p.d.getElementById('seenCounter') && !/\bSeen\b/.test(p.d.querySelector('section').textContent));
+    check('there is no "Seen" counter on the page', !p.d.getElementById('seenCounter') && !/Seen/.test(p.d.querySelector('h1').parentElement.textContent));
     check('two Austin cards', p.cards().length === 2);
     const austin = p.cards().find(c => /Austin/.test(c.textContent));
     check('a card shows the photo, city, location, plate and date', austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
