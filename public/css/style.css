@@ -311,6 +311,20 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 }
 .maplibregl-ctrl-group button{background:transparent !important;}
 .maplibregl-ctrl-icon{filter:invert(1);}
+/* Map attribution ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"):
+   a dark rounded pill — link names white, the rest a softer grey, and a
+   light round (i) toggle — both as the full bar and as MapLibre's compact
+   (i) version on narrow maps. */
+.maplibregl-ctrl.maplibregl-ctrl-attrib{
+  background-color:rgba(24,24,27,0.92) !important; color:#a1a1aa;
+  border-radius:999px; padding:3px 12px; margin:0 8px 8px 0 !important;
+  font-size:12px; line-height:20px;
+}
+.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact{padding:2px 26px 2px 0; margin:10px !important;}
+.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:2px 30px 2px 12px;}
+.maplibregl-ctrl-attrib a{color:#fff !important;}
+.maplibregl-ctrl-attrib a:hover{color:#D4AF37 !important; text-decoration:none;}
+.maplibregl-ctrl-attrib-button{background-color:transparent !important; filter:invert(0.85);}
 .marker-pulse{position:relative;}
 .marker-pulse::after{
   content:''; position:absolute; inset:-6px; border-radius:50%;
