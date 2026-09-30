@@ -581,7 +581,29 @@
 
     function render() {
       if (!series || !series.length) { setMessage('No Austin registry vehicles yet.'); return; }
+      const hadFocus = document.activeElement && document.activeElement.id === 'fleetPlayBtn';
       drawChart(windowedPoints());
+      // A redraw (a resize) mid-timelapse picks the frame back up where it was.
+      if (anim.state === 'playing' || anim.state === 'paused') drawFrame(easeInOutQuad(playProgress()));
+      if (hadFocus) document.getElementById('fleetPlayBtn')?.focus();
+    }
+
+    // The step line and its area fill, up to `cutoff` (ms). The line HOLDS
+    // its count between changes (it isn't interpolated), so up to a cutoff
+    // it runs flat from the last change to the cutoff. With cutoff = the
+    // last point this is the full static line; the timelapse moves it.
+    function stepPaths(points, x, y, baseY, cutoff) {
+      let d = `M ${x(points[0].date.getTime())} ${y(points[0].count)}`;
+      let last = points[0];
+      for (let i = 1; i < points.length && points[i].date.getTime() <= cutoff; i++) {
+        const px = x(points[i].date.getTime());
+        d += ` L ${px} ${y(last.count)} L ${px} ${y(points[i].count)}`;
+        last = points[i];
+      }
+      const endX = x(Math.max(cutoff, points[0].date.getTime()));
+      if (endX > x(last.date.getTime())) d += ` L ${endX} ${y(last.count)}`;
+      const areaD = `${d} L ${endX} ${baseY} L ${x(points[0].date.getTime())} ${baseY} Z`;
+      return { d, areaD, endX, endY: y(last.count), count: last.count };
     }
 
     function drawChart(points) {
@@ -600,13 +622,10 @@
       const x = t => padL + (maxX === minX ? 0 : (t - minX) / (maxX - minX) * plotW);
       const y = c => padT + plotH - (c / maxY) * plotH;
 
-      // A step line: the count HOLDS between changes, it isn't interpolated.
-      let d = `M ${x(minX)} ${y(points[0].count)}`;
-      for (let i = 1; i < points.length; i++) {
-        const px = x(points[i].date.getTime());
-        d += ` L ${px} ${y(points[i - 1].count)} L ${px} ${y(points[i].count)}`;
-      }
-      const areaD = `${d} L ${x(maxX)} ${padT + plotH} L ${x(minX)} ${padT + plotH} Z`;
+      const { d, areaD } = stepPaths(points, x, y, padT + plotH, maxX);
+      // The timelapse redraws the line at this same scale (the full range's
+      // x span and maxY), so every frame is exactly a left part of this view.
+      geom = { points, x, y, baseY: padT + plotH, minX, maxX };
 
       const yTicks = niceTicks(maxY, 3);
       const gridLines = yTicks.map(t => `<line x1="${padL}" y1="${y(t).toFixed(1)}" x2="${w - padR}" y2="${y(t).toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`).join('');
@@ -618,18 +637,22 @@
       mount.innerHTML = `
         <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="Cumulative Austin Cybercabs documented in the registry, currently ${last.count}">
           ${gridLines}
-          <path d="${areaD}" fill="${GOLD}" fill-opacity="0.1" stroke="none"/>
-          <path d="${d}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2"/>
+          <path id="fleetArea" d="${areaD}" fill="${GOLD}" fill-opacity="0.1" stroke="none"/>
+          <path id="fleetLine" d="${d}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle id="fleetEndDot" cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2"/>
           ${yLabels}
           <line id="fleetCrosshair" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}" stroke="rgba(255,255,255,0.25)" stroke-width="1" style="display:none"/>
           <circle id="fleetHoverDot" r="4" fill="${GOLD}" stroke="#0F141C" stroke-width="2" style="display:none"/>
           <rect id="fleetHoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" tabindex="0" role="slider" aria-label="Scrub the fleet growth chart" aria-valuemin="0" aria-valuemax="${points.length - 1}" aria-valuenow="${points.length - 1}" style="cursor:crosshair; outline:none;"/>
         </svg>
         <div id="fleetTooltip" class="absolute hidden pointer-events-none glass rounded-lg px-3 py-2 text-xs" style="z-index:5;"></div>
+        <div id="fleetPlayReadout" class="absolute hidden pointer-events-none whitespace-nowrap text-sm tabular-nums" style="right:${padR + 46}px; bottom:${padB + 13}px; z-index:6;"></div>
+        <button type="button" id="fleetPlayBtn" class="absolute w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" style="right:${padR + 6}px; bottom:${padB + 6}px; z-index:6; background:${GOLD}; color:#0F141C;"></button>
       `;
 
       wireHover(points, x, y, padL, plotW, w);
+      document.getElementById('fleetPlayBtn').addEventListener('click', onPlayClick);
+      syncPlayButton();
     }
 
     function wireHover(points, x, y, padL, plotW, w) {
@@ -648,6 +671,7 @@
       }
 
       function show(i) {
+        if (anim.state === 'playing' || anim.state === 'paused') return;   // the timelapse owns the chart
         idx = Math.max(0, Math.min(points.length - 1, i));
         const p = points[idx];
         const px = x(p.date.getTime()), py = y(p.count);
@@ -684,6 +708,103 @@
       });
     }
 
+    // ---- Timelapse playback ----
+    // Replays the ACTIVE range's line drawing itself from that range's first
+    // visible day to the latest day, using exactly the points the static
+    // chart shows (no extra data). Changing the range stops it and goes back
+    // to the static full view.
+    const PLAY_MS = { '90d': 4000, '6m': 6000, '1y': 8000, all: 8000 };
+    const READOUT_DATE = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+    const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const easeInOutQuad = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    // idle: static view, never played · playing / paused: mid-timelapse ·
+    // done: finished, static full view again, the button offers a replay.
+    const anim = { state: 'idle', elapsed: 0, lastTs: 0, frame: 0 };
+    let geom = null;   // the current drawing's scales and points (set by drawChart)
+    const PLAY_ICONS = {
+      play: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M5 3.2v9.6L12.8 8z" fill="currentColor"/></svg>',
+      pause: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="4" y="3" width="2.8" height="10" rx="0.6" fill="currentColor"/><rect x="9.2" y="3" width="2.8" height="10" rx="0.6" fill="currentColor"/></svg>',
+      replay: '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M3.5 8a4.5 4.5 0 1 0 1.4-3.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3.2 2.2v3.3h3.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    };
+
+    const playProgress = () => Math.min(1, anim.elapsed / PLAY_MS[activeRange]);
+
+    function syncPlayButton() {
+      const btn = document.getElementById('fleetPlayBtn');
+      if (!btn) return;
+      const [icon, label] = anim.state === 'playing' ? ['pause', 'Pause fleet growth timelapse']
+        : anim.state === 'paused' ? ['play', 'Resume fleet growth timelapse']
+        : anim.state === 'done' ? ['replay', 'Replay fleet growth timelapse']
+        : ['play', 'Play fleet growth timelapse'];
+      btn.innerHTML = PLAY_ICONS[icon];
+      btn.setAttribute('aria-label', label);
+      btn.dataset.state = anim.state;
+      const readout = document.getElementById('fleetPlayReadout');
+      if (readout) readout.classList.toggle('hidden', anim.state !== 'playing' && anim.state !== 'paused');
+    }
+
+    // Draws the line up to eased progress p (0..1) across the active range.
+    function drawFrame(p) {
+      if (!geom) return;
+      const { points, x, y, baseY, minX, maxX } = geom;
+      const cutoff = minX + p * (maxX - minX);
+      const f = stepPaths(points, x, y, baseY, cutoff);
+      document.getElementById('fleetLine')?.setAttribute('d', f.d);
+      document.getElementById('fleetArea')?.setAttribute('d', f.areaD);
+      const dot = document.getElementById('fleetEndDot');
+      if (dot) { dot.setAttribute('cx', f.endX.toFixed(1)); dot.setAttribute('cy', f.endY.toFixed(1)); }
+      const readout = document.getElementById('fleetPlayReadout');
+      if (readout) {
+        const dateStr = new Date(cutoff).toLocaleDateString('en-US', READOUT_DATE);
+        readout.innerHTML = `<span class="font-bold text-slate-100">${f.count} Cybercab${f.count === 1 ? '' : 's'}</span><span class="text-slate-400"> — ${dateStr}</span>`;
+      }
+    }
+
+    function tick(ts) {
+      if (anim.state !== 'playing') return;
+      // Capped per-frame step: a backgrounded tab (no frames) resumes where it left off.
+      if (anim.lastTs) anim.elapsed += Math.min(100, ts - anim.lastTs);
+      anim.lastTs = ts;
+      if (playProgress() >= 1) { finishPlayback(); return; }
+      drawFrame(easeInOutQuad(playProgress()));
+      anim.frame = requestAnimationFrame(tick);
+    }
+
+    function finishPlayback() {
+      cancelAnimationFrame(anim.frame);
+      anim.state = 'done';
+      drawFrame(1);   // identical to the static full view
+      syncPlayButton();
+    }
+
+    function stopPlayback() {
+      cancelAnimationFrame(anim.frame);
+      anim.state = 'idle';
+      anim.elapsed = 0;
+    }
+
+    function onPlayClick() {
+      if (anim.state === 'playing') {
+        cancelAnimationFrame(anim.frame);
+        anim.state = 'paused';
+        syncPlayButton();
+        return;
+      }
+      if (anim.state !== 'paused') {
+        anim.elapsed = 0;
+        // Reduced motion: no animation, straight to the finished view.
+        if (reducedMotion()) { finishPlayback(); return; }
+        // Clear any hover readout; the timelapse owns the chart while it runs.
+        document.getElementById('fleetTooltip')?.classList.add('hidden');
+        for (const id of ['fleetCrosshair', 'fleetHoverDot']) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+      }
+      anim.state = 'playing';
+      anim.lastTs = 0;
+      drawFrame(easeInOutQuad(playProgress()));
+      syncPlayButton();
+      anim.frame = requestAnimationFrame(tick);
+    }
+
     // Range buttons
     const rangeBtns = document.querySelectorAll('#fleetChartRange .range-btn');
     const INACTIVE_RANGE = 'range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400';
@@ -695,6 +816,7 @@
         rangeBtns.forEach(b => b.className = INACTIVE_RANGE);
         btn.className = ACTIVE_RANGE;
         activeRange = btn.dataset.range;
+        stopPlayback();   // a mid-play range change resets to the static full view
         render();
       });
     });
