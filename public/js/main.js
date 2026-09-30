@@ -190,6 +190,7 @@ const CCC = (() => {
     missing_photo: 'Please add a photo of the Cybercab.',
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
     invalid_location: 'Choose the location from the suggestions list.',
+    invalid_traffic_camera: 'Traffic cameras are in Austin — choose Austin as the city, or "Not a traffic camera".',
     location_unavailable: "Location search isn't available right now. Try again, or leave Location empty.",
     invalid_form_data: "That sighting couldn't be submitted — check the fields and try again.",
     invalid_body: "That sighting couldn't be submitted — check the fields and try again."
@@ -247,6 +248,7 @@ const CCC = (() => {
     const locIdField = document.getElementById('sightingLocId');
     const locOptions = document.getElementById('sightingLocOptions');
     const locError = document.getElementById('sightingLocError');
+    const cameraField = document.getElementById('sightingCamera');
     let inFlight = false;
     let previewUrl = null;
 
@@ -319,6 +321,29 @@ const CCC = (() => {
         if (current) serviceAreaField.value = current;
         areasLoaded = true;
         syncLocationToCity();
+      } catch (e) { /* retried the next time the drawer opens */ }
+    }
+
+    // ---- Traffic camera (optional): the 50 City of Austin cameras, from the
+    // same list the server checks against (public/data/traffic-cameras.json).
+    // Left at "Not a traffic camera", nothing about the sighting changes.
+    let camerasLoaded = false;
+    async function loadTrafficCameras() {
+      if (camerasLoaded || !cameraField) return;
+      try {
+        const resp = await fetch('data/traffic-cameras.json');
+        const cameras = resp.ok ? await resp.json() : null;
+        if (!Array.isArray(cameras)) return;
+        const current = cameraField.value;
+        [...cameraField.options].slice(1).forEach(o => o.remove());   // keep "Not a traffic camera"
+        cameras.slice().sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.camera_id;
+          opt.textContent = `${c.name} (#${c.camera_id})`;
+          cameraField.appendChild(opt);
+        });
+        if (current) cameraField.value = current;
+        camerasLoaded = true;
       } catch (e) { /* retried the next time the drawer opens */ }
     }
 
@@ -443,6 +468,7 @@ const CCC = (() => {
         dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       }
       loadServiceAreas();
+      loadTrafficCameras();
       drawer.classList.add('is-open'); backdrop.classList.add('is-open');
     }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
@@ -526,6 +552,7 @@ const CCC = (() => {
       if (dateField && dateField.value) fields.observed_date = dateField.value;
       try { fields.time_zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* optional */ }
       if (fields.approx_location && locIdField) { fields.location_id = locIdField.value; fields.location_query = pickedQuery; }
+      if (cameraField && cameraField.value) fields.camera_id = cameraField.value;
       Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
 
       let resp;

@@ -18,6 +18,7 @@ import { db } from './db.js';
 import { publicLocation } from './places.js';
 import { timeZoneFor, usLocalParts } from './timezones.js';
 import { SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
+import { removeSightingsFromMap } from './camera-sightings.js';
 
 // The city filter buttons (Austin, Dallas). The API also answers city=all
 // (every city, including sightings with no city), which the page no longer
@@ -245,6 +246,8 @@ export async function expireSightingPhotos(env, { limit = EXPIRY_BATCH } = {}) {
     } catch (e) { /* retried next run */ }
   }
   await db.clearSightingPhotos(sql, deleted);
+  // A traffic-camera sighting's copy on the Zones map expires with it.
+  try { await removeSightingsFromMap(env, deleted); } catch (e) { /* best effort */ }
   return { due: due.length, deleted: deleted.length };
 }
 
@@ -266,6 +269,8 @@ export async function deleteSightingPhoto(env, submissionId, moderatorId) {
     // The object is gone; the public photo route also clears a missing photo.
     return Response.json({ success: false, error: 'record_update_failed' }, { status: 500 });
   }
+  // A deleted photo leaves the Zones map too (its copy there, if any).
+  try { await removeSightingsFromMap(env, [submissionId]); } catch (e) { /* best effort */ }
   return Response.json({ success: true, deleted: true });
 }
 

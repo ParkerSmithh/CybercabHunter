@@ -441,7 +441,7 @@ async function findRecentDuplicateSighting(sql, userId, normalizedPlate) {
 // robotaxiVehicleId is null when the observed plate didn't match an
 // existing registry vehicle — the caller decides that with a read-only
 // lookup; this function never creates or mutates a robotaxi_vehicles row.
-async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt, evidenceRef }) {
+async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt, evidenceRef, cameraId }) {
   const submissionId = newId();
   const observationId = newId();
 
@@ -460,6 +460,8 @@ async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePl
   const columns = ['id', 'robotaxi_vehicle_id', 'user_id', 'submission_id', 'service_area', 'approx_location', 'license_plate', 'model', 'color', 'verification_status', 'notes', 'evidence_ref'];
   const values = [observationId, robotaxiVehicleId || null, userId, submissionId, serviceArea || null, approxLocation || null, licensePlate || null, model || null, color || null, 'unverified', notes || null, evidenceRef || null];
   if (observedAt) { columns.push('observed_at'); values.push(observedAt); }
+  // The traffic camera a photo was captured from (migrations/0020), when picked.
+  if (cameraId) { columns.push('camera_id'); values.push(cameraId); }
 
   const observationStmt = sql.prepare(`
     INSERT INTO vehicle_observations (${columns.join(', ')})
@@ -485,7 +487,7 @@ async function getPendingVehicleSightings(sql) {
     SELECT
       s.id AS submission_id, s.status, s.submitted_at, s.evidence_ref AS submission_evidence_ref,
       o.id AS observation_id, o.robotaxi_vehicle_id, o.observed_at, o.service_area, o.approx_location,
-      o.license_plate, o.model, o.color, o.evidence_ref AS observation_evidence_ref, o.verification_status, o.notes
+      o.license_plate, o.model, o.color, o.evidence_ref AS observation_evidence_ref, o.verification_status, o.notes, o.camera_id
     FROM submissions s
     JOIN vehicle_observations o ON o.submission_id = s.id
     WHERE s.submission_type = 'vehicle_sighting' AND s.status IN ('pending', 'needs_review')
@@ -502,12 +504,33 @@ async function getPendingVehicleSightings(sql) {
 async function getVehicleSightingSubmission(sql, submissionId) {
   const row = await sql.prepare(`
     SELECT s.id AS submission_id, s.submission_type, s.status, s.reviewed_at, s.reviewed_by, s.rejection_reason,
-           o.id AS observation_id, o.robotaxi_vehicle_id, o.verification_status, o.license_plate
+           o.id AS observation_id, o.robotaxi_vehicle_id, o.verification_status, o.license_plate, o.camera_id
     FROM submissions s
     JOIN vehicle_observations o ON o.submission_id = s.id
     WHERE s.id = ?
   `).bind(submissionId).first();
   return row || null;
+}
+
+// The most recently approved photo sightings whose photo is still stored,
+// newest decision first, with whether each already has a Zones-map detection:
+// its own (source_submission_id), or the marker its camera already has at
+// that same moment (see camera-sightings.js placeSightingOnMap). The moderation Images tab's
+// "Recently approved" list; moderators only (worker/moderation.js).
+async function getRecentApprovedPhotoSightings(sql, limit) {
+  const result = await sql.prepare(`
+    SELECT s.id AS submission_id, s.reviewed_at, o.observed_at, o.service_area, o.approx_location, o.license_plate, o.camera_id,
+           EXISTS (SELECT 1 FROM camera_detections d
+                   WHERE d.source_submission_id = s.id
+                      OR (d.camera_id = o.camera_id AND d.observed_at = replace(o.observed_at, ' ', 'T') || 'Z')) AS on_map
+    FROM submissions s
+    JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE s.submission_type = 'vehicle_sighting' AND s.status = 'approved'
+      AND s.evidence_type = 'photo' AND s.evidence_ref IS NOT NULL
+    ORDER BY s.reviewed_at DESC, s.id DESC
+    LIMIT ?
+  `).bind(limit).all();
+  return result.results || [];
 }
 
 // ---- Public Cybercab Sightings gallery (worker/sightings-public.js) ----
@@ -1623,6 +1646,7 @@ export const db = {
   findRecentDuplicateSighting,
   createVehicleSighting,
   getPendingVehicleSightings,
+  getRecentApprovedPhotoSightings,
   getVehicleSightingSubmission,
   reviewVehicleSighting,
   getPublicPhotoSightings,

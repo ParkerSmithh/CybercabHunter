@@ -119,9 +119,106 @@
       <div class="font-display font-bold text-sm leading-tight">${esc(s.license_plate || 'Plate not given')}</div>
       <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
       ${s.approx_location ? `<div class="text-[11px] text-slate-400 leading-snug">Near: ${esc(s.approx_location)}</div>` : ''}
+      ${cameraLine(s)}
       ${s.notes ? `<div class="text-[11px] text-slate-300 bg-white/5 rounded-md px-2 py-1.5 leading-snug">${esc(s.notes)}</div>` : ''}
       <div class="mt-auto [&>div]:pt-2 [&>div]:gap-1.5">${actionsHtml(s)}</div>
     </div>`;
+  }
+
+  // The traffic camera a photo came from (approving it puts it on the Zones map).
+  function cameraLine(s) {
+    return s.camera_name ? `<div class="text-[11px] text-gold leading-snug">Traffic camera: ${esc(s.camera_name)}</div>` : '';
+  }
+
+  // ---------- Recently approved images: on the Zones map, or "Add to map" ----------
+  let approved = [];
+  const mapBusy = new Set();   // submission_ids with an Add to map request in flight
+
+  function approvedCard(a) {
+    const facts = [a.service_area || 'Area unknown', fmtDateTime(a.observed_at)];
+    const status = a.on_map
+      ? '<div class="text-[11px] font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
+      : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.45)] text-gold hover:bg-[rgba(212,175,55,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
+    return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-approved-id="${esc(a.submission_id)}">
+      <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] bg-black/30 rounded-lg overflow-hidden">
+        <img data-sighting-photo="${esc(a.submission_id)}" alt="Approved sighting photo" class="hidden w-full h-full object-cover">
+      </a>
+      <div class="font-display font-bold text-sm leading-tight">${esc(a.license_plate || 'Plate not given')}</div>
+      <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
+      ${cameraLine(a)}
+      <div class="mt-auto pt-2 border-t border-[rgba(212,175,55,0.1)] flex">${status}</div>
+    </div>`;
+  }
+
+  function renderApproved() {
+    $('modApprovedList').innerHTML = approved.map(approvedCard).join('');
+    show('modApproved', approved.length > 0);
+    loadPhotos();
+  }
+
+  async function loadApproved() {
+    let resp;
+    try { resp = await api('/api/moderation/approved-photo-sightings'); } catch (e) { return; }
+    if (!resp.ok) return;   // the review queue above still works without this list
+    approved = (resp.json && resp.json.sightings) || [];
+    renderApproved();
+  }
+
+  // The camera list for the Add to map dialog (the same file the Submit form uses).
+  let camerasLoaded = null;
+  function loadCameras() {
+    if (!camerasLoaded) {
+      camerasLoaded = fetch('data/traffic-cameras.json').then(r => (r.ok ? r.json() : [])).then(cameras => {
+        const select = $('modMapCamera');
+        (Array.isArray(cameras) ? cameras : []).slice().sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.camera_id;
+          opt.textContent = `${c.name} (#${c.camera_id})`;
+          select.appendChild(opt);
+        });
+      }).catch(() => { camerasLoaded = null; });
+    }
+    return camerasLoaded;
+  }
+
+  let mapTarget = null;   // the approved sighting the dialog is for
+  async function openMapDialog(submissionId) {
+    const a = approved.find(x => x.submission_id === submissionId);
+    if (!a) return;
+    mapTarget = submissionId;
+    await loadCameras();
+    $('modMapCamera').value = a.camera_id || '';
+    const dialog = $('modMapDialog');
+    if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+  }
+  function closeMapDialog() {
+    const dialog = $('modMapDialog');
+    if (typeof dialog.close === 'function') dialog.close(); else dialog.removeAttribute('open');
+    mapTarget = null;
+  }
+
+  async function addToMap(submissionId, cameraId) {
+    mapBusy.add(submissionId);
+    renderApproved();
+    let resp;
+    try {
+      resp = await api(`/api/moderation/vehicle-sightings/${encodeURIComponent(submissionId)}/map`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ camera_id: cameraId })
+      });
+    } catch (e) { resp = null; }
+    mapBusy.delete(submissionId);
+    if (resp && resp.status === 401) { setView('signedOut'); return; }
+    if (resp && resp.status === 403) { setView('forbidden'); return; }
+    if (resp && resp.ok) {
+      approved = approved.map(a => (a.submission_id === submissionId ? { ...a, on_map: true } : a));
+      renderApproved();
+      CCC.toast(resp.json && resp.json.already_on_map ? 'Already on the Zones map.' : 'Added to the Zones map ✓', 'success');
+      loadApproved();   // picks up the recorded camera name
+      return;
+    }
+    renderApproved();
+    const error = resp && resp.json && resp.json.error;
+    CCC.toast(error === 'photo_missing' || error === 'not_found' ? "This photo is no longer stored, so it can't go on the map." : "Couldn't add it to the map. Please try again.", 'error');
   }
 
   function renderQueue() {
@@ -192,6 +289,7 @@
     renderQueue();
     setView('queue');
     loadVehicles();
+    loadApproved();
   }
 
   // Permanently deletes a sighting's photo (a pending one is also closed as
@@ -258,7 +356,15 @@
 
     queue = queue.filter(s => s.submission_id !== submissionId);
     renderQueue();
-    CCC.toast(action === 'approve' ? 'Sighting approved.' : 'Sighting rejected.', 'success');
+    CCC.toast(action === 'approve' ? approvedMessage(resp.json, 'Sighting approved') : 'Sighting rejected.', 'success');
+    if (action === 'approve') loadApproved();
+  }
+
+  // Approving a traffic-camera photo also puts it on the Zones map (server-side).
+  function approvedMessage(json, base) {
+    const map = json && json.map;
+    if (!map) return base + '.';
+    return map.on_map ? `${base} — on the Zones map ✓` : `${base}. It couldn't be placed on the Zones map — use Add to map below.`;
   }
 
   async function promote(submissionId) {
@@ -303,8 +409,9 @@
 
     queue = queue.filter(s => s.submission_id !== submissionId);
     renderQueue();
-    CCC.toast('Added to the registry as a private vehicle — find it under Registry Vehicles.', 'success');
+    CCC.toast(approvedMessage(resp.json, 'Added to the registry as a private vehicle — find it under Registry Vehicles'), 'success');
     loadVehicles();
+    loadApproved();
   }
 
   function setupActions() {
@@ -338,6 +445,19 @@
     };
     $('modList').addEventListener('click', onQueueClick);
     $('modImageList').addEventListener('click', onQueueClick);
+    $('modApprovedList').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-approved-action="add-to-map"]');
+      if (btn) openMapDialog(btn.closest('[data-approved-id]').dataset.approvedId);
+    });
+    $('modMapCancel').addEventListener('click', closeMapDialog);
+    $('modMapForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const cameraId = $('modMapCamera').value;
+      if (!cameraId) { CCC.toast('Choose the traffic camera first.', 'error'); return; }
+      const target = mapTarget;
+      closeMapDialog();
+      if (target) addToMap(target, cameraId);
+    });
   }
 
   // ---------- registry vehicle review (Phase 3E visibility, Phase 3H approval) ----------

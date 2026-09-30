@@ -1,0 +1,302 @@
+[
+ {
+  "camera_id": "1493",
+  "name": "SH 71 SVRD / CARDINAL LOOP (PRESIDENTIAL BLVD)",
+  "lat": 30.213114,
+  "lng": -97.658532
+ },
+ {
+  "camera_id": "1494",
+  "name": "SH 71 SVRD / PRESIDENTIAL BLVD (CARDINAL LOOP)",
+  "lat": 30.21267,
+  "lng": -97.65884
+ },
+ {
+  "camera_id": "538",
+  "name": "SH 71 SVRD / PRESIDENTIAL BLVD (CARDINAL LOOP)",
+  "lat": 30.21267,
+  "lng": -97.65884
+ },
+ {
+  "camera_id": "64",
+  "name": "MARTIN LUTHER KING JR BLVD / CONGRESS AVE (MLK/Capitol Mall)",
+  "lat": 30.280687,
+  "lng": -97.738106
+ },
+ {
+  "camera_id": "216",
+  "name": "FM 969 RD / ED BLUESTEIN BLVD SVRD (Martin Luther King Jr Blvd / US 183)",
+  "lat": 30.285421,
+  "lng": -97.664047
+ },
+ {
+  "camera_id": "1480",
+  "name": "4703 BLK S CONGRESS AVE (4912 S Congress)",
+  "lat": 30.212057,
+  "lng": -97.77082
+ },
+ {
+  "camera_id": "795",
+  "name": "400 BLK S CONGRESS AVE (Music Lane)",
+  "lat": 30.253627,
+  "lng": -97.748178
+ },
+ {
+  "camera_id": "133",
+  "name": "6TH ST / CONGRESS AVE",
+  "lat": 30.268066,
+  "lng": -97.742813
+ },
+ {
+  "camera_id": "722",
+  "name": "CONGRESS AVE / RIVERSIDE DR",
+  "lat": 30.257143,
+  "lng": -97.746872
+ },
+ {
+  "camera_id": "919",
+  "name": "CONGRESS AVE / BEN WHITE BLVD SVRD",
+  "lat": 30.222479,
+  "lng": -97.764168
+ },
+ {
+  "camera_id": "57",
+  "name": "GUADALUPE ST / LAMAR BLVD",
+  "lat": 30.316647,
+  "lng": -97.732246
+ },
+ {
+  "camera_id": "61",
+  "name": "GUADALUPE ST / MARTIN LUTHER KING JR BLVD",
+  "lat": 30.281733,
+  "lng": -97.741928
+ },
+ {
+  "camera_id": "63",
+  "name": "LAVACA ST / MARTIN LUTHER KING JR BLVD",
+  "lat": 30.281328,
+  "lng": -97.740509
+ },
+ {
+  "camera_id": "93",
+  "name": "LAMAR BLVD / MARTIN LUTHER KING JR BLVD",
+  "lat": 30.283602,
+  "lng": -97.752075
+ },
+ {
+  "camera_id": "95",
+  "name": "6TH ST / LAMAR BLVD",
+  "lat": 30.271538,
+  "lng": -97.753967
+ },
+ {
+  "camera_id": "97",
+  "name": "LAMAR BLVD / RIVERSIDE DR",
+  "lat": 30.264525,
+  "lng": -97.757103
+ },
+ {
+  "camera_id": "106",
+  "name": "CESAR CHAVEZ ST / LAVACA ST",
+  "lat": 30.264071,
+  "lng": -97.746941
+ },
+ {
+  "camera_id": "132",
+  "name": "6TH ST / LAVACA ST",
+  "lat": 30.268717,
+  "lng": -97.745201
+ },
+ {
+  "camera_id": "229",
+  "name": "BEN WHITE BLVD SVRD / LAMAR BLVD SVRD",
+  "lat": 30.233683,
+  "lng": -97.796661
+ },
+ {
+  "camera_id": "351",
+  "name": "6TH ST / GUADALUPE ST",
+  "lat": 30.269024,
+  "lng": -97.746262
+ },
+ {
+  "camera_id": "1320",
+  "name": "LAMAR BLVD / 46TH ST",
+  "lat": 30.315098,
+  "lng": -97.736192
+ },
+ {
+  "camera_id": "517",
+  "name": "3201 BLK S LAMAR BLVD (BROKEN SPOKE)",
+  "lat": 30.240471,
+  "lng": -97.786667
+ },
+ {
+  "camera_id": "781",
+  "name": "2100 BLK S LAMAR BLVD (Oxford Ave)",
+  "lat": 30.248083,
+  "lng": -97.77121
+ },
+ {
+  "camera_id": "816",
+  "name": "GUADALUPE ST / 26TH ST",
+  "lat": 30.29047,
+  "lng": -97.74128
+ },
+ {
+  "camera_id": "1145",
+  "name": "BEN WHITE BLVD / RIVERSIDE DR",
+  "lat": 30.21806,
+  "lng": -97.69058
+ },
+ {
+  "camera_id": "1190",
+  "name": "GUADALUPE ST / 46TH ST",
+  "lat": 30.313028,
+  "lng": -97.73252
+ },
+ {
+  "camera_id": "102",
+  "name": "CONGRESS AVE / BARTON SPRINGS RD",
+  "lat": 30.259111,
+  "lng": -97.74614
+ },
+ {
+  "camera_id": "248",
+  "name": "CONGRESS AVE / SLAUGHTER LN",
+  "lat": 30.167107,
+  "lng": -97.788559
+ },
+ {
+  "camera_id": "31",
+  "name": "BARTON SPRINGS RD / RIVERSIDE DR (OTC - NORTHWEST)",
+  "lat": 30.257478,
+  "lng": -97.748989
+ },
+ {
+  "camera_id": "32",
+  "name": "BARTON SPRINGS RD / RIVERSIDE DR (OTC - NORTHEAST)",
+  "lat": 30.257391,
+  "lng": -97.749041
+ },
+ {
+  "camera_id": "39",
+  "name": "CESAR CHAVEZ ST / SAN JACINTO BLVD (FOUR SEASONS - WEST)",
+  "lat": 30.261807,
+  "lng": -97.74283
+ },
+ {
+  "camera_id": "40",
+  "name": "CESAR CHAVEZ ST / SAN JACINTO BLVD (FOUR SEASONS - EAST)",
+  "lat": 30.261684,
+  "lng": -97.742403
+ },
+ {
+  "camera_id": "50",
+  "name": "CESAR CHAVEZ ST / BRAZOS ST (BRAZOS GARAGE)",
+  "lat": 30.263094,
+  "lng": -97.743067
+ },
+ {
+  "camera_id": "65",
+  "name": "MARTIN LUTHER KING JR BLVD / TRINITY ST",
+  "lat": 30.279638,
+  "lng": -97.734512
+ },
+ {
+  "camera_id": "66",
+  "name": "MARTIN LUTHER KING JR BLVD / RED RIVER ST",
+  "lat": 30.278975,
+  "lng": -97.732193
+ },
+ {
+  "camera_id": "71",
+  "name": "38TH ST / GUADALUPE ST",
+  "lat": 30.302742,
+  "lng": -97.738144
+ },
+ {
+  "camera_id": "89",
+  "name": "38TH ST / LAMAR BLVD",
+  "lat": 30.305197,
+  "lng": -97.74305
+ },
+ {
+  "camera_id": "98",
+  "name": "LAMAR BLVD / OLTORF ST",
+  "lat": 30.248413,
+  "lng": -97.769951
+ },
+ {
+  "camera_id": "155",
+  "name": "PLEASANT VALLEY RD / RIVERSIDE DR",
+  "lat": 30.234114,
+  "lng": -97.722809
+ },
+ {
+  "camera_id": "200",
+  "name": "RIVERSIDE DR / MONTOPOLIS DR",
+  "lat": 30.224932,
+  "lng": -97.703438
+ },
+ {
+  "camera_id": "702",
+  "name": "MARTIN LUTHER KING JR BLVD / COLORADO ST",
+  "lat": 30.281042,
+  "lng": -97.73946
+ },
+ {
+  "camera_id": "949",
+  "name": "BEN WHITE BLVD SVRD / MONTOPOLIS DR",
+  "lat": 30.212687,
+  "lng": -97.712097
+ },
+ {
+  "camera_id": "1276",
+  "name": "BASTROP HWY / MONTOPOLIS TO BASTROP NB RAMP (US 183/Montopolis)",
+  "lat": 30.242779,
+  "lng": -97.690212
+ },
+ {
+  "camera_id": "19",
+  "name": "BRAKER LN / LAMAR BLVD",
+  "lat": 30.381935,
+  "lng": -97.686371
+ },
+ {
+  "camera_id": "58",
+  "name": "KOENIG LN / LAMAR BLVD",
+  "lat": 30.325943,
+  "lng": -97.726334
+ },
+ {
+  "camera_id": "218",
+  "name": "ANDERSON LN SVRD / LAMAR BLVD SVRD",
+  "lat": 30.34849,
+  "lng": -97.7125
+ },
+ {
+  "camera_id": "458",
+  "name": "KOENIG LN / GUADALUPE ST",
+  "lat": 30.323502,
+  "lng": -97.723831
+ },
+ {
+  "camera_id": "541",
+  "name": "SH 130 SVRD / 290 HWY SVRD",
+  "lat": 30.339815,
+  "lng": -97.591461
+ },
+ {
+  "camera_id": "573",
+  "name": "ANDERSON LN SVRD / LAMAR BLVD SVRD",
+  "lat": 30.347004,
+  "lng": -97.712425
+ },
+ {
+  "camera_id": "800",
+  "name": "BRAKER LN / DOMAIN DR (Pickle Research Campus Driveway)",
+  "lat": 30.392347,
+  "lng": -97.725624
+ }
+]

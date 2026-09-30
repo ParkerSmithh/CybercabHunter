@@ -7,7 +7,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto } from './moderation.js';
+import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto, apiListApprovedPhotoSightings, apiAddSightingToMap } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiSearchPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
@@ -242,6 +242,13 @@ export default {
     }
     if (moderationVehicleMatch && request.method === 'DELETE') {
       return withCors(await apiDeleteRegistryVehicle(request, env, moderationVehicleMatch[1]), request);
+    }
+    if (url.pathname === '/api/moderation/approved-photo-sightings' && request.method === 'GET') {
+      return withCors(await apiListApprovedPhotoSightings(request, env), request);
+    }
+    const moderationMapMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)\/map$/);
+    if (moderationMapMatch && request.method === 'POST') {
+      return withCors(await apiAddSightingToMap(request, env, moderationMapMatch[1]), request);
     }
     const moderationPromoteMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)\/promote$/);
     if (moderationPromoteMatch && request.method === 'POST') {

@@ -23,6 +23,13 @@
 //     Errors: 503 not_configured, 401 unauthorized, 400 invalid_body /
 //     unknown_field / invalid_<field> / image_too_large / not_jpeg.
 //
+// Moderator path (no token, no re-upload): an approved photo sighting that was
+// captured from one of the traffic cameras (public/data/traffic-cameras.json)
+// becomes a detection too — see placeSightingOnMap below. It runs inside the
+// moderator's own authenticated request (Approve, or "Add to map"), copies the
+// sighting's already-stored photo, and records the sighting as the row's
+// source_submission_id (one map row per sighting).
+//
 // Authenticated by its own Worker secret (env.CAMERA_WATCH_TOKEN), the same
 // bearer pattern as the Muse endpoints (worker/connector.js), never a browser
 // session, so it can be rotated or revoked alone. The body is not read before
@@ -33,6 +40,7 @@
 
 import { tokensMatch, readBearerToken } from './connector.js';
 import { serviceAreaFor, isInServiceArea } from './service-areas.js';
+import { trafficCameraFor } from './traffic-cameras.js';
 
 const WINDOW_MS = 24 * 3600 * 1000;
 // Edge cache for the public list (Cache API; works on the custom domain). The
@@ -44,6 +52,8 @@ const ALLOWED_FIELDS = new Set(['camera_id', 'camera_name', 'lat', 'lng', 'obser
 const CAMERA_ID_RE = /^[A-Za-z0-9_-]{1,32}$/;
 const DETECTION_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
 const WATCH_AREA = serviceAreaFor('austin');
+
+const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
 const fail = (status, error, headers) => Response.json({ ok: false, error }, { status, headers });
 const imageUrl = row => (row.image_r2_key ? `/api/camera-sightings/${row.id}/image` : null);
@@ -88,9 +98,11 @@ export async function apiGetCameraSightingImage(request, env, id) {
   if (!row || !row.image_r2_key) return notFound();
   const object = await env.EVIDENCE_BUCKET.get(row.image_r2_key);
   if (!object) return notFound();
+  // Watch uploads are JPEG; a sighting's photo keeps its own (verified) type.
+  const type = object.httpMetadata && object.httpMetadata.contentType;
   return new Response(object.body, {
     headers: {
-      'Content-Type': 'image/jpeg',
+      'Content-Type': IMAGE_EXT[type] ? type : 'image/jpeg',
       'Cache-Control': 'public, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
       'Content-Disposition': 'inline'
@@ -156,4 +168,80 @@ export async function apiCreateCameraSighting(request, env, { now = Date.now() }
     return Response.json({ ok: true, duplicate: true, id: existing.id, image_url: imageUrl({ id: existing.id, image_r2_key: key }) });
   }
   return Response.json({ ok: true, id, image_url: imageUrl({ id, image_r2_key: key }) }, { status: 201 });
+}
+
+// ---- Approved photo sightings from a traffic camera -> the Zones map ----
+// Called only by worker/moderation.js, after its requireModerator check, for
+// an APPROVED photo sighting whose photo is still stored. The camera's name
+// and position come from the shared camera list, never from the request;
+// observed_at is the sighting's own observed time. The sighting's photo is
+// COPIED to camera-captures/<camera_id>/<timestamp>.<ext> (not referenced),
+// so the map image outlives the sighting photo's own lifecycle rules and a
+// map row never points at another record's storage key. Nothing about the
+// sighting beyond its time and photo is used: no plate, no VIN, no registry link.
+// Returns { placed: true, id, existing? } or { placed: false, error }:
+//   invalid_traffic_camera — not one of the cameras
+//   not_found              — no such approved photo sighting with a stored photo
+//   photo_missing          — the photo is gone from storage
+export async function placeSightingOnMap(env, submissionId, cameraId) {
+  const camera = trafficCameraFor(cameraId);
+  if (!camera) return { placed: false, error: 'invalid_traffic_camera' };
+  const sql = env.cybercabhunter_db;
+  const sighting = await sql.prepare(`
+    SELECT s.id AS submission_id, s.evidence_ref, o.observed_at
+    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE s.id = ? AND s.submission_type = 'vehicle_sighting' AND s.status = 'approved'
+      AND s.evidence_type = 'photo' AND s.evidence_ref IS NOT NULL
+  `).bind(submissionId).first();
+  if (!sighting) return { placed: false, error: 'not_found' };
+
+  // One map row per sighting: re-approving or retrying changes nothing.
+  const already = await sql.prepare('SELECT id FROM camera_detections WHERE source_submission_id = ?').bind(submissionId).first();
+  if (already) return { placed: true, id: already.id, existing: true };
+  const observedMs = Date.parse(String(sighting.observed_at).replace(' ', 'T') + 'Z');
+  if (!Number.isFinite(observedMs)) return { placed: false, error: 'not_found' };
+  const observedAt = toStoredIso(observedMs);
+  // ...and one per camera per moment: a watch upload at that exact time stays as it is.
+  const sameMoment = await sql.prepare('SELECT id FROM camera_detections WHERE camera_id = ? AND observed_at = ?').bind(camera.camera_id, observedAt).first();
+  if (sameMoment) return { placed: true, id: sameMoment.id, existing: true };
+
+  const object = await env.EVIDENCE_BUCKET.get(sighting.evidence_ref);
+  if (!object) return { placed: false, error: 'photo_missing' };
+  const type = (object.customMetadata && object.customMetadata.verifiedContentType)
+    || (object.httpMetadata && object.httpMetadata.contentType);
+  const ext = IMAGE_EXT[type] || 'jpg';
+  const key = `camera-captures/${camera.camera_id}/${observedAt.replace(/[-:]/g, '')}.${ext}`;
+  await env.EVIDENCE_BUCKET.put(key, await new Response(object.body).arrayBuffer(), {
+    httpMetadata: { contentType: IMAGE_EXT[type] ? type : 'image/jpeg' }
+  });
+
+  const id = crypto.randomUUID();
+  const inserted = await sql.prepare(`
+    INSERT OR IGNORE INTO camera_detections (id, camera_id, camera_name, lat, lng, observed_at, image_r2_key, source_submission_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, camera.camera_id, camera.name, camera.lat, camera.lng, observedAt, key, submissionId).run();
+  if (inserted.meta && inserted.meta.changes === 0) {
+    // A concurrent approval/Add to map won the insert; use its row.
+    const winner = await sql.prepare('SELECT id FROM camera_detections WHERE source_submission_id = ? OR (camera_id = ? AND observed_at = ?)')
+      .bind(submissionId, camera.camera_id, observedAt).first();
+    return { placed: true, id: winner ? winner.id : null, existing: true };
+  }
+  return { placed: true, id };
+}
+
+// Removes the map detections made from these sightings (their copied images
+// and rows) — when a sighting's photo is deleted by a moderator or expires,
+// its map copy goes with it. Best effort: a failure leaves that one map row
+// (it drops off the public map 24 hours after observed_at regardless).
+export async function removeSightingsFromMap(env, submissionIds) {
+  if (!submissionIds.length) return;
+  const sql = env.cybercabhunter_db;
+  const marks = submissionIds.map(() => '?').join(', ');
+  const { results } = await sql.prepare(`SELECT id, image_r2_key FROM camera_detections WHERE source_submission_id IN (${marks})`).bind(...submissionIds).all();
+  for (const row of results || []) {
+    try {
+      if (row.image_r2_key) await env.EVIDENCE_BUCKET.delete(row.image_r2_key);
+      await sql.prepare('DELETE FROM camera_detections WHERE id = ?').bind(row.id).run();
+    } catch (e) { /* best effort, see above */ }
+  }
 }

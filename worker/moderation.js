@@ -20,6 +20,8 @@ import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
 import { readImportItems, runImport, runSummary, itemBase } from './receipt-import.js';
 import { rideReviewState } from './ride-status.js';
 import { sightingPhotoForModerator, deleteSightingPhoto, deleteSightingPhotoByPublicId } from './sightings-public.js';
+import { placeSightingOnMap } from './camera-sightings.js';
+import { trafficCameraFor } from './traffic-cameras.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
 // moderator role, or { error } otherwise:
@@ -82,9 +84,76 @@ export async function apiListPendingVehicleSightings(request, env) {
       color: r.color,
       notes: r.notes,
       evidence_ref: r.observation_evidence_ref || r.submission_evidence_ref || null,
-      robotaxi_vehicle_id: r.robotaxi_vehicle_id
+      robotaxi_vehicle_id: r.robotaxi_vehicle_id,
+      ...cameraFields(r.camera_id)
     }))
   });
+}
+
+// A sighting's traffic camera for the moderation cards: its id and name from
+// the shared camera list (null when it has none).
+function cameraFields(cameraId) {
+  const camera = cameraId ? trafficCameraFor(cameraId) : null;
+  return { camera_id: camera ? camera.camera_id : null, camera_name: camera ? camera.name : null };
+}
+
+// GET /api/moderation/approved-photo-sightings — moderators only. The most
+// recently approved photo sightings whose photo is still stored, for the
+// Images tab's "Recently approved" list: each shows whether it is on the
+// Zones map, and the ones that aren't get "Add to map".
+export async function apiListApprovedPhotoSightings(request, env) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  const rows = await db.getRecentApprovedPhotoSightings(env.cybercabhunter_db, APPROVED_LIST_LIMIT);
+  return Response.json({
+    success: true,
+    sightings: rows.map(r => ({
+      submission_id: r.submission_id,
+      reviewed_at: r.reviewed_at,
+      observed_at: r.observed_at,
+      service_area: r.service_area,
+      approx_location: r.approx_location,
+      license_plate: r.license_plate,
+      ...cameraFields(r.camera_id),
+      on_map: !!r.on_map
+    }))
+  });
+}
+const APPROVED_LIST_LIMIT = 24;
+
+// POST /api/moderation/vehicle-sightings/:submissionId/map  { camera_id }
+// Moderators only. The manual "Add to map" for an APPROVED photo sighting
+// that was approved without a camera (or whose automatic placement failed):
+// records the chosen camera on the sighting and places it on the Zones map
+// exactly as Approve does for a camera sighting (camera-sightings.js
+// placeSightingOnMap). Already on the map -> 200 with already_on_map, no
+// second row. 400 invalid_traffic_camera; 404 not_found (no such approved
+// photo sighting with its photo); 409 photo_missing.
+export async function apiAddSightingToMap(request, env, submissionId) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  let body;
+  try { body = await request.json(); } catch (err) { body = null; }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
+  }
+  const camera = trafficCameraFor(body.camera_id);
+  if (!camera) return Response.json({ success: false, error: 'invalid_traffic_camera' }, { status: 400 });
+
+  const sql = env.cybercabhunter_db;
+  let result;
+  try {
+    result = await placeSightingOnMap(env, submissionId, camera.camera_id);
+  } catch (err) {
+    return Response.json({ success: false, error: 'map_failed' }, { status: 500 });
+  }
+  if (!result.placed) {
+    const status = result.error === 'not_found' ? 404 : result.error === 'photo_missing' ? 409 : 400;
+    return Response.json({ success: false, error: result.error }, { status });
+  }
+  // Record the camera on the sighting when it had none (never overwritten).
+  await sql.prepare(`UPDATE vehicle_observations SET camera_id = ? WHERE submission_id = ? AND camera_id IS NULL`).bind(camera.camera_id, submissionId).run();
+  return Response.json({ success: true, submission_id: submissionId, on_map: true, already_on_map: !!result.existing });
 }
 
 // GET /api/moderation/vehicle-sightings/:submissionId/photo — the photo of a
@@ -169,6 +238,16 @@ export async function apiReviewVehicleSighting(request, env, submissionId) {
     return Response.json({ success: false, error: 'already_reviewed' }, { status: 409 });
   }
 
+  // A photo sighting captured from a traffic camera goes on the Zones map as
+  // part of the same Approve (camera-sightings.js placeSightingOnMap). The
+  // approval stands either way; if placing fails, the moderator can use
+  // "Add to map". A sighting without a camera responds exactly as before.
+  if (decision === 'approved' && existing.camera_id) {
+    let map;
+    try { map = await placeSightingOnMap(env, submissionId, existing.camera_id); } catch (err) { map = { placed: false, error: 'map_failed' }; }
+    return Response.json({ success: true, submission_id: submissionId, status: decision, map: { on_map: !!map.placed, ...(map.placed ? {} : { error: map.error }) } });
+  }
+
   return Response.json({ success: true, submission_id: submissionId, status: decision });
 }
 
@@ -217,6 +296,13 @@ export async function apiPromoteVehicleSighting(request, env, submissionId) {
   }
 
   const vehicle = await db.getRegistryVehicleForModeration(sql, result.vehicleId);
+  // This approves the sighting too, so a traffic-camera photo goes on the
+  // Zones map here just as with Approve (the map row never has the plate).
+  if (existing.camera_id) {
+    let map;
+    try { map = await placeSightingOnMap(env, submissionId, existing.camera_id); } catch (err) { map = { placed: false, error: 'map_failed' }; }
+    return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle, map: { on_map: !!map.placed, ...(map.placed ? {} : { error: map.error }) } }, { status: 201 });
+  }
   return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle }, { status: 201 });
 }
 

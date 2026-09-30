@@ -48,7 +48,7 @@ async function run() {
   {
     const ctx = await app();
     const cols = ctx.d1.query(`PRAGMA table_info(camera_detections)`).map(c => c.name).join();
-    check('camera_detections has the specified columns', cols === 'id,camera_id,camera_name,lat,lng,observed_at,image_r2_key,created_at', cols);
+    check('camera_detections has the specified columns', cols === 'id,camera_id,camera_name,lat,lng,observed_at,image_r2_key,created_at,source_submission_id', cols);
     const seed = ctx.d1.query(`SELECT * FROM camera_detections`);
     check('exactly one seeded row: camera 65 at MLK / Trinity, 2026-09-30T01:24:33Z, the camera\'s inventory coordinates, no image yet',
       seed.length === 1 && seed[0].camera_id === '65' && seed[0].camera_name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' &&

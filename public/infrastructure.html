@@ -236,6 +236,14 @@
       <p id="sightingDateHelp" class="text-[11px] text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
+      <label for="sightingCamera" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
+      <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+        <option value="">Not a traffic camera</option>
+      </select>
+      <p id="sightingCameraHelp" class="text-[11px] text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
+    </div>
+    <div>
       <label for="sightingNotes" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
     </div>
@@ -261,7 +269,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/main.js?v=11"></script>
 <script>
   CCC.init();
 
@@ -343,11 +351,6 @@
     });
     map.addLayer({ id: 'robotaxi-zone-fill', type: 'fill', source: 'robotaxi-zone', paint: { 'fill-color': '#E82127', 'fill-opacity': 0.14 } });
     map.addLayer({ id: 'robotaxi-zone-line', type: 'line', source: 'robotaxi-zone', paint: { 'line-color': '#E82127', 'line-width': 2 } });
-    map.on('click', 'robotaxi-zone-fill', (e) => {
-      new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<div class="text-xs font-semibold text-crimson">Austin Robotaxi Service Zone</div>').addTo(map);
-    });
-    map.on('mouseenter', 'robotaxi-zone-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'robotaxi-zone-fill', () => { map.getCanvas().style.cursor = ''; });
   });
 
   function addPin(lat, lng, color, html, size = 14) {
