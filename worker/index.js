@@ -13,6 +13,7 @@ import { apiSearchPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
+import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -321,6 +322,20 @@ export default {
     const sightingPhotoMatch = url.pathname.match(/^\/api\/sightings\/([^/]+)\/photo$/);
     if (sightingPhotoMatch && request.method === 'GET') {
       return withCors(await apiGetPublicSightingPhoto(request, env, sightingPhotoMatch[1]), request);
+    }
+
+    // Camera-watch Cybercab detections for the Zones map (worker/camera-sightings.js):
+    // public GETs; the POST is the hourly watch's bearer-token upload
+    // (server-to-server, no CORS).
+    if (url.pathname === '/api/camera-sightings' && request.method === 'GET') {
+      return withCors(await apiListCameraSightings(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/camera-sightings' && request.method === 'POST') {
+      return apiCreateCameraSighting(request, env);
+    }
+    const cameraImageMatch = url.pathname.match(/^\/api\/camera-sightings\/([^/]+)\/image$/);
+    if (cameraImageMatch && request.method === 'GET') {
+      return withCors(await apiGetCameraSightingImage(request, env, cameraImageMatch[1]), request);
     }
 
     // Public robotaxi vehicle info (worker/vehicles.js) — deliberately the
