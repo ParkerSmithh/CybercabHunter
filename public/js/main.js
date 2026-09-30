@@ -694,6 +694,14 @@ const CCC = (() => {
     // Same one-time toast/scrub for the Google Sign-In round trip
     // (worker/google-auth.js's callback uses ?signin= instead of ?tesla=
     // since it's not Tesla-specific).
+    // After a self-serve account deletion (profile.html -> DELETE /api/account).
+    if (params.get('account') === 'deleted') {
+      toast('Your account has been deleted.', 'success');
+      params.delete('account');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+    }
+
     const signinResult = params.get('signin');
     if (signinResult === 'success') googleSignInJustCompleted = true;   // for initGmailOnboarding
     if (signinResult) {

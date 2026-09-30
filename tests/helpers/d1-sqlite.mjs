@@ -82,7 +82,16 @@ export function fakeR2() {
   return {
     // Like real R2, an object keeps the metadata it was stored with.
     async put(key, value, options = {}) { objects.set(key, value); meta.set(key, options); },
-    async delete(key) { objects.delete(key); meta.delete(key); },
+    // Like real R2: one key or an array of keys.
+    async delete(keys) { for (const key of [].concat(keys)) { objects.delete(key); meta.delete(key); } },
+    // Like real R2's list: keys under a prefix, in key order, paged by cursor.
+    async list({ prefix = '', cursor, limit = 1000 } = {}) {
+      const all = [...objects.keys()].filter(k => k.startsWith(prefix)).sort();
+      const start = cursor ? Number(cursor) : 0;
+      const page = all.slice(start, start + limit);
+      const truncated = start + limit < all.length;
+      return { objects: page.map(key => ({ key })), truncated, cursor: truncated ? String(start + limit) : undefined };
+    },
     async get(key) {
       if (!objects.has(key)) return null;
       const { httpMetadata, customMetadata } = meta.get(key) || {};

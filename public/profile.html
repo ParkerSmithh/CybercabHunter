@@ -156,6 +156,35 @@
           <p id="editProfileError" class="text-xs text-crimson"></p>
         </div>
       </div>
+
+      <!-- Danger zone: permanently delete this account (DELETE /api/account,
+           worker/account.js). Two steps: the button opens the explanation,
+           and the delete only runs once DELETE has been typed. -->
+      <div id="dangerZone" class="mt-6 rounded-2xl border border-crimson/40 bg-crimson/[0.04] p-6">
+        <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-crimson">Danger zone</h2>
+        <div class="flex items-center justify-between gap-4 flex-wrap mt-3">
+          <p class="text-sm text-slate-300">Permanently delete your account and all of your data.</p>
+          <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-white hover:brightness-110">Delete account</button>
+        </div>
+        <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-crimson/30">
+          <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
+          <p class="text-xs text-slate-400 mt-2">Deleting your account removes:</p>
+          <ul class="text-xs text-slate-400 mt-1.5 space-y-1 list-disc pl-5">
+            <li>your account, profile, username and Community listing</li>
+            <li>your Google, Tesla and Gmail connections (Gmail access is revoked)</li>
+            <li>your ride history, receipts and receipt forwarding address</li>
+            <li>your submissions and sightings, including their photos</li>
+          </ul>
+          <p class="text-xs text-slate-500 mt-2">Vehicles in the public registry stay listed; your name is removed from them.</p>
+          <label for="deleteAccountConfirm" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Type DELETE to confirm</label>
+          <input id="deleteAccountConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" class="mt-2 w-full max-w-xs bg-panel border border-crimson/40 rounded-lg px-3 py-2.5 text-sm">
+          <div class="flex items-center gap-2 mt-4 flex-wrap">
+            <button id="deleteAccountSubmit" type="button" disabled class="px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Permanently delete my account</button>
+            <button id="deleteAccountCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm text-slate-400 border border-white/10 hover:text-slate-200">Cancel</button>
+          </div>
+          <p id="deleteAccountError" class="text-xs text-crimson mt-3" role="alert"></p>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -297,7 +326,7 @@
 </footer>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=11"></script>
+<script src="js/main.js?v=12"></script>
 <script>
   CCC.init();
 
@@ -472,8 +501,55 @@
     });
   }
 
+  // Danger zone: DELETE /api/account for the signed-in account only.
+  function initDeleteAccount(sessionId) {
+    const openBtn = document.getElementById('deleteAccountBtn');
+    const panel = document.getElementById('deleteAccountPanel');
+    const input = document.getElementById('deleteAccountConfirm');
+    const submit = document.getElementById('deleteAccountSubmit');
+    const cancel = document.getElementById('deleteAccountCancel');
+    const errorEl = document.getElementById('deleteAccountError');
+    if (!openBtn) return;
+    const setOpen = open => {
+      panel.classList.toggle('hidden', !open);
+      openBtn.setAttribute('aria-expanded', String(open));
+      if (!open) { input.value = ''; submit.disabled = true; errorEl.textContent = ''; } else input.focus();
+    };
+    openBtn.addEventListener('click', () => setOpen(panel.classList.contains('hidden')));
+    cancel.addEventListener('click', () => setOpen(false));
+    input.addEventListener('input', () => { submit.disabled = input.value.trim() !== 'DELETE'; });
+    submit.addEventListener('click', async () => {
+      if (input.value.trim() !== 'DELETE' || !sessionId) return;
+      submit.disabled = true;
+      submit.textContent = 'Deleting…';
+      errorEl.textContent = '';
+      let resp = null, body = {};
+      try {
+        resp = await fetch(TESLA_WORKER_URL + '/api/account', {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + sessionId, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirm: 'DELETE' })
+        });
+        body = await resp.json().catch(() => ({}));
+      } catch (e) { resp = null; }
+      if (resp && resp.ok) {
+        localStorage.removeItem(TESLA_SESSION_KEY);
+        window.location.href = 'index.html?account=deleted';
+        return;
+      }
+      submit.textContent = 'Permanently delete my account';
+      submit.disabled = input.value.trim() !== 'DELETE';
+      errorEl.textContent = resp && resp.status === 409 && body.error === 'last_moderator'
+        ? 'You are the last moderator — transfer the role before deleting your account.'
+        : resp && resp.status === 401 ? 'Your session has ended — sign in again to delete your account.'
+        : resp && resp.status === 429 ? 'Too many attempts — please wait a minute and try again.'
+        : "Couldn't delete your account. Please try again.";
+    });
+  }
+
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
   initEditProfilePanel(sessionId);
+  initDeleteAccount(sessionId);
 
   if (!sessionId) {
     document.getElementById('profileSignedOut').classList.remove('hidden');

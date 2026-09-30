@@ -50,12 +50,19 @@ async function requireUserId(request, env) {
   if (!sessionId) return null;
   const raw = await env.TESLA_SESSIONS.get(`session:${sessionId}`);
   if (!raw) return null;
+  let userId = null;
   try {
-    const parsed = JSON.parse(raw);
-    return parsed.user_id || null;
+    userId = JSON.parse(raw).user_id || null;
   } catch (err) {
     return null;
   }
+  if (!userId) return null;
+  // A deleted account (worker/account.js) leaves a tombstone keyed by the id's
+  // hash, so every session it still had stops working immediately.
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(userId));
+  const idHash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  if (await env.TESLA_SESSIONS.get(`deleted_user:${idHash}`)) return null;
+  return userId;
 }
 
 // Best-effort decode of the OIDC id_token's `sub` claim, used only to

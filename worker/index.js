@@ -14,6 +14,7 @@ import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
+import { apiDeleteAccount } from './account.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -309,6 +310,12 @@ export default {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetSyncStatus(request, env, userId), request);
+    }
+
+    // The signed-in rider deletes their own account (worker/account.js). The
+    // account is always the session's; nothing in the request names it.
+    if (url.pathname === '/api/account' && request.method === 'DELETE') {
+      return withCors(await apiDeleteAccount(request, env), request);
     }
 
     if (url.pathname === '/api/profile' && request.method === 'GET') {
