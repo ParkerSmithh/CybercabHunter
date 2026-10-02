@@ -167,12 +167,11 @@
            the Cars page count). This is registry coverage, not Tesla's real
            fleet size, so it's labeled that way rather than as an authoritative
            fleet count. Nothing here is hard-coded; see initFleetGrowthChart(). -->
-      <!-- Wide/short like a typical line-chart dashboard card (~2:1), not
-           stretched to the square mini-map's height — sm:self-start opts out
-           of the grid row's default stretch so aspect-[2/1] actually governs
-           the height instead of being overridden by it. Mobile keeps a taller,
-           more usable ratio (no forced aspect-ratio there). -->
-      <div id="homeFleetChart" class="glass rounded-2xl p-5 reveal-on-scroll flex flex-col sm:aspect-[2/1] sm:self-start xl:col-span-2">
+      <!-- The same height as the map card beside it, top and bottom level: the
+           map card's shape sets the grid row's height and this card stretches
+           to fill it (the chart redraws to the box's real size). On phones,
+           where the two stack, the chart keeps its own minimum height. -->
+      <div id="homeFleetChart" class="glass rounded-2xl p-5 reveal-on-scroll flex flex-col xl:col-span-2">
         <div class="flex items-start justify-between gap-3 mb-1">
           <div>
             <h3 class="font-display font-bold text-lg">FLEET GROWTH</h3>
@@ -185,10 +184,8 @@
             <button data-range="all" class="range-btn text-[11px] font-semibold px-2 py-1 rounded-md text-slate-400">All</button>
           </div>
         </div>
-        <!-- min-h only matters below sm, where the card has no fixed aspect
-             ratio — above it, a min-height taller than what aspect-[2/1]
-             implies at that column width would win over the ratio and stretch
-             the card back out (verified: it did, at the narrower sm breakpoint). -->
+        <!-- min-h only matters on phones (cards stacked); from sm up the card
+             takes the map card's height, so no minimum may push it taller. -->
         <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2"></div>
       </div>
 
