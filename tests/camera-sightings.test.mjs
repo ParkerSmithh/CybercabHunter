@@ -235,32 +235,57 @@ async function run() {
     check('the icon file exists where the page references it', fs.existsSync(`${ROOT}public/images/CybercabOverhead.png`));
   }
 
-  console.log('8. Homepage minimap: interactive, with the Zones map\'s features');
+  console.log('8. Homepage minimap: interactive, the Zones look, no markers; the Zones zone is gold');
   {
     const INDEX = fs.readFileSync(`${ROOT}public/index.html`, 'utf8');
-    const dom = new JSDOM('<!doctype html><body><div id="zoneMap-austin"></div></body>', { runScripts: 'outside-only', url: 'https://cybercabhunter.com/' });
-    const w = dom.window;
-    const made = { maps: [], markers: [], controls: [] };
-    class Marker { constructor(o) { this.el = o.element; } setLngLat(ll) { this.ll = ll; return this; } setPopup(p) { this.popup = p; return this; } getPopup() { return this.popup; } addTo() { made.markers.push(this); return this; } remove() { this.removed = true; } }
-    class Popup { constructor(o) { this.o = o; } setHTML(h) { this.html = h; return this; } }
-    w.maplibregl = {
-      Map: class { constructor(o) { this.o = o; made.maps.push(this); this.touchZoomRotate = { disableRotation: () => { this.noTouchRotate = true; } }; } on() {} addControl(c, pos) { made.controls.push({ c, pos }); } },
-      NavigationControl: class { constructor(o) { this.o = o; } }, Marker, Popup, LngLatBounds: class { extend() { return this; } }
-    };
-    w.ResizeObserver = class { observe() {} };
-    w.setInterval = () => 0;
-    w.fetch = async () => new Response(JSON.stringify([{ camera_id: '65', camera_name: 'MLK / TRINITY', lat: 30.28, lng: -97.73, observed_at: '2026-09-30T01:24:33Z', image_url: null }]));
-    const mapScript = INDEX.slice(INDEX.indexOf('  // ---- Austin Robotaxi service zone (Tesla'), INDEX.indexOf('  // ---- Home Austin/Dallas selector'));
-    w.eval(`${fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8')}\n${mapScript}`);
-    await new Promise(r => setTimeout(r, 30));
-    const o = made.maps[0] && made.maps[0].o;
-    check('the homepage map is interactive (no longer interactive:false)', o && o.interactive !== false);
-    check('cooperative gestures: page scrolling isn\'t hijacked; no rotation', o.cooperativeGestures === true && o.dragRotate === false && made.maps[0].noTouchRotate === true);
-    check('zoom buttons (bottom-right, clear of the info card) and the compact attribution', made.controls.some(c => c.pos === 'bottom-right' && c.c.o && c.c.o.showCompass === false) && o.attributionControl && o.attributionControl.compact === true);
-    check('the same charging pins as the Zones map', made.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html)).length === 2);
-    check('...and the camera-spotted Cybercabs', made.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('the homepage loads the shared script', /<script src="js\/austin-map\.js\?v=1"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=1"><\/script>/.test(HTML));
-    w.close();
+    const SHARED = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8');
+    // Run one page's map code against a recording MapLibre stub; returns what it did.
+    async function runMap(script, html = '<!doctype html><body><div id="zoneMap-austin"></div></body>') {
+      const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/' });
+      const w = dom.window;
+      const made = { maps: [], markers: [], controls: [], paints: {}, layers: [] };
+      class Marker { constructor(o) { this.el = o.element; } setLngLat(ll) { this.ll = ll; return this; } setPopup(p) { this.popup = p; return this; } getPopup() { return this.popup; } addTo() { made.markers.push(this); return this; } remove() { this.removed = true; } }
+      class Popup { constructor(o) { this.o = o; } setHTML(h) { this.html = h; return this; } }
+      const BASE = ['background', 'water', 'landcover_wood', 'park', 'landuse_residential', 'building', 'waterway', 'place_town'];
+      w.maplibregl = {
+        Map: class {
+          constructor(o) { this.o = o; this.cbs = []; made.maps.push(this); this.touchZoomRotate = { disableRotation: () => { this.noTouchRotate = true; } }; }
+          on(ev, a, b) { if (ev === 'load' && typeof a === 'function') this.cbs.push(a); }
+          addControl(c, pos) { made.controls.push({ c, pos }); }
+          getLayer(id) { return BASE.includes(id) ? { id } : null; }
+          setPaintProperty(id, prop, v) { made.paints[`${id}.${prop}`] = v; }
+          setLayoutProperty() {} setLayerZoomRange() {}
+          addSource() {} addLayer(l) { made.layers.push(l); } fitBounds() {} resize() {}
+          getCanvas() { return { style: {} }; }
+        },
+        NavigationControl: class { constructor(o) { this.o = o; } }, Marker, Popup, LngLatBounds: class { extend() { return this; } }
+      };
+      w.ResizeObserver = class { observe() {} };
+      w.setInterval = () => 0;
+      w.fetch = async () => new Response(JSON.stringify([{ camera_id: '65', camera_name: 'MLK / TRINITY', lat: 30.28, lng: -97.73, observed_at: '2026-09-30T01:24:33Z', image_url: null }]));
+      w.eval(`${SHARED}\n${script}`);
+      made.maps.forEach(m => m.cbs.forEach(cb => cb()));
+      await new Promise(r => setTimeout(r, 30));
+      w.close();
+      return made;
+    }
+    const home = await runMap(INDEX.slice(INDEX.indexOf('  // ---- Austin Robotaxi service zone (Tesla'), INDEX.indexOf('  // ---- Home Austin/Dallas selector')));
+    const o = home.maps[0] && home.maps[0].o;
+    check('the homepage map is interactive', o && o.interactive !== false);
+    check('cooperative gestures: page scrolling isn\'t hijacked; no rotation', o.cooperativeGestures === true && o.dragRotate === false && home.maps[0].noTouchRotate === true);
+    check('zoom buttons (bottom-right) and the compact attribution', home.controls.some(c => c.pos === 'bottom-right' && c.c.o && c.c.o.showCompass === false) && o.attributionControl && o.attributionControl.compact === true);
+    check('NO charging pins and NO camera Cybercabs on the minimap', !home.markers.some(m => /Charging Location/.test(m.popup && m.popup.html || '')) && !home.markers.some(m => m.el.className === 'camera-cybercab'));
+    check('the Zones page basemap look (dark water, no blue)', home.paints['water.fill-color'] === '#0c1119' && home.paints['background.background-color'] === '#080a10' && !home.paints['waterway.line-color'] && !home.paints['place_town.text-color']);
+    const zoneColors = layers => layers.filter(l => /^zone/.test(l.id)).map(l => l.paint['fill-color'] || l.paint['line-color']);
+    check('the gold service zone', zoneColors(home.layers).length === 3 && zoneColors(home.layers).every(c => /^#FF(C72C|D23F)$/.test(c)));
+
+    const ZONES = fs.readFileSync(`${ROOT}public/infrastructure.html`, 'utf8');
+    const zonesScript = [...ZONES.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map)'));
+    const zones = await runMap(zonesScript.replace(/CCC\.init\(\);|CCC\.animateCounter\([^;]*;/g, ''), ZONES.replace(/<script[\s\S]*?<\/script>/g, ''));
+    check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
+    check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
+    check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
+    check('both pages load the shared script (v2)', /<script src="js\/austin-map\.js\?v=2"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=2"><\/script>/.test(ZONES));
   }
 
   t.finish();

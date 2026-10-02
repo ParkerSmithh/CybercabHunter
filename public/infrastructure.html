@@ -289,7 +289,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=13"></script>
-<script src="js/austin-map.js?v=1"></script>
+<script src="js/austin-map.js?v=2"></script>
 <script>
   CCC.init();
 
@@ -395,21 +395,11 @@
   );
   map.fitBounds(zoneBounds, { padding: 24, animate: false });
 
+  // The dark basemap and the gold service zone — the same as the homepage
+  // minimap (js/austin-map.js).
   map.on('load', () => {
-    // Darken the default basemap for a near-black dark-mode look.
-    map.setPaintProperty('background', 'background-color', '#080a10');
-    map.setPaintProperty('water', 'fill-color', '#0c1119');
-    map.setPaintProperty('landcover_wood', 'fill-color', 'hsla(232,18%,10%,0.6)');
-    map.setPaintProperty('park', 'fill-color', 'hsl(204,17%,12%)');
-    map.setPaintProperty('landuse_residential', 'fill-color', '#12151d');
-    map.setPaintProperty('building', 'fill-color', 'hsla(232,30%,6%,0.6)');
-
-    map.addSource('robotaxi-zone', {
-      type: 'geojson',
-      data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [serviceZoneCoords] } }
-    });
-    map.addLayer({ id: 'robotaxi-zone-fill', type: 'fill', source: 'robotaxi-zone', paint: { 'fill-color': '#E82127', 'fill-opacity': 0.14 } });
-    map.addLayer({ id: 'robotaxi-zone-line', type: 'line', source: 'robotaxi-zone', paint: { 'line-color': '#E82127', 'line-width': 2 } });
+    CCCAustinMap.styleBasemap(map);
+    CCCAustinMap.addServiceZone(map, serviceZoneCoords);
   });
 
   // Charging locations and camera-spotted Cybercabs (shared with the homepage

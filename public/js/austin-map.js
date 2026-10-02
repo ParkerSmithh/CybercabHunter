@@ -1,12 +1,37 @@
-/* Shared Austin map features: the Zones page map (infrastructure.html) and the
-   homepage minimap (index.html) both call CCCAustinMap.addFeatures(map), so
-   the two can't drift apart:
-     - the real, publicly reported Cybercab charging locations (gold pins)
+/* Shared Austin map pieces, so the Zones page map (infrastructure.html) and the
+   homepage minimap (index.html) can't drift apart:
+     - styleBasemap(map): the dark basemap look (both maps)
+     - addServiceZone(map, coords): the gold service zone (both maps)
+     - addFeatures(map): the Zones map's markers only (not the minimap) —
+       the real, publicly reported Cybercab charging locations (gold pins)
      - Cybercabs spotted by the traffic-camera watch (GET /api/camera-sightings,
        worker/camera-sightings.js): one marker per camera with a detection in
        the last 24 hours, refreshed every 60s and reconciled by camera_id.
    Needs MapLibre (maplibregl) and the page's map instance. */
 window.CCCAustinMap = (function () {
+  // The near-black dark-mode look on OpenFreeMap's "fiord" style. Call on load.
+  function styleBasemap(map) {
+    const paint = (id, prop, value) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, value); };
+    paint('background', 'background-color', '#080a10');
+    paint('water', 'fill-color', '#0c1119');
+    paint('landcover_wood', 'fill-color', 'hsla(232,18%,10%,0.6)');
+    paint('park', 'fill-color', 'hsl(204,17%,12%)');
+    paint('landuse_residential', 'fill-color', '#12151d');
+    paint('building', 'fill-color', 'hsla(232,30%,6%,0.6)');
+  }
+
+  // The service zone in gold: a light wash (the streets show through), a soft
+  // wide glow, then a crisp bright outline. Call on load.
+  function addServiceZone(map, coords) {
+    map.addSource('service-zone', {
+      type: 'geojson',
+      data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
+    });
+    map.addLayer({ id: 'zone-fill', type: 'fill', source: 'service-zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': 0.13 } });
+    map.addLayer({ id: 'zone-line-glow', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': 0.45 } });
+    map.addLayer({ id: 'zone-line', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFD23F', 'line-width': 2.5 } });
+  }
+
   function addFeatures(map) {
     function addPin(lat, lng, color, html, size = 14) {
       const el = document.createElement('span');
@@ -103,5 +128,5 @@ window.CCCAustinMap = (function () {
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
   }
-  return { addFeatures };
+  return { styleBasemap, addServiceZone, addFeatures };
 })();

@@ -350,7 +350,7 @@
 <script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=13"></script>
 <script src="js/home-stats.js?v=1"></script>
-<script src="js/austin-map.js?v=1"></script>
+<script src="js/austin-map.js?v=2"></script>
 <script>
   CCC.init();
 
@@ -408,47 +408,6 @@
   ];
 
   // ---- Service zone maps (app-style yellow zone display) ----
-  // A dark, legible basemap on OpenFreeMap's "fiord" style: near-black land,
-  // dark-green woods and parks, blue water, grey streets with brighter
-  // highways (shown from zoom 8 so the whole zone shows its street grid),
-  // highway numbers, and nearby town names. Railways, buildings, boundaries
-  // and the basemap's own big-city label (the zone has its own "Austin"
-  // marker) are hidden. Every call is guarded: a layer missing from a future
-  // version of the style is simply skipped.
-  function styleZoneBasemap(map) {
-    const paint = (id, prop, value) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, value); };
-    const hide = id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none'); };
-    const fromZoom = (id, z) => { if (map.getLayer(id)) map.setLayerZoomRange(id, z, 24); };
-    paint('background', 'background-color', '#05080c');
-    paint('landuse_residential', 'fill-color', '#0a0f14');
-    paint('landcover_wood', 'fill-color', 'rgba(18,52,34,0.75)');
-    paint('park', 'fill-color', 'rgba(16,46,30,0.7)');
-    paint('water', 'fill-color', '#0e3b5f');
-    paint('waterway', 'line-color', '#1d5a8c');
-    paint('waterway', 'line-opacity', 0.9);
-    paint('highway_minor', 'line-color', 'rgba(148,163,184,0.16)');
-    fromZoom('highway_minor', 9);
-    for (const id of ['highway_major_inner', 'highway_major_subtle']) { paint(id, 'line-color', 'rgba(156,163,175,0.42)'); fromZoom(id, 8); }
-    for (const id of ['highway_motorway_inner', 'highway_motorway_subtle']) { paint(id, 'line-color', 'rgba(203,213,225,0.55)'); fromZoom(id, 6); }
-    for (const id of ['highway_major_casing', 'highway_motorway_casing', 'tunnel_motorway_casing', 'tunnel_motorway_inner', 'building',
-      'railway', 'railway_dashline', 'railway_transit', 'railway_transit_dashline', 'railway_service', 'railway_service_dashline',
-      'boundary_state', 'boundary_country_z0-4', 'boundary_country_z5-', 'water_name', 'highway_name_other', 'place_city', 'place_city_large',
-      'place_state', 'place_country_other', 'place_country_minor', 'place_country_major', 'place_continent', 'park_outline']) hide(id);
-    // Highway numbers: small white route shields (dark plate, light text).
-    paint('highway_ref', 'text-color', '#f1f5f9');
-    paint('highway_ref', 'text-halo-color', '#0b1220');
-    paint('highway_ref', 'text-halo-width', 2.5);
-    paint('highway_ref', 'text-halo-blur', 0);
-    // Nearby towns and neighborhoods: clean white labels with a dark halo.
-    for (const id of ['place_town', 'place_village', 'place_suburb', 'place_other']) {
-      paint(id, 'text-color', 'rgba(241,245,249,0.92)');
-      paint(id, 'text-halo-color', 'rgba(5,8,12,0.9)');
-      paint(id, 'text-halo-width', 1.4);
-      paint(id, 'text-halo-blur', 0.5);
-      paint(id, 'icon-opacity', 0);
-    }
-  }
-
   function initZoneMap(containerId, cityName, cityCenter, zoneCoords) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -467,10 +426,10 @@
     });
     zoneMap.touchZoomRotate.disableRotation();
     zoneMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-    // The Zones map's charging pins and camera-spotted Cybercabs (js/austin-map.js).
-    if (window.CCCAustinMap) CCCAustinMap.addFeatures(zoneMap);
+    // The charging pins and camera-spotted Cybercabs stay on the full Zones map only.
     zoneMap.on('load', () => {
-      styleZoneBasemap(zoneMap);
+      // The same dark basemap and gold zone as the Zones page map (js/austin-map.js).
+      CCCAustinMap.styleBasemap(zoneMap);
 
       const bounds = zoneCoords.reduce(
         (b, c) => b.extend(c),
@@ -478,15 +437,7 @@
       );
       // The whole zone, centered with an even margin (nothing overlays the map).
       zoneMap.fitBounds(bounds, { padding: 28, animate: false });
-      zoneMap.addSource('zone', {
-        type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [zoneCoords] } }
-      });
-      // The zone: a light gold wash (the streets show through), a soft wide
-      // glow, then a crisp bright outline on top.
-      zoneMap.addLayer({ id: 'zone-fill', type: 'fill', source: 'zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': 0.13 } });
-      zoneMap.addLayer({ id: 'zone-line-glow', type: 'line', source: 'zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': 0.45 } });
-      zoneMap.addLayer({ id: 'zone-line', type: 'line', source: 'zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFD23F', 'line-width': 2.5 } });
+      CCCAustinMap.addServiceZone(zoneMap, zoneCoords);
 
       const labelEl = document.createElement('div');
       labelEl.style.cssText = 'display:flex;align-items:center;gap:7px;white-space:nowrap;';
