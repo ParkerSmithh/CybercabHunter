@@ -169,7 +169,8 @@
           <div class="w-full rounded-t-md ${n ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-white/5'}" style="height:${n ? pct * 0.85 : 3}%"></div>
         </div>`;
       }).join('');
-      $('monthlyLabels').innerHTML = months.map(m => `<div class="flex-1 text-center text-[10px] text-slate-500">${esc(m.label)}</div>`).join('');
+      // Phones show the month's initial (twelve full labels don't fit at 320px).
+      $('monthlyLabels').innerHTML = months.map(m => `<div class="flex-1 min-w-0 text-center text-[10px] text-slate-500"><span class="sm:hidden" aria-hidden="true">${esc(m.label.charAt(0))}</span><span class="hidden sm:inline">${esc(m.label)}</span></div>`).join('');
     }
     // One line above the chart: rides in the window and the busiest month.
     const inWindowTotal = inWindow.reduce((n, m) => n + (m ? m.ride_count : 0), 0);

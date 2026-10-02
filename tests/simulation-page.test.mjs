@@ -40,7 +40,9 @@ async function run() {
     check('no "Fleet ROI" / "Fleet ETA" buttons and no tab panels remain', !p.d.getElementById('simTabs') && !p.d.querySelector('[role="tab"], [role="tabpanel"]') && !/>\s*Fleet ETA\s*</.test(HTML));
     check('nothing from the Fleet ETA tool remains on the page', ['simPanelEta', 'cybercabEta', 'modelyEta', 'cybercabFare', 'tripMiles', 'cybercabCount', 'modelyCount', 'cybercabRadar'].every(id => !p.d.getElementById(id)) && !/radar-sweep|view=eta|fleet-stats/i.test(HTML));
     check('the page no longer asks for the fleet stats (that was the ETA page\'s)', !p.requests.some(u => u.includes('/api/fleet-stats')));
-    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', p.d.querySelector('#mobileBottomNav').nextElementSibling.tagName === 'SECTION' && /FLEET\s*DASHBOARD/.test(p.d.querySelector('#mobileBottomNav').nextElementSibling.textContent));
+    const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling;
+    const firstContent = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav;   // the page's <main> landmark wraps it
+    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*DASHBOARD/.test(firstContent.textContent));
     const old = open('https://cybercabhunter.com/simulation?view=eta');
     check('an old ?view=eta link still opens the Fleet ROI page', old.error === null && !!old.d.getElementById('fleetSize'));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);

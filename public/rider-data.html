@@ -47,7 +47,7 @@
       </div>
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
-          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"></svg>
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
@@ -78,7 +78,8 @@
   </a>
 </nav>
 
-<section id="main" tabindex="-1" class="py-16">
+<main id="main" tabindex="-1">
+<section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
 
     <!-- Loading: skeleton while the requests are in flight (authenticated, not yet known) -->
@@ -286,6 +287,7 @@
 
   </div>
 </section>
+</main>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -294,7 +296,6 @@
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
-    <span class="w-1.5 h-1.5 rounded-full bg-gold shrink-0"></span>
     <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
   </div>
   <div class="space-y-1 mb-6">
@@ -425,6 +426,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=15"></script>
+<script src="js/rider-data.js?v=16"></script>
 </body>
 </html>

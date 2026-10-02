@@ -48,7 +48,7 @@
       </div>
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
-          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"></svg>
+          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"></svg>
           <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
         </button>
       </div>
@@ -82,8 +82,9 @@
 <!-- Laid out like the Zones page: the map fills the view below the header and
      a floating glass sidebar on the left holds everything else (lg+); on mobile
      the sidebar stacks above a tall map card. No footer on this page. -->
-<section id="main" tabindex="-1" class="pt-3 lg:pt-4 pb-3 lg:pb-4">
-  <div id="replayContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100vh-6rem)] lg:min-h-[560px]">
+<main id="main" tabindex="-1">
+<section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
+  <div id="replayContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100dvh-5rem)] lg:min-h-[560px]">
     <aside id="replayPanel" class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto replay-panel">
       <!-- Range: a segmented control, like the Zones city switch. This Month leads. -->
       <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
@@ -177,6 +178,7 @@
   body{overflow-y:hidden; height:100dvh;}
   @media (max-width:1023px){ body{overflow-y:auto; height:auto; min-height:100dvh;} }
 </style>
+</main>
 
 <!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
      Closes with the × button, a click outside the photo, or Escape. -->
@@ -195,7 +197,6 @@
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
-    <span class="w-1.5 h-1.5 rounded-full bg-gold shrink-0"></span>
     <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
   </div>
   <div class="space-y-1 mb-6">
