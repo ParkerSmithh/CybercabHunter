@@ -464,22 +464,23 @@ export default {
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
-    // Fleet ETA and Fleet ROI are now two views of one Simulation page. Their
+    // The old Fleet ROI and Fleet ETA URLs both go to the Fleet ROI page
+    // (/simulation); the Fleet ETA tool itself was removed. Their
     // old URLs (with or without .html) are permanent redirects there, so old
     // links, bookmarks and link previews keep working.
     const oldSimulationPage = url.pathname.match(/^\/(dispatch-comparison|fleet-calculator)(?:\.html)?$/);
     if (oldSimulationPage && (request.method === 'GET' || request.method === 'HEAD')) {
       const target = new URL('/simulation', url);
-      if (oldSimulationPage[1] === 'dispatch-comparison') target.searchParams.set('view', 'eta');
       return Response.redirect(target, 301);
     }
 
     // The site's images moved from the web root into /images/. The old root
     // URLs (/Cybercab2.png ...) are permanent redirects to the new place, so
     // an external link, a cached page or a link preview that still points at
-    // them keeps working. Only these five known files: any other path falls
-    // through to the static site unchanged.
-    const legacyImage = url.pathname.match(/^\/(Cybercab|Cybercab2|CybercabFlipped|HeroImage|RedModelY)\.png$/);
+    // them keeps working. Only these known files (Cybercab.png and
+    // RedModelY.png were removed with the Fleet ETA page): any other path
+    // falls through to the static site unchanged.
+    const legacyImage = url.pathname.match(/^\/(Cybercab2|CybercabFlipped|HeroImage)\.png$/);
     if (legacyImage && (request.method === 'GET' || request.method === 'HEAD')) {
       return Response.redirect(new URL(`/images/${legacyImage[1]}.png`, url), 301);
     }

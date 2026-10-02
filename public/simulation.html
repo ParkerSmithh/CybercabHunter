@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Simulation</title>
+<title>Cybercab Hunter — Fleet ROI</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -54,7 +54,7 @@
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
-      <a href="/simulation" data-nav="simulation" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Simulation</a>
+      <a href="/simulation" data-nav="simulation" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Fleet ROI</a>
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
@@ -92,23 +92,10 @@
   </a>
   <a href="/simulation" data-nav="simulation" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4 3 2.5 4.5-5.5"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Simulation</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wide">Fleet ROI</span>
   </a>
 </nav>
 
-<!-- Simulation: two tools on one page, switched with the buttons below
-     (Fleet ROI = the fleet investment calculator, Fleet ETA = the dispatch
-     comparison). The choice is kept in the URL (?view=eta). -->
-<section class="pt-8">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div id="simTabs" role="tablist" aria-label="Simulation" class="flex flex-wrap gap-2">
-      <button id="simTabRoi" type="button" role="tab" data-view="roi" aria-selected="true" aria-controls="simPanelRoi" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border transition-colors">Fleet ROI</button>
-      <button id="simTabEta" type="button" role="tab" data-view="eta" aria-selected="false" aria-controls="simPanelEta" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border transition-colors">Fleet ETA</button>
-    </div>
-  </div>
-</section>
-
-<div id="simPanelRoi" role="tabpanel" aria-labelledby="simTabRoi">
 <section class="relative overflow-hidden border-b border-[rgba(212,175,55,0.12)]">
   <div class="absolute inset-0 z-0" style="background:radial-gradient(ellipse 55% 75% at 82% 50%, rgba(212,175,55,0.16), transparent 65%);"></div>
   <div class="relative z-[1] max-w-7xl mx-auto px-6 lg:px-10 py-8 flex items-center justify-center gap-16">
@@ -214,98 +201,6 @@
     </div>
   </div>
 </section>
-</div>
-
-<div id="simPanelEta" role="tabpanel" aria-labelledby="simTabEta" class="hidden">
-<section class="py-16">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-8 max-w-2xl">
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET <span class="text-gold">ETA</span></h1>
-      <p class="mt-4 text-slate-400 text-base leading-relaxed">Model expected wait times for Cybercab vs. Model Y dispatch as fleet size, coverage area, and demand shift.</p>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- Controls (always visible) -->
-      <div class="lg:col-span-1">
-      <div class="glass rounded-2xl p-7 space-y-8 h-fit">
-        <div class="flex items-center gap-3" id="citySelector">
-          <button data-city="austin" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Austin</button>
-          <button data-city="dallas" class="city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300">Dallas</button>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Cybercabs</label>
-            <input type="number" id="cybercabCount" min="0" max="500" step="1" value="" placeholder="—" title="Austin Cybercabs with an approved sighting or a logged ride in the last 30 days" readonly class="font-display font-bold text-gold text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
-          </div>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Model Y Fleet</label>
-            <input type="number" id="modelyCount" min="0" max="500" step="1" value="" placeholder="—" title="Austin Model Y robotaxis with an approved sighting or a logged ride in the last 30 days" readonly class="font-display font-bold text-crimson text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
-          </div>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Service Radius</label>
-            <div class="flex items-center gap-1">
-              <input type="number" id="radius" value="264" readonly class="font-display font-bold text-cyan text-lg bg-transparent w-12 text-right outline-none border-b border-transparent cursor-default">
-              <span class="text-cyan text-sm font-bold">mi²</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trip Distance</label>
-            <div class="flex items-center gap-1">
-              <input type="number" id="tripMilesLabel" min="0" max="30" step="0.01" value="0" class="font-display font-bold text-gold text-lg bg-transparent w-12 text-right outline-none border-b border-transparent focus:border-gold">
-              <span class="text-gold text-sm font-bold">mi</span>
-            </div>
-          </div>
-          <input type="range" id="tripMiles" min="0" max="30" step="0.01" value="0">
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Passenger Demand</label>
-          <div class="grid grid-cols-3 gap-2" id="demandGroup">
-            <button data-demand="0.8" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300">Low</button>
-            <button data-demand="1.0" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold">Normal</button>
-            <button data-demand="1.5" class="demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300">Surge</button>
-          </div>
-        </div>
-      </div>
-      </div>
-
-      <!-- Cockpit displays -->
-      <div class="lg:col-span-2">
-      <div id="austinContent" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <div class="glass rounded-2xl p-7">
-          <div class="text-xs uppercase tracking-wider text-gold font-semibold mb-4 pb-3 border-b border-[rgba(212,175,55,0.12)]">Cybercab ETA</div>
-          <div class="font-display font-black text-5xl tabular-nums"><span id="cybercabEta">0.0</span><span class="text-base text-slate-500 font-medium ml-1">min</span></div>
-          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="cybercabFare" class="font-semibold text-gold">—</span> <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">estimate</span></div>
-          <div id="cybercabFareNote" class="text-[11px] text-slate-500 mt-1">Loading fare data…</div>
-          <div id="cybercabRadar" class="radar-sweep w-full h-64 mt-6"><img src="images/Cybercab.png" alt="Cybercab" class="radar-vehicle-img"></div>
-        </div>
-        <div class="glass rounded-2xl p-7">
-          <div class="text-xs uppercase tracking-wider text-crimson font-semibold mb-4 pb-3 border-b border-[rgba(232,33,39,0.12)]">Model Y ETA</div>
-          <div class="font-display font-black text-5xl tabular-nums"><span id="modelyEta">0.0</span><span class="text-base text-slate-500 font-medium ml-1">min</span></div>
-          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="modelyFare" class="font-semibold text-crimson">—</span> <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">estimate</span></div>
-          <div id="modelyFareNote" class="text-[11px] text-slate-500 mt-1">Loading fare data…</div>
-          <div id="modelyRadar" class="radar-sweep w-full h-64 mt-6"><img src="images/RedModelY.png" alt="Model Y" class="radar-vehicle-img"></div>
-        </div>
-      </div>
-
-      <div id="dallasContent" class="hidden glass rounded-2xl p-16 text-center flex items-center justify-center">
-        <div>
-          <div class="font-display font-bold text-3xl text-gold mb-3">NOT YET AVAILABLE</div>
-          <p class="text-slate-400 text-base max-w-md mx-auto">Dallas Fleet ETA simulation isn't available in Cybercab Hunter yet.</p>
-        </div>
-      </div>
-      </div>
-    </div>
-  </div>
-</section>
-</div>
-
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
@@ -420,7 +315,7 @@
     </div>
     <div>
       <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="/simulation" class="hover:text-white transition-colors">Simulation</a>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="/simulation" class="hover:text-white transition-colors">Fleet ROI</a>
       </div>
     </div>
     <div>
@@ -442,33 +337,12 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/calc.js?v=2"></script>
+<script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=12"></script>
 <script>
   CCC.init();
 
-  // ---- Fleet ROI | Fleet ETA ----
-  (function () {
-    const tabs = { roi: document.getElementById('simTabRoi'), eta: document.getElementById('simTabEta') };
-    const panels = { roi: document.getElementById('simPanelRoi'), eta: document.getElementById('simPanelEta') };
-    function show(view) {
-      view = view === 'eta' ? 'eta' : 'roi';
-      for (const k of ['roi', 'eta']) {
-        tabs[k].setAttribute('aria-selected', String(k === view));
-        panels[k].classList.toggle('hidden', k !== view);
-      }
-      try {
-        const url = new URL(location.href);
-        if (view === 'roi') url.searchParams.delete('view'); else url.searchParams.set('view', view);
-        history.replaceState(null, '', url);
-      } catch (e) { /* not essential */ }
-    }
-    tabs.roi.addEventListener('click', () => show('roi'));
-    tabs.eta.addEventListener('click', () => show('eta'));
-    show(new URLSearchParams(location.search).get('view'));
-  })();
-
-  // ---- Fleet ROI (each tool in its own scope: both define recompute() etc.) ----
+  // ---- Fleet ROI ----
   (function () {
     const fleetSize = document.getElementById('fleetSize');
     const electricityRate = document.getElementById('electricityRate');
@@ -682,142 +556,6 @@
     });
 
     recompute();
-  })();
-
-  // ---- Fleet ETA ----
-  (function () {
-    // ---- City selector ----
-    const cityBtns = document.querySelectorAll('.city-btn');
-    const austinContent = document.getElementById('austinContent');
-    const dallasContent = document.getElementById('dallasContent');
-    cityBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        cityBtns.forEach(b => b.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300');
-        btn.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
-        const isDallas = btn.dataset.city === 'dallas';
-        austinContent.classList.toggle('hidden', isDallas);
-        dallasContent.classList.toggle('hidden', !isDallas);
-      });
-    });
-
-    const cybercabCount = document.getElementById('cybercabCount');
-    const modelyCount = document.getElementById('modelyCount');
-    const radius = document.getElementById('radius');
-    const tripMiles = document.getElementById('tripMiles');
-    const demandBtns = document.querySelectorAll('.demand-btn');
-    let demand = 1.0;
-
-    // Count up the locked fleet stats on page load, like the homepage stats bar.
-    // The Cybercab and Model Y counts are live (loadFleetStats below).
-    CCC.animateCounter(radius, 0, parseInt(radius.value, 10), 1400);
-
-    let lastCybercabEta = 0, lastModelyEta = 0;
-
-    // Keep a range slider and its typeable number field in sync in both directions.
-    function linkSliderAndNumber(rangeEl, numberEl) {
-      rangeEl.addEventListener('input', () => {
-        numberEl.value = rangeEl.value;
-        recompute();
-      });
-      numberEl.addEventListener('input', () => {
-        if (numberEl.value === '') return;
-        rangeEl.value = numberEl.value;
-        recompute();
-      });
-    }
-
-    function recompute() {
-      const cc = parseFloat(cybercabCount.value);
-      const my = parseFloat(modelyCount.value);
-      const area = parseFloat(radius.value);
-      const miles = parseFloat(tripMiles.value);
-
-      const ccEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: cc, demandFactor: demand });
-      const myEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: my, demandFactor: demand });
-
-      if (!isFinite(cc)) {
-        document.getElementById('cybercabEta').textContent = '—';   // no live fleet count
-      } else if (cc <= 0) {
-        document.getElementById('cybercabEta').textContent = '0.0';
-      } else {
-        CCC.animateCounter(document.getElementById('cybercabEta'), isFinite(lastCybercabEta) ? lastCybercabEta : 0, ccEta, 700, v => v.toFixed(1));
-      }
-      if (!isFinite(my)) {
-        document.getElementById('modelyEta').textContent = '—';   // no Model Y fleet data
-      } else if (my <= 0) {
-        document.getElementById('modelyEta').textContent = '0.0';
-      } else {
-        CCC.animateCounter(document.getElementById('modelyEta'), isFinite(lastModelyEta) ? lastModelyEta : 0, myEta, 700, v => v.toFixed(1));
-      }
-      lastCybercabEta = isFinite(cc) ? ccEta : 0; lastModelyEta = isFinite(my) ? myEta : 0;
-
-      const live = liveFareEstimate(fareModel, miles);
-      document.getElementById('cybercabFare').textContent = live == null ? '—' : '$' + live.toFixed(2);
-      const liveMy = liveFareEstimate(modelyFareModel, miles);
-      document.getElementById('modelyFare').textContent = liveMy == null ? '—' : '$' + liveMy.toFixed(2);
-    }
-
-    // ---- Live fare model (GET /api/fleet-stats, worker/fleet-stats.js) ----
-    // ESTIMATE = trip miles × the average of two real per-mile rates:
-    //   per_mile                    total fares ÷ total miles of logged rides
-    //   median_fare ÷ median_miles  what a typical ride costs per its typical
-    //                               distance — the median-fare sanity anchor
-    // Without a fare model (no rides yet) or a trip distance: no estimate ("—").
-    // Model Y uses the same formula with its own model (rides on Model Y vehicles).
-    let fareModel = null, modelyFareModel = null;
-    function liveFareEstimate(model, miles) {
-      if (!model || !(miles > 0)) return null;
-      const { per_mile: perMile, median_fare: medianFare, median_miles: medianMiles } = model;
-      if (!(perMile > 0) || !(medianFare > 0) || !(medianMiles > 0)) return null;
-      return Math.round(miles * ((perMile + medianFare / medianMiles) / 2) * 100) / 100;
-    }
-
-    function loadFleetStats() {
-      const note = document.getElementById('cybercabFareNote');
-      fetch('/api/fleet-stats?city=austin')
-        .then(r => (r.ok ? r.json() : null))
-        .catch(() => null)
-        .then(data => {
-          if (data && Number.isFinite(data.active_cybercabs)) {
-            cybercabCount.value = String(data.active_cybercabs);
-            CCC.animateCounter(cybercabCount, 0, data.active_cybercabs, 1400);
-          }
-          const f = data && data.fares;
-          fareModel = f && f.per_mile != null ? f : null;
-          const date = f && f.computed_at ? new Date(f.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
-          note.textContent = fareModel
-            ? `From ${f.rides} logged rides · data from ${date}`
-            : (f ? 'No logged rides yet' : 'Fare data unavailable');
-
-          // Model Y: only what the site actually tracks — "—" until it does.
-          const my = data && data.model_y;
-          if (my && Number.isFinite(my.active) && my.vehicles > 0) {
-            modelyCount.value = String(my.active);
-            CCC.animateCounter(modelyCount, 0, my.active, 1400);
-          }
-          const mf = my && my.fares;
-          modelyFareModel = mf && mf.per_mile != null ? mf : null;
-          const myDate = mf && mf.computed_at ? new Date(mf.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
-          document.getElementById('modelyFareNote').textContent = !my ? 'Fare data unavailable'
-            : !(my.vehicles > 0) && !(mf && mf.rides > 0) ? "Model Y robotaxis aren't tracked yet"
-            : modelyFareModel ? `From ${mf.rides} logged rides · data from ${myDate}`
-            : 'No logged rides yet';
-          recompute();
-        });
-    }
-
-    linkSliderAndNumber(tripMiles, document.getElementById('tripMilesLabel'));
-    demandBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        demand = parseFloat(btn.dataset.demand);
-        demandBtns.forEach(b => b.className = 'demand-btn py-2.5 rounded-lg text-xs font-semibold border border-slate-700 text-slate-300');
-        btn.className = 'demand-btn py-2.5 rounded-lg text-xs font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
-        recompute();
-      });
-    });
-
-    recompute();
-    loadFleetStats();
   })();
 </script>
 </body>

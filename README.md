@@ -9,7 +9,7 @@ Not affiliated with Tesla, Inc. Vehicle sightings, receipts, and rider-submitted
 | File / route | Purpose |
 |---|---|
 | `index.html` | Homepage — hero, real registry stats, animated counters, MapLibre fleet map, recent sightings feed, Submit Sighting drawer |
-| `simulation.html` | Simulation — two views switched by buttons: **Fleet ROI** (energy overhead, gross revenue, NOI and a breakeven timeline; exports a PDF via jsPDF) and **Fleet ETA** (Cybercab vs. Model Y dispatch simulator; Austin only, Dallas explicitly marked unavailable). The old `/fleet-calculator` and `/dispatch-comparison` URLs redirect here. |
+| `simulation.html` | Fleet ROI — energy overhead, gross revenue, NOI and a breakeven timeline; exports a PDF via jsPDF. Served at `/simulation`; the old `/fleet-calculator` and `/dispatch-comparison` URLs redirect here. |
 | `infrastructure.html` | Zones — Austin/Dallas selector, a real Tesla Robotaxi service-zone map and charging-location markers for Austin; Dallas is explicitly marked unavailable |
 | `vehicles.html` (served at `/vehicles`) | Cars — the public vehicle registry: every moderator-approved, publicly eligible vehicle |
 | `vehicle.html` (served at `/vehicle/:id`) | Vehicle detail — a single public vehicle's record |
@@ -61,8 +61,8 @@ public/                     — the website (published as-is; URLs are the paths
   vehicles.html, vehicle.html, sightings.html, moderation.html, rider-data.html,
   profile.html, signin.html, privacy.html — the 11 pages (served extensionless: /vehicles, /moderation ...)
   css/style.css             — glassmorphism panels, neon glows, and keyframes Tailwind can't express
-  images/                   — Cybercab.png, Cybercab2.png, CybercabFlipped.png, HeroImage.png, RedModelY.png
-  js/calc.js                — pure calculation functions (ETA, arrival odds, fleet ROI), no DOM dependency
+  images/                   — Cybercab2.png, CybercabFlipped.png, CybercabOverhead.png, HeroImage.png
+  js/calc.js                — pure calculation functions (fleet ROI), no DOM dependency
   js/main.js                — shared runtime: nav highlighting, session/account menu, Tesla-link button,
                               scroll-reveal, counters, toasts, sighting drawer
   js/home-stats.js          — fetches and renders real homepage stats from GET /api/registry/stats
@@ -116,7 +116,7 @@ Two independent layers:
 node tests/calc.test.js
 ```
 
-Unit tests for `dispatchETA`, `arrivalOdds`, and `fleetFinancials` in `public/js/calc.js` — pure functions, no DOM.
+Unit tests for `fleetFinancials` in `public/js/calc.js` — a pure function, no DOM.
 
 ```bash
 node --test tests/*.test.mjs

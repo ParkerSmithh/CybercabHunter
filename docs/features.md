@@ -20,20 +20,11 @@
 - Recent sightings feed
 - Submit Sighting drawer
 
-## Simulation (`simulation.html`)
+## Fleet ROI (`simulation.html`)
 
-Two tools on one page, switched with the **Fleet ROI** and **Fleet ETA** buttons (the choice is kept in the URL as `?view=eta`). The old `/fleet-calculator` and `/dispatch-comparison` URLs permanently redirect here.
+The Fleet ROI page (nav label "Fleet ROI", URL `/simulation`). The old `/fleet-calculator` and `/dispatch-comparison` URLs permanently redirect here; the Fleet ETA dispatch simulator that used to share this page was removed.
 
-### Fleet ETA — Dispatch Comparison Simulator
-
-- Austin/Dallas city selector. Dallas shows an explicit "isn't available in Cybercab Hunter yet" state rather than any simulated data.
-- Austin: Active Cybercabs (45), Active Model Y Fleet (114), and Service Radius (264 mi²) are shown as fixed values, not adjustable sliders. The one adjustable control besides Passenger Demand is Trip Distance (0–30 mi, range slider), which drives the estimated fare shown per fleet, not the ETA itself.
-- Passenger Demand toggle: Low (0.8×) / Normal (1.0×) / Surge (1.5×)
-- Live-animated ETA "stopwatch" displays for both fleets using `ETA = k × √(Area / Fleet) × Demand`
-- Dual-colored (gold vs. crimson) Arrival Odds bar computed as `fleetA / (fleetA + fleetB)`
-- Radar-sweep graphic per fleet whose spin speed scales with that fleet's ETA
-
-### Fleet ROI — Fleet Dashboard
+### Fleet Dashboard
 
 - Adjustable inputs: fleet size, electricity rate, and daily miles/cab (range sliders), plus an inductive-loss toggle (defaults to 8%)
 - Passenger Fare, Tesla Network Cut, and Cost per Unit are shown as fixed assumptions, not adjustable inputs
@@ -45,7 +36,7 @@ Two tools on one page, switched with the **Fleet ROI** and **Fleet ETA** buttons
 
 - Austin/Dallas city selector. Dallas shows "NOT YET AVAILABLE — Dallas zone information isn't available in Cybercab Hunter yet."
 - Austin: a MapLibre GL map showing Tesla's actual published Robotaxi service-zone geofence as a polygon, plus two named, real charging-location markers (St. Elmo Robotaxi Charging Hub, Ridgepoint Robotaxi Charging Site) with popup details
-- Austin "Services in Austin" (coverage in mi², launch date) and "Fleet & Fares" (Cybercab count, median/average fare, per-mile rate) figures. **These are manually maintained, hardcoded numbers written directly into the page's own script**, shown with the same animated count-up effect used for real stats elsewhere — they are not fetched from any API and are not live telemetry.
+- Austin "Services in Austin" (coverage in mi², launch date) and "Fleet & Fares" (Cybercab count, median/average fare, per-mile rate) figures. The Cybercab count and the fares are live from `GET /api/fleet-stats` (worker/fleet-stats.js): the count is the public Austin registry, and the fares are computed daily from riders' logged Austin rides, with "—" when there are none. Coverage and the launch date are fixed text.
 
 ## Sign-in (`signin.html`)
 
