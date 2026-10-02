@@ -42,7 +42,7 @@ import { gmail } from './gmail.js';
 
 export const ACCOUNT_TOMBSTONE_TTL_SECONDS = 60 * 60 * 24 * 90;   // the longest a session lives
 const CONFIRM = 'DELETE';
-const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`, `avatars/${id}/`];
+const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`, `avatars/${id}/`, `reviews/${id}/`];
 
 export async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -106,7 +106,16 @@ export async function apiDeleteAccount(request, env) {
 
   // 2. D1 — one transaction, children before parents.
   const mine = table => sql.prepare(`DELETE FROM ${table} WHERE user_id = ?`).bind(userId);
+  const myReviews = `SELECT id FROM cybercab_reviews WHERE user_id = ?`;
   await sql.batch([
+    // Community reviews: their photos, likes and comments (anyone's), then the
+    // rider's own likes and comments on other reviews, then the reviews.
+    sql.prepare(`DELETE FROM cybercab_review_photos WHERE review_id IN (${myReviews})`).bind(userId),
+    sql.prepare(`DELETE FROM cybercab_review_likes WHERE review_id IN (${myReviews})`).bind(userId),
+    sql.prepare(`DELETE FROM cybercab_review_comments WHERE review_id IN (${myReviews})`).bind(userId),
+    mine('cybercab_review_likes'),
+    mine('cybercab_review_comments'),
+    mine('cybercab_reviews'),
     mine('receipt_ingestions'),
     sql.prepare(`DELETE FROM trips WHERE user_id = ? AND superseded_by IS NOT NULL`).bind(userId),
     mine('trips'),

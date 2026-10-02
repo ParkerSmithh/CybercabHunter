@@ -86,7 +86,88 @@
 <section class="py-16">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10">
     <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
-    <p class="mt-3 text-sm text-slate-400 leading-relaxed">The spotters who found Cybercabs first. Only vehicles in the public registry count.</p>
+    <p class="mt-3 text-sm text-slate-400 leading-relaxed">Rider reviews of the Cybercab, and the spotters who found them first.</p>
+
+    <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
+         is computed live by the server over the reviews shown; until it
+         arrives it stays an em dash. -->
+    <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 mt-8">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 class="font-display font-bold text-lg tracking-wide">CYBERCAB REVIEWS</h2>
+          <div class="flex items-center gap-3 mt-2">
+            <span id="reviewAverage" class="font-display font-bold text-4xl text-gold leading-none tabular-nums">—</span>
+            <span>
+              <span id="reviewAverageStars" class="block text-gold text-lg leading-none tracking-wider" aria-hidden="true"></span>
+              <span id="reviewCount" class="block text-[11px] text-slate-500 mt-1">No reviews yet</span>
+            </span>
+          </div>
+        </div>
+        <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)] hover:brightness-105">Write a review</button>
+      </div>
+      <p id="reviewSignInNote" class="hidden text-xs text-slate-400 mt-3"><a href="signin.html?returnTo=%2Fcommunity" class="text-gold hover:underline">Sign in</a> to review a Cybercab, like reviews and comment.</p>
+
+      <!-- Write / edit: signed-in riders only (the server checks every write). -->
+      <form id="reviewForm" class="hidden mt-5 p-4 rounded-xl border border-[rgba(212,175,55,0.2)] bg-white/[0.02] space-y-4" novalidate>
+        <h3 id="reviewFormTitle" class="font-display font-bold text-sm tracking-wide">WRITE A REVIEW</h3>
+        <div>
+          <label for="reviewVehicle" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cybercab</label>
+          <select id="reviewVehicle" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+            <option value="">Choose a Cybercab by plate</option>
+          </select>
+          <p class="text-[11px] text-slate-500 mt-1.5">Vehicles in the public registry. One review per Cybercab — you can edit yours any time.</p>
+        </div>
+        <div>
+          <span id="reviewStarsLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rating</span>
+          <div id="reviewStars" role="radiogroup" aria-labelledby="reviewStarsLabel" class="mt-2 flex gap-1">
+            <button type="button" role="radio" aria-checked="false" data-star="1" aria-label="1 star" class="review-star">★</button>
+            <button type="button" role="radio" aria-checked="false" data-star="2" aria-label="2 stars" class="review-star">★</button>
+            <button type="button" role="radio" aria-checked="false" data-star="3" aria-label="3 stars" class="review-star">★</button>
+            <button type="button" role="radio" aria-checked="false" data-star="4" aria-label="4 stars" class="review-star">★</button>
+            <button type="button" role="radio" aria-checked="false" data-star="5" aria-label="5 stars" class="review-star">★</button>
+          </div>
+        </div>
+        <div>
+          <label for="reviewBody" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Your review</label>
+          <textarea id="reviewBody" rows="5" maxlength="2000" placeholder="How was the ride? Comfort, driving, cleanliness…" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-y"></textarea>
+          <p class="text-[11px] text-slate-500 text-right"><span id="reviewBodyCount">0</span> / 2000</p>
+        </div>
+        <div>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Photos <span class="normal-case text-slate-500 font-normal">(optional, up to 3)</span></span>
+          <div id="reviewPhotoList" class="mt-2 flex flex-wrap gap-2"></div>
+          <label id="reviewPhotoAdd" for="reviewPhotos" class="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] text-xs font-semibold text-gold cursor-pointer hover:border-gold">Add photos</label>
+          <input id="reviewPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
+          <p class="text-[11px] text-slate-500 mt-1.5">JPEG, PNG or WebP · up to 5 MB each. Location data is removed from photos.</p>
+        </div>
+        <p id="reviewFormError" class="hidden text-xs text-red-300" role="alert"></p>
+        <div class="flex gap-2 justify-end">
+          <button type="button" id="reviewCancel" class="px-4 py-2.5 rounded-lg text-sm font-semibold border border-white/[0.12] text-slate-300 hover:bg-white/5">Cancel</button>
+          <button type="submit" id="reviewSubmit" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Post review</button>
+        </div>
+      </form>
+
+      <div id="reviewSort" role="group" aria-label="Sort reviews" class="mt-5 inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+        <button type="button" data-sort="recent" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Most recent</button>
+        <button type="button" data-sort="rating" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Highest rated</button>
+        <button type="button" data-sort="likes" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Most liked</button>
+      </div>
+
+      <div id="reviewLoading" class="mt-4 space-y-2" aria-busy="true">
+        <span class="sr-only">Loading reviews…</span>
+        <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
+        <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
+      </div>
+      <div id="reviewList" class="hidden mt-4 space-y-3"></div>
+      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
+        <div class="font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
+        <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
+      </div>
+      <div id="reviewError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
+        <div class="font-display font-bold tracking-wide">WE COULDN'T LOAD REVIEWS</div>
+        <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
+      </div>
+      <button type="button" id="reviewMore" class="hidden mt-4 w-full py-2.5 rounded-lg text-xs font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more reviews</button>
+    </div>
 
     <!-- Leaderboards (js/community.js). The boards come from the server; the tab
          buttons appear only once there is more than one board. -->
@@ -120,7 +201,7 @@
   </div>
 </section>
 
-<!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
+<!-- Expanded photo: opened by clicking a review photo (js/reviews.js).
      Closes with the × button, a click outside the photo, or Escape. -->
 <div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
   <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full glass flex items-center justify-center text-2xl leading-none text-slate-200 hover:text-white">&times;</button>
@@ -271,5 +352,6 @@
   CCC.init();
 </script>
 <script src="js/community.js?v=2"></script>
+<script src="js/reviews.js?v=1"></script>
 </body>
 </html>

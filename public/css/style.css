@@ -365,3 +365,11 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 .replay-odometer .od-strip{display:flex;flex-direction:column;transition:transform .45s cubic-bezier(.2,.7,.2,1);}
 .replay-odometer .od-strip span{display:block;height:1em;}
 @media (prefers-reduced-motion: reduce){.replay-odometer .od-strip{transition:none;}}
+
+/* ---------- Cybercab reviews (community.html, js/reviews.js) ---------- */
+.review-star{font-size:28px; line-height:1; padding:2px; color:#334155; transition:color .12s, transform .12s;}
+.review-star:hover, .review-star.is-on{color:#D4AF37;}
+.review-star:focus-visible{outline:2px solid #D4AF37; outline-offset:2px; border-radius:6px;}
+.review-sort{color:#cbd5e1;}
+.review-sort[aria-pressed="true"]{background:rgba(212,175,55,0.16); color:#D4AF37;}
+.review-like[aria-pressed="true"]{color:#D4AF37; border-color:rgba(212,175,55,0.45);}

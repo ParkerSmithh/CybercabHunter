@@ -15,6 +15,7 @@ import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
 import { apiDeleteAccount } from './account.js';
+import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiListReviewComments, apiCreateReviewComment, apiDeleteReviewComment, apiGetReviewPhoto } from './reviews.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
@@ -367,6 +368,41 @@ export default {
     const riderApiMatch = url.pathname.match(/^\/api\/riders\/([^/]+)$/);
     if (riderApiMatch && request.method === 'GET') {
       return withCors(await apiGetRiderProfile(request, env, ctx, riderApiMatch[1]), request);
+    }
+
+    // Cybercab reviews on the Community page (worker/reviews.js): public reads;
+    // every write is the session's own (or a moderator's delete).
+    if (url.pathname === '/api/reviews' && request.method === 'GET') {
+      return withCors(await apiListReviews(request, env), request);
+    }
+    if (url.pathname === '/api/reviews' && request.method === 'POST') {
+      return withCors(await apiCreateReview(request, env), request);
+    }
+    const reviewLikeMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/like$/);
+    if (reviewLikeMatch && (request.method === 'PUT' || request.method === 'DELETE')) {
+      return withCors(await apiSetReviewLike(request, env, reviewLikeMatch[1], request.method === 'PUT'), request);
+    }
+    const reviewCommentsMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/comments$/);
+    if (reviewCommentsMatch && request.method === 'GET') {
+      return withCors(await apiListReviewComments(request, env, reviewCommentsMatch[1]), request);
+    }
+    if (reviewCommentsMatch && request.method === 'POST') {
+      return withCors(await apiCreateReviewComment(request, env, reviewCommentsMatch[1]), request);
+    }
+    const reviewMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)$/);
+    if (reviewMatch && request.method === 'PATCH') {
+      return withCors(await apiUpdateReview(request, env, reviewMatch[1]), request);
+    }
+    if (reviewMatch && request.method === 'DELETE') {
+      return withCors(await apiDeleteReview(request, env, reviewMatch[1]), request);
+    }
+    const reviewCommentMatch = url.pathname.match(/^\/api\/review-comments\/([^/]+)$/);
+    if (reviewCommentMatch && request.method === 'DELETE') {
+      return withCors(await apiDeleteReviewComment(request, env, reviewCommentMatch[1]), request);
+    }
+    const reviewPhotoMatch = url.pathname.match(/^\/api\/review-photos\/([^/]+)$/);
+    if (reviewPhotoMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      return withCors(await apiGetReviewPhoto(request, env, reviewPhotoMatch[1]), request);
     }
 
     // Camera-watch Cybercab detections for the Zones map (worker/camera-sightings.js):

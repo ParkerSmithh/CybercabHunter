@@ -58,6 +58,16 @@
 				"limit": 5,
 				"period": 60
 			}
+		},
+		{
+			// Community reviews (worker/reviews.js): review, comment and like
+			// writes, per rider.
+			"name": "REVIEWS_LIMITER",
+			"namespace_id": "7303",
+			"simple": {
+				"limit": 20,
+				"period": 60
+			}
 		}
 	],
 	"observability": {
