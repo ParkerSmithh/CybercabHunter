@@ -83,33 +83,29 @@
 </nav>
 
 <!-- ===== Hero =====
-     Asymmetric split: the message and actions on the page's own background,
-     the photograph in a frame beside it (so the hero reads the same in the
-     light and dark themes). One headline, one line of subtext, two actions. -->
+     The photograph at full width, 600px tall, with the message over it. It
+     is a photo with its own dark scrim, so its text stays light in both themes. -->
 <main id="main" tabindex="-1">
-<section class="relative overflow-hidden">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-10 pb-12 lg:pt-16 lg:pb-20 grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
-    <div class="reveal-on-scroll">
-      <h1 class="font-display font-bold text-[2.5rem] leading-[1.02] sm:text-[3.4rem] lg:text-[3.3rem] xl:text-[3.6rem] tracking-[-0.035em] text-white">
-        TRACK THE <span class="text-gold">FUTURE</span> OF AUTONOMY
+<section class="relative min-h-[600px] flex items-end overflow-hidden">
+  <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover object-[70%_center]" fetchpriority="high" decoding="async">
+  <div class="absolute inset-0" style="background:linear-gradient(90deg, rgba(9,11,15,0.96) 0%, rgba(9,11,15,0.82) 34%, rgba(9,11,15,0.2) 64%, rgba(9,11,15,0.05) 100%), linear-gradient(0deg, rgba(9,11,15,0.92) 0%, rgba(9,11,15,0) 46%);" aria-hidden="true"></div>
+  <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
+    <div class="max-w-xl reveal-on-scroll">
+      <h1 class="font-display font-bold text-[2.5rem] leading-[1.02] sm:text-[3.4rem] lg:text-6xl tracking-[-0.035em] text-paper">
+        TRACK THE <span class="text-[#D4AF37]">FUTURE</span> OF AUTONOMY
       </h1>
-      <p class="mt-5 text-base lg:text-lg text-slate-400 max-w-[34ch] leading-relaxed">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
       <div class="flex flex-wrap gap-3 mt-8">
         <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_10px_24px_-14px_rgba(212,175,55,0.9)]">
           Browse sightings
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
-        <a href="/replay?range=month" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border border-white/15 text-white hover:bg-white/5">
-          <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>
-          Watch the replay
-        </a>
       </div>
     </div>
-    <figure class="reveal-on-scroll relative rounded-2xl overflow-hidden border border-white/[0.08] aspect-[4/3] lg:aspect-[16/11] bg-panel shadow-[0_30px_60px_-30px_rgb(0_0_0/0.6)]">
-      <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" decoding="async">
-    </figure>
   </div>
+</section>
 
+<section class="relative pt-8">
   <!-- ===== Stats bar =====
        Live counts (GET /api/registry/stats, js/home-stats.js). Each starts
        as an em dash and only becomes the server's number. -->
