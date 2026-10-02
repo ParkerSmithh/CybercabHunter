@@ -1,9 +1,10 @@
 /* Cybercab Hunter: the design system's runtime half (the tokens themselves
    live in css/style.css). Loaded in <head> right after the Tailwind CDN on
    every page, before anything paints:
-     1. Theme: light or dark on <html data-theme>, from the visitor's choice
-        (localStorage 'cchTheme': system | light | dark) or, by default, the
-        system setting. Set before first paint, so there is no flash.
+     1. Theme: light or dark on <html data-theme>. Dark by default for
+        everyone; the visitor can choose Light, or System to follow their
+        device (localStorage 'cchTheme': dark | light | system). Set before
+        first paint, so there is no flash.
      2. The ONE Tailwind config for the whole site. Every color is a CSS
         variable, so the same utility classes (text-white, text-slate-400,
         bg-panel, bg-white/5...) read correctly in both themes. 'white' is
@@ -16,7 +17,8 @@
   var KEY = 'cchTheme';
   var root = document.documentElement;
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
-  function stored() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+  var DEFAULT = 'dark';
+  function stored() { try { return localStorage.getItem(KEY) || DEFAULT; } catch (e) { return DEFAULT; } }
   function resolve(pref) { return pref === 'light' || pref === 'dark' ? pref : (mq && mq.matches ? 'light' : 'dark'); }
   function apply(pref) { root.setAttribute('data-theme', resolve(pref)); root.setAttribute('data-theme-pref', pref); }
   apply(stored());
@@ -28,7 +30,7 @@
     get: stored,
     current: function () { return root.getAttribute('data-theme'); },
     set: function (pref) {
-      try { if (pref === 'system') localStorage.removeItem(KEY); else localStorage.setItem(KEY, pref); } catch (e) { /* this visit only */ }
+      try { if (pref === DEFAULT) localStorage.removeItem(KEY); else localStorage.setItem(KEY, pref); } catch (e) { /* this visit only */ }
       apply(pref);
       document.dispatchEvent(new CustomEvent('cch:theme'));
     }

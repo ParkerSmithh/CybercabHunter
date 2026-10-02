@@ -17,8 +17,8 @@
 }
 
 /* ---------- Tokens (RGB channels, so Tailwind can add alpha) ----------
-   Dark is the default; light applies when <html data-theme="light"> (set by
-   js/theme.js from the visitor's choice or their system). Text tokens are
+   Dark is the default for everyone; light applies when <html data-theme="light">
+   (set by js/theme.js when the visitor picks Light, or System on a light device). Text tokens are
    chosen for WCAG AA against --bg and --surface in each theme. */
 :root{
   color-scheme:dark;
