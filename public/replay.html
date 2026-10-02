@@ -93,9 +93,9 @@
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+          <button type="button" data-range="month" class="replay-range px-4 py-1.5 rounded-lg text-sm font-bold">This Month</button>
           <button type="button" data-range="24h" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 24 hours</button>
           <button type="button" data-range="7d" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 7 days</button>
-          <button type="button" data-range="30d" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 30 days</button>
         </div>
         <button type="button" id="replayShare" class="px-3 py-2 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
       </div>
@@ -110,7 +110,7 @@
       <canvas id="replayCanvas" class="absolute inset-0 w-full h-full pointer-events-none" data-dots="0"></canvas>
 
       <div class="absolute top-3 left-3 sm:top-4 sm:left-4 replay-glass rounded-2xl px-4 py-3">
-        <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12]">Austin · <span id="replayRangeLabel">Last 24 hours</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12]">Austin · <span id="replayRangeLabel">This Month</span></span><span id="replayPhase" class="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5" style="background:#ffe08a;color:#2a2210;">Midday</span></div>
         <div id="replayClockDate" class="font-display font-bold text-lg sm:text-xl text-[#1a1406] leading-tight mt-0.5">—</div>
         <div id="replayClockTime" class="font-display font-bold text-2xl sm:text-3xl text-[#1a1406] tabular-nums leading-none">—</div>
       </div>

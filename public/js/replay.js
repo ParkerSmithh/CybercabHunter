@@ -3,14 +3,18 @@
    paged; worker/camera-sightings.js). Nothing is invented: a window with few or
    no sightings simply shows what exists.
 
-   URL: /replay?range=24h|7d|30d[&date=YYYY-MM-DD]
-     no date  -> the window ends now ("Today's replay": the last 24 hours)
-     date     -> the window ends at the end of that day in Austin (or now, if
-                 that day isn't over) — so a shared link replays the same window
+   URL: /replay?range=month|24h|7d[&date=YYYY-MM-DD]   (default: month)
+     month    -> "This Month": the calendar month in Austin, from the 1st to now
+                 (with a date: that date's whole month, or up to now if it's
+                 this month). The headline view. (Old ?range=30d links open it.)
+     24h, 7d  -> the last 24 hours / 7 days, ending now (with a date: ending at
+                 the end of that day in Austin, or now if that day isn't over)
+     So a shared link replays the same window.
    The link is the shareable thing: it works for anyone, signed in or not.
 
-   Look ("golden day"): a light basemap with a tint that follows the replay's
-   time of day (indigo night, gold dawn, clear midday, amber dusk). Everything
+   Look ("golden day"): a light basemap under a sky that follows the replay's
+   time of day — deep indigo night, gold dawn, clear midday, amber dusk —
+   plainly, with a Night/Dawn/Midday/Dusk chip on the clock. Everything
    that moves is drawn on ONE canvas — gold pings as sightings land, the site's
    Cybercab icon (camera watch) or a gold diamond (spotter) where they settle,
    and a warm glow that grows hotter where sightings repeat. The activity ribbon
@@ -18,9 +22,11 @@
    playhead; drag it to scrub. The counter rolls like an odometer. */
 window.CCCReplay = (function () {
   const ZONE = 'America/Chicago';
-  const RANGES = { '24h': { ms: 864e5, label: 'Last 24 hours', bins: 48 }, '7d': { ms: 7 * 864e5, label: 'Last 7 days', bins: 56 }, '30d': { ms: 30 * 864e5, label: 'Last 30 days', bins: 60 } };
+  const RANGES = { month: { label: 'This Month' }, '24h': { ms: 864e5, label: 'Last 24 hours' }, '7d': { ms: 7 * 864e5, label: 'Last 7 days' } };
+  const RANGE_ALIASES = { '30d': 'month' };   // links shared before "This Month" existed
+  const DEFAULT_RANGE = 'month';
   const SPEEDS = [1, 4, 16, 60];
-  const BASE_RATE = 600;          // 1x: 10 minutes of sighting time per second
+  const PLAY_MS_AT_1X = 150000;   // at 1x any window plays in ~2.5 minutes (4x: ~37 s, 60x: ~2.5 s)
   const PING_MS = 1100;           // a landing ping's life, in real time
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
@@ -39,15 +45,25 @@ window.CCCReplay = (function () {
   // The replay window from the URL: { range, date, start, end }.
   function windowFor(search, now = Date.now()) {
     const q = new URLSearchParams(search);
-    const range = RANGES[q.get('range')] ? q.get('range') : '24h';
+    const asked = RANGE_ALIASES[q.get('range')] || q.get('range');
+    const range = RANGES[asked] ? asked : DEFAULT_RANGE;
     const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(q.get('date') || '');
-    let end = now, date = null;
-    if (dm) {
-      // the end of that Austin day (the next local midnight), never in the future
-      end = Math.min(now, zoneMidnight(...nextDay(+dm[1], +dm[2], +dm[3])));
-      date = `${dm[1]}-${dm[2]}-${dm[3]}`;
+    const date = dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null;
+    if (range === 'month') {
+      const p = dm ? { y: +dm[1], m: +dm[2] } : zoneParts(now);
+      const start = zoneMidnight(p.y, p.m, 1);
+      const next = p.m === 12 ? [p.y + 1, 1, 1] : [p.y, p.m + 1, 1];
+      return { range, date, start, end: Math.min(now, zoneMidnight(...next)) };
     }
+    // the end of that Austin day (the next local midnight), never in the future
+    const end = dm ? Math.min(now, zoneMidnight(...nextDay(+dm[1], +dm[2], +dm[3]))) : now;
     return { range, date, start: end - RANGES[range].ms, end };
+  }
+  // Ribbon bars: one per half hour (24h), per 3 hours (7d), per 12 hours (month).
+  function binsFor(range, start, end) {
+    if (range === '24h') return 48;
+    if (range === '7d') return 56;
+    return Math.max(2, Math.ceil((end - start) / (12 * 3600e3)));
   }
   function nextDay(y, m, d) { const t = new Date(Date.UTC(y, m - 1, d + 1)); return [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()]; }
   const isoZ = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -86,18 +102,35 @@ window.CCCReplay = (function () {
   }
 
   // ---- Golden-day tint: the colour washed over the map at local hour h ----
-  const TINT_KEYS = [[0, [38, 44, 112, 0.40]], [5, [38, 44, 112, 0.34]], [6.5, [255, 176, 80, 0.30]], [9, [255, 214, 140, 0.10]], [12, [255, 255, 255, 0]], [16, [255, 214, 140, 0.10]], [18.5, [255, 140, 60, 0.30]], [20.5, [60, 50, 120, 0.34]], [24, [38, 44, 112, 0.40]]];
-  function tintAt(hour) {
+  // Strong enough to read at a glance on a phone; midday stays clear.
+  const TINT_KEYS = [[0, [22, 26, 88, 0.58]], [4.5, [30, 32, 100, 0.54]], [6.5, [255, 146, 56, 0.46]], [8.5, [255, 200, 110, 0.24]], [11, [255, 245, 220, 0.04]], [12, [255, 255, 255, 0]], [15, [255, 222, 150, 0.12]], [18.5, [255, 108, 40, 0.48]], [20.5, [62, 40, 118, 0.54]], [24, [22, 26, 88, 0.58]]];
+  function tintColor(hour) {
     for (let i = 1; i < TINT_KEYS.length; i++) {
       const [h1, c1] = TINT_KEYS[i];
       if (hour <= h1) {
         const [h0, c0] = TINT_KEYS[i - 1];
         const f = (hour - h0) / (h1 - h0);
-        const c = c0.map((v, k) => v + (c1[k] - v) * f);
-        return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${c[3].toFixed(3)})`;
+        return c0.map((v, k) => v + (c1[k] - v) * f);
       }
     }
-    return 'rgba(0,0,0,0)';
+    return [0, 0, 0, 0];
+  }
+  // The sky over the map: the tint, deeper toward the top like a real sky.
+  function skyAt(hour) {
+    const [r, g, b, a] = tintColor(hour).map((v, k) => (k < 3 ? Math.round(v) : v));
+    const at = x => `rgba(${r},${g},${b},${Math.min(0.85, x).toFixed(3)})`;
+    return `linear-gradient(180deg, ${at(a * 1.45)} 0%, ${at(a)} 45%, ${at(a * 0.8)} 100%)`;
+  }
+  // Night / Dawn / Midday / Dusk, with a chip colour.
+  function phaseAt(hour) {
+    if (hour < 5 || hour >= 21) return { name: 'Night', color: '#1e2470', text: '#ffffff' };
+    if (hour < 9) return { name: 'Dawn', color: '#ff9a3c', text: '#2a1600' };
+    if (hour < 17) return { name: 'Midday', color: '#ffe08a', text: '#2a2210' };
+    return { name: 'Dusk', color: '#e8622a', text: '#ffffff' };
+  }
+  function tintAt(hour) {
+    const c = tintColor(hour);
+    return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${c[3].toFixed(3)})`;
   }
 
   // ---- The page ----
@@ -203,7 +236,11 @@ window.CCCReplay = (function () {
       drawRibbon();
       // Clock + time-of-day tint.
       const p = zoneParts(state.T);
-      $('replayTint').style.background = tintAt(p.h + p.mi / 60);
+      const hour = p.h + p.mi / 60;
+      $('replayTint').style.background = skyAt(hour);
+      const phase = phaseAt(hour);
+      const chip = $('replayPhase');
+      if (chip) { chip.textContent = phase.name; chip.style.background = phase.color; chip.style.color = phase.text; }
       const dt = new Date(state.T);
       $('replayClockDate').textContent = dt.toLocaleDateString('en-US', { timeZone: ZONE, weekday: 'short', month: 'short', day: 'numeric' });
       $('replayClockTime').textContent = dt.toLocaleTimeString('en-US', { timeZone: ZONE, hour: 'numeric', minute: '2-digit' });
@@ -235,7 +272,7 @@ window.CCCReplay = (function () {
     let last = 0;
     function tick(ts) {
       if (!state.playing) return;
-      if (last) state.T = Math.min(state.end, state.T + Math.min(100, ts - last) * BASE_RATE * state.speed);
+      if (last) state.T = Math.min(state.end, state.T + Math.min(100, ts - last) * ((state.end - state.start) / PLAY_MS_AT_1X) * state.speed);
       last = ts;
       draw();
       if (state.T >= state.end) { state.playing = false; syncPlay(); return; }
@@ -291,7 +328,7 @@ window.CCCReplay = (function () {
       let dots = [];
       try { dots = await fetchAll(win.start, win.end); } catch (e) { dots = []; }
       state.dots = dots;
-      bins = histogram(dots, win.start, win.end, RANGES[win.range].bins);
+      bins = histogram(dots, win.start, win.end, binsFor(win.range, win.start, win.end));
       $('replayLoading').classList.add('hidden');
       $('replayEmpty').classList.toggle('hidden', dots.length > 0);
       if (reduceMotion) { seek(state.end); return; }   // no animation: straight to the full picture
@@ -319,5 +356,5 @@ window.CCCReplay = (function () {
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  return { state, windowFor, countUpTo, histogram, tintAt, fetchAll, zoneMidnight, RANGES, SPEEDS };
+  return { state, windowFor, binsFor, countUpTo, histogram, tintAt, skyAt, phaseAt, fetchAll, zoneMidnight, RANGES, SPEEDS };
 })();

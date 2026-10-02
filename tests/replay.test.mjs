@@ -93,16 +93,26 @@ async function run() {
     dom.window.eval(read('public/js/replay.js'));
     const R = dom.window.CCCReplay;
     const now = Date.parse('2026-10-02T17:00:00Z');   // Oct 2, 12 PM CDT
-    const w24 = R.windowFor('', now);
-    check('default: the last 24 hours, ending now', w24.range === '24h' && w24.end === now && w24.start === now - 24 * H && w24.date === null);
+    const def = R.windowFor('', now);
+    check('default: "This Month" — Oct 1 (Austin midnight, 05:00 UTC) to now', def.range === 'month' && def.start === Date.parse('2026-10-01T05:00:00Z') && def.end === now && def.date === null);
+    check('old ?range=30d links open the month view too', R.windowFor('?range=30d', now).range === 'month');
+    const sept = R.windowFor('?range=month&date=2026-09-15', now);
+    check('?range=month&date=2026-09-15: all of September in Austin (Sep 1 05:00 UTC to Oct 1 05:00 UTC)', sept.start === Date.parse('2026-09-01T05:00:00Z') && sept.end === Date.parse('2026-10-01T05:00:00Z'));
+    check('the month ribbon has one bar per 12 hours', R.binsFor('month', sept.start, sept.end) === 60 && R.binsFor('24h', 0, 864e5) === 48);
+    const w24 = R.windowFor('?range=24h', now);
+    check('?range=24h: the last 24 hours, ending now', w24.range === '24h' && w24.end === now && w24.start === now - 24 * H);
     const w7 = R.windowFor('?range=7d', now);
     check('?range=7d: the last 7 days', w7.end - w7.start === 7 * 24 * H);
     const past = R.windowFor('?range=24h&date=2026-09-30', now);
     check('?date=2026-09-30: ends at that day\'s Austin midnight (Oct 1, 05:00 UTC in CDT)', past.end === Date.parse('2026-10-01T05:00:00Z') && past.start === past.end - 24 * H && past.date === '2026-09-30');
     const today = R.windowFor('?range=24h&date=2026-10-02', now);
     check('today\'s date: never past now', today.end === now);
-    check('an unknown range falls back to 24h', R.windowFor('?range=99y', now).range === '24h');
-    check('the tint follows the time of day (night indigo, midday clear, dusk amber)', /^rgba\(38,44,112/.test(R.tintAt(2)) && /,0\.000\)$/.test(R.tintAt(12)) && /^rgba\(255,1[45]\d,/.test(R.tintAt(18.5)));
+    check('an unknown range falls back to This Month', R.windowFor('?range=99y', now).range === 'month');
+    const alpha = h => Number(/,([\d.]+)\)$/.exec(R.tintAt(h))[1]);
+    check('the time of day is unmistakable: strong indigo night, gold dawn, clear midday, amber dusk',
+      /^rgba\(2\d,2\d,(8\d|9\d),/.test(R.tintAt(1)) && alpha(1) >= 0.5 && /^rgba\(255,14\d,5\d,/.test(R.tintAt(6.5)) && alpha(6.5) >= 0.4 && alpha(12) === 0 && /^rgba\(255,10\d,4\d,/.test(R.tintAt(18.5)) && alpha(18.5) >= 0.4);
+    check('the sky deepens toward the top', /^linear-gradient\(180deg, rgba\(22,26,88,0\.8\d\d\) 0%/.test(R.skyAt(0)));
+    check('a Night / Dawn / Midday / Dusk chip', ['Night', 'Dawn', 'Midday', 'Dusk'].join() === [2, 7, 13, 19].map(h => R.phaseAt(h).name).join());
     dom.window.close();
   }
 
@@ -163,7 +173,8 @@ async function run() {
   console.log('4. Placement and links');
   {
     const zones = read('public/infrastructure.html');
-    check('the Zones map has a Replay button linking to today\'s replay', /<a id="zonesReplay" href="\/replay\?range=24h"[^>]*>[\s\S]*?Replay\s*<\/a>/.test(zones));
+    check('the Zones map\'s Replay button opens This Month', /<a id="zonesReplay" href="\/replay\?range=month"[^>]*>[\s\S]*?Replay\s*<\/a>/.test(zones));
+    check('"This Month" leads: first, larger, and the default label; no "Last 30 days"', /data-range="month"[^>]*>This Month<\/button>\s*<button[^>]*data-range="24h"/.test(read('public/replay.html')) && /id="replayRangeLabel">This Month</.test(read('public/replay.html')) && !/Last 30 days/.test(read('public/replay.html')));
     const html = read('public/replay.html');
     check('the replay page is public (no sign-in gate) and draws on one canvas', !/signin\.html\?returnTo=%2Freplay/.test(html) && (html.match(/<canvas id="replayCanvas"/g) || []).length === 1);
     check('no video export of any kind', !/MediaRecorder|captureStream|\.mp4|\.webm|download=/i.test(read('public/js/replay.js') + html));
