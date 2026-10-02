@@ -62,8 +62,6 @@ async function run() {
     check('this month = Austin September only (the Aug 30 local sighting is excluded)', s.this_month === 13);
     check('peak hour = 5 PM Austin time, across DST (CDT in Sep + CST in Jan): 12 sightings', s.peak_hour.hour === 17 && s.peak_hour.count === 12);
     check('best day = Sep 28 with 7', s.best_day.date === '2026-09-28' && s.best_day.count === 7);
-    check('by_hour: 24 local-hour counts that add up to the total, 12 at 5 PM', s.by_hour.length === 24 && s.by_hour.reduce((a, b) => a + b, 0) === s.total && s.by_hour[17] === 12);
-    check('last_14_days: the 14 Austin days ending today (Sep 15 to Sep 28), oldest first, zeros included', s.last_14_days.length === 14 && s.last_14_days[0].date === '2026-09-15' && s.last_14_days[13].date === '2026-09-28' && s.last_14_days[13].count === 7 && s.last_14_days[12].count === 6 && s.last_14_days[5].count === 0);
     check('first day = the earliest local date in all history (Jan 15)', s.first_day === '2026-01-15');
     check('last 7 days = the exact count from SQL', s.last_7_days === 13 && s.total === 17 && s.time_zone === Z);
     const tie = buildSightingStats([{ utc_hour: '2026-09-20T15', n: 2, last_7_days: 0 }, { utc_hour: '2026-09-21T20', n: 2, last_7_days: 0 }], Z, now);
@@ -306,10 +304,7 @@ async function run() {
     await sighting(peakCtx, { service_area: 'Austin' }, 24 * 9);
     ctx.env = peakCtx.env;
     const peakPage = await open('https://cybercabhunter.com/sightings');
-    const dayBars = peakPage.d.querySelectorAll('#activityDays > div');
-    const hourBars = [...peakPage.d.querySelectorAll('#activityHours > div')];
-    check('the 14-day chart: 14 bars and the 3 sightings in that window (3h, 3h and 9 days ago)', dayBars.length === 14 && peakPage.text('activityDaysNote') === '3 sightings');
-    check('the time-of-day chart: 24 bars, the peak hour in solid gold and named', hourBars.length === 24 && hourBars.filter(b => /from-gold/.test(b.firstChild.className)).length === 1 && /^Busiest \d{1,2}:00 (AM|PM) – \d{1,2}:00 (AM|PM)$/.test(peakPage.text('activityHoursNote')));
+    check('no activity charts on the page', !peakPage.d.getElementById('activityDays') && !peakPage.d.getElementById('activityHours') && !/LAST 14 DAYS|TIME OF DAY/.test(peakPage.d.body.textContent));
     check('the All time tile and the toolbar count', peakPage.text('statTotal') === '3' && peakPage.text('feedCount') === '3 sightings in Austin');
     check('each card says how long ago it was spotted', peakPage.cards().length === 3 && /3h ago/.test(peakPage.cards()[0].textContent) && /9d ago/.test(peakPage.cards()[2].textContent));
     check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) – \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));

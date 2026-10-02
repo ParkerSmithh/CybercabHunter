@@ -78,10 +78,6 @@ const pad2 = n => String(n).padStart(2, '0');
 //   best_day     — local date with the most sightings {date YYYY-MM-DD, count}
 //   first_day    — local date of the earliest sighting (YYYY-MM-DD), so the
 //                  page can say what "all history" covers
-//   by_hour      — 24 counts, sightings per local hour of day over all history
-//                  (the data behind peak_hour), for the page's time-of-day chart
-//   last_14_days — [{ date, count }] for the 14 local days ending today, oldest
-//                  first, zeros included, for the page's daily chart
 // Best-day ties: the more recent day.
 export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   const now = usLocalParts(nowMs, zone);
@@ -108,14 +104,6 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   if (peak && (peak.count < PEAK_HOUR_MIN_SIGHTINGS || hours.filter(c => c === peak.count).length > 1)) peak = null;
   let best = null;
   for (const [date, count] of days) if (!best || count > best.count || (count === best.count && date > best.date)) best = { date, count };
-  // The 14 local calendar days ending today (calendar arithmetic, so a DST
-  // change can't skip or repeat a day).
-  const last14 = [];
-  for (let i = 13; i >= 0; i--) {
-    const day = new Date(Date.UTC(now.y, now.m - 1, now.d - i));
-    const date = `${day.getUTCFullYear()}-${pad2(day.getUTCMonth() + 1)}-${pad2(day.getUTCDate())}`;
-    last14.push({ date, count: days.get(date) || 0 });
-  }
   let first = null;
   for (const date of days.keys()) if (!first || date < first) first = date;
   let thisMonth = 0;
@@ -128,9 +116,7 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
     this_month: thisMonth,
     peak_hour: peak,
     best_day: best,
-    first_day: first,
-    by_hour: hours,
-    last_14_days: last14
+    first_day: first
   };
 }
 

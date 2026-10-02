@@ -196,43 +196,6 @@
     return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
 
-  // The two activity charts. Bars only from the server's counts; anything
-  // missing or malformed leaves the chart empty rather than guessing.
-  function bar(n, max, { gold = true, title = '' } = {}) {
-    const pct = max ? Math.max(n ? 8 : 0, Math.round((n / max) * 100)) : 0;
-    const col = el('div', 'flex-1 h-full flex flex-col justify-end');
-    col.title = title;
-    const fill = el('div', `w-full rounded-t ${n ? (gold ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-gold/35') : 'bg-white/[0.06]'}`);
-    fill.style.height = n ? `${pct}%` : '3px';
-    col.appendChild(fill);
-    return col;
-  }
-  function renderActivity(stats) {
-    const days = stats && Array.isArray(stats.last_14_days) && stats.last_14_days.every(d => d && isCount(d.count)) ? stats.last_14_days : null;
-    const hours = stats && Array.isArray(stats.by_hour) && stats.by_hour.length === 24 && stats.by_hour.every(isCount) ? stats.by_hour : null;
-    const dayBox = $('activityDays'), dayLabels = $('activityDaysLabels'), hourBox = $('activityHours');
-    dayBox.innerHTML = ''; dayLabels.innerHTML = ''; hourBox.innerHTML = '';
-    $('activityDaysNote').textContent = ''; $('activityHoursNote').textContent = '';
-    if (days) {
-      const max = Math.max(0, ...days.map(d => d.count));
-      days.forEach((d, i) => {
-        const label = fmtDay(d.date) || d.date;
-        dayBox.appendChild(bar(d.count, max, { title: `${label}: ${plural(d.count, 'sighting', 'sightings')}` }));
-        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.date);
-        const dow = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'UTC' }) : '';
-        dayLabels.appendChild(el('span', `flex-1 text-center text-[10px] ${i === days.length - 1 ? 'text-gold font-semibold' : 'text-slate-500'}`, dow));
-      });
-      const total = days.reduce((n, d) => n + d.count, 0);
-      $('activityDaysNote').textContent = plural(total, 'sighting', 'sightings');
-    }
-    if (hours) {
-      const max = Math.max(0, ...hours);
-      const peak = stats.peak_hour && Number.isInteger(stats.peak_hour.hour) ? stats.peak_hour.hour : -1;
-      hours.forEach((n, h) => hourBox.appendChild(bar(n, max, { gold: h === peak, title: `${fmtHour(h)}: ${plural(n, 'sighting', 'sightings')}` })));
-      $('activityHoursNote').textContent = peak >= 0 ? `Busiest ${fmtHour(peak)} – ${fmtHour((peak + 1) % 24)}` : (max ? 'No clear busiest hour yet' : '');
-    }
-  }
-
   // Any value that isn't a proper count stays (or goes back to) an em dash.
   function renderStats(stats) {
     const ok = stats && typeof stats === 'object';
@@ -261,7 +224,6 @@
       $('statPeakCount').textContent = '';
     }
     num('statTotal', ok && stats.total);
-    renderActivity(ok ? stats : null);
     const cityName = CITY_NAMES[city] || '';
     $('feedCount').textContent = ok && isCount(stats.total) && stats.total > 0
       ? `${plural(stats.total, 'sighting', 'sightings')}${cityName ? ` in ${cityName}` : ''}` : '';

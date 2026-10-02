@@ -134,28 +134,6 @@
       </div>
     </div>
 
-    <!-- Activity (the same stats): sightings per day for the last 14 days, and
-         per hour of day over all history with the peak hour picked out. Bars
-         are drawn only from the server's counts; until they arrive, nothing. -->
-    <div class="glass rounded-2xl p-5 sm:p-6 mb-6 grid gap-8 lg:grid-cols-2">
-      <div class="min-w-0">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 class="font-display font-bold text-sm tracking-wide">LAST 14 DAYS</h2>
-          <span id="activityDaysNote" class="text-[11px] text-slate-500"></span>
-        </div>
-        <div id="activityDays" class="mt-4 flex items-end gap-1.5 h-28" role="img" aria-label="Sightings per day, last 14 days"></div>
-        <div id="activityDaysLabels" class="mt-2 flex gap-1.5"></div>
-      </div>
-      <div class="min-w-0">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 class="font-display font-bold text-sm tracking-wide">TIME OF DAY</h2>
-          <span id="activityHoursNote" class="text-[11px] text-slate-500"></span>
-        </div>
-        <div id="activityHours" class="mt-4 flex items-end gap-[3px] h-28" role="img" aria-label="Sightings by hour of day, all time"></div>
-        <div class="mt-2 flex justify-between text-[10px] text-slate-500"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span></div>
-      </div>
-    </div>
-
     <!-- Toolbar: city filter, how many sightings it holds, and the sort. -->
     <div class="glass rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-3 min-w-0">
@@ -346,6 +324,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=15"></script>
+<script src="js/sightings.js?v=16"></script>
 </body>
 </html>
