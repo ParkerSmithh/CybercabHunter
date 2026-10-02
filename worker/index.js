@@ -17,7 +17,7 @@ import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
-import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
+import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -374,6 +374,10 @@ export default {
     // (server-to-server, no CORS).
     if (url.pathname === '/api/camera-sightings' && request.method === 'GET') {
       return withCors(await apiListCameraSightings(request, env, ctx), request);
+    }
+    // Every detection in a window, for the /replay page (public, paged).
+    if (url.pathname === '/api/camera-sightings/history' && request.method === 'GET') {
+      return withCors(await apiCameraSightingsHistory(request, env, ctx), request);
     }
     if (url.pathname === '/api/camera-sightings' && request.method === 'POST') {
       return apiCreateCameraSighting(request, env);

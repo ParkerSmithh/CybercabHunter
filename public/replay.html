@@ -5,14 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Zone Information</title>
+<title>Cybercab Hunter — Replay</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -23,6 +22,7 @@
     }}
   }
 </script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -84,109 +84,86 @@
   </a>
 </nav>
 
-<!-- This page is a single map view, not a scrolling article: the map fills
-     the rest of the viewport below the header, and there is nothing below it
-     (no footer on this page) — see the closing <style> tweak that keeps the
-     page itself from scrolling past that. -->
-<section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
-  <!-- The floating panel is ALWAYS visible (city buttons live in it), so
-       switching to Dallas only swaps its inner content — never the panel
-       itself — otherwise there'd be no way back to Austin. The map is
-       hidden (not removed) for Dallas, since there's nothing to show it. -->
-  <div id="zoneContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100vh-6rem)] lg:min-h-[520px]">
-    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 reveal-on-scroll">
-      <!-- City switch: a segmented control. js below swaps the two class strings. -->
-      <div id="citySelector" role="group" aria-label="City" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-        <button data-city="austin" aria-pressed="true" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors bg-[rgba(212,175,55,0.14)] text-gold">Austin</button>
-        <button data-city="dallas" aria-pressed="false" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors text-slate-400 hover:text-slate-200">Dallas</button>
+<section class="py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div class="flex items-end justify-between gap-4 flex-wrap mb-5">
+      <div>
+        <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">REPLAY</h1>
+        <p class="mt-2 text-sm text-slate-400">Every Cybercab caught by Austin's traffic cameras, replayed as it happened.</p>
       </div>
-
-      <div id="austinContent" class="mt-5">
-        <!-- Zone header -->
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service Zone</p>
-            <h2 class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h2>
-          </div>
-          <span class="shrink-0 inline-flex items-center gap-1.5 mt-1 px-2 py-1 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)] text-[10px] font-semibold uppercase tracking-wider text-gold">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold" style="box-shadow:0 0 6px #D4AF37"></span>Operating
-          </span>
+      <div class="flex items-center gap-2 flex-wrap">
+        <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+          <button type="button" data-range="24h" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 24 hours</button>
+          <button type="button" data-range="7d" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 7 days</button>
+          <button type="button" data-range="30d" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 30 days</button>
         </div>
-
-        <!-- Map key, right under the zone name -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-[11px] text-slate-400">
-          <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#D4AF37;box-shadow:0 0 8px #D4AF37"></span>Charging Locations</span>
-          <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
-        </div>
-
-        <!-- Coverage -->
-        <div class="mt-4 p-4 rounded-xl border border-[rgba(212,175,55,0.14)] bg-gradient-to-br from-[rgba(212,175,55,0.07)] to-transparent">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
-          <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums"><span id="coverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
-          <p class="text-xs text-slate-400 leading-relaxed mt-3">First Robotaxi market — launched as an invite pilot, now unsupervised.</p>
-          <p class="text-[11px] text-slate-500 mt-2">In service since Jun 22, 2025</p>
-        </div>
-
-        <!-- Fleet & fares -->
-        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 mb-2">Fleet &amp; Fares</p>
-        <dl class="grid grid-cols-2 gap-2">
-          <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-            <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Cybercabs</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="fleetCountOut">—</span></dd>
-          </div>
-          <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-            <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Median Fare</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="medianFareOut">—</span></dd>
-          </div>
-          <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-            <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Avg Fare</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="avgFareOut">—</span></dd>
-          </div>
-          <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-            <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Per Mile</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="perMileOut">—</span></dd>
-          </div>
-        </dl>
-        <!-- Sample size and freshness of the fare stats (GET /api/fleet-stats). -->
-        <p id="fareBasis" class="text-[11px] text-slate-500 mt-2"></p>
-      </div>
-
-      <div id="dallasContent" class="hidden mt-5">
-        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service Zone</p>
-        <h2 class="font-display font-bold text-xl leading-tight mt-1">Dallas, TX</h2>
-        <div class="mt-4 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02]">
-          <div class="font-display font-bold text-sm text-gold tracking-wide mb-1.5">NOT YET AVAILABLE</div>
-          <p class="text-slate-400 text-xs leading-relaxed">Dallas zone information isn't available in Cybercab Hunter yet.</p>
-        </div>
+        <button type="button" id="replayShare" class="px-3 py-2 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
       </div>
     </div>
 
-    <!-- Map: a tall card on mobile, a full-bleed backdrop filling #zoneContent on lg+.
-         Hidden (not removed) while Dallas is selected, same as the panel above. -->
-    <div id="austinMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] lg:p-0 lg:h-auto lg:absolute lg:inset-0 reveal-on-scroll">
-      <div id="infraMap" class="rounded-xl overflow-hidden w-full h-full lg:rounded-2xl"></div>
-      <!-- Today's replay: every camera-spotted Cybercab in the last 24 hours (replay.html). -->
-      <a id="zonesReplay" href="/replay?range=24h" class="absolute top-6 right-6 lg:top-4 lg:right-4 z-10 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)] hover:brightness-105">
-        <svg class="w-4 h-4" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L12.8 8z" fill="currentColor"/></svg>
-        Replay
-      </a>
+    <!-- The stage: a light basemap, a time-of-day tint, and ONE canvas for every
+         dot, ping and glow (js/replay.js) — no DOM markers, so thousands of
+         sightings stay smooth on a phone. -->
+    <div id="replayStage" class="replay-stage relative rounded-3xl overflow-hidden border border-[rgba(212,175,55,0.25)] aspect-[4/5] sm:aspect-[16/10]">
+      <div id="replayMap" class="absolute inset-0"></div>
+      <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>
+      <canvas id="replayCanvas" class="absolute inset-0 w-full h-full pointer-events-none" data-dots="0"></canvas>
+
+      <div class="absolute top-3 left-3 sm:top-4 sm:left-4 replay-glass rounded-2xl px-4 py-3">
+        <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12]">Austin · <span id="replayRangeLabel">Last 24 hours</span></div>
+        <div id="replayClockDate" class="font-display font-bold text-lg sm:text-xl text-[#1a1406] leading-tight mt-0.5">—</div>
+        <div id="replayClockTime" class="font-display font-bold text-2xl sm:text-3xl text-[#1a1406] tabular-nums leading-none">—</div>
+      </div>
+      <div class="absolute top-3 right-3 sm:top-4 sm:right-4 replay-glass rounded-2xl px-4 py-3 text-right">
+        <div id="replayCounter" class="replay-odometer font-display font-bold text-3xl sm:text-4xl text-[#1a1406]" aria-live="off" aria-label="0 sightings"></div>
+        <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12] mt-1">Sightings so far</div>
+      </div>
+      <div class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 replay-glass rounded-xl px-3 py-2 text-[11px] text-[#2a2210] space-y-1">
+        <div class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" class="w-4 h-4 object-contain rounded-full ring-2 ring-[#D4AF37] bg-white"> Camera watch</div>
+        <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rotate-45 bg-[#D4AF37] border-2 border-white shadow"></span> Spotter (traffic cam)</div>
+      </div>
+      <div class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 flex items-center gap-1.5 replay-glass rounded-xl px-2.5 py-1.5">
+        <img src="images/Cybercab2.png" alt="" class="w-6 h-6 object-contain"><span class="font-display font-bold text-[11px] tracking-wide text-[#1a1406]">cybercabhunter.com</span>
+      </div>
+      <div id="replayEmpty" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="replay-glass rounded-2xl px-6 py-4 text-center max-w-xs">
+          <div class="font-display font-bold text-[#1a1406]">NO CAMERA SIGHTINGS YET</div>
+          <p class="text-xs text-[#4a3d1a] mt-1">Nothing was recorded in this window. The replay fills in as the cameras spot Cybercabs.</p>
+        </div>
+      </div>
+      <div id="replayLoading" class="absolute inset-0 flex items-center justify-center pointer-events-none"><div class="replay-glass rounded-xl px-4 py-2 text-xs text-[#4a3d1a]">Loading sightings…</div></div>
     </div>
+
+    <!-- Controls: play/pause, speed, and the activity ribbon (a histogram of the
+         window that fills gold as the playhead moves; drag it to scrub). -->
+    <div class="mt-4 glass rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="flex items-center gap-2">
+        <button type="button" id="replayPlay" aria-label="Play" class="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></button>
+        <div id="replaySpeed" role="group" aria-label="Speed" class="flex gap-1">
+          <button type="button" data-speed="1" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">1×</button>
+          <button type="button" data-speed="4" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">4×</button>
+          <button type="button" data-speed="16" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">16×</button>
+          <button type="button" data-speed="60" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">60×</button>
+        </div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <canvas id="replayRibbon" class="block w-full h-12 cursor-pointer touch-none" role="slider" tabindex="0" aria-label="Replay timeline" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span id="replayStartLabel"></span><span id="replayEndLabel"></span></div>
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-500 mt-3">Camera-watch detections and approved spotter sightings filed with a traffic camera, at each camera's location. Only public, approved data — nothing is estimated or filled in.</p>
   </div>
 </section>
-<style>
-  /* No footer on this page, and the map is meant to be the whole view — so
-     the page itself should never scroll past it, even if a viewport's exact
-     chrome height (address bar, safe areas) makes the calc() above a few
-     pixels off in either direction. Scoped to this page only. */
-  html, body{overflow-x:hidden;}
-  body{overflow-y:hidden; height:100dvh;}
-  @media (max-width:1023px){
-    /* Mobile stacks the panel above the map, which is taller than one
-       screen — that content still needs to scroll INTO view, so only the
-       page chrome around it (not the content itself) is locked. */
-    body{overflow-y:auto; height:auto; min-height:100dvh;}
-  }
-</style>
+
+<!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
+     Closes with the × button, a click outside the photo, or Escape. -->
+<div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
+  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full glass flex items-center justify-center text-2xl leading-none text-slate-200 hover:text-white">&times;</button>
+  <figure class="flex flex-col items-center gap-3 max-w-full">
+    <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
+    <figcaption id="sightingViewerCaption" class="text-sm text-slate-300 text-center"></figcaption>
+  </figure>
+</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -291,126 +268,44 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+    <div class="col-span-2">
+      <div class="flex items-center gap-2">
+        <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">
+        <span class="font-display font-bold">CYBERCAB HUNTER</span>
+      </div>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="/simulation" class="hover:text-white transition-colors">Fleet ROI</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
+      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
+      </div>
+    </div>
+    <div>
+      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">About</h4>
+      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
+        <a href="#" class="hover:text-white transition-colors">How It Works</a>
+        <a href="#" class="hover:text-white transition-colors">Privacy</a>
+      </div>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+</footer>
+
 <script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=13"></script>
-<script src="js/austin-map.js?v=2"></script>
 <script>
   CCC.init();
-
-  // Count up the zone stats on page load, like the homepage stats bar.
-  CCC.animateCounter(document.getElementById('coverageOut'), 0, 264, 1400);
-
-  // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
-  // The Cybercab count is the public Austin registry; the fares come from
-  // every logged Austin ride (none on a private vehicle). With no rides a stat
-  // shows "—" (never a made-up number), with a tooltip saying why.
-  (function loadFleetStats() {
-    const NO_DATA = 'No logged rides yet';
-    const money = v => '$' + v.toFixed(2);
-    function set(id, value, fmt, why) {
-      const el = document.getElementById(id);
-      if (typeof value === 'number' && isFinite(value)) {
-        el.removeAttribute('title');
-        CCC.animateCounter(el, 0, value, 1400, fmt);
-      } else {
-        el.textContent = '—';
-        el.title = why;
-      }
-    }
-    function fill(data) {
-      const f = (data && data.fares) || {};
-      set('fleetCountOut', data ? data.cybercabs : null, v => String(Math.round(v)), 'Fleet count unavailable');
-      set('medianFareOut', f.median_fare, money, NO_DATA);
-      set('avgFareOut', f.average_fare, money, NO_DATA);
-      set('perMileOut', f.per_mile, money, NO_DATA);
-      const basis = document.getElementById('fareBasis');
-      if (data && typeof f.rides === 'number') {
-        const updated = f.computed_at ? new Date(f.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
-        basis.textContent = f.median_fare == null
-          ? `No logged rides yet${updated ? ' · updated ' + updated : ''}`
-          : `Based on ${f.rides} ride${f.rides === 1 ? '' : 's'}${updated ? ' · updated ' + updated : ''}`;
-      } else {
-        basis.textContent = '';
-      }
-    }
-    fetch('/api/fleet-stats?city=austin')
-      .then(r => (r.ok ? r.json() : null))
-      .catch(() => null)
-      .then(fill);
-  })();
-
-  // ---- City selector ----
-  const cityBtns = document.querySelectorAll('.city-btn');
-  const CITY_BTN_BASE = 'city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors';
-  const CITY_BTN_ACTIVE = `${CITY_BTN_BASE} bg-[rgba(212,175,55,0.14)] text-gold`;
-  const CITY_BTN_INACTIVE = `${CITY_BTN_BASE} text-slate-400 hover:text-slate-200`;
-  const austinContent = document.getElementById('austinContent');
-  const dallasContent = document.getElementById('dallasContent');
-  const austinMapWrap = document.getElementById('austinMapWrap');
-  cityBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      cityBtns.forEach(b => { b.className = CITY_BTN_INACTIVE; b.setAttribute('aria-pressed', 'false'); });
-      btn.className = CITY_BTN_ACTIVE;
-      btn.setAttribute('aria-pressed', 'true');
-      const isDallas = btn.dataset.city === 'dallas';
-      // Only the panel's inner content and the map swap — the floating panel
-      // itself (and these buttons) stays put, so there's always a way back.
-      austinContent.classList.toggle('hidden', isDallas);
-      dallasContent.classList.toggle('hidden', !isDallas);
-      austinMapWrap.classList.toggle('hidden', isDallas);
-      if (!isDallas) requestAnimationFrame(() => map.resize());
-    });
-  });
-
-  if (new URLSearchParams(location.search).get('city') === 'dallas') {
-    document.querySelector('.city-btn[data-city="dallas"]').click();
-  }
-
-  const map = new maplibregl.Map({
-    container: 'infraMap',
-    style: 'https://tiles.openfreemap.org/styles/fiord',
-    center: [-97.72, 30.27],
-    zoom: 11
-  });
-
-  // The map container's size now comes from viewport-relative CSS (full-bleed
-  // on lg+, a tall card on mobile) rather than a fixed pixel height, so it
-  // changes on window resize and when crossing the lg breakpoint — not just
-  // on the explicit city-tab click that already called map.resize() below.
-  // MapLibre doesn't watch its container, so without this the canvas can be
-  // left stretched/blank after a resize until something else nudges it.
-  new ResizeObserver(() => map.resize()).observe(document.getElementById('infraMap'));
-
-  // ---- Austin Robotaxi service zone (Tesla's real published geofence) ----
-  const serviceZoneCoords = [
-    [-97.8089523, 30.2478867], [-97.8237839, 30.2382717], [-97.8376999, 30.2433796], [-97.8522568, 30.2236824],
-    [-97.8609161, 30.2139397], [-97.8681335, 30.2005615], [-97.8598862, 30.1848412], [-97.8251724, 30.1692181],
-    [-97.768898, 30.1522579], [-97.731102, 30.1427193], [-97.6521378, 30.1459084], [-97.5534668, 30.2621021],
-    [-97.5766525, 30.3470936], [-97.6152802, 30.3756886], [-97.6323395, 30.4018478], [-97.6431885, 30.4222393],
-    [-97.6465302, 30.4300823], [-97.6558075, 30.4385662], [-97.6959686, 30.4513607], [-97.7225876, 30.4516335],
-    [-97.7416763, 30.4467773], [-97.778038, 30.4356804], [-97.770607, 30.4302769], [-97.7579498, 30.423193],
-    [-97.7507782, 30.4155159], [-97.7515182, 30.3973579], [-97.7567215, 30.3945923], [-97.76091, 30.3908138],
-    [-97.7832413, 30.3825302], [-97.798378, 30.360218], [-97.819809, 30.3364353], [-97.8299332, 30.3258209],
-    [-97.8367691, 30.2969208], [-97.8253403, 30.2669239], [-97.8089523, 30.2478867]
-  ];
-  const zoneBounds = serviceZoneCoords.reduce(
-    (b, c) => b.extend(c),
-    new maplibregl.LngLatBounds(serviceZoneCoords[0], serviceZoneCoords[0])
-  );
-  map.fitBounds(zoneBounds, { padding: 24, animate: false });
-
-  // The dark basemap and the gold service zone — the same as the homepage
-  // minimap (js/austin-map.js).
-  map.on('load', () => {
-    CCCAustinMap.styleBasemap(map);
-    CCCAustinMap.addServiceZone(map, serviceZoneCoords);
-  });
-
-  // Charging locations and camera-spotted Cybercabs (shared with the homepage
-  // minimap): js/austin-map.js.
-  CCCAustinMap.addFeatures(map);
-
 </script>
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="js/replay.js?v=1"></script>
 </body>
 </html>

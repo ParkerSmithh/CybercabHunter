@@ -91,6 +91,73 @@ export async function apiListCameraSightings(request, env, ctx, { now = Date.now
   return response;
 }
 
+// GET /api/camera-sightings/history?from=<ISO>&to=<ISO>[&cursor=..][&limit=..]
+// Public. EVERY detection in the window (not just each camera's latest — that
+// is the Zones map feed above, unchanged), oldest first, for the /replay page:
+//   -> { from, to, detections: [{ t, lat, lng, camera_id, camera_name, source }], next_cursor }
+//   source: 'watch' (the hourly camera watch) | 'spotter' (an approved photo
+//   sighting filed with a traffic camera — placeSightingOnMap below).
+// The window is at most HISTORY_MAX_DAYS and may not end in the future; pages
+// are keyset-paginated by (observed_at, id). Only public data: no image, no
+// detection or submission id, and a spotter detection only while its sighting
+// is still approved with its photo stored (deleting the photo removes the row
+// anyway — this is a second guard). Edge-cached like the list.
+const HISTORY_MAX_DAYS = 31;
+const HISTORY_DEFAULT_LIMIT = 500;
+const HISTORY_MAX_LIMIT = 1000;
+const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
+export async function apiCameraSightingsHistory(request, env, ctx, { now = Date.now() } = {}) {
+  const params = new URL(request.url).searchParams;
+  const fromRaw = params.get('from'), toRaw = params.get('to');
+  if (!ISO_Z_RE.test(fromRaw || '') || !ISO_Z_RE.test(toRaw || '')) return fail(400, 'invalid_range');
+  const fromMs = Date.parse(fromRaw), toMs = Date.parse(toRaw);
+  if (!(toMs > fromMs) || toMs - fromMs > HISTORY_MAX_DAYS * 86400000 || toMs > now + MAX_FUTURE_SKEW_MS) return fail(400, 'invalid_range');
+  const rawLimit = params.get('limit');
+  const limit = /^\d{1,4}$/.test(rawLimit || '') ? Math.min(Math.max(Number(rawLimit), 1), HISTORY_MAX_LIMIT) : HISTORY_DEFAULT_LIMIT;
+  let after = null;
+  if (params.get('cursor')) {
+    const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\|([A-Za-z0-9-]{1,64})$/.exec(params.get('cursor'));
+    if (!m) return fail(400, 'invalid_cursor');
+    after = { t: m[1], id: m[2] };
+  }
+
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
+  const from = toStoredIso(fromMs), to = toStoredIso(toMs);
+  const { results } = await env.cybercabhunter_db.prepare(`
+    SELECT d.id, d.camera_id, d.camera_name, d.lat, d.lng, d.observed_at, d.source_submission_id
+    FROM camera_detections d
+    WHERE d.observed_at >= ? AND d.observed_at < ?
+      ${after ? 'AND (d.observed_at > ? OR (d.observed_at = ? AND d.id > ?))' : ''}
+      AND (d.source_submission_id IS NULL OR EXISTS (
+        SELECT 1 FROM submissions s WHERE s.id = d.source_submission_id
+          AND s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_ref IS NOT NULL))
+    ORDER BY d.observed_at ASC, d.id ASC
+    LIMIT ?
+  `).bind(...[from, to, ...(after ? [after.t, after.t, after.id] : []), limit + 1]).all();
+  const rows = results || [];
+  const page = rows.slice(0, limit);
+  const last = page[page.length - 1];
+  const response = Response.json({
+    from, to,
+    detections: page.map(r => ({
+      t: r.observed_at, lat: r.lat, lng: r.lng, camera_id: r.camera_id, camera_name: r.camera_name,
+      source: r.source_submission_id ? 'spotter' : 'watch'
+    })),
+    next_cursor: rows.length > limit ? `${last.observed_at}|${last.id}` : null
+  }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });
+  if (cache) {
+    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  }
+  return response;
+}
+
 export async function apiGetCameraSightingImage(request, env, id) {
   const notFound = () => new Response('Not found', { status: 404 });
   if (!DETECTION_ID_RE.test(id)) return notFound();
