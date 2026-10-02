@@ -19,7 +19,11 @@
    Cybercab icon (camera watch) or a gold diamond (spotter) where they settle,
    and a warm glow that grows hotter where sightings repeat. The activity ribbon
    under the map is a histogram of the window that fills gold behind the
-   playhead; drag it to scrub. The counter rolls like an odometer. */
+   playhead; drag it to scrub. The counter rolls like an odometer.
+   Underneath: every camera in the watch (public/data/traffic-cameras.json) as a
+   dim dot from the start — it lights up gold once a sighting lands there, so the
+   month view is also a coverage map — and the service zone (the same boundary
+   as the Zones page, js/austin-map.js), kept quiet under the gold. */
 window.CCCReplay = (function () {
   const ZONE = 'America/Chicago';
   const RANGES = { month: { label: 'This Month' }, '24h': { ms: 864e5, label: 'Last 24 hours' }, '7d': { ms: 7 * 864e5, label: 'Last 7 days' } };
@@ -30,6 +34,7 @@ window.CCCReplay = (function () {
   const PING_MS = 1100;           // a landing ping's life, in real time
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
+  const ZONE_LOOK = { fill: 0.06, glow: 0, line: '#b8912a', width: 1.5, lineOpacity: 0.55 };   // quiet under the gold
 
   // ---- Time (Austin) ----
   function zoneParts(ms) {
@@ -134,7 +139,7 @@ window.CCCReplay = (function () {
   }
 
   // ---- The page ----
-  const state = { dots: [], start: 0, end: 0, T: 0, playing: false, speed: 4, shown: 0, appeared: [], pings: new Map(), map: null, range: '24h', date: null };
+  const state = { dots: [], start: 0, end: 0, T: 0, playing: false, speed: 4, shown: 0, appeared: [], pings: new Map(), map: null, range: '24h', date: null, cameras: [] };
 
   function init() {
     const $ = id => document.getElementById(id);
@@ -154,6 +159,9 @@ window.CCCReplay = (function () {
         });
         if (state.map.touchZoomRotate) state.map.touchZoomRotate.disableRotation();
         state.map.on('move', () => draw());
+        state.map.on('load', () => {
+          if (window.CCCAustinMap) { try { CCCAustinMap.addServiceZone(state.map, CCCAustinMap.SERVICE_ZONE, ZONE_LOOK); } catch (e) { /* no zone */ } }
+        });
       } catch (e) { state.map = null; }
     }
     const project = (lng, lat) => {
@@ -200,11 +208,31 @@ window.CCCReplay = (function () {
       state.shown = n;
       canvas.dataset.dots = String(n);
       setCounter(n);
+      // One entry per location so far (its latest sighting and how many).
+      const byKey = new Map();
+      for (let i = 0; i < n; i++) { const d = state.dots[i]; const k = d.key || `${d.lat},${d.lng}`; const e = byKey.get(k) || { d, count: 0 }; e.count++; e.d = d; byKey.set(k, e); }
+      const lit = state.cameras.filter(c => byKey.has(c.camera_id)).length;
+      canvas.dataset.cameras = String(state.cameras.length);
+      canvas.dataset.camerasLit = String(lit);
       if (ctx) {
         ctx.clearRect(0, 0, w, h);
+        // No map (WebGL unavailable): the service zone goes on the canvas instead.
+        if (!state.map && window.CCCAustinMap) {
+          ctx.beginPath();
+          CCCAustinMap.SERVICE_ZONE.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+          ctx.closePath();
+          ctx.fillStyle = `rgba(255,199,44,${ZONE_LOOK.fill})`; ctx.fill();
+          ctx.lineWidth = ZONE_LOOK.width; ctx.strokeStyle = 'rgba(184,145,42,0.55)'; ctx.stroke();
+        }
+        // Every watched camera, dim until a sighting lands on it.
+        for (const c of state.cameras) {
+          if (byKey.has(c.camera_id)) continue;
+          const [x, y] = project(c.lng, c.lat);
+          ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(70,62,44,0.38)'; ctx.fill();
+          ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+        }
         // Heat: repeat sightings at one camera glow hotter.
-        const byKey = new Map();
-        for (let i = 0; i < n; i++) { const d = state.dots[i]; const k = d.key || `${d.lat},${d.lng}`; const e = byKey.get(k) || { d, count: 0 }; e.count++; e.d = d; byKey.set(k, e); }
         for (const { d, count } of byKey.values()) {
           if (count < 2) continue;
           const [x, y] = project(d.lng, d.lat);
@@ -349,6 +377,12 @@ window.CCCReplay = (function () {
       catch (e) { window.prompt('Copy this link:', link); }
     });
     window.addEventListener('resize', () => draw());
+
+    // The camera base layer (the same list the server checks sightings against).
+    fetch('data/traffic-cameras.json').then(r => (r.ok ? r.json() : [])).then(list => {
+      state.cameras = (Array.isArray(list) ? list : []).filter(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng)).map(c => ({ camera_id: String(c.camera_id), lat: c.lat, lng: c.lng }));
+      draw();
+    }).catch(() => {});
 
     syncPlay();
     setCounter(0);

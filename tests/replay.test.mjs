@@ -126,9 +126,10 @@ async function run() {
     w.fetch = async url => {
       const u = String(url);
       if (u.startsWith('/api/camera-sightings/history')) return worker.fetch(new Request(`https://x${u}`), ctx.env, {});
+      if (u === 'data/traffic-cameras.json') return new Response(read('public/data/traffic-cameras.json'));
       return new Response('{}', { status: 404 });
     };
-    w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/replay.js')}`);
+    w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/austin-map.js')}\n${read('public/js/replay.js')}`);
     await new Promise(r => setTimeout(r, 120));
     return { w, d: w.document, R: w.CCCReplay };
   }
@@ -164,6 +165,31 @@ async function run() {
     check('the play button offers Play again at the end', live.d.getElementById('replayPlay').getAttribute('aria-label') === 'Play');
     live.w.close();
 
+    // The camera base layer: every watched camera from the start, lit once a sighting lands there.
+    const cams = JSON.parse(read('public/data/traffic-cameras.json'));
+    const cov = await makeApp();
+    detection(cov, NOW - 10 * H, { camera: cams[0].camera_id });
+    detection(cov, NOW - 4 * H, { camera: cams[1].camera_id });
+    detection(cov, NOW - 3 * H, { camera: cams[1].camera_id });
+    const c = await page(cov, '?range=24h', { reduceMotion: true });
+    const cv = c.d.getElementById('replayCanvas');
+    check(`all ${cams.length} watched cameras are on the base layer`, Number(cv.dataset.cameras) === cams.length && cams.length >= 50);
+    check('the 2 cameras with sightings are lit, the rest stay dim', cv.dataset.camerasLit === '2');
+    const rb = c.d.getElementById('replayRibbon');
+    rb.getBoundingClientRect = () => ({ left: 0, width: 1000, top: 0, height: 48 });
+    rb.dispatchEvent(new c.w.MouseEvent('pointerdown', { clientX: 0, bubbles: true }));
+    rb.dispatchEvent(new c.w.MouseEvent('pointerup', { bubbles: true }));
+    check('scrubbed back to the start, no camera is lit yet', cv.dataset.camerasLit === '0' && cv.dataset.cameras === String(cams.length));
+    c.w.close();
+
+    // A shared link, opened logged out (no cookie, no session): it renders the pinned month.
+    const shared = await makeApp();
+    const sept = Date.UTC(2026, 8, 15, 17);
+    detection(shared, sept, { camera: cams[2].camera_id });
+    const s = await page(shared, '?range=month&date=2026-09-15', { reduceMotion: true });
+    check('a shared month link renders for a logged-out visitor', s.R.state.range === 'month' && s.R.state.date === '2026-09-15' && s.d.getElementById('replayCounter').dataset.value === '1' && s.d.getElementById('replayRangeLabel').textContent === 'This Month');
+    s.w.close();
+
     const empty = await makeApp();
     const none = await page(empty, '?range=7d', { reduceMotion: true });
     check('a window with no sightings: an honest empty state, counter 0, nothing faked', !none.d.getElementById('replayEmpty').classList.contains('hidden') && Number(none.d.getElementById('replayCounter').dataset.value) === 0 && none.R.state.dots.length === 0);
@@ -179,6 +205,12 @@ async function run() {
     check('the replay page is public (no sign-in gate) and draws on one canvas', !/signin\.html\?returnTo=%2Freplay/.test(html) && (html.match(/<canvas id="replayCanvas"/g) || []).length === 1);
     check('no video export of any kind', !/MediaRecorder|captureStream|\.mp4|\.webm|download=/i.test(read('public/js/replay.js') + html));
     check('the brand mark is on the stage', /cybercabhunter\.com<\/span>/.test(html));
+    // The service zone: one boundary on the replay, the Zones page and the homepage.
+    const coordsIn = (src, re) => JSON.stringify(JSON.parse(`[${re.exec(src)[1].replace(/\s+/g, '').replace(/,$/, '')}]`));
+    const shared = coordsIn(read('public/js/austin-map.js'), /const SERVICE_ZONE = \[([\s\S]*?)\];/);
+    check('the replay\'s service zone is the Zones page\'s boundary (and the homepage\'s)', shared === coordsIn(zones, /const serviceZoneCoords = \[([\s\S]*?)\];/) && shared === coordsIn(read('public/index.html'), /const serviceZoneCoords = \[([\s\S]*?)\];/));
+    check('the replay draws the zone, quietly, under the markers', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && /addServiceZone\(state\.map, CCCAustinMap\.SERVICE_ZONE, ZONE_LOOK\)/.test(read('public/js/replay.js')));
+    check('the legend explains dim cameras and the zone', /Camera, no sighting yet/.test(html) && /Service zone</.test(html));
   }
 
   t.finish();

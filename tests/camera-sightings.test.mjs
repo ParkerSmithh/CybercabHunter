@@ -285,7 +285,7 @@ async function run() {
     check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
     check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v2)', /<script src="js\/austin-map\.js\?v=2"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=2"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v3)', /<script src="js\/austin-map\.js\?v=3"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=3"><\/script>/.test(ZONES));
   }
 
   t.finish();

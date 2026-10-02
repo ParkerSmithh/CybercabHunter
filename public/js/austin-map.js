@@ -1,7 +1,10 @@
 /* Shared Austin map pieces, so the Zones page map (infrastructure.html) and the
    homepage minimap (index.html) can't drift apart:
      - styleBasemap(map): the dark basemap look (both maps)
-     - addServiceZone(map, coords): the gold service zone (both maps)
+     - addServiceZone(map, coords, look): the gold service zone (both maps;
+       the replay passes a quieter look)
+     - SERVICE_ZONE: the Austin service-zone boundary, for the replay (the
+       Zones page and homepage keep their own copy; a test keeps all three equal)
      - addFeatures(map): the Zones map's markers only (not the minimap) —
        the real, publicly reported Cybercab charging locations (gold pins)
      - Cybercabs spotted by the traffic-camera watch (GET /api/camera-sightings,
@@ -20,16 +23,31 @@ window.CCCAustinMap = (function () {
     paint('building', 'fill-color', 'hsla(232,30%,6%,0.6)');
   }
 
+  // The Austin service zone (lng, lat), the same boundary as the Zones page.
+  const SERVICE_ZONE = [
+    [-97.8089523, 30.2478867], [-97.8237839, 30.2382717], [-97.8376999, 30.2433796], [-97.8522568, 30.2236824],
+    [-97.8609161, 30.2139397], [-97.8681335, 30.2005615], [-97.8598862, 30.1848412], [-97.8251724, 30.1692181],
+    [-97.768898, 30.1522579], [-97.731102, 30.1427193], [-97.6521378, 30.1459084], [-97.5534668, 30.2621021],
+    [-97.5766525, 30.3470936], [-97.6152802, 30.3756886], [-97.6323395, 30.4018478], [-97.6431885, 30.4222393],
+    [-97.6465302, 30.4300823], [-97.6558075, 30.4385662], [-97.6959686, 30.4513607], [-97.7225876, 30.4516335],
+    [-97.7416763, 30.4467773], [-97.778038, 30.4356804], [-97.770607, 30.4302769], [-97.7579498, 30.423193],
+    [-97.7507782, 30.4155159], [-97.7515182, 30.3973579], [-97.7567215, 30.3945923], [-97.76091, 30.3908138],
+    [-97.7832413, 30.3825302], [-97.798378, 30.360218], [-97.819809, 30.3364353], [-97.8299332, 30.3258209],
+    [-97.8367691, 30.2969208], [-97.8253403, 30.2669239], [-97.8089523, 30.2478867]
+  ];
+
   // The service zone in gold: a light wash (the streets show through), a soft
-  // wide glow, then a crisp bright outline. Call on load.
-  function addServiceZone(map, coords) {
+  // wide glow, then a crisp bright outline. Call on load. `look` overrides the
+  // strengths (the replay keeps the zone quiet under its gold markers).
+  function addServiceZone(map, coords, look = {}) {
+    const L = Object.assign({ fill: 0.13, glow: 0.45, line: '#FFD23F', width: 2.5, lineOpacity: 1 }, look);
     map.addSource('service-zone', {
       type: 'geojson',
       data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
     });
-    map.addLayer({ id: 'zone-fill', type: 'fill', source: 'service-zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': 0.13 } });
-    map.addLayer({ id: 'zone-line-glow', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': 0.45 } });
-    map.addLayer({ id: 'zone-line', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFD23F', 'line-width': 2.5 } });
+    map.addLayer({ id: 'zone-fill', type: 'fill', source: 'service-zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': L.fill } });
+    map.addLayer({ id: 'zone-line-glow', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': L.glow } });
+    map.addLayer({ id: 'zone-line', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': L.line, 'line-width': L.width, 'line-opacity': L.lineOpacity } });
   }
 
   function addFeatures(map) {
@@ -128,5 +146,5 @@ window.CCCAustinMap = (function () {
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
   }
-  return { styleBasemap, addServiceZone, addFeatures };
+  return { styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE };
 })();
