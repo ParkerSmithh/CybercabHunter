@@ -74,11 +74,16 @@
     const rs = data.rideSummary;
     const cov = data.coverage;
     const name = data.user.display_name || data.user.handle || 'Cybercab Hunter Rider';
-    $('dataAvatar').textContent = initials(data.user.display_name || data.user.handle);
+    // The shared avatar (js/main.js: photo, else initials); plain initials if it isn't loaded.
+    if (typeof CCC !== 'undefined' && CCC.renderAvatar) CCC.renderAvatar($('dataAvatar'), { url: data.user.avatar_url || null, name, size: 128, textClass: 'text-lg' });
+    else $('dataAvatar').textContent = initials(data.user.display_name || data.user.handle);
     $('dataName').textContent = name;
+    $('dataHandle').textContent = data.user.handle ? '@' + data.user.handle : '';
     $('dataJoined').textContent = 'Joined ' + fmtDate((data.user.joined_at || '').slice(0, 10));
 
+    $('statRides').textContent = fmtInt(rs.trip_count);
     $('statMiles').textContent = fmtMiles(rs.total_distance);
+    $('statTime').textContent = fmtDuration(rs.total_duration_minutes);
     // Vehicles RIDDEN (unique vehicles across counted rides) — not the
     // crowdsourced "vehicles discovered" figure.
     $('statVehiclesRidden').textContent = fmtInt(rs.unique_vehicles);
@@ -166,6 +171,12 @@
       }).join('');
       $('monthlyLabels').innerHTML = months.map(m => `<div class="flex-1 text-center text-[10px] text-slate-500">${esc(m.label)}</div>`).join('');
     }
+    // One line above the chart: rides in the window and the busiest month.
+    const inWindowTotal = inWindow.reduce((n, m) => n + (m ? m.ride_count : 0), 0);
+    const busiest = months.reduce((best, m, i) => (inWindow[i] && (!best || inWindow[i].ride_count > best.n) ? { label: m.label, n: inWindow[i].ride_count } : best), null);
+    $('monthlySummary').textContent = inWindowTotal
+      ? `${plural(inWindowTotal, 'ride')} in the last 12 months · busiest: ${busiest.label} (${busiest.n})`
+      : 'Rides per month, last 12 months';
     const notes = [];
     if (olderRides > 0) notes.push(`${plural(olderRides, 'ride')} from before this window ${olderRides === 1 ? 'is' : 'are'} not shown here.`);
     if (undated > 0) notes.push(`${plural(undated, 'ride')} without a date can't be placed in a month.`);
@@ -175,7 +186,9 @@
   function renderCities(data) {
     if (!data.cities.length) { show('citiesEmpty', true); $('citiesList').innerHTML = ''; return; }
     show('citiesEmpty', false);
+    const totalRides = data.rideSummary.trip_count || 0;
     $('citiesList').innerHTML = data.cities.map(c => {
+      const pct = totalRides ? Math.round((c.ride_count / totalRides) * 100) : 0;
       const dist = c.rides_with_distance > 0
         ? fmtMiles(c.total_distance) + (c.rides_with_distance < c.ride_count ? ` (${c.rides_with_distance} of ${c.ride_count} rides)` : '')
         : 'distance unknown';
@@ -184,9 +197,53 @@
           <span class="font-semibold">${esc(c.service_area)}</span>
           <span class="font-display font-bold text-slate-300">${esc(plural(c.ride_count, 'ride'))}</span>
         </div>
-        <div class="text-xs text-slate-500 mt-1">${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
+        <div class="mt-2 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
+        <div class="text-xs text-slate-500 mt-1.5">${pct}% of rides · ${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
       </div>`;
     }).join('');
+  }
+
+  // How many counted rides carry each detail (data.coverage).
+  function renderCoverage(data) {
+    const cov = data.coverage;
+    if (!cov.rides) { show('coverageEmpty', true); $('coverageList').innerHTML = ''; return; }
+    show('coverageEmpty', false);
+    const rows = [['Fare', cov.withFare], ['Distance', cov.withDistance], ['Duration', cov.withDuration], ['Date', cov.withDate], ['City', cov.withCity], ['Vehicle', cov.withVehicle]];
+    $('coverageList').innerHTML = rows.map(([label, n]) => {
+      const pct = Math.round((n / cov.rides) * 100);
+      return `<li>
+        <div class="flex items-baseline justify-between gap-3 text-sm"><span class="text-slate-200">${esc(label)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(n)} of ${esc(cov.rides)} · ${pct}%</span></div>
+        <div class="mt-1.5 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full ${pct === 100 ? 'bg-gradient-to-r from-goldsoft to-gold' : 'bg-gold/60'}" style="width:${pct}%"></div></div>
+      </li>`;
+    }).join('');
+  }
+
+  // What others see: the public profile (worker/community.js) shows counts and
+  // city names only, and only while the Profile switch is on with a username.
+  function renderPublic(data) {
+    const u = data.user, rs = data.rideSummary;
+    const isPublic = !!(u.leaderboard_opt_in && u.handle);
+    const status = $('publicStatus');
+    status.textContent = isPublic ? 'Public' : u.leaderboard_opt_in ? 'No username' : 'Private';
+    status.className = 'shrink-0 text-[10px] font-semibold uppercase tracking-wider rounded-full px-2 py-1 border ' + (isPublic ? 'border-[rgba(212,175,55,0.35)] text-gold' : 'border-white/[0.12] text-slate-400');
+    $('publicSummary').textContent = isPublic
+      ? `Anyone can see your public profile at /rider/${u.handle}:`
+      : u.leaderboard_opt_in
+        ? 'Set a username on your Profile page to get a public profile page.'
+        : 'Your community profile is turned off — you appear only as “Private spotter”.';
+    const discovered = (data.discoveredVehicles || []).filter(v => v.public_eligible).length;
+    const items = isPublic ? [
+      ['Name, username, photo and bio', ''],
+      ['Rides', fmtInt(rs.trip_count)],
+      ['Cybercabs ridden', fmtInt(rs.unique_vehicles)],
+      ['Cities', data.cities.length ? data.cities.map(c => c.service_area).join(', ') : '—'],
+      ['Vehicles discovered', fmtInt(discovered)],
+      ['Your reviews', 'Shown with your name']
+    ] : [];
+    $('publicList').innerHTML = items.map(([k, v]) => `<li class="flex items-baseline justify-between gap-3 py-1.5 border-b border-white/[0.05] last:border-0"><span class="text-slate-400">${esc(k)}</span><span class="font-semibold text-slate-100 text-right">${esc(v)}</span></li>`).join('');
+    const link = $('publicProfileLink');
+    link.classList.toggle('hidden', !isPublic);
+    if (isPublic) link.href = '/rider/' + encodeURIComponent(u.handle);
   }
 
   const SOURCE_LABELS = { receipt_email: 'Email receipt', receipt_import: 'Imported receipt' };
@@ -408,6 +465,8 @@
     renderSpending(data);
     renderMonthly(data);
     renderCities(data);
+    renderCoverage(data);
+    renderPublic(data);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
     teslaLinked = !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected);

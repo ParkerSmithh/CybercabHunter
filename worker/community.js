@@ -4,7 +4,9 @@
 //     -> { board, label, boards: [{ id, label }], entries: [{ rank, count, name, handle, avatar_url, profile }],
 //          totals: { spotters, vehicles } }   (every ranked rider, not just the top N: counts only)
 //   GET /api/riders/:handle                           public, edge-cached
-//     -> { rider: { name, handle, avatar_url, bio, joined }, discovered: { count, vehicles: [...] } }
+//     -> { rider: { name, handle, avatar_url, bio, joined }, discovered: { count, vehicles: [...] },
+//          rides: { count, vehicles, cities: [{ name, rides }] },
+//          reviews: { count, average, recent: [...] } }
 //
 // Boards are a server-side map (BOARDS): a future board (most sightings,
 // longest streak) is one new entry — its ranking SQL and label — and the page
@@ -19,8 +21,12 @@
 //     no name, handle, photo, id or link ever leaves the server for them.
 //   - A public profile needs the opt-in AND a handle; anything else is a 404,
 //     identical to an unknown handle (existence isn't revealed).
-//   - Never selected here: email (google_connections), fares/spending, ride
-//     dates/times/routes, receipts, review status, internal user ids.
+//   - A public profile's ride figures are COUNTS ONLY (counted rides, distinct
+//     vehicles ridden, and rides per city name — the same "which rides count"
+//     rule as Rider Data); the privacy page says so, and the same switch hides
+//     them. Never selected here: email (google_connections), fares/spending,
+//     ride dates/times/routes/addresses, receipts, plates of vehicles ridden,
+//     review status, internal user ids.
 //   - Only publicly eligible vehicles (publicVehicleEligibleSql) ever count or
 //     appear, so a private vehicle never leaks through a count or a list.
 
@@ -30,6 +36,7 @@ const CACHE_SECONDS = 60;
 const TOP_N = 6;
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 const PRIVATE_NAME = 'Private spotter';
+const PROFILE_REVIEWS = 10;   // most recent reviews shown on a public profile
 
 // ---- Discovery credit (THE rule, shared by the leaderboard and profiles) ----
 // For each publicly eligible vehicle, the discoverer is whoever has the
@@ -187,6 +194,24 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
       ORDER BY credit.at ASC
     `).bind(sys, sys, user.id).all();
     const vehicles = (results || []).map(v => ({ id: v.id, license_plate: v.license_plate, model: v.model, color: v.color, service_area: v.service_area }));
+    const counted = `FROM ${RIDES_FROM} WHERE t.user_id = ? AND ${COUNTED_RIDES_WHERE}`;
+    const [rideTotals, cityRows, reviewTotals, reviewRows] = await sql.batch([
+      sql.prepare(`SELECT COUNT(*) AS rides, COUNT(DISTINCT t.robotaxi_vehicle_id) AS vehicles ${counted}`).bind(user.id),
+      sql.prepare(`SELECT t.service_area AS name, COUNT(*) AS rides ${counted} AND t.service_area IS NOT NULL GROUP BY t.service_area ORDER BY rides DESC, t.service_area`).bind(user.id),
+      sql.prepare(`
+        SELECT COUNT(*) AS n, AVG(r.rating) AS avg FROM cybercab_reviews r JOIN robotaxi_vehicles v ON v.id = r.robotaxi_vehicle_id
+        WHERE r.user_id = ? AND ${publicVehicleEligibleSql('v')}`).bind(user.id),
+      sql.prepare(`
+        SELECT r.id, r.rating, r.body, r.created_at, v.id AS vehicle_id, v.license_plate,
+               (SELECT COUNT(*) FROM cybercab_review_likes l WHERE l.review_id = r.id) AS like_count,
+               (SELECT COUNT(*) FROM cybercab_review_comments c WHERE c.review_id = r.id) AS comment_count
+        FROM cybercab_reviews r JOIN robotaxi_vehicles v ON v.id = r.robotaxi_vehicle_id
+        WHERE r.user_id = ? AND ${publicVehicleEligibleSql('v')}
+        ORDER BY r.created_at DESC, r.id DESC LIMIT ${PROFILE_REVIEWS}`).bind(user.id)
+    ]);
+    const rt = (rideTotals.results || [])[0] || {};
+    const rv = (reviewTotals.results || [])[0] || {};
+    const reviewCount = Number(rv.n) || 0;
     return Response.json({
       rider: {
         name: (user.display_name && String(user.display_name).trim()) || `@${user.handle}`,
@@ -195,7 +220,21 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
         bio: user.bio || null,
         joined: String(user.created_at || '').slice(0, 7) || null   // month only
       },
-      discovered: { count: vehicles.length, vehicles }
+      discovered: { count: vehicles.length, vehicles },
+      rides: {
+        count: Number(rt.rides) || 0,
+        vehicles: Number(rt.vehicles) || 0,
+        cities: (cityRows.results || []).map(c => ({ name: c.name, rides: Number(c.rides) }))
+      },
+      reviews: {
+        count: reviewCount,
+        average: reviewCount ? Math.round(Number(rv.avg) * 10) / 10 : null,
+        recent: (reviewRows.results || []).map(r => ({
+          id: r.id, rating: Number(r.rating), body: r.body, created_at: r.created_at,
+          vehicle: { id: r.vehicle_id, license_plate: r.license_plate || null },
+          like_count: Number(r.like_count), comment_count: Number(r.comment_count)
+        }))
+      }
     }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
   });
 }

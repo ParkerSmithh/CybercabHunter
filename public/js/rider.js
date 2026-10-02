@@ -2,7 +2,9 @@
    GET /api/riders/:handle, worker/community.js). Only riders who opted in AND
    set a username have one; anything else — including an unknown handle —
    shows the same "private" state, so whether an account exists is never
-   revealed. Only public fields and publicly eligible vehicles ever arrive here. */
+   revealed. Only public fields and publicly eligible vehicles ever arrive here;
+   ride figures are counts and city names only. Laid out like the rider's own
+   Profile page, then their counts, cities, discoveries and reviews. */
 (function () {
   const API = '';
   const $ = id => document.getElementById(id);
@@ -11,6 +13,11 @@
   function fmtMonth(ym) {
     const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '';
+  }
+
+  function fmtDay(sqlTime) {
+    const d = new Date(String(sqlTime || '').replace(' ', 'T') + 'Z');
+    return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   function show(state) {
@@ -25,8 +32,45 @@
     $('riderName').textContent = r.name;
     $('riderHandle').textContent = `@${r.handle}`;
     $('riderJoined').textContent = r.joined ? `Joined ${fmtMonth(r.joined)}` : '';
-    $('riderBio').textContent = r.bio || '';
-    $('riderBio').classList.toggle('hidden', !r.bio);
+    // Like the Profile page: the bio, or its "No bio yet." placeholder.
+    $('riderBio').textContent = r.bio || 'No bio yet.';
+    $('riderBio').classList.toggle('text-slate-500', !r.bio);
+
+    // Public counts (each an em dash if the server didn't send it).
+    const rides = data.rides || {}, reviews = data.reviews || {};
+    const num = (id, n) => { $(id).textContent = Number.isInteger(n) ? n.toLocaleString('en-US') : '—'; };
+    num('riderRides', rides.count);
+    num('riderVehiclesRidden', rides.vehicles);
+    num('riderCitiesCount', Array.isArray(rides.cities) ? rides.cities.length : null);
+    num('riderDiscovered', data.discovered ? data.discovered.count : null);
+    num('riderReviewCount', reviews.count);
+    $('riderReviewAvg').textContent = typeof reviews.average === 'number' ? `${reviews.average.toFixed(1)} ★` : '—';
+
+    // Cities: rides in each, with its share of all their rides.
+    const cities = Array.isArray(rides.cities) ? rides.cities : [];
+    const total = rides.count || 0;
+    $('riderCities').innerHTML = cities.map(c => {
+      const pct = total ? Math.round((c.rides / total) * 100) : 0;
+      return `<li>
+        <div class="flex items-baseline justify-between gap-3 text-sm"><span class="font-semibold text-slate-100">${esc(c.name)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(c.rides)} ${c.rides === 1 ? 'ride' : 'rides'} · ${pct}%</span></div>
+        <div class="mt-1.5 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
+      </li>`;
+    }).join('');
+    $('riderNoCities').classList.toggle('hidden', cities.length > 0);
+
+    // Their most recent reviews (text via textContent below).
+    const recent = Array.isArray(reviews.recent) ? reviews.recent : [];
+    $('riderReviews').innerHTML = recent.map(rv => `
+      <article class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div class="flex items-center justify-between gap-3">
+          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="text-xs font-display font-bold tracking-wide text-gold hover:underline">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
+          <span class="text-gold tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</span>
+        </div>
+        <p class="mt-2 text-sm text-slate-300 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>
+        <div class="mt-2 text-[11px] text-slate-500">${esc(fmtDay(rv.created_at))} · ${rv.like_count} ${rv.like_count === 1 ? 'like' : 'likes'} · ${rv.comment_count} ${rv.comment_count === 1 ? 'comment' : 'comments'}</div>
+      </article>`).join('');
+    $('riderReviews').querySelectorAll('[data-body]').forEach((el, i) => { el.textContent = recent[i].body; });
+    $('riderNoReviews').classList.toggle('hidden', recent.length > 0);
 
     const vehicles = (data.discovered && data.discovered.vehicles) || [];
     $('riderCount').textContent = String(vehicles.length);

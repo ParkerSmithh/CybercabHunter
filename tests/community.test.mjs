@@ -175,6 +175,20 @@ async function run() {
     const privateOne = await get(ctx, '/api/riders/bobby');
     const unknown = await get(ctx, '/api/riders/nobody_here');
     check('not opted in -> 404, identical to an unknown handle (existence not revealed)', privateOne.status === 404 && unknown.status === 404 && privateOne.raw === unknown.raw);
+
+    // Ride figures on a public profile: counts and city names only.
+    const austinCab = vehicle(ctx);
+    seedRide(ctx.d1, { id: 'ride-austin', userId: 'alice', vehicleId: austinCab, status: 'approved', rideKey: 'rk-austin', serviceArea: 'Austin', fare: 1234, createdAt: '2026-09-01 11:00:00' });
+    seedRide(ctx.d1, { id: 'ride-austin-2', userId: 'alice', vehicleId: austinCab, status: 'approved', rideKey: 'rk-austin-2', serviceArea: 'Austin', createdAt: '2026-09-01 11:01:00' });
+    seedRide(ctx.d1, { id: 'ride-review', userId: 'alice', vehicleId: austinCab, status: 'needs_review', rideKey: 'rk-review', serviceArea: 'Houston', createdAt: '2026-09-01 11:02:00' });
+    ctx.d1.prepare(`INSERT INTO cybercab_reviews (id, user_id, robotaxi_vehicle_id, rating, body, created_at) VALUES ('rv1', 'alice', ?, 4, 'Quiet and smooth.', '2026-09-20 10:00:00')`).bind(austinCab)._exec();
+    const counted = await get(ctx, '/api/riders/alice');
+    check('public profile ride counts: 3 counted rides in 2 different Cybercabs (the under-review ride is not counted)', counted.json.rides.count === 3 && counted.json.rides.vehicles === 2);
+    check('...and rides per city name, busiest first', JSON.stringify(counted.json.rides.cities) === JSON.stringify([{ name: 'Austin', rides: 2 }, { name: 'Dallas', rides: 1 }]));
+    check('no fares, dates, times, addresses or pickup/dropoff ever appear', !/1234|12\.34|692|6\.92|2026-06-09|13:04|Hanover|NorthPark|fare|ride_date|pickup|dropoff|distance|duration|Houston/.test(counted.raw));
+    check('their reviews: count, average given and the most recent', counted.json.reviews.count === 1 && counted.json.reviews.average === 4 && counted.json.reviews.recent[0].body === 'Quiet and smooth.' && counted.json.reviews.recent[0].vehicle.id === austinCab);
+    ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'private' WHERE id = '${austinCab}'`);
+    check('a review of a vehicle no longer public drops off the profile', (await get(ctx, '/api/riders/alice')).json.reviews.count === 0);
     check('malformed handles are 404s', (await get(ctx, '/api/riders/%3Cscript%3E')).status === 404 && (await get(ctx, '/api/riders/' + 'a'.repeat(40))).status === 404);
     check('handles are case-insensitive', (await get(ctx, '/api/riders/ALICE')).status === 200);
     ctx.d1.exec(`UPDATE users SET avatar_url = 'javascript:alert(1)' WHERE id = 'alice'`);
@@ -230,7 +244,7 @@ async function run() {
     await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: 'no' });
     check('...and a non-boolean value keeps it too (still on)', (await me()).leaderboard_opt_in === true);
     const html = read('public/profile.html');
-    check('the switch says it is on by default and how to turn it off', /Show my name and photo on the Community leaderboard and a public profile\. On by default — turn it off to appear as “Private spotter”\./.test(html));
+    check('the switch says it is on by default and how to turn it off', /Show my name, photo and ride counts on the Community leaderboard and a public profile\. On by default — turn it off to appear as “Private spotter”\./.test(html));
     check('the page sends leaderboard_opt_in from the switch, and keeps profile_visibility as it was', /leaderboard_opt_in: isPublic/.test(html) && /profile_visibility: currentUser\.profile_visibility === 'public'/.test(html));
     check('opted in without a username: a prompt to set one', /id="communityHandleHint"[^>]*>Set a username to get a public profile page\./.test(html));
     const privacy = read('public/privacy.html');
@@ -336,6 +350,10 @@ async function run() {
     const prof = await open('/rider/alice', 'rider.html', 'rider.js', api);
     check('rider page: name, @handle, count and vehicle links', prof.d.getElementById('riderName').textContent === 'Alice' && prof.d.getElementById('riderHandle').textContent === '@alice' &&
       prof.d.getElementById('riderCount').textContent === '2' && prof.d.querySelectorAll('#riderVehicles a[href^="vehicle/"]').length === 2);
+    const ptext = id => prof.d.getElementById(id).textContent.replace(/\s+/g, ' ').trim();
+    check('rider page: the public counts (2 rides, 2 Cybercabs, 1 city, 2 discovered, no reviews)', ptext('riderRides') === '2' && ptext('riderVehiclesRidden') === '2' && ptext('riderCitiesCount') === '1' && ptext('riderDiscovered') === '2' && ptext('riderReviewCount') === '0' && ptext('riderReviewAvg') === '—');
+    check('rider page: cities with their share of rides', /Dallas/.test(ptext('riderCities')) && /2 rides · 100%/.test(ptext('riderCities')));
+    check('rider page: laid out like the Profile page (Bio, with its "No bio yet." placeholder)', ptext('riderBio') === 'No bio yet.' && /Bio<\/div>/.test(read('public/rider.html')) && /max-w-2xl/.test(read('public/rider.html')));
     prof.w.close();
     const hidden = await open('/rider/bob', 'rider.html', 'rider.js', api);
     check('a private or unknown rider: "This spotter\'s profile is private."', !hidden.d.getElementById('riderPrivate').classList.contains('hidden') && hidden.d.getElementById('riderProfile').classList.contains('hidden'));
