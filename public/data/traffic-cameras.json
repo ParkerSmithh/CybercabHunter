@@ -298,5 +298,125 @@
   "name": "BRAKER LN / DOMAIN DR (Pickle Research Campus Driveway)",
   "lat": 30.392347,
   "lng": -97.725624
+ },
+ {
+  "camera_id": "699",
+  "name": "RIVERSIDE DR / WILLOW CREEK DR",
+  "lat": 30.23768,
+  "lng": -97.725662
+ },
+ {
+  "camera_id": "173",
+  "name": "BRAKER LN / METRIC BLVD",
+  "lat": 30.392342,
+  "lng": -97.708283
+ },
+ {
+  "camera_id": "220",
+  "name": "FM 620 RD / ANDERSON MILL RD",
+  "lat": 30.45545,
+  "lng": -97.825806
+ },
+ {
+  "camera_id": "787",
+  "name": "RIVERSIDE DR / PARKER LN",
+  "lat": 30.243229,
+  "lng": -97.729309
+ },
+ {
+  "camera_id": "471",
+  "name": "BURNET RD / GAULT LN",
+  "lat": 30.404934,
+  "lng": -97.716049
+ },
+ {
+  "camera_id": "92",
+  "name": "LAMAR BLVD / 24TH ST",
+  "lat": 30.288534,
+  "lng": -97.75277
+ },
+ {
+  "camera_id": "202",
+  "name": "BURLESON RD / MC KINNEY FALLS PKWY",
+  "lat": 30.191999,
+  "lng": -97.698387
+ },
+ {
+  "camera_id": "168",
+  "name": "BRODIE LN / SLAUGHTER LN",
+  "lat": 30.18355,
+  "lng": -97.849793
+ },
+ {
+  "camera_id": "283",
+  "name": "DEAN KEETON ST / LAFAYETTE AVE",
+  "lat": 30.284424,
+  "lng": -97.721809
+ },
+ {
+  "camera_id": "150",
+  "name": "CESAR CHAVEZ ST / PLEASANT VALLEY RD",
+  "lat": 30.252989,
+  "lng": -97.712784
+ },
+ {
+  "camera_id": "117",
+  "name": "MENCHACA RD / SLAUGHTER LN",
+  "lat": 30.173737,
+  "lng": -97.823731
+ },
+ {
+  "camera_id": "302",
+  "name": "LAMAR BLVD / PAYTON GIN RD",
+  "lat": 30.357647,
+  "lng": -97.700111
+ },
+ {
+  "camera_id": "325",
+  "name": "BRAKER LN / DESSAU RD",
+  "lat": 30.372438,
+  "lng": -97.665733
+ },
+ {
+  "camera_id": "1444",
+  "name": "GUADALUPE ST / 17TH ST",
+  "lat": 30.279736,
+  "lng": -97.742287
+ },
+ {
+  "camera_id": "401",
+  "name": "MANOR RD / LOYOLA LN",
+  "lat": 30.310062,
+  "lng": -97.667152
+ },
+ {
+  "camera_id": "240",
+  "name": "MANOR RD / NORTHEAST DR",
+  "lat": 30.308533,
+  "lng": -97.670769
+ },
+ {
+  "camera_id": "1356",
+  "name": "IH 35 SVRD / 6TH ST",
+  "lat": 30.265636,
+  "lng": -97.7342
+ },
+ {
+  "camera_id": "227",
+  "name": "MC NEIL DR / PARMER LN",
+  "lat": 30.44385,
+  "lng": -97.742394
+ },
+ {
+  "camera_id": "452",
+  "name": "AIRPORT BLVD / ZACH SCOTT ST",
+  "lat": 30.294119,
+  "lng": -97.707878
+ },
+ {
+  "camera_id": "525",
+  "name": "4601 BLK MC KINNEY FALLS PKWY (TX Parks and Wildlife)",
+  "lat": 30.188358,
+  "lng": -97.713356
  }
 ]

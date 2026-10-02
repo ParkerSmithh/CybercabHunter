@@ -1,5 +1,6 @@
 // Approved traffic-camera photo sightings -> Zones map markers.
-//   - public/data/traffic-cameras.json: all 50 cameras from camera-watch-50-coords.json
+//   - public/data/traffic-cameras.json: the 50 watch cameras (camera-watch-50-coords.json) then the
+//     20 backup cameras (camera-watch-backup-20-coords.json, City of Austin inventory) — 70 in all
 //   - Submit: an optional camera_id is saved on the sighting (validated against the list);
 //     without one nothing changes
 //   - Approve (and Add to registry) of a camera sighting creates the camera_detections row
@@ -64,12 +65,15 @@ async function run() {
   console.log('1. The shipped camera list');
   {
     const source = JSON.parse(read('camera-watch-50-coords.json'));
+    const backup = JSON.parse(read('camera-watch-backup-20-coords.json'));
     const shipped = JSON.parse(read('public/data/traffic-cameras.json'));
-    check('public/data/traffic-cameras.json has all 50 cameras', shipped.length === 50 && new Set(shipped.map(c => c.camera_id)).size === 50);
-    check('ids, names and coordinates match camera-watch-50-coords.json exactly',
-      source.every(s => { const c = shipped.find(x => x.camera_id === String(s.camera_id)); return c && c.name === s.name.trim() && c.lat === s.lat && c.lng === s.lng; }));
+    const same = (c, s) => c && c.camera_id === String(s.camera_id) && c.name === s.name.trim() && c.lat === s.lat && c.lng === s.lng;
+    check('public/data/traffic-cameras.json has 70 distinct cameras', shipped.length === 70 && new Set(shipped.map(c => c.camera_id)).size === 70);
+    check('the first 50 are the watch cameras, untouched and in place (camera-watch-50-coords.json)', source.length === 50 && source.every((s, i) => same(shipped[i], s)));
+    check('then the 20 backup cameras, in order (camera-watch-backup-20-coords.json)', backup.length === 20 && backup.every((s, i) => same(shipped[50 + i], s)));
+    check('the backups are the 20 requested ids', backup.map(c => c.camera_id).join() === '699,173,220,787,471,92,202,168,283,150,117,302,325,1444,401,240,1356,227,452,525');
     check('each entry is exactly { camera_id, name, lat, lng }', shipped.every(c => Object.keys(c).join() === 'camera_id,name,lat,lng' && typeof c.camera_id === 'string'));
-    check('the Worker uses the same file', TRAFFIC_CAMERAS.length === 50 && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
+    check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 70 && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
   }
 
   console.log('2. Submit: camera_id is saved; omitting it changes nothing');
@@ -77,6 +81,8 @@ async function run() {
     const ctx = await makeApp();
     const withCam = await submit(ctx, { service_area: 'Austin', camera_id: CAM });
     check('a picked camera: 200 and camera_id stored on the sighting', withCam.status === 201 && obs(ctx, withCam.json.submission_id).camera_id === CAM);
+    const backupCam = await submit(ctx, { service_area: 'Austin', camera_id: '1356' });
+    check('a backup camera (#1356, IH 35 SVRD / 6TH ST) can be filed too', backupCam.status === 201 && obs(ctx, backupCam.json.submission_id).camera_id === '1356');
     const noCity = await submit(ctx, { camera_id: '1493' });
     check('a camera with no city chosen is fine', noCity.status === 201 && obs(ctx, noCity.json.submission_id).camera_id === '1493');
     const none = await submit(ctx, { service_area: 'Austin' });
@@ -241,7 +247,7 @@ async function run() {
     d.getElementById('openSightingDrawer').click();
     await new Promise(r => setTimeout(r, 50));
     const sel = d.getElementById('sightingCamera');
-    check('opening the drawer fills the picker with all 50 cameras (plus "Not a traffic camera")', sel.options.length === 51 && sel.options[0].value === '' && [...sel.options].some(o => o.value === CAM && o.textContent === 'MARTIN LUTHER KING JR BLVD / TRINITY ST (#65)'));
+    check('opening the drawer fills the picker with all 70 cameras (plus "Not a traffic camera")', sel.options.length === 71 && sel.options[0].value === '' && [...sel.options].some(o => o.value === CAM && o.textContent === 'MARTIN LUTHER KING JR BLVD / TRINITY ST (#65)'));
     const photo = d.getElementById('sightingPhoto');
     const file = new w.File([JPEG], 'x.jpg', { type: 'image/jpeg' });
     Object.defineProperty(photo, 'files', { value: [file], configurable: true });
@@ -292,7 +298,7 @@ async function run() {
     card(plain).querySelector('button[data-approved-action="add-to-map"]').click();
     await new Promise(r => setTimeout(r, 80));
     const dialog = d.getElementById('modMapDialog');
-    check('Add to map opens the dialog with the camera picker (50 cameras)', dialog.hasAttribute('open') && d.getElementById('modMapCamera').options.length === 51);
+    check('Add to map opens the dialog with the camera picker (70 cameras)', dialog.hasAttribute('open') && d.getElementById('modMapCamera').options.length === 71);
     d.getElementById('modMapCamera').value = '538';
     d.getElementById('modMapForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
     await new Promise(r => setTimeout(r, 150));
