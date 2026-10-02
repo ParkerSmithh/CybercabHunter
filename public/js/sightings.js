@@ -4,7 +4,7 @@
    remembered), 24 per page, more loaded as the visitor scrolls (or taps "Load
    more"); photos load lazily. The "Seen" number and the stat cards are the
    server's figures for the selected city, re-checked every minute while the
-   tab is visible (LIVE): new sightings are added without a reload. A stat that
+   tab is visible: new sightings are added without a reload. A stat that
    could not be loaded shows an em dash, never 0. Every value from the API goes
    in through textContent / attributes, never innerHTML. */
 (function () {
@@ -204,18 +204,6 @@
     }
   }
 
-  // ---------- LIVE ----------
-  function setLive(healthy) {
-    $('liveIndicator').classList.toggle('is-stale', !healthy);
-    $('liveIndicator').title = healthy ? 'Checking for new sightings every minute' : "Couldn't check for new sightings — retrying";
-  }
-  function flashLive() {
-    const dot = $('liveDot');
-    dot.classList.remove('live-flash');
-    void dot.offsetWidth;   // restart the animation
-    dot.classList.add('live-flash');
-  }
-
   function setActiveOrder() {
     document.querySelectorAll('#sortToggle [data-order]').forEach(btn => {
       btn.setAttribute('aria-pressed', String(btn.dataset.order === order));
@@ -264,12 +252,12 @@
     $('sightingsMore').disabled = false;
 
     if (!body || !Array.isArray(body.sightings)) {
-      if (reset) { renderStats(null); setLive(false); show('sightingsError', true); }
+      if (reset) { renderStats(null); show('sightingsError', true); }
       else show('sightingsMore', true);   // keep what's shown; the button retries
       return;
     }
 
-    if (reset) { renderStats(body.stats); setLive(true); }
+    if (reset) renderStats(body.stats);
     const grid = $('sightingsGrid');
     body.sightings.forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
     cursor = body.next_cursor || null;
@@ -300,8 +288,7 @@
       if (resp.ok) body = await resp.json();
     } catch (e) { body = null; }
     if (mine !== generation || loading) return;   // the view changed meanwhile
-    if (!body || !Array.isArray(body.sightings)) { setLive(false); return; }   // keep what's shown
-    setLive(true);
+    if (!body || !Array.isArray(body.sightings)) return;   // keep what's shown
     renderStats(body.stats);
     const fresh = body.sightings.filter(s => !shown.has(s.id));
     if (!fresh.length) return;
@@ -312,7 +299,6 @@
       fresh.slice().reverse().forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
     }
     show('sightingsEmpty', false);
-    flashLive();
   }
 
   function startPolling() {
@@ -394,7 +380,7 @@
     show('sightingsLoading', true);
     const [ok, mod] = await Promise.all([loadCities(), checkModerator()]);
     isModerator = mod;
-    if (!ok) { show('sightingsLoading', false); renderStats(null); setLive(false); show('sightingsError', true); return; }
+    if (!ok) { show('sightingsLoading', false); renderStats(null); show('sightingsError', true); return; }
     const initial = (new URLSearchParams(location.search).get('city') || defaultCity).toLowerCase();
     selectCity(initial);
     startPolling();

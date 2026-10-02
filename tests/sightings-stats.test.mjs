@@ -2,7 +2,7 @@
 // GET /api/sightings?order=asc|desc&stats=1 (worker/sightings-public.js
 // buildSightingStats, worker/timezones.js usLocalParts), the visibility rule
 // that a plate is shown only from a PUBLICLY ELIGIBLE registry vehicle, and
-// the page's Most/Least recent toggle, LIVE indicator, stat cards and
+// the page's Most/Least recent toggle, Replay Map button, stat cards and
 // once-a-minute polling (public/js/sightings.js, in jsdom).
 // Run: node tests/sightings-stats.test.mjs
 
@@ -238,7 +238,7 @@ async function run() {
     delete globalThis.caches;
   }
 
-  console.log('5. The page: sort toggle, LIVE, stat cards, live updates');
+  console.log('5. The page: sort toggle, Replay Map button, stat cards, live updates');
   {
     const ctx = await makeApp();
     await sighting(ctx, { service_area: 'Austin' }, 3);
@@ -267,8 +267,9 @@ async function run() {
       return { w, d, calls, timers, text: id => d.getElementById(id).textContent.replace(/\s+/g, ' ').trim(), cards: () => [...d.querySelectorAll('#sightingsGrid article')] };
     }
     const p = await open('https://cybercabhunter.com/sightings');
-    check('LIVE with a pulsing yellow dot, top right of the page header', /LIVE/.test(p.text('liveIndicator')) && p.d.getElementById('liveDot').classList.contains('live-dot') && /\.live-dot\{[^}]*#facc15[^}]*animation:live-pulse/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
-    check('the pulse is switched off for reduced motion', /prefers-reduced-motion: reduce\)\{\s*\.live-dot, \.live-dot\.live-flash\{animation:none;\}/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
+    const replayBtn = p.d.getElementById('sightingsReplay');
+    check('a "Replay Map" button, top right of the page header, opens this month\'s replay', replayBtn && replayBtn.tagName === 'A' && replayBtn.getAttribute('href') === '/replay?range=month' && p.text('sightingsReplay') === 'Replay Map' && replayBtn.parentElement === p.d.querySelector('h1').closest('.min-w-0').parentElement);
+    check('LIVE is gone from the page', !p.d.getElementById('liveIndicator') && !p.d.getElementById('liveDot') && !/>\s*LIVE\s*</.test(p.d.body.innerHTML) && !/\.live-dot|\.live-indicator/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
     check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'TBD' && /clear busiest hour/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
     check('Most recent is selected by default and requested', p.d.querySelector('[data-order="desc"]').getAttribute('aria-pressed') === 'true' && p.calls.some(c => c.includes('order=desc&stats=1')));
     check('polling is scheduled every 60 seconds', p.timers.set.includes(60000));
@@ -288,7 +289,6 @@ async function run() {
     await new Promise(r => setTimeout(r, 150));
     check('a new sighting is added at the top without a reload', live.cards().length === before + 1);
     check('the stats update with it', live.text('statWeek') === '2');
-    check('the LIVE dot flashes', live.d.getElementById('liveDot').classList.contains('live-flash'));
     Object.defineProperty(live.d, 'hidden', { configurable: true, get: () => true });
     const clearedBefore = live.timers.cleared;
     live.d.dispatchEvent(new live.w.Event('visibilitychange'));
@@ -296,7 +296,6 @@ async function run() {
 
     const failed = await open('https://cybercabhunter.com/sightings', { failApi: true });
     check('a failed load shows em dashes, never 0', ['statWeek', 'statToday', 'statMonth', 'statPeakHour', 'statBestDay'].every(id => failed.text(id) === '—'));
-    check('...and LIVE shows it could not check', failed.d.getElementById('liveIndicator').classList.contains('is-stale'));
 
     // Two sightings in the same hour (3 hours ago) + one elsewhere: a clear peak.
     const peakCtx = await makeApp();

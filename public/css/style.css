@@ -353,18 +353,6 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 .mod-photo:hover .mod-photo-delete, .mod-photo:focus-within .mod-photo-delete{opacity:1;}
 @media (hover: none){ .mod-photo .mod-photo-delete{opacity:1;} }
 
-/* ---------- Sightings LIVE indicator (sightings.html) ---------- */
-.live-dot{width:9px; height:9px; border-radius:50%; background:#facc15; box-shadow:0 0 0 0 rgba(250,204,21,0.6); animation:live-pulse 1.8s ease-out infinite;}
-@keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(250,204,21,0.6);} 70%{box-shadow:0 0 0 9px rgba(250,204,21,0);} 100%{box-shadow:0 0 0 0 rgba(250,204,21,0);}}
-.live-dot.live-flash{animation:live-flash 0.9s ease-out 2;}
-@keyframes live-flash{0%{transform:scale(1); background:#fff;} 50%{transform:scale(1.8); background:#facc15;} 100%{transform:scale(1);}}
-.live-indicator.is-stale{color:#64748b;}
-.live-indicator.is-stale .live-dot{background:#64748b; animation:none; box-shadow:none;}
-@media (prefers-reduced-motion: reduce){
-  .live-dot, .live-dot.live-flash{animation:none;}
-  .live-dot.live-flash{background:#fff;}
-}
-
 /* ---------- Sightings replay (replay.html, js/replay.js) ---------- */
 .replay-stage{background:#f4efe3;}
 /* The replay sidebar floats over a LIGHT map (Zones floats over a dark one): near-solid so its text stays legible. */
