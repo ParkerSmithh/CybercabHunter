@@ -85,28 +85,69 @@
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-    <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
-    <p class="mt-3 text-sm text-slate-400 leading-relaxed">Rider reviews of the Cybercab, and the spotters who found them first.</p>
+    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Riders &amp; Spotters</p>
+    <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
+    <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
 
-    <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
-         is computed live by the server over the reviews shown; until it
-         arrives it stays an em dash. -->
+    <!-- At a glance: every number is the server's (reviews: GET /api/reviews,
+         js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
+         GET /api/registry/stats, js/community.js). Each starts as an em dash
+         and stays one if it can't be loaded — never a made-up 0. -->
+    <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Reviews</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums"><span id="statReviews">—</span></div>
+        <div class="text-[11px] text-slate-500">Posted by signed-in riders</div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Average rating</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums"><span id="statRating">—</span><span class="text-sm text-slate-500"> / 5</span></div>
+        <div class="text-[11px] text-slate-500">Across all reviews</div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Spotters</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums"><span id="statSpotters">—</span></div>
+        <div class="text-[11px] text-slate-500">Credited with a discovery</div>
+      </div>
+      <div class="glass rounded-xl p-4 min-w-0">
+        <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Public Cybercabs</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums"><span id="statVehicles">—</span></div>
+        <div class="text-[11px] text-slate-500">In the public registry</div>
+      </div>
+    </div>
+
     <!-- Reviews and the leaderboard side by side on lg+ (reviews the wider
          column); stacked on smaller screens. -->
-    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+    <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
+         and breakdown are computed live by the server over the reviews shown. -->
     <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 min-w-0">
       <div class="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 class="font-display font-bold text-lg tracking-wide">REVIEWS</h2>
-          <div class="flex items-center gap-3 mt-2">
-            <span id="reviewAverage" class="font-display font-bold text-4xl text-gold leading-none tabular-nums">—</span>
-            <span>
-              <span id="reviewAverageStars" class="block text-gold text-lg leading-none tracking-wider" aria-hidden="true"></span>
-              <span id="reviewCount" class="block text-[11px] text-slate-500 mt-1">No reviews yet</span>
-            </span>
+        <div class="flex items-start gap-3">
+          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>
+          </span>
+          <div>
+            <h2 class="font-display font-bold text-lg tracking-wide leading-tight">REVIEWS</h2>
+            <p class="text-xs text-slate-500 mt-1">What riders say about the Cybercab.</p>
           </div>
         </div>
         <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)] hover:brightness-105">Write a review</button>
+      </div>
+      <!-- Summary: the average, and how the ratings break down (5★ → 1★). -->
+      <div class="mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center p-4 rounded-xl border border-[rgba(212,175,55,0.14)] bg-gradient-to-br from-[rgba(212,175,55,0.07)] to-transparent">
+        <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08]">
+          <div id="reviewAverage" class="font-display font-bold text-5xl text-gold leading-none tabular-nums">—</div>
+          <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem]" aria-hidden="true"></div>
+          <div id="reviewCount" class="text-[11px] text-slate-500 mt-1">No reviews yet</div>
+        </div>
+        <ul id="reviewBreakdown" class="space-y-1.5" aria-label="Ratings breakdown">
+          <li class="flex items-center gap-3 text-[11px]" data-stars="5"><span class="w-8 shrink-0 text-slate-400 tabular-nums">5 ★</span><span class="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
+          <li class="flex items-center gap-3 text-[11px]" data-stars="4"><span class="w-8 shrink-0 text-slate-400 tabular-nums">4 ★</span><span class="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
+          <li class="flex items-center gap-3 text-[11px]" data-stars="3"><span class="w-8 shrink-0 text-slate-400 tabular-nums">3 ★</span><span class="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
+          <li class="flex items-center gap-3 text-[11px]" data-stars="2"><span class="w-8 shrink-0 text-slate-400 tabular-nums">2 ★</span><span class="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
+          <li class="flex items-center gap-3 text-[11px]" data-stars="1"><span class="w-8 shrink-0 text-slate-400 tabular-nums">1 ★</span><span class="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
+        </ul>
       </div>
       <p id="reviewSignInNote" class="hidden text-xs text-slate-400 mt-3"><a href="signin.html?returnTo=%2Fcommunity" class="text-gold hover:underline">Sign in</a> to review a Cybercab, like reviews and comment.</p>
 
@@ -161,8 +202,9 @@
         <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
       </div>
       <div id="reviewList" class="hidden mt-4 space-y-3"></div>
-      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
+      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(212,175,55,0.25)] bg-white/[0.02] p-8 text-center">
+        <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>
+        <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
         <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
       </div>
       <div id="reviewError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
@@ -178,11 +220,18 @@
     <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mb-4 flex flex-wrap gap-2"></div>
 
     <div class="glass rounded-2xl p-4 sm:p-6">
-      <div class="flex items-baseline justify-between gap-3">
-        <h2 id="boardTitle" class="font-display font-bold text-lg tracking-wide">MOST VEHICLES DISCOVERED</h2>
-        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Top 6</span>
+      <div class="flex items-start gap-3">
+        <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5v1.5A3.5 3.5 0 0 0 8.5 11M16 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 13v4M8.5 20h7M10 17h4"/></svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="boardTitle" class="font-display font-bold text-lg tracking-wide leading-tight">MOST VEHICLES DISCOVERED</h2>
+            <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Top 6</span>
+          </div>
+          <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
+        </div>
       </div>
-      <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
 
       <div id="boardLoading" class="mt-4 space-y-2" aria-busy="true">
         <span class="sr-only">Loading the leaderboard…</span>
@@ -199,6 +248,27 @@
         <div class="font-display font-bold tracking-wide">WE COULDN'T LOAD THE LEADERBOARD</div>
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
+      <!-- Totals over every credited spotter, not just the top 6 (js/community.js). -->
+      <p id="boardTotals" class="hidden mt-4 pt-3 border-t border-white/[0.06] text-[11px] text-slate-500"></p>
+    </div>
+
+    <!-- How discovery credit works: the rule in worker/community.js, in words. -->
+    <div class="glass rounded-2xl p-4 sm:p-6 mt-6">
+      <h2 class="font-display font-bold text-sm tracking-wide">HOW DISCOVERY WORKS</h2>
+      <ol class="mt-4 space-y-4">
+        <li class="flex gap-3">
+          <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]">1</span>
+          <div><p class="text-sm font-semibold text-slate-100">Ride in one</p><p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Add your Robotaxi receipt. The first counted ride in a vehicle earns its discovery.</p></div>
+        </li>
+        <li class="flex gap-3">
+          <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]">2</span>
+          <div><p class="text-sm font-semibold text-slate-100">Or spot one first</p><p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Submit a photo sighting of a Cybercab that isn't in the registry yet. Once it's approved, the discovery is yours.</p></div>
+        </li>
+        <li class="flex gap-3">
+          <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]">3</span>
+          <div><p class="text-sm font-semibold text-slate-100">It counts once it's public</p><p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Only vehicles in the public registry count, and the earliest ride or sighting wins.</p></div>
+        </li>
+      </ol>
     </div>
 
     <p class="text-xs text-slate-500 mt-4 leading-relaxed">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to appear as “Private spotter”.</p>
@@ -357,7 +427,7 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=2"></script>
-<script src="js/reviews.js?v=1"></script>
+<script src="js/community.js?v=3"></script>
+<script src="js/reviews.js?v=2"></script>
 </body>
 </html>

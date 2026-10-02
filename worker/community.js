@@ -1,7 +1,8 @@
 // Community page: leaderboards and public rider profiles.
 //
 //   GET /api/community/leaderboard?board=discovered   public, edge-cached
-//     -> { board, label, boards: [{ id, label }], entries: [{ rank, count, name, handle, avatar_url, profile }] }
+//     -> { board, label, boards: [{ id, label }], entries: [{ rank, count, name, handle, avatar_url, profile }],
+//          totals: { spotters, vehicles } }   (every ranked rider, not just the top N: counts only)
 //   GET /api/riders/:handle                           public, edge-cached
 //     -> { rider: { name, handle, avatar_url, bio, joined }, discovered: { count, vehicles: [...] } }
 //
@@ -159,7 +160,8 @@ export async function apiCommunityLeaderboard(request, env, ctx) {
       board: boardId,
       label: board.label,
       boards: Object.entries(BOARDS).map(([id, b]) => ({ id, label: b.label })),
-      entries: rankEntries(rows)
+      entries: rankEntries(rows),
+      totals: { spotters: rows.length, vehicles: rows.reduce((n, r) => n + Number(r.count), 0) }
     }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
   });
 }

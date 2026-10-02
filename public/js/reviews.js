@@ -85,6 +85,16 @@
     $('reviewAverage').textContent = avg == null ? '—' : avg.toFixed(1);
     $('reviewAverageStars').textContent = avg == null ? '' : stars(Math.round(avg));
     $('reviewCount').textContent = count == null ? '' : count === 0 ? 'No reviews yet' : `${count.toLocaleString('en-US')} ${count === 1 ? 'review' : 'reviews'}`;
+    // The 5★ → 1★ breakdown: each bar is that rating's share of all reviews.
+    const dist = summary && summary.distribution;
+    document.querySelectorAll('#reviewBreakdown [data-stars]').forEach(li => {
+      const n = dist && Number.isInteger(dist[li.dataset.stars]) ? dist[li.dataset.stars] : null;
+      li.querySelector('[data-n]').textContent = n == null ? '—' : n.toLocaleString('en-US');
+      li.querySelector('[data-bar]').style.width = n && count ? `${Math.round((n / count) * 100)}%` : '0%';
+    });
+    // The page's at-a-glance tiles.
+    if ($('statReviews')) $('statReviews').textContent = count == null ? '—' : count.toLocaleString('en-US');
+    if ($('statRating')) $('statRating').textContent = avg == null ? '—' : avg.toFixed(1);
   }
 
   function cardHtml(r) {
@@ -98,7 +108,7 @@
           ${avatarHtml(r.author)}
           <div class="min-w-0 flex-1">
             <div class="flex items-baseline gap-2 flex-wrap">${nameHtml(r.author)}<span class="text-[11px] text-slate-500">${esc(relative(r.created_at))}${edited}</span></div>
-            <div class="text-[11px] text-slate-500 mt-0.5">Cybercab ${vehicle}</div>
+            <div class="mt-1"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.2)] bg-[rgba(212,175,55,0.06)] text-[11px] text-slate-400"><svg class="w-3 h-3 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 11l1.3-3.9A2 2 0 0 1 8.2 5.7h7.6a2 2 0 0 1 1.9 1.4L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/></svg>Cybercab ${vehicle}</span></div>
           </div>
           <span class="shrink-0 text-gold text-base tracking-wider" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
         </header>

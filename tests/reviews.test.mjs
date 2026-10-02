@@ -201,6 +201,7 @@ async function run() {
     const c = (await post(ctx, 'carol', { rating: 2 })).data.review;
     const s = (await list(ctx, null)).summary;
     check('5, 4, 2 → average 3.7 over 3 reviews', s.count === 3 && s.average === 3.7);
+    check('...and the breakdown: one 5★, one 4★, one 2★, none else', JSON.stringify(s.distribution) === JSON.stringify({ 1: 0, 2: 1, 3: 0, 4: 1, 5: 1 }));
     await call(ctx, 'PUT', `/api/reviews/${c.id}/like`, { user: 'alice' });
     await call(ctx, 'PUT', `/api/reviews/${c.id}/like`, { user: 'bob' });
     await call(ctx, 'PUT', `/api/reviews/${b.id}/like`, { user: 'alice' });
@@ -293,6 +294,10 @@ async function run() {
     check('the aggregate is the server\'s: 4.0 over 2 reviews', p.text('reviewAverage') === '4.0' && p.text('reviewCount') === '2 reviews');
     check('both reviews render, newest first, with stars, like and comment counts', cards.length === 2 && cards[1].querySelector('[role="img"]').getAttribute('aria-label') === '5 out of 5 stars' && cards[1].querySelector('[data-like-count]').textContent === '1' && cards[1].querySelector('[data-comment-count]').textContent === '0');
     check('the private rider\'s card says Anonymous with the default avatar', /Anonymous/.test(cards[0].textContent) && !cards[0].querySelector('[data-avatar-name]'));
+    const bar = n => p.d.querySelector(`#reviewBreakdown [data-stars="${n}"]`);
+    check('the breakdown: 5★ and 3★ at 50% each, counts beside them, the rest empty', bar(5).querySelector('[data-bar]').style.width === '50%' && bar(3).querySelector('[data-bar]').style.width === '50%' && bar(5).querySelector('[data-n]').textContent === '1' && bar(4).querySelector('[data-bar]').style.width === '0%' && bar(1).querySelector('[data-n]').textContent === '0');
+    check('the at-a-glance tiles: 2 reviews, 4.0 average, 1 spotter, 2 public Cybercabs', p.text('statReviews') === '2' && p.text('statRating') === '4.0' && p.text('statSpotters') === '1' && p.text('statVehicles') === '2');
+    check('the leaderboard footer totals every credited spotter', p.text('boardTotals') === '1 spotter credited · 2 vehicles discovered in all' && !p.d.getElementById('boardTotals').classList.contains('hidden'));
     check('a public author gets the shared avatar (initials when there is no photo)', cards[1].querySelector('[data-avatar-name]').textContent.trim() === 'AA');
     check('review text is shown as text, never as HTML', cards[1].querySelector('[data-body]').textContent === 'Great <b>ride</b>' && !cards[1].querySelector('[data-body] b'));
     check('photos are a thumbnail grid that opens the viewer', cards[1].querySelectorAll('[data-photo] img').length === 1 && (cards[1].querySelector('[data-photo]').click(), !p.d.getElementById('sightingViewer').classList.contains('hidden')));

@@ -51,6 +51,26 @@
     ['boardLoading', 'boardList', 'boardEmpty', 'boardError'].forEach(id => $(id).classList.toggle('hidden', id !== state));
   }
 
+  // Totals over every credited spotter (counts only — no names beyond the top 6).
+  function renderTotals(t) {
+    const ok = t && Number.isInteger(t.spotters) && Number.isInteger(t.vehicles);
+    if ($('statSpotters')) $('statSpotters').textContent = ok ? t.spotters.toLocaleString('en-US') : '—';
+    const el = $('boardTotals');
+    if (!el) return;
+    el.classList.toggle('hidden', !ok || t.spotters === 0);
+    if (ok) el.textContent = `${t.spotters.toLocaleString('en-US')} ${t.spotters === 1 ? 'spotter' : 'spotters'} credited · ${t.vehicles.toLocaleString('en-US')} ${t.vehicles === 1 ? 'vehicle' : 'vehicles'} discovered in all`;
+  }
+
+  // Public Cybercabs, for the at-a-glance tile (GET /api/registry/stats).
+  async function loadRegistryCount() {
+    if (!$('statVehicles')) return;
+    try {
+      const resp = await fetch(`${API}/api/registry/stats`);
+      const data = resp.ok ? await resp.json() : null;
+      $('statVehicles').textContent = data && Number.isInteger(data.public_vehicles) ? data.public_vehicles.toLocaleString('en-US') : '—';
+    } catch (e) { $('statVehicles').textContent = '—'; }
+  }
+
   let activeBoard = null;
   function renderTabs(boards) {
     const tabs = $('boardTabs');
@@ -68,6 +88,7 @@
     } catch (e) { data = null; }
     if (!data || !Array.isArray(data.entries)) { show('boardError'); return; }
     activeBoard = data.board;
+    renderTotals(data.totals);
     $('boardTitle').textContent = String(data.label || '').toUpperCase();
     renderTabs(data.boards);
     if (!data.entries.length) { show('boardEmpty'); return; }
@@ -91,4 +112,5 @@
   });
 
   load(null);
+  loadRegistryCount();
 })();

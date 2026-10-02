@@ -137,6 +137,7 @@ async function run() {
     const b = await board(ctx);
     check('count descending, ties share a rank (1, 2, 2, 4, 5, 5)', counts(b) === '1:5 2:3 2:3 4:2 5:1 5:1', counts(b));
     check('only the top 6 are returned', b.entries.length === 6);
+    check('totals count EVERY credited spotter and vehicle (7 spotters, 16 vehicles), not just the top 6', b.totals && b.totals.spotters === 7 && b.totals.vehicles === 16);
     check('within a tie, whoever reached the count first is listed first (Bob before Carol; Erin before Frank; Gina cut)',
       b.entries[1].name === 'Bob' && b.entries[2].name === 'Carol' && b.entries[4].name === 'Erin' && b.entries[5].name === 'Frank' && !b.entries.some(e => e.name === 'Gina'));
     check('the response names its board and lists the boards (one today)', b.board === 'discovered' && b.label === 'Most Vehicles Discovered' && b.boards.length === 1);
@@ -144,7 +145,7 @@ async function run() {
     const r = await worker.fetch(new Request('https://x/api/community/leaderboard'), ctx.env, {});
     check('edge-cacheable for ~60s', /public, max-age=60/.test(r.headers.get('Cache-Control')));
     const empty = await makeApp();
-    check('nobody has discovered anything: an empty board, not an error', (await board(empty)).entries.length === 0);
+    check('nobody has discovered anything: an empty board, not an error', (await board(empty)).entries.length === 0 && (await board(empty)).totals.spotters === 0);
   }
 
   console.log('5. Privacy');

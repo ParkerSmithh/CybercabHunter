@@ -1,7 +1,7 @@
 // Cybercab reviews on the Community page (migrations/0023_cybercab_reviews.sql).
 //
 //   GET    /api/reviews?sort=recent|rating|likes&offset=&limit=   public
-//     -> { summary: { average, count }, sort, offset, limit, total, reviews: [...], viewer: { signed_in, moderator } }
+//     -> { summary: { average, count, distribution: { 5, 4, 3, 2, 1 } }, sort, offset, limit, total, reviews: [...], viewer: { signed_in, moderator } }
 //   POST   /api/reviews                         signed in; multipart: vehicle_id, rating, body, photos (0–3)
 //   PATCH  /api/reviews/:id                     author only; multipart: rating, body, keep_photos (ids), photos
 //   DELETE /api/reviews/:id                     author or moderator
@@ -151,10 +151,12 @@ export async function apiListReviews(request, env) {
   // The aggregate, live, over exactly the reviews that are shown.
   const summary = await sql.prepare(`SELECT COUNT(*) AS n, AVG(r.rating) AS avg FROM cybercab_reviews r WHERE ${VISIBLE}`).first();
   const count = Number(summary && summary.n) || 0;
+  const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  for (const row of (await sql.prepare(`SELECT r.rating, COUNT(*) AS n FROM cybercab_reviews r WHERE ${VISIBLE} GROUP BY r.rating`).all()).results || []) distribution[row.rating] = Number(row.n);
   const rows = (await sql.prepare(`${REVIEW_SELECT} ORDER BY ${SORTS[sort]} LIMIT ? OFFSET ?`).bind(me ? me.id : '', limit, offset).all()).results || [];
   const photos = await photosFor(sql, rows.map(r => r.id));
   return Response.json({
-    summary: { average: count ? Math.round(Number(summary.avg) * 10) / 10 : null, count },
+    summary: { average: count ? Math.round(Number(summary.avg) * 10) / 10 : null, count, distribution },
     sort, offset, limit, total: count,
     reviews: rows.map(r => reviewJson(r, photos.get(r.id), me)),
     viewer: { signed_in: !!me, moderator: !!(me && me.moderator) }
