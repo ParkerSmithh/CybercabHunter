@@ -27,7 +27,7 @@
 //      credit and the leaderboard are computed live, so they update by
 //      themselves (a receipt vehicle backed only by this rider's rides stops
 //      being publicly eligible, exactly as when a rider deletes their rides).
-//   3. R2: everything under evidence/<id>/ and receipts/<id>/ (photos, receipt
+//   3. R2: everything under evidence/<id>/, receipts/<id>/ and avatars/<id>/ (photos, receipt
 //      files — including any no longer referenced), plus the Zones-map image
 //      copies made from their sightings.
 //   4. KV: Tesla ride-sync tokens, this session, and a tombstone
@@ -42,7 +42,7 @@ import { gmail } from './gmail.js';
 
 export const ACCOUNT_TOMBSTONE_TTL_SECONDS = 60 * 60 * 24 * 90;   // the longest a session lives
 const CONFIRM = 'DELETE';
-const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`];
+const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`, `avatars/${id}/`];
 
 export async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));

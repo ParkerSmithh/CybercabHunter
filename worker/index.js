@@ -15,6 +15,7 @@ import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
 import { apiDeleteAccount } from './account.js';
+import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -317,6 +318,19 @@ export default {
     // account is always the session's; nothing in the request names it.
     if (url.pathname === '/api/account' && request.method === 'DELETE') {
       return withCors(await apiDeleteAccount(request, env), request);
+    }
+
+    // Profile pictures (worker/avatars.js): the signed-in rider's own only;
+    // the generated variants are public by their random key.
+    if (url.pathname === '/api/profile/avatar' && request.method === 'POST') {
+      return withCors(await apiUploadAvatar(request, env), request);
+    }
+    if (url.pathname === '/api/profile/avatar' && request.method === 'DELETE') {
+      return withCors(await apiDeleteAvatar(request, env), request);
+    }
+    const avatarMatch = url.pathname.match(/^\/api\/avatars\/([^/]+)\/([^/]+)$/);
+    if (avatarMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      return withCors(await apiGetAvatar(request, env, avatarMatch[1], avatarMatch[2]), request);
     }
 
     if (url.pathname === '/api/profile' && request.method === 'GET') {

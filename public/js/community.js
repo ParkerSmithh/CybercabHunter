@@ -9,19 +9,11 @@
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PERSON_ICON = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>';
 
-  function initials(name) {
-    const words = String(name || '').replace(/^@/, '').trim().split(/\s+/).filter(Boolean);
-    return (words.map(w => w[0]).slice(0, 2).join('') || 'CH').toUpperCase();
-  }
-
-  // Photo, else initials (an opted-in rider), else a person icon (private).
+  // A private spotter gets a person icon; anyone else the shared avatar
+  // (CCC.renderAvatar in js/main.js: photo, else initials), filled in below.
   function avatarHtml(e) {
-    const initialsTile = `<span class="w-full h-full flex items-center justify-center font-display font-bold text-sm bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]">${esc(initials(e.name))}</span>`;
-    if (e.avatar_url) {
-      return `<img src="${esc(e.avatar_url)}" alt="" referrerpolicy="no-referrer" class="w-full h-full object-cover" data-initials="${esc(initials(e.name))}">`;
-    }
     if (e.name === 'Private spotter' && !e.handle) return `<span class="w-full h-full flex items-center justify-center bg-panel text-slate-500">${PERSON_ICON}</span>`;
-    return initialsTile;
+    return `<span class="block w-full h-full" data-avatar-url="${esc(e.avatar_url || '')}" data-avatar-name="${esc(e.name)}"></span>`;
   }
 
   function rowHtml(e, i) {
@@ -80,13 +72,9 @@
     renderTabs(data.boards);
     if (!data.entries.length) { show('boardEmpty'); return; }
     $('boardList').innerHTML = data.entries.map(rowHtml).join('');
-    // A photo that fails to load falls back to the rider's initials.
-    $('boardList').querySelectorAll('img[data-initials]').forEach(img => img.addEventListener('error', () => {
-      const tile = document.createElement('span');
-      tile.className = 'w-full h-full flex items-center justify-center font-display font-bold text-sm bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]';
-      tile.textContent = img.dataset.initials;
-      img.replaceWith(tile);
-    }, { once: true }));
+    // Small spots use the 128 px variant; a failed photo falls back to initials.
+    $('boardList').querySelectorAll('[data-avatar-name]').forEach(el =>
+      CCC.renderAvatar(el, { url: el.dataset.avatarUrl || null, name: el.dataset.avatarName, size: 128 }));
     show('boardList');
   }
 

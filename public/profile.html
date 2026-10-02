@@ -123,7 +123,14 @@
       <div class="reveal-on-scroll glass rounded-2xl p-8">
         <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
           <div class="flex items-center gap-5 flex-1 min-w-0">
-            <div id="profileAvatar" class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204] shrink-0"></div>
+            <!-- Profile picture (worker/avatars.js): the shared avatar, with
+                 Change photo (-> the editor below) and Remove photo. -->
+            <div class="shrink-0 flex flex-col items-center gap-1.5">
+              <div id="profileAvatar" class="w-16 h-16 rounded-2xl overflow-hidden"></div>
+              <label for="avatarFile" id="avatarChange" class="text-[11px] font-semibold text-gold cursor-pointer hover:underline whitespace-nowrap">Change photo</label>
+              <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+              <button id="avatarRemove" type="button" class="hidden text-[11px] text-slate-400 hover:text-slate-200 whitespace-nowrap">Remove photo</button>
+            </div>
             <div class="flex-1 min-w-0">
               <input id="fieldDisplayName" readonly maxlength="60" placeholder="Cybercab Hunter Rider" class="field-locked font-display font-bold text-3xl tracking-tight w-full rounded-lg placeholder:text-slate-500">
               <div class="flex items-center mt-0.5">
@@ -133,6 +140,28 @@
             </div>
           </div>
           <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Edit Profile</button>
+        </div>
+
+        <p id="avatarError" class="hidden text-xs text-crimson mb-4" role="alert"></p>
+        <!-- Photo editor: crop (always square), zoom and reposition before
+             saving. Only the square shown here is ever uploaded — as two
+             re-encoded sizes, 512 and 128 px, with no metadata. -->
+        <div id="avatarEditor" class="hidden mb-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div class="text-sm font-semibold mb-3">Adjust your photo</div>
+          <div class="flex flex-col sm:flex-row gap-5 items-center">
+            <div id="avatarCropBox" tabindex="0" aria-label="Photo crop area: drag or use the arrow keys to reposition" class="relative w-56 h-56 shrink-0 rounded-2xl overflow-hidden bg-black touch-none cursor-grab select-none outline-none focus-visible:ring-2 focus-visible:ring-gold">
+              <img id="avatarCropImg" alt="" draggable="false" class="absolute max-w-none pointer-events-none">
+            </div>
+            <div class="flex-1 w-full">
+              <label for="avatarZoom" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Zoom</label>
+              <input id="avatarZoom" type="range" min="1" max="4" step="0.01" value="1" class="w-full mt-2">
+              <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Drag the photo to reposition it. The square is exactly what your profile picture will show.</p>
+              <div class="flex items-center gap-2 mt-4">
+                <button id="avatarSave" type="button" class="btn-magnetic text-xs font-bold px-4 py-2.5 rounded-lg bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Save photo</button>
+                <button id="avatarCancel" type="button" class="text-xs px-4 py-2.5 rounded-lg border border-white/10 text-slate-400 hover:text-slate-200">Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="mb-6">
@@ -325,7 +354,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=12"></script>
+<script src="js/main.js?v=13"></script>
 <script>
   CCC.init();
 
@@ -335,10 +364,6 @@
   function fmtDate(d) {
     if (!d) return '—';
     return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-  function initials(name) {
-    if (!name) return 'CH';
-    return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
   let currentUser = null;
@@ -353,7 +378,7 @@
     currentUser = user;
     document.getElementById('profileSignedIn').classList.remove('hidden');
 
-    document.getElementById('profileAvatar').textContent = initials(user.display_name || user.handle);
+    renderProfileAvatar();
     document.getElementById('fieldDisplayName').value = user.display_name || '';
     document.getElementById('fieldHandle').value = user.handle || '';
     document.getElementById('fieldBio').value = user.bio || '';
@@ -546,8 +571,149 @@
     });
   }
 
+  // ---- Profile picture ----
+  function renderProfileAvatar() {
+    if (!currentUser) return;
+    CCC.renderAvatar(document.getElementById('profileAvatar'), { url: currentUser.avatar_url, name: currentUser.display_name || currentUser.handle, size: 512, textClass: 'text-xl' });
+    document.getElementById('avatarRemove').classList.toggle('hidden', !currentUser.avatar_url);
+    // The account button in the header shows it too.
+    const navImg = document.getElementById('accountAvatarImg');
+    const navIcon = document.getElementById('accountAvatarIcon');
+    const navSrc = CCC.avatarSrc(currentUser.avatar_url, 128);
+    if (navImg) { if (navSrc) navImg.src = navSrc; navImg.classList.toggle('hidden', !navSrc); }
+    if (navIcon) navIcon.classList.toggle('hidden', !!navSrc);
+  }
+
+  const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const AVATAR_MAX_BYTES = 5 * 1024 * 1024;   // the server's limit (worker/avatars.js)
+  const AVATAR_ERRORS = {
+    unsupported_file_type: 'Please choose a JPEG, PNG or WebP image.',
+    file_too_large: 'That image is too large — please choose one under 5 MB.',
+    invalid_dimensions: "That photo couldn't be processed. Please try another one.",
+    missing_image: "That photo couldn't be processed. Please try another one."
+  };
+
+  function initAvatarEditor(sessionId) {
+    const fileInput = document.getElementById('avatarFile');
+    const editor = document.getElementById('avatarEditor');
+    const box = document.getElementById('avatarCropBox');
+    const img = document.getElementById('avatarCropImg');
+    const zoomInput = document.getElementById('avatarZoom');
+    const saveBtn = document.getElementById('avatarSave');
+    const errorEl = document.getElementById('avatarError');
+    if (!fileInput || !editor) return;
+    const VIEW = 224;                         // the crop square on screen (w-56)
+    let bitmap = null, objectUrl = null, base = 1, zoom = 1, x = 0, y = 0;
+
+    const showError = msg => { errorEl.textContent = msg || ''; errorEl.classList.toggle('hidden', !msg); };
+    const scale = () => base * zoom;
+    function layout() {
+      const dw = bitmap.width * scale(), dh = bitmap.height * scale();
+      x = Math.min(0, Math.max(VIEW - dw, x));      // the image always covers the square
+      y = Math.min(0, Math.max(VIEW - dh, y));
+      Object.assign(img.style, { width: dw + 'px', height: dh + 'px', left: x + 'px', top: y + 'px' });
+    }
+    function close() {
+      editor.classList.add('hidden');
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (bitmap && bitmap.close) bitmap.close();
+      bitmap = null; objectUrl = null; fileInput.value = '';
+    }
+
+    fileInput.addEventListener('change', async () => {
+      showError('');
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (!AVATAR_TYPES.includes(file.type)) { showError(AVATAR_ERRORS.unsupported_file_type); fileInput.value = ''; return; }
+      if (file.size > AVATAR_MAX_BYTES) { showError(AVATAR_ERRORS.file_too_large); fileInput.value = ''; return; }
+      try { bitmap = await createImageBitmap(file); } catch (e) { bitmap = null; }
+      if (!bitmap || !bitmap.width || !bitmap.height) { showError("That photo couldn't be opened. Please try another one."); fileInput.value = ''; return; }
+      objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+      base = Math.max(VIEW / bitmap.width, VIEW / bitmap.height);   // cover the square
+      zoom = 1; zoomInput.value = '1';
+      x = (VIEW - bitmap.width * base) / 2; y = (VIEW - bitmap.height * base) / 2;
+      layout();
+      editor.classList.remove('hidden');
+      box.focus();
+    });
+
+    // Zoom around the middle of the square.
+    zoomInput.addEventListener('input', () => {
+      if (!bitmap) return;
+      const cx = (VIEW / 2 - x) / scale(), cy = (VIEW / 2 - y) / scale();
+      zoom = Number(zoomInput.value) || 1;
+      x = VIEW / 2 - cx * scale(); y = VIEW / 2 - cy * scale();
+      layout();
+    });
+    // Drag to reposition (mouse, pen or touch), or arrow keys.
+    let drag = null;
+    box.addEventListener('pointerdown', e => { if (!bitmap) return; drag = { px: e.clientX, py: e.clientY, x, y }; if (box.setPointerCapture) box.setPointerCapture(e.pointerId); });
+    box.addEventListener('pointermove', e => { if (!drag) return; x = drag.x + (e.clientX - drag.px); y = drag.y + (e.clientY - drag.py); layout(); });
+    const endDrag = () => { drag = null; };
+    box.addEventListener('pointerup', endDrag);
+    box.addEventListener('pointercancel', endDrag);
+    box.addEventListener('keydown', e => {
+      const step = { ArrowLeft: [8, 0], ArrowRight: [-8, 0], ArrowUp: [0, 8], ArrowDown: [0, -8] }[e.key];
+      if (!step || !bitmap) return;
+      e.preventDefault(); x += step[0]; y += step[1]; layout();
+    });
+    document.getElementById('avatarCancel').addEventListener('click', close);
+
+    // The square crop at exactly 512 and 128 px, re-encoded (no metadata).
+    function renderVariant(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      const s = scale();
+      ctx.drawImage(bitmap, -x / s, -y / s, VIEW / s, VIEW / s, 0, 0, size, size);
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.9));
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      if (!bitmap) return;
+      showError('');
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+      let resp = null, body = {};
+      try {
+        const [large, thumb] = await Promise.all([renderVariant(512), renderVariant(128)]);
+        if (!large || !thumb) throw new Error('render');
+        const form = new FormData();
+        form.append('large', large, 'avatar-512');
+        form.append('thumb', thumb, 'avatar-128');
+        resp = await fetch(TESLA_WORKER_URL + '/api/profile/avatar', { method: 'POST', headers: { Authorization: 'Bearer ' + sessionId }, body: form });
+        body = await resp.json().catch(() => ({}));
+      } catch (e) { resp = null; }
+      saveBtn.disabled = false; saveBtn.textContent = 'Save photo';
+      if (resp && resp.ok && body.avatar_url) {
+        currentUser.avatar_url = body.avatar_url;
+        renderProfileAvatar();
+        close();
+        CCC.toast('Profile photo updated.', 'success');
+        return;
+      }
+      showError((body && AVATAR_ERRORS[body.error]) || "Couldn't save your photo. Please try again.");
+    });
+
+    document.getElementById('avatarRemove').addEventListener('click', async () => {
+      if (!window.confirm('Remove your profile photo?')) return;
+      showError('');
+      let resp = null;
+      try { resp = await fetch(TESLA_WORKER_URL + '/api/profile/avatar', { method: 'DELETE', headers: { Authorization: 'Bearer ' + sessionId } }); } catch (e) { resp = null; }
+      if (resp && resp.ok) {
+        currentUser.avatar_url = null;
+        renderProfileAvatar();
+        CCC.toast('Profile photo removed.', 'success');
+      } else {
+        showError("Couldn't remove your photo. Please try again.");
+      }
+    });
+  }
+
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
   initEditProfilePanel(sessionId);
+  initAvatarEditor(sessionId);
   initDeleteAccount(sessionId);
 
   if (!sessionId) {

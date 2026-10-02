@@ -115,9 +115,11 @@ function publicEntry(row, rank) {
   };
 }
 
-// Only an https image URL is ever passed on.
+// Only an https image URL (a Google photo) or one of our own profile pictures
+// (/api/avatars/<key>, worker/avatars.js) is ever passed on.
 function safeAvatar(url) {
-  return typeof url === 'string' && /^https:\/\/[^\s"'<>]+$/.test(url) ? url : null;
+  if (typeof url !== 'string') return null;
+  return /^https:\/\/[^\s"'<>]+$/.test(url) || /^\/api\/avatars\/[a-f0-9]{32}$/.test(url) ? url : null;
 }
 
 // Competition ranking (1, 1, 3): tied counts share a rank; the rows are

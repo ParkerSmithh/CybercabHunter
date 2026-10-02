@@ -173,6 +173,44 @@ const CCC = (() => {
     }, 3200);
   }
 
+  /* ---------------- Avatars (the ONE shared avatar component) ----------------
+     Every place that shows a rider's picture uses these, so they can't drift:
+     the account button, the profile page, the Community board and rider pages.
+     A picture uploaded on Profile is "/api/avatars/<key>" (worker/avatars.js)
+     and comes in two generated sizes: the 128 px variant for small spots, the
+     512 px one for large. A Google photo URL is used as it is. No picture, or
+     one that fails to load, falls back to the rider's initials. */
+  function avatarSrc(url, size = 128) {
+    if (typeof url !== 'string' || !url) return null;
+    if (/^\/api\/avatars\/[a-f0-9]{32}$/.test(url)) return `${url}/${size > 128 ? 512 : 128}`;
+    return /^https:\/\//.test(url) ? url : null;
+  }
+  function avatarInitials(name) {
+    const words = String(name || '').replace(/^@/, '').trim().split(/\s+/).filter(Boolean);
+    return (words.map(w => w[0]).slice(0, 2).join('') || 'CH').toUpperCase();
+  }
+  // Fills `el` (a sized, rounded box) with the picture or the initials tile.
+  function renderAvatar(el, { url, name, size = 128, textClass = 'text-sm' } = {}) {
+    if (!el) return;
+    const tile = () => {
+      el.innerHTML = '';
+      const span = document.createElement('span');
+      span.className = `w-full h-full flex items-center justify-center font-display font-bold ${textClass} bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]`;
+      span.textContent = avatarInitials(name);
+      el.appendChild(span);
+    };
+    const src = avatarSrc(url, size);
+    if (!src) { tile(); return; }
+    el.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    img.referrerPolicy = 'no-referrer';
+    img.className = 'w-full h-full object-cover';
+    img.addEventListener('error', tile, { once: true });
+    el.appendChild(img);
+  }
+
   /* ---------------- Sighting drawer (shared across pages) ----------------
      POST /api/vehicle-sightings/photo (worker/sightings.js): a required photo
      plus the optional sighting fields, as multipart/form-data, authenticated
@@ -802,8 +840,8 @@ const CCC = (() => {
 
       const avatarIcon = document.getElementById('accountAvatarIcon');
       const avatarImg = document.getElementById('accountAvatarImg');
-      if (avatarUrl && avatarImg) {
-        avatarImg.src = avatarUrl;
+      if (avatarSrc(avatarUrl, 128) && avatarImg) {
+        avatarImg.src = avatarSrc(avatarUrl, 128);
         avatarImg.classList.remove('hidden');
         if (avatarIcon) avatarIcon.classList.add('hidden');
       } else {
@@ -1008,5 +1046,5 @@ const CCC = (() => {
     initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init };
+  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
 })();

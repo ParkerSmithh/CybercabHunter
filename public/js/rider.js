@@ -8,13 +8,6 @@
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  function initials(name) {
-    const words = String(name || '').replace(/^@/, '').trim().split(/\s+/).filter(Boolean);
-    return (words.map(w => w[0]).slice(0, 2).join('') || 'CH').toUpperCase();
-  }
-  function initialsTile(name) {
-    return `<span class="w-full h-full flex items-center justify-center font-display font-bold text-xl bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]">${esc(initials(name))}</span>`;
-  }
   function fmtMonth(ym) {
     const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ''));
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '';
@@ -27,13 +20,8 @@
   function render(data) {
     const r = data.rider;
     document.title = `Cybercab Hunter — ${r.name}`;
-    const avatar = $('riderAvatar');
-    if (r.avatar_url) {
-      avatar.innerHTML = `<img src="${esc(r.avatar_url)}" alt="" referrerpolicy="no-referrer" class="w-full h-full object-cover">`;
-      avatar.querySelector('img').addEventListener('error', () => { avatar.innerHTML = initialsTile(r.name); }, { once: true });
-    } else {
-      avatar.innerHTML = initialsTile(r.name);
-    }
+    // The shared avatar (js/main.js), large variant.
+    CCC.renderAvatar($('riderAvatar'), { url: r.avatar_url, name: r.name, size: 512, textClass: 'text-xl' });
     $('riderName').textContent = r.name;
     $('riderHandle').textContent = `@${r.handle}`;
     $('riderJoined').textContent = r.joined ? `Joined ${fmtMonth(r.joined)}` : '';
