@@ -13,7 +13,7 @@ import { apiSearchPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
-import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
+import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiListReviewComments, apiCreateReviewComment, apiDeleteReviewComment, apiGetReviewPhoto } from './reviews.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
@@ -364,6 +364,9 @@ export default {
     // profiles. Public GETs; only opted-in riders are ever identified.
     if (url.pathname === '/api/community/leaderboard' && request.method === 'GET') {
       return withCors(await apiCommunityLeaderboard(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/rider-search' && request.method === 'GET') {
+      return withCors(await apiSearchRiders(request, env), request);
     }
     const riderApiMatch = url.pathname.match(/^\/api\/riders\/([^/]+)$/);
     if (riderApiMatch && request.method === 'GET') {

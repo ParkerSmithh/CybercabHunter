@@ -85,9 +85,26 @@
 
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Riders &amp; Spotters</p>
-    <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
-    <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+      <div class="min-w-0">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Riders &amp; Spotters</p>
+        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
+        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
+      </div>
+
+      <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
+           after 2+ characters, only riders with a public profile. -->
+      <div id="riderSearch" class="relative w-full lg:w-80 shrink-0">
+        <label for="riderSearchInput" class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Find riders</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
+            aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Search by name"
+            class="w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
+        </div>
+        <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(212,175,55,0.25)] py-1 shadow-2xl"></ul>
+      </div>
+    </div>
 
     <!-- At a glance: every number is the server's (reviews: GET /api/reviews,
          js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
@@ -410,5 +427,6 @@
 </script>
 <script src="js/community.js?v=3"></script>
 <script src="js/reviews.js?v=2"></script>
+<script src="js/rider-search.js?v=1"></script>
 </body>
 </html>

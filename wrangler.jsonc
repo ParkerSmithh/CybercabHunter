@@ -68,6 +68,16 @@
 				"limit": 20,
 				"period": 60
 			}
+		},
+		{
+			// Rider search on the Community page (worker/community.js), per
+			// rider or per IP. Typing with a 250ms debounce stays well under it.
+			"name": "SEARCH_LIMITER",
+			"namespace_id": "7304",
+			"simple": {
+				"limit": 60,
+				"period": 60
+			}
 		}
 	],
 	"observability": {

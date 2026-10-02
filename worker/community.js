@@ -3,6 +3,8 @@
 //   GET /api/community/leaderboard?board=discovered   public, edge-cached
 //     -> { board, label, boards: [{ id, label }], entries: [{ rank, count, name, handle, avatar_url, profile }],
 //          totals: { spotters, vehicles } }   (every ranked rider, not just the top N: counts only)
+//   GET /api/rider-search?q=bo                        public, rate limited, never cached
+//     -> { q, results: [{ name, handle, avatar_url }] }   (at most 8; see apiSearchRiders)
 //   GET /api/riders/:handle                           public, edge-cached
 //     -> { rider: { name, handle, avatar_url, bio, joined }, discovered: { count, vehicles: [...] },
 //          rides: { count, vehicles, cities: [{ name, rides }] },
@@ -31,12 +33,17 @@
 //     appear, so a private vehicle never leaks through a count or a list.
 
 import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './ride-status.js';
+import { tesla } from './tesla.js';
+import { sha256Hex } from './account.js';
 
 const CACHE_SECONDS = 60;
 const TOP_N = 6;
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 const PRIVATE_NAME = 'Private spotter';
 const PROFILE_REVIEWS = 10;   // most recent reviews shown on a public profile
+const SEARCH_MIN = 2;
+const SEARCH_MAX = 40;
+const SEARCH_LIMIT = 8;
 
 // ---- Discovery credit (THE rule, shared by the leaderboard and profiles) ----
 // For each publicly eligible vehicle, the discoverer is whoever has the
@@ -237,4 +244,50 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
       }
     }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
   });
+}
+
+// Rider search for the Community page's "Find riders" box.
+//   - Only riders who HAVE a public profile: leaderboard_opt_in = 1 AND a
+//     username (the same rule as GET /api/riders/:handle). A private account
+//     is simply never matched — no row, no "private account" placeholder —
+//     and neither is an account without a profile page to go to, or the
+//     Muse connector's system account.
+//   - Matches the name a profile shows (the display name, else the username),
+//     case-insensitive: names that START with the query first, then names
+//     that contain it, alphabetical within each group. At most 8 results.
+//   - 2–40 characters; anything shorter returns nothing. LIKE wildcards in the
+//     query are escaped, so "%" or "_" only match themselves.
+//   - The response carries name, username and photo only — never a user id,
+//     email or anything else — and is never cached, so turning the Profile
+//     switch off takes effect at once.
+//   - Rate limited per rider (signed in) or per IP (SEARCH_LIMITER; fails
+//     open if the binding is missing or errors).
+export async function apiSearchRiders(request, env) {
+  const noStore = { 'Cache-Control': 'no-store' };
+  const q = (new URL(request.url).searchParams.get('q') || '').trim().replace(/\s+/g, ' ');
+  if (q.length < SEARCH_MIN || q.length > SEARCH_MAX) return Response.json({ q, results: [] }, { headers: noStore });
+
+  if (env.SEARCH_LIMITER) {
+    const userId = await tesla.requireUserId(request, env);
+    const who = userId ? `u:${userId}` : `ip:${request.headers.get('CF-Connecting-IP') || 'unknown'}`;
+    let allowed = true;
+    try { allowed = (await env.SEARCH_LIMITER.limit({ key: `rider-search:${await sha256Hex(who)}` })).success !== false; } catch (e) { /* fail open */ }
+    if (!allowed) return Response.json({ success: false, error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': '60', ...noStore } });
+  }
+
+  const like = q.toLowerCase().replace(/[\\%_]/g, c => `\\${c}`);
+  const name = `COALESCE(NULLIF(TRIM(u.display_name), ''), u.handle)`;
+  const { results } = await env.cybercabhunter_db.prepare(`
+    SELECT ${name} AS name, u.handle, u.avatar_url,
+           CASE WHEN LOWER(${name}) LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END AS grp
+    FROM users u
+    WHERE u.leaderboard_opt_in = 1 AND u.handle IS NOT NULL AND u.id <> ?
+      AND LOWER(${name}) LIKE ? ESCAPE '\\'
+    ORDER BY grp, LOWER(name), u.handle
+    LIMIT ${SEARCH_LIMIT}
+  `).bind(`${like}%`, systemUserId(env), `%${like}%`).all();
+  return Response.json({
+    q,
+    results: (results || []).map(r => ({ name: String(r.name), handle: r.handle, avatar_url: safeAvatar(r.avatar_url) }))
+  }, { headers: noStore });
 }
