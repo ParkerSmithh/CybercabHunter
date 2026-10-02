@@ -148,12 +148,23 @@ window.CCCReplay = (function () {
     const icon = new Image();
     icon.src = 'images/CybercabOverhead.png';
 
+    // On lg+ the sidebar floats over the map's left side (as on Zones): keep
+    // the service zone in the open area to its right.
+    const panel = $('replayPanel');
+    const sideInset = () => (panel && window.innerWidth >= 1024 ? panel.offsetWidth + 32 : 0);
+    const zoneBounds = () => {
+      const z = window.CCCAustinMap ? CCCAustinMap.SERVICE_ZONE : [[-97.87, 30.14], [-97.55, 30.46]];
+      const lng = z.map(c => c[0]), lat = z.map(c => c[1]);
+      return [[Math.min(...lng), Math.min(...lat)], [Math.max(...lng), Math.max(...lat)]];
+    };
+    const fitPadding = () => { const l = sideInset(); return l ? { top: 40, bottom: 40, left: l + 16, right: 40 } : 16; };
+
     // Map: light basemap; pannable and zoomable (cooperative gestures on a page that scrolls).
     if (window.maplibregl) {
       try {
         state.map = new maplibregl.Map({
           container: 'replayMap', style: 'https://tiles.openfreemap.org/styles/positron',
-          center: [-97.735, 30.29], zoom: 10.3, cooperativeGestures: true, dragRotate: false, pitchWithRotate: false,
+          bounds: zoneBounds(), fitBoundsOptions: { padding: fitPadding() }, cooperativeGestures: true, dragRotate: false, pitchWithRotate: false,
           attributionControl: { compact: true }
         });
         if (state.map.touchZoomRotate) state.map.touchZoomRotate.disableRotation();
@@ -162,9 +173,12 @@ window.CCCReplay = (function () {
     }
     const project = (lng, lat) => {
       if (state.map && state.map.project) { const p = state.map.project([lng, lat]); return [p.x, p.y]; }
-      // No map (e.g. WebGL unavailable): a plain projection of the Austin area.
+      // No map (e.g. WebGL unavailable): the zone's box, fitted beside the sidebar.
       const w = canvas.clientWidth || 600, h = canvas.clientHeight || 400;
-      return [(lng + 98.05) / 0.6 * w, (30.6 - lat) / 0.55 * h];
+      const [[x0, y0], [x1, y1]] = zoneBounds(), left = sideInset() + 24, pad = 24;
+      const k = Math.min((w - left - pad) / (x1 - x0), (h - 2 * pad) / ((y1 - y0) * 1.15));
+      const ox = left + ((w - left - pad) - k * (x1 - x0)) / 2, oy = pad + ((h - 2 * pad) - k * (y1 - y0) * 1.15) / 2;
+      return [ox + (lng - x0) * k, oy + (y1 - lat) * k * 1.15];
     };
 
     // ---- Odometer ----
@@ -210,6 +224,8 @@ window.CCCReplay = (function () {
       const lit = state.cameras.filter(c => byKey.has(c.camera_id)).length;
       canvas.dataset.cameras = String(state.cameras.length);
       canvas.dataset.camerasLit = String(lit);
+      $('replayCamerasLit').textContent = String(lit);
+      $('replayCamerasTotal').textContent = state.cameras.length ? String(state.cameras.length) : '—';
       if (ctx) {
         ctx.clearRect(0, 0, w, h);
         // The service zone, on the canvas so it sits ABOVE the sky tint (a map
@@ -270,7 +286,7 @@ window.CCCReplay = (function () {
       const chip = $('replayPhase');
       if (chip) { chip.textContent = phase.name; chip.style.background = phase.color; chip.style.color = phase.text; }
       const dt = new Date(state.T);
-      $('replayClockDate').textContent = dt.toLocaleDateString('en-US', { timeZone: ZONE, weekday: 'short', month: 'short', day: 'numeric' });
+      $('replayClockDate').textContent = dt.toLocaleDateString('en-US', { timeZone: ZONE, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
       $('replayClockTime').textContent = dt.toLocaleTimeString('en-US', { timeZone: ZONE, hour: 'numeric', minute: '2-digit' });
     }
 
@@ -377,6 +393,11 @@ window.CCCReplay = (function () {
       catch (e) { window.prompt('Copy this link:', link); }
     });
     window.addEventListener('resize', () => draw());
+    // Crossing the lg breakpoint moves the sidebar on or off the map: refit.
+    if (window.matchMedia && state.map) {
+      const mq = window.matchMedia('(min-width: 1024px)');
+      if (mq.addEventListener) mq.addEventListener('change', () => { try { state.map.fitBounds(zoneBounds(), { padding: fitPadding(), animate: false }); } catch (e) { /* keep the view */ } });
+    }
 
     // The camera base layer (the same list the server checks sightings against).
     fetch('data/traffic-cameras.json').then(r => (r.ok ? r.json() : [])).then(list => {

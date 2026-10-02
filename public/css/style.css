@@ -367,6 +367,8 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
 
 /* ---------- Sightings replay (replay.html, js/replay.js) ---------- */
 .replay-stage{background:#f4efe3;}
+/* The replay sidebar floats over a LIGHT map (Zones floats over a dark one): near-solid so its text stays legible. */
+.replay-panel{background:rgba(11,14,21,0.94);}
 .replay-glass{background:rgba(255,252,244,0.82);border:1px solid rgba(212,175,55,0.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 8px 24px -14px rgba(60,40,0,0.45);}
 .replay-range,.replay-speed{color:#cbd5e1;}
 .replay-range[aria-pressed="true"],.replay-speed[aria-pressed="true"]{background:rgba(212,175,55,0.16);color:#D4AF37;}

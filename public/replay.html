@@ -84,78 +84,104 @@
   </a>
 </nav>
 
-<section class="py-10">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10">
-    <div class="flex items-end justify-between gap-4 flex-wrap mb-5">
-      <div>
-        <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">REPLAY</h1>
-        <p class="mt-2 text-sm text-slate-400">Every Cybercab caught by Austin's traffic cameras, replayed as it happened.</p>
+<!-- Laid out like the Zones page: the map fills the view below the header and
+     a floating glass sidebar on the left holds everything else (lg+); on mobile
+     the sidebar stacks above a tall map card. No footer on this page. -->
+<section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
+  <div id="replayContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100vh-6rem)] lg:min-h-[560px]">
+    <aside id="replayPanel" class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto replay-panel">
+      <!-- Range: a segmented control, like the Zones city switch. This Month leads. -->
+      <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+        <button type="button" data-range="month" class="replay-range flex-1 py-2 rounded-lg text-xs font-bold tracking-wide">This Month</button>
+        <button type="button" data-range="24h" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide">24 Hours</button>
+        <button type="button" data-range="7d" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide">7 Days</button>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-          <button type="button" data-range="month" class="replay-range px-4 py-1.5 rounded-lg text-sm font-bold">This Month</button>
-          <button type="button" data-range="24h" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 24 hours</button>
-          <button type="button" data-range="7d" class="replay-range px-3 py-1.5 rounded-lg text-xs font-semibold">Last 7 days</button>
-        </div>
-        <button type="button" id="replayShare" class="px-3 py-2 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
-      </div>
-    </div>
 
-    <!-- The stage: a light basemap, a time-of-day tint, and ONE canvas for every
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-3 mt-5">
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap">Replay · <span id="replayRangeLabel">This Month</span></p>
+          <h1 class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h1>
+        </div>
+        <span id="replayPhase" class="shrink-0 mt-1 text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-1" style="background:#ffe08a;color:#2a2210;">Midday</span>
+      </div>
+
+      <!-- Map key, right under the heading -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-[11px] text-slate-400">
+        <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" class="w-4 h-4 object-contain rounded-full ring-2 ring-[#D4AF37] bg-white">Camera watch</span>
+        <span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rotate-45 bg-[#D4AF37] border border-white"></span>Spotter</span>
+        <span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-full bg-[#fffaec] border-[1.5px] border-[rgba(60,50,30,0.75)]"></span>Camera, no sighting yet</span>
+        <span class="flex items-center gap-2"><span class="inline-block w-3 h-2 rounded-sm bg-[rgba(255,199,44,0.2)] border-2 border-[#FFD23F]"></span>Service zone</span>
+      </div>
+
+      <!-- Replay clock -->
+      <div class="mt-4 p-4 rounded-xl border border-[rgba(212,175,55,0.14)] bg-gradient-to-br from-[rgba(212,175,55,0.07)] to-transparent">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Replay Clock</p>
+        <div id="replayClockTime" class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums">—</div>
+        <div id="replayClockDate" class="text-xs text-slate-400 mt-2">—</div>
+      </div>
+
+      <!-- Running totals -->
+      <dl class="grid grid-cols-2 gap-2 mt-2">
+        <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+          <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sightings so far</dt>
+          <dd class="font-display font-bold text-xl text-slate-100 mt-1"><span id="replayCounter" class="replay-odometer" aria-live="off" aria-label="0 sightings"></span></dd>
+        </div>
+        <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+          <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Cameras lit</dt>
+          <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="replayCamerasLit">0</span><span class="text-sm text-slate-500"> / <span id="replayCamerasTotal">—</span></span></dd>
+        </div>
+      </dl>
+
+      <!-- Playback: play/pause, speed, and the activity ribbon (a histogram of
+           the window that fills gold as the playhead moves; drag it to scrub). -->
+      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 mb-2">Playback</p>
+      <div class="flex items-center gap-2">
+        <button type="button" id="replayPlay" aria-label="Play" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></button>
+        <div id="replaySpeed" role="group" aria-label="Speed" class="flex-1 flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+          <button type="button" data-speed="1" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">1×</button>
+          <button type="button" data-speed="4" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">4×</button>
+          <button type="button" data-speed="16" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">16×</button>
+          <button type="button" data-speed="60" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">60×</button>
+        </div>
+      </div>
+      <canvas id="replayRibbon" class="block w-full h-12 mt-3 cursor-pointer touch-none" role="slider" tabindex="0" aria-label="Replay timeline" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
+      <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span id="replayStartLabel"></span><span id="replayEndLabel"></span></div>
+
+      <button type="button" id="replayShare" class="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
+      <p class="text-[11px] text-slate-500 leading-relaxed mt-3">Camera-watch detections and approved spotter sightings at each camera's location. Public, approved data only — nothing is estimated.</p>
+    </aside>
+
+    <!-- Map: a tall card on mobile, a full-bleed backdrop on lg+ (as on Zones).
+         The stage: a light basemap, a time-of-day tint, and ONE canvas for every
          dot, ping and glow (js/replay.js) — no DOM markers, so thousands of
          sightings stay smooth on a phone. -->
-    <div id="replayStage" class="replay-stage relative rounded-3xl overflow-hidden border border-[rgba(212,175,55,0.25)] aspect-[4/5] sm:aspect-[16/10]">
-      <div id="replayMap" class="absolute inset-0"></div>
-      <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>
-      <canvas id="replayCanvas" class="absolute inset-0 w-full h-full pointer-events-none" data-dots="0"></canvas>
-
-      <div class="absolute top-3 left-3 sm:top-4 sm:left-4 replay-glass rounded-2xl px-4 py-3">
-        <div class="flex items-center gap-2"><span class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12]">Austin · <span id="replayRangeLabel">This Month</span></span><span id="replayPhase" class="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5" style="background:#ffe08a;color:#2a2210;">Midday</span></div>
-        <div id="replayClockDate" class="font-display font-bold text-lg sm:text-xl text-[#1a1406] leading-tight mt-0.5">—</div>
-        <div id="replayClockTime" class="font-display font-bold text-2xl sm:text-3xl text-[#1a1406] tabular-nums leading-none">—</div>
-      </div>
-      <div class="absolute top-3 right-3 sm:top-4 sm:right-4 replay-glass rounded-2xl px-4 py-3 text-right">
-        <div id="replayCounter" class="replay-odometer font-display font-bold text-3xl sm:text-4xl text-[#1a1406]" aria-live="off" aria-label="0 sightings"></div>
-        <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a6a12] mt-1">Sightings so far</div>
-      </div>
-      <div class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 replay-glass rounded-xl px-3 py-2 text-[11px] text-[#2a2210] space-y-1">
-        <div class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" class="w-4 h-4 object-contain rounded-full ring-2 ring-[#D4AF37] bg-white"> Camera watch</div>
-        <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rotate-45 bg-[#D4AF37] border-2 border-white shadow"></span> Spotter (traffic cam)</div>
-        <div class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 mx-px rounded-full bg-[#fffaec] border-[1.5px] border-[rgba(60,50,30,0.75)]"></span> Camera, no sighting yet</div>
-        <div class="flex items-center gap-2"><span class="inline-block w-3 h-2 rounded-sm bg-[rgba(255,199,44,0.2)] border-2 border-[#FFD23F]"></span> Service zone</div>
-      </div>
-      <div class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 flex items-center gap-1.5 replay-glass rounded-xl px-2.5 py-1.5">
-        <img src="images/Cybercab2.png" alt="" class="w-6 h-6 object-contain"><span class="font-display font-bold text-[11px] tracking-wide text-[#1a1406]">cybercabhunter.com</span>
-      </div>
-      <div id="replayEmpty" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div class="replay-glass rounded-2xl px-6 py-4 text-center max-w-xs">
-          <div class="font-display font-bold text-[#1a1406]">NO CAMERA SIGHTINGS YET</div>
-          <p class="text-xs text-[#4a3d1a] mt-1">Nothing was recorded in this window. The replay fills in as the cameras spot Cybercabs.</p>
+    <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] lg:p-0 lg:h-auto lg:absolute lg:inset-0">
+      <div id="replayStage" class="replay-stage relative rounded-xl overflow-hidden w-full h-full lg:rounded-2xl">
+        <div id="replayMap" class="absolute inset-0"></div>
+        <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>
+        <canvas id="replayCanvas" class="absolute inset-0 w-full h-full pointer-events-none" data-dots="0"></canvas>
+        <div class="absolute top-3 right-3 lg:top-4 lg:right-4 flex items-center gap-1.5 replay-glass rounded-xl px-2.5 py-1.5 pointer-events-none">
+          <img src="images/Cybercab2.png" alt="" class="w-6 h-6 object-contain"><span class="font-display font-bold text-[11px] tracking-wide text-[#1a1406]">cybercabhunter.com</span>
         </div>
-      </div>
-      <div id="replayLoading" class="absolute inset-0 flex items-center justify-center pointer-events-none"><div class="replay-glass rounded-xl px-4 py-2 text-xs text-[#4a3d1a]">Loading sightings…</div></div>
-    </div>
-
-    <!-- Controls: play/pause, speed, and the activity ribbon (a histogram of the
-         window that fills gold as the playhead moves; drag it to scrub). -->
-    <div class="mt-4 glass rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-      <div class="flex items-center gap-2">
-        <button type="button" id="replayPlay" aria-label="Play" class="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></button>
-        <div id="replaySpeed" role="group" aria-label="Speed" class="flex gap-1">
-          <button type="button" data-speed="1" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">1×</button>
-          <button type="button" data-speed="4" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">4×</button>
-          <button type="button" data-speed="16" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">16×</button>
-          <button type="button" data-speed="60" class="replay-speed px-2.5 py-1.5 rounded-lg text-xs font-semibold">60×</button>
+        <div id="replayEmpty" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none lg:pl-80">
+          <div class="replay-glass rounded-2xl px-6 py-4 text-center max-w-xs">
+            <div class="font-display font-bold text-[#1a1406]">NO CAMERA SIGHTINGS YET</div>
+            <p class="text-xs text-[#4a3d1a] mt-1">Nothing was recorded in this window. The replay fills in as the cameras spot Cybercabs.</p>
+          </div>
         </div>
-      </div>
-      <div class="flex-1 min-w-0">
-        <canvas id="replayRibbon" class="block w-full h-12 cursor-pointer touch-none" role="slider" tabindex="0" aria-label="Replay timeline" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
-        <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span id="replayStartLabel"></span><span id="replayEndLabel"></span></div>
+        <div id="replayLoading" class="absolute inset-0 flex items-center justify-center pointer-events-none lg:pl-80"><div class="replay-glass rounded-xl px-4 py-2 text-xs text-[#4a3d1a]">Loading sightings…</div></div>
       </div>
     </div>
-    <p class="text-[11px] text-slate-500 mt-3">Camera-watch detections and approved spotter sightings filed with a traffic camera, at each camera's location. Only public, approved data — nothing is estimated or filled in.</p>
   </div>
 </section>
+<style>
+  /* As on Zones: no footer, and on lg+ the map is the whole view, so the page
+     itself never scrolls; mobile stacks the sidebar above the map and scrolls. */
+  html, body{overflow-x:hidden;}
+  body{overflow-y:hidden; height:100dvh;}
+  @media (max-width:1023px){ body{overflow-y:auto; height:auto; min-height:100dvh;} }
+</style>
 
 <!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
      Closes with the × button, a click outside the photo, or Escape. -->
@@ -270,37 +296,6 @@
   </div>
 </div>
 
-<footer class="border-t border-[rgba(212,175,55,0.12)] py-16">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
-    <div class="col-span-2">
-      <div class="flex items-center gap-2">
-        <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold">CYBERCAB HUNTER</span>
-      </div>
-      <p class="text-sm text-slate-500 mt-3 max-w-xs">Crowdsourced tracking and analytics for Tesla's autonomous robotaxi fleet.</p>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Explore</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">        <a href="/simulation" class="hover:text-white transition-colors">Fleet ROI</a>
-      </div>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Network</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="infrastructure.html" class="hover:text-white transition-colors">Zone</a>
-      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
-      </div>
-    </div>
-    <div>
-      <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">About</h4>
-      <div class="flex flex-col gap-2.5 text-sm text-slate-400">
-        <a href="#" class="hover:text-white transition-colors">How It Works</a>
-        <a href="#" class="hover:text-white transition-colors">Privacy</a>
-      </div>
-    </div>
-  </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-8 border-t border-[rgba(212,175,55,0.1)] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
-</footer>
 
 <script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=13"></script>
@@ -309,6 +304,6 @@
 </script>
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/austin-map.js?v=3"></script>
-<script src="js/replay.js?v=3"></script>
+<script src="js/replay.js?v=4"></script>
 </body>
 </html>

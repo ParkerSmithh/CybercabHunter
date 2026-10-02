@@ -175,6 +175,7 @@ async function run() {
     const cv = c.d.getElementById('replayCanvas');
     check(`all ${cams.length} watched cameras are on the base layer`, Number(cv.dataset.cameras) === cams.length && cams.length >= 50);
     check('the 2 cameras with sightings are lit, the rest stay dim', cv.dataset.camerasLit === '2');
+    check('the sidebar shows cameras lit out of the total', c.d.getElementById('replayCamerasLit').textContent === '2' && c.d.getElementById('replayCamerasTotal').textContent === String(cams.length));
     const rb = c.d.getElementById('replayRibbon');
     rb.getBoundingClientRect = () => ({ left: 0, width: 1000, top: 0, height: 48 });
     rb.dispatchEvent(new c.w.MouseEvent('pointerdown', { clientX: 0, bubbles: true }));
@@ -213,6 +214,12 @@ async function run() {
     const zoneAt = rjs.indexOf('CCCAustinMap.SERVICE_ZONE.forEach'), camsAt = rjs.indexOf('for (const c of state.cameras)'), heatAt = rjs.indexOf('// Heat:');
     check('the zone is drawn on the canvas (above the sky tint), before cameras and sightings', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && zoneAt > 0 && zoneAt < camsAt && camsAt < heatAt && !/addServiceZone\(state\.map/.test(rjs));
     check('the tint sits under the canvas in the stage', html.indexOf('id="replayTint"') < html.indexOf('id="replayCanvas"'));
+    // Laid out like the Zones page: a full-height map with a floating sidebar on lg+, no footer.
+    const panelTag = /<aside id="replayPanel" class="([^"]*)"/.exec(html), wrapTag = /<div id="replayMapWrap" class="([^"]*)"/.exec(html);
+    const zonesPanel = /<div class="(glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80)/.exec(zones), zonesWrap = /<div id="austinMapWrap" class="([^"]*)"/.exec(zones);
+    check('the sidebar floats over the map like the Zones panel', panelTag && zonesPanel && panelTag[1].startsWith(zonesPanel[1]));
+    check('the map card matches the Zones map card (tall on mobile, full-bleed on lg+)', wrapTag && zonesWrap && wrapTag[1].replace(/\s*reveal-on-scroll/, '') === zonesWrap[1].replace(/\s*reveal-on-scroll/, ''));
+    check('the controls, clock and counter live in the sidebar; no footer', ['replayRange', 'replayClockTime', 'replayCounter', 'replayPlay', 'replayRibbon', 'replayShare'].every(id => { const i = html.indexOf(`id="${id}"`); return i > html.indexOf('id="replayPanel"') && i < html.indexOf('</aside>'); }) && !/<footer/.test(html));
     check('the legend explains dim cameras and the zone', /Camera, no sighting yet/.test(html) && /Service zone</.test(html));
   }
 
