@@ -84,17 +84,20 @@
 </nav>
 
 <section class="py-16">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
     <p class="mt-3 text-sm text-slate-400 leading-relaxed">Rider reviews of the Cybercab, and the spotters who found them first.</p>
 
     <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
          is computed live by the server over the reviews shown; until it
          arrives it stays an em dash. -->
-    <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 mt-8">
+    <!-- Reviews and the leaderboard side by side on lg+ (reviews the wider
+         column); stacked on smaller screens. -->
+    <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+    <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 min-w-0">
       <div class="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 class="font-display font-bold text-lg tracking-wide">CYBERCAB REVIEWS</h2>
+          <h2 class="font-display font-bold text-lg tracking-wide">REVIEWS</h2>
           <div class="flex items-center gap-3 mt-2">
             <span id="reviewAverage" class="font-display font-bold text-4xl text-gold leading-none tabular-nums">—</span>
             <span>
@@ -169,11 +172,12 @@
       <button type="button" id="reviewMore" class="hidden mt-4 w-full py-2.5 rounded-lg text-xs font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more reviews</button>
     </div>
 
+    <div id="leaderboardColumn" class="min-w-0">
     <!-- Leaderboards (js/community.js). The boards come from the server; the tab
          buttons appear only once there is more than one board. -->
-    <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mt-8 flex flex-wrap gap-2"></div>
+    <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mb-4 flex flex-wrap gap-2"></div>
 
-    <div class="glass rounded-2xl p-4 sm:p-6 mt-8">
+    <div class="glass rounded-2xl p-4 sm:p-6">
       <div class="flex items-baseline justify-between gap-3">
         <h2 id="boardTitle" class="font-display font-bold text-lg tracking-wide">MOST VEHICLES DISCOVERED</h2>
         <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Top 6</span>
@@ -198,6 +202,8 @@
     </div>
 
     <p class="text-xs text-slate-500 mt-4 leading-relaxed">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to appear as “Private spotter”.</p>
+    </div>
+    </div>
   </div>
 </section>
 
