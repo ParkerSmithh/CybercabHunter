@@ -180,7 +180,11 @@
     const peak = ok && stats.peak_hour;
     if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
       $('statPeakHour').textContent = `${fmtHour(peak.hour)} – ${fmtHour((peak.hour + 1) % 24)}`;
-      $('statPeakCount').textContent = plural(peak.count, 'sighting', 'sightings');
+      // Over ALL sightings, not one day: say so ("3 of 16 sightings since Sep 29").
+      const since = fmtDay(stats.first_day);
+      $('statPeakCount').textContent = isCount(stats.total) && stats.total >= peak.count
+        ? `${peak.count.toLocaleString('en-US')} of ${plural(stats.total, 'sighting', 'sightings')}${since ? ` since ${since.replace(/, \d{4}$/, '')}` : ', all time'}`
+        : plural(peak.count, 'sighting', 'sightings');
     } else if (ok && isCount(stats.total)) {
       // No sightings yet, or no clear busiest hour yet (too few, or a tie).
       $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'TBD';

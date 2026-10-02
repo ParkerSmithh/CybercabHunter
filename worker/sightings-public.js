@@ -76,6 +76,8 @@ const pad2 = n => String(n).padStart(2, '0');
 //                  hour. Otherwise null ("Not enough data yet") — never a
 //                  tie-break guess.
 //   best_day     — local date with the most sightings {date YYYY-MM-DD, count}
+//   first_day    — local date of the earliest sighting (YYYY-MM-DD), so the
+//                  page can say what "all history" covers
 // Best-day ties: the more recent day.
 export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   const now = usLocalParts(nowMs, zone);
@@ -102,6 +104,8 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
   if (peak && (peak.count < PEAK_HOUR_MIN_SIGHTINGS || hours.filter(c => c === peak.count).length > 1)) peak = null;
   let best = null;
   for (const [date, count] of days) if (!best || count > best.count || (count === best.count && date > best.date)) best = { date, count };
+  let first = null;
+  for (const date of days.keys()) if (!first || date < first) first = date;
   let thisMonth = 0;
   for (const [date, count] of days) if (date.startsWith(month)) thisMonth += count;
   return {
@@ -111,7 +115,8 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
     today: days.get(today) || 0,
     this_month: thisMonth,
     peak_hour: peak,
-    best_day: best
+    best_day: best,
+    first_day: first
   };
 }
 
