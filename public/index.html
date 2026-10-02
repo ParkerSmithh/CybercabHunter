@@ -136,6 +136,22 @@
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
 
+      <!-- Austin service-area facts: a slim strip across the top, separate from
+           the minimap below (nothing sits on the map). Hidden with the map and
+           chart when Dallas is selected. -->
+      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 reveal-on-scroll sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+        <div class="shrink-0">
+          <div class="flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400"><span class="dot-gold-live"></span>Service Area</div>
+          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight">Austin</div>
+        </div>
+        <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8">Robotaxi service is currently available in this area.</p>
+        <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8">
+          <svg class="w-5 h-5 shrink-0" style="color:#FFC72C;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span class="whitespace-nowrap">Service Hours</span>
+          <span class="font-semibold text-white ml-auto md:ml-3 tracking-wide whitespace-nowrap">6AM – 10PM</span>
+        </div>
+      </div>
+
       <!-- Austin mini map -->
       <div id="homeZoneAustin" class="service-zone-card reveal-on-scroll">
         <div id="zoneMap-austin" class="service-zone-map"></div>
@@ -147,17 +163,6 @@
             <line x1="3" y1="21" x2="10" y2="14"/>
           </svg>
         </a>
-        <div class="service-zone-infocard">
-          <div class="flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400"><span class="dot-gold-live"></span>Service Area</div>
-          <div class="font-display font-bold text-4xl mt-2 text-white tracking-tight">Austin</div>
-          <p class="text-sm text-slate-300/90 mt-2 leading-relaxed max-w-[240px]">Robotaxi service is currently available in this area.</p>
-          <div class="border-t border-white/10 my-4"></div>
-          <div class="flex items-center gap-3 text-sm text-slate-400">
-            <svg class="w-5 h-5 shrink-0" style="color:#FFC72C;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            <span class="whitespace-nowrap">Service Hours</span>
-            <span class="font-semibold text-white ml-auto pl-4 tracking-wide whitespace-nowrap">6AM – 10PM</span>
-          </div>
-        </div>
       </div>
 
       <!-- Austin fleet growth chart: cumulative count of Austin Cybercabs in
@@ -471,7 +476,8 @@
         (b, c) => b.extend(c),
         new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0])
       );
-      zoneMap.fitBounds(bounds, { padding: { top: 150, left: 150, right: 24, bottom: 24 }, animate: false });
+      // The whole zone, centered with an even margin (nothing overlays the map).
+      zoneMap.fitBounds(bounds, { padding: 28, animate: false });
       zoneMap.addSource('zone', {
         type: 'geojson',
         data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [zoneCoords] } }
@@ -499,6 +505,7 @@
   (function initHomeCitySelector() {
     const cityBtns = document.querySelectorAll('#homeCitySelector .city-btn');
     const austinMap = document.getElementById('homeZoneAustin');
+    const austinInfo = document.getElementById('homeZoneAustinInfo');
     const austinChart = document.getElementById('homeFleetChart');
     const dallasNote = document.getElementById('homeZoneDallasNote');
     if (!cityBtns.length || !austinMap || !austinChart || !dallasNote) return;
@@ -508,6 +515,7 @@
         btn.className = 'city-btn py-2.5 px-5 rounded-lg text-sm font-semibold border border-gold bg-[rgba(212,175,55,0.12)] text-gold';
         const isDallas = btn.dataset.city === 'dallas';
         austinMap.classList.toggle('hidden', isDallas);
+        if (austinInfo) austinInfo.classList.toggle('hidden', isDallas);
         austinChart.classList.toggle('hidden', isDallas);
         dallasNote.classList.toggle('hidden', !isDallas);
       });
