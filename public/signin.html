@@ -3,29 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Sign in to Cybercab Hunter with Google to submit sightings, review Cybercabs and see your rider data.">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090B0F">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Sign In</title>
+<title>Cybercab Hunter | Sign In</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: { extend: {
-      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
-        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
-      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
-    }}
-  }
-</script>
-<link rel="stylesheet" href="css/style.css">
+<script src="js/theme.js?v=1"></script>
+<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <div class="min-h-screen grid lg:grid-cols-2">
   <!-- Left: hero image panel (desktop only) -->
@@ -43,7 +38,7 @@
   </aside>
 
   <!-- Right: sign-in -->
-  <main class="flex flex-col px-6 sm:px-12 py-10">
+  <main id="main" tabindex="-1" class="flex flex-col px-6 sm:px-12 py-10">
     <div class="flex items-center justify-between">
       <a href="index.html" class="flex items-center gap-2 lg:invisible">
         <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-10 h-10 object-contain">

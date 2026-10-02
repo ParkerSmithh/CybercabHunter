@@ -3,28 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="What Cybercab Hunter collects, what is public, and how to delete your data.">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090B0F">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Privacy</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>Cybercab Hunter | Privacy</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: { extend: {
-      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
-        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
-      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
-    }}
-  }
-</script>
-<link rel="stylesheet" href="css/style.css">
+<script src="js/theme.js?v=1"></script>
+<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <header class="border-b border-[rgba(212,175,55,0.15)]">
-  <div class="max-w-3xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
       <div class="leading-tight">
@@ -39,7 +34,7 @@
 <!-- DRAFT: describes what the code does today. It has NOT been reviewed by a
      lawyer and makes no legal or compliance claims. Items marked "To be
      confirmed" need a decision before this is published as the policy. -->
-<main class="py-14">
+<main id="main" tabindex="-1" class="py-14">
   <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed">
 
     <div id="privacyDraftNotice" class="rounded-xl border border-amber-400/40 bg-amber-400/5 px-5 py-4 text-amber-200">

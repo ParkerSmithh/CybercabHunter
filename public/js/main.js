@@ -131,7 +131,7 @@ const CCC = (() => {
 
   /* ---------------- Confetti ---------------- */
   function spawnConfetti(originEl) {
-    const colors = ['#D4AF37', '#F3E5AB', '#00E5FF', '#CBD5E1'];
+    const colors = ['#D4AF37', '#F3E5AB', '#B8954A', '#ECEEF1'];   // the one accent, in three tones, plus ink
     const rect = originEl ? originEl.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const originX = rect.left + rect.width / 2;
     const originY = rect.top + rect.height / 2;
@@ -158,10 +158,12 @@ const CCC = (() => {
     if (!root) {
       root = document.createElement('div');
       root.id = 'toastRoot';
-      root.className = 'fixed bottom-6 right-6 z-[200] flex flex-col gap-2';
+      root.className = 'fixed bottom-24 lg:bottom-6 right-4 left-4 sm:left-auto sm:right-6 z-[200] flex flex-col gap-2 items-stretch sm:items-end';
+      root.setAttribute('role', 'status');
+      root.setAttribute('aria-live', 'polite');
       document.body.appendChild(root);
     }
-    const colors = { success: 'border-gold text-gold', info: 'border-cyan text-cyan', error: 'border-crimson text-crimson' };
+    const colors = { success: 'border-gold/60 text-gold', info: 'border-slate-600 text-white', error: 'border-crimson/70 text-red-300' };
     const el = document.createElement('div');
     el.className = 'toast glass px-4 py-3 rounded-xl text-sm font-medium border ' + (colors[type] || colors.info);
     el.textContent = message;
@@ -650,7 +652,10 @@ const CCC = (() => {
   }
 
   /* ---------------- Ambient particles ---------------- */
+  // Retired in the redesign (the backdrop is still; motion is reserved for
+  // content and feedback). Kept as a no-op so callers don't break.
   function initParticles() {
+    return;
     const mesh = document.querySelector('.bg-mesh');
     if (!mesh) return;
     for (let i = 0; i < 14; i++) {
@@ -689,7 +694,7 @@ const CCC = (() => {
      script only ever learns a boolean "linked" state via a same-origin-safe
      cross-site fetch (credentials: 'include' + the Worker's own CORS allow-list). */
   const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
-  const TESLA_ICON_SVG = '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>';
+  const TESLA_ICON_SVG = '<path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"/> <path d="M15 19l2 2l4 -4"/>';   // Tabler 'shield-check' (MIT)
 
   const TESLA_SESSION_KEY = 'teslaSessionId';
   let googleSignInJustCompleted = false;   // set by initTeslaLink on ?signin=success
@@ -768,7 +773,7 @@ const CCC = (() => {
     // NOT import Robotaxi ride history — rides come from receipts.
     btn.href = startUrl;
     btn.title = 'Connect your Tesla account so Cybercab Hunter can see your eligible Tesla vehicle information. This does not import Robotaxi ride history.';
-    btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
+    btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
 
     // The button only exists for a rider who is signed in (Google Sign-In is
     // how an account is created) and has not linked Tesla yet. Signed out, or
@@ -822,7 +827,7 @@ const CCC = (() => {
      one back through the identical #tesla_session= fragment (see
      worker/google-auth.js), so this reads whichever provider created it the
      same way. */
-  const PERSON_ICON_SVG = '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />';
+  const PERSON_ICON_SVG = '<path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/> <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>';   // Tabler 'user' (MIT)
 
   function initAccountMenu() {
     const signedOut = document.getElementById('accountSignedOut');
@@ -885,7 +890,7 @@ const CCC = (() => {
           const link = anchor.cloneNode(false);
           link.id = 'accountMenuModeration';
           link.setAttribute('href', '/moderation');
-          link.innerHTML = '<svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>Moderation';
+          link.innerHTML = '<svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"/> <path d="M15 19l2 2l4 -4"/></svg>Moderation';
           anchor.insertAdjacentElement('afterend', link);
         })
         .catch(() => { /* no link on any failure */ });

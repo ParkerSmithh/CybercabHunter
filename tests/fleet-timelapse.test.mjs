@@ -71,7 +71,7 @@ async function run() {
     check('it starts as "Play" with an aria-label', b.getAttribute('aria-label') === 'Play fleet growth timelapse' && b.dataset.state === 'idle');
     check('the button reads "Timelapse" with the play icon beside it', b.textContent.trim() === 'Timelapse' && b.querySelector('#fleetPlayIcon svg'));
     b.click();
-    check('the "Timelapse" text stays while the icon switches to pause', b.textContent.trim() === 'Timelapse' && b.querySelectorAll('#fleetPlayIcon rect').length === 2);
+    check('the "Timelapse" text stays while the icon switches to pause', b.textContent.trim() === 'Timelapse' && b.querySelectorAll('#fleetPlayIcon path').length === 2);
     b.click(); p.range('90d');
     check('the readout is hidden before playing', p.readout().classList.contains('hidden'));
     const before = p.fetches.length;

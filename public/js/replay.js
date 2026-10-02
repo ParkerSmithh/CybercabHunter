@@ -310,8 +310,8 @@ window.CCCReplay = (function () {
 
     // ---- Playback ----
     const playBtn = $('replayPlay');
-    const PLAY = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5 3.2v9.6L12.8 8z" fill="currentColor"/></svg>';
-    const PAUSE = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="4" y="3" width="2.8" height="10" rx="0.6" fill="currentColor"/><rect x="9.2" y="3" width="2.8" height="10" rx="0.6" fill="currentColor"/></svg>';
+    const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>';
+    const PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M9 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z"/> <path d="M17 4h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2z"/></svg>';
     function syncPlay() { playBtn.innerHTML = state.playing ? PAUSE : PLAY; playBtn.setAttribute('aria-label', state.playing ? 'Pause' : 'Play'); }
     let last = 0;
     function tick(ts) {

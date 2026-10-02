@@ -54,8 +54,8 @@
     if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
     return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-6.5-6.86-6.5-11.5A6.5 6.5 0 0 1 18.5 9.5C18.5 14.14 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>';
-  const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>';
+  const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>';
 
   function el(tag, className, text) {
     const node = document.createElement(tag);

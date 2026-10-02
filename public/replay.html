@@ -3,33 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Every camera-spotted Cybercab this month, replayed on a map of Austin as it happened.">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090B0F">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Replay</title>
+<title>Cybercab Hunter | Replay</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: { extend: {
-      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
-        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
-      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
-    }}
-  }
-</script>
+<script src="js/theme.js?v=1"></script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
-<link rel="stylesheet" href="css/style.css">
+<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
       <div class="leading-tight">
@@ -63,23 +58,23 @@
 
 <nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.86-6.5-11.5A6.5 6.5 0 0 1 18.5 9.5C18.5 14.14 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.25"/></svg>
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Zones</span>
   </a>
   <a href="/vehicles" data-nav="vehicles" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11l1.3-3.9A2 2 0 0 1 8.2 5.7h7.6a2 2 0 0 1 1.9 1.4L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.3" r="1.3"/><circle cx="16.5" cy="17.3" r="1.3"/></svg>
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Cars</span>
   </a>
   <a href="/sightings" data-nav="sightings" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Sightings</span>
   </a>
   <a href="/community" data-nav="community" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.25"/><path d="M3.5 19c0-3 2.5-5.25 5.5-5.25s5.5 2.25 5.5 5.25"/><path d="M15.5 5.2a3.25 3.25 0 0 1 0 5.6M17.5 13.9c1.8.7 3 2.6 3 5.1"/></svg>
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/> <path d="M16 3.13a4 4 0 0 1 0 7.75"/> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Community</span>
   </a>
   <a href="/simulation" data-nav="simulation" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
-    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4 3 2.5 4.5-5.5"/></svg>
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l16 0"/> <path d="M4 15l4 -6l4 2l4 -5l4 4"/></svg>
     <span class="text-[10px] font-semibold uppercase tracking-wide">Fleet ROI</span>
   </a>
 </nav>
@@ -87,7 +82,7 @@
 <!-- Laid out like the Zones page: the map fills the view below the header and
      a floating glass sidebar on the left holds everything else (lg+); on mobile
      the sidebar stacks above a tall map card. No footer on this page. -->
-<section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
+<section id="main" tabindex="-1" class="pt-3 lg:pt-4 pb-3 lg:pb-4">
   <div id="replayContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100vh-6rem)] lg:min-h-[560px]">
     <aside id="replayPanel" class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto replay-panel">
       <!-- Range: a segmented control, like the Zones city switch. This Month leads. -->
@@ -205,16 +200,16 @@
   </div>
   <div class="space-y-1 mb-6">
     <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
-      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/> <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
       Profile
     </a>
     <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
-      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6"/> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10"/> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14"/> <path d="M4 20h14"/></svg>
       Rider Data
     </a>
   </div>
   <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
-    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/> <path d="M9 12h12l-3 -3"/> <path d="M18 15l3 -3"/></svg>
     Sign out
   </button>
 </div>
@@ -231,7 +226,7 @@
   </div>
   <form id="sightingForm" class="space-y-5">
     <div>
-      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Photo</span>
+      <span class="text-[13px] font-medium text-slate-300">Photo</span>
       <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
         <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
@@ -241,14 +236,14 @@
       <p id="sightingPhotoError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingServiceArea" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from the supported service areas (GET /api/service-areas). -->
       <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a city</option>
       </select>
     </div>
     <div>
-      <label for="sightingLoc" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingLoc" class="text-[13px] font-medium text-slate-300">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Only a real place can be chosen: type, then pick from the suggestions
            (GET /api/places, OpenStreetMap via worker/places.js). -->
       <div class="relative mt-2">
@@ -260,12 +255,12 @@
       <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingDate" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-[11px] text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
-      <label for="sightingCamera" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>
@@ -273,11 +268,11 @@
       <p id="sightingCameraHelp" class="text-[11px] text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
     </div>
     <div>
-      <label for="sightingNotes" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingNotes" class="text-[13px] font-medium text-slate-300">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
     </div>
     <div>
-      <label for="sightingVehicle" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
@@ -285,7 +280,7 @@
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
-      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
     </div>
     <h4 class="font-display font-bold text-xl mb-2">Sighting submitted!</h4>
     <p class="text-sm text-slate-400 mb-7">Your photo has been received and is awaiting review.</p>
@@ -303,7 +298,7 @@
   CCC.init();
 </script>
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="js/austin-map.js?v=3"></script>
+<script src="js/austin-map.js?v=4"></script>
 <script src="js/replay.js?v=4"></script>
 </body>
 </html>

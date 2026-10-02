@@ -3,29 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Cybercab Hunter moderation queue.">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090B0F">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6">
 <link rel="icon" type="image/png" href="images/Cybercab2.png">
 <link rel="apple-touch-icon" href="images/Cybercab2.png">
-<title>Cybercab Hunter — Moderation</title>
+<title>Cybercab Hunter | Moderation</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: { extend: {
-      colors: { void:'#07090E', panel:'#0F141C', gold:'#D4AF37', goldsoft:'#F3E5AB',
-        crimson:'#E82127', silver:'#CBD5E1', cyan:'#00E5FF', cyblue:'#0284C7' },
-      fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'] }
-    }}
-  }
-</script>
-<link rel="stylesheet" href="css/style.css">
+<script src="js/theme.js?v=1"></script>
+<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <!-- Deliberately minimal chrome (matches signin.html) — this is not a
      consumer page. It is linked only from the account menu of moderators
@@ -33,7 +28,7 @@
      Authorization is never decided here: every state below reflects
      what GET /api/moderation/vehicle-sightings actually returned. -->
 <header class="border-b border-[rgba(212,175,55,0.15)]">
-  <div class="max-w-5xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+  <div class="max-w-5xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
       <div class="leading-tight">
@@ -45,7 +40,7 @@
   </div>
 </header>
 
-<section class="py-16">
+<section id="main" tabindex="-1" class="py-16">
   <div class="max-w-5xl mx-auto px-6 lg:px-10">
 
     <!-- Loading -->
@@ -152,7 +147,7 @@
   <form id="modMapForm" method="dialog" class="space-y-4">
     <h2 id="modMapTitle" class="font-display font-bold text-lg">Add to the Zones map</h2>
     <div>
-      <label for="modMapCamera" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Traffic Camera</label>
+      <label for="modMapCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera</label>
       <select id="modMapCamera" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a camera</option>
       </select>

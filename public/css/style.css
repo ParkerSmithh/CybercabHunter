@@ -1,121 +1,184 @@
-/* Cybercab Hunter — shared visual system: glass, neon, keyframes.
-   Tailwind (CDN) handles layout/spacing/typography utilities; this file
-   covers everything Tailwind's utility classes can't express directly. */
+/* Cybercab Hunter design system: tokens, base, components, motion.
+   Tailwind (CDN, configured once in js/theme.js) handles layout utilities;
+   every color it uses is a token below, so one class reads right in both
+   themes. Reference: DESIGN.md (a dark canvas, one gold accent, white type,
+   uppercase display), adapted to the site's own gold and logo.
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+   Fonts: Geist and Geist Mono (SIL Open Font License 1.1, Vercel), self-hosted
+   variable woff2 in /fonts. */
 
+@font-face{
+  font-family:'Geist'; src:url('../fonts/geist-latin-wght.woff2') format('woff2');
+  font-weight:100 900; font-style:normal; font-display:swap;
+}
+@font-face{
+  font-family:'Geist Mono'; src:url('../fonts/geist-mono-latin-wght.woff2') format('woff2');
+  font-weight:100 900; font-style:normal; font-display:swap;
+}
+
+/* ---------- Tokens (RGB channels, so Tailwind can add alpha) ----------
+   Dark is the default; light applies when <html data-theme="light"> (set by
+   js/theme.js from the visitor's choice or their system). Text tokens are
+   chosen for WCAG AA against --bg and --surface in each theme. */
 :root{
-  --gold: #D4AF37;
-  --goldsoft: #F3E5AB;
-  --crimson: #E82127;
-  --silver: #CBD5E1;
-  --cyan: #00E5FF;
-  --cyblue: #0284C7;
-  --hairline: rgba(212,175,55,0.2);
+  color-scheme:dark;
+  --bg:9 11 15;            /* #090B0F off-black, cool */
+  --surface:17 20 26;      /* #11141A inputs, raised controls */
+  --surface-2:24 28 35;    /* #181C23 */
+  --ink:236 238 241;       /* #ECEEF1 off-white */
+  --n-50:244 245 247; --n-100:226 229 234; --n-200:205 209 216; --n-300:179 184 194;
+  --n-400:154 161 173; --n-500:130 138 151; --n-600:124 131 143; --n-700:58 63 72;
+  --n-800:38 42 50; --n-900:23 26 31; --n-950:14 16 20;
+  --gold:212 175 55;       /* #D4AF37 the one accent (brand) */
+  --gold-soft:243 229 171; /* #F3E5AB */
+  --gold-ink:212 175 55;   /* gold used as TEXT */
+  --danger:232 33 39;      /* #E82127 destructive actions */
+  --danger-ink:240 138 132; --warn-ink:233 196 106; --ok-ink:95 212 163;
+  --line:212 175 55;       /* hairlines are gold-tinted, at low alpha */
+  --line-a:0.16;
+  --glass:15 18 24; --glass-a:0.62;
+  --shadow:0 0 0;
+  --focus:212 175 55;
+  --scrim:5 6 9;
+  --ease:cubic-bezier(0.2,0.7,0.2,1);
+  --t-fast:160ms; --t:240ms; --t-slow:420ms;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:243 244 246;        /* #F3F4F6 cool off-white */
+  --surface:250 250 251;   /* #FAFAFB */
+  --surface-2:255 255 255;
+  --ink:13 16 21;          /* #0D1015 */
+  --n-50:10 12 16; --n-100:20 23 29; --n-200:35 39 48; --n-300:52 57 67;
+  --n-400:74 80 92; --n-500:90 97 112; --n-600:98 105 118; --n-700:163 168 178;
+  --n-800:205 209 216; --n-900:227 230 234; --n-950:237 239 242;
+  --gold:212 175 55;
+  --gold-soft:243 229 171;
+  --gold-ink:128 98 12;    /* #80620C gold text, 5.2:1 on --bg */
+  --danger:196 30 36;
+  --danger-ink:180 35 24; --warn-ink:138 83 0; --ok-ink:11 122 79;
+  --line:20 24 32; --line-a:0.1;
+  --glass:255 255 255; --glass-a:0.72;
+  --shadow:24 28 40;
+  --focus:128 98 12;
+  --scrim:9 11 15;
 }
 
-html{scroll-behavior:smooth;}
+/* ---------- Base ---------- */
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
 body{
-  background:#07090E;
-  font-family:'Inter',sans-serif;
-  -webkit-font-smoothing:antialiased;
+  background:rgb(var(--bg)); color:rgb(var(--ink));
+  font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
+  font-feature-settings:'ss01','cv11';
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
+  transition:background-color var(--t) var(--ease), color var(--t) var(--ease);
 }
-h1,h2,h3,h4,.font-display{font-family:'Space Grotesk',sans-serif;}
+h1,h2,h3,h4,.font-display{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.02em;}
+h1{text-wrap:balance;}
+p{text-wrap:pretty;}
+.font-mono,.tabular-nums{font-variant-numeric:tabular-nums;}
+::selection{background:rgb(var(--gold)); color:#120d02;}
 
-::selection{background:var(--gold); color:#07090E;}
-
-/* ---------- MapLibre control focus ring (override default blue) ---------- */
-.maplibregl-ctrl-attrib-button:focus,
-.maplibregl-ctrl-group button:focus{
-  box-shadow: 0 0 2px 2px rgba(255,255,255,0.7);
+/* One visible focus ring for every control (keyboard only). */
+:focus-visible{outline:2px solid rgb(var(--focus)); outline-offset:2px;}
+.skip-link{
+  position:absolute; left:12px; top:-60px; z-index:300;
+  padding:10px 14px; border-radius:8px; font-size:14px; font-weight:600;
+  background:rgb(var(--gold)); color:#120d02; transition:top var(--t-fast) var(--ease);
 }
+.skip-link:focus{top:12px;}
 
-/* ---------- Custom scrollbar ---------- */
+/* Light theme: gold used as text and the old gold-on-dark arbitrary hues get
+   their darker, readable twin; fills (buttons, chips) keep the brand gold. */
+:root[data-theme="light"] .text-gold,
+:root[data-theme="light"] .hover\:text-gold:hover,
+:root[data-theme="light"] .text-cyan,
+:root[data-theme="light"] .text-\[\#8a6a12\]{color:rgb(var(--gold-ink));}
+:root[data-theme="light"] .text-gold\/80{color:rgb(var(--gold-ink) / 0.85);}
+:root[data-theme="light"] .\[color-scheme\:dark\]{color-scheme:light;}
+:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.25\)\],
+:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.3\)\],
+:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.35\)\]{border-color:rgba(128,98,12,0.32);}
+
+/* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar{width:10px; height:10px;}
-::-webkit-scrollbar-track{background:#07090E;}
-::-webkit-scrollbar-thumb{background:#1c2230; border-radius:6px; border:2px solid #07090E;}
-::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+::-webkit-scrollbar-track{background:rgb(var(--bg));}
+::-webkit-scrollbar-thumb{background:rgb(var(--n-800)); border-radius:6px; border:2px solid rgb(var(--bg));}
+::-webkit-scrollbar-thumb:hover{background:rgb(var(--gold));}
 
-/* ---------- Background mesh ---------- */
+/* ---------- Page backdrop ----------
+   A still, single-hue light falloff (no moving blobs, no second color) plus a
+   fixed film grain that never scrolls (cheap on phones). */
 .bg-mesh{
-  position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden;
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:
-    radial-gradient(ellipse 60% 40% at 15% 10%, rgba(212,175,55,0.08), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 30%, rgba(0,229,255,0.06), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 50% 100%, rgba(232,33,39,0.05), transparent 60%),
-    #07090E;
+    radial-gradient(1100px 520px at 12% -8%, rgb(var(--gold) / 0.09), transparent 62%),
+    radial-gradient(900px 600px at 100% 0%, rgb(var(--ink) / 0.035), transparent 60%),
+    rgb(var(--bg));
+}
+:root[data-theme="light"] .bg-mesh{
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgb(var(--gold) / 0.14), transparent 62%),
+    rgb(var(--bg));
 }
 .bg-mesh::after{
-  content:''; position:absolute; inset:-20%;
-  background:radial-gradient(circle at 30% 30%, rgba(212,175,55,0.06), transparent 55%);
-  animation:mesh-drift 26s ease-in-out infinite alternate;
+  content:''; position:fixed; inset:0; opacity:0.05; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
 }
-@keyframes mesh-drift{
-  0%{transform:translate(0,0) scale(1);}
-  100%{transform:translate(5%,7%) scale(1.1);}
-}
-.particle{
-  position:absolute; border-radius:50%;
-  background:radial-gradient(circle, rgba(212,175,55,0.55), transparent 70%);
-  filter:blur(1px);
-  animation:float-particle linear infinite;
-}
-@keyframes float-particle{
-  0%{transform:translateY(0) translateX(0); opacity:0;}
-  10%{opacity:0.7;}
-  90%{opacity:0.5;}
-  100%{transform:translateY(-120vh) translateX(20px); opacity:0;}
-}
+.particle{display:none;}
 
-/* ---------- Glass panels ---------- */
+/* ---------- Surfaces ----------
+   Glass = a translucent panel with a hairline and a 1px top highlight (the
+   edge catching light). Solid fallback where transparency is reduced. */
 .glass{
-  background:rgba(15,20,28,0.6);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border:1px solid var(--hairline);
+  background:rgb(var(--glass) / var(--glass-a));
+  -webkit-backdrop-filter:blur(18px) saturate(1.2); backdrop-filter:blur(18px) saturate(1.2);
+  border:1px solid rgb(var(--line) / var(--line-a));
+  box-shadow:inset 0 1px 0 rgb(var(--ink) / 0.04), 0 1px 2px rgb(var(--shadow) / 0.12);
 }
+:root[data-theme="light"] .glass{box-shadow:inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(var(--shadow) / 0.06), 0 8px 24px -16px rgb(var(--shadow) / 0.18);}
 .glass-strong{
-  background:rgba(15,20,28,0.85);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
-  border:1px solid var(--hairline);
+  background:rgb(var(--glass) / 0.9);
+  -webkit-backdrop-filter:blur(24px) saturate(1.2); backdrop-filter:blur(24px) saturate(1.2);
+  border:1px solid rgb(var(--line) / var(--line-a));
+}
+@media (prefers-reduced-transparency: reduce){
+  .glass,.glass-strong{background:rgb(var(--surface)); -webkit-backdrop-filter:none; backdrop-filter:none;}
 }
 
-/* ---------- Reveal on scroll ---------- */
+/* ---------- Motion language ----------
+   Three durations (160 / 240 / 420 ms) on one ease-out curve. Motion is
+   used for: content entering (reveal), state feedback (press, hover), and
+   panels opening (drawers, dialogs, toasts). Nothing loops by default. */
 .reveal-on-scroll{
-  opacity:0;
-  transform:translateY(30px);
-  transition:opacity 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1);
+  opacity:0; transform:translateY(14px);
+  transition:opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease);
 }
-.reveal-on-scroll.is-visible{opacity:1; transform:translateY(0);}
+.reveal-on-scroll.is-visible{opacity:1; transform:none;}
 @media (prefers-reduced-motion: reduce){
-  *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  html{scroll-behavior:auto;}
+  *,*::before,*::after{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  .reveal-on-scroll{opacity:1; transform:none;}
 }
 
-/* ---------- Nav ---------- */
-header nav a{text-transform:uppercase; letter-spacing:0.03em;}
+/* ---------- Header ---------- */
+header nav a{text-transform:uppercase; letter-spacing:0.06em; font-size:12.5px !important; font-weight:600 !important;}
+header nav a:not([aria-current="page"]){color:rgb(var(--n-400));}
+header nav a:hover{color:rgb(var(--ink));}
+header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 
-/* Phones: reduce the header's own side padding and item spacing so the
-   signed-out cluster (logo + wordmark + Link Tesla Account + Submit + Sign
-   In) doesn't scroll the page sideways. Only pages whose header has the
-   Tesla-link button need this — the others (e.g. the Cars pages) never
-   carry that extra element. */
+/* Phones: tighter header padding and gaps so the signed-out cluster (logo,
+   Link Tesla Account, Submit, Sign In) fits without sideways scroll; below
+   520px the wordmark beside the logo is dropped (the logo link keeps its alt). */
 @media (max-width:639px){
   header:has(#teslaLinkBtn) > div{padding-left:1rem; padding-right:1rem;}
   header:has(#teslaLinkBtn) .gap-3{gap:.5rem;}
 }
-/* Below ~520px there is no room for the wordmark beside the logo image as well; the image link keeps its alt text. */
 @media (max-width:519px){
   header:has(#teslaLinkBtn) > div > a:first-child > div{display:none;}
 }
-
-/* Mobile-only sizing for the three header action buttons (Link Tesla
-   Account, Submit, Sign In) — smaller and more compact below the lg
-   breakpoint (1024px, the same range #mobileBottomNav below covers), so
-   "Link Tesla Account" in particular doesn't dominate the header before an
-   account is linked. Desktop (>=1024px) keeps its existing size exactly;
-   nothing else on the page is affected. */
+/* Below lg the three header actions are compact. */
 @media (max-width:1023px){
   #teslaLinkBtn, #openSightingDrawer, #accountSignedOut a{
     padding-left:.75rem; padding-right:.75rem; padding-top:.5rem; padding-bottom:.5rem;
@@ -123,253 +186,155 @@ header nav a{text-transform:uppercase; letter-spacing:0.03em;}
   }
   #teslaLinkBtn{white-space:nowrap;}
 }
+@media (max-width:359px){
+  #teslaLinkBtn, #openSightingDrawer, #accountSignedOut a{padding-left:.55rem; padding-right:.55rem;}
+}
 
-/* ---------- Mobile bottom nav ---------- */
-/* Replaces the old hamburger/drawer below the lg breakpoint. Fixed to the
-   viewport bottom, so page content needs matching bottom padding or its
-   last few pixels (and any bottom-anchored controls) would sit underneath
-   it — added only on pages that actually have the bar. iOS's home-indicator
-   safe area is handled on the bar's own padding, not the body compensation,
-   since that inset is device-specific and not something to guess a fixed
-   pixel value for. */
+/* ---------- Mobile bottom nav ----------
+   Fixed to the viewport bottom below lg; the body gets matching padding so
+   nothing sits under it. The home-indicator inset is on the bar itself. */
 @media (max-width:1023px){
   body:has(#mobileBottomNav){padding-bottom:4.5rem;}
 }
-/* Active item: gold, like the desktop #navIndicator. Keyed on aria-current
-   (set by CCC.initNav) rather than the .text-gold class it also adds, since
-   the link's own text-slate-400 utility wins over .text-gold in the
-   generated Tailwind CSS. The 2px bar mirrors the desktop indicator. */
-#mobileBottomNav a{position:relative;}
-#mobileBottomNav a[aria-current="page"]{color:var(--gold);}
+#mobileBottomNav a{position:relative; color:rgb(var(--n-400));}
+@media (max-width:359px){ #mobileBottomNav span{font-size:9px; letter-spacing:0;} }
+#mobileBottomNav a[aria-current="page"]{color:rgb(var(--gold-ink));}
 #mobileBottomNav a[aria-current="page"]::before{
-  content:''; position:absolute; top:-1px; left:25%; right:25%; height:2px;
-  background:var(--gold); border-radius:2px;
+  content:''; position:absolute; top:-1px; left:30%; right:30%; height:2px;
+  background:rgb(var(--gold)); border-radius:2px;
 }
 #navIndicator{
-  position:absolute; bottom:-1px; height:2px;
-  background:var(--gold);
-  border-radius:2px;
-  transition:left 0.4s cubic-bezier(0.16,1,0.3,1), width 0.4s cubic-bezier(0.16,1,0.3,1);
-  opacity:0;
+  position:absolute; bottom:-1px; height:2px; background:rgb(var(--gold)); border-radius:2px;
+  transition:left var(--t-slow) var(--ease), width var(--t-slow) var(--ease); opacity:0;
 }
 #navIndicator.is-active{opacity:1;}
 
-/* ---------- Magnetic buttons ---------- */
+/* ---------- Buttons ----------
+   .btn-magnetic is the site's button behavior: a 1px lift on hover, a press
+   on :active, and a tinted shadow on the gold primary. No color sweep. */
 .btn-magnetic{
   position:relative; isolation:isolate; overflow:hidden;
-  transition:transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease;
+  transition:transform var(--t-fast) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease), filter var(--t) var(--ease);
 }
-.btn-magnetic::before{
-  content:''; position:absolute; inset:0; z-index:-1;
-  background:linear-gradient(120deg,var(--gold),var(--cyan));
-  background-size:220% 220%; background-position:0% 50%;
-  opacity:0; transition:opacity 0.3s ease, background-position 0.6s ease;
-}
-.btn-magnetic:hover{transform:translateY(-3px) scale(1.035); box-shadow:0 14px 34px -10px rgba(212,175,55,0.6);}
-.btn-magnetic:hover::before{opacity:1; background-position:100% 50%;}
-.btn-magnetic:active{transform:scale(0.97);}
+.btn-magnetic:hover{transform:translateY(-1px);}
+.btn-magnetic:active{transform:translateY(0) scale(0.98);}
+.btn-magnetic.from-goldsoft:hover{filter:brightness(1.04); box-shadow:0 10px 24px -12px rgb(var(--gold) / 0.7);}
+button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .ripple-circle{
-  position:absolute; border-radius:50%;
-  background:rgba(255,255,255,0.5); transform:scale(0);
-  animation:ripple-anim 0.6s ease-out; pointer-events:none;
+  position:absolute; border-radius:50%; pointer-events:none;
+  background:rgb(255 255 255 / 0.35); transform:scale(0); animation:ripple-anim 0.5s var(--ease);
 }
-@keyframes ripple-anim{ to{ transform:scale(3); opacity:0; } }
+@keyframes ripple-anim{ to{ transform:scale(2.6); opacity:0; } }
 
-/* ---------- Pulse / radar rings ---------- */
-.pulse-ring{position:relative;}
-.pulse-ring::after{
-  content:''; position:absolute; inset:-8px; border-radius:50%;
-  border:1.5px solid currentColor; opacity:0.6;
-  animation:pulse-ring 2.2s ease-out infinite;
-}
-@keyframes pulse-ring{
-  0%{transform:scale(0.5); opacity:0.7;}
-  100%{transform:scale(2.2); opacity:0;}
-}
-.dot-live{
-  width:7px; height:7px; border-radius:50%; background:var(--cyan);
-  box-shadow:0 0 0 0 rgba(0,229,255,0.6);
-  animation:live-pulse 2s infinite;
-}
-@keyframes live-pulse{
-  0%{box-shadow:0 0 0 0 rgba(0,229,255,0.55);}
-  70%{box-shadow:0 0 0 8px rgba(0,229,255,0);}
-  100%{box-shadow:0 0 0 0 rgba(0,229,255,0);}
-}
-.dot-gold-live{
-  width:10px; height:10px; border-radius:50%; background:#FFC72C;
-  box-shadow:0 0 0 0 rgba(255,199,44,0.6);
-  animation:gold-live-pulse 2s infinite;
-}
-@keyframes gold-live-pulse{
-  0%{box-shadow:0 0 0 0 rgba(255,199,44,0.55);}
-  70%{box-shadow:0 0 0 8px rgba(255,199,44,0);}
-  100%{box-shadow:0 0 0 0 rgba(255,199,44,0);}
-}
-
-/* ---------- Marquee ticker ---------- */
-.marquee-track{
-  display:flex; gap:48px; white-space:nowrap; width:max-content;
-  animation:marquee 32s linear infinite;
-}
-.marquee-track:hover{animation-play-state:paused;}
-@keyframes marquee{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
-
-/* ---------- Scan line (verify.html dropzone) ---------- */
-.scan-line-wrap{position:relative; overflow:hidden;}
-.scan-line{
-  position:absolute; left:0; right:0; height:2px;
-  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
-  box-shadow:0 0 12px 2px var(--cyan);
-  animation:scan-sweep 1.6s ease-in-out infinite;
-}
-@keyframes scan-sweep{
-  0%{top:0; opacity:0.2;}
-  50%{opacity:1;}
-  100%{top:100%; opacity:0.2;}
-}
-
-/* ---------- Slide-over drawer ---------- */
-.drawer{
-  transform:translateX(100%);
-  transition:transform 0.45s cubic-bezier(0.16,1,0.3,1);
-}
-.drawer.is-open{transform:translateX(0);}
-.drawer-backdrop{
-  opacity:0; pointer-events:none;
-  transition:opacity 0.35s ease;
-}
+/* ---------- Drawers, dialogs, toasts ---------- */
+.drawer{transform:translateX(100%); transition:transform var(--t-slow) var(--ease);}
+.drawer.is-open{transform:none;}
+.drawer-backdrop{opacity:0; pointer-events:none; transition:opacity var(--t) var(--ease);}
 .drawer-backdrop.is-open{opacity:1; pointer-events:auto;}
-
-/* ---------- Modal ---------- */
-.modal-backdrop{opacity:0; pointer-events:none; transition:opacity 0.3s ease;}
+.modal-backdrop{opacity:0; pointer-events:none; transition:opacity var(--t) var(--ease);}
 .modal-backdrop.is-open{opacity:1; pointer-events:auto;}
-.modal-panel{
-  transform:translateY(16px) scale(0.98); opacity:0;
-  transition:transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease;
-}
-.modal-backdrop.is-open .modal-panel{transform:translateY(0) scale(1); opacity:1;}
+.modal-panel{transform:translateY(12px) scale(0.985); opacity:0; transition:transform var(--t-slow) var(--ease), opacity var(--t) var(--ease);}
+.modal-backdrop.is-open .modal-panel{transform:none; opacity:1;}
+.toast{transform:translateY(10px); opacity:0; transition:transform var(--t) var(--ease), opacity var(--t) var(--ease);}
+.toast.is-visible{transform:none; opacity:1;}
 
-/* ---------- Toast ---------- */
-.toast{
-  transform:translateY(12px); opacity:0;
-  transition:transform 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease;
-}
-.toast.is-visible{transform:translateY(0); opacity:1;}
-
-/* ---------- Confetti ---------- */
+/* Confetti on a submitted sighting (feedback for the one celebratory moment). */
 .confetti-piece{
-  position:fixed; top:0; left:0; width:8px; height:8px; z-index:200;
-  pointer-events:none; border-radius:1px;
-  animation:confetti-fall 1.6s ease-out forwards;
+  position:fixed; top:0; left:0; width:7px; height:7px; z-index:200;
+  pointer-events:none; border-radius:1px; animation:confetti-fall 1.4s var(--ease) forwards;
 }
 @keyframes confetti-fall{
   0%{transform:translate(0,0) rotate(0deg); opacity:1;}
   100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot)); opacity:0;}
 }
 
-/* ---------- Bounty progress ring ---------- */
-.progress-ring circle{
-  transition:stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1);
-}
+/* ---------- Data ---------- */
+.stat-value{font-family:'Geist Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;}
 
-/* ---------- Leaderboard rank glow ---------- */
-.rank-1{box-shadow:0 0 0 1px var(--gold), 0 0 24px -6px rgba(212,175,55,0.8);}
-.rank-2{box-shadow:0 0 0 1px var(--silver), 0 0 18px -6px rgba(203,213,225,0.6);}
-.rank-3{box-shadow:0 0 0 1px #B08D57, 0 0 18px -6px rgba(176,141,87,0.6);}
-
-/* ---------- MapLibre / OpenFreeMap dark overrides ---------- */
-.maplibregl-map{background:#0c1119 !important; font-family:'Inter',sans-serif;}
+/* ---------- Maps (MapLibre) ----------
+   Controls, popups and the attribution pill follow the theme; the dark
+   basemap look itself is js/austin-map.js. */
+.maplibregl-map{background:rgb(var(--surface)) !important; font-family:'Geist',sans-serif;}
 .maplibregl-popup-content{
-  background:rgba(15,20,28,0.92); color:#f4f2ec;
-  border:1px solid var(--hairline); backdrop-filter:blur(12px);
-  border-radius:12px; padding:10px 12px;
+  background:rgb(var(--glass) / 0.94); color:rgb(var(--ink));
+  border:1px solid rgb(var(--line) / var(--line-a)); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  border-radius:10px; padding:10px 12px; box-shadow:0 12px 30px -16px rgb(var(--shadow) / 0.5);
 }
-.maplibregl-popup-tip{border-top-color:rgba(15,20,28,0.92); border-bottom-color:rgba(15,20,28,0.92);}
-.maplibregl-ctrl-group{
-  background:rgba(15,20,28,0.85) !important;
-  border:1px solid var(--hairline) !important;
-}
+.maplibregl-popup-tip{border-top-color:rgb(var(--glass) / 0.94); border-bottom-color:rgb(var(--glass) / 0.94);}
+.maplibregl-ctrl-group{background:rgb(var(--glass) / 0.9) !important; border:1px solid rgb(var(--line) / var(--line-a)) !important;}
 .maplibregl-ctrl-group button{background:transparent !important;}
-.maplibregl-ctrl-icon{filter:invert(1);}
-/* Map attribution ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"):
-   a dark rounded pill — link names white, the rest a softer grey, and a
-   light round (i) toggle — both as the full bar and as MapLibre's compact
-   (i) version on narrow maps. */
+:root:not([data-theme="light"]) .maplibregl-ctrl-icon{filter:invert(1);}
+.maplibregl-ctrl-attrib-button:focus,.maplibregl-ctrl-group button:focus{box-shadow:0 0 0 2px rgb(var(--focus));}
 .maplibregl-ctrl.maplibregl-ctrl-attrib{
-  background-color:rgba(24,24,27,0.92) !important; color:#a1a1aa;
-  border-radius:999px; padding:3px 12px; margin:0 8px 8px 0 !important;
-  font-size:12px; line-height:20px;
+  background-color:rgb(var(--glass) / 0.92) !important; color:rgb(var(--n-400));
+  border-radius:999px; padding:3px 12px; margin:0 8px 8px 0 !important; font-size:12px; line-height:20px;
 }
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact{padding:2px 26px 2px 0; margin:10px !important;}
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:2px 30px 2px 12px;}
-.maplibregl-ctrl-attrib a{color:#fff !important;}
-.maplibregl-ctrl-attrib a:hover{color:#D4AF37 !important; text-decoration:none;}
-.maplibregl-ctrl-attrib-button{background-color:transparent !important; filter:invert(0.85);}
+.maplibregl-ctrl-attrib a{color:rgb(var(--ink)) !important;}
+.maplibregl-ctrl-attrib a:hover{color:rgb(var(--gold-ink)) !important; text-decoration:none;}
+.maplibregl-ctrl-attrib-button{background-color:transparent !important;}
+:root:not([data-theme="light"]) .maplibregl-ctrl-attrib-button{filter:invert(0.85);}
 .marker-pulse{position:relative;}
 .marker-pulse::after{
   content:''; position:absolute; inset:-6px; border-radius:50%;
-  border:1.5px solid currentColor; opacity:0.6;
-  animation:pulse-ring 2.2s ease-out infinite;
+  border:1.5px solid currentColor; opacity:0.6; animation:marker-ring 2.4s var(--ease) infinite;
 }
+@keyframes marker-ring{ 0%{transform:scale(0.6); opacity:0.7;} 100%{transform:scale(2); opacity:0;} }
 
-/* ---------- Logo badge idle glow ---------- */
-.logo-badge{animation:logo-glow 4s ease-in-out infinite;}
-@keyframes logo-glow{
-  0%,100%{box-shadow:0 0 0 1px rgba(212,175,55,0.35), 0 6px 18px -6px rgba(212,175,55,0.55);}
-  50%{box-shadow:0 0 0 1px rgba(212,175,55,0.55), 0 6px 26px -4px rgba(212,175,55,0.85);}
-}
-
-/* ---------- Service zone cards ---------- */
+/* ---------- Service zone cards (homepage) ---------- */
 .service-zone-card{
-  position:relative;
-  aspect-ratio:1/0.92;
-  border-radius:28px;
-  overflow:hidden;
-  background:#0c1119;
-  border:1px solid rgba(255,199,44,0.15);
+  position:relative; aspect-ratio:1/0.92; border-radius:14px; overflow:hidden;
+  background:rgb(var(--surface)); border:1px solid rgb(var(--line) / var(--line-a));
 }
-.service-zone-map{ position:absolute; inset:0; }
+.service-zone-map{position:absolute; inset:0;}
 
-/* ---------- Hero typewriter ---------- */
-.typewriter-cursor{
-  display:inline-block; margin-left:2px; color:var(--gold);
-  animation:cursor-blink 1s steps(1) infinite;
+/* ---------- Filters / segmented chips (sightings, community, vehicles) ---------- */
+.city-filter{
+  border-color:rgb(var(--line) / calc(var(--line-a) + 0.08)); color:rgb(var(--n-300));
+  background:rgb(var(--glass) / var(--glass-a));
+  transition:color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-@keyframes cursor-blink{ 50%{opacity:0;} }
-
-/* ---------- Sightings city filters (sightings.html) ---------- */
-.city-filter{border-color:rgba(212,175,55,0.25); color:#cbd5e1; background:rgba(15,20,28,0.6);}
-.city-filter:hover{color:#fff; border-color:rgba(212,175,55,0.5);}
-.city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{background:linear-gradient(to right,var(--goldsoft),var(--gold)); color:#1a1204; border-color:transparent; box-shadow:0 8px 20px -10px rgba(212,175,55,0.65);}
+.city-filter:hover{color:rgb(var(--ink)); border-color:rgb(var(--gold) / 0.5);}
+.city-filter:active{transform:scale(0.98);}
+.city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
+  background:linear-gradient(to right, rgb(var(--gold-soft)), rgb(var(--gold))); color:#1a1204;
+  border-color:transparent; box-shadow:0 8px 20px -12px rgb(var(--gold) / 0.7);
+}
 
 /* ---------- Moderator photo delete (sightings.html, moderation.html) ----------
-   Rendered for moderators only. On hover (or keyboard focus) the photo
-   darkens and a red Delete button appears; touch screens can't hover, so
-   there the button is simply always shown. */
-.mod-photo .mod-photo-shade, .mod-photo .mod-photo-delete{opacity:0; transition:opacity .2s ease;}
+   Moderators only. Hover or focus darkens the photo and shows Delete; on
+   touch screens (no hover) the button is always shown. */
+.mod-photo .mod-photo-shade, .mod-photo .mod-photo-delete{opacity:0; transition:opacity var(--t) var(--ease);}
 .mod-photo .mod-photo-shade{pointer-events:none;}
 .mod-photo:hover .mod-photo-shade, .mod-photo:focus-within .mod-photo-shade,
 .mod-photo:hover .mod-photo-delete, .mod-photo:focus-within .mod-photo-delete{opacity:1;}
 @media (hover: none){ .mod-photo .mod-photo-delete{opacity:1;} }
 
-/* ---------- Sightings replay (replay.html, js/replay.js) ---------- */
-.replay-stage{background:#f4efe3;}
-/* The replay sidebar floats over a LIGHT map (Zones floats over a dark one): near-solid so its text stays legible. */
-.replay-panel{background:rgba(11,14,21,0.94);}
-.replay-glass{background:rgba(255,252,244,0.82);border:1px solid rgba(212,175,55,0.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 8px 24px -14px rgba(60,40,0,0.45);}
-.replay-range,.replay-speed{color:#cbd5e1;}
-.replay-range[aria-pressed="true"],.replay-speed[aria-pressed="true"]{background:rgba(212,175,55,0.16);color:#D4AF37;}
-.replay-odometer{display:inline-flex;line-height:1;height:1em;overflow:hidden;font-variant-numeric:tabular-nums;}
-.replay-odometer .od-col{display:block;height:1em;overflow:hidden;}
-.replay-odometer .od-strip{display:flex;flex-direction:column;transition:transform .45s cubic-bezier(.2,.7,.2,1);}
-.replay-odometer .od-strip span{display:block;height:1em;}
+/* ---------- Sightings replay (replay.html, js/replay.js) ----------
+   The replay keeps its own "golden day" art direction: a light map stage
+   whose sky changes with the hour, in both site themes. */
+.replay-stage{background:#f1ede4;}
+.replay-panel{background:rgb(var(--glass) / 0.95);}
+.replay-glass{background:rgba(255,252,244,0.84); border:1px solid rgba(212,175,55,0.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); box-shadow:0 8px 24px -14px rgba(60,40,0,0.45);}
+.replay-range,.replay-speed{color:rgb(var(--n-300)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
+.replay-range[aria-pressed="true"],.replay-speed[aria-pressed="true"]{background:rgb(var(--gold) / 0.16); color:rgb(var(--gold-ink));}
+.replay-odometer{display:inline-flex; line-height:1; height:1em; overflow:hidden; font-variant-numeric:tabular-nums;}
+.replay-odometer .od-col{display:block; height:1em; overflow:hidden;}
+.replay-odometer .od-strip{display:flex; flex-direction:column; transition:transform .45s cubic-bezier(.2,.7,.2,1);}
+.replay-odometer .od-strip span{display:block; height:1em;}
 @media (prefers-reduced-motion: reduce){.replay-odometer .od-strip{transition:none;}}
 
 /* ---------- Cybercab reviews (community.html, js/reviews.js) ---------- */
-.review-star{font-size:28px; line-height:1; padding:2px; color:#334155; transition:color .12s, transform .12s;}
-.review-star:hover, .review-star.is-on{color:#D4AF37;}
-.review-star:focus-visible{outline:2px solid #D4AF37; outline-offset:2px; border-radius:6px;}
-.review-sort{color:#cbd5e1;}
-.review-sort[aria-pressed="true"]{background:rgba(212,175,55,0.16); color:#D4AF37;}
-.review-like[aria-pressed="true"]{color:#D4AF37; border-color:rgba(212,175,55,0.45);}
+.review-star{font-size:28px; line-height:1; padding:2px; color:rgb(var(--n-700)); transition:color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);}
+.review-star:hover, .review-star.is-on{color:rgb(var(--gold));}
+.review-star:active{transform:scale(0.92);}
+.review-sort{color:rgb(var(--n-300));}
+.review-sort[aria-pressed="true"]{background:rgb(var(--gold) / 0.16); color:rgb(var(--gold-ink));}
+.review-like[aria-pressed="true"]{color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
+
+/* ---------- Theme switch (footer) ---------- */
+.theme-switch{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.06)); background:rgb(var(--glass) / var(--glass-a));}
+.theme-switch button{padding:6px 12px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--n-400)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
+.theme-switch button:hover{color:rgb(var(--ink));}
+.theme-switch button[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}

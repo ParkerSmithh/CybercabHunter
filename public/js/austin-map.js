@@ -1,6 +1,7 @@
 /* Shared Austin map pieces, so the Zones page map (infrastructure.html) and the
    homepage minimap (index.html) can't drift apart:
-     - styleBasemap(map): the dark basemap look (both maps)
+     - styleUrl(): the basemap for the site theme (light: OpenFreeMap
+       "positron", dark: "fiord"); styleBasemap(map) tunes its colors
      - addServiceZone(map, coords, look): the gold service zone (both maps;
        the replay passes a quieter look)
      - SERVICE_ZONE: the Austin service-zone boundary, for the replay (the
@@ -12,9 +13,19 @@
        the last 24 hours, refreshed every 60s and reconciled by camera_id.
    Needs MapLibre (maplibregl) and the page's map instance. */
 window.CCCAustinMap = (function () {
-  // The near-black dark-mode look on OpenFreeMap's "fiord" style. Call on load.
+  const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
+  function styleUrl() { return `https://tiles.openfreemap.org/styles/${isLight() ? 'positron' : 'fiord'}`; }
+  // Basemap colors for the site theme: a cool neutral light map, or the
+  // near-black dark one. Call on load.
   function styleBasemap(map) {
     const paint = (id, prop, value) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, value); };
+    if (isLight()) {
+      paint('background', 'background-color', '#eef0f3');
+      paint('water', 'fill-color', '#d9e1e8');
+      paint('park', 'fill-color', '#e3e8e2');
+      paint('landuse_residential', 'fill-color', '#e8eaee');
+      return;
+    }
     paint('background', 'background-color', '#080a10');
     paint('water', 'fill-color', '#0c1119');
     paint('landcover_wood', 'fill-color', 'hsla(232,18%,10%,0.6)');
@@ -146,5 +157,5 @@ window.CCCAustinMap = (function () {
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
   }
-  return { styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE };
+  return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE };
 })();

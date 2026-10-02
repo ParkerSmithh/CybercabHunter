@@ -35,7 +35,7 @@ async function run() {
   {
     const p = open('https://cybercabhunter.com/simulation');
     check('the page script runs without errors', p.error === null);
-    check('the tab name is "Fleet ROI"', p.d.title === 'Cybercab Hunter — Fleet ROI');
+    check('the tab name is "Fleet ROI"', p.d.title === 'Cybercab Hunter | Fleet ROI');
     check('the Fleet ROI content is the page: FLEET DASHBOARD, its inputs and Export', /FLEET\s*DASHBOARD/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
     check('no "Fleet ROI" / "Fleet ETA" buttons and no tab panels remain', !p.d.getElementById('simTabs') && !p.d.querySelector('[role="tab"], [role="tabpanel"]') && !/>\s*Fleet ETA\s*</.test(HTML));
     check('nothing from the Fleet ETA tool remains on the page', ['simPanelEta', 'cybercabEta', 'modelyEta', 'cybercabFare', 'tripMiles', 'cybercabCount', 'modelyCount', 'cybercabRadar'].every(id => !p.d.getElementById(id)) && !/radar-sweep|view=eta|fleet-stats/i.test(HTML));
