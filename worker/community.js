@@ -41,7 +41,7 @@ const TOP_N = 6;
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 const PRIVATE_NAME = 'Private spotter';
 const PROFILE_REVIEWS = 10;   // most recent reviews shown on a public profile
-const SEARCH_MIN = 2;
+const SEARCH_MIN = 1;
 const SEARCH_MAX = 40;
 const SEARCH_LIMIT = 8;
 
@@ -255,7 +255,8 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
 //   - Matches the name a profile shows (the display name, else the username),
 //     case-insensitive: names that START with the query first, then names
 //     that contain it, alphabetical within each group. At most 8 results.
-//   - 2–40 characters; anything shorter returns nothing. LIKE wildcards in the
+//   - 1–40 characters; an empty query returns nothing. A single letter works
+//     the same way (still at most 8). LIKE wildcards in the
 //     query are escaped, so "%" or "_" only match themselves.
 //   - The response carries name, username and photo only — never a user id,
 //     email or anything else — and is never cached, so turning the Profile

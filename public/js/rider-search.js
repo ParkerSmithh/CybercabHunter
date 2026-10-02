@@ -1,5 +1,5 @@
 /* "Find riders" on the Community page (GET /api/rider-search,
-   worker/community.js). After 2+ characters, and 250ms after the last
+   worker/community.js). From the first character, and 250ms after the last
    keystroke, asks the server for up to 8 matching riders — only ones with a
    public profile ever come back — and shows them as suggestions. Clicking
    one, or choosing it with the arrow keys and Enter, opens /rider/<handle>.
@@ -11,7 +11,7 @@ window.CCCRiderSearch = (function () {
   const input = $('riderSearchInput');
   const list = $('riderSearchList');
   if (!input || !list) return api;
-  const MIN = 2;
+  const MIN = 1;
   const DEBOUNCE_MS = 250;
   const PERSON_ICON = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>';
 

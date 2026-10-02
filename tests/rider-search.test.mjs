@@ -79,7 +79,9 @@ async function run() {
   {
     const ctx = await makeApp();
     check('empty query: nothing', (await search(ctx, '')).json.results.length === 0);
-    check('one character: nothing (not even a broad match)', (await search(ctx, 'b')).json.results.length === 0 && (await search(ctx, 'o')).json.results.length === 0);
+    check('one letter works: "b" gives names starting with B first, then names containing it', names(await search(ctx, 'b')) === 'Bill, Billy, Bo Jackson, Bobby, bonnie_h, Robo Rider', names(await search(ctx, 'b')));
+    check('...and "o" (no name starts with it) gives the names containing it', names(await search(ctx, 'o')) === 'Bo Jackson, Bobby, bonnie_h, Robo Rider, Zoe');
+    check('a single letter never returns a private account', !/Bob Private|Boris|Bot System/.test(names(await search(ctx, 'b'))));
     check('over 40 characters: nothing', (await search(ctx, 'b'.repeat(41))).json.results.length === 0);
     check('"%%" and "__" are literal, not wildcards: nothing', (await search(ctx, '%%')).json.results.length === 0 && (await search(ctx, '__')).json.results.length === 0);
     for (let i = 0; i < 12; i++) {
@@ -120,8 +122,8 @@ async function run() {
     check('another IP has its own allowance', (await search(ctx, 'bo', { ip: '198.51.100.2' })).status === 200);
     check('a signed-in rider is counted by account, not by the shared IP', (await search(ctx, 'bo', { session: 'session-zoe' })).status === 200);
     const before = seen.length;
-    const short = await search(ctx, 'b');
-    check('too-short queries are answered without touching the limiter', short.status === 200 && seen.length === before);
+    const short = await search(ctx, '');
+    check('an empty query is answered without touching the limiter', short.status === 200 && seen.length === before);
     ctx.env.SEARCH_LIMITER = { limit: async () => { throw new Error('down'); } };
     check('a limiter outage fails open', (await search(ctx, 'bo')).status === 200);
   }
@@ -168,8 +170,9 @@ async function run() {
 
     check('the box is labelled "Find riders" and is a combobox', d.querySelector('label[for="riderSearchInput"]').textContent === 'Find riders' && input.getAttribute('role') === 'combobox' && input.getAttribute('aria-controls') === 'riderSearchList');
     type('b');
-    await wait(320);
-    check('one character: no request, no list', calls.length === 0 && list.classList.contains('hidden'));
+    await wait(330);
+    check('one letter: suggestions appear', calls.length === 1 && calls[0] === '/api/rider-search?q=b' && !list.classList.contains('hidden') && options().length === 6);
+    calls.length = 0;
     type('bo'); await wait(80); type('bob'); await wait(80); type('bo');
     await wait(330);
     check('typing quickly sends ONE request (debounced ~250ms) for the final text', calls.length === 1 && calls[0] === '/api/rider-search?q=bo');
@@ -195,8 +198,8 @@ async function run() {
     type('bob p');
     await wait(330);
     check('searching for a private account shows "No riders found", nothing about them', list.textContent.trim() === 'No riders found' && !/Bob Private/.test(list.innerHTML));
-    type('a');
-    check('back under 2 characters: the list closes', list.classList.contains('hidden'));
+    type('');
+    check('clearing the box closes the list', list.classList.contains('hidden'));
     w.close();
   }
 
