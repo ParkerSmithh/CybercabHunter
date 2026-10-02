@@ -34,7 +34,6 @@ window.CCCReplay = (function () {
   const PING_MS = 1100;           // a landing ping's life, in real time
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
-  const ZONE_LOOK = { fill: 0.06, glow: 0, line: '#b8912a', width: 1.5, lineOpacity: 0.55 };   // quiet under the gold
 
   // ---- Time (Austin) ----
   function zoneParts(ms) {
@@ -159,9 +158,6 @@ window.CCCReplay = (function () {
         });
         if (state.map.touchZoomRotate) state.map.touchZoomRotate.disableRotation();
         state.map.on('move', () => draw());
-        state.map.on('load', () => {
-          if (window.CCCAustinMap) { try { CCCAustinMap.addServiceZone(state.map, CCCAustinMap.SERVICE_ZONE, ZONE_LOOK); } catch (e) { /* no zone */ } }
-        });
       } catch (e) { state.map = null; }
     }
     const project = (lng, lat) => {
@@ -216,21 +212,25 @@ window.CCCReplay = (function () {
       canvas.dataset.camerasLit = String(lit);
       if (ctx) {
         ctx.clearRect(0, 0, w, h);
-        // No map (WebGL unavailable): the service zone goes on the canvas instead.
-        if (!state.map && window.CCCAustinMap) {
+        // The service zone, on the canvas so it sits ABOVE the sky tint (a map
+        // layer would vanish under the night indigo) and under every marker.
+        if (window.CCCAustinMap) {
           ctx.beginPath();
           CCCAustinMap.SERVICE_ZONE.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
           ctx.closePath();
-          ctx.fillStyle = `rgba(255,199,44,${ZONE_LOOK.fill})`; ctx.fill();
-          ctx.lineWidth = ZONE_LOOK.width; ctx.strokeStyle = 'rgba(184,145,42,0.55)'; ctx.stroke();
+          ctx.fillStyle = 'rgba(255,199,44,0.10)'; ctx.fill();
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,199,44,0.22)'; ctx.stroke();   // soft glow
+          ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,210,63,0.95)'; ctx.stroke();   // crisp edge
         }
-        // Every watched camera, dim until a sighting lands on it.
+        // Every watched camera: a pale dot with a dark ring (reads on the light
+        // map and the night sky alike) until a sighting lands on it.
         for (const c of state.cameras) {
           if (byKey.has(c.camera_id)) continue;
           const [x, y] = project(c.lng, c.lat);
-          ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(70,62,44,0.38)'; ctx.fill();
-          ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+          ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,250,236,0.92)'; ctx.fill();
+          ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(60,50,30,0.75)'; ctx.stroke();
         }
         // Heat: repeat sightings at one camera glow hotter.
         for (const { d, count } of byKey.values()) {

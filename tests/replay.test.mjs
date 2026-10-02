@@ -209,7 +209,10 @@ async function run() {
     const coordsIn = (src, re) => JSON.stringify(JSON.parse(`[${re.exec(src)[1].replace(/\s+/g, '').replace(/,$/, '')}]`));
     const shared = coordsIn(read('public/js/austin-map.js'), /const SERVICE_ZONE = \[([\s\S]*?)\];/);
     check('the replay\'s service zone is the Zones page\'s boundary (and the homepage\'s)', shared === coordsIn(zones, /const serviceZoneCoords = \[([\s\S]*?)\];/) && shared === coordsIn(read('public/index.html'), /const serviceZoneCoords = \[([\s\S]*?)\];/));
-    check('the replay draws the zone, quietly, under the markers', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && /addServiceZone\(state\.map, CCCAustinMap\.SERVICE_ZONE, ZONE_LOOK\)/.test(read('public/js/replay.js')));
+    const rjs = read('public/js/replay.js');
+    const zoneAt = rjs.indexOf('CCCAustinMap.SERVICE_ZONE.forEach'), camsAt = rjs.indexOf('for (const c of state.cameras)'), heatAt = rjs.indexOf('// Heat:');
+    check('the zone is drawn on the canvas (above the sky tint), before cameras and sightings', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && zoneAt > 0 && zoneAt < camsAt && camsAt < heatAt && !/addServiceZone\(state\.map/.test(rjs));
+    check('the tint sits under the canvas in the stage', html.indexOf('id="replayTint"') < html.indexOf('id="replayCanvas"'));
     check('the legend explains dim cameras and the zone', /Camera, no sighting yet/.test(html) && /Service zone</.test(html));
   }
 
