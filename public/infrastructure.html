@@ -297,10 +297,10 @@
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
   // The Cybercab count is the public Austin registry; the fares come from
-  // riders' logged rides on public vehicles. A stat without enough data shows
-  // "—" (never a made-up number), with a tooltip saying why.
+  // every logged Austin ride (none on a private vehicle). With no rides a stat
+  // shows "—" (never a made-up number), with a tooltip saying why.
   (function loadFleetStats() {
-    const NO_DATA = 'Not enough ride data yet';
+    const NO_DATA = 'No logged rides yet';
     const money = v => '$' + v.toFixed(2);
     function set(id, value, fmt, why) {
       const el = document.getElementById(id);
@@ -322,7 +322,7 @@
       if (data && typeof f.rides === 'number') {
         const updated = f.computed_at ? new Date(f.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
         basis.textContent = f.median_fare == null
-          ? `Fares need at least ${f.min_rides || 5} logged rides — ${f.rides} so far${updated ? ' · updated ' + updated : ''}`
+          ? `No logged rides yet${updated ? ' · updated ' + updated : ''}`
           : `Based on ${f.rides} ride${f.rides === 1 ? '' : 's'}${updated ? ' · updated ' + updated : ''}`;
       } else {
         basis.textContent = '';

@@ -26,11 +26,11 @@ async function makeApp() {
   return ctx;
 }
 let vn = 0;
-function vehicle(ctx, { visibility = 'public', area = 'Austin', origin = 'sighting', vin = true } = {}) {
+function vehicle(ctx, { visibility = 'public', area = 'Austin', origin = 'sighting', vin = true, model = 'Cybercab' } = {}) {
   vn += 1;
   const id = `${String(vn).padStart(8, '0')}-0000-4000-8000-${String(vn).padStart(12, '0')}`;   // the registry's UUID id format
-  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, visibility, origin, vin, service_area, model) VALUES (?, ?, ?, ?, ?, ?, 'Cybercab')`)
-    .bind(id, `PLT${vn}`, visibility, origin, vin ? `VIN${vn}` : null, area)._exec();
+  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, visibility, origin, vin, service_area, model) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .bind(id, `PLT${vn}`, visibility, origin, vin ? `VIN${vn}` : null, area, model)._exec();
   return id;
 }
 let rn = 0;
@@ -104,15 +104,20 @@ async function run() {
     ride(ctx, car, { fare: 1000, miles: 8.04672, unit: 'km' });
     const km = await computeFareStats(ctx.d1, 'Austin');
     check('kilometres are converted to miles', km.rides === 7 && Math.abs(km.per_mile - (72 + 30 + 10) / (20 + 10 + 5)) < 0.01, JSON.stringify(km));
+    // Every Austin ride: one not linked to any vehicle counts too (by its own city).
+    ride(ctx, null, { fare: 800, miles: 2 });
+    ride(ctx, null, { fare: 99900, miles: 1, area: 'Dallas' });
+    const all = await computeFareStats(ctx.d1, 'Austin');
+    check('a ride not linked to a vehicle counts by its own city (Austin in, Dallas out)', all.rides === 8 && Math.abs(all.per_mile - (72 + 30 + 10 + 8) / (20 + 10 + 5 + 2)) < 0.01, JSON.stringify(all));
   }
 
-  console.log('4. Too little data -> no number ("—")');
+  console.log('4. All available data: any ride gives numbers; none gives "—"');
   {
     const ctx = await makeApp();
     const car = vehicle(ctx);
-    for (let i = 0; i < FARE_MIN_RIDES - 1; i++) ride(ctx, car, { fare: 1000 + i, miles: 3 });
+    ride(ctx, car, { fare: 1350, miles: 5 });
     const s = await stats(ctx);
-    check(`fewer than ${FARE_MIN_RIDES} rides: every fare stat is null, with the sample size`, s.fares.median_fare === null && s.fares.average_fare === null && s.fares.per_mile === null && s.fares.rides === FARE_MIN_RIDES - 1 && s.fares.min_rides === FARE_MIN_RIDES);
+    check('no minimum to wait for: a single ride already gives every fare stat', FARE_MIN_RIDES === 1 && s.fares.rides === 1 && s.fares.median_fare === 13.5 && s.fares.average_fare === 13.5 && s.fares.per_mile === 2.7 && s.fares.median_miles === 5);
     const none = await makeApp();
     const z = await stats(none);
     check('no rides at all: nulls and 0 rides, no sources', z.fares.rides === 0 && z.fares.median_fare === null && z.fares.sources.length === 0);
@@ -124,7 +129,7 @@ async function run() {
     const car = vehicle(ctx);
     for (let i = 0; i < 5; i++) ride(ctx, car, { fare: 1000, miles: 4 });
     await recomputeFleetStats(ctx.env, Date.parse('2026-09-30T11:00:00Z'));
-    const stored = JSON.parse(await ctx.env.TESLA_SESSIONS.get('fleet_stats:austin:fares'));
+    const stored = JSON.parse(await ctx.env.TESLA_SESSIONS.get('fleet_stats:v2:austin:cybercab:fares'));
     check('the job stores the fare model with its computed date', stored.median_fare === 10 && stored.computed_at === '2026-09-30T11:00:00.000Z');
     for (let i = 0; i < 5; i++) ride(ctx, car, { fare: 3000, miles: 4 });
     check('the page reads the stored values (new rides show after the next run)', (await stats(ctx)).fares.median_fare === 10);
@@ -134,7 +139,7 @@ async function run() {
     check('wrangler.jsonc schedules exactly that cron', read('wrangler.jsonc').includes(`"${FLEET_STATS_CRON}"`));
     const fresh = await makeApp();
     const c2 = vehicle(fresh); for (let i = 0; i < 5; i++) ride(fresh, c2, { fare: 1500, miles: 5 });
-    check('before the first run, the first request computes and stores it', (await stats(fresh)).fares.median_fare === 15 && !!(await fresh.env.TESLA_SESSIONS.get('fleet_stats:austin:fares')));
+    check('before the first run, the first request computes and stores it', (await stats(fresh)).fares.median_fare === 15 && !!(await fresh.env.TESLA_SESSIONS.get('fleet_stats:v2:austin:cybercab:fares')));
   }
 
   console.log('6. Privacy');
@@ -153,6 +158,22 @@ async function run() {
     check('edge-cacheable', /public, max-age=300/.test(r.headers.get('Cache-Control')));
   }
 
+  console.log('6b. Model Y: tracked separately, "—" until it is');
+  {
+    const ctx = await makeApp();
+    vehicle(ctx);
+    const none = await stats(ctx);
+    check('no Model Y vehicles or rides: 0 vehicles and null fares', none.model_y.vehicles === 0 && none.model_y.active === 0 && none.model_y.fares.rides === 0 && none.model_y.fares.median_fare === null);
+    const my = vehicle(ctx, { model: 'Model Y' }); sighting(ctx, my, { daysAgo: 2 });
+    vehicle(ctx, { model: 'model y', visibility: 'private' });
+    for (let i = 0; i < 5; i++) ride(ctx, my, { fare: 2000, miles: 5 });
+    const s = await stats(ctx);
+    check('a public Model Y counts for Model Y only — never as a Cybercab (private ones never count)', s.model_y.vehicles === 1 && s.model_y.active === 1 && s.cybercabs === 1);
+    await recomputeFleetStats(ctx.env);
+    const after = await stats(ctx);
+    check('Model Y fares come only from rides on Model Y vehicles (they are Austin rides too)', after.model_y.fares.rides === 5 && after.model_y.fares.median_fare === 20 && after.model_y.fares.per_mile === 4 && after.fares.rides === 5);
+  }
+
   console.log('7. The pages');
   async function page(file, respond, path = `/${file}`) {
     const html = read(`public/${file}`).replace(/<script src="https?:[^"]*"><\/script>/g, '');
@@ -167,8 +188,9 @@ async function run() {
     await new Promise(r => setTimeout(r, 1700));
     return { w, d: w.document };
   }
-  const full = { city: 'austin', cybercabs: 45, active_cybercabs: 12, active_window_days: 30, fares: { rides: 6, min_rides: 5, median_fare: 12.5, average_fare: 13.78, per_mile: 3.1, median_miles: 4, computed_at: '2026-09-30T11:00:00Z', sources: ['cybercabhunter_rides'] } };
-  const thin = { ...full, fares: { rides: 2, min_rides: 5, median_fare: null, average_fare: null, per_mile: null, median_miles: null, computed_at: '2026-09-30T11:00:00Z', sources: ['cybercabhunter_rides'] } };
+  const noModelY = { vehicles: 0, active: 0, fares: { rides: 0, min_rides: 5, median_fare: null, average_fare: null, per_mile: null, median_miles: null, computed_at: '2026-09-30T11:00:00Z', sources: [] } };
+  const full = { city: 'austin', cybercabs: 45, active_cybercabs: 12, active_window_days: 30, fares: { rides: 6, min_rides: 5, median_fare: 12.5, average_fare: 13.78, per_mile: 3.1, median_miles: 4, computed_at: '2026-09-30T11:00:00Z', sources: ['cybercabhunter_rides'] }, model_y: noModelY };
+  const thin = { ...full, fares: { rides: 0, min_rides: 1, median_fare: null, average_fare: null, per_mile: null, median_miles: null, computed_at: '2026-09-30T11:00:00Z', sources: ['cybercabhunter_rides'] } };
   const api = body => u => (u.startsWith('/api/fleet-stats') ? Response.json(body) : (u.startsWith('/api/camera-sightings') ? Response.json([]) : new Response('{}', { status: 404 })));
   {
     const z = await page('infrastructure.html', api(full));
@@ -179,8 +201,8 @@ async function run() {
     z.w.close();
     const t2 = await page('infrastructure.html', api(thin));
     const el = id => t2.d.getElementById(id);
-    check('Zones, too little data: "—" with a "not enough ride data yet" tooltip (no $ number)', ['medianFareOut', 'avgFareOut', 'perMileOut'].every(id => el(id).textContent === '—' && el(id).title === 'Not enough ride data yet') && !/\$\d/.test(el('perMileOut').parentElement.textContent));
-    check('Zones, too little data: the count still shows; the basis line explains', el('fleetCountOut').textContent === '45' && /need at least 5 logged rides — 2 so far/.test(el('fareBasis').textContent));
+    check('Zones, no rides: "—" with a "no logged rides yet" tooltip (no $ number)', ['medianFareOut', 'avgFareOut', 'perMileOut'].every(id => el(id).textContent === '—' && el(id).title === 'No logged rides yet') && !/\$\d/.test(el('perMileOut').parentElement.textContent));
+    check('Zones, no rides: the count still shows; the basis line says so', el('fleetCountOut').textContent === '45' && /^No logged rides yet/.test(el('fareBasis').textContent));
     t2.w.close();
     const down = await page('infrastructure.html', () => { throw new TypeError('down'); });
     check('Zones, API down: every tile "—"', ['fleetCountOut', 'medianFareOut', 'avgFareOut', 'perMileOut'].every(id => down.d.getElementById(id).textContent === '—'));
@@ -193,11 +215,22 @@ async function run() {
     const expected = Math.round(6 * ((3.1 + 12.5 / 4) / 2) * 100) / 100;   // 18.68
     check(`ETA: the estimate = miles × average(per-mile, median fare ÷ median miles) = $${expected.toFixed(2)}`, e.d.getElementById('cybercabFare').textContent === `$${expected.toFixed(2)}`, e.d.getElementById('cybercabFare').textContent);
     check('ETA: labelled an estimate, with its sample and data date', /estimate/i.test(e.d.getElementById('cybercabFare').parentElement.textContent) && e.d.getElementById('cybercabFareNote').textContent === 'From 6 logged rides · data from Sep 30, 2026');
+    check('ETA, Model Y not tracked: fleet, ETA and fare are all "—", and it says why',
+      e.d.getElementById('modelyCount').value === '' && e.d.getElementById('modelyEta').textContent === '—' && e.d.getElementById('modelyFare').textContent === '—' &&
+      e.d.getElementById('modelyFareNote').textContent === "Model Y robotaxis aren't tracked yet");
+    check('ETA: no hard-coded Model Y fleet or "$3 + $1.40" fare remains', !/value="114"/.test(read('public/simulation.html')) && !/\$3 fee per ride \+ \$1\.40 per mile/.test(read('public/simulation.html')));
     e.w.close();
+    const withY = { ...full, model_y: { vehicles: 20, active: 18, fares: { ...full.fares, rides: 9, median_fare: 15, per_mile: 3.5, median_miles: 5 } } };
+    const ey = await page('simulation.html', api(withY), '/simulation?view=eta');
+    const sy = id => ey.d.getElementById(id);
+    sy('tripMiles').value = '6'; sy('tripMiles').dispatchEvent(new ey.w.Event('input', { bubbles: true }));
+    const expY = Math.round(6 * ((3.5 + 15 / 5) / 2) * 100) / 100;   // 19.50
+    check('ETA, Model Y tracked: live fleet, an ETA, and its own fare estimate', sy('modelyCount').value === '18' && sy('modelyEta').textContent !== '—' && sy('modelyFare').textContent === `$${expY.toFixed(2)}` && sy('modelyFareNote').textContent === 'From 9 logged rides · data from Sep 30, 2026', sy('modelyFare').textContent);
+    ey.w.close();
     const e2 = await page('simulation.html', api(thin), '/simulation?view=eta');
     const s2 = id => e2.d.getElementById(id);
     s2('tripMiles').value = '6'; s2('tripMiles').dispatchEvent(new e2.w.Event('input', { bubbles: true }));
-    check('ETA, too little data: no estimate ("—"), and it says why', s2('cybercabFare').textContent === '—' && /Not enough ride data yet \(2 of 5 rides\)/.test(s2('cybercabFareNote').textContent));
+    check('ETA, no rides: no estimate ("—"), and it says why', s2('cybercabFare').textContent === '—' && s2('cybercabFareNote').textContent === 'No logged rides yet');
     e2.w.close();
     const e3 = await page('simulation.html', () => { throw new TypeError('down'); }, '/simulation?view=eta');
     check('ETA, API down: no fleet count, no ETA, no estimate — all "—"', e3.d.getElementById('cybercabCount').value === '' && e3.d.getElementById('cybercabEta').textContent === '—' && e3.d.getElementById('cybercabFare').textContent === '—');
