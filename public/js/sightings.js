@@ -43,6 +43,20 @@
       d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', ...tz, ...(tz.timeZone ? { timeZoneName: 'short' } : {}) });
   }
 
+  // "just now", "12m ago", "5h ago", "3d ago", then the date.
+  function ago(iso, now = Date.now()) {
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) return '';
+    const sec = Math.max(0, Math.round((now - ms) / 1000));
+    if (sec < 60) return 'just now';
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+    if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
+    return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-6.5-6.86-6.5-11.5A6.5 6.5 0 0 1 18.5 9.5C18.5 14.14 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3"/></svg>';
+  const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -50,15 +64,16 @@
     return node;
   }
 
-  // One card: a smallish photo (click it to expand) and the facts provided.
-  // Fields that weren't provided are simply left out.
+  // One card: the photo (click it to expand) with the city and how long ago
+  // over it, then the plate, the place and the exact time. Fields that weren't
+  // provided are simply left out.
   function card(s) {
-    const article = el('article', 'glass rounded-2xl overflow-hidden flex flex-col');
+    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col border border-white/[0.06] hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-20px_rgba(212,175,55,0.45)] transition-all duration-300');
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
     open.setAttribute('aria-label', 'View larger photo');
-    const img = el('img', 'w-full h-full object-cover transition-transform duration-300 hover:scale-105');
+    const img = el('img', 'w-full h-full object-cover transition-transform duration-500 group-hover:scale-105');
     img.loading = 'lazy';
     img.decoding = 'async';
     img.src = WORKER + s.image_url;
@@ -69,6 +84,19 @@
     open.appendChild(img);
     const frame = el('div', 'relative');
     frame.appendChild(open);
+    // Over the photo (not interactive): a soft fade, the city and how long ago.
+    frame.appendChild(el('div', 'pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent'));
+    const overlay = el('div', 'pointer-events-none absolute top-2 left-2 right-2 flex items-start justify-between gap-2');
+    if (s.city) overlay.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wider', s.city));
+    if (s.cybercab) overlay.appendChild(el('span', 'ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
+    frame.appendChild(overlay);
+    const since = ago(s.spotted_at);
+    if (since) {
+      const badge = el('span', 'pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white/90');
+      badge.innerHTML = CLOCK;
+      badge.appendChild(document.createTextNode(since));
+      frame.appendChild(badge);
+    }
     // Moderators only: hovering darkens the photo and shows a red Delete
     // button. Nothing is added to the page for anyone else.
     if (isModerator) {
@@ -82,13 +110,15 @@
     }
     article.appendChild(frame);
 
-    const body = el('div', 'p-3 flex flex-col gap-1.5');
-    const top = el('div', 'flex items-center justify-between gap-2 flex-wrap');
-    if (s.city) top.appendChild(el('span', 'text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-gold uppercase tracking-wider', s.city));
-    if (s.plate) top.appendChild(el('span', 'font-display font-bold text-xs tracking-wider px-2 py-0.5 rounded bg-black/30 border border-[rgba(212,175,55,0.2)]', s.plate));
-    if (s.cybercab) top.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
-    if (top.childNodes.length) body.appendChild(top);
-    if (s.location) body.appendChild(el('p', 'text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]', s.location));
+    const body = el('div', 'p-3.5 flex flex-col gap-2');
+    // The plate, styled like one.
+    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)]', s.plate));
+    if (s.location) {
+      const where = el('p', 'flex items-start gap-1.5 text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]');
+      where.innerHTML = PIN;
+      where.appendChild(document.createTextNode(s.location));
+      body.appendChild(where);
+    }
     const when = fmtSpotted(s.spotted_at, s.time_zone);
     if (when) {
       const time = el('time', 'text-[11px] text-slate-500', when);
@@ -166,6 +196,43 @@
     return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   }
 
+  // The two activity charts. Bars only from the server's counts; anything
+  // missing or malformed leaves the chart empty rather than guessing.
+  function bar(n, max, { gold = true, title = '' } = {}) {
+    const pct = max ? Math.max(n ? 8 : 0, Math.round((n / max) * 100)) : 0;
+    const col = el('div', 'flex-1 h-full flex flex-col justify-end');
+    col.title = title;
+    const fill = el('div', `w-full rounded-t ${n ? (gold ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-gold/35') : 'bg-white/[0.06]'}`);
+    fill.style.height = n ? `${pct}%` : '3px';
+    col.appendChild(fill);
+    return col;
+  }
+  function renderActivity(stats) {
+    const days = stats && Array.isArray(stats.last_14_days) && stats.last_14_days.every(d => d && isCount(d.count)) ? stats.last_14_days : null;
+    const hours = stats && Array.isArray(stats.by_hour) && stats.by_hour.length === 24 && stats.by_hour.every(isCount) ? stats.by_hour : null;
+    const dayBox = $('activityDays'), dayLabels = $('activityDaysLabels'), hourBox = $('activityHours');
+    dayBox.innerHTML = ''; dayLabels.innerHTML = ''; hourBox.innerHTML = '';
+    $('activityDaysNote').textContent = ''; $('activityHoursNote').textContent = '';
+    if (days) {
+      const max = Math.max(0, ...days.map(d => d.count));
+      days.forEach((d, i) => {
+        const label = fmtDay(d.date) || d.date;
+        dayBox.appendChild(bar(d.count, max, { title: `${label}: ${plural(d.count, 'sighting', 'sightings')}` }));
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.date);
+        const dow = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'UTC' }) : '';
+        dayLabels.appendChild(el('span', `flex-1 text-center text-[10px] ${i === days.length - 1 ? 'text-gold font-semibold' : 'text-slate-500'}`, dow));
+      });
+      const total = days.reduce((n, d) => n + d.count, 0);
+      $('activityDaysNote').textContent = plural(total, 'sighting', 'sightings');
+    }
+    if (hours) {
+      const max = Math.max(0, ...hours);
+      const peak = stats.peak_hour && Number.isInteger(stats.peak_hour.hour) ? stats.peak_hour.hour : -1;
+      hours.forEach((n, h) => hourBox.appendChild(bar(n, max, { gold: h === peak, title: `${fmtHour(h)}: ${plural(n, 'sighting', 'sightings')}` })));
+      $('activityHoursNote').textContent = peak >= 0 ? `Busiest ${fmtHour(peak)} – ${fmtHour((peak + 1) % 24)}` : (max ? 'No clear busiest hour yet' : '');
+    }
+  }
+
   // Any value that isn't a proper count stays (or goes back to) an em dash.
   function renderStats(stats) {
     const ok = stats && typeof stats === 'object';
@@ -193,6 +260,11 @@
       $('statPeakHour').textContent = '—';
       $('statPeakCount').textContent = '';
     }
+    num('statTotal', ok && stats.total);
+    renderActivity(ok ? stats : null);
+    const cityName = CITY_NAMES[city] || '';
+    $('feedCount').textContent = ok && isCount(stats.total) && stats.total > 0
+      ? `${plural(stats.total, 'sighting', 'sightings')}${cityName ? ` in ${cityName}` : ''}` : '';
     const best = ok && stats.best_day;
     const bestDay = best && fmtDay(best.date);
     if (bestDay && isCount(best.count)) {
