@@ -256,33 +256,6 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Data completeness: how much of each detail the receipts carried
-             (data.coverage), so every average above can be read honestly. -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-1">DATA COMPLETENESS</h2>
-          <p class="text-xs text-slate-500 mb-5">How many of your counted rides include each detail.</p>
-          <ul id="coverageList" class="space-y-3"></ul>
-          <div id="coverageEmpty" class="hidden text-sm text-slate-500">Appears once you have a counted ride.</div>
-        </div>
-
-        <!-- What others see: the public profile built from this data (counts
-             and city names only), or that it is turned off. -->
-        <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <div class="flex items-start justify-between gap-3 mb-1">
-            <h2 class="font-display font-bold text-xl">WHAT OTHERS SEE</h2>
-            <span id="publicStatus" class="shrink-0 text-[10px] font-semibold uppercase tracking-wider rounded-full px-2 py-1 border"></span>
-          </div>
-          <p id="publicSummary" class="text-xs text-slate-500 mb-5"></p>
-          <ul id="publicList" class="space-y-2 text-sm"></ul>
-          <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Never shown publicly: fares, ride dates and times, addresses, or the plates of vehicles you rode in.</p>
-          <div class="flex items-center gap-2 flex-wrap mt-5">
-            <a id="publicProfileLink" href="#" class="hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">View public profile</a>
-            <a href="profile.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Profile settings</a>
-          </div>
-        </div>
-      </div>
-
       <!-- Ride list -->
       <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-5">
@@ -459,6 +432,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=14"></script>
+<script src="js/rider-data.js?v=15"></script>
 </body>
 </html>

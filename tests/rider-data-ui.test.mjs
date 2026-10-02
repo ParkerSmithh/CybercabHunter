@@ -393,7 +393,7 @@ async function run() {
     check('the Cities card still renders', page.text('citiesList').length > 0);
   }
 
-  console.log('Overview, completeness and "What others see"');
+  console.log('Overview (no completeness or "What others see" cards)');
   {
     const ctx = await makeApp();
     await ctx.email('u1', { body: receiptBody(), date: sentAt(0) });
@@ -401,17 +401,12 @@ async function run() {
     await page.waitFor(() => page.visible('citiesList'), 'cities to render');
     check('overview tiles: rides and time on board alongside distance', page.text('statRides') === '1' && page.text('statTime') !== '' && page.text('statMiles') !== '');
     check('each city shows its share of rides', /100% of rides/.test(page.text('citiesList')));
-    const cov = page.d.querySelectorAll('#coverageList li');
-    check('data completeness: one row per detail, as "n of N"', cov.length === 6 && [...cov].every(li => /\d+ of 1 · \d+%/.test(li.textContent)));
-    check('a private rider (switch off): "Private", no public link, nothing listed', page.text('publicStatus') === 'Private' && !page.visible('publicProfileLink') && page.d.querySelectorAll('#publicList li').length === 0);
+    check('no Data Completeness or "What others see" card', !page.d.getElementById('coverageList') && !page.d.getElementById('publicList') && !page.d.getElementById('publicProfileLink') && !/DATA COMPLETENESS|WHAT OTHERS SEE|Never shown publicly/.test(page.d.body.textContent));
     page.w.close();
 
-    ctx.d1.exec(`UPDATE users SET leaderboard_opt_in = 1, handle = 'rider_one' WHERE id = 'u1'`);
+    ctx.d1.exec(`UPDATE users SET handle = 'rider_one' WHERE id = 'u1'`);
     page = await openPage(ctx, 'u1');
     await page.waitFor(() => page.visible('citiesList'), 'cities to render');
-    const link = page.d.getElementById('publicProfileLink');
-    check('public: the link to /rider/<handle> and the counts others see', page.text('publicStatus') === 'Public' && page.visible('publicProfileLink') && link.getAttribute('href') === '/rider/rider_one' && /Rides\s*1/.test(page.text('publicList')));
-    check('the panel says what is never public', /Never shown publicly: fares, ride dates and times, addresses/.test(page.d.body.textContent));
     check('the @handle is shown under the name', page.text('dataHandle') === '@rider_one');
     page.w.close();
   }

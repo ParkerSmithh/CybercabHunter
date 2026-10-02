@@ -203,49 +203,6 @@
     }).join('');
   }
 
-  // How many counted rides carry each detail (data.coverage).
-  function renderCoverage(data) {
-    const cov = data.coverage;
-    if (!cov.rides) { show('coverageEmpty', true); $('coverageList').innerHTML = ''; return; }
-    show('coverageEmpty', false);
-    const rows = [['Fare', cov.withFare], ['Distance', cov.withDistance], ['Duration', cov.withDuration], ['Date', cov.withDate], ['City', cov.withCity], ['Vehicle', cov.withVehicle]];
-    $('coverageList').innerHTML = rows.map(([label, n]) => {
-      const pct = Math.round((n / cov.rides) * 100);
-      return `<li>
-        <div class="flex items-baseline justify-between gap-3 text-sm"><span class="text-slate-200">${esc(label)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(n)} of ${esc(cov.rides)} · ${pct}%</span></div>
-        <div class="mt-1.5 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full ${pct === 100 ? 'bg-gradient-to-r from-goldsoft to-gold' : 'bg-gold/60'}" style="width:${pct}%"></div></div>
-      </li>`;
-    }).join('');
-  }
-
-  // What others see: the public profile (worker/community.js) shows counts and
-  // city names only, and only while the Profile switch is on with a username.
-  function renderPublic(data) {
-    const u = data.user, rs = data.rideSummary;
-    const isPublic = !!(u.leaderboard_opt_in && u.handle);
-    const status = $('publicStatus');
-    status.textContent = isPublic ? 'Public' : u.leaderboard_opt_in ? 'No username' : 'Private';
-    status.className = 'shrink-0 text-[10px] font-semibold uppercase tracking-wider rounded-full px-2 py-1 border ' + (isPublic ? 'border-[rgba(212,175,55,0.35)] text-gold' : 'border-white/[0.12] text-slate-400');
-    $('publicSummary').textContent = isPublic
-      ? `Anyone can see your public profile at /rider/${u.handle}:`
-      : u.leaderboard_opt_in
-        ? 'Set a username on your Profile page to get a public profile page.'
-        : 'Your community profile is turned off — you appear only as “Private spotter”.';
-    const discovered = (data.discoveredVehicles || []).filter(v => v.public_eligible).length;
-    const items = isPublic ? [
-      ['Name, username, photo and bio', ''],
-      ['Rides', fmtInt(rs.trip_count)],
-      ['Cybercabs ridden', fmtInt(rs.unique_vehicles)],
-      ['Cities', data.cities.length ? data.cities.map(c => c.service_area).join(', ') : '—'],
-      ['Vehicles discovered', fmtInt(discovered)],
-      ['Your reviews', 'Shown with your name']
-    ] : [];
-    $('publicList').innerHTML = items.map(([k, v]) => `<li class="flex items-baseline justify-between gap-3 py-1.5 border-b border-white/[0.05] last:border-0"><span class="text-slate-400">${esc(k)}</span><span class="font-semibold text-slate-100 text-right">${esc(v)}</span></li>`).join('');
-    const link = $('publicProfileLink');
-    link.classList.toggle('hidden', !isPublic);
-    if (isPublic) link.href = '/rider/' + encodeURIComponent(u.handle);
-  }
-
   const SOURCE_LABELS = { receipt_email: 'Email receipt', receipt_import: 'Imported receipt' };
 
   // A ride is removed only after an inline confirmation. The id comes from the
@@ -465,8 +422,6 @@
     renderSpending(data);
     renderMonthly(data);
     renderCities(data);
-    renderCoverage(data);
-    renderPublic(data);
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
     teslaLinked = !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected);
