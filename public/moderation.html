@@ -51,21 +51,21 @@
     </div>
 
     <!-- Signed out -->
-    <div id="modSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="modSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Sign in required</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">This page requires a moderator account.</p>
       <a href="signin.html?returnTo=%2Fmoderation" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
     </div>
 
     <!-- Authenticated but not a moderator -->
-    <div id="modForbidden" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="modForbidden" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Not authorized</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Your account doesn't have moderator access.</p>
       <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to Cybercab Hunter</a>
     </div>
 
     <!-- Load/network failure — distinct from not-authorized -->
-    <div id="modError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="modError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Couldn't load the queue</h1>
       <p id="modErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server.</p>
       <button id="modRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>

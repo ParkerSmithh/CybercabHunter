@@ -73,7 +73,7 @@
     created: ['Imported', 'text-emerald-300 border-emerald-400/40'],
     updated: ['Updated an existing ride', 'text-cyan border-cyan/40'],
     duplicate: ['Already imported', 'text-slate-300 border-slate-500/40'],
-    unidentified: ['Needs review — no ride created', 'text-amber-300 border-amber-400/40'],
+    unidentified: ['Needs review: no ride created', 'text-amber-300 border-amber-400/40'],
     rejected: ['Not recognized as a Tesla receipt', 'text-crimson border-crimson/50'],
     error: ['Import failed', 'text-crimson border-crimson/50']
   };
@@ -128,12 +128,12 @@
       const box = el('div', 'mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)] text-sm space-y-1');
       box.appendChild(el('p', 'text-slate-300', v.created ? 'New registry vehicle created.' : 'Matched an existing registry vehicle.'));
       if (v.publicly_eligible) {
-        box.appendChild(el('p', 'text-emerald-300', 'This vehicle is public — the ride counts toward public totals.'));
+        box.appendChild(el('p', 'text-emerald-300', 'This vehicle is public. The ride counts toward public totals.'));
       } else if (v.visibility === 'public') {
         box.appendChild(el('p', 'text-slate-400', 'This vehicle is public but has no counted ride yet, so it isn\'t shown publicly.'));
       } else {
         box.appendChild(el('p', 'text-slate-400', v.has_vin
-          ? 'Private. A VIN is on file — review it and use Approve Cybercab to publish.'
+          ? 'Private. A VIN is on file. Review it and use Approve Cybercab to publish.'
           : 'Private. To publish it: verify it\'s a Cybercab, enter its VIN, then Approve Cybercab.'));
       }
       const link = el('a', 'inline-block mt-2 text-cyan hover:underline', 'Open in Registry Vehicles →');

@@ -293,7 +293,7 @@ async function run() {
     pendingCard.querySelector('button[data-action="approve"]').click();
     await new Promise(r => setTimeout(r, 150));
     const toast = d.getElementById('toastRoot').lastElementChild.textContent;
-    check('Approve on a camera sighting: toast says it is on the Zones map, and the card moves to the approved list with the confirmation', /on the Zones map ✓/.test(toast) && card(pendingCam) && card(pendingCam).textContent.includes('On the Zones map ✓'));
+    check('Approve on a camera sighting: toast says it is on the Zones map, and the card moves to the approved list with the confirmation', /on the Zones map ✓/i.test(toast) && card(pendingCam) && card(pendingCam).textContent.includes('On the Zones map ✓'));
 
     card(plain).querySelector('button[data-approved-action="add-to-map"]').click();
     await new Promise(r => setTimeout(r, 80));

@@ -230,10 +230,10 @@ const CCC = (() => {
     missing_photo: 'Please add a photo of the Cybercab.',
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP photo.',
     invalid_location: 'Choose the location from the suggestions list.',
-    invalid_traffic_camera: 'Traffic cameras are in Austin — choose Austin as the city, or "Not a traffic camera".',
+    invalid_traffic_camera: 'Traffic cameras are in Austin. Choose Austin as the city, or "Not a traffic camera".',
     location_unavailable: "Location search isn't available right now. Try again, or leave Location empty.",
-    invalid_form_data: "That sighting couldn't be submitted — check the fields and try again.",
-    invalid_body: "That sighting couldn't be submitted — check the fields and try again."
+    invalid_form_data: "That sighting couldn't be submitted. Check the fields and try again.",
+    invalid_body: "That sighting couldn't be submitted. Check the fields and try again."
   };
 
   const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -474,7 +474,7 @@ const CCC = (() => {
       locResults = places || [];
       locQuery = query;
       locActive = -1;
-      renderLocOptions(places === null ? "Location search isn't available right now." : (locResults.length ? '' : `No matching places in ${area.name} — try a street or landmark.`));
+      renderLocOptions(places === null ? "Location search isn't available right now." : (locResults.length ? '' : `No matching places in ${area.name}. Try a street or landmark.`));
     }
 
     if (locationField && locIdField && locOptions) {
@@ -524,7 +524,7 @@ const CCC = (() => {
       const file = photoField.files && photoField.files[0];
       if (!file) return;
       if (!PHOTO_TYPES.includes(file.type)) { showPhotoError(SIGHTING_ERROR_MESSAGES.unsupported_file_type); photoField.value = ''; return; }
-      if (file.size > MAX_PICKED_BYTES) { showPhotoError('That photo is too large — please choose one under 10 MB.'); photoField.value = ''; return; }
+      if (file.size > MAX_PICKED_BYTES) { showPhotoError('That photo is too large. Please choose one under 10 MB.'); photoField.value = ''; return; }
       try {
         previewUrl = URL.createObjectURL(file);
         photoPreview.src = previewUrl;
@@ -574,7 +574,7 @@ const CCC = (() => {
       const photo = await preparePhoto(picked);
       if (photo.size > MAX_PHOTO_BYTES) {
         setSubmitting(false);
-        showPhotoError('That photo is too large — please choose one under 10 MB.');
+        showPhotoError('That photo is too large. Please choose one under 10 MB.');
         return;
       }
 
@@ -584,7 +584,7 @@ const CCC = (() => {
         service_area: serviceAreaField.value.trim(),
         approx_location: locationField.value.trim(),
         notes: notesField ? notesField.value.trim() : '',
-        license_plate: plateField.value.trim()   // never the old "Unlisted" fallback — missing stays missing
+        license_plate: plateField.value.trim()   // never the old "Unlisted" fallback. Missing stays missing
       };
       // Only the DATE is chosen; the server records the exact time of
       // submission in the area's local time (worker/timezones.js). The
@@ -626,7 +626,7 @@ const CCC = (() => {
         return;
       }
       if (resp.status === 413) {
-        showPhotoError('That photo is too large — please choose one under 10 MB.');
+        showPhotoError('That photo is too large. Please choose one under 10 MB.');
         return;
       }
       if (resp.status === 502 && json && json.error === 'location_unavailable') {
@@ -722,10 +722,10 @@ const CCC = (() => {
       const messages = {
         linked: ['TESLA ACCOUNT LINKED', 'success'],
         cancelled: ['Tesla linking was cancelled.', 'info'],
-        invalid_state: ['Tesla linking failed — please try again.', 'error'],
-        token_exchange_failed: ['Tesla linking failed — please try again.', 'error'],
+        invalid_state: ['Tesla linking failed. Please try again.', 'error'],
+        token_exchange_failed: ['Tesla linking failed. Please try again.', 'error'],
         already_linked_elsewhere: ['That Tesla account is already linked to a different sign-in.', 'error'],
-        error: ['Tesla linking failed — please try again.', 'error']
+        error: ['Tesla linking failed. Please try again.', 'error']
       };
       const [msg, type] = messages[result] || messages.error;
       toast(msg, type);
@@ -751,9 +751,9 @@ const CCC = (() => {
       const messages = {
         success: ['SIGNED IN', 'success'],
         cancelled: ['Sign-in was cancelled.', 'info'],
-        invalid_state: ['Sign-in failed — please try again.', 'error'],
-        token_exchange_failed: ['Sign-in failed — please try again.', 'error'],
-        error: ['Sign-in failed — please try again.', 'error']
+        invalid_state: ['Sign-in failed. Please try again.', 'error'],
+        token_exchange_failed: ['Sign-in failed. Please try again.', 'error'],
+        error: ['Sign-in failed. Please try again.', 'error']
       };
       const [msg, type] = messages[signinResult] || messages.error;
       toast(msg, type);
@@ -816,7 +816,7 @@ const CCC = (() => {
           // Never silently fall back to a plain link here: for a signed-in
           // rider that would create a second, separate account.
           btn.innerHTML = label;
-          toast('Could not start Tesla linking — please try again.', 'error');
+          toast('Could not start Tesla linking. Please try again.', 'error');
         });
     });
   }
@@ -999,7 +999,7 @@ const CCC = (() => {
     error.id = 'gmailOnboardingError';
     error.setAttribute('role', 'alert');
     panel.appendChild(error);
-    panel.appendChild(el('p', 'text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]', "Gmail is optional. Signing in with Google doesn't give Cybercab Hunter access to your Gmail — if you choose Connect Gmail, Google asks for your permission first."));
+    panel.appendChild(el('p', 'text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]', "Gmail is optional. Signing in with Google doesn't give Cybercab Hunter access to your Gmail. If you choose Connect Gmail, Google asks for your permission first."));
 
     backdrop.appendChild(panel);
     document.body.appendChild(backdrop);

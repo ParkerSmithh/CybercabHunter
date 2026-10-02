@@ -83,7 +83,7 @@
     <!-- Header: the title, what this page is, and the replay map. -->
     <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5">
       <div class="min-w-0">
-        <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-gold"><span class="w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_#D4AF37]"></span>Community spotted</p>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Community spotted</p>
         <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">SIGHTINGS</h1>
         <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Every approved photo of a Cybercab out in the wild, newest first. The page checks for new ones every minute.</p>
       </div>
@@ -142,9 +142,9 @@
       </div>
     </div>
 
-    <div id="sightingsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+    <div id="sightingsGrid" class="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"></div>
 
-    <div id="sightingsLoading" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" aria-busy="true">
+    <div id="sightingsLoading" class="hidden grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5" aria-busy="true">
       <span class="sr-only">Loading sightings…</span>
       <div class="glass rounded-2xl overflow-hidden animate-pulse"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
       <div class="glass rounded-2xl overflow-hidden animate-pulse"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
@@ -172,10 +172,10 @@
 <!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
      Closes with the × button, a click outside the photo, or Escape. -->
 <div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
-  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full glass flex items-center justify-center text-2xl leading-none text-slate-200 hover:text-white">&times;</button>
+  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-2xl leading-none text-paper hover:bg-white/20">&times;</button>
   <figure class="flex flex-col items-center gap-3 max-w-full">
     <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
-    <figcaption id="sightingViewerCaption" class="text-sm text-slate-300 text-center"></figcaption>
+    <figcaption id="sightingViewerCaption" class="text-sm text-paper/80 text-center"></figcaption>
   </figure>
 </div>
 
@@ -242,7 +242,7 @@
         <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
-      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list — only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
       <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
@@ -267,7 +267,7 @@
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
-    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
+    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
@@ -317,6 +317,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=16"></script>
+<script src="js/sightings.js?v=17"></script>
 </body>
 </html>

@@ -94,7 +94,7 @@ window.CCCRiderSearch = (function () {
       data = resp.ok ? await resp.json() : null;
     } catch (e) { data = null; }
     if (mine !== seq || input.value.trim() !== q) return;   // a newer search is under way
-    if (status === 429) { note('Too many searches — try again in a minute.'); return; }
+    if (status === 429) { note('Too many searches. Try again in a minute.'); return; }
     if (!data || !Array.isArray(data.results)) { note("Search isn't available right now."); return; }
     render(data.results);
   }

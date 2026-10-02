@@ -86,13 +86,13 @@ async function run() {
     p.btn().click();
     check('clicking starts playback: the button becomes "Pause"', p.btn().dataset.state === 'playing' && p.btn().getAttribute('aria-label') === 'Pause fleet growth timelapse');
     check('the readout shows while playing', !p.readout().classList.contains('hidden'));
-    check('frame 0 starts at the range\'s first visible day with the count on that day', p.readout().textContent === `${countAt(RANGE_START['90d'])} Cybercabs — ${fmt(RANGE_START['90d'])}`, p.readout().textContent);
+    check('frame 0 starts at the range\'s first visible day with the count on that day', p.readout().textContent === `${countAt(RANGE_START['90d'])} Cybercabs · ${fmt(RANGE_START['90d'])}`, p.readout().textContent);
     check('frame 0 draws (almost) nothing yet', p.lineEndX() <= 31, p.lineEndX());
     p.advance(RANGE_MS['90d'] / 2);
     const midX = p.lineEndX();
     check('halfway through 90D (eased 0.5) the line has reached the middle of the plot', Math.abs(midX - 310) < 12, midX);
     const mid = RANGE_START['90d'] + 0.5 * (NOW - RANGE_START['90d']);
-    const m = /^(\d+) Cybercabs — (.+)$/.exec(p.readout().textContent);
+    const m = /^(\d+) Cybercabs · (.+)$/.exec(p.readout().textContent);
     check('the readout date is the playhead\'s day, and the count is the real cumulative count then', m && Math.abs(Date.parse(m[2] + ' UTC') - Date.parse(fmt(mid) + ' UTC')) <= DAY && Math.abs(Number(m[1]) - countAt(mid)) <= 1, p.readout().textContent);
 
     p.btn().click();
@@ -120,7 +120,7 @@ async function run() {
     p.range(r);
     const staticD = p.lineD();
     p.btn().click();
-    check(`${r}: playback starts on the range's first visible day (${fmt(RANGE_START[r])})`, p.readout().textContent === `${countAt(RANGE_START[r])} Cybercab${countAt(RANGE_START[r]) === 1 ? '' : 's'} — ${fmt(RANGE_START[r])}`, p.readout().textContent);
+    check(`${r}: playback starts on the range's first visible day (${fmt(RANGE_START[r])})`, p.readout().textContent === `${countAt(RANGE_START[r])} Cybercab${countAt(RANGE_START[r]) === 1 ? '' : 's'} · ${fmt(RANGE_START[r])}`, p.readout().textContent);
     let lastX = p.lineEndX(), monotonic = true;
     for (let i = 0; i < 10; i++) { p.advance(RANGE_MS[r] / 10 - 50); if (p.btn().dataset.state !== 'playing') break; const x = p.lineEndX(); if (x < lastX) monotonic = false; lastX = x; }
     check(`${r}: the line draws left to right`, monotonic);

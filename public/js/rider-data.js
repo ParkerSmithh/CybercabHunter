@@ -111,8 +111,8 @@
     $('rsLatestRide').textContent = fmtDate(rs.last_ride_date);
 
     const parts = [];
-    if (cov.withDistance < cov.rides) parts.push(`Distance recorded for ${cov.withDistance} of ${plural(cov.rides, 'ride')} — average and longest use only those.`);
-    if (cov.withDuration < cov.rides) parts.push(`Duration recorded for ${cov.withDuration} of ${cov.rides} — time on board uses only those.`);
+    if (cov.withDistance < cov.rides) parts.push(`Distance recorded for ${cov.withDistance} of ${plural(cov.rides, 'ride')}. Average and longest use only those.`);
+    if (cov.withDuration < cov.rides) parts.push(`Duration recorded for ${cov.withDuration} of ${cov.rides}. Time on board uses only those.`);
     if (rs.rides_with_derived_duration > 0) parts.push(`${plural(rs.rides_with_derived_duration, 'duration')} calculated from pickup and dropoff times rather than stated on the receipt.`);
     if (cov.withDate < cov.rides) parts.push(`Date recorded for ${cov.withDate} of ${cov.rides}.`);
     if (cov.withCity < cov.rides) parts.push(`City recorded for ${cov.withCity} of ${cov.rides}.`);
@@ -137,7 +137,7 @@
       </div>`).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
 
     const notes = [`Fares recorded for ${cov.withFare} of ${plural(cov.rides, 'ride')}.`];
-    if (cov.withFare < cov.rides) notes.push('Rides with no fare on the receipt are left out — they are not counted as free.');
+    if (cov.withFare < cov.rides) notes.push('Rides with no fare on the receipt are left out. They are not counted as free.');
     if (list.some(s => s.currencySource !== 'extracted')) notes.push('Tesla receipts show only “$”, so US dollars are assumed.');
     $('spendingCoverage').textContent = notes.join(' ');
   }
@@ -197,7 +197,7 @@
           <span class="font-semibold">${esc(c.service_area)}</span>
           <span class="font-display font-bold text-slate-300">${esc(plural(c.ride_count, 'ride'))}</span>
         </div>
-        <div class="mt-2 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
+        <div class="mt-2 h-1.5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
         <div class="text-xs text-slate-500 mt-1.5">${pct}% of rides · ${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
       </div>`;
     }).join('');
@@ -259,7 +259,7 @@
       resp = await api('/api/trips/' + encodeURIComponent(id), { method: 'DELETE' });
     } catch (e) {
       pendingDeleteId = null; renderRides(currentRides);
-      showActionError("Couldn't remove the ride — check your connection. Nothing was changed.");
+      showActionError("Couldn't remove the ride. Check your connection. Nothing was changed.");
       return;
     }
     pendingDeleteId = null;
@@ -273,8 +273,8 @@
     }
     renderRides(currentRides);
     showActionError(resp.status === 401
-      ? 'Your session has expired — sign in again to remove rides.'
-      : "Couldn't remove the ride — nothing was changed. Try again in a moment.");
+      ? 'Your session has expired. Sign in again to remove rides.'
+      : "Couldn't remove the ride. Nothing was changed. Try again in a moment.");
   }
 
   function setupRideActions() {
@@ -318,8 +318,8 @@
   // POST /api/gmail/connect → Google's consent page). Every call carries only
   // the bearer session; tokens never reach the browser.
   const GMAIL_NOTICES = {
-    connected: ['Gmail connected. Your Robotaxi receipts are being imported in the background — this can take a while.', 'ok'],
-    cancelled: ['Gmail wasn\'t connected — the Google screen was cancelled.', 'info'],
+    connected: ['Gmail connected. Your Robotaxi receipts are being imported in the background. This can take a while.', 'ok'],
+    cancelled: ['Gmail wasn\'t connected. The Google screen was cancelled.', 'info'],
     missing_permission: ['Gmail access wasn\'t granted, so nothing was connected.', 'info'],
     wrong_account: ['That Gmail isn\'t the Google account you signed in with. Connect that same account.', 'warn'],
     invalid_state: ['That connection attempt expired. Please try again.', 'warn'],
@@ -412,7 +412,7 @@
 
     if (profile.status === 401) { setView('signedOut'); return; }
     if (!profile.ok || !rides.ok) {
-      $('dataErrorDetail').textContent = `The server had a problem (code ${profile.ok ? rides.status : profile.status}). You're still signed in — your data is safe. Try again in a moment.`;
+      $('dataErrorDetail').textContent = `The server had a problem (code ${profile.ok ? rides.status : profile.status}). You're still signed in, and your data is safe. Try again in a moment.`;
       setView('error'); return;
     }
 

@@ -26,7 +26,7 @@
 
   function render(data) {
     const r = data.rider;
-    document.title = `Cybercab Hunter — ${r.name}`;
+    document.title = `Cybercab Hunter | ${r.name}`;
     // The shared avatar (js/main.js), large variant.
     CCC.renderAvatar($('riderAvatar'), { url: r.avatar_url, name: r.name, size: 512, textClass: 'text-xl' });
     $('riderName').textContent = r.name;
@@ -53,7 +53,7 @@
       const pct = total ? Math.round((c.rides / total) * 100) : 0;
       return `<li>
         <div class="flex items-baseline justify-between gap-3 text-sm"><span class="font-semibold text-slate-100">${esc(c.name)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(c.rides)} ${c.rides === 1 ? 'ride' : 'rides'} · ${pct}%</span></div>
-        <div class="mt-1.5 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
+        <div class="mt-1.5 h-1.5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
       </li>`;
     }).join('');
     $('riderNoCities').classList.toggle('hidden', cities.length > 0);

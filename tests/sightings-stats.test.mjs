@@ -307,7 +307,7 @@ async function run() {
     check('no activity charts on the page', !peakPage.d.getElementById('activityDays') && !peakPage.d.getElementById('activityHours') && !/LAST 14 DAYS|TIME OF DAY/.test(peakPage.d.body.textContent));
     check('the All time tile and the toolbar count', peakPage.text('statTotal') === '3' && peakPage.text('feedCount') === '3 sightings in Austin');
     check('each card says how long ago it was spotted', peakPage.cards().length === 3 && /3h ago/.test(peakPage.cards()[0].textContent) && /9d ago/.test(peakPage.cards()[2].textContent));
-    check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) – \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));
+    check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) - \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));
     check('the card is labelled as all-time', /Peak sightings hour <span[^>]*>· all time<\/span>/.test(fs.readFileSync(new URL('../public/sightings.html', import.meta.url), 'utf8')));
 
     const emptyCtx = await makeApp();

@@ -306,7 +306,7 @@ async function run() {
     const vc = await vehicleCard();
     const text = vc ? vc.textContent.replace(/\s+/g, ' ') : '';
     check('the new vehicle card appears in Registry Vehicles', !!vc);
-    check('the card says Private — Needs Review / Eligible for Approval / 0 counted rides', /Private — Needs Review/.test(text) && /Eligible for Approval/.test(text) && /0 counted rides/.test(text));
+    check('the card says Private: Needs Review / Eligible for Approval / 0 counted rides', /Private: Needs Review/.test(text) && /Eligible for Approval/.test(text) && /0 counted rides/.test(text));
     check('the card is honest about provenance: added from a sighting, no receipt and no rides', /Added from a community sighting/.test(text) && /no receipt and no rides/.test(text) && !/Forwarded email:/.test(text));
     check('the Cybercab verification panel (Tracker link, VIN, Approve Cybercab) is present', /Cybercab verification/.test(text) && /Check Robotaxi Tracker/.test(text) && !!vc.querySelector('[data-vehicle-action="save-vin"]') && !!vc.querySelector('[data-vehicle-action="approve-cybercab"]'));
     check('Approve Cybercab is disabled until a VIN is saved', vc.querySelector('[data-vehicle-action="approve-cybercab"]').disabled === true);

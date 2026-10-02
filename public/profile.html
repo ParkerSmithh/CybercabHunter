@@ -103,7 +103,7 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
 
     <!-- Signed-out state -->
-    <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Sign in to customize your profile</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Set your name, username, and bio once you're signed in.</p>
       <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
@@ -167,7 +167,7 @@
         <div class="flex items-center justify-between gap-4 pt-6 border-t border-[rgba(212,175,55,0.12)]">
           <div>
             <div id="visibilityLabel" class="text-sm font-semibold">Community leaderboard &amp; public profile</div>
-            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default — turn it off to appear as “Private spotter”.</p>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default. Turn it off to appear as “Private spotter”.</p>
             <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
           </div>
           <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
@@ -187,7 +187,7 @@
       <div id="dangerZone" class="mt-6 px-2">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <p class="text-sm text-slate-300">Permanently delete your account and all of your data.</p>
-          <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-white hover:brightness-110">Delete account</button>
+          <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110">Delete account</button>
         </div>
         <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-white/[0.08]">
           <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
@@ -202,7 +202,7 @@
           <label for="deleteAccountConfirm" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Type DELETE to confirm</label>
           <input id="deleteAccountConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" class="mt-2 w-full max-w-xs bg-panel border border-crimson/40 rounded-lg px-3 py-2.5 text-sm">
           <div class="flex items-center gap-2 mt-4 flex-wrap">
-            <button id="deleteAccountSubmit" type="button" disabled class="px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Permanently delete my account</button>
+            <button id="deleteAccountSubmit" type="button" disabled class="px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Permanently delete my account</button>
             <button id="deleteAccountCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm text-slate-400 border border-white/10 hover:text-slate-200">Cancel</button>
           </div>
           <p id="deleteAccountError" class="text-xs text-crimson mt-3" role="alert"></p>
@@ -276,7 +276,7 @@
         <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
-      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list — only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
       <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
@@ -301,7 +301,7 @@
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
-    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
+    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
@@ -509,9 +509,9 @@
           const messages = {
             handle_taken: 'That username is already taken.',
             invalid_handle: 'Usernames must be 3-20 characters: lowercase letters, numbers, and underscores only.',
-            invalid_body: 'Something went wrong — please try again.'
+            invalid_body: 'Something went wrong. Please try again.'
           };
-          errorEl.textContent = messages[err.message] || 'Something went wrong — please try again.';
+          errorEl.textContent = messages[err.message] || 'Something went wrong. Please try again.';
           editBtn.textContent = 'Save';
           editBtn.disabled = !hasChanges();
         });
@@ -557,9 +557,9 @@
       submit.textContent = 'Permanently delete my account';
       submit.disabled = input.value.trim() !== 'DELETE';
       errorEl.textContent = resp && resp.status === 409 && body.error === 'last_moderator'
-        ? 'You are the last moderator — transfer the role before deleting your account.'
-        : resp && resp.status === 401 ? 'Your session has ended — sign in again to delete your account.'
-        : resp && resp.status === 429 ? 'Too many attempts — please wait a minute and try again.'
+        ? 'You are the last moderator. Transfer the role before deleting your account.'
+        : resp && resp.status === 401 ? 'Your session has ended. Sign in again to delete your account.'
+        : resp && resp.status === 429 ? 'Too many attempts. Please wait a minute and try again.'
         : "Couldn't delete your account. Please try again.";
     });
   }
@@ -581,7 +581,7 @@
   const AVATAR_MAX_BYTES = 5 * 1024 * 1024;   // the server's limit (worker/avatars.js)
   const AVATAR_ERRORS = {
     unsupported_file_type: 'Please choose a JPEG, PNG or WebP image.',
-    file_too_large: 'That image is too large — please choose one under 5 MB.',
+    file_too_large: 'That image is too large. Please choose one under 5 MB.',
     invalid_dimensions: "That photo couldn't be processed. Please try another one.",
     missing_image: "That photo couldn't be processed. Please try another one."
   };

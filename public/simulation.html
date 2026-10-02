@@ -18,16 +18,16 @@
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=20">
 <style>
-  input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:#232733; outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 0 10px rgba(212,175,55,0.7); cursor:pointer; margin-top:-7px;}
-  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#232733;}
-  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); border:none; box-shadow:0 0 10px rgba(212,175,55,0.7); cursor:pointer;}
+  input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgba(120,90,10,0.6); cursor:pointer; margin-top:-7px;}
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:rgb(var(--n-800));}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); border:none; box-shadow:0 2px 8px -2px rgba(120,90,10,0.6); cursor:pointer;}
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   input[type=number]{-moz-appearance:textfield; appearance:textfield;}
-  .toggle{width:44px; height:24px; border-radius:999px; background:#232733; position:relative; transition:background 0.25s ease; cursor:pointer;}
+  .toggle{width:44px; height:24px; border-radius:999px; background:rgb(var(--n-800)); position:relative; transition:background 0.25s ease; cursor:pointer;}
   .toggle.on{background:linear-gradient(120deg,#F3E5AB,#D4AF37);}
-  .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#e5e7eb; transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);}
+  .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:rgb(var(--ink)); transition:transform var(--t) var(--ease);}
   .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
 </style>
 </head>
@@ -95,9 +95,9 @@
   <div class="absolute inset-0 z-0" style="background:radial-gradient(ellipse 55% 75% at 82% 50%, rgba(212,175,55,0.16), transparent 65%);"></div>
   <div class="relative z-[1] max-w-7xl mx-auto px-6 lg:px-10 py-8 flex items-center justify-center gap-16">
     <div class="max-w-xl">
-      <div class="inline-flex items-center gap-2 text-xs font-semibold text-gold uppercase tracking-wider mb-4 px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.08)]">Investor Tools</div>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET <span class="text-gold">DASHBOARD</span></h1>
-      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg">Model monthly economics for a prospective Cybercab fleet — energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
+      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg">Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
     </div>
     <img src="images/Cybercab2.png" alt="Cybercab" class="hidden lg:block w-[420px] shrink-0" style="filter:drop-shadow(0 30px 40px rgba(0,0,0,0.55)) drop-shadow(0 0 50px rgba(212,175,55,0.22));">
   </div>
@@ -112,11 +112,11 @@
       <div class="glass rounded-2xl p-7 space-y-7 h-fit">
         <div class="flex items-center justify-between p-3 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)]">
           <label class="text-[13px] font-medium text-slate-300">Tesla Network Cut</label>
-          <span class="font-display font-bold text-crimson text-lg"><span id="networkCutOut">0</span>%</span>
+          <span class="stat-value font-semibold text-white text-lg"><span id="networkCutOut">0</span>%</span>
         </div>
         <div class="flex items-center justify-between p-3 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)]">
           <label class="text-[13px] font-medium text-slate-300">Cost per Unit</label>
-          <span class="font-display font-bold text-cyan text-lg">$<span id="costPerCabOut">0</span></span>
+          <span class="stat-value font-semibold text-white text-lg">$<span id="costPerCabOut">0</span></span>
         </div>
         <div class="p-3 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.04)]">
           <div class="flex items-center justify-between">
@@ -136,9 +136,9 @@
           <div class="flex items-center justify-between mb-2">
             <label class="text-[13px] font-medium text-slate-300">Electricity Rate</label>
             <div class="flex items-center gap-1">
-              <span class="text-cyan text-sm font-bold">$</span>
-              <input type="number" id="electricityLabel" min="0" max="0.40" step="0.01" value="0" class="font-display font-bold text-cyan text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-cyan" style="width:2ch;">
-              <span class="text-cyan text-sm font-bold">/kWh</span>
+              <span class="text-slate-400 text-sm font-semibold">$</span>
+              <input type="number" id="electricityLabel" min="0" max="0.40" step="0.01" value="0" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold" style="width:2ch;">
+              <span class="text-slate-400 text-sm font-semibold">/kWh</span>
             </div>
           </div>
           <input type="range" id="electricityRate" min="0" max="0.40" step="0.01" value="0">
@@ -147,8 +147,8 @@
           <div class="flex items-center justify-between mb-2">
             <label class="text-[13px] font-medium text-slate-300">Daily Miles / Cab</label>
             <div class="flex items-center gap-1">
-              <input type="number" id="milesLabel" min="0" max="400" step="1" value="0" class="font-display font-bold text-silver text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-silver" style="width:2ch;">
-              <span class="text-silver text-sm font-bold">mi</span>
+              <input type="number" id="milesLabel" min="0" max="400" step="1" value="0" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold" style="width:2ch;">
+              <span class="text-slate-400 text-sm font-semibold">mi</span>
             </div>
           </div>
           <input type="range" id="dailyMiles" min="0" max="400" step="1" value="0">
@@ -170,7 +170,7 @@
       <div class="space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div class="glass rounded-2xl p-6">
-            <div class="text-xs uppercase tracking-wider text-cyan font-semibold mb-2">Monthly Energy Overhead</div>
+            <div class="text-xs text-slate-400 font-medium mb-2">Monthly Energy Overhead</div>
             <div class="font-display font-black text-2xl">$<span id="energyOut">0</span></div>
           </div>
           <div class="glass rounded-2xl p-6">
@@ -178,7 +178,7 @@
             <div class="font-display font-black text-2xl">$<span id="revenueOut">0</span></div>
           </div>
           <div class="glass rounded-2xl p-6">
-            <div class="text-xs uppercase tracking-wider text-silver font-semibold mb-2">Net Operating Income</div>
+            <div class="text-xs text-slate-400 font-medium mb-2">Net Operating Income</div>
             <div class="font-display font-black text-2xl">$<span id="noiOut">0</span></div>
           </div>
         </div>
@@ -259,7 +259,7 @@
         <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
-      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list — only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
       <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
@@ -284,7 +284,7 @@
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
-    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
+    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
@@ -421,22 +421,22 @@
       }
 
       const linePath = `M ${xScale(0)} ${yScale(startVal)} L ${hasCrossing ? beX + ' ' + zeroY + ' L ' : ''}${xScale(maxMonths)} ${yScale(endVal)}`;
-      const lineColor = totalCapital <= 0 ? '#64748B' : '#D4AF37';
+      const lineColor = totalCapital <= 0 ? 'rgb(var(--n-500))' : '#D4AF37';
 
       const marker = hasCrossing
-        ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#D4AF37" stroke="#07090E" stroke-width="2"></circle>
-           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" fill="#D4AF37">${breakevenMonths} mo</text>`
+        ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#D4AF37" style="stroke:rgb(var(--bg))" stroke-width="2"></circle>
+           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" style="fill:rgb(var(--gold-ink));font-family:'Geist Mono',monospace">${breakevenMonths} mo</text>`
         : '';
 
       svg.innerHTML = `
-        <line x1="${left}" y1="${zeroY}" x2="${W - right}" y2="${zeroY}" stroke="#2A3140" stroke-width="1" stroke-dasharray="4 4"></line>
+        <line x1="${left}" y1="${zeroY}" x2="${W - right}" y2="${zeroY}" style="stroke:rgb(var(--n-700))" stroke-width="1" stroke-dasharray="4 4"></line>
         ${areas}
-        <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5"></path>
+        <path d="${linePath}" fill="none" style="stroke:${lineColor}" stroke-width="2.5"></path>
         ${marker}
-        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMax)}</text>
-        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" fill="#64748B">${fmtSigned(yMin)}</text>
-        <text x="${left}" y="${H - 8}" font-size="10" fill="#64748B">0 mo</text>
-        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" fill="#64748B">${maxMonths} mo</text>
+        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${fmtSigned(yMax)}</text>
+        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${fmtSigned(yMin)}</text>
+        <text x="${left}" y="${H - 8}" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">0 mo</text>
+        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${maxMonths} mo</text>
       `;
     }
 

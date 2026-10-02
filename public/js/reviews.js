@@ -16,7 +16,7 @@
   const HEART = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.979 3.074a6 6 0 0 1 4.988 1.425l.037 .033l.034 -.03a6 6 0 0 1 4.733 -1.44l.246 .036a6 6 0 0 1 3.364 10.008l-.18 .185l-.048 .041l-7.45 7.379a1 1 0 0 1 -1.313 .082l-.094 -.082l-7.493 -7.422a6 6 0 0 1 3.176 -10.215z"/></svg>';
   const BUBBLE = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h8"/> <path d="M8 13h6"/> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12"/></svg>';
   const ERRORS = {
-    already_reviewed: "You've already reviewed this Cybercab — use Edit on your review below.",
+    already_reviewed: "You've already reviewed this Cybercab. Use Edit on your review below.",
     unknown_vehicle: 'Choose a Cybercab from the list.',
     invalid_rating: 'Choose a rating from 1 to 5 stars.',
     missing_text: 'Write a few words about the ride.',
@@ -24,11 +24,11 @@
     too_many_photos: 'Up to 3 photos per review.',
     file_too_large: 'Each photo must be 5 MB or smaller.',
     unsupported_file_type: 'Photos must be JPEG, PNG or WebP.',
-    rate_limited: "You're going a bit fast — try again in a minute.",
+    rate_limited: "You're going a bit fast. Try again in a minute.",
     forbidden: "You can't change that.",
     not_found: 'That review is no longer available.'
   };
-  const errorText = code => ERRORS[code] || 'Something went wrong — please try again.';
+  const errorText = code => ERRORS[code] || 'Something went wrong. Please try again.';
 
   function session() { try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; } }
   function api(path, opts = {}) {
@@ -194,7 +194,7 @@
     $('reviewPhotoList').innerHTML = items.map(p => `
       <span class="relative w-20 h-20 rounded-lg overflow-hidden border border-white/[0.1] bg-panel">
         <img src="${esc(p.url)}" alt="" class="w-full h-full object-cover">
-        <button type="button" data-remove="${p.kind}:${p.i}" aria-label="Remove photo" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-sm leading-none">&times;</button>
+        <button type="button" data-remove="${p.kind}:${p.i}" aria-label="Remove photo" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-paper text-sm leading-none">&times;</button>
       </span>`).join('');
     $('reviewPhotoAdd').classList.toggle('hidden', items.length >= MAX_PHOTOS);
   }

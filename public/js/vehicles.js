@@ -53,8 +53,8 @@
 
   function stat(label, value) {
     const box = el('div', 'min-w-0');
-    box.appendChild(el('div', 'text-[11px] text-slate-500 uppercase tracking-wider mb-0.5', label));
-    box.appendChild(el('div', 'text-sm font-semibold [overflow-wrap:anywhere]', value));
+    box.appendChild(el('div', 'text-[11px] text-slate-500 mb-0.5', label));
+    box.appendChild(el('div', 'stat-value text-[15px] font-semibold text-white [overflow-wrap:anywhere]', value));
     return box;
   }
 
@@ -75,10 +75,13 @@
 
   function card(v) {
     const li = el('li');
-    const a = el('a', 'block glass rounded-2xl p-6 h-full hover:bg-white/5 transition-colors min-w-0');
+    const a = el('a', 'group block glass rounded-2xl p-6 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
     a.href = '/vehicle/' + encodeURIComponent(v.id);
     if (v.vin) a.appendChild(cybercabImage());
-    a.appendChild(el('h2', 'font-display font-bold text-2xl tracking-tight [overflow-wrap:anywhere]', v.license_plate || 'Plate not recorded'));
+    // The plate, styled like one (the same treatment as the Sightings cards).
+    a.appendChild(el('h2', v.license_plate
+      ? 'inline-block font-display font-bold text-lg tracking-[0.18em] px-3 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
+      : 'font-display font-bold text-lg text-slate-400', v.license_plate || 'Plate not recorded'));
     // A confirmed Cybercab (vin present) gets the same compact gold/yellow
     // badge used on the vehicle detail page (vCybercabBadge), never plain
     // text — matching styles exactly rather than inventing a new treatment.
@@ -91,7 +94,7 @@
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
     a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere]', area || 'Service area not recorded'));
-    const stats = el('div', 'grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]');
+    const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07]');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
     stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance)));
     // First/Last seen reflect the RIDE dates a receipt reported (v.first_ride_date/last_ride_date),

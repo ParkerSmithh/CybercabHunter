@@ -98,7 +98,7 @@
     <!-- Invalid vehicle link: the URL itself has no usable id -->
     <div id="vehicleInvalid" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
       <h1 class="font-display font-bold text-2xl mb-3">Invalid vehicle link</h1>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">This vehicle link doesn't look right — it may be incomplete or mistyped.</p>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">This vehicle link doesn't look right. It may be incomplete or mistyped.</p>
       <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to Cybercab Hunter</a>
     </div>
 
@@ -121,7 +121,7 @@
       <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-3 mb-3">
-            <h1 id="vLicensePlate" class="font-display font-bold text-3xl sm:text-4xl tracking-tight bg-black/30 border border-[rgba(212,175,55,0.2)] rounded-xl px-5 py-2.5 [overflow-wrap:anywhere]"></h1>
+            <h1 id="vLicensePlate" class="font-display font-bold text-2xl sm:text-3xl tracking-[0.18em] px-4 py-2 rounded-lg bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]"></h1>
             <span id="vCybercabBadge" class="hidden text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide">Cybercab</span>
           </div>
           <p id="vSummaryLine" class="hidden text-sm text-slate-400 [overflow-wrap:anywhere]"></p>
@@ -130,13 +130,13 @@
       </div>
 
       <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
-        <h2 class="font-display font-bold text-xl mb-1">Recorded Ride History</h2>
-        <p class="text-xs text-slate-500 mb-5">Based on rides and vehicle sightings recorded by Cybercab Hunter — not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
+        <h2 class="font-display font-bold text-xl tracking-tight text-white mb-1">Recorded ride history</h2>
+        <p class="text-xs text-slate-500 mb-5">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Rides Recorded</div><div id="vTripCount" class="font-display font-bold text-lg"></div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Recorded Distance</div><div id="vTotalDistance" class="font-display font-bold text-lg"></div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">First Recorded Ride</div><div id="vFirstRide" class="font-display font-bold text-lg"></div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Latest Recorded Ride</div><div id="vLastRide" class="font-display font-bold text-lg"></div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Rides Recorded</div><div id="vTripCount" class="stat-value text-xl font-semibold text-white"></div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Recorded Distance</div><div id="vTotalDistance" class="stat-value text-xl font-semibold text-white"></div></div>
+          <div><div class="text-slate-500 text-xs mb-1">First Recorded Ride</div><div id="vFirstRide" class="stat-value text-xl font-semibold text-white"></div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Latest Recorded Ride</div><div id="vLastRide" class="stat-value text-xl font-semibold text-white"></div></div>
         </div>
         <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
       </div>
@@ -208,7 +208,7 @@
         <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
-      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list — only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
       <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
@@ -233,7 +233,7 @@
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
-    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review — they're not verified or made public immediately.</p>
+    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">

@@ -244,7 +244,7 @@ async function run() {
     await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: 'no' });
     check('...and a non-boolean value keeps it too (still on)', (await me()).leaderboard_opt_in === true);
     const html = read('public/profile.html');
-    check('the switch says it is on by default and how to turn it off', /Show my name, photo and ride counts on the Community leaderboard and a public profile\. On by default — turn it off to appear as “Private spotter”\./.test(html));
+    check('the switch says it is on by default and how to turn it off', /Show my name, photo and ride counts on the Community leaderboard and a public profile\. On by default\. Turn it off to appear as “Private spotter”\./.test(html));
     check('the page sends leaderboard_opt_in from the switch, and keeps profile_visibility as it was', /leaderboard_opt_in: isPublic/.test(html) && /profile_visibility: currentUser\.profile_visibility === 'public'/.test(html));
     check('opted in without a username: a prompt to set one', /id="communityHandleHint"[^>]*>Set a username to get a public profile page\./.test(html));
     const privacy = read('public/privacy.html');

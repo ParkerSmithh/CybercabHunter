@@ -76,7 +76,7 @@
       ? `Recorded in: ${h.service_areas.split(',').join(', ')}.`
       : 'No service area recorded for these rides yet.';
 
-    document.title = `${v.license_plate || 'Vehicle'} — Cybercab Hunter`;
+    document.title = `${v.license_plate || 'Vehicle'} | Cybercab Hunter`;
   }
 
   async function load(vehicleId) {

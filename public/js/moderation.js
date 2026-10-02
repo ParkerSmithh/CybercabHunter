@@ -85,7 +85,7 @@
     if (s.approx_location) details.push(`Near: ${esc(s.approx_location)}`);
     const vehicleLine = s.robotaxi_vehicle_id
       ? `<a href="vehicle/${esc(s.robotaxi_vehicle_id)}" class="text-cyan hover:underline" target="_blank" rel="noopener">Linked to an existing registry vehicle →</a>`
-      : '<span class="text-slate-500">No matching vehicle in the registry — plate is unrecognized</span>';
+      : '<span class="text-slate-500">No matching vehicle in the registry. Plate is unrecognized</span>';
 
     return `<div class="glass rounded-2xl p-6 [overflow-wrap:anywhere]" data-submission-id="${esc(s.submission_id)}">
       <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
@@ -114,7 +114,7 @@
           <img data-sighting-photo="${esc(s.submission_id)}" alt="Submitted sighting photo" class="hidden w-full h-full object-cover">
         </a>
         <div class="mod-photo-shade absolute inset-0 bg-black/55"></div>
-        <button type="button" data-action="delete-photo" ${busy.has(s.submission_id) ? 'disabled' : ''} aria-label="Delete this photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
+        <button type="button" data-action="delete-photo" ${busy.has(s.submission_id) ? 'disabled' : ''} aria-label="Delete this photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-paper shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
       </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(s.license_plate || 'Plate not given')}</div>
       <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
@@ -145,7 +145,7 @@
           <img data-sighting-photo="${esc(a.submission_id)}" alt="Approved sighting photo" class="hidden w-full h-full object-cover">
         </a>
         <div class="mod-photo-shade absolute inset-0 bg-black/55"></div>
-        <button type="button" data-approved-action="delete-photo" ${busy.has(a.submission_id) ? 'disabled' : ''} aria-label="Delete this approved photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
+        <button type="button" data-approved-action="delete-photo" ${busy.has(a.submission_id) ? 'disabled' : ''} aria-label="Delete this approved photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-paper shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
       </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(a.license_plate || 'Plate not given')}</div>
       <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
@@ -350,7 +350,7 @@
       // moderator could try to act on again.
       queue = queue.filter(s => s.submission_id !== submissionId);
       renderQueue();
-      CCC.toast('That sighting was already reviewed — removed from the queue.', 'info');
+      CCC.toast('That sighting was already reviewed. Removed from the queue.', 'info');
       return;
     }
     if (resp.status === 400) {
@@ -374,7 +374,7 @@
   function approvedMessage(json, base) {
     const map = json && json.map;
     if (!map) return base + '.';
-    return map.on_map ? `${base} — on the Zones map ✓` : `${base}. It couldn't be placed on the Zones map — use Add to map below.`;
+    return map.on_map ? `${base}. On the Zones map ✓` : `${base}. It couldn't be placed on the Zones map. Use Add to map below.`;
   }
 
   async function promote(submissionId) {
@@ -397,12 +397,12 @@
     if (resp.status === 409 && error === 'already_reviewed') {
       queue = queue.filter(s => s.submission_id !== submissionId);
       renderQueue();
-      CCC.toast('That sighting was already reviewed — removed from the queue.', 'info');
+      CCC.toast('That sighting was already reviewed. Removed from the queue.', 'info');
       return;
     }
     if (resp.status === 409 && error === 'vehicle_exists') {
       renderQueue();
-      CCC.toast('A registry vehicle with that plate already exists — approve the sighting instead.', 'error');
+      CCC.toast('A registry vehicle with that plate already exists. Approve the sighting instead.', 'error');
       loadQueue(false);
       return;
     }
@@ -419,7 +419,7 @@
 
     queue = queue.filter(s => s.submission_id !== submissionId);
     renderQueue();
-    CCC.toast(approvedMessage(resp.json, 'Added to the registry as a private vehicle — find it under Registry Vehicles'), 'success');
+    CCC.toast(approvedMessage(resp.json, 'Added to the registry as a private vehicle. Find it under Registry Vehicles'), 'success');
     loadVehicles();
     loadApproved();
   }
@@ -502,12 +502,12 @@
       return { badge: 'Public', line: 'Visible on the public registry.', cls: 'text-emerald-400' };
     }
     if (v.visibility === 'public') {
-      return { badge: 'Approved — Not Visible', line: 'Not Eligible: approved, but hidden from the public while the reasons below apply.', cls: 'text-amber-400' };
+      return { badge: 'Approved: Not Visible', line: 'Not Eligible: approved, but hidden from the public while the reasons below apply.', cls: 'text-amber-400' };
     }
     if (state === 'eligible_for_approval') {
-      return { badge: 'Private — Needs Review', line: 'Eligible for Approval', cls: 'text-cyan' };
+      return { badge: 'Private: Needs Review', line: 'Eligible for Approval', cls: 'text-cyan' };
     }
-    return { badge: 'Private — Needs Review', line: 'Not Eligible', cls: 'text-amber-400' };
+    return { badge: 'Private: Needs Review', line: 'Not Eligible', cls: 'text-amber-400' };
   }
 
   function reviewLine(v) {
@@ -557,7 +557,7 @@
     return `<div class="mt-3 pt-3 border-t border-[rgba(212,175,55,0.1)]">
       <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Cybercab verification</div>
       <a href="${esc(ROBOTAXI_TRACKER_URL)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">Check Robotaxi Tracker →</a>
-      <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below, then approve. If it's shown as a Model Y (or anything else), use Delete Vehicle instead — there is no separate rejection step.</div>
+      <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below, then approve. If it's shown as a Model Y (or anything else), use Delete Vehicle instead. There is no separate rejection step.</div>
       ${vinRow}
       <button type="button" data-vehicle-action="approve-cybercab" ${approveDisabled ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve Cybercab'}</button>
     </div>`;
@@ -711,7 +711,7 @@
       pendingReview.delete(vehicleId);
       vehicles = vehicles.filter(v => v.id !== vehicleId);
       renderVehicles();
-      CCC.toast('That vehicle no longer exists — removed from the list.', 'info');
+      CCC.toast('That vehicle no longer exists. Removed from the list.', 'info');
       return;
     }
     if (resp.status === 409) {
@@ -721,7 +721,7 @@
       renderVehicles();
       if (json.error === 'not_eligible') {
         const why = (json.blocking_reasons || []).map(c => label(REASON_LABELS, c)).join(', ');
-        CCC.toast(`Not approved — not eligible${why ? ': ' + why : ''}.`, 'error');
+        CCC.toast(`Not approved. Not eligible${why ? ': ' + why : ''}.`, 'error');
       } else {
         CCC.toast(json.error === 'already_public' ? 'That vehicle is already public.' : 'That vehicle is already private.', 'info');
       }
@@ -776,7 +776,7 @@
     if (resp.status === 404) {
       vehicles = vehicles.filter(v => v.id !== vehicleId);
       renderVehicles();
-      CCC.toast('That vehicle no longer exists — removed from the list.', 'info');
+      CCC.toast('That vehicle no longer exists. Removed from the list.', 'info');
       return;
     }
     if (resp.status === 409) {
@@ -789,7 +789,7 @@
     }
     if (!resp.ok || !json.vehicle) {
       renderVehicles();
-      CCC.toast(json.error === 'invalid_vin' ? "That doesn't look like a valid VIN — check it and try again." : "Couldn't save that VIN. Please try again.", 'error');
+      CCC.toast(json.error === 'invalid_vin' ? "That doesn't look like a valid VIN. Check it and try again." : "Couldn't save that VIN. Please try again.", 'error');
       return;
     }
     replaceVehicle(json.vehicle);
@@ -821,7 +821,7 @@
     if (resp.status === 404) {
       vehicles = vehicles.filter(v => v.id !== vehicleId);
       renderVehicles();
-      CCC.toast('That vehicle no longer exists — removed from the list.', 'info');
+      CCC.toast('That vehicle no longer exists. Removed from the list.', 'info');
       return;
     }
     if (!resp.ok) {
@@ -831,7 +831,7 @@
     }
     vehicles = vehicles.filter(v => v.id !== vehicleId);
     renderVehicles();
-    CCC.toast('Vehicle and its ride history removed — the receipt can be resent.', 'success');
+    CCC.toast('Vehicle and its ride history removed. The receipt can be resent.', 'success');
   }
 
   function setupVehicleActions() {

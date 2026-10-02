@@ -68,7 +68,7 @@
   // over it, then the plate, the place and the exact time. Fields that weren't
   // provided are simply left out.
   function card(s) {
-    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col border border-white/[0.06] hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-20px_rgba(212,175,55,0.45)] transition-all duration-300');
+    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
@@ -84,25 +84,12 @@
     open.appendChild(img);
     const frame = el('div', 'relative');
     frame.appendChild(open);
-    // Over the photo (not interactive): a soft fade, the city and how long ago.
-    frame.appendChild(el('div', 'pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent'));
-    const overlay = el('div', 'pointer-events-none absolute top-2 left-2 right-2 flex items-start justify-between gap-2');
-    if (s.city) overlay.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wider', s.city));
-    if (s.cybercab) overlay.appendChild(el('span', 'ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
-    frame.appendChild(overlay);
-    const since = ago(s.spotted_at);
-    if (since) {
-      const badge = el('span', 'pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white/90');
-      badge.innerHTML = CLOCK;
-      badge.appendChild(document.createTextNode(since));
-      frame.appendChild(badge);
-    }
     // Moderators only: hovering darkens the photo and shows a red Delete
     // button. Nothing is added to the page for anyone else.
     if (isModerator) {
       frame.classList.add('mod-photo');
       frame.appendChild(el('div', 'mod-photo-shade absolute inset-0 bg-black/55'));
-      const del = el('button', 'mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-white shadow-lg hover:brightness-110 focus-visible:ring-2 focus-visible:ring-white', 'Delete');
+      const del = el('button', 'mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-paper shadow-lg hover:brightness-110 focus-visible:ring-2 focus-visible:ring-white', 'Delete');
       del.type = 'button';
       del.setAttribute('aria-label', 'Delete this photo');
       del.addEventListener('click', () => deletePhoto(s.id, article, del));
@@ -111,6 +98,19 @@
     article.appendChild(frame);
 
     const body = el('div', 'p-3.5 flex flex-col gap-2');
+    // Facts sit below the photo, never on it: the city, the Cybercab badge,
+    // and how long ago it was spotted.
+    const since = ago(s.spotted_at);
+    const meta = el('div', 'flex items-center gap-2 flex-wrap');
+    if (s.city) meta.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wider', s.city));
+    if (s.cybercab) meta.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
+    if (since) {
+      const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-slate-400');
+      badge.innerHTML = CLOCK;
+      badge.appendChild(document.createTextNode(since));
+      meta.appendChild(badge);
+    }
+    if (meta.childNodes.length) body.appendChild(meta);
     // The plate, styled like one.
     if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)]', s.plate));
     if (s.location) {
@@ -209,7 +209,7 @@
     $('statMonthLabel').textContent = monthName ? `Sightings in ${monthName}` : 'Sightings this month';
     const peak = ok && stats.peak_hour;
     if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
-      $('statPeakHour').textContent = `${fmtHour(peak.hour)} – ${fmtHour((peak.hour + 1) % 24)}`;
+      $('statPeakHour').textContent = `${fmtHour(peak.hour)} - ${fmtHour((peak.hour + 1) % 24)}`;
       // Over ALL sightings, not one day: say so ("3 of 16 sightings since Sep 29").
       const since = fmtDay(stats.first_day);
       $('statPeakCount').textContent = isCount(stats.total) && stats.total >= peak.count

@@ -112,7 +112,7 @@ async function run() {
     const card = byPlate('AWT0001');
     check('an awaiting vehicle is listed with its plate', card.dataset.vehicleId === a && /AWT0001/.test(card.textContent));
     check('it shows its counted-ride count', /2 counted rides/.test(card.textContent));
-    check('it is labelled "Private — Needs Review" and "Eligible for Approval"', /Private — Needs Review/.test(card.textContent) && /Eligible for Approval/.test(card.textContent) && card.dataset.approvalState === 'eligible_for_approval');
+    check('it is labelled "Private: Needs Review" and "Eligible for Approval"', /Private: Needs Review/.test(card.textContent) && /Eligible for Approval/.test(card.textContent) && card.dataset.approvalState === 'eligible_for_approval');
     check('there is no ordinary "Approve" action anymore — only Approve Cybercab (in the Cybercab verification panel), disabled until a vin is on file', !card.querySelector('button[data-vehicle-action="approve"]') && !!card.querySelector('button[data-vehicle-action="approve-cybercab"]') && card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled && !card.querySelector('a[href^="vehicle/"]'));
     check('a vehicle with no counted rides is ALSO listed now: "Private" is every private vehicle, not just approval candidates', !!byPlate('NORIDES'));
     check('the sighting queue above is unaffected', page.sightingCards().length === 0);
@@ -158,7 +158,7 @@ async function run() {
     scope.value = 'private';
     scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
     await page.waitFor(() => page.cards().length === 1, 'switch back to "Private" to see it again');
-    check('back in "Private" it shows private again with its audit line, and no public-page link', /Private — Needs Review/.test(page.cards()[0].textContent) && /Last review: Returned to private by/.test(page.cards()[0].textContent) && !page.cards()[0].querySelector('a[href^="vehicle/"]'));
+    check('back in "Private" it shows private again with its audit line, and no public-page link', /Private: Needs Review/.test(page.cards()[0].textContent) && /Last review: Returned to private by/.test(page.cards()[0].textContent) && !page.cards()[0].querySelector('a[href^="vehicle/"]'));
   }
 
   console.log('4. Not eligible: the reasons are plain facts and there is no approve button');
@@ -186,7 +186,7 @@ async function run() {
     page.d.getElementById('modVehicleScope').dispatchEvent(new page.w.Event('change', { bubbles: true }));
     await page.waitFor(() => page.cards().length === 1, 'public list');
     const card = page.cards()[0];
-    check('an approved-but-ineligible vehicle says plainly it is hidden, with the reason', /Approved — Not Visible/.test(card.textContent) && /Not Eligible: approved, but hidden from the public/.test(card.textContent) && /No counted rides/.test(card.textContent));
+    check('an approved-but-ineligible vehicle says plainly it is hidden, with the reason', /Approved: Not Visible/.test(card.textContent) && /Not Eligible: approved, but hidden from the public/.test(card.textContent) && /No counted rides/.test(card.textContent));
     check('it offers Return to Private and no public-page link', !!card.querySelector('button[data-vehicle-action="return"]') && !card.querySelector('a'));
   }
   {
@@ -311,7 +311,7 @@ async function run() {
     check('an uncounted (needs_review) ride is not in the numbers', /3 counted rides/.test(text));
     check('first and latest counted ride dates are shown as calendar dates, not shifted by timezone', /First counted ride: Jan 1, 2026/.test(text) && /Latest counted ride: Jun 9, 2026/.test(text));
     check('the registry record dates are shown (created / last receipt activity)', /Vehicle record created/.test(text) && /Last receipt activity/.test(text));
-    check('the card still shows plate, visibility and the approval state', /PRV0001/.test(text) && /Private — Needs Review/.test(text) && /Eligible for Approval/.test(text));
+    check('the card still shows plate, visibility and the approval state', /PRV0001/.test(text) && /Private: Needs Review/.test(text) && /Eligible for Approval/.test(text));
     check('the existing record status field is shown, labelled as a field', /Record field verification_status: unverified/.test(text));
     check('a first-seen timestamp is shown alongside created / last activity', /First seen/.test(text));
     check('approval is still offered (Approve Cybercab, enabled — this vehicle already has a vin)', !!card.querySelector('button[data-vehicle-action="approve-cybercab"]') && !card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
