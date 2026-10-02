@@ -21,7 +21,10 @@ function open(url) {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
   const w = dom.window;
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
-  w.fetch = async () => new Response('{}', { status: 404 });
+  // The live fleet/fare stats (GET /api/fleet-stats); everything else 404s.
+  w.fetch = async u => (String(u).startsWith('/api/fleet-stats')
+    ? Response.json({ city: 'austin', cybercabs: 45, active_cybercabs: 12, active_window_days: 30, fares: { rides: 6, min_rides: 5, median_fare: 12.5, average_fare: 13.78, per_mile: 3.1, median_miles: 4, computed_at: '2026-09-30T11:00:00Z', sources: ['cybercabhunter_rides'] } })
+    : new Response('{}', { status: 404 }));
   let error = null;
   try { w.eval(COMBINED); } catch (e) { error = e; }
   const d = w.document;
@@ -59,6 +62,7 @@ async function run() {
     const revenue = Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, ''));
     check('Fleet ROI: changing the inputs recomputes the revenue', revenue > 0);
     p.d.getElementById('simTabEta').click();
+    await new Promise(r => setTimeout(r, 30));   // the live fleet stats load
     p.set('tripMiles', 6);
     check('Fleet ETA: changing trip distance recomputes the fare', /^\$\d+\.\d\d$/.test(p.d.getElementById('cybercabFare').textContent) && p.d.getElementById('cybercabFare').textContent !== '$0.00');
   }

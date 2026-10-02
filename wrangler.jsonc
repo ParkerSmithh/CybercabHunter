@@ -18,7 +18,9 @@
 	// Polls connected Gmail accounts for new receipts (worker/gmail.js). A
 	// no-op until the GMAIL_* secrets are set.
 	"triggers": {
-		"crons": ["*/10 * * * *"]
+		// Every 10 min: Gmail sync + photo expiry. Daily 11:00 UTC: Fleet & Fares
+		// recompute (worker/fleet-stats.js FLEET_STATS_CRON — keep the two equal).
+		"crons": ["*/10 * * * *", "0 11 * * *"]
 	},
 	"kv_namespaces": [
 		{

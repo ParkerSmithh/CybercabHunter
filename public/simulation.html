@@ -236,7 +236,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Cybercabs</label>
-            <input type="number" id="cybercabCount" min="0" max="500" step="1" value="45" readonly class="font-display font-bold text-gold text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
+            <input type="number" id="cybercabCount" min="0" max="500" step="1" value="" placeholder="—" title="Austin Cybercabs with an approved sighting or a logged ride in the last 30 days" readonly class="font-display font-bold text-gold text-lg bg-transparent w-16 text-right outline-none border-b border-transparent cursor-default">
           </div>
         </div>
         <div>
@@ -281,8 +281,8 @@
         <div class="glass rounded-2xl p-7">
           <div class="text-xs uppercase tracking-wider text-gold font-semibold mb-4 pb-3 border-b border-[rgba(212,175,55,0.12)]">Cybercab ETA</div>
           <div class="font-display font-black text-5xl tabular-nums"><span id="cybercabEta">0.0</span><span class="text-base text-slate-500 font-medium ml-1">min</span></div>
-          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="cybercabFare" class="font-semibold text-gold">$0.00</span></div>
-          <div class="text-[11px] text-slate-500 mt-1">$3 fee per ride + $1.40 per mile</div>
+          <div class="text-sm text-slate-400 mt-3">Est. fare <span id="cybercabFare" class="font-semibold text-gold">—</span> <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">estimate</span></div>
+          <div id="cybercabFareNote" class="text-[11px] text-slate-500 mt-1">Loading fare data…</div>
           <div id="cybercabRadar" class="radar-sweep w-full h-64 mt-6"><img src="images/Cybercab.png" alt="Cybercab" class="radar-vehicle-img"></div>
         </div>
         <div class="glass rounded-2xl p-7">
@@ -708,7 +708,7 @@
     let demand = 1.0;
 
     // Count up the locked fleet stats on page load, like the homepage stats bar.
-    CCC.animateCounter(cybercabCount, 0, parseInt(cybercabCount.value, 10), 1400);
+    // The Cybercab count is live (loadFleetStats below).
     CCC.animateCounter(modelyCount, 0, parseInt(modelyCount.value, 10), 1400);
     CCC.animateCounter(radius, 0, parseInt(radius.value, 10), 1400);
 
@@ -736,7 +736,9 @@
       const ccEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: cc, demandFactor: demand });
       const myEta = CCC_CALC.dispatchETA({ areaSqMi: area, fleetSize: my, demandFactor: demand });
 
-      if (cc <= 0) {
+      if (!isFinite(cc)) {
+        document.getElementById('cybercabEta').textContent = '—';   // no live fleet count
+      } else if (cc <= 0) {
         document.getElementById('cybercabEta').textContent = '0.0';
       } else {
         CCC.animateCounter(document.getElementById('cybercabEta'), isFinite(lastCybercabEta) ? lastCybercabEta : 0, ccEta, 700, v => v.toFixed(1));
@@ -746,11 +748,46 @@
       } else {
         CCC.animateCounter(document.getElementById('modelyEta'), isFinite(lastModelyEta) ? lastModelyEta : 0, myEta, 700, v => v.toFixed(1));
       }
-      lastCybercabEta = ccEta; lastModelyEta = myEta;
+      lastCybercabEta = isFinite(cc) ? ccEta : 0; lastModelyEta = myEta;
 
       const fare = miles <= 0 ? 0 : CCC_CALC.estimateFare({ tripMiles: miles, baseFare: 3.00 });
-      document.getElementById('cybercabFare').textContent = '$' + fare.toFixed(2);
       document.getElementById('modelyFare').textContent = '$' + fare.toFixed(2);
+      const live = liveFareEstimate(miles);
+      document.getElementById('cybercabFare').textContent = live == null ? '—' : '$' + live.toFixed(2);
+    }
+
+    // ---- Live fare model (GET /api/fleet-stats, worker/fleet-stats.js) ----
+    // ESTIMATE = trip miles × the average of two real per-mile rates:
+    //   per_mile                    total fares ÷ total miles of logged rides
+    //   median_fare ÷ median_miles  what a typical ride costs per its typical
+    //                               distance — the median-fare sanity anchor
+    // Without a fare model (too few rides) or a trip distance: no estimate ("—").
+    let fareModel = null;
+    function liveFareEstimate(miles) {
+      if (!fareModel || !(miles > 0)) return null;
+      const { per_mile: perMile, median_fare: medianFare, median_miles: medianMiles } = fareModel;
+      if (!(perMile > 0) || !(medianFare > 0) || !(medianMiles > 0)) return null;
+      return Math.round(miles * ((perMile + medianFare / medianMiles) / 2) * 100) / 100;
+    }
+
+    function loadFleetStats() {
+      const note = document.getElementById('cybercabFareNote');
+      fetch('/api/fleet-stats?city=austin')
+        .then(r => (r.ok ? r.json() : null))
+        .catch(() => null)
+        .then(data => {
+          if (data && Number.isFinite(data.active_cybercabs)) {
+            cybercabCount.value = String(data.active_cybercabs);
+            CCC.animateCounter(cybercabCount, 0, data.active_cybercabs, 1400);
+          }
+          const f = data && data.fares;
+          fareModel = f && f.per_mile != null ? f : null;
+          const date = f && f.computed_at ? new Date(f.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
+          note.textContent = fareModel
+            ? `From ${f.rides} logged rides · data from ${date}`
+            : (f ? `Not enough ride data yet (${f.rides} of ${f.min_rides} rides)` : 'Fare data unavailable');
+          recompute();
+        });
     }
 
     linkSliderAndNumber(tripMiles, document.getElementById('tripMilesLabel'));
@@ -764,6 +801,7 @@
     });
 
     recompute();
+    loadFleetStats();
   })();
 </script>
 </body>

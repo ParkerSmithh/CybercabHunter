@@ -132,21 +132,23 @@
         <dl class="grid grid-cols-2 gap-2">
           <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
             <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Cybercabs</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="fleetCountOut">0</span></dd>
+            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="fleetCountOut">—</span></dd>
           </div>
           <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
             <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Median Fare</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums">$<span id="medianFareOut">0.00</span></dd>
+            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="medianFareOut">—</span></dd>
           </div>
           <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
             <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Avg Fare</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums">$<span id="avgFareOut">0.00</span></dd>
+            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="avgFareOut">—</span></dd>
           </div>
           <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
             <dt class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Per Mile</dt>
-            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums">$<span id="perMileOut">0.00</span></dd>
+            <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="perMileOut">—</span></dd>
           </div>
         </dl>
+        <!-- Sample size and freshness of the fare stats (GET /api/fleet-stats). -->
+        <p id="fareBasis" class="text-[11px] text-slate-500 mt-2"></p>
       </div>
 
       <div id="dallasContent" class="hidden mt-5">
@@ -292,10 +294,45 @@
 
   // Count up the zone stats on page load, like the homepage stats bar.
   CCC.animateCounter(document.getElementById('coverageOut'), 0, 264, 1400);
-  CCC.animateCounter(document.getElementById('fleetCountOut'), 0, 45, 1400);
-  CCC.animateCounter(document.getElementById('medianFareOut'), 0, 8.77, 1400, v => v.toFixed(2));
-  CCC.animateCounter(document.getElementById('avgFareOut'), 0, 10.81, 1400, v => v.toFixed(2));
-  CCC.animateCounter(document.getElementById('perMileOut'), 0, 3.53, 1400, v => v.toFixed(2));
+
+  // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
+  // The Cybercab count is the public Austin registry; the fares come from
+  // riders' logged rides on public vehicles. A stat without enough data shows
+  // "—" (never a made-up number), with a tooltip saying why.
+  (function loadFleetStats() {
+    const NO_DATA = 'Not enough ride data yet';
+    const money = v => '$' + v.toFixed(2);
+    function set(id, value, fmt, why) {
+      const el = document.getElementById(id);
+      if (typeof value === 'number' && isFinite(value)) {
+        el.removeAttribute('title');
+        CCC.animateCounter(el, 0, value, 1400, fmt);
+      } else {
+        el.textContent = '—';
+        el.title = why;
+      }
+    }
+    function fill(data) {
+      const f = (data && data.fares) || {};
+      set('fleetCountOut', data ? data.cybercabs : null, v => String(Math.round(v)), 'Fleet count unavailable');
+      set('medianFareOut', f.median_fare, money, NO_DATA);
+      set('avgFareOut', f.average_fare, money, NO_DATA);
+      set('perMileOut', f.per_mile, money, NO_DATA);
+      const basis = document.getElementById('fareBasis');
+      if (data && typeof f.rides === 'number') {
+        const updated = f.computed_at ? new Date(f.computed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
+        basis.textContent = f.median_fare == null
+          ? `Fares need at least ${f.min_rides || 5} logged rides — ${f.rides} so far${updated ? ' · updated ' + updated : ''}`
+          : `Based on ${f.rides} ride${f.rides === 1 ? '' : 's'}${updated ? ' · updated ' + updated : ''}`;
+      } else {
+        basis.textContent = '';
+      }
+    }
+    fetch('/api/fleet-stats?city=austin')
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then(fill);
+  })();
 
   // ---- City selector ----
   const cityBtns = document.querySelectorAll('.city-btn');

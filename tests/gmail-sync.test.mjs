@@ -872,7 +872,8 @@ async function run() {
     const mig = fs.readFileSync(`${ROOT}migrations/0016_gmail_sync_cursor.sql`, 'utf8').replace(/^--.*$/gm, '').trim();
     check('migration 0016 only adds one nullable column', mig === 'ALTER TABLE gmail_connections ADD COLUMN sync_cursor TEXT;');
     const cfg = fs.readFileSync(`${ROOT}wrangler.jsonc`, 'utf8');
-    check('the cron is still every 10 minutes', /"crons":\s*\["\*\/10 \* \* \* \*"\]/.test(cfg));
+    // (A separate daily trigger, worker/fleet-stats.js, may follow it; Gmail runs on the 10-minute one.)
+    check('the cron is still every 10 minutes', /"crons":\s*\["\*\/10 \* \* \* \*"[\],]/.test(cfg));
     const g2 = fs.readFileSync(`${ROOT}worker/gmail.js`, 'utf8');
     check('scope, token key and account check unchanged', /export const GMAIL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/gmail\.readonly';/.test(g2) && /key: env\.GMAIL_TOKEN_ENCRYPTION_KEY/.test(g2) && /profile\.sub !== saved\.google_sub/.test(g2));
     check('Gmail still enters the existing pipeline as gmail_api', /processReceiptMessage\(env, parsed, 'gmail_api'/.test(g2) && /parseRawEmail\(/.test(g2));

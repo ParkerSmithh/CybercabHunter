@@ -190,7 +190,7 @@ async function run() {
     let data = [det('65', '2026-09-30T01:24:33Z', { camera_name: 'MARTIN LUTHER KING JR BLVD / TRINITY ST', lat: 30.279638, lng: -97.734512 }), det('7', '2026-09-30T00:10:00Z', { image_url: null })];
     let fail = false;
     const p = await page(() => (fail ? Promise.reject(new TypeError('down')) : Promise.resolve(new Response(JSON.stringify(data), { status: 200 }))));
-    check('it fetches the same-origin /api/camera-sightings', p.calls[0] === '/api/camera-sightings');
+    check('it fetches the same-origin /api/camera-sightings', p.calls.includes('/api/camera-sightings'));
     check('one marker per camera', p.live().length === 2);
     const m65 = p.live().find(m => m.popup.html.includes('TRINITY'));
     check('the marker sits at the camera: [lng, lat], anchored center', m65.ll[0] === -97.734512 && m65.ll[1] === 30.279638 && m65.anchor === 'center');

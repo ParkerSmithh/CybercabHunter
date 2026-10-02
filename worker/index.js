@@ -15,6 +15,7 @@ import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile } from './community.js';
 import { apiDeleteAccount } from './account.js';
+import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -339,6 +340,11 @@ export default {
       return withCors(await apiGetPublicSightingPhoto(request, env, sightingPhotoMatch[1]), request);
     }
 
+    // Live Fleet & Fares stats (worker/fleet-stats.js): public, edge-cached.
+    if (url.pathname === '/api/fleet-stats' && request.method === 'GET') {
+      return withCors(await apiFleetStats(request, env, ctx), request);
+    }
+
     // Community page (worker/community.js): the leaderboard and public rider
     // profiles. Public GETs; only opted-in riders are ever identified.
     if (url.pathname === '/api/community/leaderboard' && request.method === 'GET') {
@@ -495,6 +501,11 @@ export default {
   // configured (GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET /
   // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
   async scheduled(controller, env, ctx) {
+    // Daily: recompute the stored Fleet & Fares model (worker/fleet-stats.js).
+    if (controller && controller.cron === FLEET_STATS_CRON) {
+      ctx.waitUntil(recomputeFleetStats(env).catch(() => {}));
+      return;
+    }
     ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));
     // Sighting photos are kept 30 days (worker/sightings-public.js); a small
     // bounded batch per run, independent of the Gmail sync above.
