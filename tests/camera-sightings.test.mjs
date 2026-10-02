@@ -177,7 +177,8 @@ async function run() {
     w.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
     const calls = [];
     w.fetch = async u => { calls.push(String(u)); return responder(String(u)); };
-    const script = [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('chargingLocations'));
+    // The page script, after the shared charging/camera features it calls (js/austin-map.js).
+    const script = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8') + '\n' + [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map)'));
     w.eval(script);
     await new Promise(r => setTimeout(r, 20));
     const cams = () => markers.filter(m => m.el.className === 'camera-cybercab');   // every camera marker ever created
@@ -232,6 +233,34 @@ async function run() {
       /Charging Locations Cybercabs/.test(legend) && entry && entry.firstElementChild.tagName === 'IMG' && entry.firstElementChild.getAttribute('src') === 'images/CybercabOverhead.png' && entry.firstElementChild.getAttribute('width') === '18');
     check('the legend row wraps on narrow screens (flex-wrap)', entry.parentElement.classList.contains('flex-wrap'));
     check('the icon file exists where the page references it', fs.existsSync(`${ROOT}public/images/CybercabOverhead.png`));
+  }
+
+  console.log('8. Homepage minimap: interactive, with the Zones map\'s features');
+  {
+    const INDEX = fs.readFileSync(`${ROOT}public/index.html`, 'utf8');
+    const dom = new JSDOM('<!doctype html><body><div id="zoneMap-austin"></div></body>', { runScripts: 'outside-only', url: 'https://cybercabhunter.com/' });
+    const w = dom.window;
+    const made = { maps: [], markers: [], controls: [] };
+    class Marker { constructor(o) { this.el = o.element; } setLngLat(ll) { this.ll = ll; return this; } setPopup(p) { this.popup = p; return this; } getPopup() { return this.popup; } addTo() { made.markers.push(this); return this; } remove() { this.removed = true; } }
+    class Popup { constructor(o) { this.o = o; } setHTML(h) { this.html = h; return this; } }
+    w.maplibregl = {
+      Map: class { constructor(o) { this.o = o; made.maps.push(this); this.touchZoomRotate = { disableRotation: () => { this.noTouchRotate = true; } }; } on() {} addControl(c, pos) { made.controls.push({ c, pos }); } },
+      NavigationControl: class { constructor(o) { this.o = o; } }, Marker, Popup, LngLatBounds: class { extend() { return this; } }
+    };
+    w.ResizeObserver = class { observe() {} };
+    w.setInterval = () => 0;
+    w.fetch = async () => new Response(JSON.stringify([{ camera_id: '65', camera_name: 'MLK / TRINITY', lat: 30.28, lng: -97.73, observed_at: '2026-09-30T01:24:33Z', image_url: null }]));
+    const mapScript = INDEX.slice(INDEX.indexOf('  // ---- Austin Robotaxi service zone (Tesla'), INDEX.indexOf('  // ---- Home Austin/Dallas selector'));
+    w.eval(`${fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8')}\n${mapScript}`);
+    await new Promise(r => setTimeout(r, 30));
+    const o = made.maps[0] && made.maps[0].o;
+    check('the homepage map is interactive (no longer interactive:false)', o && o.interactive !== false);
+    check('cooperative gestures: page scrolling isn\'t hijacked; no rotation', o.cooperativeGestures === true && o.dragRotate === false && made.maps[0].noTouchRotate === true);
+    check('zoom buttons (bottom-right, clear of the info card) and the compact attribution', made.controls.some(c => c.pos === 'bottom-right' && c.c.o && c.c.o.showCompass === false) && o.attributionControl && o.attributionControl.compact === true);
+    check('the same charging pins as the Zones map', made.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html)).length === 2);
+    check('...and the camera-spotted Cybercabs', made.markers.some(m => m.el.className === 'camera-cybercab'));
+    check('the homepage loads the shared script', /<script src="js\/austin-map\.js\?v=1"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=1"><\/script>/.test(HTML));
+    w.close();
   }
 
   t.finish();

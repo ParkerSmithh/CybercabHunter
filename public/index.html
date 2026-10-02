@@ -345,6 +345,7 @@
 <script src="js/calc.js?v=3"></script>
 <script src="js/main.js?v=13"></script>
 <script src="js/home-stats.js?v=1"></script>
+<script src="js/austin-map.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -446,14 +447,23 @@
   function initZoneMap(containerId, cityName, cityCenter, zoneCoords) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    // An interactive minimap of the Zones page map: drag to pan; zoom with the
+    // + / − buttons, Ctrl/⌘ + scroll, or two fingers (cooperative gestures, so
+    // scrolling the page over the map scrolls the page instead of zooming it).
     const zoneMap = new maplibregl.Map({
       container: containerId,
       style: 'https://tiles.openfreemap.org/styles/fiord',
       center: zoneCoords[0],
       zoom: 9,
-      interactive: false,
-      attributionControl: false
+      cooperativeGestures: true,
+      dragRotate: false,
+      pitchWithRotate: false,
+      attributionControl: { compact: true }
     });
+    zoneMap.touchZoomRotate.disableRotation();
+    zoneMap.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    // The Zones map's charging pins and camera-spotted Cybercabs (js/austin-map.js).
+    if (window.CCCAustinMap) CCCAustinMap.addFeatures(zoneMap);
     zoneMap.on('load', () => {
       styleZoneBasemap(zoneMap);
 
