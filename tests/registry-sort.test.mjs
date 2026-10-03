@@ -92,7 +92,7 @@ async function run() {
     }
     const p = await open('https://cybercabhunter.com/vehicles');
     const select = p.d.getElementById('regSort');
-    check('a sort dropdown with Recently Used, Used Least Recently, Most Miles, Most Rides', [...select.options].map(o => o.textContent).join('|') === 'Recently Used|Used Least Recently|Most Miles|Most Rides' && select.value === 'recent');
+    check('a sort dropdown with Recently Used, Used Least Recently, Most Miles, Most Rides', [...select.options].map(o => o.textContent).join('|') === 'Recently used|Used least recently|Most miles|Most rides' && select.value === 'recent');
     check('the page asks for the most recently used first', p.calls[0].includes('sort=recent') && /DDD0004/.test(p.first()));
     select.value = 'most_miles';
     select.dispatchEvent(new p.w.Event('change', { bubbles: true }));

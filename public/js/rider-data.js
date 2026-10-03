@@ -127,12 +127,12 @@
 
     $('spendingList').innerHTML = list.map(s => `
       <div>
-        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total · ${esc(s.currency)}</div>
+        <div class="text-xs text-slate-500 mb-1">Total · ${esc(s.currency)}</div>
         <div class="font-display font-bold text-4xl mb-4">${esc(fmtMoney(s.totalCents, s.currency))}</div>
         <div class="grid grid-cols-3 gap-4 text-sm">
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Median fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.medianCents, s.currency))}</div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Average fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Free rides</div><div class="font-display font-bold text-lg">${esc(fmtInt(s.freeCount))}</div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Median fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.medianCents, s.currency))}</div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Average fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
+          <div><div class="text-slate-500 text-xs mb-1">Free rides</div><div class="font-display font-bold text-lg">${esc(fmtInt(s.freeCount))}</div></div>
         </div>
       </div>`).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
 
@@ -227,9 +227,9 @@
 
     $('ridesBody').innerHTML = trips.map(r => {
       const badges = [];
-      if (r.status === 'under_review') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300 uppercase tracking-wide" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
-      if (r.status === 'rejected') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson uppercase tracking-wide">Rejected</span>');
-      if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
+      if (r.status === 'under_review') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
+      if (r.status === 'rejected') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson">Rejected</span>');
+      if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
         <td class="py-3 pr-4 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>

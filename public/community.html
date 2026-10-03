@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=3"></script>
+<script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -25,13 +25,10 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
-      <div class="leading-tight">
-        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[11px] text-slate-400 tracking-[0.16em] font-semibold">HUNTER</div>
-      </div>
+      <div class="font-medium text-lg whitespace-nowrap">Cybercab Hunter</div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
@@ -39,10 +36,10 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla account</a>
       <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
-        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign in</a>
       </div>
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
@@ -82,15 +79,15 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
       <div class="min-w-0">
-        <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Riders &amp; Spotters</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
-        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
+        <p data-decrypt class="text-base font-medium text-gold">Riders &amp; spotters</p>
+        <h1 class="mt-2 font-display font-bold text-white text-[40px] leading-[1.02] sm:text-[52px] lg:text-[64px] tracking-[-0.03em]">Community</h1>
+        <p class="mt-3 max-w-2xl text-lg text-slate-400 leading-[1.4]">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
       </div>
 
       <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
            from the first character, only riders with a public profile. -->
       <div id="riderSearch" class="relative w-full lg:w-80 shrink-0">
-        <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Find riders</label>
+        <label for="riderSearchInput" class="block text-[11px] font-semibold text-slate-400 mb-1.5">Find riders</label>
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
           <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
@@ -107,22 +104,22 @@
          and stays one if it can't be loaded — never a made-up 0. -->
     <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Reviews</div>
+        <div class="text-[11px] font-semibold text-slate-400">Reviews</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statReviews">—</span></div>
         <div class="text-xs text-slate-500">Posted by signed-in riders</div>
       </div>
       <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Average rating</div>
+        <div class="text-[11px] font-semibold text-slate-400">Average rating</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statRating">—</span><span class="text-sm text-slate-500"> / 5</span></div>
         <div class="text-xs text-slate-500">Across all reviews</div>
       </div>
       <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Spotters</div>
+        <div class="text-[11px] font-semibold text-slate-400">Spotters</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statSpotters">—</span></div>
         <div class="text-xs text-slate-500">Credited with a discovery</div>
       </div>
       <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Public Cybercabs</div>
+        <div class="text-[11px] font-semibold text-slate-400">Public Cybercabs</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statVehicles">—</span></div>
         <div class="text-xs text-slate-500">In the public registry</div>
       </div>
@@ -140,7 +137,7 @@
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
           </span>
           <div>
-            <h2 data-split class="font-display font-bold text-lg tracking-wide leading-tight">REVIEWS</h2>
+            <h2 data-split class="font-display font-bold text-lg leading-tight">Reviews</h2>
             <p class="text-xs text-slate-500 mt-1">What riders say about the Cybercab.</p>
           </div>
         </div>
@@ -150,7 +147,7 @@
       <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07]">
         <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08]">
           <div id="reviewAverage" class="stat-value font-semibold text-5xl text-gold leading-none">—</div>
-          <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem]" aria-hidden="true"></div>
+          <div id="reviewAverageStars" class="text-gold text-lg mt-2 min-h-[1.5rem]" aria-hidden="true"></div>
           <div id="reviewCount" class="text-xs text-slate-500 mt-1">No reviews yet</div>
         </div>
         <ul id="reviewBreakdown" class="space-y-1.5" aria-label="Ratings breakdown">
@@ -165,7 +162,7 @@
 
       <!-- Write / edit: signed-in riders only (the server checks every write). -->
       <form id="reviewForm" class="hidden mt-5 p-4 rounded-xl border border-[rgba(212,175,55,0.2)] bg-white/[0.02] space-y-4" novalidate>
-        <h3 id="reviewFormTitle" class="font-display font-bold text-sm tracking-wide">WRITE A REVIEW</h3>
+        <h3 id="reviewFormTitle" class="font-display font-bold text-sm">Write a review</h3>
         <div>
           <label for="reviewVehicle" class="text-[13px] font-medium text-slate-300">Cybercab</label>
           <select id="reviewVehicle" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
@@ -174,7 +171,7 @@
           <p class="text-xs text-slate-500 mt-1.5">Vehicles in the public registry. One review per Cybercab; you can edit yours any time.</p>
         </div>
         <div>
-          <span id="reviewStarsLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rating</span>
+          <span id="reviewStarsLabel" class="text-xs font-semibold text-slate-400">Rating</span>
           <div id="reviewStars" role="radiogroup" aria-labelledby="reviewStarsLabel" class="mt-2 flex gap-1">
             <button type="button" role="radio" aria-checked="false" data-star="1" aria-label="1 star" class="review-star">★</button>
             <button type="button" role="radio" aria-checked="false" data-star="2" aria-label="2 stars" class="review-star">★</button>
@@ -189,7 +186,7 @@
           <p class="text-xs text-slate-500 text-right"><span id="reviewBodyCount">0</span> / 2000</p>
         </div>
         <div>
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Photos <span class="normal-case text-slate-500 font-normal">(optional, up to 3)</span></span>
+          <span class="text-xs font-semibold text-slate-400">Photos <span class="normal-case text-slate-500 font-normal">(optional, up to 3)</span></span>
           <div id="reviewPhotoList" class="mt-2 flex flex-wrap gap-2"></div>
           <label id="reviewPhotoAdd" for="reviewPhotos" class="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] text-xs font-semibold text-gold cursor-pointer hover:border-gold">Add photos</label>
           <input id="reviewPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
@@ -216,11 +213,11 @@
       <div id="reviewList" class="hidden mt-4"></div>
       <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(212,175,55,0.25)] bg-white/[0.02] p-8 text-center">
         <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
-        <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
+        <div class="mt-2 font-display font-bold text-gold">No reviews yet</div>
         <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
       </div>
       <div id="reviewError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold tracking-wide">WE COULDN'T LOAD REVIEWS</div>
+        <div class="font-display font-bold">We couldn't load reviews</div>
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
       <button type="button" id="reviewMore" class="hidden mt-4 w-full py-2.5 rounded-lg text-xs font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more reviews</button>
@@ -238,8 +235,8 @@
         </span>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline justify-between gap-3">
-            <h2 data-split id="boardTitle" class="font-display font-bold text-lg tracking-wide leading-tight">MOST VEHICLES DISCOVERED</h2>
-            <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 6</span>
+            <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight">Most vehicles discovered</h2>
+            <span class="shrink-0 text-[11px] font-semibold text-slate-500">Top 6</span>
           </div>
           <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
         </div>
@@ -253,11 +250,11 @@
       </div>
       <ol id="boardList" class="hidden mt-4 space-y-2"></ol>
       <div id="boardEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold text-gold tracking-wide">NO DISCOVERIES YET</div>
+        <div class="font-display font-bold text-gold">No discoveries yet</div>
         <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Be the first: ride in a Cybercab and add your receipt, or submit a sighting of one that isn't in the registry yet.</p>
       </div>
       <div id="boardError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold tracking-wide">WE COULDN'T LOAD THE LEADERBOARD</div>
+        <div class="font-display font-bold">We couldn't load the leaderboard</div>
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
       <!-- Totals over every credited spotter, not just the top 6 (js/community.js). -->
@@ -284,11 +281,11 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
+    <h2 class="font-display font-bold text-xl">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
-    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
+    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400"></span>
   </div>
   <div class="space-y-1 mb-6">
     <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
@@ -297,7 +294,7 @@
     </a>
     <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
       <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6"/> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10"/> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14"/> <path d="M4 20h14"/></svg>
-      Rider Data
+      Rider data
     </a>
   </div>
   <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
@@ -309,26 +306,26 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
     <p class="text-sm text-slate-400 mb-5">Sign in to submit a vehicle sighting.</p>
-    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign in</a>
   </div>
   <form id="sightingForm" class="space-y-5">
     <div>
       <span class="text-[13px] font-medium text-slate-300">Photo</span>
       <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
-        <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
+        <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload photo</span>
         <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
       </label>
       <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
       <p id="sightingPhotoError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / service area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from the supported service areas (GET /api/service-areas). -->
       <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a city</option>
@@ -347,12 +344,12 @@
       <p id="sightingLocError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
-      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>
@@ -364,7 +361,7 @@
       <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
     </div>
     <div>
-      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
@@ -388,7 +385,7 @@
     <div>
       <a href="index.html" class="inline-flex items-center gap-2.5">
         <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold tracking-tight">CYBERCAB HUNTER</span>
+        <span class="font-display font-bold tracking-tight">Cybercab Hunter</span>
       </a>
       <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
     </div>
@@ -414,12 +411,12 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/main.js?v=20"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=5"></script>
-<script src="js/reviews.js?v=3"></script>
+<script src="js/community.js?v=6"></script>
+<script src="js/reviews.js?v=4"></script>
 <script src="js/rider-search.js?v=2"></script>
 </body>
 </html>

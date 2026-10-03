@@ -150,18 +150,18 @@ console.log('6. DecryptedText (batch two)');
   await wait(300);
   const sr = e.querySelector('.decrypt-sr'), shown = e.querySelector('[aria-hidden="true"]');
   check('mid-run: screen readers get the real text, the scrambling copy is aria-hidden', sr && sr.textContent === 'Community spotted' && shown && shown.textContent.length === 'Community spotted'.length);
-  check('mid-run: it really scrambles, using only uppercase letters and digits (no symbols)', shown.textContent !== 'Community spotted' && [...shown.textContent].every((c, i) => c === 'Community spotted'[i] || /[A-Z0-9]/.test(c)) && shown.textContent[9] === ' ', shown.textContent);
+  check('mid-run: it really scrambles, using only letters (in each character\'s case) and digits, no symbols', shown.textContent !== 'Community spotted' && [...shown.textContent].every((c, i) => { const r = 'Community spotted'[i]; return c === r || (r === r.toLowerCase() ? /[a-z0-9]/ : /[A-Z0-9]/).test(c); }) && shown.textContent[9] === ' ', shown.textContent);
   check('...and resolves left to right (the start is already real)', shown.textContent.startsWith('Co'));
   await wait(900);
   check('after ~0.9s it is the real label again, as plain text (no extra spans)', e.textContent === 'Community spotted' && e.children.length === 0 && !e.style.width);
   check('it runs once: the element is observed a single time', p.observed.filter(x => x === e).length === 1);
-  const still = open('<p id="e" data-decrypt>Your Data</p>', { media: ['reduce'] });
+  const still = open('<p id="e" data-decrypt>Your data</p>', { media: ['reduce'] });
   still.CCC.initDecrypt();
   await wait(100);
-  check('reduced motion: the label is never touched', still.d.getElementById('e').innerHTML === 'Your Data' && still.observed.length === 0);
+  check('reduced motion: the label is never touched', still.d.getElementById('e').innerHTML === 'Your data' && still.observed.length === 0);
   const pages = ['index', 'sightings', 'community', 'rider-data', 'simulation', 'infrastructure'].map(f => read(`public/${f}.html`)).join('\n');
   const labels = [...pages.matchAll(/data-decrypt[^>]*>([^<]*)</g)].map(m => m[1]);
-  check('wired to the seven eyebrows that sit above a heading, and nothing else', labels.sort().join('|') === ['Community spotted', 'Investor tools', 'Riders &amp; Spotters', 'Service Area', 'Service Zone', 'Service Zone', 'Your Data'].sort().join('|'), labels.join('|'));
+  check('wired to the seven eyebrows that sit above a heading, and nothing else', labels.sort().join('|') === ['Community spotted', 'Investor tools', 'Riders &amp; spotters', 'Service area', 'Service zone', 'Service zone', 'Your data'].sort().join('|'), labels.join('|'));
 }
 
 console.log('7. ElasticSlider (batch two)');
@@ -292,7 +292,7 @@ console.log('11. Stepper (batch three)');
 console.log('12. Not added in batch three');
 {
   check('no carousel autoplay anywhere (no carousel was added: the vehicle page has no photo strip)', !/autoplay/i.test(MAIN + read('public/js/vehicle.js') + read('public/vehicle.html')));
-  check('no second grain layer: the existing static .bg-mesh grain is the only noise', (CSS.match(/feTurbulence/g) || []).length === 1);
+  check('no grain layer at all: the Bevel canvas is plain paper (the old .bg-mesh grain is retired)', !/feTurbulence/.test(CSS));
 }
 
 t.finish();

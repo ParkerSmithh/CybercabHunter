@@ -63,8 +63,8 @@
     $('riderReviews').innerHTML = recent.map(rv => `
       <article class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
         <div class="flex items-center justify-between gap-3">
-          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="text-xs font-display font-bold tracking-wide text-gold hover:underline">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
-          <span class="text-gold tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</span>
+          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="text-xs font-display font-bold text-gold hover:underline">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
+          <span class="text-gold" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</span>
         </div>
         <p class="mt-2 text-sm text-slate-300 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>
         <div class="mt-2 text-xs text-slate-500">${esc(fmtDay(rv.created_at))} · ${rv.like_count} ${rv.like_count === 1 ? 'like' : 'likes'} · ${rv.comment_count} ${rv.comment_count === 1 ? 'comment' : 'comments'}</div>
@@ -78,7 +78,7 @@
       const detail = [v.model, v.color, v.service_area].filter(Boolean).map(esc).join(' · ');
       return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[rgba(212,175,55,0.5)] transition-colors">
         <span class="min-w-0">
-          <span class="block font-display font-bold text-sm tracking-wide truncate">${esc(v.license_plate || 'Plate not listed')}</span>
+          <span class="block font-display font-bold text-sm truncate">${esc(v.license_plate || 'Plate not listed')}</span>
           ${detail ? `<span class="block text-xs text-slate-500 truncate">${detail}</span>` : ''}
         </span>
         <span class="shrink-0 text-slate-500" aria-hidden="true">&rsaquo;</span>

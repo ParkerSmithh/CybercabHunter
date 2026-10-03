@@ -1,11 +1,12 @@
-/* Cybercab Hunter design system: tokens, base, components, motion.
+/* Cybercab Hunter design system: Bevel ("morning metrics in cloudlight"),
+   adapted. See DESIGN.md at the repository root for the reference and the
+   three adaptations (dark default, gold accent, Cloudlight hero).
    Tailwind (CDN, configured once in js/theme.js) handles layout utilities;
    every color it uses is a token below, so one class reads right in both
-   themes. Reference: DESIGN.md (a dark canvas, one gold accent, white type,
-   uppercase display), adapted to the site's own gold and logo.
+   themes.
 
-   Fonts: Geist and Geist Mono (SIL Open Font License 1.1, Vercel), self-hosted
-   variable woff2 in /fonts. */
+   Type: the system SF stack (-apple-system), with the self-hosted Geist
+   (SIL Open Font License 1.1, Vercel) standing in off Apple devices. */
 
 @font-face{
   font-family:'Geist'; src:url('../fonts/geist-latin-wght.woff2') format('woff2');
@@ -17,89 +18,100 @@
 }
 
 /* ---------- Tokens (RGB channels, so Tailwind can add alpha) ----------
-   Dark is the default for everyone; light applies when <html data-theme="light">
-   (set by js/theme.js when the visitor picks Light, or System on a light device). Text tokens are
-   chosen for WCAG AA against --bg and --surface in each theme. */
+   Dark is the default for everyone; light (Bevel exactly: Paper White,
+   Cloud Card, Ink, Body Gray, Hero Sky) applies when <html data-theme="light">.
+   Small secondary text tokens pass WCAG AA on both the page and Cloud Card. */
 :root{
   color-scheme:dark;
-  --bg:9 11 15;            /* #090B0F off-black, cool */
-  --surface:17 20 26;      /* #11141A inputs, raised controls */
-  --surface-2:24 28 35;    /* #181C23 */
-  --ink:236 238 241;       /* #ECEEF1 off-white */
-  --n-50:244 245 247; --n-100:226 229 234; --n-200:205 209 216; --n-300:179 184 194;
-  --n-400:154 161 173; --n-500:130 138 151; --n-600:124 131 143; --n-700:58 63 72;
-  --n-800:38 42 50; --n-900:23 26 31; --n-950:14 16 20;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Geist','Segoe UI',ui-sans-serif,system-ui,sans-serif;
+  --bg:14 15 18;           /* #0e0f12 night paper */
+  --card:26 28 34;         /* #1a1c22 night Cloud Card */
+  --card-2:36 39 47;       /* #24272f a surface inside a card */
+  --surface:26 28 34;      /* inputs, raised controls */
+  --surface-2:36 39 47;
+  --ink:236 237 240;       /* #ecedf0 */
+  --body-gray:159 161 167; /* #9fa1a7 large supporting copy */
+  --n-50:244 245 247; --n-100:226 228 232; --n-200:208 210 214; --n-300:194 196 201;
+  --n-400:159 161 167; --n-500:138 141 147; --n-600:131 134 140; --n-700:72 75 82;
+  --n-800:44 47 54; --n-900:30 32 38; --n-950:20 22 26;
   --gold:212 175 55;       /* #D4AF37 the one accent (brand) */
-  --gold-soft:243 229 171; /* #F3E5AB */
+  --gold-soft:243 229 171;
   --gold-ink:212 175 55;   /* gold used as TEXT */
-  --danger:232 33 39;      /* #E82127 destructive actions */
+  --danger:232 33 39;
   --danger-ink:240 138 132; --warn-ink:233 196 106; --ok-ink:95 212 163;
-  --line:212 175 55;       /* hairlines are gold-tinted, at low alpha */
-  --line-a:0.16;
-  --glass:15 18 24; --glass-a:0.62;
+  --line:255 255 255;      /* neutral hairlines */
+  --line-a:0.08;
+  --glass:31 32 37;        /* #1f2025 Charcoal: the floating capsule nav */
+  --glass-a:0.86;
   --shadow:0 0 0;
   --focus:212 175 55;
   --scrim:5 6 9;
+  --hero-sky:linear-gradient(180deg, #1a2740 0%, #15130f 100%);
   --ease:cubic-bezier(0.23,1,0.32,1);   /* strong ease-out (Emil Kowalski) */
   --t-fast:160ms; --t:240ms; --t-slow:420ms;
 }
 :root[data-theme="light"]{
   color-scheme:light;
-  --bg:243 244 246;        /* #F3F4F6 cool off-white */
-  --surface:250 250 251;   /* #FAFAFB */
-  --surface-2:255 255 255;
-  --ink:13 16 21;          /* #0D1015 */
-  --n-50:10 12 16; --n-100:20 23 29; --n-200:35 39 48; --n-300:52 57 67;
-  --n-400:74 80 92; --n-500:90 97 112; --n-600:98 105 118; --n-700:163 168 178;
-  --n-800:205 209 216; --n-900:227 230 234; --n-950:237 239 242;
+  --bg:255 255 255;        /* #ffffff Paper White */
+  --card:235 240 248;      /* #ebf0f8 Cloud Card */
+  --card-2:255 255 255;
+  --surface:255 255 255;
+  --surface-2:245 247 251;
+  --ink:34 35 38;          /* #222326 Ink */
+  --body-gray:116 118 121; /* #747679 Body Gray (large copy only) */
+  --n-50:20 21 24; --n-100:28 29 32; --n-200:34 35 38; --n-300:58 60 64;
+  --n-400:85 87 92; --n-500:97 99 104; --n-600:102 104 109; --n-700:170 173 179;
+  --n-800:214 218 225; --n-900:229 233 240; --n-950:240 243 248;
   --gold:212 175 55;
   --gold-soft:243 229 171;
-  --gold-ink:128 98 12;    /* #80620C gold text, 5.2:1 on --bg */
+  --gold-ink:128 98 12;    /* #80620C gold text, 5.0:1 on Cloud Card */
   --danger:196 30 36;
   --danger-ink:180 35 24; --warn-ink:138 83 0; --ok-ink:11 122 79;
-  --line:20 24 32; --line-a:0.1;
-  --glass:255 255 255; --glass-a:0.72;
-  --shadow:24 28 40;
+  --line:34 35 38; --line-a:0.08;
+  --glass:255 255 255; --glass-a:0.82;
+  --shadow:0 0 0;
   --focus:128 98 12;
   --scrim:9 11 15;
+  --hero-sky:linear-gradient(180deg, #d2e5ff 0%, #fff9ee 100%);
 }
 
 /* ---------- Base ---------- */
 html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
 body{
   background:rgb(var(--bg)); color:rgb(var(--ink));
-  font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
-  font-feature-settings:'ss01','cv11';
+  font-family:var(--font-sans);
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
   transition:background-color var(--t) var(--ease), color var(--t) var(--ease);
 }
-h1,h2,h3,h4,.font-display{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.02em;}
+/* Bevel type: weight 600 at most, -0.03em on display steps. */
+h1,h2,h3,h4,.font-display{font-family:var(--font-sans); font-weight:600; letter-spacing:-0.03em;}
+html .font-bold,html .font-extrabold{font-weight:600;}
 h1{text-wrap:balance;}
 p{text-wrap:pretty;}
 .font-mono,.tabular-nums{font-variant-numeric:tabular-nums;}
-::selection{background:rgb(var(--gold)); color:#120d02;}
+::selection{background:rgb(var(--gold)); color:#1a1204;}
 
 /* One visible focus ring for every control (keyboard only). */
 :focus-visible{outline:2px solid rgb(var(--focus)); outline-offset:2px;}
 .skip-link{
   position:absolute; left:12px; top:-60px; z-index:300;
-  padding:10px 14px; border-radius:8px; font-size:14px; font-weight:600;
-  background:rgb(var(--gold)); color:#120d02; transition:top var(--t-fast) var(--ease);
+  padding:10px 16px; border-radius:9999px; font-size:14px; font-weight:600;
+  background:rgb(var(--gold)); color:#1a1204; transition:top var(--t-fast) var(--ease);
 }
 .skip-link:focus{top:12px;}
 
-/* Light theme: gold used as text and the old gold-on-dark arbitrary hues get
-   their darker, readable twin; fills (buttons, chips) keep the brand gold. */
+/* Light theme: gold used as text gets its darker, readable twin; fills
+   (buttons, chips) keep the brand gold. */
 :root[data-theme="light"] .text-gold,
 :root[data-theme="light"] .hover\:text-gold:hover,
 :root[data-theme="light"] .text-cyan,
 :root[data-theme="light"] .text-\[\#8a6a12\]{color:rgb(var(--gold-ink));}
 :root[data-theme="light"] .text-gold\/80{color:rgb(var(--gold-ink) / 0.85);}
 :root[data-theme="light"] .\[color-scheme\:dark\]{color-scheme:light;}
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.25\)\],
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.3\)\],
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.35\)\]{border-color:rgba(128,98,12,0.32);}
+/* Bevel keeps hairlines neutral: the old gold-tinted borders read as one
+   quiet line in both themes (a gold border on hover still shows). */
+html :is([class^="border-[rgba(212,175,55"],[class*=" border-[rgba(212,175,55"]){border-color:rgb(var(--ink) / 0.14);}
 
 /* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar{width:10px; height:10px;}
@@ -108,43 +120,17 @@ p{text-wrap:pretty;}
 ::-webkit-scrollbar-thumb:hover{background:rgb(var(--gold));}
 
 /* ---------- Page backdrop ----------
-   A still, neutral light falloff (no gold wash, no moving blobs) plus a
-   fixed film grain that never scrolls (cheap on phones). */
-.bg-mesh{
-  position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(var(--ink) / 0.03), transparent 62%),
-    rgb(var(--bg));
-}
-:root[data-theme="light"] .bg-mesh{
-  background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(255 255 255 / 0.7), transparent 62%),
-    rgb(var(--bg));
-}
-.bg-mesh::after{
-  content:''; position:fixed; inset:0; opacity:0.05; mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
-}
+   Bevel's canvas is plain paper: no falloff, no grain. */
+.bg-mesh{position:fixed; inset:0; z-index:-1; pointer-events:none; background:rgb(var(--bg));}
 .particle{display:none;}
 
 /* ---------- Surfaces ----------
-   Glass = a translucent panel with a hairline and a 1px top highlight (the
-   edge catching light). Solid fallback where transparency is reduced. */
-.glass{
-  background:rgb(var(--glass) / var(--glass-a));
-  -webkit-backdrop-filter:blur(18px) saturate(1.2); backdrop-filter:blur(18px) saturate(1.2);
-  border:1px solid rgb(var(--line) / var(--line-a));
-  box-shadow:inset 0 1px 0 rgb(var(--ink) / 0.04), 0 1px 2px rgb(var(--shadow) / 0.12);
-}
-:root[data-theme="light"] .glass{box-shadow:inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(var(--shadow) / 0.06), 0 8px 24px -16px rgb(var(--shadow) / 0.18);}
-.glass-strong{
-  background:rgb(var(--glass) / 0.9);
-  -webkit-backdrop-filter:blur(24px) saturate(1.2); backdrop-filter:blur(24px) saturate(1.2);
-  border:1px solid rgb(var(--line) / var(--line-a));
-}
-@media (prefers-reduced-transparency: reduce){
-  .glass,.glass-strong{background:rgb(var(--surface)); -webkit-backdrop-filter:none; backdrop-filter:none;}
-}
+   .glass is Bevel's Cloud Card: a flat tinted surface, no border, no shadow,
+   no blur. A card inside a card steps to the next surface. .glass-strong
+   (drawers, dialogs) is the page paper with one hairline edge. */
+.glass{background:rgb(var(--card)); border:0; box-shadow:none;}
+.glass .glass{background:rgb(var(--card-2));}
+.glass-strong{background:rgb(var(--bg)); border-left:1px solid rgb(var(--line) / var(--line-a)); box-shadow:0 2px 16px 0 rgb(0 0 0 / 0.15);}
 
 /* ---------- Motion language ----------
    Three durations (160 / 240 / 420 ms) on one ease-out curve. Motion is
@@ -244,22 +230,37 @@ html .glass[data-tilt].is-tilting{
   .split-pending .split-word{opacity:1; transform:none;}
 }
 
-/* ---------- Header ---------- */
-header nav a{text-transform:uppercase; letter-spacing:0.06em; font-size:12.5px !important; font-weight:600 !important;}
+/* ---------- Header: Bevel's floating capsule ----------
+   The sticky header is transparent; its inner row is a 32px-radius capsule
+   (Charcoal in dark, Paper White in light) with a 16px backdrop blur. */
+header.sticky{background:transparent; border:0; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; padding:10px 12px 0;}
+header.sticky > div{
+  background:rgb(var(--glass) / var(--glass-a)); border-radius:32px;
+  -webkit-backdrop-filter:blur(16px) saturate(1.2); backdrop-filter:blur(16px) saturate(1.2);
+  box-shadow:0 2px 16px 0 rgb(0 0 0 / 0.12);
+}
+:root[data-theme="light"] header.sticky > div{box-shadow:0 2px 16px 0 rgb(0 0 0 / 0.08), inset 0 0 0 1px rgb(var(--line) / 0.06);}
+@media (prefers-reduced-transparency: reduce){
+  header.sticky > div{background:rgb(var(--glass)); -webkit-backdrop-filter:none; backdrop-filter:none;}
+}
+header nav a{font-size:16px !important; font-weight:500 !important;}
 header nav a:not([aria-current="page"]){color:rgb(var(--n-400));}
 header nav a:hover{color:rgb(var(--ink));}
 header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 
-/* Phones: tighter header padding and gaps so the signed-out cluster (logo,
-   Link Tesla Account, Submit, Sign In) fits without sideways scroll; below
-   520px the wordmark beside the logo is dropped (the logo link keeps its alt). */
+/* Phones: tighter capsule padding and gaps so the signed-out cluster (logo,
+   Link Tesla account, Submit, Sign in) fits without sideways scroll; below
+   520px the wordmark beside the logo is dropped on every page (the logo
+   link keeps its alt). */
 @media (max-width:639px){
-  header:has(#teslaLinkBtn) > div{padding-left:1rem; padding-right:1rem;}
+  header.sticky{padding:8px 8px 0;}
+  header.sticky > div{padding-left:.75rem; padding-right:.75rem;}
   header:has(#teslaLinkBtn) .gap-3{gap:.5rem;}
 }
 @media (max-width:519px){
-  header:has(#teslaLinkBtn) > div > a:first-child > div{display:none;}
+  header.sticky > div > a:first-child > div{display:none;}
 }
+#accountSignedOut a, #openSightingDrawer{white-space:nowrap;}
 /* Below lg the three header actions are compact. */
 @media (max-width:1023px){
   #teslaLinkBtn, #openSightingDrawer, #accountSignedOut a{
@@ -278,6 +279,10 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 @media (max-width:1023px){
   body:has(#mobileBottomNav){padding-bottom:4.5rem;}
 }
+#mobileBottomNav{
+  background:rgb(var(--glass) / 0.92); border-top:1px solid rgb(var(--line) / var(--line-a));
+  -webkit-backdrop-filter:blur(16px) saturate(1.2); backdrop-filter:blur(16px) saturate(1.2); box-shadow:none;
+}
 #mobileBottomNav a{position:relative; color:rgb(var(--n-400));}
 
 #mobileBottomNav a[aria-current="page"]{color:rgb(var(--gold-ink));}
@@ -290,6 +295,10 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
   transition:opacity var(--t) var(--ease); opacity:0;
 }
 #navIndicator.is-active{opacity:1;}
+
+/* ---------- Footer: Bevel link groups ---------- */
+footer nav a{color:rgb(var(--ink)); font-weight:500;}
+footer nav a:hover{color:rgb(var(--gold-ink));}
 
 /* ---------- Buttons ----------
    .btn-magnetic is the site's button behavior: a 1px lift on hover (pointer
@@ -307,9 +316,13 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 
 /* One solid gold fill wherever the markup asks for the gold gradient
-   (primary buttons, the rank-1 badge, rating bars, Cybercab pills): Apple
-   fills a prominent button with one tint, not a gradient. */
+   (primary buttons, the rank-1 badge, rating bars): one tint, not a gradient. */
 html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--gold));}
+/* Bevel buttons are capsules: every button and button-like link is a pill
+   (full-width rows and blocks keep their own shape). */
+html .btn-magnetic,
+html :is(a,button)[class*="from-goldsoft"],
+html :is(a,button):is(.rounded-md,.rounded-lg,.rounded-xl):not(.w-full):not(.block):not(.flex){border-radius:9999px;}
 
 /* ---------- Drawers, dialogs, toasts ---------- */
 .drawer{transform:translateX(100%); transition:transform var(--t-slow) var(--ease);}
@@ -334,12 +347,12 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 }
 
 /* ---------- Data ---------- */
-.stat-value{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;}
+.stat-value{font-family:var(--font-sans); font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-0.03em;}
 
 /* ---------- Maps (MapLibre) ----------
    Controls, popups and the attribution pill follow the theme; the dark
    basemap look itself is js/austin-map.js. */
-.maplibregl-map{background:rgb(var(--surface)) !important; font-family:'Geist',sans-serif;}
+.maplibregl-map{background:rgb(var(--card)) !important; font-family:var(--font-sans);}
 .maplibregl-popup-content{
   background:rgb(var(--glass) / 0.94); color:rgb(var(--ink));
   border:1px solid rgb(var(--line) / var(--line-a)); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
@@ -367,35 +380,25 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 }
 @keyframes marker-ring{ 0%{transform:scale(0.6); opacity:0.7;} 100%{transform:scale(2); opacity:0;} }
 
-/* ---------- Homepage hero scrim ----------
-   Desktop: dark on the left where the headline sits, clear over the car.
-   Phones: the headline sits low across the whole width, so the photo darkens
-   from the bottom up instead (the car stays visible above the text). */
-.hero-scrim{
-  background:
-    linear-gradient(90deg, rgba(9,11,15,0.96) 0%, rgba(9,11,15,0.82) 34%, rgba(9,11,15,0.2) 64%, rgba(9,11,15,0.05) 100%),
-    linear-gradient(0deg, rgba(9,11,15,0.92) 0%, rgba(9,11,15,0) 46%);
-}
-@media (max-width:639px){
-  .hero-scrim{
-    background:linear-gradient(0deg, rgba(9,11,15,0.97) 0%, rgba(9,11,15,0.9) 48%, rgba(9,11,15,0.45) 72%, rgba(9,11,15,0.12) 100%);
-  }
-}
+/* ---------- Homepage hero: Bevel's Cloudlight field ----------
+   A tall rounded Hero Sky field (cool daylight into warm paper; a night
+   sky in the dark theme) holds the centered headline and the car render. */
+.hero-sky{background:var(--hero-sky);}
 
 /* ---------- Service zone cards (homepage) ---------- */
 .service-zone-card{
-  position:relative; aspect-ratio:1/0.92; border-radius:14px; overflow:hidden;
-  background:rgb(var(--surface)); border:1px solid rgb(var(--line) / var(--line-a));
+  position:relative; aspect-ratio:1/0.92; border-radius:24px; overflow:hidden;
+  background:rgb(var(--card));
 }
 .service-zone-map{position:absolute; inset:0;}
 
 /* ---------- Filters / segmented chips (sightings, community, vehicles) ---------- */
 .city-filter{
-  border-color:rgb(var(--line) / calc(var(--line-a) + 0.08)); color:rgb(var(--n-300));
-  background:rgb(var(--glass) / var(--glass-a));
+  border-color:transparent; color:rgb(var(--n-300));
+  background:rgb(var(--card));
   transition:color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-.city-filter:hover{color:rgb(var(--ink)); border-color:rgb(var(--gold) / 0.5);}
+.city-filter:hover{color:rgb(var(--ink));}
 .city-filter:active{transform:scale(0.98);}
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
   background:rgb(var(--ink)); color:rgb(var(--bg)); border-color:transparent;
@@ -433,7 +436,7 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 .review-like[aria-pressed="true"]{color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
 /* ---------- Theme switch (footer) ---------- */
-.theme-switch{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.06)); background:rgb(var(--glass) / var(--glass-a));}
+.theme-switch{display:inline-flex; padding:3px; border-radius:999px; background:rgb(var(--card));}
 .theme-switch button{padding:6px 12px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--n-400)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
 .theme-switch button:hover{color:rgb(var(--ink));}
-.theme-switch button[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
+.theme-switch button[aria-pressed="true"]{background:rgb(var(--bg)); color:rgb(var(--ink)); box-shadow:0 1px 4px rgb(0 0 0 / 0.12);}

@@ -330,7 +330,7 @@ async function run() {
     check('a REVIEWS_LIMITER rate-limit binding is configured', /"name": "REVIEWS_LIMITER"/.test(wr));
     const page = new JSDOM(read('public/community.html')).window.document;
     const grid = page.getElementById('reviews').parentElement;
-    check('the box is headed "REVIEWS"', page.querySelector('#reviews h2').textContent === 'REVIEWS' && !/CYBERCAB REVIEWS/.test(read('public/community.html')));
+    check('the box is headed "Reviews"', page.querySelector('#reviews h2').textContent === 'Reviews' && !/CYBERCAB REVIEWS/.test(read('public/community.html')));
     check('reviews and the leaderboard sit side by side on lg+ (one grid, two columns), stacked below that', /\blg:grid-cols-\[/.test(grid.className) && /\bgrid\b/.test(grid.className) && grid.children.length === 2 && grid.children[1].id === 'leaderboardColumn' && !!grid.children[1].querySelector('#boardList'));
     check('the privacy page explains reviews and the Anonymous rule', /Cybercab reviews:[^<]*Anonymous/.test(read('public/privacy.html')));
     check('no new privacy setting was invented: reviews read users.leaderboard_opt_in', /leaderboard_opt_in AS opt_in/.test(read('worker/reviews.js')) && !/ALTER TABLE users/.test(read('migrations/0023_cybercab_reviews.sql')));

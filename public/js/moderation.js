@@ -63,7 +63,7 @@
     return `<div class="flex items-center gap-2 flex-wrap pt-3 border-t border-[rgba(212,175,55,0.1)]">
         ${rejecting ? `
           <div class="w-full">
-            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rejection reason</label>
+            <label class="text-xs font-semibold text-slate-400">Rejection reason</label>
             <textarea data-reject-reason rows="2" maxlength="280" placeholder="Why is this sighting being rejected?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
             <div class="flex items-center gap-2 mt-2">
               <button type="button" data-action="confirm-reject" ${isBusy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-crimson/50 text-crimson hover:bg-crimson/10 disabled:opacity-50">Confirm Reject</button>
@@ -93,7 +93,7 @@
           <div class="font-display font-bold text-xl">${esc(s.license_plate || 'Plate not given')}</div>
           <div class="text-xs text-slate-500 mt-1">Submitted ${esc(fmtDateTime(s.submitted_at))} · Observed ${esc(fmtDateTime(s.observed_at))}</div>
         </div>
-        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(s.service_area || 'Area unknown')}</span>
+        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300">${esc(s.service_area || 'Area unknown')}</span>
       </div>
       <div class="text-sm mb-3">${vehicleLine}</div>
       ${details.length ? `<div class="text-xs text-slate-400 space-y-1 mb-3">${details.map(d => `<div>${d}</div>`).join('')}</div>` : ''}
@@ -550,12 +550,12 @@
       ? `<div class="text-xs text-slate-300 mt-1">VIN on file: <span class="font-mono">${esc(v.vin)}</span></div>`
       : `<div class="flex items-center gap-2 mt-1 flex-wrap">
            <input type="text" data-vehicle-vin-input="${esc(v.id)}" placeholder="17-character VIN" maxlength="17" autocomplete="off"
-             class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs font-mono uppercase w-48 disabled:opacity-50" ${busy ? 'disabled' : ''}>
+             class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs font-mono w-48 disabled:opacity-50" ${busy ? 'disabled' : ''}>
            <button type="button" data-vehicle-action="save-vin" ${busy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.3)] text-slate-200 hover:bg-white/5 disabled:opacity-50">${busy ? 'Working…' : 'Save VIN'}</button>
          </div>`;
     const approveDisabled = busy || !v.can_approve_cybercab;
     return `<div class="mt-3 pt-3 border-t border-[rgba(212,175,55,0.1)]">
-      <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Cybercab verification</div>
+      <div class="text-xs font-semibold text-slate-300 mb-1">Cybercab verification</div>
       <a href="${esc(ROBOTAXI_TRACKER_URL)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">Check Robotaxi Tracker →</a>
       <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below, then approve. If it's shown as a Model Y (or anything else), use Delete Vehicle instead. There is no separate rejection step.</div>
       ${vinRow}
@@ -621,7 +621,7 @@
           <div class="font-display font-bold text-xl">${esc(v.license_plate || 'Plate unknown')}</div>
           <div class="text-xs text-slate-500 mt-1">${esc(v.counted_ride_count)} counted ${v.counted_ride_count === 1 ? 'ride' : 'rides'}</div>
         </div>
-        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(view.badge)}</span>
+        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300">${esc(view.badge)}</span>
       </div>
       <div class="text-sm font-semibold ${view.cls}">${esc(view.line)}</div>
       ${reasons}

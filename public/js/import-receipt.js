@@ -89,7 +89,7 @@
 
   function row(label, value) {
     const d = el('div', 'min-w-0');
-    d.appendChild(el('div', 'text-xs text-slate-500 uppercase tracking-wider mb-0.5', label));
+    d.appendChild(el('div', 'text-xs text-slate-500 mb-0.5', label));
     d.appendChild(el('div', 'text-sm font-semibold [overflow-wrap:anywhere]', value));
     return d;
   }
@@ -103,7 +103,7 @@
     title.appendChild(el('div', 'font-display font-bold text-xl', (r.vehicle && r.vehicle.license_plate) || 'No plate'));
     title.appendChild(el('div', 'text-xs text-slate-500 mt-1', label));
     head.appendChild(title);
-    head.appendChild(el('span', `text-xs font-semibold px-2.5 py-1 rounded-full border uppercase tracking-wider ${outcomeClass}`, outcomeText));
+    head.appendChild(el('span', `text-xs font-semibold px-2.5 py-1 rounded-full border ${outcomeClass}`, outcomeText));
     li.appendChild(head);
 
     if (r.reason && REASONS[r.reason]) li.appendChild(el('p', 'text-sm text-slate-400 mb-4', REASONS[r.reason]));

@@ -14,9 +14,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=3"></script>
+<script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -26,13 +26,10 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
-      <div class="leading-tight">
-        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[11px] text-slate-400 tracking-[0.16em] font-semibold">HUNTER</div>
-      </div>
+      <div class="font-medium text-lg whitespace-nowrap">Cybercab Hunter</div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
@@ -40,10 +37,10 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla account</a>
       <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
-        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign in</a>
       </div>
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
@@ -88,11 +85,11 @@
     <!-- Not public (not opted in, no username) or unknown — the same state, so
          whether an account exists is never revealed. -->
     <div id="riderPrivate" class="hidden mt-6 glass rounded-2xl p-8 text-center">
-      <div class="font-display font-bold text-xl text-gold tracking-wide">PRIVATE PROFILE</div>
+      <div class="font-display font-bold text-xl text-gold">Private profile</div>
       <p class="text-sm text-slate-400 mt-2">This spotter's profile is private.</p>
     </div>
     <div id="riderError" class="hidden mt-6 glass rounded-2xl p-8 text-center">
-      <div class="font-display font-bold text-xl tracking-wide">WE COULDN'T LOAD THIS PROFILE</div>
+      <div class="font-display font-bold text-xl">We couldn't load this profile</div>
       <p class="text-sm text-slate-400 mt-2">Please try again in a moment.</p>
     </div>
 
@@ -110,51 +107,51 @@
           </div>
         </div>
         <div>
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</div>
+          <div class="text-xs font-semibold text-slate-400 mb-2">Bio</div>
           <p id="riderBio" class="text-sm text-slate-300 leading-relaxed [overflow-wrap:anywhere]"></p>
         </div>
         <div class="flex items-center justify-between gap-4 flex-wrap pt-6 mt-6 border-t border-[rgba(212,175,55,0.12)]">
           <p id="riderJoined" class="text-xs text-slate-500"></p>
-          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)] text-[11px] font-semibold uppercase tracking-wide text-gold">Public profile</span>
+          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)] text-[11px] font-semibold text-gold">Public profile</span>
         </div>
       </div>
 
       <div id="riderStats" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Rides</div>
+          <div class="text-[11px] font-semibold text-slate-400">Rides</div>
           <div id="riderRides" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Cybercabs ridden</div>
+          <div class="text-[11px] font-semibold text-slate-400">Cybercabs ridden</div>
           <div id="riderVehiclesRidden" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Cities</div>
+          <div class="text-[11px] font-semibold text-slate-400">Cities</div>
           <div id="riderCitiesCount" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Vehicles discovered</div>
+          <div class="text-[11px] font-semibold text-slate-400">Vehicles discovered</div>
           <div id="riderDiscovered" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Reviews</div>
+          <div class="text-[11px] font-semibold text-slate-400">Reviews</div>
           <div id="riderReviewCount" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
         <div class="glass rounded-xl p-4 min-w-0">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Avg rating given</div>
+          <div class="text-[11px] font-semibold text-slate-400">Avg rating given</div>
           <div id="riderReviewAvg" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
         </div>
       </div>
 
       <div class="glass rounded-2xl p-6">
-        <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cities</h2>
+        <h2 data-split class="text-[11px] font-semibold text-slate-500">Cities</h2>
         <ul id="riderCities" class="mt-4 space-y-3"></ul>
         <p id="riderNoCities" class="hidden mt-3 text-xs text-slate-500">No rides with a city recorded yet.</p>
       </div>
 
       <div class="glass rounded-2xl p-6">
         <div class="flex items-baseline justify-between gap-3">
-          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles Discovered</h2>
+          <h2 data-split class="text-[11px] font-semibold text-slate-500">Vehicles discovered</h2>
           <div id="riderCount" class="font-display font-bold text-2xl text-gold tabular-nums"></div>
         </div>
         <ul id="riderVehicles" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"></ul>
@@ -163,7 +160,7 @@
 
       <div class="glass rounded-2xl p-6">
         <div class="flex items-baseline justify-between gap-3">
-          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Reviews</h2>
+          <h2 data-split class="text-[11px] font-semibold text-slate-500">Reviews</h2>
           <a href="/community" class="text-xs text-gold hover:underline">All reviews</a>
         </div>
         <div id="riderReviews" class="mt-4 space-y-3"></div>
@@ -189,11 +186,11 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
+    <h2 class="font-display font-bold text-xl">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
-    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
+    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400"></span>
   </div>
   <div class="space-y-1 mb-6">
     <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
@@ -202,7 +199,7 @@
     </a>
     <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
       <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6"/> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10"/> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14"/> <path d="M4 20h14"/></svg>
-      Rider Data
+      Rider data
     </a>
   </div>
   <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
@@ -214,26 +211,26 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
     <p class="text-sm text-slate-400 mb-5">Sign in to submit a vehicle sighting.</p>
-    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign in</a>
   </div>
   <form id="sightingForm" class="space-y-5">
     <div>
       <span class="text-[13px] font-medium text-slate-300">Photo</span>
       <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
-        <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
+        <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload photo</span>
         <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
       </label>
       <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
       <p id="sightingPhotoError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / service area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from the supported service areas (GET /api/service-areas). -->
       <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a city</option>
@@ -252,12 +249,12 @@
       <p id="sightingLocError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
-      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
-      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>
@@ -269,7 +266,7 @@
       <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
     </div>
     <div>
-      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
@@ -293,7 +290,7 @@
     <div>
       <a href="index.html" class="inline-flex items-center gap-2.5">
         <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold tracking-tight">CYBERCAB HUNTER</span>
+        <span class="font-display font-bold tracking-tight">Cybercab Hunter</span>
       </a>
       <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
     </div>
@@ -319,10 +316,10 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/main.js?v=20"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/rider.js?v=3"></script>
+<script src="js/rider.js?v=4"></script>
 </body>
 </html>

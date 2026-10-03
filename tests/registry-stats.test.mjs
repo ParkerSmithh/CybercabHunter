@@ -142,7 +142,7 @@ async function run() {
     check('the invented tiles are gone: no "Active Cybercabs", no "Unsupervised Rate", no 45 / 98 targets', !/Active Cybercabs|Unsupervised Rate|data-target="(45|98)"|class="counter"/.test(HTML));
     check('the two real tiles exist and start as an em dash, not 0', /id="statVehicles"[^>]*>—</.test(HTML) && /id="statRides"[^>]*>—</.test(HTML));
     const statsBar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'));
-    check('the two tiles carry the labels "Cybercabs Spotted" and "Total Rides", and no sub-labels', /Cybercabs Spotted/.test(statsBar) && /Total Rides/.test(statsBar) && !/Moderator-approved|On registry vehicles|Vehicles in the Registry|Rides Recorded/.test(statsBar) && !/text-cyan/.test(statsBar));
+    check('the two tiles carry the labels "Cybercabs spotted" and "Total rides", and no sub-labels', /Cybercabs spotted/.test(statsBar) && /Total rides/.test(statsBar) && !/Moderator-approved|On registry vehicles|Vehicles in the Registry|Rides Recorded/.test(statsBar) && !/text-cyan/.test(statsBar));
     check('the page loads the stats script after main.js', /js\/main\.js[^\n]*\n<script src="js\/home-stats\.js/.test(HTML));
     check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'))));
     check('the homepage no longer contains the old counter observer', !/counterObserver/.test(HTML));

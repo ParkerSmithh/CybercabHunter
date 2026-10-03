@@ -145,7 +145,7 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
-    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A SIGHTING') && s.includes('id="sightingSuccess"'); }));
+    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('Submit a sighting') && s.includes('id="sightingSuccess"'); }));
   }
 
   console.log('2. The form: photo (required), then optional City, Location, Date spotted, Description, License plate');
@@ -172,7 +172,7 @@ async function run() {
     page.pickPhoto(new Uint8Array([1, 2, 3]), 'notes.txt', 'text/plain');
     check('picking a non-image shows a file-type message and clears the pick', /JPEG, PNG or WebP/.test(page.photoError()) && d.getElementById('sightingPhoto').value === '');
     page.pickPhoto();
-    check('picking a valid photo clears the message and offers "Change Photo"', page.photoError() === '' && d.getElementById('sightingPhotoPrompt').textContent === 'Change Photo');
+    check('picking a valid photo clears the message and offers "Change photo"', page.photoError() === '' && d.getElementById('sightingPhotoPrompt').textContent === 'Change photo');
   }
 
   console.log('3. Authenticated submit: correct endpoint, multipart fields, no user_id');
@@ -215,7 +215,7 @@ async function run() {
     check('shows "Sighting submitted!"', /Sighting submitted!/.test(page.d.getElementById('sightingSuccess').textContent));
     check('...and "Your photo has been received and is awaiting review."', /Your photo has been received and is awaiting review\./.test(page.d.getElementById('sightingSuccess').textContent));
     check('the form is hidden behind the confirmation and the drawer stays open (no redirect)', !page.visible('sightingForm') && page.drawerOpen() && page.navigations.length === 0);
-    check('the form was reset for next time', page.val('sightingServiceArea') === '' && page.val('sightingNotes') === '' && page.d.getElementById('sightingPhotoPrompt').textContent === 'Upload Photo');
+    check('the form was reset for next time', page.val('sightingServiceArea') === '' && page.val('sightingNotes') === '' && page.d.getElementById('sightingPhotoPrompt').textContent === 'Upload photo');
     const rows = sightingRows(ctx);
     const sub = ctx.d1.query('SELECT * FROM submissions')[0];
     check('exactly one pending sighting with its photo was recorded', rows.length === 1 && sub.status === 'pending' && sub.evidence_type === 'photo' && ctx.env.EVIDENCE_BUCKET._objects.has(sub.evidence_ref));

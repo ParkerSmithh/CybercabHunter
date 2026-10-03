@@ -10,9 +10,9 @@
         bg-panel, bg-white/5...) read correctly in both themes. 'white' is
         the ink color (near-white on dark, near-black on light); 'paper' is a
         literal off-white for text that always sits on a dark photo or scrim.
-   Radius rule (one system): controls (buttons, inputs) rounded-lg = 8px,
-   tiles rounded-xl = 10px, panels rounded-2xl = 14px, chips/filters/avatars
-   rounded-full. */
+   Radius rule (Bevel): buttons are pills (css/style.css), inputs
+   rounded-lg = 12px, tiles and images rounded-xl = 16px, cards rounded-2xl
+   = 24px, large fields rounded-3xl = 32px, chips/avatars rounded-full. */
 (function () {
   var KEY = 'cchTheme';
   var root = document.documentElement;
@@ -66,7 +66,7 @@
     theme: {
       extend: {
         colors: {
-          void: v('--bg'), panel: v('--surface'), raised: v('--surface-2'),
+          void: v('--bg'), panel: v('--surface'), raised: v('--surface-2'), card: v('--card'), body: v('--body-gray'),
           white: v('--ink'), paper: '#F4F5F7',
           slate: neutral,
           gold: v('--gold'), goldsoft: v('--gold-soft'),
@@ -78,12 +78,13 @@
           emerald: { 200: v('--ok-ink'), 300: v('--ok-ink'), 400: v('--ok-ink') }
         },
         fontFamily: {
-          display: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          body: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          // Bevel: the system SF stack; Geist (self-hosted) stands in off Apple devices.
+          display: ['-apple-system', 'BlinkMacSystemFont', 'Geist', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          body: ['-apple-system', 'BlinkMacSystemFont', 'Geist', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          sans: ['-apple-system', 'BlinkMacSystemFont', 'Geist', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
         },
-        borderRadius: { md: '6px', lg: '8px', xl: '10px', '2xl': '14px', '3xl': '18px' },
+        borderRadius: { md: '10px', lg: '12px', xl: '16px', '2xl': '24px', '3xl': '32px' },
         transitionTimingFunction: { out: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }
       }
     }
