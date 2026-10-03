@@ -148,7 +148,8 @@ async function run() {
     const html = read(`public/${file}`).replace(/<script src="https?:[^"]*"><\/script>/g, '');
     const dom = new JSDOM(html, { runScripts: 'outside-only', url: `https://cybercabhunter.com${path}`, pretendToBeVisual: true });
     const w = dom.window;
-    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+    // The figures count up once they are in view (CCC.countUp): report every element as visible.
+    w.IntersectionObserver = class { constructor(cb) { this.cb = cb; } observe(el) { setTimeout(() => this.cb([{ isIntersecting: true, target: el }]), 0); } unobserve() {} disconnect() {} };
     w.ResizeObserver = class { observe() {} };
     w.maplibregl = { Map: class { on() {} fitBounds() {} resize() {} }, Marker: class { setLngLat() { return this; } setPopup() { return this; } addTo() { return this; } getPopup() { return { setHTML() {} }; } remove() {} }, Popup: class { setHTML() { return this; } }, LngLatBounds: class { extend() { return this; } } };
     w.fetch = async u => respond(String(u));

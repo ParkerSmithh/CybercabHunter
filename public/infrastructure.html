@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=2"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -41,7 +41,7 @@
     </nav>
     <div class="flex items-center gap-3">
       <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
+      <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
@@ -161,7 +161,7 @@
     <div id="austinMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] lg:p-0 lg:h-auto lg:absolute lg:inset-0 reveal-on-scroll">
       <div id="infraMap" class="rounded-xl overflow-hidden w-full h-full lg:rounded-2xl"></div>
       <!-- This month's replay: every camera-spotted Cybercab so far this month (replay.html). -->
-      <a id="zonesReplay" href="/replay?range=month" class="absolute top-6 right-6 lg:top-4 lg:right-4 z-10 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">
+      <a id="zonesReplay" href="/replay?range=month" class="shine absolute top-6 right-6 lg:top-4 lg:right-4 z-10 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>
         Replay
       </a>
@@ -288,13 +288,13 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=13"></script>
+<script src="js/main.js?v=14"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
   CCC.init();
 
-  // Count up the zone stats on page load, like the homepage stats bar.
-  CCC.animateCounter(document.getElementById('coverageOut'), 0, 264, 1400);
+  // Count up the zone stats once they are in view, like the homepage stats bar.
+  CCC.countUp(document.getElementById('coverageOut'), 264);
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
   // The Cybercab count is the public Austin registry; the fares come from
@@ -307,8 +307,9 @@
       const el = document.getElementById(id);
       if (typeof value === 'number' && isFinite(value)) {
         el.removeAttribute('title');
-        CCC.animateCounter(el, 0, value, 1400, fmt);
+        CCC.countUp(el, value, { format: fmt });
       } else {
+        CCC.countUp(el, null);   // cancels a pending count; the dash stays
         el.textContent = '—';
         el.title = why;
       }

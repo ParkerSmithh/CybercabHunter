@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=2"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -42,7 +42,7 @@
     </nav>
     <div class="flex items-center gap-3">
       <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
+      <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
         Submit
       </button>
       <div id="accountSignedOut">
@@ -89,12 +89,13 @@
   <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover object-[78%_28%] sm:object-[70%_center]" fetchpriority="high" decoding="async">
   <div class="hero-scrim absolute inset-0" aria-hidden="true"></div>
   <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
-    <div class="max-w-xl reveal-on-scroll">
+    <div class="max-w-xl">
+      <!-- BlurText (css/style.css .blur-word): each word comes out of a blur, once, on load. -->
       <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper">
-        TRACK THE<br><span class="text-[#D4AF37]">FUTURE</span> OF<br>AUTONOMY
+        <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#D4AF37]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
       </h1>
-      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
-      <div class="flex flex-wrap gap-3 mt-8">
+      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed reveal-on-scroll" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+      <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll" data-delay="320">
         <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
           Browse sightings
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
@@ -344,8 +345,8 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=13"></script>
-<script src="js/home-stats.js?v=1"></script>
+<script src="js/main.js?v=14"></script>
+<script src="js/home-stats.js?v=2"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
   CCC.init();

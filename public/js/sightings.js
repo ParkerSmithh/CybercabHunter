@@ -30,6 +30,11 @@
   let order = 'desc';          // 'desc' = most recent first, 'asc' = least recent first
   const shown = new Set();     // public ids of the cards on the page
   let pollTimer = null;
+  // Cards fade and rise in (CCC.enterList, js/main.js) on the first load
+  // only: once the visitor changes the city or the sort, new results appear
+  // at once, and cards added by the minute poll never animate.
+  let animateEntrances = true;
+  const motion = typeof CCC !== 'undefined' ? CCC : null;
   try { if (localStorage.getItem(ORDER_KEY) === 'asc') order = 'asc'; } catch (e) { /* default */ }
 
   // In the sighting area's own time zone when known (e.g. "4:10 PM CDT" for
@@ -69,6 +74,7 @@
   // provided are simply left out.
   function card(s) {
     const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
+    article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
@@ -201,7 +207,17 @@
   // Any value that isn't a proper count stays (or goes back to) an em dash.
   function renderStats(stats) {
     const ok = stats && typeof stats === 'object';
-    const num = (id, n) => { $(id).textContent = ok && isCount(n) ? n.toLocaleString('en-US') : '—'; };
+    // CountUp the first time a tile gets a real number (CCC.countUp counts
+    // once per tile; later refreshes and filter changes write it at once).
+    const num = (id, n) => {
+      const tile = $(id);
+      if (ok && isCount(n)) {
+        if (!(motion && motion.countUp && motion.countUp(tile, n, { format: v => Math.round(v).toLocaleString('en-US') }))) tile.textContent = n.toLocaleString('en-US');
+      } else {
+        if (motion && motion.countUp) motion.countUp(tile, null);
+        tile.textContent = '—';
+      }
+    };
     num('statWeek', ok && stats.last_7_days);
     num('statToday', ok && stats.today);
     $('statTodayLabel').textContent = ok && stats.today === 1 ? 'Cybercab spotted today' : 'Cybercabs spotted today';
@@ -247,6 +263,7 @@
   }
 
   function selectOrder(next) {
+    animateEntrances = false;
     order = next === 'asc' ? 'asc' : 'desc';
     try { localStorage.setItem(ORDER_KEY, order); } catch (e) { /* not essential */ }
     setActiveOrder();
@@ -295,7 +312,8 @@
 
     if (reset) renderStats(body.stats);
     const grid = $('sightingsGrid');
-    body.sightings.forEach(s => { shown.add(s.id); grid.appendChild(card(s)); });
+    const added = body.sightings.map(s => { shown.add(s.id); return grid.appendChild(card(s)); });
+    if (animateEntrances && motion && motion.enterList) motion.enterList(added);
     cursor = body.next_cursor || null;
     show('sightingsMore', !!cursor);
     // The observer only fires on a change, so if the end of the list is still
@@ -375,7 +393,7 @@
       btn.type = 'button';
       btn.dataset.city = a.key;
       btn.setAttribute('aria-pressed', 'false');
-      btn.addEventListener('click', () => selectCity(a.key));
+      btn.addEventListener('click', () => { animateEntrances = false; selectCity(a.key); });
       box.appendChild(btn);
     });
     defaultCity = areas[0].key;

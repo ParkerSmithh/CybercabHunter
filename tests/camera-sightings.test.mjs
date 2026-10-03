@@ -172,7 +172,7 @@ async function run() {
     class LngLatBounds { constructor() {} extend() { return this; } }
     w.maplibregl = { Map: class { on() {} fitBounds() {} resize() {} setPaintProperty() {} addSource() {} addLayer() {} getCanvas() { return { style: {} }; } }, Marker, Popup, LngLatBounds };
     w.ResizeObserver = class { observe() {} };
-    w.CCC = { init() {}, animateCounter() {} };
+    w.CCC = { init() {}, animateCounter() {}, countUp() {} };
     const intervals = [];
     w.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
     const calls = [];
@@ -281,7 +281,7 @@ async function run() {
 
     const ZONES = fs.readFileSync(`${ROOT}public/infrastructure.html`, 'utf8');
     const zonesScript = [...ZONES.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map)'));
-    const zones = await runMap(zonesScript.replace(/CCC\.init\(\);|CCC\.animateCounter\([^;]*;/g, ''), ZONES.replace(/<script[\s\S]*?<\/script>/g, ''));
+    const zones = await runMap(zonesScript.replace(/CCC\.init\(\);|CCC\.(animateCounter|countUp)\([^;]*;/g, ''), ZONES.replace(/<script[\s\S]*?<\/script>/g, ''));
     check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
     check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));

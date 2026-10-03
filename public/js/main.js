@@ -111,22 +111,187 @@ const CCC = (() => {
     els.forEach(el => io.observe(el));
   }
 
-  /* ---------------- Counter animation ---------------- */
+  /* ---------------- Motion details ----------------
+     Six small effects ported from React Bits (reactbits.dev) to plain JS +
+     CSS: CountUp, BlurText (CSS only, index.html), ShinyText, AnimatedList,
+     Magnet and TiltedCard. Each one renders its final state at once under
+     prefers-reduced-motion; Magnet and TiltedCard exist only for a fine
+     pointer that can hover; no loop runs while its element is off screen. */
+  const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const finePointer = () => !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+  const counters = new WeakMap();   // el -> { raf, io, counted }
+  const counterState = el => { let s = counters.get(el); if (!s) counters.set(el, s = {}); return s; };
+
+  /* ---------------- Counter animation ----------------
+     A new call on the same element stops the one in flight, so two loops
+     never write to one number. */
   function animateCounter(el, from, to, duration = 1200, formatFn) {
     if (!el) return;
-    const start = performance.now();
     const fmt = formatFn || (v => Math.round(v).toLocaleString());
     const isInput = el.tagName === 'INPUT';
     const set = v => { if (isInput) el.value = v; else el.textContent = v; };
+    const state = counterState(el);
+    if (state.raf) cancelAnimationFrame(state.raf);
+    state.raf = 0;
+    if (reducedMotion() || typeof requestAnimationFrame !== 'function') { set(fmt(to)); return; }
+    const start = performance.now();
     function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
     function tick(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = easeOutExpo(t);
       set(fmt(from + (to - from) * eased));
-      if (t < 1) requestAnimationFrame(tick);
-      else set(fmt(to));
+      if (t < 1) state.raf = requestAnimationFrame(tick);
+      else { state.raf = 0; set(fmt(to)); }
     }
-    requestAnimationFrame(tick);
+    state.raf = requestAnimationFrame(tick);
+  }
+
+  /* CountUp: counts from 0 to the REAL value once, the first time the number
+     scrolls into view (1.2s, ease-out). Later calls for the same element
+     (a refresh, a filter change) write the new value at once. A value that
+     isn't a finite number cancels any pending count and returns false: the
+     caller shows its own empty state (an em dash), never a counted one. */
+  function countUp(el, value, { duration = 1200, format } = {}) {
+    if (!el) return false;
+    const state = counterState(el);
+    if (state.io) { state.io.disconnect(); state.io = null; }
+    if (state.raf) { cancelAnimationFrame(state.raf); state.raf = 0; }
+    if (typeof value !== 'number' || !isFinite(value)) return false;
+    const fmt = format || (v => Math.round(v).toLocaleString());
+    if (state.counted || reducedMotion() || typeof IntersectionObserver !== 'function' || typeof requestAnimationFrame !== 'function') {
+      state.counted = true;
+      el.textContent = fmt(value);
+      return true;
+    }
+    state.io = new IntersectionObserver(entries => {
+      if (!entries.some(e => e.isIntersecting)) return;
+      state.io.disconnect(); state.io = null;
+      state.counted = true;
+      animateCounter(el, 0, value, duration, fmt);
+    }, { threshold: 0.4 });
+    state.io.observe(el);
+    return true;
+  }
+
+  /* AnimatedList: cards fade and rise in as they enter the viewport, 45ms
+     apart within one batch. Only nodes passed here animate, so a caller
+     decides which renders get it (the Sightings page: the first load only). */
+  let listObserver = null;
+  function enterList(nodes) {
+    if (!nodes || reducedMotion() || typeof IntersectionObserver !== 'function') return;
+    if (!listObserver) {
+      listObserver = new IntersectionObserver(entries => {
+        let i = 0;
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          listObserver.unobserve(el);
+          el.style.setProperty('--enter-delay', Math.min(i++, 8) * 45 + 'ms');
+          el.classList.remove('list-pending');
+          el.classList.add('list-enter');
+          el.addEventListener('animationend', () => { el.classList.remove('list-enter'); el.style.removeProperty('--enter-delay'); }, { once: true });
+        });
+      }, { threshold: 0.1 });
+    }
+    Array.from(nodes).forEach(el => { el.classList.add('list-pending'); listObserver.observe(el); });
+  }
+
+  /* ShinyText: a light sweep across the gold Replay accents (.shine, CSS
+     keyframes on a transform). The sweep runs only while the accent is on
+     screen. */
+  function initShine() {
+    const els = document.querySelectorAll('.shine');
+    if (!els.length || reducedMotion() || typeof IntersectionObserver !== 'function') return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => e.target.classList.toggle('is-shining', e.isIntersecting));
+    });
+    els.forEach(el => io.observe(el));
+  }
+
+  /* Magnet: a [data-magnet] button leans up to 6px toward a cursor within
+     40px of it. Mouse/trackpad only; one passive pointermove listener,
+     coalesced to one read per frame. Uses the CSS `translate` property so
+     the button's own hover/press transform is untouched. */
+  function initMagnet() {
+    const els = Array.from(document.querySelectorAll('[data-magnet]'));
+    if (!els.length || !finePointer() || reducedMotion() || typeof requestAnimationFrame !== 'function') return;
+    const PAD = 40, MAX = 6;
+    let px = 0, py = 0, queued = false;
+    function update() {
+      queued = false;
+      els.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (!r.width) return;
+        const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height / 2);
+        const near = Math.abs(dx) < r.width / 2 + PAD && Math.abs(dy) < r.height / 2 + PAD;
+        el.classList.toggle('is-pulled', near);
+        if (near) {
+          const clamp = v => Math.max(-MAX, Math.min(MAX, v / 6));
+          el.style.translate = `${clamp(dx).toFixed(1)}px ${clamp(dy).toFixed(1)}px`;
+        } else if (el.style.translate) {
+          el.style.translate = '';
+        }
+      });
+    }
+    document.addEventListener('pointermove', e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      px = e.clientX; py = e.clientY;
+      if (!queued) { queued = true; requestAnimationFrame(update); }
+    }, { passive: true });
+  }
+
+  /* TiltedCard: a [data-tilt] card tilts toward the pointer (6deg at most)
+     with a soft neutral shadow, on a spring (stiffness 100, damping 30, as
+     the original). Mouse/trackpad only. The spring loop runs only while a
+     card is moving and stops once it settles. */
+  function initTilt() {
+    if (!finePointer() || reducedMotion() || typeof requestAnimationFrame !== 'function') return;
+    const MAX = 6, K = 100, C = 30;
+    const springs = new Map();   // card -> { x, y, vx, vy, tx, ty, raf, last }
+    function step(card, s, now) {
+      const dt = Math.min(0.032, (now - s.last) / 1000 || 0.016);
+      s.last = now;
+      s.vx += (K * (s.tx - s.x) - C * s.vx) * dt; s.x += s.vx * dt;
+      s.vy += (K * (s.ty - s.y) - C * s.vy) * dt; s.y += s.vy * dt;
+      const settled = Math.abs(s.tx - s.x) < 0.01 && Math.abs(s.ty - s.y) < 0.01 && Math.abs(s.vx) < 0.01 && Math.abs(s.vy) < 0.01;
+      if (settled && !s.tx && !s.ty && !s.active) {
+        card.style.transform = ''; card.style.transition = '';
+        springs.delete(card);
+        return;
+      }
+      card.style.transform = `perspective(900px) translateY(-2px) rotateX(${s.x.toFixed(2)}deg) rotateY(${s.y.toFixed(2)}deg)`;
+      s.raf = settled ? 0 : requestAnimationFrame(t => step(card, s, t));
+    }
+    function kick(card, s) { if (!s.raf) { s.last = performance.now(); s.raf = requestAnimationFrame(t => step(card, s, t)); } }
+    function onMove(e) {
+      const card = e.currentTarget, s = springs.get(card);
+      if (!s) return;
+      const r = card.getBoundingClientRect();
+      s.ty = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
+      s.tx = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
+      kick(card, s);
+    }
+    function onLeave(e) {
+      const card = e.currentTarget, s = springs.get(card);
+      card.removeEventListener('pointermove', onMove);
+      card.removeEventListener('pointerleave', onLeave);
+      card.classList.remove('is-tilting');
+      if (!s) return;
+      s.active = false; s.tx = 0; s.ty = 0;
+      kick(card, s);
+    }
+    document.addEventListener('pointerover', e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      const card = e.target.closest && e.target.closest('[data-tilt]');
+      if (!card || card.classList.contains('is-tilting')) return;
+      let s = springs.get(card);
+      if (!s) springs.set(card, s = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, raf: 0, last: 0 });
+      s.active = true;
+      card.style.transition = 'box-shadow var(--t) var(--ease), border-color var(--t) var(--ease)';
+      card.classList.add('is-tilting');
+      card.addEventListener('pointermove', onMove, { passive: true });
+      card.addEventListener('pointerleave', onLeave);
+    }, { passive: true });
   }
 
   /* ---------------- Confetti ---------------- */
@@ -1046,10 +1211,13 @@ const CCC = (() => {
     initParticles();
     initSightingDrawer();
     initRipple();
+    initShine();
+    initMagnet();
+    initTilt();
     initTeslaLink();
     initAccountMenu();
     initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
+  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
 })();

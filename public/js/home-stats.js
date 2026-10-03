@@ -16,19 +16,12 @@
   // The tiles are deliberately NOT live regions (no aria-live / role=status): the count-up rewrites the text on
   // every animation frame, and a live region would make a screen reader announce dozens of intermediate
   // numbers. They are ordinary text, so the final value is read normally. tests/registry-stats.test.mjs guards this.
+  // CountUp (CCC.countUp, js/main.js): counts up once, when the tile scrolls into view, and lands on the
+  // real number; with reduced motion or no IntersectionObserver it is written once, straight away.
   function reveal(el, n) {
     el.dataset.value = String(n);
-    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const animate = () => {
-      if (typeof CCC !== 'undefined' && CCC.animateCounter) CCC.animateCounter(el, 0, n, 1400);
-      else el.textContent = n.toLocaleString();
-    };
-    if (still || typeof IntersectionObserver !== 'function') { el.textContent = n.toLocaleString(); return; }
-    // Same behavior as before: count up once, when the tile scrolls into view.
-    const io = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) { io.disconnect(); animate(); }
-    }, { threshold: 0.4 });
-    io.observe(el);
+    if (typeof CCC !== 'undefined' && CCC.countUp) CCC.countUp(el, n);
+    else el.textContent = n.toLocaleString();
   }
 
   fetch(WORKER + '/api/registry/stats')
