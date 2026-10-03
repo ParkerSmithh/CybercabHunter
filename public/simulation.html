@@ -28,10 +28,10 @@
   .toggle.on{background:linear-gradient(120deg,#F3E5AB,#D4AF37);}
   .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:rgb(var(--ink)); transition:transform var(--t) var(--ease);}
   .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
-  /* The Cybercab in both views' headers: one size and place. Under the text on
-     phones (centered), on the right from md up. */
-  .sim-hero-car{width:min(100%, 320px); height:auto; justify-self:center; user-select:none; filter:drop-shadow(0 24px 32px rgb(0 0 0 / 0.45));}
-  @media (min-width:768px){ .sim-hero-car{width:300px; justify-self:end;} }
+  /* The Cybercab in both views' headers: one size and place, on the right
+     from md up. Not shown on phones (it crowds the header there). */
+  .sim-hero-car{display:none; height:auto; user-select:none; filter:drop-shadow(0 24px 32px rgb(0 0 0 / 0.45));}
+  @media (min-width:768px){ .sim-hero-car{display:block; width:300px; justify-self:end;} }
   @media (min-width:1024px){ .sim-hero-car{width:400px;} }
   /* Fleet ETA view (js/fleet-compare.js). Status colors use the
      theme's warn/ok inks, so both themes read correctly. */
@@ -137,7 +137,7 @@
 
 <div id="simPanelRoi" role="tabpanel" aria-labelledby="simTabRoi">
 <!-- Both views open with the same header: text on the left, the Cybercab on
-     the right (below the text on phones), same size and place (.sim-hero-car). -->
+     the right, same size and place (.sim-hero-car; hidden on phones). -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
     <div class="max-w-2xl">
