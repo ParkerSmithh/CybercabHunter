@@ -39,7 +39,7 @@ const missing = [];
 const checkRef = (from, ref) => {
   const clean = ref.split('#')[0].split('?')[0];
   if (!clean || /^(https?:|\/\/|mailto:|tel:|data:|javascript:|blob:)/i.test(clean)) return;
-  if (/^\/(api|oauth)\b/.test(clean) || /\$\{|\+|\{\{/.test(clean)) return;      // Worker routes / templated strings
+  if (/^\/(api|oauth|videos)\b/.test(clean) || /\$\{|\+|\{\{/.test(clean)) return;  // Worker routes (videos: worker/videos.js) / templated strings
   const p = clean.replace(/^\//, '');
   if (p === '') return;                                                        // "/" is index.html
   if (fs.existsSync(`${PUBLIC}${p}`) && fs.statSync(`${PUBLIC}${p}`).isFile()) return;

@@ -23,6 +23,7 @@ import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 import { gmail } from './gmail.js';
+import { serveVideo } from './videos.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -540,6 +541,13 @@ export default {
     const legacyImage = url.pathname.match(/^\/(Cybercab2|CybercabFlipped|HeroImage)\.png$/);
     if (legacyImage && (request.method === 'GET' || request.method === 'HEAD')) {
       return Response.redirect(new URL(`/images/${legacyImage[1]}.png`, url), 301);
+    }
+
+    // Site videos (worker/videos.js): a fixed allow-list of slugs, each mapped
+    // to one object in the private evidence bucket. Public, with Range support.
+    const videoMatch = url.pathname.match(/^\/videos\/([a-z0-9-]+)$/);
+    if (videoMatch) {
+      return serveVideo(request, env, videoMatch[1]);
     }
 
     // Everything else falls through to the static site, served from ./public (see wrangler.jsonc).

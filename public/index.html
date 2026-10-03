@@ -82,11 +82,19 @@
 </nav>
 
 <!-- ===== Hero =====
-     The photograph at full width, 600px tall, with the message over it. It
-     is a photo with its own dark scrim, so its text stays light in both themes. -->
+     The Cybercab animation at full width, 600px tall, with the message over
+     it and its own dark scrim, so its text stays light in both themes. The
+     video comes from the Worker (/videos/cybercab-animation-web, worker/videos.js);
+     its first frame is the poster and the fallback. On wide screens the
+     16:9 film fills the hero's height on the right, its black studio fading
+     into the page on the left; on narrower ones the whole frame sits across
+     the top, fading into the page under the headline. js/hero-video.js plays it
+     once, while it is on screen (never with reduced motion or Save-Data). -->
 <main id="main" tabindex="-1">
 <section class="relative min-h-[600px] flex items-end overflow-hidden">
-  <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover object-[78%_28%] sm:object-[70%_center]" fetchpriority="high" decoding="async">
+  <video id="heroVideo" class="absolute inset-x-0 top-0 w-full aspect-video object-cover [-webkit-mask-image:linear-gradient(to_bottom,#000_70%,transparent)] [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] lg:inset-x-auto lg:right-0 lg:h-full lg:w-auto lg:min-w-[60%] lg:[-webkit-mask-image:linear-gradient(to_right,transparent,#000_30%)] lg:[mask-image:linear-gradient(to_right,transparent,#000_30%)]" poster="images/CybercabAnimation-poster.jpg" muted playsinline preload="none" disablepictureinpicture aria-label="Animation: a gold Tesla Cybercab opens both doors and turns to face the camera">
+    <source src="/videos/cybercab-animation-web" type="video/mp4">
+  </video>
   <div class="hero-scrim absolute inset-0" aria-hidden="true"></div>
   <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
     <div class="max-w-xl">
@@ -348,6 +356,7 @@
 <script src="js/main.js?v=20"></script>
 <script src="js/home-stats.js?v=2"></script>
 <script src="js/austin-map.js?v=5"></script>
+<script src="js/hero-video.js?v=2" defer></script>
 <script>
   CCC.init();
 
