@@ -21,7 +21,83 @@ const CCC_CALC = require('../public/js/calc.js');
   assert.strictEqual(r.breakevenMonths, Infinity);
 }
 
-// Only the Fleet ROI calculation remains (the Fleet ETA helpers were removed with that page).
-assert.deepStrictEqual(Object.keys(CCC_CALC), ['fleetFinancials']);
+// ---- Fleet comparison (dispatch-comparison.html; model: docs/fleet-eta-live-data-research.md §3) ----
+
+// ETA range, the report's worked example: 47 public Cybercabs, Typical -> about 6-16 min, most likely ~9.
+{
+  const r = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'typical' });
+  assert.strictEqual(r.state, 'ok');
+  assert.deepStrictEqual([r.low, r.likely, r.high], [6, 9, 16]);
+  assert.strictEqual(r.highCapped, false);
+  assert.ok(r.low <= r.likely && r.likely <= r.high, 'range is ordered');
+}
+// Scenarios change free cars, not a multiplier: Quiet is faster than Typical, Busy slower.
+{
+  const q = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'quiet' });
+  const t = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'typical' });
+  const b = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'busy' });
+  assert.ok(q.likely < t.likely && t.likely < b.likely, `quiet ${q.likely} < typical ${t.likely} < busy ${b.likely}`);
+  assert.ok(q.likelyFreeCars > t.likelyFreeCars && t.likelyFreeCars > b.likelyFreeCars);
+}
+// More cars, shorter waits (the square-root law): 4x the fleet halves the travel part.
+{
+  const one = CCC_CALC.etaRange({ fleetSize: 50 }), four = CCC_CALC.etaRange({ fleetSize: 200 });
+  assert.ok(four.likely < one.likely);
+}
+// The top end is capped at 20 min and flagged.
+{
+  const r = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'busy' });
+  assert.strictEqual(r.high, 20);
+  assert.strictEqual(r.highCapped, true);
+}
+// Too few free cars: no number at all.
+{
+  const r = CCC_CALC.etaRange({ fleetSize: 5, scenario: 'busy' });
+  assert.strictEqual(r.state, 'few-cars');
+  assert.strictEqual(r.low, undefined);
+}
+// No fleet size: no estimate (never a hard-coded fallback).
+for (const fleetSize of [0, null, undefined, NaN, -3]) {
+  assert.strictEqual(CCC_CALC.etaRange({ fleetSize }).state, 'no-data');
+}
+
+// Fares
+assert.strictEqual(CCC_CALC.reportedFare(5), 10.00);           // $3.00 + 5 x $1.40
+assert.strictEqual(CCC_CALC.reportedFare(0), 3.00);
+assert.strictEqual(CCC_CALC.reportedFare(-1), null);
+assert.strictEqual(CCC_CALC.measuredFare(5, { per_mile: 3.76 }), 18.8);
+assert.strictEqual(CCC_CALC.measuredFare(5, { per_mile: null }), null);   // no measured rides
+assert.strictEqual(CCC_CALC.measuredFare(5, null), null);
+assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: 9.18, per_mile: 3.76 }), 2.4);   // total miles / rides
+assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile: null }), null);
+
+// Staleness: the daily fare model is stale after 36 hours (or with no timestamp).
+{
+  const now = Date.parse('2026-10-03T12:00:00Z');
+  assert.strictEqual(CCC_CALC.faresStale('2026-10-03T11:00:00Z', now), false);
+  assert.strictEqual(CCC_CALC.faresStale('2026-10-02T00:30:00Z', now), false);   // 35.5 h
+  assert.strictEqual(CCC_CALC.faresStale('2026-10-01T23:00:00Z', now), true);    // 37 h
+  assert.strictEqual(CCC_CALC.faresStale(null, now), true);
+  assert.strictEqual(Math.round(CCC_CALC.ageHours('2026-10-03T09:00:00Z', now)), 3);
+}
+
+// Service hours: 6:00 AM - 11:00 PM by the clock in America/Chicago, never the visitor's.
+{
+  const at = iso => CCC_CALC.serviceStatus(new Date(iso));
+  assert.strictEqual(at('2026-10-03T10:59:00Z').open, false);   // 5:59 AM CDT
+  assert.strictEqual(at('2026-10-03T11:00:00Z').open, true);    // 6:00 AM CDT
+  assert.strictEqual(at('2026-10-04T03:59:00Z').open, true);    // 10:59 PM CDT
+  assert.strictEqual(at('2026-10-04T04:00:00Z').open, false);   // 11:00 PM CDT
+  assert.strictEqual(at('2026-12-15T12:00:00Z').open, true);    // 6:00 AM CST (UTC-6 in winter)
+  assert.strictEqual(at('2026-12-15T11:59:00Z').open, false);   // 5:59 AM CST
+  assert.strictEqual(at('2026-10-03T08:00:00Z').label, 'Opens 6:00 AM');
+  assert.strictEqual(at('2026-10-03T18:00:00Z').label, 'Operating now');
+  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.SERVICE_HOURS.closeMinute), '11:00 PM');
+}
+
+assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
+  'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
+  'ageHours', 'clockLabel', 'etaRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'reportedFare', 'serviceStatus'
+]);
 
 console.log('calc.test.js: all assertions passed');

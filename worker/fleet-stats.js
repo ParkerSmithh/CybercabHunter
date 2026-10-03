@@ -1,7 +1,7 @@
 // Live Fleet & Fares stats (the Zones page panel).
 //
 //   GET /api/fleet-stats?city=austin   public, edge-cached
-//   -> { city, cybercabs,
+//   -> { city, cybercabs, count_as_of,
 //        fares: { rides, min_rides, median_fare, average_fare, per_mile,
 //                 computed_at, sources } }
 //
@@ -12,6 +12,8 @@
 // COUNT (live, every request; cached at the edge for COUNT_CACHE_SECONDS):
 //   cybercabs   publicly eligible registry vehicles recorded as Cybercabs
 //               whose service area is the city.
+//   count_as_of when that count was taken (ISO 8601 UTC), so a page can say how
+//               old it is (an edge-cached copy keeps its original time).
 //
 // FARES (recomputed daily by the cron in wrangler.jsonc — FLEET_STATS_CRON —
 // and stored in KV, so the numbers move as new rides land, no deploy needed):
@@ -133,7 +135,7 @@ export async function apiFleetStats(request, env, ctx) {
     if (hit) return hit;
   }
   const [counts, fares] = await Promise.all([computeFleetCounts(env.cybercabhunter_db, area.name), storedFares(env, area)]);
-  const response = Response.json({ city: area.key, cybercabs: counts.cybercabs, fares },
+  const response = Response.json({ city: area.key, cybercabs: counts.cybercabs, count_as_of: new Date().toISOString(), fares },
     { headers: { 'Cache-Control': `public, max-age=${COUNT_CACHE_SECONDS}` } });
   if (cache) {
     const stored = cache.put(cacheKey, response.clone()).catch(() => {});
