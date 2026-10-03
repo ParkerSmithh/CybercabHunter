@@ -13,12 +13,17 @@ const { check } = t;
 const ROOT = new URL('..', import.meta.url).pathname;
 const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const HTML = read('simulation.html');
-const INLINE = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.lastIndexOf('</script>'));
-const COMBINED = `${read('js/calc.js')}\n${read('js/main.js')}\n${INLINE}`;
+const INLINE = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.indexOf('</script>', HTML.lastIndexOf('<script>')));
+const COMBINED = `${read('js/calc.js')}\n${read('js/main.js')}\n${INLINE}\n${read('js/fleet-compare.js')}`;
+
+// Every window opened; closed at the end so the Fleet ETA view's refresh timers
+// (js/fleet-compare.js) don't keep the test process alive.
+const windows = [];
 
 function open(url, registry = null) {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
   const w = dom.window;
+  windows.push(w);
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   const requests = [];
   w.fetch = async u => { requests.push(String(u)); return registry && String(u).endsWith('/api/registry/stats') ? Response.json(registry) : new Response('{}', { status: 404 }); };
@@ -41,7 +46,7 @@ async function run() {
     check('the buttons come first, right under the header', (() => { const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling; const first = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav; return first.tagName === 'SECTION' && !!first.querySelector('#simTabs'); })());
     check('Fleet ROI shows by default; Fleet ETA is hidden', !hidden('simPanelRoi') && hidden('simPanelEta') && p.d.getElementById('simTabRoi').getAttribute('aria-selected') === 'true');
     check('the Fleet ROI view is the fleet calculator (FLEET ROI, inputs, Export)', /FLEET\s*ROI/.test(p.d.getElementById('simPanelRoi').textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
-    check('the Fleet ETA view is the dispatch comparison', /FLEET\s*ETA/.test(p.d.getElementById('simPanelEta').textContent) && !!p.d.getElementById('simPanelEta').querySelector('#cybercabEta') && !!p.d.getElementById('tripMiles'));
+    check('the Fleet ETA view is the fleet comparison (fares, hours, pickup wait)', /FLEET\s*ETA/.test(p.d.getElementById('simPanelEta').textContent) && ['etaCybercab', 'etaModelY', 'tripMiles', 'fleetLive'].every(id => p.d.getElementById('simPanelEta').querySelector('#' + id)));
     check('the page asks for the live fleet stats (Fleet ETA)', p.requests.some(u => u.includes('/api/fleet-stats')));
     p.d.getElementById('simTabEta').click();
     check('clicking Fleet ETA switches views', hidden('simPanelRoi') && !hidden('simPanelEta') && p.d.getElementById('simTabEta').getAttribute('aria-selected') === 'true');
@@ -50,12 +55,13 @@ async function run() {
     check('clicking Fleet ROI switches back (and the URL is clean again)', !hidden('simPanelRoi') && hidden('simPanelEta') && p.w.location.search === '');
     const direct = open('https://cybercabhunter.com/simulation?view=eta');
     check('opening ?view=eta starts on Fleet ETA', direct.error === null && !direct.d.getElementById('simPanelEta').classList.contains('hidden') && direct.d.getElementById('simPanelRoi').classList.contains('hidden'));
-    const dallas = p.d.querySelector('#citySelector [data-city="dallas"]');
+    const dallas = p.d.querySelector('#simPanelEta [data-city="dallas"]');
     dallas.click();
     check('Fleet ETA: Dallas shows the "not yet available" note', p.d.getElementById('austinContent').classList.contains('hidden') && !p.d.getElementById('dallasContent').classList.contains('hidden') && dallas.getAttribute('aria-pressed') === 'true');
-    const surge = p.d.querySelector('#demandGroup [data-demand="1.5"]');
-    surge.click();
-    check('Fleet ETA: one demand button is selected at a time', surge.getAttribute('aria-pressed') === 'true' && p.d.querySelectorAll('#demandGroup [aria-pressed="true"]').length === 1);
+    const busy = p.d.querySelector('[data-scenario="busy"]');
+    busy.click();
+    check('Fleet ETA: one scenario button is selected at a time', busy.getAttribute('aria-pressed') === 'true' && p.d.querySelectorAll('[data-scenario][aria-pressed="true"]').length === 1);
+    check('Fleet ETA: the old dispatch-comparison page is folded in (no separate page)', !fs.existsSync(`${ROOT}public/dispatch-comparison.html`));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
     check('no element id is used twice on the combined page', ids.length === new Set(ids).size);
   }
@@ -99,6 +105,7 @@ async function run() {
     }
   }
 
+  windows.forEach(w => w.close());
   t.finish();
 }
 

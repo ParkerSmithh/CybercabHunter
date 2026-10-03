@@ -24,13 +24,14 @@
 
 Two tools on one page (nav label "Simulation", URL `/simulation`), switched with the **FLEET ROI** and **FLEET ETA** buttons. Fleet ROI opens first; the choice is kept in the URL as `?view=eta`. The old `/fleet-calculator` URL redirects to `/simulation` and `/dispatch-comparison` to `/simulation?view=eta`.
 
-### Fleet ETA — dispatch comparison
+### Fleet ETA — fleet comparison (`js/fleet-compare.js`)
 
-- Austin/Dallas selector; Dallas shows an explicit "isn't available in Cybercab Hunter yet" note instead of simulated data.
-- Active Cybercabs and Active Model Y Fleet are live from `GET /api/fleet-stats` (vehicles with an approved sighting or a logged ride in the last 30 days), "—" when not tracked. Service area (264 mi²) is fixed.
-- Trip Distance (0–30 mi) drives the fare estimate: miles × the average of the live per-mile rate and median fare ÷ median miles, from riders' logged rides, labelled as an estimate with its sample size and date.
-- Passenger Demand: Low (0.8×) / Normal (1.0×) / Surge (1.5×).
-- ETA per fleet: `ETA = k × √(Area / Fleet) × Demand`.
+Cybercab vs. Model Y in Austin; the model and its inputs are in `docs/fleet-eta-live-data-research.md`. Dallas shows a "not yet available" note.
+
+- Fares: the Cybercab median, average and $/mile from `GET /api/fleet-stats` (each with its sample size) beside Tesla's reported Austin rate; a trip-distance slider prices both, and an estimate far past the measured average trip is labelled an extrapolation. A Stale badge after 36 h; "Live data unavailable" when the request fails (no fallback numbers).
+- Operating hours (6:00 AM – 11:00 PM Central) with a live open/closed state and a 24-hour strip.
+- Pickup wait as a range (e.g. 6–16 min, most likely ~9) with Quiet / Typical / Busy scenarios; "How this is estimated" lists every input as Live, Measured or Assumed.
+- The live data refreshes every 5 minutes while the page is visible.
 
 ### Fleet ROI — Fleet Dashboard
 

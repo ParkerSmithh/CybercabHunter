@@ -39,7 +39,7 @@ const missing = [];
 const checkRef = (from, ref) => {
   const clean = ref.split('#')[0].split('?')[0];
   if (!clean || /^(https?:|\/\/|mailto:|tel:|data:|javascript:|blob:)/i.test(clean)) return;
-  if (/^\/(api|oauth)\b/.test(clean) || /\$\{|\+|\{\{/.test(clean)) return;      // Worker routes / templated strings
+  if (/^\/(api|oauth|videos)\b/.test(clean) || /\$\{|\+|\{\{/.test(clean)) return;  // Worker routes (videos: worker/videos.js) / templated strings
   const p = clean.replace(/^\//, '');
   if (p === '') return;                                                        // "/" is index.html
   if (fs.existsSync(`${PUBLIC}${p}`) && fs.statSync(`${PUBLIC}${p}`).isFile()) return;
@@ -69,11 +69,16 @@ console.log('4. Old image URLs still work (301 to /images/)');
   const seen = [];
   ctx.env.ASSETS = { fetch: async req => { seen.push(new URL(req.url).pathname); return new Response('asset', { status: 200 }); } };
   const get = (p, method = 'GET') => worker.fetch(new Request(`https://cybercabhunter.com${p}`, { method }), ctx.env, {});
-  for (const name of ['Cybercab', 'Cybercab2', 'CybercabFlipped', 'HeroImage', 'RedModelY']) {
+  for (const name of ['Cybercab2', 'CybercabFlipped', 'HeroImage']) {
     const r = await get(`/${name}.png`);
     check(`/${name}.png -> 301 https://cybercabhunter.com/images/${name}.png`, r.status === 301 && r.headers.get('Location') === `https://cybercabhunter.com/images/${name}.png` && fs.existsSync(`${PUBLIC}images/${name}.png`));
   }
   check('HEAD is redirected too', (await get('/Cybercab2.png', 'HEAD')).status === 301);
+  // Cybercab.png and RedModelY.png were removed with the Fleet ETA page: no redirect to a missing file.
+  for (const name of ['Cybercab', 'RedModelY']) {
+    const r = await get(`/${name}.png`);
+    check(`/${name}.png is no longer redirected (the image was removed)`, r.status !== 301 && !fs.existsSync(`${PUBLIC}images/${name}.png`));
+  }
   seen.length = 0;
   const other = await get('/images/Cybercab2.png');
   check('the new path is served by the static assets, not redirected', other.status === 200 && seen.join() === '/images/Cybercab2.png');

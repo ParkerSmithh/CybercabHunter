@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=32">
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -82,11 +82,26 @@
 </nav>
 
 <!-- ===== Hero =====
-     The photograph at full width, 600px tall, with the message over it. It
-     is a photo with its own dark scrim, so its text stays light in both themes. -->
+     The Cybercab animation at full width, 600px tall, with the message over
+     it and its own dark scrim, so its text stays light in both themes. The
+     video comes from the Worker (/videos/cybercab-animation-web, worker/videos.js);
+     its first frame is the poster and the fallback. On wide screens the
+     16:9 film fills the hero's height on the right, pushed out by 12% of its
+     width so the car's rear on the first frame meets the page's right edge,
+     its black studio fading into the page on the left; on narrower ones the whole frame sits across
+     the top, fading into the page under the headline.
+     js/hero-video.js plays the film once on load. After that the hero is
+     pinned under the header for 70vh of scrolling (#heroPinSpacer) and
+     scroll drives frames of the film's first 3s (images/hero-frames/) on
+     #heroFrames: scrolling down opens the doors, scrolling up closes them.
+     With reduced motion or Save-Data: the poster, no pin. -->
 <main id="main" tabindex="-1">
-<section class="relative min-h-[600px] flex items-end overflow-hidden">
-  <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover object-[78%_28%] sm:object-[70%_center]" fetchpriority="high" decoding="async">
+<div id="heroPin">
+<section id="hero" class="sticky top-16 min-h-[600px] flex items-end overflow-hidden">
+  <video id="heroVideo" class="absolute inset-x-0 top-0 w-full aspect-video object-cover [-webkit-mask-image:linear-gradient(to_bottom,#000_70%,transparent)] [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] lg:inset-x-auto lg:right-0 lg:h-full lg:w-auto lg:min-w-[60%] lg:translate-x-[12%] lg:[-webkit-mask-image:linear-gradient(to_right,transparent,#000_30%)] lg:[mask-image:linear-gradient(to_right,transparent,#000_30%)]" poster="images/CybercabAnimation-poster.jpg" muted playsinline preload="none" disablepictureinpicture aria-label="Animation: a gold Tesla Cybercab opens both doors and turns to face the camera">
+    <source src="/videos/cybercab-animation-web" type="video/mp4">
+  </video>
+  <canvas id="heroFrames" class="absolute inset-x-0 top-0 w-full aspect-video object-cover [-webkit-mask-image:linear-gradient(to_bottom,#000_70%,transparent)] [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] lg:inset-x-auto lg:right-0 lg:h-full lg:w-auto lg:min-w-[60%] lg:translate-x-[12%] lg:[-webkit-mask-image:linear-gradient(to_right,transparent,#000_30%)] lg:[mask-image:linear-gradient(to_right,transparent,#000_30%)] hidden" width="1600" height="900" aria-hidden="true"></canvas>
   <div class="hero-scrim absolute inset-0" aria-hidden="true"></div>
   <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
     <div class="max-w-xl">
@@ -104,6 +119,8 @@
     </div>
   </div>
 </section>
+<div id="heroPinSpacer" class="h-[70vh] motion-reduce:hidden" aria-hidden="true"></div>
+</div>
 
 <section class="relative pt-8">
   <!-- ===== Stats bar =====
@@ -348,6 +365,7 @@
 <script src="js/main.js?v=20"></script>
 <script src="js/home-stats.js?v=2"></script>
 <script src="js/austin-map.js?v=5"></script>
+<script src="js/hero-video.js?v=3" defer></script>
 <script>
   CCC.init();
 

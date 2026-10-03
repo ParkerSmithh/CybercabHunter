@@ -23,6 +23,7 @@ import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 import { gmail } from './gmail.js';
+import { serveVideo } from './videos.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -521,9 +522,10 @@ export default {
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
-    // Fleet ETA and Fleet ROI are now two views of one Simulation page. Their
-    // old URLs (with or without .html) are permanent redirects there, so old
-    // links, bookmarks and link previews keep working.
+    // Fleet ROI and Fleet ETA are two views of one Simulation page. The old
+    // URLs (with or without .html) are permanent redirects there, so old
+    // links, bookmarks and link previews keep working: /fleet-calculator opens
+    // Fleet ROI, /dispatch-comparison opens Fleet ETA (?view=eta).
     const oldSimulationPage = url.pathname.match(/^\/(dispatch-comparison|fleet-calculator)(?:\.html)?$/);
     if (oldSimulationPage && (request.method === 'GET' || request.method === 'HEAD')) {
       const target = new URL('/simulation', url);
@@ -534,11 +536,19 @@ export default {
     // The site's images moved from the web root into /images/. The old root
     // URLs (/Cybercab2.png ...) are permanent redirects to the new place, so
     // an external link, a cached page or a link preview that still points at
-    // them keeps working. Only these five known files: any other path falls
-    // through to the static site unchanged.
-    const legacyImage = url.pathname.match(/^\/(Cybercab|Cybercab2|CybercabFlipped|HeroImage|RedModelY)\.png$/);
+    // them keeps working. Only these known files (Cybercab.png and
+    // RedModelY.png were removed with the Fleet ETA page): any other path
+    // falls through to the static site unchanged.
+    const legacyImage = url.pathname.match(/^\/(Cybercab2|CybercabFlipped|HeroImage)\.png$/);
     if (legacyImage && (request.method === 'GET' || request.method === 'HEAD')) {
       return Response.redirect(new URL(`/images/${legacyImage[1]}.png`, url), 301);
+    }
+
+    // Site videos (worker/videos.js): a fixed allow-list of slugs, each mapped
+    // to one object in the private evidence bucket. Public, with Range support.
+    const videoMatch = url.pathname.match(/^\/videos\/([a-z0-9-]+)$/);
+    if (videoMatch) {
+      return serveVideo(request, env, videoMatch[1]);
     }
 
     // Everything else falls through to the static site, served from ./public (see wrangler.jsonc).
