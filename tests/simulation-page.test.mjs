@@ -1,7 +1,6 @@
-// Tests for the Fleet ROI page (public/simulation.html, served at /simulation):
-// the fleet investment calculator on its own (the Fleet ETA tool and the
-// Fleet ROI / Fleet ETA buttons were removed), the "Fleet ROI" label in every
-// nav, and the old page URLs redirecting to it.
+// Tests for the Simulation page (public/simulation.html, served at /simulation):
+// two tools on one page behind FLEET ROI / FLEET ETA buttons (Fleet ROI first),
+// the "Simulation" label in every nav, and the old page URLs redirecting to it.
 // Run: node tests/simulation-page.test.mjs
 
 import fs from 'node:fs';
@@ -31,22 +30,34 @@ function open(url, registry = null) {
 }
 
 async function run() {
-  console.log('1. One page: Fleet ROI');
+  console.log('1. One page, two views: Fleet ROI and Fleet ETA');
   {
     const p = open('https://cybercabhunter.com/simulation');
-    check('the page script runs without errors', p.error === null);
-    check('the tab name is "Fleet ROI"', p.d.title === 'Cybercab Hunter | Fleet ROI');
-    check('the Fleet ROI content is the page: FLEET ROI, its inputs and Export', /Fleet\s*ROI/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
-    check('no "Fleet ROI" / "Fleet ETA" buttons and no tab panels remain', !p.d.getElementById('simTabs') && !p.d.querySelector('[role="tab"], [role="tabpanel"]') && !/>\s*Fleet ETA\s*</.test(HTML));
-    check('nothing from the Fleet ETA tool remains on the page', ['simPanelEta', 'cybercabEta', 'modelyEta', 'cybercabFare', 'tripMiles', 'cybercabCount', 'modelyCount', 'cybercabRadar'].every(id => !p.d.getElementById(id)) && !/radar-sweep|view=eta|fleet-stats/i.test(HTML));
-    check('the page no longer asks for the fleet stats (that was the ETA page\'s)', !p.requests.some(u => u.includes('/api/fleet-stats')));
-    const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling;
-    const firstContent = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav;   // the page's <main> landmark wraps it
-    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*ROI/.test(firstContent.textContent));
-    const old = open('https://cybercabhunter.com/simulation?view=eta');
-    check('an old ?view=eta link still opens the Fleet ROI page', old.error === null && !!old.d.getElementById('fleetSize'));
+    const hidden = id => p.d.getElementById(id).classList.contains('hidden');
+    check('both tools\' scripts run together on one page without errors', p.error === null);
+    check('the tab name is "Simulation"', p.d.title === 'Cybercab Hunter | Simulation');
+    const tabs = [...p.d.querySelectorAll('#simTabs [role="tab"]')];
+    check('two buttons: "FLEET ROI" and "FLEET ETA"', tabs.map(b => b.textContent.trim()).join('|') === 'FLEET ROI|FLEET ETA');
+    check('the buttons come first, right under the header', (() => { const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling; const first = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav; return first.tagName === 'SECTION' && !!first.querySelector('#simTabs'); })());
+    check('Fleet ROI shows by default; Fleet ETA is hidden', !hidden('simPanelRoi') && hidden('simPanelEta') && p.d.getElementById('simTabRoi').getAttribute('aria-selected') === 'true');
+    check('the Fleet ROI view is the fleet calculator (FLEET ROI, inputs, Export)', /FLEET\s*ROI/.test(p.d.getElementById('simPanelRoi').textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
+    check('the Fleet ETA view is the dispatch comparison', /FLEET\s*ETA/.test(p.d.getElementById('simPanelEta').textContent) && !!p.d.getElementById('simPanelEta').querySelector('#cybercabEta') && !!p.d.getElementById('tripMiles'));
+    check('the page asks for the live fleet stats (Fleet ETA)', p.requests.some(u => u.includes('/api/fleet-stats')));
+    p.d.getElementById('simTabEta').click();
+    check('clicking Fleet ETA switches views', hidden('simPanelRoi') && !hidden('simPanelEta') && p.d.getElementById('simTabEta').getAttribute('aria-selected') === 'true');
+    check('...and the URL remembers it (?view=eta)', p.w.location.search === '?view=eta');
+    p.d.getElementById('simTabRoi').click();
+    check('clicking Fleet ROI switches back (and the URL is clean again)', !hidden('simPanelRoi') && hidden('simPanelEta') && p.w.location.search === '');
+    const direct = open('https://cybercabhunter.com/simulation?view=eta');
+    check('opening ?view=eta starts on Fleet ETA', direct.error === null && !direct.d.getElementById('simPanelEta').classList.contains('hidden') && direct.d.getElementById('simPanelRoi').classList.contains('hidden'));
+    const dallas = p.d.querySelector('#citySelector [data-city="dallas"]');
+    dallas.click();
+    check('Fleet ETA: Dallas shows the "not yet available" note', p.d.getElementById('austinContent').classList.contains('hidden') && !p.d.getElementById('dallasContent').classList.contains('hidden') && dallas.getAttribute('aria-pressed') === 'true');
+    const surge = p.d.querySelector('#demandGroup [data-demand="1.5"]');
+    surge.click();
+    check('Fleet ETA: one demand button is selected at a time', surge.getAttribute('aria-pressed') === 'true' && p.d.querySelectorAll('#demandGroup [aria-pressed="true"]').length === 1);
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
-    check('no element id is used twice', ids.length === new Set(ids).size);
+    check('no element id is used twice on the combined page', ids.length === new Set(ids).size);
   }
 
   console.log('2. Fleet ROI still calculates');
@@ -76,15 +87,15 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
     check('the old pages are gone', !pages.includes('dispatch-comparison.html') && !pages.includes('fleet-calculator.html'));
     check('no page links to them any more', pages.every(f => !/dispatch-comparison|fleet-calculator/.test(read(f))));
-    check('no page says "Simulation" any more', pages.every(f => !/Simulation/.test(read(f))));
     const withNav = pages.filter(f => read(f).includes('id="navIndicator"'));
-    check('every page with the header nav has one "Fleet ROI" tab (still /simulation)', withNav.length >= 8 && withNav.every(f => /<a href="\/simulation" data-nav="simulation"[^>]*>Fleet ROI<\/a>/.test(read(f))));
-    check('...and the mobile bottom nav item reads "Fleet ROI"', withNav.every(f => (read(f).match(/data-nav="simulation"/g) || []).length === 2 && /data-nav="simulation"[^>]*>[\s\S]*?<span[^>]*>Fleet ROI<\/span>/.test(read(f).split('id="mobileBottomNav"')[1])));
-    check('footers link to it as "Fleet ROI"', pages.filter(f => read(f).includes('<footer')).every(f => !/<a href="\/simulation" class="hover:text-white transition-colors">(?!Fleet ROI<)/.test(read(f))));
+    check('every page with the header nav has one "Simulation" tab (/simulation)', withNav.length >= 8 && withNav.every(f => /<a href="\/simulation" data-nav="simulation"[^>]*>Simulation<\/a>/.test(read(f))));
+    check('...and the mobile bottom nav item reads "Simulation"', withNav.every(f => (read(f).match(/data-nav="simulation"/g) || []).length === 2 && /data-nav="simulation"[^>]*>[\s\S]*?<span[^>]*>Simulation<\/span>/.test(read(f).split('id="mobileBottomNav"')[1])));
+    check('footers link to it as "Simulation"', pages.filter(f => read(f).includes('<footer')).every(f => !/<a href="\/simulation" class="hover:text-white transition-colors">(?!Simulation<)/.test(read(f))));
     const env = { ASSETS: { fetch: async () => new Response('static') } };
     for (const path of ['/fleet-calculator', '/fleet-calculator.html', '/dispatch-comparison', '/dispatch-comparison.html']) {
       const r = await worker.fetch(new Request(`https://cybercabhunter.com${path}`), env, {});
-      check(`${path} permanently redirects to /simulation (the Fleet ROI page)`, r.status === 301 && r.headers.get('Location') === 'https://cybercabhunter.com/simulation');
+      const to = path.startsWith('/dispatch-comparison') ? 'https://cybercabhunter.com/simulation?view=eta' : 'https://cybercabhunter.com/simulation';
+      check(`${path} permanently redirects to ${to.replace('https://cybercabhunter.com', '')}`, r.status === 301 && r.headers.get('Location') === to);
     }
   }
 

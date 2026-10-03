@@ -20,11 +20,19 @@
 - Recent sightings feed
 - Submit Sighting drawer
 
-## Fleet ROI (`simulation.html`)
+## Simulation (`simulation.html`)
 
-The Fleet ROI page (nav label "Fleet ROI", URL `/simulation`). The old `/fleet-calculator` and `/dispatch-comparison` URLs permanently redirect here; the Fleet ETA dispatch simulator that used to share this page was removed.
+Two tools on one page (nav label "Simulation", URL `/simulation`), switched with the **FLEET ROI** and **FLEET ETA** buttons. Fleet ROI opens first; the choice is kept in the URL as `?view=eta`. The old `/fleet-calculator` URL redirects to `/simulation` and `/dispatch-comparison` to `/simulation?view=eta`.
 
-### Fleet Dashboard
+### Fleet ETA — dispatch comparison
+
+- Austin/Dallas selector; Dallas shows an explicit "isn't available in Cybercab Hunter yet" note instead of simulated data.
+- Active Cybercabs and Active Model Y Fleet are live from `GET /api/fleet-stats` (vehicles with an approved sighting or a logged ride in the last 30 days), "—" when not tracked. Service area (264 mi²) is fixed.
+- Trip Distance (0–30 mi) drives the fare estimate: miles × the average of the live per-mile rate and median fare ÷ median miles, from riders' logged rides, labelled as an estimate with its sample size and date.
+- Passenger Demand: Low (0.8×) / Normal (1.0×) / Surge (1.5×).
+- ETA per fleet: `ETA = k × √(Area / Fleet) × Demand`.
+
+### Fleet ROI — Fleet Dashboard
 
 - Adjustable inputs: fleet size, electricity rate, and daily miles/cab (range sliders), plus an inductive-loss toggle (defaults to 8%)
 - Passenger Fare, Tesla Network Cut, and Cost per Unit are shown as fixed assumptions, not adjustable inputs
