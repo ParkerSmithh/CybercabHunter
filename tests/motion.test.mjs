@@ -292,7 +292,7 @@ console.log('11. Stepper (batch three)');
 console.log('12. Not added in batch three');
 {
   check('no carousel autoplay anywhere (no carousel was added: the vehicle page has no photo strip)', !/autoplay/i.test(MAIN + read('public/js/vehicle.js') + read('public/vehicle.html')));
-  check('no second grain layer: the existing static .bg-mesh grain is the only noise', (CSS.match(/feTurbulence/g) || []).length === 1);
+  check('no grain layer: the canvas is flat (the Linear style: no texture)', (CSS.match(/feTurbulence/g) || []).length === 0);
 }
 
 t.finish();

@@ -89,7 +89,7 @@
     if (!data || !Array.isArray(data.entries)) { show('boardError'); return; }
     activeBoard = data.board;
     renderTotals(data.totals);
-    $('boardTitle').textContent = String(data.label || '').toUpperCase();
+    { const label = String(data.label || ''); $('boardTitle').textContent = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase(); }
     renderTabs(data.boards);
     if (!data.entries.length) { show('boardEmpty'); return; }
     $('boardList').innerHTML = data.entries.map(rowHtml).join('');

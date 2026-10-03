@@ -251,7 +251,7 @@
       sel.value = editing.vehicle.id;
     } else sel.value = '';
     sel.disabled = !!editing;
-    $('reviewFormTitle').textContent = editing ? 'EDIT YOUR REVIEW' : 'WRITE A REVIEW';
+    $('reviewFormTitle').textContent = editing ? 'Edit your review' : 'Write a review';
     $('reviewSubmit').textContent = editing ? 'Save changes' : 'Post review';
     setRating(editing ? editing.rating : 0);
     $('reviewBody').value = editing ? editing.body : '';

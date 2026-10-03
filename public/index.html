@@ -14,9 +14,9 @@
 </script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=3"></script>
-<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=26">
+<script src="js/theme.js?v=4"></script>
+<link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -33,7 +33,7 @@
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
@@ -91,8 +91,8 @@
   <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
     <div class="max-w-xl">
       <!-- BlurText (css/style.css .blur-word): each word comes out of a blur, once, on load. -->
-      <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper">
-        <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#D4AF37]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
+      <h1 class="font-display font-medium text-5xl lg:text-[64px] leading-[1.02] tracking-[-0.022em] text-paper">
+        <span class="blur-word" style="--i:0">Track</span> <span class="blur-word" style="--i:1">the</span> <span class="blur-word" style="--i:2">future</span><br class="hidden sm:inline"> <span class="blur-word" style="--i:3">of</span> <span class="blur-word" style="--i:4">autonomy</span>
       </h1>
       <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed reveal-on-scroll" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
       <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll" data-delay="320">
@@ -127,7 +127,7 @@
 <section class="pt-14 pb-20 lg:pt-20" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="reveal-on-scroll mb-6 flex flex-wrap items-end justify-between gap-4">
-      <h2 data-split class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white">SERVICE ZONES</h2>
+      <h2 data-split class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white">Service zones</h2>
     <!-- One Austin/Dallas selector controls BOTH cards below (the mini map and
          the fleet chart) — Dallas has no map or fleet data yet, so it swaps
          both out for a single "not available" note rather than duplicating
@@ -145,7 +145,7 @@
       <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 reveal-on-scroll sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
         <div class="shrink-0">
           <div data-decrypt class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
-          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight">AUSTIN</div>
+          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight">Austin</div>
         </div>
         <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8">Robotaxi service is currently available in this area.</p>
         <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8">
@@ -178,7 +178,7 @@
       <div id="homeFleetChart" class="glass rounded-2xl p-5 reveal-on-scroll flex flex-col xl:col-span-2">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1">
           <div class="min-w-0">
-            <h3 class="font-display font-bold text-lg tracking-tight text-white">FLEET GROWTH</h3>
+            <h3 class="font-display font-bold text-lg tracking-tight text-white">Fleet growth</h3>
             <p class="text-xs text-slate-500 mt-0.5">Austin Cybercabs documented in the registry, over time</p>
           </div>
           <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0" id="fleetChartRange" role="group" aria-label="Time range">
@@ -196,7 +196,7 @@
       <!-- Dallas: shown instead of BOTH cards above (spans their combined
            width) — there is no map or registry data for Dallas yet. -->
       <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center reveal-on-scroll">
-        <div class="font-display font-bold text-2xl text-gold mb-2">NOT YET AVAILABLE</div>
+        <div class="font-display font-bold text-2xl text-gold mb-2">Not yet available</div>
         <p class="text-slate-400 text-sm max-w-sm mx-auto">Dallas zone and fleet information isn't available in Cybercab Hunter yet.</p>
       </div>
 
@@ -213,7 +213,7 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
+    <h2 class="font-display font-bold text-xl">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
@@ -238,7 +238,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -345,7 +345,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/main.js?v=20"></script>
 <script src="js/home-stats.js?v=2"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
@@ -399,7 +399,7 @@
 
       const labelEl = document.createElement('div');
       labelEl.style.cssText = 'display:flex;align-items:center;gap:7px;white-space:nowrap;';
-      labelEl.innerHTML = `<span style="width:11px;height:11px;border-radius:50%;background:rgb(var(--gold));box-shadow:0 0 0 3px rgb(var(--gold) / 0.25);display:block;"></span><span style="color:rgb(var(--ink));font-weight:600;font-size:15px;font-family:'Geist',sans-serif;letter-spacing:-0.01em;text-shadow:0 0 6px rgb(var(--bg)),0 0 2px rgb(var(--bg));">${cityName}</span>`;
+      labelEl.innerHTML = `<span style="width:11px;height:11px;border-radius:50%;background:rgb(var(--gold));box-shadow:0 0 0 3px rgb(var(--gold) / 0.25);display:block;"></span><span style="color:rgb(var(--ink));font-weight:600;font-size:15px;font-family:'Inter',sans-serif;letter-spacing:-0.01em;text-shadow:0 0 6px rgb(var(--bg)),0 0 2px rgb(var(--bg));">${cityName}</span>`;
       new maplibregl.Marker({ element: labelEl, anchor: 'left' }).setLngLat(cityCenter).addTo(zoneMap);
     });
   }
@@ -602,7 +602,7 @@
 
       const yTicks = niceTicks(maxY, 3);
       const gridLines = yTicks.map(t => `<line x1="${padL}" y1="${y(t).toFixed(1)}" x2="${w - padR}" y2="${y(t).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.08)" stroke-width="1"/>`).join('');
-      const yLabels = yTicks.map(t => `<text x="${padL - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end" font-size="9" style="fill:rgb(var(--n-500));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">${t}</text>`).join('');
+      const yLabels = yTicks.map(t => `<text x="${padL - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end" font-size="9" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${t}</text>`).join('');
 
       const last = points[points.length - 1];
       const lastX = x(last.date.getTime());

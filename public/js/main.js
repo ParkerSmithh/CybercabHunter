@@ -1095,7 +1095,7 @@ const CCC = (() => {
     const result = params.get('tesla');
     if (result) {
       const messages = {
-        linked: ['TESLA ACCOUNT LINKED', 'success'],
+        linked: ['Tesla account linked', 'success'],
         cancelled: ['Tesla linking was cancelled.', 'info'],
         invalid_state: ['Tesla linking failed. Please try again.', 'error'],
         token_exchange_failed: ['Tesla linking failed. Please try again.', 'error'],
@@ -1124,7 +1124,7 @@ const CCC = (() => {
     if (signinResult === 'success') googleSignInJustCompleted = true;   // for initGmailOnboarding
     if (signinResult) {
       const messages = {
-        success: ['SIGNED IN', 'success'],
+        success: ['Signed in', 'success'],
         cancelled: ['Sign-in was cancelled.', 'info'],
         invalid_state: ['Sign-in failed. Please try again.', 'error'],
         token_exchange_failed: ['Sign-in failed. Please try again.', 'error'],

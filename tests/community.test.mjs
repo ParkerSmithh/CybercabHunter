@@ -320,7 +320,7 @@ async function run() {
     const rows = [...d.querySelectorAll('#boardList > li')];
     check('the board shows its rows', rows.length === 3 && !d.getElementById('boardList').classList.contains('hidden'));
     check('no tab buttons with one board', d.getElementById('boardTabs').classList.contains('hidden') && !d.querySelector('#boardTabs button'));
-    check('the title is the board label', d.getElementById('boardTitle').textContent === 'MOST VEHICLES DISCOVERED');
+    check('the title is the board label', d.getElementById('boardTitle').textContent === 'Most vehicles discovered');
     const first = rows[0].querySelector('a');
     check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(212,175,55,0\.45\)\]/.test(first.className) && first.querySelector('img'));
     check('rows show rank, name and count', /Alice/.test(rows[0].textContent) && /2\s*vehicles/.test(rows[0].textContent.replace(/\s+/g, ' ')));

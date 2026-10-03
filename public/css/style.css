@@ -1,14 +1,16 @@
 /* Cybercab Hunter design system: tokens, base, components, motion.
    Tailwind (CDN, configured once in js/theme.js) handles layout utilities;
    every color it uses is a token below, so one class reads right in both
-   themes. Reference: DESIGN.md (a dark canvas, one gold accent, white type,
-   uppercase display), adapted to the site's own gold and logo.
+   themes. Reference: the Linear style guide (Linear's "midnight precision instrument":
+   a near-black canvas, a grey type scale, hairline borders instead of
+   shadows, Inter at 400/510/590, sentence case, one accent), with the
+   site's own Cybercab gold as that one accent.
 
-   Fonts: Geist and Geist Mono (SIL Open Font License 1.1, Vercel), self-hosted
-   variable woff2 in /fonts. */
+   Fonts: Inter (SIL Open Font License 1.1, The Inter Project Authors) and
+   Geist Mono (SIL OFL 1.1, Vercel), self-hosted variable woff2 in /fonts. */
 
 @font-face{
-  font-family:'Geist'; src:url('../fonts/geist-latin-wght.woff2') format('woff2');
+  font-family:'Inter'; src:url('../fonts/inter-latin-wght.woff2') format('woff2');
   font-weight:100 900; font-style:normal; font-display:swap;
 }
 @font-face{
@@ -22,60 +24,67 @@
    chosen for WCAG AA against --bg and --surface in each theme. */
 :root{
   color-scheme:dark;
-  --bg:9 11 15;            /* #090B0F off-black, cool */
-  --surface:17 20 26;      /* #11141A inputs, raised controls */
-  --surface-2:24 28 35;    /* #181C23 */
-  --ink:236 238 241;       /* #ECEEF1 off-white */
-  --n-50:244 245 247; --n-100:226 229 234; --n-200:205 209 216; --n-300:179 184 194;
-  --n-400:154 161 173; --n-500:130 138 151; --n-600:124 131 143; --n-700:58 63 72;
-  --n-800:38 42 50; --n-900:23 26 31; --n-950:14 16 20;
+  --bg:8 9 10;             /* #08090A Void: the canvas */
+  --surface:15 16 17;      /* #0F1011 Carbon: cards, inputs, nav */
+  --surface-2:22 23 24;    /* #161718 Obsidian: elevated panels */
+  --ink:247 248 248;       /* #F7F8F8 headings */
+  --n-50:247 248 248; --n-100:228 230 234; --n-200:216 221 229; --n-300:208 214 224; /* 300 = Mist #D0D6E0, body */
+  --n-400:138 143 152;     /* Fog #8A8F98, muted text */
+  --n-500:126 131 140; --n-600:122 127 136; /* captions, kept AA on Void */
+  --n-700:56 59 63;        /* Smoke #383B3F */
+  --n-800:35 37 42;        /* Graphite #23252A */
+  --n-900:22 23 24; --n-950:15 16 17;
   --gold:212 175 55;       /* #D4AF37 the one accent (brand) */
   --gold-soft:243 229 171; /* #F3E5AB */
   --gold-ink:212 175 55;   /* gold used as TEXT */
   --danger:232 33 39;      /* #E82127 destructive actions */
   --danger-ink:240 138 132; --warn-ink:233 196 106; --ok-ink:95 212 163;
-  --line:212 175 55;       /* hairlines are gold-tinted, at low alpha */
-  --line-a:0.16;
-  --glass:15 18 24; --glass-a:0.62;
+  --line:35 37 42;         /* hairlines: Graphite, solid */
+  --line-a:1;
+  --hair-2:46 48 53;       /* the stronger hairline on outlined controls */
+  --glass:15 16 17; --glass-a:0.82;
   --shadow:0 0 0;
   --focus:212 175 55;
-  --scrim:5 6 9;
+  --scrim:8 9 10;
   --ease:cubic-bezier(0.23,1,0.32,1);   /* strong ease-out (Emil Kowalski) */
   --t-fast:160ms; --t:240ms; --t-slow:420ms;
 }
 :root[data-theme="light"]{
   color-scheme:light;
-  --bg:243 244 246;        /* #F3F4F6 cool off-white */
-  --surface:250 250 251;   /* #FAFAFB */
+  --bg:247 248 248;        /* #F7F8F8 paper canvas */
+  --surface:255 255 255;
   --surface-2:255 255 255;
-  --ink:13 16 21;          /* #0D1015 */
-  --n-50:10 12 16; --n-100:20 23 29; --n-200:35 39 48; --n-300:52 57 67;
-  --n-400:74 80 92; --n-500:90 97 112; --n-600:98 105 118; --n-700:163 168 178;
-  --n-800:205 209 216; --n-900:227 230 234; --n-950:237 239 242;
+  --ink:8 9 10;            /* #08090A */
+  --n-50:8 9 10; --n-100:22 23 24; --n-200:35 37 42; --n-300:52 55 61;
+  --n-400:84 88 96; --n-500:98 102 110; --n-600:104 108 116; --n-700:172 176 183;
+  --n-800:224 225 228; --n-900:235 236 238; --n-950:241 242 243;
   --gold:212 175 55;
   --gold-soft:243 229 171;
   --gold-ink:128 98 12;    /* #80620C gold text, 5.2:1 on --bg */
   --danger:196 30 36;
   --danger-ink:180 35 24; --warn-ink:138 83 0; --ok-ink:11 122 79;
-  --line:20 24 32; --line-a:0.1;
-  --glass:255 255 255; --glass-a:0.72;
+  --line:224 225 228; --line-a:1;
+  --hair-2:212 214 218;
+  --glass:255 255 255; --glass-a:0.82;
   --shadow:24 28 40;
   --focus:128 98 12;
-  --scrim:9 11 15;
+  --scrim:8 9 10;
 }
 
 /* ---------- Base ---------- */
 html{scroll-behavior:smooth; -webkit-text-size-adjust:100%;}
 body{
   background:rgb(var(--bg)); color:rgb(var(--ink));
-  font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
-  font-feature-settings:'ss01','cv11';
+  font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+  font-feature-settings:'cv01','ss03';
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   overflow-x:hidden;
   transition:background-color var(--t) var(--ease), color var(--t) var(--ease);
 }
-h1,h2,h3,h4,.font-display{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.02em;}
-h1{text-wrap:balance;}
+h1,h2,h3,h4,.font-display{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; letter-spacing:-0.012em;}
+/* Display type: weight 510 and -0.022em tracking (Linear never goes bold on
+   a headline); smaller headings keep 590. */
+html h1{font-weight:510; letter-spacing:-0.022em; text-wrap:balance;}
 p{text-wrap:pretty;}
 .font-mono,.tabular-nums{font-variant-numeric:tabular-nums;}
 ::selection{background:rgb(var(--gold)); color:#120d02;}
@@ -84,7 +93,7 @@ p{text-wrap:pretty;}
 :focus-visible{outline:2px solid rgb(var(--focus)); outline-offset:2px;}
 .skip-link{
   position:absolute; left:12px; top:-60px; z-index:300;
-  padding:10px 14px; border-radius:8px; font-size:14px; font-weight:600;
+  padding:10px 14px; border-radius:6px; font-size:14px; font-weight:510;
   background:rgb(var(--gold)); color:#120d02; transition:top var(--t-fast) var(--ease);
 }
 .skip-link:focus{top:12px;}
@@ -97,49 +106,46 @@ p{text-wrap:pretty;}
 :root[data-theme="light"] .text-\[\#8a6a12\]{color:rgb(var(--gold-ink));}
 :root[data-theme="light"] .text-gold\/80{color:rgb(var(--gold-ink) / 0.85);}
 :root[data-theme="light"] .\[color-scheme\:dark\]{color-scheme:light;}
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.25\)\],
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.3\)\],
-:root[data-theme="light"] .border-\[rgba\(212\2c 175\2c 55\2c 0\.35\)\]{border-color:rgba(128,98,12,0.32);}
+
+/* Hairlines, not gold edges. The markup's gold-tinted borders (0.08 to 0.35)
+   all read as the neutral Graphite hairline; outlined controls (0.25 and up)
+   one step stronger. A hover:border class still wins (higher specificity),
+   and the stronger gold edges (0.45+) that mark a highlight stay gold. */
+html [class*="border-[rgba(212,175,55,0.0"],
+html [class*="border-[rgba(212,175,55,0.1"],
+html [class*="border-[rgba(212,175,55,0.2)"]{border-color:rgb(var(--line));}
+html [class*="border-[rgba(212,175,55,0.25"],
+html [class*="border-[rgba(212,175,55,0.3"]{border-color:rgb(var(--hair-2));}
 
 /* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar{width:10px; height:10px;}
 ::-webkit-scrollbar-track{background:rgb(var(--bg));}
 ::-webkit-scrollbar-thumb{background:rgb(var(--n-800)); border-radius:6px; border:2px solid rgb(var(--bg));}
-::-webkit-scrollbar-thumb:hover{background:rgb(var(--gold));}
+::-webkit-scrollbar-thumb:hover{background:rgb(var(--n-700));}
 
 /* ---------- Page backdrop ----------
-   A still, neutral light falloff (no gold wash, no moving blobs) plus a
-   fixed film grain that never scrolls (cheap on phones). */
+   The flat Void canvas: no wash, no grain. Darkness is the substrate. */
 .bg-mesh{
   position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(var(--ink) / 0.03), transparent 62%),
-    rgb(var(--bg));
-}
-:root[data-theme="light"] .bg-mesh{
-  background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(255 255 255 / 0.7), transparent 62%),
-    rgb(var(--bg));
-}
-.bg-mesh::after{
-  content:''; position:fixed; inset:0; opacity:0.05; mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
+  background:rgb(var(--bg));
 }
 .particle{display:none;}
 
 /* ---------- Surfaces ----------
-   Glass = a translucent panel with a hairline and a 1px top highlight (the
-   edge catching light). Solid fallback where transparency is reduced. */
+   A panel is a Carbon surface edged by a Graphite hairline; elevation comes
+   from the border and the surface step, not from a shadow. The faint blur
+   is for the sticky header and drawers that sit over content. Solid
+   fallback where transparency is reduced. */
 .glass{
   background:rgb(var(--glass) / var(--glass-a));
-  -webkit-backdrop-filter:blur(18px) saturate(1.2); backdrop-filter:blur(18px) saturate(1.2);
+  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
   border:1px solid rgb(var(--line) / var(--line-a));
-  box-shadow:inset 0 1px 0 rgb(var(--ink) / 0.04), 0 1px 2px rgb(var(--shadow) / 0.12);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / 0.03);
 }
-:root[data-theme="light"] .glass{box-shadow:inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(var(--shadow) / 0.06), 0 8px 24px -16px rgb(var(--shadow) / 0.18);}
+:root[data-theme="light"] .glass{box-shadow:0 1px 2px rgb(var(--shadow) / 0.04);}
 .glass-strong{
   background:rgb(var(--glass) / 0.9);
-  -webkit-backdrop-filter:blur(24px) saturate(1.2); backdrop-filter:blur(24px) saturate(1.2);
+  -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px);
   border:1px solid rgb(var(--line) / var(--line-a));
 }
 @media (prefers-reduced-transparency: reduce){
@@ -222,9 +228,9 @@ html .glass[data-tilt].is-tilting{
 .delete-steps li{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; text-align:center; font-size:12px; color:rgb(var(--n-400));}
 .delete-steps li:first-child{align-items:flex-start; text-align:left;}
 .delete-steps li:last-child{align-items:flex-end; text-align:right;}
-.delete-step-dot{width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:rgb(var(--surface)); border:1px solid rgb(var(--n-700)); color:rgb(var(--n-400)); transition:background-color var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);}
+.delete-step-dot{width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:590; background:rgb(var(--surface)); border:1px solid rgb(var(--n-700)); color:rgb(var(--n-400)); transition:background-color var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);}
 .delete-steps li.is-done .delete-step-dot{border-color:rgb(var(--gold)); color:rgb(var(--gold-ink));}
-.delete-steps li[aria-current="step"]{color:rgb(var(--ink)); font-weight:600;}
+.delete-steps li[aria-current="step"]{color:rgb(var(--ink)); font-weight:510;}
 .delete-steps li[aria-current="step"] .delete-step-dot{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
 /* PixelCard (batch three): the canvas that resolves a new photo preview. */
 .pixel-host{position:relative;}
@@ -245,8 +251,11 @@ html .glass[data-tilt].is-tilting{
 }
 
 /* ---------- Header ---------- */
-header nav a{text-transform:uppercase; letter-spacing:0.06em; font-size:12.5px !important; font-weight:600 !important;}
-header nav a:not([aria-current="page"]){color:rgb(var(--n-400));}
+/* Pure typographic nav: sentence case, 13.5px, weight 400 in Mist; the
+   current page is ink at 510 with the gold indicator under it. */
+header nav a{letter-spacing:-0.01em; font-size:13.5px !important; font-weight:400 !important;}
+header nav a:not([aria-current="page"]){color:rgb(var(--n-300));}
+header nav a[aria-current="page"]{font-weight:510 !important;}
 header nav a:hover{color:rgb(var(--ink));}
 header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 
@@ -334,16 +343,16 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 }
 
 /* ---------- Data ---------- */
-.stat-value{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;}
+html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-variant-numeric:tabular-nums; font-weight:510; letter-spacing:-0.022em;}
 
 /* ---------- Maps (MapLibre) ----------
    Controls, popups and the attribution pill follow the theme; the dark
    basemap look itself is js/austin-map.js. */
-.maplibregl-map{background:rgb(var(--surface)) !important; font-family:'Geist',sans-serif;}
+.maplibregl-map{background:rgb(var(--surface)) !important; font-family:'Inter',sans-serif;}
 .maplibregl-popup-content{
   background:rgb(var(--glass) / 0.94); color:rgb(var(--ink));
   border:1px solid rgb(var(--line) / var(--line-a)); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-  border-radius:10px; padding:10px 12px; box-shadow:0 12px 30px -16px rgb(var(--shadow) / 0.5);
+  border-radius:12px; padding:10px 12px; box-shadow:0 4px 32px rgb(var(--shadow) / 0.35);
 }
 .maplibregl-popup-tip{border-top-color:rgb(var(--glass) / 0.94); border-bottom-color:rgb(var(--glass) / 0.94);}
 .maplibregl-ctrl-group{background:rgb(var(--glass) / 0.9) !important; border:1px solid rgb(var(--line) / var(--line-a)) !important;}
@@ -373,18 +382,18 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
    from the bottom up instead (the car stays visible above the text). */
 .hero-scrim{
   background:
-    linear-gradient(90deg, rgba(9,11,15,0.96) 0%, rgba(9,11,15,0.82) 34%, rgba(9,11,15,0.2) 64%, rgba(9,11,15,0.05) 100%),
-    linear-gradient(0deg, rgba(9,11,15,0.92) 0%, rgba(9,11,15,0) 46%);
+    linear-gradient(90deg, rgba(8,9,10,0.96) 0%, rgba(8,9,10,0.82) 34%, rgba(8,9,10,0.2) 64%, rgba(8,9,10,0.05) 100%),
+    linear-gradient(0deg, rgba(8,9,10,0.92) 0%, rgba(8,9,10,0) 46%);
 }
 @media (max-width:639px){
   .hero-scrim{
-    background:linear-gradient(0deg, rgba(9,11,15,0.97) 0%, rgba(9,11,15,0.9) 48%, rgba(9,11,15,0.45) 72%, rgba(9,11,15,0.12) 100%);
+    background:linear-gradient(0deg, rgba(8,9,10,0.97) 0%, rgba(8,9,10,0.9) 48%, rgba(8,9,10,0.45) 72%, rgba(8,9,10,0.12) 100%);
   }
 }
 
 /* ---------- Service zone cards (homepage) ---------- */
 .service-zone-card{
-  position:relative; aspect-ratio:1/0.92; border-radius:14px; overflow:hidden;
+  position:relative; aspect-ratio:1/0.92; border-radius:12px; overflow:hidden;
   background:rgb(var(--surface)); border:1px solid rgb(var(--line) / var(--line-a));
 }
 .service-zone-map{position:absolute; inset:0;}
@@ -395,7 +404,7 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
   background:rgb(var(--glass) / var(--glass-a));
   transition:color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-.city-filter:hover{color:rgb(var(--ink)); border-color:rgb(var(--gold) / 0.5);}
+.city-filter:hover{color:rgb(var(--ink)); border-color:rgb(var(--n-700));}
 .city-filter:active{transform:scale(0.98);}
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
   background:rgb(var(--ink)); color:rgb(var(--bg)); border-color:transparent;
@@ -434,6 +443,10 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 
 /* ---------- Theme switch (footer) ---------- */
 .theme-switch{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.06)); background:rgb(var(--glass) / var(--glass-a));}
-.theme-switch button{padding:6px 12px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--n-400)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
+.theme-switch button{padding:6px 12px; border-radius:999px; font-size:12px; font-weight:510; color:rgb(var(--n-400)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
 .theme-switch button:hover{color:rgb(var(--ink));}
 .theme-switch button[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
+
+/* The sticky header and the phone tab bar are edged on one side only. */
+header.glass{border-width:0 0 1px;}
+#mobileBottomNav.glass{border-width:1px 0 0;}

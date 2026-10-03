@@ -145,7 +145,7 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
-    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A SIGHTING') && s.includes('id="sightingSuccess"'); }));
+    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('Submit a sighting') && s.includes('id="sightingSuccess"'); }));
   }
 
   console.log('2. The form: photo (required), then optional City, Location, Date spotted, Description, License plate');

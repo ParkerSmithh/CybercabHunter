@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=3"></script>
-<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=26">
+<script src="js/theme.js?v=4"></script>
+<link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -31,7 +31,7 @@
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
@@ -84,7 +84,7 @@
     <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5">
       <div class="min-w-0">
         <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Community spotted</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">SIGHTINGS</h1>
+        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">Sightings</h1>
         <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Every approved photo of a Cybercab out in the wild, newest first. The page checks for new ones every minute.</p>
       </div>
       <!-- This month's replay map: every camera-spotted Cybercab so far this month (replay.html). -->
@@ -152,12 +152,12 @@
     </div>
 
     <div id="sightingsEmpty" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
-      <h2 data-split class="font-display font-bold text-2xl mb-2">NO SIGHTINGS YET</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-2">No sightings yet</h2>
       <p id="sightingsEmptyText" class="text-sm text-slate-400 leading-relaxed"></p>
     </div>
 
     <div id="sightingsError" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
-      <h2 data-split class="font-display font-bold text-2xl mb-2">WE COULDN'T LOAD SIGHTINGS</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-2">We couldn't load sightings</h2>
       <p class="text-sm text-slate-400 leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="sightingsRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
     </div>
@@ -183,7 +183,7 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
+    <h2 class="font-display font-bold text-xl">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
@@ -208,7 +208,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -313,7 +313,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/main.js?v=20"></script>
 <script>
   CCC.init();
 </script>

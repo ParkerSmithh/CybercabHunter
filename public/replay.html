@@ -13,10 +13,10 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=3"></script>
+<script src="js/theme.js?v=4"></script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
-<link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -32,7 +32,7 @@
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
-      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">ZONES</a>
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
@@ -96,7 +96,7 @@
       <div class="flex items-start justify-between gap-3 mt-5">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap">Replay · <span id="replayRangeLabel">This Month</span></p>
-          <h1 class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h1>
+          <h1 class="font-display font-bold text-xl leading-tight mt-1">Austin, TX</h1>
         </div>
         <span id="replayPhase" class="shrink-0 mt-1 text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-1" style="background:#ffe08a;color:#2a2210;">Midday</span>
       </div>
@@ -161,7 +161,7 @@
         </div>
         <div id="replayEmpty" class="hidden absolute inset-0 flex items-center justify-center pointer-events-none lg:pl-80">
           <div class="replay-glass rounded-2xl px-6 py-4 text-center max-w-xs">
-            <div class="font-display font-bold text-[#1a1406]">NO CAMERA SIGHTINGS YET</div>
+            <div class="font-display font-bold text-[#1a1406]">No camera sightings yet</div>
             <p class="text-xs text-[#4a3d1a] mt-1">Nothing was recorded in this window. The replay fills in as the cameras spot Cybercabs.</p>
           </div>
         </div>
@@ -192,7 +192,7 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
+    <h2 class="font-display font-bold text-xl">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
@@ -217,7 +217,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -293,7 +293,7 @@
 
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/main.js?v=20"></script>
 <script>
   CCC.init();
 </script>

@@ -10,9 +10,12 @@
         bg-panel, bg-white/5...) read correctly in both themes. 'white' is
         the ink color (near-white on dark, near-black on light); 'paper' is a
         literal off-white for text that always sits on a dark photo or scrim.
-   Radius rule (one system): controls (buttons, inputs) rounded-lg = 8px,
-   tiles rounded-xl = 10px, panels rounded-2xl = 14px, chips/filters/avatars
-   rounded-full. */
+   Type (after the Linear style guide): Inter, and no weight above 590. The
+   weight utilities are remapped so the existing markup follows: medium 510,
+   semibold and bold 590.
+   Radius rule (three radii): controls (buttons, inputs) and small tiles
+   rounded-lg / rounded-xl = 6px, cards and panels rounded-2xl = 12px,
+   chips/filters/avatars rounded-full. Content is 1200px wide (max-w-7xl). */
 (function () {
   var KEY = 'cchTheme';
   var root = document.documentElement;
@@ -78,12 +81,14 @@
           emerald: { 200: v('--ok-ink'), 300: v('--ok-ink'), 400: v('--ok-ink') }
         },
         fontFamily: {
-          display: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          body: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
         },
-        borderRadius: { md: '6px', lg: '8px', xl: '10px', '2xl': '14px', '3xl': '18px' },
+        fontWeight: { medium: '510', semibold: '590', bold: '590', extrabold: '590', black: '590' },
+        borderRadius: { sm: '4px', md: '6px', lg: '6px', xl: '6px', '2xl': '12px', '3xl': '12px' },
+        maxWidth: { '7xl': '1200px' },
         transitionTimingFunction: { out: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }
       }
     }
