@@ -270,7 +270,7 @@ async function run() {
     const replayBtn = p.d.getElementById('sightingsReplay');
     check('a "Replay Map" button, top right of the page header, opens this month\'s replay', replayBtn && replayBtn.tagName === 'A' && replayBtn.getAttribute('href') === '/replay?range=month' && p.text('sightingsReplay') === 'Replay Map' && replayBtn.parentElement === p.d.querySelector('h1').closest('.min-w-0').parentElement);
     check('LIVE is gone from the page', !p.d.getElementById('liveIndicator') && !p.d.getElementById('liveDot') && !/>\s*LIVE\s*</.test(p.d.body.innerHTML) && !/\.live-dot|\.live-indicator/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
-    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'TBD' && /clear busiest hour/.test(p.text('statPeakCount')) && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
+    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'Not enough data yet' && p.text('statPeakCount') === '' && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
     check('Most recent is selected by default and requested', p.d.querySelector('[data-order="desc"]').getAttribute('aria-pressed') === 'true' && p.calls.some(c => c.includes('order=desc&stats=1')));
     check('polling is scheduled every 60 seconds', p.timers.set.includes(60000));
 
@@ -307,8 +307,8 @@ async function run() {
     check('no activity charts on the page', !peakPage.d.getElementById('activityDays') && !peakPage.d.getElementById('activityHours') && !/LAST 14 DAYS|TIME OF DAY/.test(peakPage.d.body.textContent));
     check('the All time tile and the toolbar count', peakPage.text('statTotal') === '3' && peakPage.text('feedCount') === '3 sightings in Austin');
     check('each card says how long ago it was spotted', peakPage.cards().length === 3 && /3h ago/.test(peakPage.cards()[0].textContent) && /9d ago/.test(peakPage.cards()[2].textContent));
-    check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) - \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));
-    check('the card is labelled as all-time', /Peak sightings hour <span[^>]*>· all time<\/span>/.test(fs.readFileSync(new URL('../public/sightings.html', import.meta.url), 'utf8')));
+    check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) - \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^All time · 2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));
+    check('the card is labelled Peak hour, with All time in its sub-text', />Peak hour<\/div>/.test(fs.readFileSync(new URL('../public/sightings.html', import.meta.url), 'utf8')));
 
     const emptyCtx = await makeApp();
     ctx.env = emptyCtx.env;

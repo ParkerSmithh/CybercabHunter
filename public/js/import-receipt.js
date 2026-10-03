@@ -89,7 +89,7 @@
 
   function row(label, value) {
     const d = el('div', 'min-w-0');
-    d.appendChild(el('div', 'text-[11px] text-slate-500 uppercase tracking-wider mb-0.5', label));
+    d.appendChild(el('div', 'text-xs text-slate-500 uppercase tracking-wider mb-0.5', label));
     d.appendChild(el('div', 'text-sm font-semibold [overflow-wrap:anywhere]', value));
     return d;
   }

@@ -108,18 +108,17 @@ p{text-wrap:pretty;}
 ::-webkit-scrollbar-thumb:hover{background:rgb(var(--gold));}
 
 /* ---------- Page backdrop ----------
-   A still, single-hue light falloff (no moving blobs, no second color) plus a
+   A still, neutral light falloff (no gold wash, no moving blobs) plus a
    fixed film grain that never scrolls (cheap on phones). */
 .bg-mesh{
   position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(var(--gold) / 0.09), transparent 62%),
-    radial-gradient(900px 600px at 100% 0%, rgb(var(--ink) / 0.035), transparent 60%),
+    radial-gradient(1100px 520px at 12% -8%, rgb(var(--ink) / 0.03), transparent 62%),
     rgb(var(--bg));
 }
 :root[data-theme="light"] .bg-mesh{
   background:
-    radial-gradient(1100px 520px at 12% -8%, rgb(var(--gold) / 0.14), transparent 62%),
+    radial-gradient(1100px 520px at 12% -8%, rgb(255 255 255 / 0.7), transparent 62%),
     rgb(var(--bg));
 }
 .bg-mesh::after{
@@ -197,7 +196,7 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
   body:has(#mobileBottomNav){padding-bottom:4.5rem;}
 }
 #mobileBottomNav a{position:relative; color:rgb(var(--n-400));}
-@media (max-width:359px){ #mobileBottomNav span{font-size:9px; letter-spacing:0;} }
+
 #mobileBottomNav a[aria-current="page"]{color:rgb(var(--gold-ink));}
 #mobileBottomNav a[aria-current="page"]::before{
   content:''; position:absolute; top:-1px; left:30%; right:30%; height:2px;
@@ -218,7 +217,7 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 }
 .btn-magnetic:hover{transform:translateY(-1px);}
 .btn-magnetic:active{transform:translateY(0) scale(0.98);}
-.btn-magnetic.from-goldsoft:hover{filter:brightness(1.04); box-shadow:0 10px 24px -12px rgb(var(--gold) / 0.7);}
+.btn-magnetic.from-goldsoft:hover{filter:brightness(1.04);}
 button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .ripple-circle{
   position:absolute; border-radius:50%; pointer-events:none;
@@ -282,6 +281,21 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 }
 @keyframes marker-ring{ 0%{transform:scale(0.6); opacity:0.7;} 100%{transform:scale(2); opacity:0;} }
 
+/* ---------- Homepage hero scrim ----------
+   Desktop: dark on the left where the headline sits, clear over the car.
+   Phones: the headline sits low across the whole width, so the photo darkens
+   from the bottom up instead (the car stays visible above the text). */
+.hero-scrim{
+  background:
+    linear-gradient(90deg, rgba(9,11,15,0.96) 0%, rgba(9,11,15,0.82) 34%, rgba(9,11,15,0.2) 64%, rgba(9,11,15,0.05) 100%),
+    linear-gradient(0deg, rgba(9,11,15,0.92) 0%, rgba(9,11,15,0) 46%);
+}
+@media (max-width:639px){
+  .hero-scrim{
+    background:linear-gradient(0deg, rgba(9,11,15,0.97) 0%, rgba(9,11,15,0.9) 48%, rgba(9,11,15,0.45) 72%, rgba(9,11,15,0.12) 100%);
+  }
+}
+
 /* ---------- Service zone cards (homepage) ---------- */
 .service-zone-card{
   position:relative; aspect-ratio:1/0.92; border-radius:14px; overflow:hidden;
@@ -299,7 +313,7 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .city-filter:active{transform:scale(0.98);}
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
   background:linear-gradient(to right, rgb(var(--gold-soft)), rgb(var(--gold))); color:#1a1204;
-  border-color:transparent; box-shadow:0 8px 20px -12px rgb(var(--gold) / 0.7);
+  border-color:transparent;
 }
 
 /* ---------- Moderator photo delete (sightings.html, moderation.html) ----------

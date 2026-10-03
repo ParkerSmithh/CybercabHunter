@@ -17,12 +17,12 @@ const HTML = read('simulation.html');
 const INLINE = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.lastIndexOf('</script>'));
 const COMBINED = `${read('js/calc.js')}\n${read('js/main.js')}\n${INLINE}`;
 
-function open(url) {
+function open(url, registry = null) {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
   const w = dom.window;
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   const requests = [];
-  w.fetch = async u => { requests.push(String(u)); return new Response('{}', { status: 404 }); };
+  w.fetch = async u => { requests.push(String(u)); return registry && String(u).endsWith('/api/registry/stats') ? Response.json(registry) : new Response('{}', { status: 404 }); };
   let error = null;
   try { w.eval(COMBINED); } catch (e) { error = e; }
   const d = w.document;
@@ -36,13 +36,13 @@ async function run() {
     const p = open('https://cybercabhunter.com/simulation');
     check('the page script runs without errors', p.error === null);
     check('the tab name is "Fleet ROI"', p.d.title === 'Cybercab Hunter | Fleet ROI');
-    check('the Fleet ROI content is the page: FLEET DASHBOARD, its inputs and Export', /FLEET\s*DASHBOARD/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
+    check('the Fleet ROI content is the page: FLEET ROI, its inputs and Export', /FLEET\s*ROI/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
     check('no "Fleet ROI" / "Fleet ETA" buttons and no tab panels remain', !p.d.getElementById('simTabs') && !p.d.querySelector('[role="tab"], [role="tabpanel"]') && !/>\s*Fleet ETA\s*</.test(HTML));
     check('nothing from the Fleet ETA tool remains on the page', ['simPanelEta', 'cybercabEta', 'modelyEta', 'cybercabFare', 'tripMiles', 'cybercabCount', 'modelyCount', 'cybercabRadar'].every(id => !p.d.getElementById(id)) && !/radar-sweep|view=eta|fleet-stats/i.test(HTML));
     check('the page no longer asks for the fleet stats (that was the ETA page\'s)', !p.requests.some(u => u.includes('/api/fleet-stats')));
     const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling;
     const firstContent = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav;   // the page's <main> landmark wraps it
-    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*DASHBOARD/.test(firstContent.textContent));
+    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*ROI/.test(firstContent.textContent));
     const old = open('https://cybercabhunter.com/simulation?view=eta');
     check('an old ?view=eta link still opens the Fleet ROI page', old.error === null && !!old.d.getElementById('fleetSize'));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
@@ -56,6 +56,19 @@ async function run() {
     await new Promise(r => setTimeout(r, 900));
     const revenue = Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, ''));
     check('changing the inputs recomputes the revenue', revenue > 0);
+  }
+
+  console.log('2b. Starting values: the live registry count and labeled examples');
+  {
+    const p = open('https://cybercabhunter.com/simulation', { public_vehicles: 45, recorded_rides: 3 });
+    await new Promise(r => setTimeout(r, 900));
+    const note = p.d.getElementById('roiStartNote').textContent;
+    check('fleet size starts at the live registry count (45)', p.d.getElementById('fleetSize').value === '45' && p.d.getElementById('fleetSizeLabel').value === '45');
+    check('electricity starts at $0.12/kWh and daily miles at 150, labeled as examples', p.d.getElementById('electricityRate').value === '0.12' && p.d.getElementById('dailyMiles').value === '150' && /live registry count \(45 public Cybercabs\)/.test(note) && /example values/.test(note));
+    check('so the page opens on a real projection, not $0', Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, '')) > 0);
+    const down = open('https://cybercabhunter.com/simulation');
+    await new Promise(r => setTimeout(r, 300));
+    check('if the count can\'t load, fleet size stays 0 and the note says so', down.d.getElementById('fleetSize').value === '0' && /Couldn't load the live registry count/.test(down.d.getElementById('roiStartNote').textContent));
   }
 
   console.log('3. Navigation and old URLs');

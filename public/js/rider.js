@@ -67,7 +67,7 @@
           <span class="text-gold tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</span>
         </div>
         <p class="mt-2 text-sm text-slate-300 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>
-        <div class="mt-2 text-[11px] text-slate-500">${esc(fmtDay(rv.created_at))} · ${rv.like_count} ${rv.like_count === 1 ? 'like' : 'likes'} · ${rv.comment_count} ${rv.comment_count === 1 ? 'comment' : 'comments'}</div>
+        <div class="mt-2 text-xs text-slate-500">${esc(fmtDay(rv.created_at))} · ${rv.like_count} ${rv.like_count === 1 ? 'like' : 'likes'} · ${rv.comment_count} ${rv.comment_count === 1 ? 'comment' : 'comments'}</div>
       </article>`).join('');
     $('riderReviews').querySelectorAll('[data-body]').forEach((el, i) => { el.textContent = recent[i].body; });
     $('riderNoReviews').classList.toggle('hidden', recent.length > 0);
@@ -79,7 +79,7 @@
       return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[rgba(212,175,55,0.5)] transition-colors">
         <span class="min-w-0">
           <span class="block font-display font-bold text-sm tracking-wide truncate">${esc(v.license_plate || 'Plate not listed')}</span>
-          ${detail ? `<span class="block text-[11px] text-slate-500 truncate">${detail}</span>` : ''}
+          ${detail ? `<span class="block text-xs text-slate-500 truncate">${detail}</span>` : ''}
         </span>
         <span class="shrink-0 text-slate-500" aria-hidden="true">&rsaquo;</span>
       </a></li>`;

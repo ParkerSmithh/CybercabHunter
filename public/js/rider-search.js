@@ -72,7 +72,7 @@ window.CCCRiderSearch = (function () {
       name.className = 'block text-sm font-semibold text-slate-100 truncate';
       name.textContent = r.name;
       const handle = document.createElement('span');
-      handle.className = 'block text-[11px] text-gold truncate';
+      handle.className = 'block text-xs text-gold truncate';
       handle.textContent = `@${r.handle}`;
       text.append(name, handle);
       li.append(avatar, text);

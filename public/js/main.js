@@ -999,7 +999,7 @@ const CCC = (() => {
     error.id = 'gmailOnboardingError';
     error.setAttribute('role', 'alert');
     panel.appendChild(error);
-    panel.appendChild(el('p', 'text-[11px] text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]', "Gmail is optional. Signing in with Google doesn't give Cybercab Hunter access to your Gmail. If you choose Connect Gmail, Google asks for your permission first."));
+    panel.appendChild(el('p', 'text-xs text-slate-500 leading-relaxed mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)]', "Gmail is optional. Signing in with Google doesn't give Cybercab Hunter access to your Gmail. If you choose Connect Gmail, Google asks for your permission first."));
 
     backdrop.appendChild(panel);
     document.body.appendChild(backdrop);

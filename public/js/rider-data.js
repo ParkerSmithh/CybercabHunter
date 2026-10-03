@@ -165,12 +165,12 @@
         const pct = max ? Math.max(6, Math.round((n / max) * 100)) : 0;
         const dist = row && row.rides_with_distance > 0 ? ` · ${Number(row.total_distance).toFixed(1)} mi` : '';
         return `<div class="flex-1 flex flex-col items-center justify-end h-full" title="${esc(m.label)}: ${plural(n, 'ride')}${esc(dist)}">
-          <span class="text-[11px] text-slate-400 mb-1 h-4">${n || ''}</span>
+          <span class="text-xs text-slate-400 mb-1 h-4">${n || ''}</span>
           <div class="w-full rounded-t-md ${n ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-white/5'}" style="height:${n ? pct * 0.85 : 3}%"></div>
         </div>`;
       }).join('');
       // Phones show the month's initial (twelve full labels don't fit at 320px).
-      $('monthlyLabels').innerHTML = months.map(m => `<div class="flex-1 min-w-0 text-center text-[10px] text-slate-500"><span class="sm:hidden" aria-hidden="true">${esc(m.label.charAt(0))}</span><span class="hidden sm:inline">${esc(m.label)}</span></div>`).join('');
+      $('monthlyLabels').innerHTML = months.map(m => `<div class="flex-1 min-w-0 text-center text-[11px] text-slate-500"><span class="sm:hidden" aria-hidden="true">${esc(m.label.charAt(0))}</span><span class="hidden sm:inline">${esc(m.label)}</span></div>`).join('');
     }
     // One line above the chart: rides in the window and the busiest month.
     const inWindowTotal = inWindow.reduce((n, m) => n + (m ? m.ride_count : 0), 0);
@@ -227,9 +227,9 @@
 
     $('ridesBody').innerHTML = trips.map(r => {
       const badges = [];
-      if (r.status === 'under_review') badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300 uppercase tracking-wider" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
-      if (r.status === 'rejected') badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson uppercase tracking-wider">Rejected</span>');
-      if (r.corrected) badges.push('<span class="ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wider" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
+      if (r.status === 'under_review') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300 uppercase tracking-wide" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
+      if (r.status === 'rejected') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson uppercase tracking-wide">Rejected</span>');
+      if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
         <td class="py-3 pr-4 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>

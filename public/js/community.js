@@ -27,15 +27,15 @@
       <span class="w-10 h-10 shrink-0 rounded-xl overflow-hidden">${avatarHtml(e)}</span>
       <span class="min-w-0 flex-1 text-left">
         <span class="block font-semibold text-sm text-slate-100 truncate">${esc(e.name)}</span>
-        <span class="block text-[11px] ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}</span>
+        <span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}</span>
       </span>
       <span class="shrink-0 text-right">
-        <span class="block font-display font-bold text-xl text-gold tabular-nums leading-none">${esc(e.count)}</span>
-        <span class="block text-[10px] uppercase tracking-wider text-slate-500 mt-1">${e.count === 1 ? 'vehicle' : 'vehicles'}</span>
+        <span class="block stat-value font-semibold text-xl text-gold leading-none">${esc(e.count)}</span>
+        <span class="block text-[11px] uppercase tracking-wide text-slate-500 mt-1">${e.count === 1 ? 'vehicle' : 'vehicles'}</span>
       </span>`;
     const box = `w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${first
       ? 'border-[rgba(212,175,55,0.45)] bg-gradient-to-r from-[rgba(212,175,55,0.12)] to-transparent'
-      : 'border-white/[0.06] bg-white/[0.02]'}`;
+      : 'border-transparent hover:bg-white/[0.03]'}`;
     if (e.profile && e.handle) {
       return `<li><a href="/rider/${encodeURIComponent(e.handle)}" class="${box} hover:border-[rgba(212,175,55,0.5)]">${inner}</a></li>`;
     }

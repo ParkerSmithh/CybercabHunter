@@ -53,7 +53,7 @@
 
   function stat(label, value) {
     const box = el('div', 'min-w-0');
-    box.appendChild(el('div', 'text-[11px] text-slate-500 mb-0.5', label));
+    box.appendChild(el('div', 'text-xs text-slate-500 mb-0.5', label));
     box.appendChild(el('div', 'stat-value text-[15px] font-semibold text-white [overflow-wrap:anywhere]', value));
     return box;
   }

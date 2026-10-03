@@ -65,7 +65,7 @@ window.CCCAustinMap = (function () {
     function addPin(lat, lng, color, html, size = 14) {
       const el = document.createElement('span');
       el.className = 'marker-pulse';
-      el.style.cssText = `display:block;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 10px ${color};color:${color};`;
+      el.style.cssText = `display:block;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 0 2px rgba(8,10,16,0.55);color:${color};`;
       new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .setPopup(new maplibregl.Popup({ offset: size / 2 + 6 }).setHTML(html))
@@ -79,7 +79,7 @@ window.CCCAustinMap = (function () {
     ];
     chargingLocations.forEach(c => {
       addPin(c.lat, c.lng, '#D4AF37', `
-         <div class="text-[10px] uppercase tracking-wider text-gold font-semibold mb-1">Charging Location</div>
+         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
          <div class="font-display font-bold text-sm mb-1">${c.name}</div>
          <div class="text-xs text-slate-300">${c.note}</div>`,
         18
@@ -100,9 +100,9 @@ window.CCCAustinMap = (function () {
       const when = new Date(d.observed_at).toLocaleString('en-US', CAMERA_TIME);
       const image = typeof d.image_url === 'string' && /^\/api\/camera-sightings\/[A-Za-z0-9-]+\/image$/.test(d.image_url)
         ? `<img src="${d.image_url}" alt="Traffic camera capture of a Cybercab at ${escapeHtml(d.camera_name)}" class="block rounded-lg mb-2" style="width:220px;max-width:100%;aspect-ratio:16/9;object-fit:cover;background:#0c1119;">`
-        : `<div class="flex items-center justify-center rounded-lg mb-2 text-[11px] text-slate-400 border border-dashed border-[rgba(212,175,55,0.35)]" style="width:220px;max-width:100%;aspect-ratio:16/9;">Capture image pending</div>`;
+        : `<div class="flex items-center justify-center rounded-lg mb-2 text-xs text-slate-400 border border-dashed border-[rgba(212,175,55,0.35)]" style="width:220px;max-width:100%;aspect-ratio:16/9;">Capture image pending</div>`;
       return `
-         <div class="text-[10px] uppercase tracking-wider text-gold font-semibold mb-1">Cybercab spotted</div>
+         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Cybercab spotted</div>
          ${image}
          <div class="font-display font-bold text-sm mb-0.5">${escapeHtml(d.camera_name)}</div>
          <div class="text-xs text-slate-300">${escapeHtml(when)}</div>`;

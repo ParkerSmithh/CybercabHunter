@@ -117,17 +117,17 @@
         <button type="button" data-action="delete-photo" ${busy.has(s.submission_id) ? 'disabled' : ''} aria-label="Delete this photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-paper shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
       </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(s.license_plate || 'Plate not given')}</div>
-      <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
-      ${s.approx_location ? `<div class="text-[11px] text-slate-400 leading-snug">Near: ${esc(s.approx_location)}</div>` : ''}
+      <div class="text-xs text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
+      ${s.approx_location ? `<div class="text-xs text-slate-400 leading-snug">Near: ${esc(s.approx_location)}</div>` : ''}
       ${cameraLine(s)}
-      ${s.notes ? `<div class="text-[11px] text-slate-300 bg-white/5 rounded-md px-2 py-1.5 leading-snug">${esc(s.notes)}</div>` : ''}
+      ${s.notes ? `<div class="text-xs text-slate-300 bg-white/5 rounded-md px-2 py-1.5 leading-snug">${esc(s.notes)}</div>` : ''}
       <div class="mt-auto [&>div]:pt-2 [&>div]:gap-1.5">${actionsHtml(s)}</div>
     </div>`;
   }
 
   // The traffic camera a photo came from (approving it puts it on the Zones map).
   function cameraLine(s) {
-    return s.camera_name ? `<div class="text-[11px] text-gold leading-snug">Traffic camera: ${esc(s.camera_name)}</div>` : '';
+    return s.camera_name ? `<div class="text-xs text-gold leading-snug">Traffic camera: ${esc(s.camera_name)}</div>` : '';
   }
 
   // ---------- Recently approved images: on the Zones map, or "Add to map" ----------
@@ -137,7 +137,7 @@
   function approvedCard(a) {
     const facts = [a.service_area || 'Area unknown', fmtDateTime(a.observed_at)];
     const status = a.on_map
-      ? '<div class="text-[11px] font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
+      ? '<div class="text-xs font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
       : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.45)] text-gold hover:bg-[rgba(212,175,55,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
     return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-approved-id="${esc(a.submission_id)}">
       <div class="mod-photo relative rounded-lg overflow-hidden">
@@ -148,7 +148,7 @@
         <button type="button" data-approved-action="delete-photo" ${busy.has(a.submission_id) ? 'disabled' : ''} aria-label="Delete this approved photo" class="mod-photo-delete whitespace-nowrap absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-lg text-sm font-bold bg-crimson text-paper shadow-lg hover:brightness-110 disabled:opacity-50">Delete</button>
       </div>
       <div class="font-display font-bold text-sm leading-tight">${esc(a.license_plate || 'Plate not given')}</div>
-      <div class="text-[11px] text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
+      <div class="text-xs text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
       ${cameraLine(a)}
       <div class="mt-auto pt-2 border-t border-[rgba(212,175,55,0.1)] flex">${status}</div>
     </div>`;
@@ -571,7 +571,7 @@
     const reasons = ap.blocking_reasons.length
       ? `<div class="text-xs text-amber-400 mt-1">${ap.blocking_reasons.map(c => esc(label(REASON_LABELS, c))).join(' · ')}</div>` : '';
     const notes = ap.notes.length
-      ? `<div class="flex flex-wrap gap-1.5 mt-2">${ap.notes.map(c => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-slate-300">${esc(label(NOTE_LABELS, c))}</span>`).join('')}</div>` : '';
+      ? `<div class="flex flex-wrap gap-1.5 mt-2">${ap.notes.map(c => `<span class="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-300">${esc(label(NOTE_LABELS, c))}</span>`).join('')}</div>` : '';
     const dupe = v.plate_vehicle_count > 1
       ? `<div class="text-xs text-amber-400 mt-2">Duplicate plate: ${esc(v.plate_vehicle_count)} registry vehicles share this plate, so it cannot be approved and its sightings are not matched publicly.</div>` : '';
     // Provenance: how the counted rides ENTERED the system. Descriptive only.

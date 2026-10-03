@@ -303,6 +303,7 @@ async function run() {
     check('photos are a thumbnail grid that opens the viewer', cards[1].querySelectorAll('[data-photo] img').length === 1 && (cards[1].querySelector('[data-photo]').click(), !p.d.getElementById('sightingViewer').classList.contains('hidden')));
     check('signed out: a sign-in note, no edit/delete buttons', !p.d.getElementById('reviewSignInNote').classList.contains('hidden') && !p.d.querySelector('[data-edit], [data-delete]'));
     check('the leaderboard is still on the page', !!p.d.getElementById('boardList'));
+    check('with reviews, the summary and sort are shown; with none, the page starts with both hidden so the empty state says it once', !p.d.getElementById('reviewSummary').classList.contains('hidden') && !p.d.getElementById('reviewSort').classList.contains('hidden') && (() => { const s = new JSDOM(read('public/community.html')).window.document; return s.getElementById('reviewSummary').classList.contains('hidden') && s.getElementById('reviewSort').classList.contains('hidden'); })());
     p.w.close();
 
     const signed = await open('session-alice');

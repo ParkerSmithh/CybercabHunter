@@ -98,14 +98,16 @@
     article.appendChild(frame);
 
     const body = el('div', 'p-3.5 flex flex-col gap-2');
-    // Facts sit below the photo, never on it: the city, the Cybercab badge,
-    // and how long ago it was spotted.
+    // Facts sit below the photo, never on it: the city (only when it isn't
+    // the city already picked in the filter above), the Cybercab badge, and
+    // how long ago it was spotted.
     const since = ago(s.spotted_at);
     const meta = el('div', 'flex items-center gap-2 flex-wrap');
-    if (s.city) meta.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wider', s.city));
-    if (s.cybercab) meta.appendChild(el('span', 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wider', 'Cybercab'));
+    const filtered = (CITY_NAMES[city] || '').toLowerCase();
+    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide', s.city));
+    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wide', 'Cybercab'));
     if (since) {
-      const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-slate-400');
+      const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400');
       badge.innerHTML = CLOCK;
       badge.appendChild(document.createTextNode(since));
       meta.appendChild(badge);
@@ -121,7 +123,7 @@
     }
     const when = fmtSpotted(s.spotted_at, s.time_zone);
     if (when) {
-      const time = el('time', 'text-[11px] text-slate-500', when);
+      const time = el('time', 'text-xs text-slate-500', when);
       time.dateTime = s.spotted_at;
       body.appendChild(time);
     }
@@ -213,12 +215,12 @@
       // Over ALL sightings, not one day: say so ("3 of 16 sightings since Sep 29").
       const since = fmtDay(stats.first_day);
       $('statPeakCount').textContent = isCount(stats.total) && stats.total >= peak.count
-        ? `${peak.count.toLocaleString('en-US')} of ${plural(stats.total, 'sighting', 'sightings')}${since ? ` since ${since.replace(/, \d{4}$/, '')}` : ', all time'}`
+        ? `All time · ${peak.count.toLocaleString('en-US')} of ${plural(stats.total, 'sighting', 'sightings')}${since ? ` since ${since.replace(/, \d{4}$/, '')}` : ''}`
         : plural(peak.count, 'sighting', 'sightings');
     } else if (ok && isCount(stats.total)) {
       // No sightings yet, or no clear busiest hour yet (too few, or a tie).
-      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'TBD';
-      $('statPeakCount').textContent = stats.total === 0 ? '' : 'Needs more sightings to show a clear busiest hour';
+      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'Not enough data yet';
+      $('statPeakCount').textContent = '';
     } else {
       $('statPeakHour').textContent = '—';
       $('statPeakCount').textContent = '';

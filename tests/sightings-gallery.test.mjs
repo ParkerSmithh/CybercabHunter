@@ -329,8 +329,8 @@ async function run() {
     check('only two filter buttons, Austin and Dallas; the page opens on Austin', [...p.d.querySelectorAll('#cityFilters [data-city]')].map(b => b.dataset.city).join() === 'austin,dallas' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'true' && p.calls.includes('/api/sightings?city=austin&order=desc&stats=1'));
     check('there is no "Seen" counter on the page', !p.d.getElementById('seenCounter') && !/Seen/.test(p.d.querySelector('h1').parentElement.textContent));
     check('two Austin cards', p.cards().length === 2);
-    const austin = p.cards().find(c => /Austin/.test(c.textContent));
-    check('a card shows the photo, city, location, plate and date', austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
+    const austin = p.cards().find(c => /XVF2569/.test(c.textContent));
+    check('a card shows the photo, location, plate and date; no AUSTIN chip while the Austin filter is on', !p.cards().some(c => /^Austin$/i.test([...c.querySelectorAll('span')].map(x => x.textContent).find(t => /^austin$/i.test(t)) || '')) && austin.querySelector('img').alt === 'Cybercab spotted in Austin' && austin.querySelector('img').src.endsWith('/photo') && /S Congress Ave/.test(austin.textContent) && /XVF2569/.test(austin.textContent) && /Sep 20, 2026/.test(austin.textContent));
     check('the time is shown in the area\'s local time with its zone (19:30 UTC -> 2:30 PM CDT in Austin)', /Sep 20, 2026 · 2:30 PM CDT/.test(austin.textContent));
     const plain = p.cards().find(c => !/XVF2569/.test(c.textContent));
     check('a card without location/plate has no empty lines for them', plain.querySelectorAll('p').length === 0 && !/null|undefined/.test(plain.textContent));
@@ -353,7 +353,7 @@ async function run() {
 
     p.d.querySelector('[data-city="dallas"]').click();
     await p.settle();
-    check('Dallas: the cards update', p.cards().length === 1 && /Dallas/.test(p.cards()[0].textContent));
+    check('Dallas: the cards update (no DALLAS chip; the filter already says it)', p.cards().length === 1 && p.cards()[0].querySelector('img').alt === 'Cybercab spotted in Dallas' && !/Dallas/.test(p.cards()[0].textContent));
     check('...Dallas is now the active filter, and the URL remembers it', p.d.querySelector('[data-city="dallas"]').getAttribute('aria-pressed') === 'true' && p.d.querySelector('[data-city="austin"]').getAttribute('aria-pressed') === 'false' && p.w.location.search === '?city=dallas');
 
     const direct = await open('https://cybercabhunter.com/sightings?city=dallas');

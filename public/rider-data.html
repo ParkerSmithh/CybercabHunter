@@ -15,7 +15,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=2"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -27,7 +27,7 @@
       <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
       <div class="leading-tight">
         <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[9.5px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
+        <div class="text-[11px] text-slate-400 tracking-[0.16em] font-semibold">HUNTER</div>
       </div>
     </a>
     <nav class="hidden lg:flex items-center gap-8 relative">
@@ -40,7 +40,7 @@
     </nav>
     <div class="flex items-center gap-3">
       <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
-      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_8px_20px_-8px_rgba(212,175,55,0.65)]">Submit</button>
+      <button id="openSightingDrawer" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
       </div>
@@ -57,23 +57,23 @@
 <nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Zones</span>
+    <span class="text-[11px] font-semibold">Zones</span>
   </a>
   <a href="/vehicles" data-nav="vehicles" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Cars</span>
+    <span class="text-[11px] font-semibold">Cars</span>
   </a>
   <a href="/sightings" data-nav="sightings" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Sightings</span>
+    <span class="text-[11px] font-semibold">Sightings</span>
   </a>
   <a href="/community" data-nav="community" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/> <path d="M16 3.13a4 4 0 0 1 0 7.75"/> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Community</span>
+    <span class="text-[11px] font-semibold">Community</span>
   </a>
   <a href="/simulation" data-nav="simulation" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l16 0"/> <path d="M4 15l4 -6l4 2l4 -5l4 4"/></svg>
-    <span class="text-[10px] font-semibold uppercase tracking-wide">Fleet ROI</span>
+    <span class="text-[11px] font-semibold">Fleet ROI</span>
   </a>
 </nav>
 
@@ -114,7 +114,7 @@
     <div id="dataSignedIn" class="hidden">
 
       <div class="mb-8">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Your Data</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Your Data</p>
         <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">RIDER DATA</h1>
         <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Built entirely from your own Robotaxi receipts. Everything on this page is visible only to you.</p>
       </div>
@@ -161,27 +161,27 @@
             <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mt-6 mb-3">Rider Overview</p>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Rides</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Rides</div>
                 <div id="statRides" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Distance</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Distance</div>
                 <div id="statMiles" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Time on board</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Time on board</div>
                 <div id="statTime" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0" title="Different vehicles you have actually ridden in">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Vehicles ridden</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Vehicles ridden</div>
                 <div id="statVehiclesRidden" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Cities</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Cities</div>
                 <div id="statCitiesCount" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
               <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 min-w-0">
-                <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Contributions</div>
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Contributions</div>
                 <div id="statContributions" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums">—</div>
               </div>
             </div>
@@ -205,14 +205,14 @@
           <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet.</div>
           <div id="rideSummaryGrid" class="hidden">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Total Time</div><div id="rsTotalDuration" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Avg Duration</div><div id="rsAvgDuration" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Vehicles Ridden</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
-              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Total Rides</div><div id="rsTotalRides" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Avg Distance</div><div id="rsAvgDistance" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Longest Ride</div><div id="rsLongest" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Total Time</div><div id="rsTotalDuration" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Avg Duration</div><div id="rsAvgDuration" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Vehicles Ridden</div><div id="rsUniqueVehicles" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">First Ride</div><div id="rsFirstRide" class="font-display font-bold text-lg"></div></div>
+              <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"><div class="text-slate-500 text-[11px] font-semibold uppercase tracking-wide mb-1">Latest Ride</div><div id="rsLatestRide" class="font-display font-bold text-lg"></div></div>
             </div>
             <p id="rsCoverage" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
           </div>
@@ -329,10 +329,10 @@
       <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
         <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
-        <span class="text-[11px] text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
+        <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
       </label>
       <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
-      <p id="sightingPhotoError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
+      <p id="sightingPhotoError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
       <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -350,13 +350,13 @@
         <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
-      <p id="sightingLocHelp" class="text-[11px] text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
-      <p id="sightingLocError" class="hidden text-[11px] text-red-300 mt-1.5" role="alert"></p>
+      <p id="sightingLocHelp" class="text-xs text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
       <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
-      <p id="sightingDateHelp" class="text-[11px] text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
+      <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
       <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -364,7 +364,7 @@
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>
       </select>
-      <p id="sightingCameraHelp" class="text-[11px] text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
+      <p id="sightingCameraHelp" class="text-xs text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
     </div>
     <div>
       <label for="sightingNotes" class="text-[13px] font-medium text-slate-300">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
@@ -375,7 +375,7 @@
       <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
-    <p class="text-[11px] text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
+    <p class="text-xs text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
@@ -417,7 +417,7 @@
       </div>
     </div>
   </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-6 border-t border-white/[0.06] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
 </footer>
 
 <script src="js/calc.js?v=3"></script>
