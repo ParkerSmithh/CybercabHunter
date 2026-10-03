@@ -15,7 +15,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/style.css?v=26">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -203,7 +203,7 @@
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">ACCOUNT</h3>
+    <h2 class="font-display font-bold text-xl">ACCOUNT</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
@@ -228,7 +228,7 @@
 <div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
   <div class="flex items-center justify-between mb-6">
-    <h3 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h3>
+    <h2 class="font-display font-bold text-xl">SUBMIT A SIGHTING</h2>
     <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
   <div id="sightingSignInRequired" class="hidden text-center py-6">
@@ -293,7 +293,7 @@
     <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
       <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
     </div>
-    <h4 class="font-display font-bold text-xl mb-2">Sighting submitted!</h4>
+    <h3 class="font-display font-bold text-xl mb-2">Sighting submitted!</h3>
     <p class="text-sm text-slate-400 mb-7">Your photo has been received and is awaiting review.</p>
     <div class="flex gap-3 justify-center">
       <button id="sightingAnother" type="button" class="px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Submit another</button>
@@ -334,7 +334,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=17"></script>
+<script src="js/main.js?v=19"></script>
 <script>
   CCC.init();
 
@@ -387,6 +387,9 @@
     function fmtSigned(n) {
       return (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
     }
+    // Axis labels only: compact ("-$1.29M"), so the longest one fits the
+    // 64px margin. The exact figures are in the result tiles above.
+    const fmtAxis = n => (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 
     // Draws the cumulative net-cash-position line from month 0 (−total fleet
     // capital) through the projection window, shading the loss/profit zones
@@ -428,7 +431,7 @@
 
       const marker = hasCrossing
         ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#D4AF37" style="stroke:rgb(var(--bg))" stroke-width="2"></circle>
-           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" style="fill:rgb(var(--gold-ink));font-family:'Geist Mono',monospace">${breakevenMonths} mo</text>`
+           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" style="fill:rgb(var(--gold-ink));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">${breakevenMonths} mo</text>`
         : '';
 
       svg.innerHTML = `
@@ -436,10 +439,10 @@
         ${areas}
         <path d="${linePath}" fill="none" style="stroke:${lineColor}" stroke-width="2.5"></path>
         ${marker}
-        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${fmtSigned(yMax)}</text>
-        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${fmtSigned(yMin)}</text>
-        <text x="${left}" y="${H - 8}" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">0 mo</text>
-        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist Mono',monospace">${maxMonths} mo</text>
+        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">${fmtAxis(yMax)}</text>
+        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">${fmtAxis(yMin)}</text>
+        <text x="${left}" y="${H - 8}" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">0 mo</text>
+        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums">${maxMonths} mo</text>
       `;
     }
 

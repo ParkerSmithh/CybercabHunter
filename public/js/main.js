@@ -80,8 +80,9 @@ const CCC = (() => {
     if (activeLink && indicator) {
       const navRect = indicator.parentElement.getBoundingClientRect();
       const linkRect = activeLink.getBoundingClientRect();
-      indicator.style.left = (linkRect.left - navRect.left) + 'px';
+      indicator.style.left = '0px';
       indicator.style.width = linkRect.width + 'px';
+      indicator.style.transform = `translateX(${linkRect.left - navRect.left}px)`;
       indicator.classList.add('is-active');
     }
   }
@@ -196,15 +197,15 @@ const CCC = (() => {
     Array.from(nodes).forEach(el => { el.classList.add('list-pending'); listObserver.observe(el); });
   }
 
-  /* ShinyText: a light sweep across the gold Replay accents (.shine, CSS
-     keyframes on a transform). The sweep runs only while the accent is on
-     screen. */
+  /* ShinyText: one light sweep across a gold Replay accent (.shine, CSS
+     keyframes on a transform) the first time it comes into view, pointing
+     the eye at it once. It never loops. */
   function initShine() {
     const els = document.querySelectorAll('.shine');
     if (!els.length || reducedMotion() || typeof IntersectionObserver !== 'function') return;
     const io = new IntersectionObserver(entries => {
-      entries.forEach(e => e.target.classList.toggle('is-shining', e.isIntersecting));
-    });
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-shining'); io.unobserve(e.target); } });
+    }, { threshold: 0.6 });
     els.forEach(el => io.observe(el));
   }
 
@@ -587,7 +588,7 @@ const CCC = (() => {
     const tile = () => {
       el.innerHTML = '';
       const span = document.createElement('span');
-      span.className = `w-full h-full flex items-center justify-center font-display font-bold ${textClass} bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]`;
+      span.className = `w-full h-full flex items-center justify-center font-display font-bold ${textClass} bg-slate-800 text-slate-100`;   // neutral, like a contact card: gold stays for actions
       span.textContent = avatarInitials(name);
       el.appendChild(span);
     };
@@ -1063,23 +1064,6 @@ const CCC = (() => {
     }
   }
 
-  /* ---------------- Button ripple ---------------- */
-  function initRipple() {
-    document.querySelectorAll('.btn-magnetic').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const rect = btn.getBoundingClientRect();
-        const circle = document.createElement('span');
-        const size = Math.max(rect.width, rect.height);
-        circle.className = 'ripple-circle';
-        circle.style.width = circle.style.height = size + 'px';
-        circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
-        circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
-        btn.appendChild(circle);
-        setTimeout(() => circle.remove(), 600);
-      });
-    });
-  }
-
   /* ---------------- Tesla account link (real OAuth via Cloudflare Worker) ----------------
      The Worker holds the Tesla client secret and all tokens server-side; this
      script only ever learns a boolean "linked" state via a same-origin-safe
@@ -1436,7 +1420,6 @@ const CCC = (() => {
     initReveal();
     initParticles();
     initSightingDrawer();
-    initRipple();
     initShine();
     initMagnet();
     initTilt();
@@ -1448,5 +1431,5 @@ const CCC = (() => {
     initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
+  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
 })();

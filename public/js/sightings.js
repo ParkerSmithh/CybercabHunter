@@ -59,7 +59,7 @@
     if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
     return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>';
+  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>';
   const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>';
 
   function el(tag, className, text) {
@@ -73,13 +73,13 @@
   // over it, then the plate, the place and the exact time. Fields that weren't
   // provided are simply left out.
   function card(s) {
-    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
+    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] transition-[border-color] duration-200 ease-out');
     article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
     open.setAttribute('aria-label', 'View larger photo');
-    const img = el('img', 'w-full h-full object-cover transition-transform duration-500 group-hover:scale-105');
+    const img = el('img', 'w-full h-full object-cover');
     img.loading = 'lazy';
     img.decoding = 'async';
     img.src = WORKER + s.image_url;
@@ -111,7 +111,7 @@
     const meta = el('div', 'flex items-center gap-2 flex-wrap');
     const filtered = (CITY_NAMES[city] || '').toLowerCase();
     if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide', s.city));
-    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] uppercase tracking-wide', 'Cybercab'));
+    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
     if (since) {
       const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400');
       badge.innerHTML = CLOCK;
@@ -227,7 +227,8 @@
     $('statMonthLabel').textContent = monthName ? `Sightings in ${monthName}` : 'Sightings this month';
     const peak = ok && stats.peak_hour;
     if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
-      $('statPeakHour').textContent = `${fmtHour(peak.hour)} - ${fmtHour((peak.hour + 1) % 24)}`;
+      const hourSpan = h => el('span', 'whitespace-nowrap', fmtHour(h));
+      $('statPeakHour').replaceChildren(hourSpan(peak.hour), document.createTextNode(' - '), hourSpan((peak.hour + 1) % 24));
       // Over ALL sightings, not one day: say so ("3 of 16 sightings since Sep 29").
       const since = fmtDay(stats.first_day);
       $('statPeakCount').textContent = isCount(stats.total) && stats.total >= peak.count

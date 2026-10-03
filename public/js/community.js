@@ -30,7 +30,7 @@
         <span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}</span>
       </span>
       <span class="shrink-0 text-right">
-        <span class="block stat-value font-semibold text-xl text-gold leading-none">${esc(e.count)}</span>
+        <span class="block stat-value font-semibold text-xl ${first ? 'text-gold' : 'text-white'} leading-none">${esc(e.count)}</span>
         <span class="block text-[11px] uppercase tracking-wide text-slate-500 mt-1">${e.count === 1 ? 'vehicle' : 'vehicles'}</span>
       </span>`;
     const box = `w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${first

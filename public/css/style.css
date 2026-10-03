@@ -40,7 +40,7 @@
   --shadow:0 0 0;
   --focus:212 175 55;
   --scrim:5 6 9;
-  --ease:cubic-bezier(0.2,0.7,0.2,1);
+  --ease:cubic-bezier(0.23,1,0.32,1);   /* strong ease-out (Emil Kowalski) */
   --t-fast:160ms; --t:240ms; --t-slow:420ms;
 }
 :root[data-theme="light"]{
@@ -151,8 +151,8 @@ p{text-wrap:pretty;}
    used for: content entering (reveal), state feedback (press, hover), and
    panels opening (drawers, dialogs, toasts). Nothing loops by default. */
 .reveal-on-scroll{
-  opacity:0; transform:translateY(14px);
-  transition:opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease);
+  opacity:0; transform:translateY(10px);
+  transition:opacity 320ms var(--ease), transform 320ms var(--ease);
 }
 .reveal-on-scroll.is-visible{opacity:1; transform:none;}
 @media (prefers-reduced-motion: reduce){
@@ -166,8 +166,8 @@ p{text-wrap:pretty;}
    ElasticSlider (the thumb transform, simulation.html).
    BlurText: the homepage headline's words come out of a blur, 45ms apart,
    once on load (~0.6s in all). AnimatedList: cards fade and rise in.
-   ShinyText: a light sweep across a gold Replay accent every 6s while it is
-   on screen (a transform, so it never repaints). Magnet and TiltedCard: see
+   ShinyText: one light sweep across a gold Replay accent the first time it
+   comes into view (a transform, so it never repaints). Magnet and TiltedCard: see
    js/main.js. All of them are still under reduced motion. */
 .blur-word{display:inline-block; animation:blur-in 420ms var(--ease) backwards; animation-delay:calc(var(--i, 0) * 45ms);}
 @keyframes blur-in{
@@ -188,10 +188,10 @@ p{text-wrap:pretty;}
   background:linear-gradient(120deg, rgb(255 255 255 / 0) 40%, rgb(255 255 255 / 0.55) 50%, rgb(255 255 255 / 0) 60%);
   transform:translateX(-100%);
 }
-.shine.is-shining::after{animation:shine-sweep 6s linear infinite;}
+.shine.is-shining::after{animation:shine-sweep 1.2s var(--ease) 0.3s 1 both;}
 @keyframes shine-sweep{
-  0%{transform:translateX(-100%);}
-  24%,100%{transform:translateX(100%);}
+  from{transform:translateX(-100%);}
+  to{transform:translateX(100%);}
 }
 .btn-magnetic[data-magnet]{
   transition:translate 500ms ease-in-out, transform var(--t-fast) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease), filter var(--t) var(--ease);
@@ -287,26 +287,29 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 }
 #navIndicator{
   position:absolute; bottom:-1px; height:2px; background:rgb(var(--gold)); border-radius:2px;
-  transition:left var(--t-slow) var(--ease), width var(--t-slow) var(--ease); opacity:0;
+  transition:opacity var(--t) var(--ease); opacity:0;
 }
 #navIndicator.is-active{opacity:1;}
 
 /* ---------- Buttons ----------
-   .btn-magnetic is the site's button behavior: a 1px lift on hover, a press
-   on :active, and a tinted shadow on the gold primary. No color sweep. */
+   .btn-magnetic is the site's button behavior: a 1px lift on hover (pointer
+   devices), a 0.97 press on :active. The press is the feedback; no ripple. */
 .btn-magnetic{
   position:relative; isolation:isolate; overflow:hidden;
   transition:transform var(--t-fast) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease), filter var(--t) var(--ease);
 }
-.btn-magnetic:hover{transform:translateY(-1px);}
-.btn-magnetic:active{transform:translateY(0) scale(0.98);}
-.btn-magnetic.from-goldsoft:hover{filter:brightness(1.04);}
-button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
-.ripple-circle{
-  position:absolute; border-radius:50%; pointer-events:none;
-  background:rgb(255 255 255 / 0.35); transform:scale(0); animation:ripple-anim 0.5s var(--ease);
+/* Hover lift only where a pointer can hover (it would stick after a tap). */
+@media (hover: hover) and (pointer: fine){
+  .btn-magnetic:hover{transform:translateY(-1px);}
+  .btn-magnetic.from-goldsoft:hover{filter:brightness(1.04);}
 }
-@keyframes ripple-anim{ to{ transform:scale(2.6); opacity:0; } }
+.btn-magnetic:active{transform:scale(0.97); transition-duration:100ms;}
+button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
+
+/* One solid gold fill wherever the markup asks for the gold gradient
+   (primary buttons, the rank-1 badge, rating bars, Cybercab pills): Apple
+   fills a prominent button with one tint, not a gradient. */
+html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--gold));}
 
 /* ---------- Drawers, dialogs, toasts ---------- */
 .drawer{transform:translateX(100%); transition:transform var(--t-slow) var(--ease);}
@@ -331,7 +334,7 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 }
 
 /* ---------- Data ---------- */
-.stat-value{font-family:'Geist Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;}
+.stat-value{font-family:'Geist',ui-sans-serif,system-ui,sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-0.02em;}
 
 /* ---------- Maps (MapLibre) ----------
    Controls, popups and the attribution pill follow the theme; the dark
@@ -395,8 +398,7 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .city-filter:hover{color:rgb(var(--ink)); border-color:rgb(var(--gold) / 0.5);}
 .city-filter:active{transform:scale(0.98);}
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
-  background:linear-gradient(to right, rgb(var(--gold-soft)), rgb(var(--gold))); color:#1a1204;
-  border-color:transparent;
+  background:rgb(var(--ink)); color:rgb(var(--bg)); border-color:transparent;
 }
 
 /* ---------- Moderator photo delete (sightings.html, moderation.html) ----------
@@ -415,7 +417,7 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .replay-panel{background:rgb(var(--glass) / 0.95);}
 .replay-glass{background:rgba(255,252,244,0.84); border:1px solid rgba(212,175,55,0.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); box-shadow:0 8px 24px -14px rgba(60,40,0,0.45);}
 .replay-range,.replay-speed{color:rgb(var(--n-300)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
-.replay-range[aria-pressed="true"],.replay-speed[aria-pressed="true"]{background:rgb(var(--gold) / 0.16); color:rgb(var(--gold-ink));}
+.replay-range[aria-pressed="true"],.replay-speed[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
 .replay-odometer{display:inline-flex; line-height:1; height:1em; overflow:hidden; font-variant-numeric:tabular-nums;}
 .replay-odometer .od-col{display:block; height:1em; overflow:hidden;}
 .replay-odometer .od-strip{display:flex; flex-direction:column; transition:transform .45s cubic-bezier(.2,.7,.2,1);}
@@ -427,7 +429,7 @@ button:not(:disabled):active, a[href]:active{transition-duration:80ms;}
 .review-star:hover, .review-star.is-on{color:rgb(var(--gold));}
 .review-star:active{transform:scale(0.92);}
 .review-sort{color:rgb(var(--n-300));}
-.review-sort[aria-pressed="true"]{background:rgb(var(--gold) / 0.16); color:rgb(var(--gold-ink));}
+.review-sort[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
 .review-like[aria-pressed="true"]{color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
 /* ---------- Theme switch (footer) ---------- */
