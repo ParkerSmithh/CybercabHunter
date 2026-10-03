@@ -15,10 +15,10 @@ Hunter (decided with the site owner, October 2026):
    (`#D4AF37`, label `#1a1204`, 8.8:1) instead of Bevel's Charcoal pills.
    Gold used as text is `#80620C` on light surfaces (5.0:1 on Cloud Card).
    Bevel's data colors are not introduced; the site keeps one accent.
-3. **The homepage hero stays the full-width night photograph** (600px tall,
-   headline bottom-left over its own dark scrim), not Bevel's Cloudlight
-   field. Its type and button follow Bevel; its text stays light in both
-   themes because it sits on the photo.
+3. **The hero is the Cloudlight field, side by side:** a rounded Hero Sky
+   panel (a night sky in the dark theme) with the headline, copy and gold
+   pill on the left and the Cybercab render on the right, rather than
+   Bevel's centered stack. On phones the render sits below the text.
 
 Substitutions and accessibility adjustments:
 

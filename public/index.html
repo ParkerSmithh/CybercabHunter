@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=28">
+<link rel="stylesheet" href="css/style.css?v=29">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -79,26 +79,28 @@
 </nav>
 
 <!-- ===== Hero =====
-     The photograph at full width, 600px tall, with the message over it. It
-     is a photo with its own dark scrim, so its text stays light in both
-     themes. Type and button follow the Bevel system (DESIGN.md). -->
+     Bevel's Cloudlight field (DESIGN.md): a rounded Hero Sky panel (daylight
+     in the light theme, a night sky in the dark one) with the message on the
+     left and the Cybercab render on the right. On phones the render sits
+     below the text. -->
 <main id="main" tabindex="-1">
-<section class="relative min-h-[600px] flex items-end overflow-hidden">
-  <img src="images/HeroImage.png" alt="A gold Tesla Cybercab parked on a wet street at night" class="absolute inset-0 w-full h-full object-cover object-[78%_28%] sm:object-[70%_center]" fetchpriority="high" decoding="async">
-  <div class="hero-scrim absolute inset-0" aria-hidden="true"></div>
-  <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
-    <div class="max-w-xl">
-      <!-- BlurText (css/style.css .blur-word): each word comes out of a blur, once, on load. -->
-      <h1 class="font-display font-semibold text-[48px] leading-[1] lg:text-[64px] tracking-[-0.03em] text-paper">
-        <span class="blur-word" style="--i:0">Track</span> <span class="blur-word" style="--i:1">the</span><br><span class="blur-word text-[#D4AF37]" style="--i:2">future</span> <span class="blur-word" style="--i:3">of</span><br><span class="blur-word" style="--i:4">autonomy</span>
-      </h1>
-      <p class="mt-5 text-lg lg:text-xl text-paper/75 max-w-[34ch] leading-[1.4] reveal-on-scroll" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
-      <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll" data-delay="320">
-        <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3 text-base font-medium bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_2px_16px_0_rgba(0,0,0,0.15)]">
-          Browse sightings
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
-        </a>
+<section class="px-2 sm:px-3 pt-3">
+  <div class="hero-sky relative overflow-hidden rounded-[32px]">
+    <div class="max-w-7xl mx-auto px-6 lg:px-10 pt-14 sm:pt-20 lg:pt-16 pb-6 lg:pb-16 grid gap-8 lg:gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] items-center">
+      <div class="max-w-xl">
+        <!-- BlurText (css/style.css .blur-word): each word comes out of a blur, once, on load. -->
+        <h1 class="font-display font-semibold text-[48px] leading-[1] sm:text-[60px] lg:text-[72px] tracking-[-0.03em] text-white">
+          <span class="blur-word" style="--i:0">Track</span> <span class="blur-word" style="--i:1">the</span><br><span class="blur-word text-gold" style="--i:2">future</span> <span class="blur-word" style="--i:3">of</span><br><span class="blur-word" style="--i:4">autonomy</span>
+        </h1>
+        <p class="mt-6 text-lg lg:text-xl text-body max-w-[34ch] leading-[1.4] reveal-on-scroll" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+        <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll" data-delay="320">
+          <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-6 py-3 text-base font-medium bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_2px_16px_0_rgba(0,0,0,0.15)]">
+            Browse sightings
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
+          </a>
+        </div>
       </div>
+      <img src="images/Cybercab2.png" alt="A gold Tesla Cybercab" width="1200" height="896" class="block w-full max-w-[640px] mx-auto lg:max-w-none select-none" fetchpriority="high" decoding="async">
     </div>
   </div>
 </section>
