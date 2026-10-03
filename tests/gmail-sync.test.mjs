@@ -16,8 +16,13 @@ import { seedUser } from './helpers/d1-sqlite.mjs';
 import { receiptBody, eml, inboundMessage } from './helpers/receipts.mjs';
 import { tokenCrypto } from '../worker/crypto.js';
 import { db } from '../worker/db.js';
-import { syncUser, runScheduledSync, GMAIL_SCOPE, RECEIPT_QUERY } from '../worker/gmail.js';
+import { syncUser, runScheduledSync, GMAIL_SCOPE, RECEIPT_QUERY, GMAIL_CONNECT_ALLOWLIST } from '../worker/gmail.js';
 import worker from '../worker/index.js';
+
+// TEMPORARY gate (worker/gmail.js GMAIL_CONNECT_ALLOWLIST, until Google verifies
+// gmail.readonly): this file tests the connect flow itself, so its test riders are
+// allowlisted here. The gate is tested in tests/gmail-connect-allowlist.test.mjs.
+GMAIL_CONNECT_ALLOWLIST.push('alice@gmail.com', 'bob@gmail.com');
 
 const t = makeCheck();
 const { check } = t;
@@ -254,6 +259,7 @@ function addReceipts(g, n, { days = 89, offset = 0 } = {}) {
 async function addRider(ctx, user) {
   seedUser(ctx.d1, user);
   ctx.g.addAccount(`sub-${user}`, `${user}@gmail.com`);
+  GMAIL_CONNECT_ALLOWLIST.push(`${user}@gmail.com`);   // TEMPORARY gate, see the top of this file
   ctx.d1.prepare(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`).bind(`gc-${user}`, user, `sub-${user}`, `${user}@gmail.com`)._exec();
   await ctx.env.TESLA_SESSIONS.put(`session:session-${user}`, JSON.stringify({ user_id: user }));
 }

@@ -78,6 +78,27 @@ const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const SCOPES = `openid email ${GMAIL_SCOPE}`;
 
+// ---- TEMPORARY — remove after Google OAuth verification completes ----
+// Google is verifying the restricted gmail.readonly scope; until it is done
+// the scope must not be triggered by production traffic. So only these
+// signed-in Google accounts (the email of the Google account the rider signed
+// in with, google_connections.email) may start the Gmail connect flow.
+// A @gmail.com address can't be claimed by any other Google account.
+// The gate is checked in two places: apiConnect (403 for anyone else) and
+// apiStatus's connect_allowed (the UI shows "Connect Gmail" only when true:
+// public/js/rider-data.js and public/js/main.js's Gmail onboarding).
+// To lift it: set GMAIL_CONNECT_GATE_ENABLED = false, or remove these
+// constants, gmailConnectAllowed() and its two uses.
+export const GMAIL_CONNECT_GATE_ENABLED = true;
+export const GMAIL_CONNECT_ALLOWLIST = ['contactjoeclos@gmail.com'];
+
+export function gmailConnectAllowed(identity) {
+  if (!GMAIL_CONNECT_GATE_ENABLED) return true;
+  const email = identity && identity.email ? String(identity.email).trim().toLowerCase() : '';
+  return !!email && GMAIL_CONNECT_ALLOWLIST.some(a => a.trim().toLowerCase() === email);
+}
+// ---- end TEMPORARY ----
+
 // Real Tesla Robotaxi receipts are titled "Robotaxi Ride Receipt on <date>".
 // The subject, not the sender, is searched: relays such as DuckDuckGo Email
 // Protection rewrite the sender but not the subject. The receipt classifier
@@ -217,6 +238,10 @@ export async function apiConnect(request, env, userId) {
     // which is only possible for a rider who signed in with Google.
     return Response.json({ success: false, error: 'google_signin_required' }, { status: 409 });
   }
+  // TEMPORARY — remove after Google OAuth verification completes (see GMAIL_CONNECT_ALLOWLIST).
+  if (!gmailConnectAllowed(identity)) {
+    return Response.json({ success: false, error: 'gmail_connect_unavailable' }, { status: 403 });
+  }
 
   const cfg = config(env);
   const state = randomToken();
@@ -335,8 +360,10 @@ export async function apiStatus(request, env, userId) {
   const configured = isGmailConfigured(env);
   // Not configured: answer without touching the database, so this is safe
   // even before migration 0015 has been applied.
-  if (!configured) return Response.json({ success: true, configured: false, state: 'not_connected' });
+  if (!configured) return Response.json({ success: true, configured: false, state: 'not_connected', connect_allowed: false });
   const row = await db.getGmailConnectionStatus(env.cybercabhunter_db, userId);
+  // TEMPORARY — remove after Google OAuth verification completes (see GMAIL_CONNECT_ALLOWLIST).
+  const connectAllowed = gmailConnectAllowed(await db.getGoogleIdentityForUser(env.cybercabhunter_db, userId));
   let state = 'not_connected';
   if (row && row.status === 'error') state = 'reconnect_required';
   else if (row && row.status === 'active') {
@@ -353,6 +380,7 @@ export async function apiStatus(request, env, userId) {
     success: true,
     configured,
     state,
+    connect_allowed: connectAllowed,   // TEMPORARY (see GMAIL_CONNECT_ALLOWLIST)
     email: connected ? row.email : null,
     connected_at: connected ? row.connected_at : null,
     initial_import_complete: connected ? !!row.backfill_completed_at : false,
