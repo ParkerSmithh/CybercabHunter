@@ -42,7 +42,7 @@ async function run() {
     check('the page no longer asks for the fleet stats (that was the ETA page\'s)', !p.requests.some(u => u.includes('/api/fleet-stats')));
     const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling;
     const firstContent = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav;   // the page's <main> landmark wraps it
-    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /Fleet\s*ROI/.test(firstContent.textContent));
+    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*ROI/.test(firstContent.textContent));
     const old = open('https://cybercabhunter.com/simulation?view=eta');
     check('an old ?view=eta link still opens the Fleet ROI page', old.error === null && !!old.d.getElementById('fleetSize'));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);

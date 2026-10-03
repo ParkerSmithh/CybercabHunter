@@ -236,7 +236,7 @@
         : plural(peak.count, 'sighting', 'sightings');
     } else if (ok && isCount(stats.total)) {
       // No sightings yet, or no clear busiest hour yet (too few, or a tie).
-      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'Not enough data yet';
+      $('statPeakHour').textContent = stats.total === 0 ? 'None yet' : 'NOT ENOUGH DATA YET';
       $('statPeakCount').textContent = '';
     } else {
       $('statPeakHour').textContent = '—';

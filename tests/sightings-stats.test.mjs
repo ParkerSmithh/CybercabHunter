@@ -270,7 +270,7 @@ async function run() {
     const replayBtn = p.d.getElementById('sightingsReplay');
     check('a "Replay Map" button, top right of the page header, opens this month\'s replay', replayBtn && replayBtn.tagName === 'A' && replayBtn.getAttribute('href') === '/replay?range=month' && p.text('sightingsReplay') === 'Replay Map' && replayBtn.parentElement === p.d.querySelector('h1').closest('.min-w-0').parentElement);
     check('LIVE is gone from the page', !p.d.getElementById('liveIndicator') && !p.d.getElementById('liveDot') && !/>\s*LIVE\s*</.test(p.d.body.innerHTML) && !/\.live-dot|\.live-indicator/.test(fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8')));
-    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'Not enough data yet' && p.text('statPeakCount') === '' && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
+    check('stat cards show the server\'s numbers', p.text('statWeek') === '1' && p.text('statToday') !== '—' && p.text('statMonth') !== '—' && p.text('statPeakHour') === 'NOT ENOUGH DATA YET' && p.text('statPeakCount') === '' && /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(p.text('statBestDay')));
     check('Most recent is selected by default and requested', p.d.querySelector('[data-order="desc"]').getAttribute('aria-pressed') === 'true' && p.calls.some(c => c.includes('order=desc&stats=1')));
     check('polling is scheduled every 60 seconds', p.timers.set.includes(60000));
 
