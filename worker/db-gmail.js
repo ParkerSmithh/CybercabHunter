@@ -53,15 +53,20 @@ async function upsertGmailConnection(sql, { userId, googleSub, email, encryptedR
 // stamped when a sync STARTS (acquireGmailSyncLock), so this ordering is a
 // strict round-robin: a rider whose run fails or is cut short still moves to
 // the back of the line, and can never hold the front of it.
-async function listGmailConnectionsDue(sql, { olderThanMinutes, limit }) {
+// onlyEmails (TEMPORARY, worker/gmail.js GMAIL_CONNECT_ALLOWLIST): when given,
+// only connections whose Gmail address is in the list (case-insensitive).
+async function listGmailConnectionsDue(sql, { olderThanMinutes, limit, onlyEmails = null }) {
+  const emails = onlyEmails ? onlyEmails.map(e => String(e).trim().toLowerCase()) : null;
+  if (emails && emails.length === 0) return [];
   const rows = await sql.prepare(`
     SELECT user_id FROM gmail_connections
     WHERE status = 'active' AND encrypted_refresh_token IS NOT NULL
       AND (last_checked_at IS NULL OR last_checked_at <= datetime('now', ?))
       AND (sync_lock_until IS NULL OR sync_lock_until <= datetime('now'))
+      ${emails ? `AND lower(trim(email)) IN (${emails.map(() => '?').join(', ')})` : ''}
     ORDER BY COALESCE(last_checked_at, '') ASC
     LIMIT ?
-  `).bind(`-${olderThanMinutes} minutes`, limit).all();
+  `).bind(`-${olderThanMinutes} minutes`, ...(emails || []), limit).all();
   return (rows.results || []).map(r => r.user_id);
 }
 

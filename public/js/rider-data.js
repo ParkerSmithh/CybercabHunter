@@ -356,9 +356,13 @@
   async function loadGmail() {
     let resp;
     try { resp = await api('/api/gmail/status'); } catch (e) { resp = null; }
-    gmailShown = !!(resp && resp.ok && resp.json && resp.json.configured);
+    const configured = !!(resp && resp.ok && resp.json && resp.json.configured);
     // Anything but "not connected" / "reconnect required" is a live connection to unlink.
-    gmailConnected = gmailShown && !['not_connected', 'reconnect_required'].includes(resp.json.state);
+    gmailConnected = configured && !['not_connected', 'reconnect_required'].includes(resp.json.state);
+    // TEMPORARY — remove after Google OAuth verification completes: "Connect Gmail"
+    // only for allowlisted accounts (connect_allowed, worker/gmail.js
+    // GMAIL_CONNECT_ALLOWLIST); a connected rider can always unlink.
+    gmailShown = configured && (gmailConnected || resp.json.connect_allowed === true);
     $('gmailToggleBtn').textContent = gmailConnected ? 'Unlink Gmail' : 'Connect Gmail';
     updateAccountsPanel();
   }

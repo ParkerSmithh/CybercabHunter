@@ -10,6 +10,13 @@ import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import worker from '../worker/index.js';
+import { GMAIL_CONNECT_ALLOWLIST, gmailConnectAllowed } from '../worker/gmail.js';
+import { seedUser } from './helpers/d1-sqlite.mjs';
+
+// TEMPORARY gate (worker/gmail.js GMAIL_CONNECT_ALLOWLIST, until Google verifies
+// gmail.readonly): this file tests the connect flow itself, so its test riders are
+// allowlisted here. The gate is tested in tests/gmail-connect-allowlist.test.mjs.
+GMAIL_CONNECT_ALLOWLIST.push('alice@gmail.com', 'bob@gmail.com');
 
 const t = makeCheck();
 const { check } = t;
@@ -156,6 +163,54 @@ async function run() {
     rd.d.getElementById('gmailToggleBtn').dispatchEvent(new rd.w.MouseEvent('click', { bubbles: true }));
     await rd.waitFor(() => rd.requests.some(r => r.path === '/api/gmail/connect'));
     check('its Connect Gmail still calls /api/gmail/connect', rd.requests.some(r => r.path === '/api/gmail/connect' && r.method === 'POST'));
+  }
+
+  console.log('8. TEMPORARY: Gmail connect is allowlisted until Google verifies gmail.readonly');
+  {
+    const gmailSrc = read('worker/gmail.js');
+    check('the shipped allowlist is exactly the owner, and the gate is on',
+      /export const GMAIL_CONNECT_ALLOWLIST = \['contactjoeclos@gmail\.com'\];/.test(gmailSrc) && /export const GMAIL_CONNECT_GATE_ENABLED = true;/.test(gmailSrc));
+    check('the match is on the signed-in Google email, case-insensitive; no Google identity is never allowed',
+      gmailConnectAllowed({ email: 'ContactJoeClos@Gmail.com' }) && !gmailConnectAllowed({ email: 'carol@gmail.com' }) && !gmailConnectAllowed(null) && !gmailConnectAllowed({ email: null }));
+    check('every gate is marked TEMPORARY for removal after verification',
+      (gmailSrc.match(/TEMPORARY/g) || []).length >= 4 && /TEMPORARY/.test(read('public/js/rider-data.js')) && /TEMPORARY/.test(MAIN));
+
+    const ctx = await makeApp();
+    for (const [u, email] of [['carol', 'carol@gmail.com'], ['owner', 'contactjoeclos@gmail.com']]) {
+      seedUser(ctx.d1, u);
+      ctx.d1.prepare(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`).bind(`g-${u}`, u, `sub-${u}`, email)._exec();
+      await ctx.env.TESLA_SESSIONS.put(`session:session-${u}`, JSON.stringify({ user_id: u }));
+    }
+    const post = u => worker.fetch(new Request('https://x/api/gmail/connect', { method: 'POST', headers: { Origin: 'https://cybercabhunter.com', Authorization: `Bearer session-${u}` } }), ctx.env, {});
+    const statesBefore = [...ctx.env.TESLA_SESSIONS._store.keys()].filter(k => k.startsWith('gmail_state:')).length;
+    const blocked = await post('carol');
+    const blockedBody = await blocked.json();
+    const statesAfterBlocked = [...ctx.env.TESLA_SESSIONS._store.keys()].filter(k => k.startsWith('gmail_state:')).length;
+    check('a signed-in rider NOT on the allowlist is refused at the route (403), no OAuth URL, no state issued',
+      blocked.status === 403 && blockedBody.error === 'gmail_connect_unavailable' && !blockedBody.authorize_url && statesAfterBlocked === statesBefore);
+    const allowed = await post('owner');
+    const allowedBody = await allowed.json();
+    const authUrl = allowedBody.authorize_url ? new URL(allowedBody.authorize_url) : null;
+    check('the allowlisted owner can start the flow: Google\'s URL with the unchanged gmail.readonly scope',
+      allowed.status === 200 && authUrl && authUrl.hostname === 'accounts.google.com' && authUrl.searchParams.get('scope').split(' ').includes('https://www.googleapis.com/auth/gmail.readonly') && authUrl.searchParams.get('login_hint') === 'contactjoeclos@gmail.com');
+    const status = async u => (await worker.fetch(new Request('https://x/api/gmail/status', { headers: { Origin: 'https://cybercabhunter.com', Authorization: `Bearer session-${u}` } }), ctx.env, {})).json();
+    check('status reports connect_allowed: false for the rider, true for the owner', (await status('carol')).connect_allowed === false && (await status('owner')).connect_allowed === true);
+
+    const rdCarol = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-carol', 'gmailOnboardingDone:carol': '1' } });
+    await rdCarol.waitFor(() => !rdCarol.d.getElementById('dataSignedIn').classList.contains('hidden'));
+    await rdCarol.settle(300);
+    check('Rider Data: no "Connect Gmail" button for a rider not on the allowlist (and nothing was requested)',
+      rdCarol.d.getElementById('gmailToggleBtn').classList.contains('hidden') && !rdCarol.requests.some(r => r.path === '/api/gmail/connect'));
+    const rdOwner = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-owner', 'gmailOnboardingDone:owner': '1' } });
+    await rdOwner.waitFor(() => !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
+    check('Rider Data: the owner sees "Connect Gmail"', !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden') && rdOwner.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail');
+
+    const carolSignIn = await signIn(ctx, 'carol');
+    await carolSignIn.settle(400);
+    check('right after Google sign-in, a rider not on the allowlist is not offered Gmail', !carolSignIn.modal() && !carolSignIn.requests.some(r => r.path === '/api/gmail/connect'));
+    const ownerSignIn = await signIn(ctx, 'owner');
+    await ownerSignIn.waitFor(() => !!ownerSignIn.modal());
+    check('...while the owner still is (the flow stays end-to-end for the verification demo)', !!ownerSignIn.modal());
   }
 
   console.log('7. Nothing about Google sign-in or Gmail OAuth changed');

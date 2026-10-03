@@ -1335,6 +1335,9 @@ const CCC = (() => {
     const [me, gmail] = await Promise.all([get('/api/me'), get('/api/gmail/status')]);
     const userId = me && me.authenticated && me.user && me.user.id;
     if (!userId || !gmail || !gmail.configured || gmail.state !== 'not_connected') return;
+    // TEMPORARY — remove after Google OAuth verification completes: only allowlisted
+    // accounts are offered Gmail (connect_allowed, worker/gmail.js GMAIL_CONNECT_ALLOWLIST).
+    if (gmail.connect_allowed !== true) return;
     if (gmailOnboardingDone(userId)) return;
     showGmailOnboarding(sessionId, userId);
   }

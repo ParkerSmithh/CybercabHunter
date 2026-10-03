@@ -78,6 +78,30 @@ const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 const SCOPES = `openid email ${GMAIL_SCOPE}`;
 
+// ---- TEMPORARY — remove after Google OAuth verification completes ----
+// Google is verifying the restricted gmail.readonly scope; until it is done
+// the scope must not be triggered by production traffic. So only these
+// signed-in Google accounts (the email of the Google account the rider signed
+// in with, google_connections.email) may start the Gmail connect flow.
+// A @gmail.com address can't be claimed by any other Google account.
+// The gate is checked in apiConnect (403 for anyone else), apiStatus's
+// connect_allowed (the UI shows "Connect Gmail" only when true:
+// public/js/rider-data.js and public/js/main.js's Gmail onboarding), and the
+// background sync (runScheduledSync selects only allowlisted connections;
+// syncUser refuses any other), so gmail.readonly is used for no one else.
+// To lift it: set GMAIL_CONNECT_GATE_ENABLED = false, or remove these
+// constants, gmailConnectAllowed() and its uses (all marked TEMPORARY).
+export const GMAIL_CONNECT_GATE_ENABLED = true;
+export const GMAIL_CONNECT_ALLOWLIST = ['contactjoeclos@gmail.com'];
+
+// `enabled` defaults to the kill switch; tests pass false to check the ungated behavior.
+export function gmailConnectAllowed(identity, enabled = GMAIL_CONNECT_GATE_ENABLED) {
+  if (!enabled) return true;
+  const email = identity && identity.email ? String(identity.email).trim().toLowerCase() : '';
+  return !!email && GMAIL_CONNECT_ALLOWLIST.some(a => a.trim().toLowerCase() === email);
+}
+// ---- end TEMPORARY ----
+
 // Real Tesla Robotaxi receipts are titled "Robotaxi Ride Receipt on <date>".
 // The subject, not the sender, is searched: relays such as DuckDuckGo Email
 // Protection rewrite the sender but not the subject. The receipt classifier
@@ -217,6 +241,10 @@ export async function apiConnect(request, env, userId) {
     // which is only possible for a rider who signed in with Google.
     return Response.json({ success: false, error: 'google_signin_required' }, { status: 409 });
   }
+  // TEMPORARY — remove after Google OAuth verification completes (see GMAIL_CONNECT_ALLOWLIST).
+  if (!gmailConnectAllowed(identity)) {
+    return Response.json({ success: false, error: 'gmail_connect_unavailable' }, { status: 403 });
+  }
 
   const cfg = config(env);
   const state = randomToken();
@@ -335,8 +363,10 @@ export async function apiStatus(request, env, userId) {
   const configured = isGmailConfigured(env);
   // Not configured: answer without touching the database, so this is safe
   // even before migration 0015 has been applied.
-  if (!configured) return Response.json({ success: true, configured: false, state: 'not_connected' });
+  if (!configured) return Response.json({ success: true, configured: false, state: 'not_connected', connect_allowed: false });
   const row = await db.getGmailConnectionStatus(env.cybercabhunter_db, userId);
+  // TEMPORARY — remove after Google OAuth verification completes (see GMAIL_CONNECT_ALLOWLIST).
+  const connectAllowed = gmailConnectAllowed(await db.getGoogleIdentityForUser(env.cybercabhunter_db, userId));
   let state = 'not_connected';
   if (row && row.status === 'error') state = 'reconnect_required';
   else if (row && row.status === 'active') {
@@ -353,6 +383,7 @@ export async function apiStatus(request, env, userId) {
     success: true,
     configured,
     state,
+    connect_allowed: connectAllowed,   // TEMPORARY (see GMAIL_CONNECT_ALLOWLIST)
     email: connected ? row.email : null,
     connected_at: connected ? row.connected_at : null,
     initial_import_complete: connected ? !!row.backfill_completed_at : false,
@@ -560,9 +591,13 @@ async function processOneMessage(env, userId, accessToken, messageId, syncRunId,
 // returns { skipped: 'locked' }. `maxMessages` (default 1) caps downloads in
 // this step; 0 only lists (used right after connecting). `budget` is the
 // invocation's Google-call budget, shared with the caller.
-export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCATION, budget = newBudget() } = {}) {
+export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCATION, budget = newBudget(), gate = GMAIL_CONNECT_GATE_ENABLED } = {}) {
   const sql = env.cybercabhunter_db;
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
+  // TEMPORARY — remove after Google OAuth verification completes: no Gmail read for an
+  // account off GMAIL_CONNECT_ALLOWLIST (checked before the lock, so nothing is stamped).
+  const conn = await db.getGmailConnectionStatus(sql, userId);
+  if (conn && !gmailConnectAllowed({ email: conn.email }, gate)) return { skipped: 'not_allowlisted' };
   if (!(await db.acquireGmailSyncLock(sql, userId, LOCK_MINUTES))) {
     const row = await db.getGmailConnectionStatus(sql, userId);
     return { skipped: !row || row.status !== 'active' ? 'not_connected' : 'locked' };
@@ -717,15 +752,17 @@ function tally(counts) {
 // like everyone else. With N connected riders each gets a step at least
 // every N runs (N × 10 minutes); no rider — not even one with a long
 // backfill — can hold the front. Riders mid-step (locked) are skipped.
-export async function runScheduledSync(env) {
+export async function runScheduledSync(env, { gate = GMAIL_CONNECT_GATE_ENABLED } = {}) {
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
   const sql = env.cybercabhunter_db;
   const budget = newBudget();
   await db.pruneGmailProcessedMessages(sql, PROCESSED_RETENTION_DAYS);
-  const due = await db.listGmailConnectionsDue(sql, { olderThanMinutes: DUE_AFTER_MINUTES, limit: RIDERS_PER_INVOCATION });
+  // TEMPORARY — remove after Google OAuth verification completes: only allowlisted
+  // connections are selected, so a skipped one can never hold the single slot.
+  const due = await db.listGmailConnectionsDue(sql, { olderThanMinutes: DUE_AFTER_MINUTES, limit: RIDERS_PER_INVOCATION, onlyEmails: gate ? GMAIL_CONNECT_ALLOWLIST : null });
   let synced = 0;
   for (const userId of due) {
-    try { await syncUser(env, userId, { budget }); } catch (err) { /* one rider never stops the rest */ }
+    try { await syncUser(env, userId, { budget, gate }); } catch (err) { /* one rider never stops the rest */ }
     synced++;
   }
   return { due: due.length, synced };
