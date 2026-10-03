@@ -197,13 +197,13 @@ const CCC = (() => {
   }
 
   /* ShinyText: a light sweep across the gold Replay accents (.shine, CSS
-     keyframes on a transform). The sweep runs only while the accent is on
-     screen. */
+     keyframes on a transform). CircularText: the Zones badge's slow spin
+     (.spin-badge). Both run only while they are on screen. */
   function initShine() {
-    const els = document.querySelectorAll('.shine');
+    const els = document.querySelectorAll('.shine, .spin-badge');
     if (!els.length || reducedMotion() || typeof IntersectionObserver !== 'function') return;
     const io = new IntersectionObserver(entries => {
-      entries.forEach(e => e.target.classList.toggle('is-shining', e.isIntersecting));
+      entries.forEach(e => e.target.classList.toggle(e.target.classList.contains('shine') ? 'is-shining' : 'is-spinning', e.isIntersecting));
     });
     els.forEach(el => io.observe(el));
   }
@@ -267,8 +267,12 @@ const CCC = (() => {
       const card = e.currentTarget, s = springs.get(card);
       if (!s) return;
       const r = card.getBoundingClientRect();
-      s.ty = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
-      s.tx = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
+      const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+      s.ty = (fx - 0.5) * 2 * MAX;
+      s.tx = -(fy - 0.5) * 2 * MAX;
+      // GlareHover: the glare layer (css/style.css) is centered on the pointer.
+      card.style.setProperty('--glare-x', (fx * 100).toFixed(1) + '%');
+      card.style.setProperty('--glare-y', (fy * 100).toFixed(1) + '%');
       kick(card, s);
     }
     function onLeave(e) {
@@ -292,6 +296,128 @@ const CCC = (() => {
       card.addEventListener('pointermove', onMove, { passive: true });
       card.addEventListener('pointerleave', onLeave);
     }, { passive: true });
+  }
+
+  /* DecryptedText: a [data-decrypt] eyebrow scrambles through uppercase
+     letters and digits, then resolves left to right to its real text, once,
+     the first time it scrolls into view (~0.9s; glyphs change every 50ms as
+     in the original). While it runs, screen readers get the real text from a
+     visually hidden copy and the scrambling copy is aria-hidden; afterwards
+     the element holds its original plain text again. Its width is held for
+     the run so nothing beside it moves. */
+  const DECRYPT_GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  function decrypt(el) {
+    const text = el.textContent;
+    const chars = [...text];
+    const scrambles = chars.map(c => /[A-Za-z0-9]/.test(c));
+    const pick = () => DECRYPT_GLYPHS[Math.floor(Math.random() * DECRYPT_GLYPHS.length)];
+    const width = el.getBoundingClientRect().width;
+    if (width) { el.style.width = width + 'px'; el.style.whiteSpace = 'nowrap'; }
+    const real = document.createElement('span');
+    real.className = 'decrypt-sr';
+    real.textContent = text;
+    const shown = document.createElement('span');
+    shown.setAttribute('aria-hidden', 'true');
+    el.replaceChildren(real, shown);
+    const TOTAL = 900, TICK = 50;
+    const start = performance.now();
+    let lastTick = -1;
+    function frame(now) {
+      const t = Math.min(1, (now - start) / TOTAL);
+      const tick = Math.floor((now - start) / TICK);
+      if (t >= 1) {
+        el.textContent = text;
+        el.style.width = ''; el.style.whiteSpace = '';
+        return;
+      }
+      if (tick !== lastTick) {
+        lastTick = tick;
+        const revealed = Math.floor(t * chars.length);
+        shown.textContent = chars.map((c, i) => (i < revealed || !scrambles[i] ? c : pick())).join('');
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  function initDecrypt() {
+    const els = document.querySelectorAll('[data-decrypt]');
+    if (!els.length || reducedMotion() || typeof IntersectionObserver !== 'function' || typeof requestAnimationFrame !== 'function') return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        io.unobserve(e.target);
+        decrypt(e.target);
+      });
+    }, { threshold: 0.6 });
+    els.forEach(el => io.observe(el));
+  }
+
+  /* ElasticSlider: a [data-elastic] range input's handle stretches with the
+     drag (faster = longer, and further when pulled past either end, with the
+     original's sigmoid decay over 50px), then springs back with the
+     original's bounce of 0.5 when let go. Visual only: it writes three CSS
+     variables the thumb's transform reads, never the input's value, so the
+     keyboard and screen-reader behavior is the browser's own. The loop runs
+     only while a handle is moving. */
+  function initElastic() {
+    const els = document.querySelectorAll('input[type="range"][data-elastic]');
+    if (!els.length || reducedMotion() || typeof requestAnimationFrame !== 'function') return;
+    const MAX_OVERFLOW = 50, K = 300, C = 2 * 0.5 * Math.sqrt(300);   // bounce 0.5 = damping ratio 0.5
+    const decay = (v, max) => max * (2 / (1 + Math.exp(-v / max)) - 1);
+    els.forEach(input => {
+      const s = { stretch: 0, v: 0, target: 0, shift: 0, raf: 0, last: 0, dragging: false, lastVal: 0, lastT: 0 };
+      const write = () => {
+        const sx = 1 + s.stretch;
+        input.style.setProperty('--thumb-sx', sx.toFixed(3));
+        input.style.setProperty('--thumb-sy', (1 / Math.sqrt(sx)).toFixed(3));
+        input.style.setProperty('--thumb-x', s.shift.toFixed(2) + 'px');
+      };
+      function step(now) {
+        const dt = Math.min(0.032, (now - s.last) / 1000 || 0.016);
+        s.last = now;
+        if (s.dragging && now - s.lastT > 90) s.target = Math.min(s.target, s.overflowTarget || 0);   // the hand stopped: relax
+        s.v += (K * (s.target - s.stretch) - C * s.v) * dt;
+        s.stretch += s.v * dt;
+        if (!s.dragging) s.shift += (0 - s.shift) * Math.min(1, dt * 14);
+        write();
+        const still = Math.abs(s.target - s.stretch) < 0.001 && Math.abs(s.v) < 0.001 && Math.abs(s.shift) < 0.05;
+        if (still && !s.dragging) {
+          input.style.removeProperty('--thumb-sx'); input.style.removeProperty('--thumb-sy'); input.style.removeProperty('--thumb-x');
+          s.raf = 0; return;
+        }
+        s.raf = requestAnimationFrame(step);
+      }
+      const kick = () => { if (!s.raf) { s.last = performance.now(); s.raf = requestAnimationFrame(step); } };
+      function onMove(e) {
+        const r = input.getBoundingClientRect();
+        const over = e.clientX < r.left ? e.clientX - r.left : e.clientX > r.right ? e.clientX - r.right : 0;
+        const pulled = decay(over, MAX_OVERFLOW);
+        s.shift = pulled * 0.16;                       // up to 8px past the end
+        s.overflowTarget = Math.abs(pulled) / MAX_OVERFLOW * 0.3;
+        s.target = Math.max(s.target, s.overflowTarget);
+        kick();
+      }
+      input.addEventListener('input', () => {
+        if (!s.dragging) return;
+        const now = performance.now(), val = Number(input.value);
+        const span = Number(input.max) - Number(input.min) || 1;
+        const speed = Math.abs(val - s.lastVal) / span / Math.max(0.008, (now - s.lastT) / 1000);   // track widths per second
+        s.lastVal = val; s.lastT = now;
+        s.target = Math.max(s.overflowTarget || 0, Math.min(0.3, speed * 0.06));
+        kick();
+      });
+      input.addEventListener('pointerdown', e => {
+        s.dragging = true; s.lastVal = Number(input.value); s.lastT = performance.now(); s.overflowTarget = 0;
+        window.addEventListener('pointermove', onMove, { passive: true });
+        const up = () => {
+          s.dragging = false; s.target = 0; s.overflowTarget = 0;
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+          kick();
+        };
+        window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+      });
+    });
   }
 
   /* ---------------- Confetti ---------------- */
@@ -1214,10 +1340,12 @@ const CCC = (() => {
     initShine();
     initMagnet();
     initTilt();
+    initDecrypt();
+    initElastic();
     initTeslaLink();
     initAccountMenu();
     initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
+  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
 })();

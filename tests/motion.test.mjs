@@ -2,7 +2,11 @@
 // CountUp counts once to the real value and never counts up an empty state;
 // AnimatedList runs on the Sightings page's first load only; Magnet and
 // TiltedCard exist only for a fine pointer; everything is still under
-// prefers-reduced-motion; and none of it adds a colored shadow.
+// prefers-reduced-motion; and none of it adds a colored shadow. Batch two:
+// DecryptedText resolves once to the real eyebrow and keeps it readable by
+// screen readers, ElasticSlider never touches a slider's value, GlareHover is
+// a neutral 12% highlight for fine pointers only, and the CircularText badge
+// stands still under reduced motion.
 // Run: node tests/motion.test.mjs
 
 import fs from 'node:fs';
@@ -134,6 +138,85 @@ console.log('5. Stylesheet rules');
   const reduced = motion.slice(motion.indexOf('@media (prefers-reduced-motion: reduce)'));
   check('reduced motion stops BlurText, AnimatedList and ShinyText outright (not just shortened)', /\.blur-word/.test(reduced) && /\.list-enter/.test(reduced) && /\.shine\.is-shining::after/.test(reduced) && /animation:none/.test(reduced) && /\.list-pending\{opacity:1;\}/.test(reduced));
   check('the shine sweep animates a transform (no repaint) and only while on screen', /\.shine\.is-shining::after\{animation:shine-sweep/.test(motion) && /@keyframes shine-sweep\{[^}]*transform/.test(motion));
+}
+
+console.log('6. DecryptedText (batch two)');
+{
+  const p = open('<p id="e" data-decrypt>Community spotted</p><h1>SIGHTINGS</h1>');
+  p.CCC.initDecrypt();
+  const e = p.d.getElementById('e');
+  await wait(300);
+  const sr = e.querySelector('.decrypt-sr'), shown = e.querySelector('[aria-hidden="true"]');
+  check('mid-run: screen readers get the real text, the scrambling copy is aria-hidden', sr && sr.textContent === 'Community spotted' && shown && shown.textContent.length === 'Community spotted'.length);
+  check('mid-run: it really scrambles, using only uppercase letters and digits (no symbols)', shown.textContent !== 'Community spotted' && [...shown.textContent].every((c, i) => c === 'Community spotted'[i] || /[A-Z0-9]/.test(c)) && shown.textContent[9] === ' ', shown.textContent);
+  check('...and resolves left to right (the start is already real)', shown.textContent.startsWith('Co'));
+  await wait(900);
+  check('after ~0.9s it is the real label again, as plain text (no extra spans)', e.textContent === 'Community spotted' && e.children.length === 0 && !e.style.width);
+  check('it runs once: the element is observed a single time', p.observed.filter(x => x === e).length === 1);
+  const still = open('<p id="e" data-decrypt>Your Data</p>', { media: ['reduce'] });
+  still.CCC.initDecrypt();
+  await wait(100);
+  check('reduced motion: the label is never touched', still.d.getElementById('e').innerHTML === 'Your Data' && still.observed.length === 0);
+  const pages = ['index', 'sightings', 'community', 'rider-data', 'simulation', 'infrastructure'].map(f => read(`public/${f}.html`)).join('\n');
+  const labels = [...pages.matchAll(/data-decrypt[^>]*>([^<]*)</g)].map(m => m[1]);
+  check('wired to the seven eyebrows that sit above a heading, and nothing else', labels.sort().join('|') === ['Community spotted', 'Investor tools', 'Riders &amp; Spotters', 'Service Area', 'Service Zone', 'Service Zone', 'Your Data'].sort().join('|'), labels.join('|'));
+}
+
+console.log('7. ElasticSlider (batch two)');
+{
+  const body = '<input type="range" id="r" data-elastic min="0" max="400" step="1" value="150">';
+  const p = open(body);
+  const r = p.d.getElementById('r');
+  r.getBoundingClientRect = () => ({ left: 0, right: 400, top: 0, bottom: 20, width: 400, height: 20 });
+  p.CCC.initElastic();
+  r.value = '160'; r.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  await wait(60);
+  check('keyboard / programmatic changes (no drag) never stretch the handle', !r.style.getPropertyValue('--thumb-sx'));
+  r.dispatchEvent(new p.w.MouseEvent('pointerdown', { bubbles: true, clientX: 150 }));
+  await wait(20);
+  r.value = '400'; r.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.w.dispatchEvent(new p.w.MouseEvent('pointermove', { clientX: 460 }));
+  await wait(120);
+  const sx = parseFloat(r.style.getPropertyValue('--thumb-sx')), tx = parseFloat(r.style.getPropertyValue('--thumb-x'));
+  check('dragging (and pulling past the end) stretches the handle a little, never more than 30%', sx > 1 && sx <= 1.3 && tx > 0 && tx <= 8, `${sx} ${tx}`);
+  check('the physics never writes the value: the slider holds what the drag set', r.value === '400');
+  p.w.dispatchEvent(new p.w.MouseEvent('pointerup', {}));
+  await wait(1500);
+  check('let go: it springs back and the loop stops (variables cleared)', !r.style.getPropertyValue('--thumb-sx') && !r.style.getPropertyValue('--thumb-x'));
+  const still = open(body, { media: ['reduce'] });
+  const r2 = still.d.getElementById('r');
+  still.CCC.initElastic();
+  r2.dispatchEvent(new still.w.MouseEvent('pointerdown', { bubbles: true }));
+  r2.value = '0'; r2.dispatchEvent(new still.w.Event('input', { bubbles: true }));
+  await wait(80);
+  check('reduced motion: no stretch at all', !r2.style.getPropertyValue('--thumb-sx'));
+  const sim = read('public/simulation.html');
+  check('wired to the three Fleet ROI sliders, read by the thumb transform', ['fleetSize', 'electricityRate', 'dailyMiles'].every(id => new RegExp(`id="${id}" data-elastic`).test(sim)) && (sim.match(/transform:translateX\(var\(--thumb-x, 0px\)\) scale\(var\(--thumb-sx, 1\), var\(--thumb-sy, 1\)\)/g) || []).length === 2);
+}
+
+console.log('8. GlareHover and CircularText (batch two)');
+{
+  const body = '<article id="c" class="glass" data-tilt></article>';
+  const fine = open(body, { media: ['hover: hover'] });
+  const c = fine.d.getElementById('c');
+  c.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100 });
+  fine.CCC.initTilt();
+  c.dispatchEvent(new fine.w.MouseEvent('pointerover', { bubbles: true }));
+  c.dispatchEvent(new fine.w.MouseEvent('pointermove', { bubbles: true, clientX: 50, clientY: 75 }));
+  check('mouse: the glare is centered on the pointer', c.style.getPropertyValue('--glare-x') === '25.0%' && c.style.getPropertyValue('--glare-y') === '75.0%');
+  const touch = open(body);
+  const t2 = touch.d.getElementById('c');
+  touch.CCC.initTilt();
+  t2.dispatchEvent(new touch.w.MouseEvent('pointerover', { bubbles: true }));
+  t2.dispatchEvent(new touch.w.MouseEvent('pointermove', { bubbles: true, clientX: 50, clientY: 75 }));
+  check('touch device: no glare position, and the glare layer only shows on a tilting card', !t2.style.getPropertyValue('--glare-x') && /\.glass\[data-tilt\]::after\{[^}]*opacity:0;/.test(CSS) && /\.glass\[data-tilt\]\.is-tilting::after\{opacity:1;\}/.test(CSS));
+  const glare = (CSS.match(/\.glass\[data-tilt\]::after\{[^}]*\}/) || [''])[0];
+  const colors = [...glare.matchAll(/rgb\(([^)]*)\)/g)].map(m => m[1]);
+  check('the glare is neutral white at 12% at most (no tint, no shadow)', colors.length === 2 && colors.every(c => /^255 255 255 \/ (0\.12|0)$/.test(c)) && !/box-shadow|filter/.test(glare));
+  const zones = read('public/infrastructure.html');
+  check('the badge reads exactly "AUSTIN • LIVE FLEET • ", is decorative, with a gold center dot', /<svg class="spin-badge[^"]*"[^>]*aria-hidden="true"/.test(zones) && />AUSTIN • LIVE FLEET • <\/textPath>/.test(zones) && /<circle cx="40" cy="40" r="3\.5" style="fill:rgb\(var\(--gold\)\)"\/>/.test(zones));
+  check('the badge text respects the 11px floor', /font-size:11px[^>]*><textPath href="#coverageBadgeRing"/.test(zones));
+  check('one turn per 12s, CSS only, and still under reduced motion', /\.spin-badge\.is-spinning \.spin-ring\{animation:spin-badge 12s linear infinite;\}/.test(CSS) && /prefers-reduced-motion: reduce\)\{[^}]*\.spin-badge\.is-spinning \.spin-ring\{animation:none;\}/.test(CSS.replace(/\n\s*/g, '')));
 }
 
 t.finish();
