@@ -36,13 +36,13 @@ async function run() {
     const p = open('https://cybercabhunter.com/simulation');
     check('the page script runs without errors', p.error === null);
     check('the tab name is "Fleet ROI"', p.d.title === 'Cybercab Hunter | Fleet ROI');
-    check('the Fleet ROI content is the page: Fleet ROI, its inputs and Export', /Fleet\s*ROI/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
+    check('the Fleet ROI content is the page: FLEET ROI, its inputs and Export', /FLEET\s*ROI/.test(p.d.body.textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
     check('no "Fleet ROI" / "Fleet ETA" buttons and no tab panels remain', !p.d.getElementById('simTabs') && !p.d.querySelector('[role="tab"], [role="tabpanel"]') && !/>\s*Fleet ETA\s*</.test(HTML));
     check('nothing from the Fleet ETA tool remains on the page', ['simPanelEta', 'cybercabEta', 'modelyEta', 'cybercabFare', 'tripMiles', 'cybercabCount', 'modelyCount', 'cybercabRadar'].every(id => !p.d.getElementById(id)) && !/radar-sweep|view=eta|fleet-stats/i.test(HTML));
     check('the page no longer asks for the fleet stats (that was the ETA page\'s)', !p.requests.some(u => u.includes('/api/fleet-stats')));
     const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling;
     const firstContent = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav;   // the page's <main> landmark wraps it
-    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /Fleet\s*ROI/.test(firstContent.textContent));
+    check('the Fleet ROI content starts right under the header (no empty gap left by the buttons)', firstContent.tagName === 'SECTION' && /FLEET\s*ROI/.test(firstContent.textContent));
     const old = open('https://cybercabhunter.com/simulation?view=eta');
     check('an old ?view=eta link still opens the Fleet ROI page', old.error === null && !!old.d.getElementById('fleetSize'));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);

@@ -79,7 +79,7 @@ window.CCCAustinMap = (function () {
     ];
     chargingLocations.forEach(c => {
       addPin(c.lat, c.lng, '#D4AF37', `
-         <div class="text-[11px] text-gold font-semibold mb-1">Charging Location</div>
+         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
          <div class="font-display font-bold text-sm mb-1">${c.name}</div>
          <div class="text-xs text-slate-300">${c.note}</div>`,
         18
@@ -102,7 +102,7 @@ window.CCCAustinMap = (function () {
         ? `<img src="${d.image_url}" alt="Traffic camera capture of a Cybercab at ${escapeHtml(d.camera_name)}" class="block rounded-lg mb-2" style="width:220px;max-width:100%;aspect-ratio:16/9;object-fit:cover;background:#0c1119;">`
         : `<div class="flex items-center justify-center rounded-lg mb-2 text-xs text-slate-400 border border-dashed border-[rgba(212,175,55,0.35)]" style="width:220px;max-width:100%;aspect-ratio:16/9;">Capture image pending</div>`;
       return `
-         <div class="text-[11px] text-gold font-semibold mb-1">Cybercab spotted</div>
+         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Cybercab spotted</div>
          ${image}
          <div class="font-display font-bold text-sm mb-0.5">${escapeHtml(d.camera_name)}</div>
          <div class="text-xs text-slate-300">${escapeHtml(when)}</div>`;

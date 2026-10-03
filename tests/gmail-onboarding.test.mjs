@@ -66,7 +66,7 @@ async function run() {
     const ctx = await makeApp();
     const pg = await signIn(ctx, 'alice');
     check('the session from the sign-in fragment is stored, as before', pg.w.localStorage.getItem('teslaSessionId') === 'session-alice' && !pg.w.location.hash.includes('tesla_session'));
-    check('the ?signin=success result is still shown and scrubbed, as before', !pg.w.location.search.includes('signin=') && /Signed in/.test((pg.d.getElementById('toastRoot') || {}).textContent || ''));
+    check('the ?signin=success result is still shown and scrubbed, as before', !pg.w.location.search.includes('signin=') && /SIGNED IN/.test((pg.d.getElementById('toastRoot') || {}).textContent || ''));
     check('the onboarding prompt appears', !!pg.modal() && pg.modal().classList.contains('modal-backdrop'));
     check('title and explanation', /Automatically import your Tesla Robotaxi receipts\?/.test(pg.text()) && /Connect Gmail to automatically find your Robotaxi receipt emails and add your rides to Cybercab Hunter\./.test(pg.text()));
     check('Connect Gmail with its note, Skip for now with its note', !!pg.d.getElementById('gmailOnboardingConnect') && /Only the Robotaxi receipt emails needed for your ride history are imported\./.test(pg.text()) && !!pg.d.getElementById('gmailOnboardingSkip') && /You can connect Gmail later from Rider Data\./.test(pg.text()));

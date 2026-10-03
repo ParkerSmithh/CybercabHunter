@@ -26,7 +26,7 @@
    as the Zones page, js/austin-map.js), kept quiet under the gold. */
 window.CCCReplay = (function () {
   const ZONE = 'America/Chicago';
-  const RANGES = { month: { label: 'This month' }, '24h': { ms: 864e5, label: 'Last 24 hours' }, '7d': { ms: 7 * 864e5, label: 'Last 7 days' } };
+  const RANGES = { month: { label: 'This Month' }, '24h': { ms: 864e5, label: 'Last 24 hours' }, '7d': { ms: 7 * 864e5, label: 'Last 7 days' } };
   const RANGE_ALIASES = { '30d': 'month' };   // links shared before "This Month" existed
   const DEFAULT_RANGE = 'month';
   const SPEEDS = [1, 4, 16, 60];

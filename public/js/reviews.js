@@ -113,7 +113,7 @@
             <div class="flex items-baseline gap-2 flex-wrap">${nameHtml(r.author)}<span class="text-xs text-slate-500">${esc(relative(r.created_at))}${edited}</span></div>
             <div class="mt-1"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.2)] bg-[rgba(212,175,55,0.06)] text-xs text-slate-400"><svg class="w-3 h-3 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>Cybercab ${vehicle}</span></div>
           </div>
-          <span class="shrink-0 text-gold text-base" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
+          <span class="shrink-0 text-gold text-base tracking-wider" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
         </header>
         <p class="mt-3 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words" data-body></p>
         ${photos ? `<div class="mt-3 grid grid-cols-3 gap-2 max-w-sm">${photos}</div>` : ''}
@@ -251,7 +251,7 @@
       sel.value = editing.vehicle.id;
     } else sel.value = '';
     sel.disabled = !!editing;
-    $('reviewFormTitle').textContent = editing ? 'Edit your review' : 'Write a review';
+    $('reviewFormTitle').textContent = editing ? 'EDIT YOUR REVIEW' : 'WRITE A REVIEW';
     $('reviewSubmit').textContent = editing ? 'Save changes' : 'Post review';
     setRating(editing ? editing.rating : 0);
     $('reviewBody').value = editing ? editing.body : '';

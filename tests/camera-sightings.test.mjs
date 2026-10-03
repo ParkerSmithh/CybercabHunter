@@ -229,8 +229,8 @@ async function run() {
 
     const legend = p.d.querySelector('#austinContent').textContent.replace(/\s+/g, ' ');
     const entry = [...p.d.querySelectorAll('#austinContent span')].find(s => s.textContent.trim() === 'Cybercabs');
-    check('legend: "Cybercabs" beside "Charging locations", with the icon to the LEFT of the text at 18px',
-      /Charging locations Cybercabs/.test(legend) && entry && entry.firstElementChild.tagName === 'IMG' && entry.firstElementChild.getAttribute('src') === 'images/CybercabOverhead.png' && entry.firstElementChild.getAttribute('width') === '18');
+    check('legend: "Cybercabs" beside "Charging Locations", with the icon to the LEFT of the text at 18px',
+      /Charging Locations Cybercabs/.test(legend) && entry && entry.firstElementChild.tagName === 'IMG' && entry.firstElementChild.getAttribute('src') === 'images/CybercabOverhead.png' && entry.firstElementChild.getAttribute('width') === '18');
     check('the legend row wraps on narrow screens (flex-wrap)', entry.parentElement.classList.contains('flex-wrap'));
     check('the icon file exists where the page references it', fs.existsSync(`${ROOT}public/images/CybercabOverhead.png`));
   }
@@ -285,7 +285,7 @@ async function run() {
     check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
     check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v6)', /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v5)', /<script src="js\/austin-map\.js\?v=5"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=5"><\/script>/.test(ZONES));
   }
 
   t.finish();

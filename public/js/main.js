@@ -299,9 +299,8 @@ const CCC = (() => {
     }, { passive: true });
   }
 
-  /* DecryptedText: a [data-decrypt] eyebrow scrambles through letters (in
-     each character's own case) and digits, then resolves left to right to
-     its real text, once,
+  /* DecryptedText: a [data-decrypt] eyebrow scrambles through uppercase
+     letters and digits, then resolves left to right to its real text, once,
      the first time it scrolls into view (~0.9s; glyphs change every 50ms as
      in the original). While it runs, screen readers get the real text from a
      visually hidden copy and the scrambling copy is aria-hidden; afterwards
@@ -312,10 +311,7 @@ const CCC = (() => {
     const text = el.textContent;
     const chars = [...text];
     const scrambles = chars.map(c => /[A-Za-z0-9]/.test(c));
-    const pick = c => {
-      const g = DECRYPT_GLYPHS[Math.floor(Math.random() * DECRYPT_GLYPHS.length)];
-      return c === c.toLowerCase() && c !== c.toUpperCase() ? g.toLowerCase() : g;
-    };
+    const pick = () => DECRYPT_GLYPHS[Math.floor(Math.random() * DECRYPT_GLYPHS.length)];
     const width = el.getBoundingClientRect().width;
     if (width) { el.style.width = width + 'px'; el.style.whiteSpace = 'nowrap'; }
     const real = document.createElement('span');
@@ -338,7 +334,7 @@ const CCC = (() => {
       if (tick !== lastTick) {
         lastTick = tick;
         const revealed = Math.floor(t * chars.length);
-        shown.textContent = chars.map((c, i) => (i < revealed || !scrambles[i] ? c : pick(c))).join('');
+        shown.textContent = chars.map((c, i) => (i < revealed || !scrambles[i] ? c : pick())).join('');
       }
       requestAnimationFrame(frame);
     }
@@ -706,7 +702,7 @@ const CCC = (() => {
       if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
       photoPreview.removeAttribute('src');
       photoPreview.classList.add('hidden');
-      photoPrompt.textContent = 'Upload photo';
+      photoPrompt.textContent = 'Upload Photo';
     }
 
     function resetForm() {
@@ -926,7 +922,7 @@ const CCC = (() => {
         photoPreview.classList.remove('hidden');
         pixelReveal(photoPreview);   // visual only (PixelCard, above)
       } catch (err) { /* no preview; the upload still works */ }
-      photoPrompt.textContent = 'Change photo';
+      photoPrompt.textContent = 'Change Photo';
     });
 
     if (success) {
@@ -1099,7 +1095,7 @@ const CCC = (() => {
     const result = params.get('tesla');
     if (result) {
       const messages = {
-        linked: ['Tesla account linked', 'success'],
+        linked: ['TESLA ACCOUNT LINKED', 'success'],
         cancelled: ['Tesla linking was cancelled.', 'info'],
         invalid_state: ['Tesla linking failed. Please try again.', 'error'],
         token_exchange_failed: ['Tesla linking failed. Please try again.', 'error'],
@@ -1128,7 +1124,7 @@ const CCC = (() => {
     if (signinResult === 'success') googleSignInJustCompleted = true;   // for initGmailOnboarding
     if (signinResult) {
       const messages = {
-        success: ['Signed in', 'success'],
+        success: ['SIGNED IN', 'success'],
         cancelled: ['Sign-in was cancelled.', 'info'],
         invalid_state: ['Sign-in failed. Please try again.', 'error'],
         token_exchange_failed: ['Sign-in failed. Please try again.', 'error'],
@@ -1356,7 +1352,7 @@ const CCC = (() => {
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
     panel.setAttribute('aria-labelledby', 'gmailOnboardingTitle');
-    panel.appendChild(el('p', 'text-xs font-semibold text-gold mb-2', 'Welcome'));
+    panel.appendChild(el('p', 'text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2', 'Welcome'));
     const title = el('h2', 'font-display font-bold text-2xl tracking-tight mb-2', 'Automatically import your Tesla Robotaxi receipts?');
     title.id = 'gmailOnboardingTitle';
     panel.appendChild(title);

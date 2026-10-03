@@ -208,7 +208,7 @@ async function run() {
     const d = new JSDOM(html).window.document;
     check('no Refresh button remains', !d.getElementById('modRefresh') && ![...d.querySelectorAll('button')].some(b => b.textContent.trim() === 'Refresh'));
     const link = d.getElementById('modImportReceipt');
-    check('an Import Receipt link goes to the dedicated page', !!link && link.textContent.trim() === 'Import receipt' && link.getAttribute('href') === '/moderation/import-receipt');
+    check('an Import Receipt link goes to the dedicated page', !!link && link.textContent.trim() === 'Import Receipt' && link.getAttribute('href') === '/moderation/import-receipt');
     check('the Registry Vehicles controls are still there', ['modVehicles', 'modVehicleSearch', 'modVehicleScope', 'modVehiclePlate', 'modVehicleList'].every(id => d.getElementById(id)));
     check('js/moderation.js no longer references the removed button', !/modRefresh/.test(read('js/moderation.js')));
     const seen = [];
@@ -249,7 +249,7 @@ async function run() {
     check('non-moderator: Not authorized, no form', rider.vis('impForbidden') && !rider.vis('impReady'));
     const mod = await openPage(c.env, 'session-mod');
     check('moderator: the import form is shown', mod.vis('impReady') && !!mod.d.getElementById('impFiles') && !!mod.d.getElementById('impSubmit'));
-    check('title, supported-file guidance and a link back to Registry Vehicles', /Import receipt/.test(mod.d.querySelector('#impReady h1').textContent) && /\.eml/.test(mod.d.getElementById('impForm').textContent) && /PDFs/.test(mod.d.getElementById('impForm').textContent) && mod.d.querySelector('a[href="moderation#modVehicles"]'));
+    check('title, supported-file guidance and a link back to Registry Vehicles', /Import Receipt/.test(mod.d.querySelector('#impReady h1').textContent) && /\.eml/.test(mod.d.getElementById('impForm').textContent) && /PDFs/.test(mod.d.getElementById('impForm').textContent) && mod.d.querySelector('a[href="moderation#modVehicles"]'));
 
     // The rider is required: a receipt with no rider chosen is not sent.
     const file = new mod.w.File([eml({ body: receipt({ plate: 'UIP777' }) })], 'receipt.eml', { type: 'message/rfc822' });

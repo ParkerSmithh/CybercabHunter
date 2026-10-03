@@ -94,7 +94,7 @@ async function run() {
     const R = dom.window.CCCReplay;
     const now = Date.parse('2026-10-02T17:00:00Z');   // Oct 2, 12 PM CDT
     const def = R.windowFor('', now);
-    check('default: "This month" — Oct 1 (Austin midnight, 05:00 UTC) to now', def.range === 'month' && def.start === Date.parse('2026-10-01T05:00:00Z') && def.end === now && def.date === null);
+    check('default: "This Month" — Oct 1 (Austin midnight, 05:00 UTC) to now', def.range === 'month' && def.start === Date.parse('2026-10-01T05:00:00Z') && def.end === now && def.date === null);
     check('old ?range=30d links open the month view too', R.windowFor('?range=30d', now).range === 'month');
     const sept = R.windowFor('?range=month&date=2026-09-15', now);
     check('?range=month&date=2026-09-15: all of September in Austin (Sep 1 05:00 UTC to Oct 1 05:00 UTC)', sept.start === Date.parse('2026-09-01T05:00:00Z') && sept.end === Date.parse('2026-10-01T05:00:00Z'));
@@ -188,7 +188,7 @@ async function run() {
     const sept = Date.UTC(2026, 8, 15, 17);
     detection(shared, sept, { camera: cams[2].camera_id });
     const s = await page(shared, '?range=month&date=2026-09-15', { reduceMotion: true });
-    check('a shared month link renders for a logged-out visitor', s.R.state.range === 'month' && s.R.state.date === '2026-09-15' && s.d.getElementById('replayCounter').dataset.value === '1' && s.d.getElementById('replayRangeLabel').textContent === 'This month');
+    check('a shared month link renders for a logged-out visitor', s.R.state.range === 'month' && s.R.state.date === '2026-09-15' && s.d.getElementById('replayCounter').dataset.value === '1' && s.d.getElementById('replayRangeLabel').textContent === 'This Month');
     s.w.close();
 
     const empty = await makeApp();
@@ -201,7 +201,7 @@ async function run() {
   {
     const zones = read('public/infrastructure.html');
     check('the Zones map\'s Replay button opens This Month', /<a id="zonesReplay" href="\/replay\?range=month"[^>]*>[\s\S]*?Replay\s*<\/a>/.test(zones));
-    check('"This month" leads: first, larger, and the default label; no "Last 30 days"', /data-range="month"[^>]*>This month<\/button>\s*<button[^>]*data-range="24h"/.test(read('public/replay.html')) && /id="replayRangeLabel">This month</.test(read('public/replay.html')) && !/Last 30 days/.test(read('public/replay.html')));
+    check('"This Month" leads: first, larger, and the default label; no "Last 30 days"', /data-range="month"[^>]*>This Month<\/button>\s*<button[^>]*data-range="24h"/.test(read('public/replay.html')) && /id="replayRangeLabel">This Month</.test(read('public/replay.html')) && !/Last 30 days/.test(read('public/replay.html')));
     const html = read('public/replay.html');
     check('the replay page is public (no sign-in gate) and draws on one canvas', !/signin\.html\?returnTo=%2Freplay/.test(html) && (html.match(/<canvas id="replayCanvas"/g) || []).length === 1);
     check('no video export of any kind', !/MediaRecorder|captureStream|\.mp4|\.webm|download=/i.test(read('public/js/replay.js') + html));

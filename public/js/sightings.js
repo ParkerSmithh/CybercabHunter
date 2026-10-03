@@ -110,8 +110,8 @@
     const since = ago(s.spotted_at);
     const meta = el('div', 'flex items-center gap-2 flex-wrap');
     const filtered = (CITY_NAMES[city] || '').toLowerCase();
-    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold', s.city));
-    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200', 'Cybercab'));
+    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide', s.city));
+    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
     if (since) {
       const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400');
       badge.innerHTML = CLOCK;
