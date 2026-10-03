@@ -1,6 +1,6 @@
 /* Cybercab Hunter design system: Bevel ("morning metrics in cloudlight"),
    adapted. See DESIGN.md at the repository root for the reference and the
-   three adaptations (dark default, gold accent, Cloudlight hero).
+   three adaptations (dark default, gold accent, the photo hero).
    Tailwind (CDN, configured once in js/theme.js) handles layout utilities;
    every color it uses is a token below, so one class reads right in both
    themes.
@@ -46,7 +46,6 @@
   --shadow:0 0 0;
   --focus:212 175 55;
   --scrim:5 6 9;
-  --hero-sky:linear-gradient(180deg, #1a2740 0%, #15130f 100%);
   --ease:cubic-bezier(0.23,1,0.32,1);   /* strong ease-out (Emil Kowalski) */
   --t-fast:160ms; --t:240ms; --t-slow:420ms;
 }
@@ -72,7 +71,6 @@
   --shadow:0 0 0;
   --focus:128 98 12;
   --scrim:9 11 15;
-  --hero-sky:linear-gradient(180deg, #d2e5ff 0%, #fff9ee 100%);
 }
 
 /* ---------- Base ---------- */
@@ -380,10 +378,20 @@ html :is(a,button):is(.rounded-md,.rounded-lg,.rounded-xl):not(.w-full):not(.blo
 }
 @keyframes marker-ring{ 0%{transform:scale(0.6); opacity:0.7;} 100%{transform:scale(2); opacity:0;} }
 
-/* ---------- Homepage hero: Bevel's Cloudlight field ----------
-   A tall rounded Hero Sky field (cool daylight into warm paper; a night
-   sky in the dark theme) holds the centered headline and the car render. */
-.hero-sky{background:var(--hero-sky);}
+/* ---------- Homepage hero scrim ----------
+   Desktop: dark on the left where the headline sits, clear over the car.
+   Phones: the headline sits low across the whole width, so the photo darkens
+   from the bottom up instead (the car stays visible above the text). */
+.hero-scrim{
+  background:
+    linear-gradient(90deg, rgba(9,11,15,0.96) 0%, rgba(9,11,15,0.82) 34%, rgba(9,11,15,0.2) 64%, rgba(9,11,15,0.05) 100%),
+    linear-gradient(0deg, rgba(9,11,15,0.92) 0%, rgba(9,11,15,0) 46%);
+}
+@media (max-width:639px){
+  .hero-scrim{
+    background:linear-gradient(0deg, rgba(9,11,15,0.97) 0%, rgba(9,11,15,0.9) 48%, rgba(9,11,15,0.45) 72%, rgba(9,11,15,0.12) 100%);
+  }
+}
 
 /* ---------- Service zone cards (homepage) ---------- */
 .service-zone-card{
