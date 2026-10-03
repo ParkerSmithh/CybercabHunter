@@ -14,9 +14,9 @@
 </script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -101,7 +101,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <p data-decrypt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service Zone</p>
-            <h2 class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h2>
+            <h2 data-split class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h2>
           </div>
           <span class="shrink-0 inline-flex items-center gap-1.5 mt-1 px-2 py-1 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)] text-[11px] font-semibold uppercase tracking-wide text-gold">
             <span class="w-1.5 h-1.5 rounded-full bg-gold"></span>Operating
@@ -160,7 +160,7 @@
 
       <div id="dallasContent" class="hidden mt-5">
         <p data-decrypt class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service Zone</p>
-        <h2 class="font-display font-bold text-xl leading-tight mt-1">Dallas, TX</h2>
+        <h2 data-split class="font-display font-bold text-xl leading-tight mt-1">Dallas, TX</h2>
         <div class="mt-4 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02]">
           <div class="font-display font-bold text-sm text-gold tracking-wide mb-1.5">NOT YET AVAILABLE</div>
           <p class="text-slate-400 text-xs leading-relaxed">Dallas zone information isn't available in Cybercab Hunter yet.</p>
@@ -300,7 +300,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
   CCC.init();

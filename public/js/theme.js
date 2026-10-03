@@ -22,6 +22,10 @@
   function resolve(pref) { return pref === 'light' || pref === 'dark' ? pref : (mq && mq.matches ? 'light' : 'dark'); }
   function apply(pref) { root.setAttribute('data-theme', resolve(pref)); root.setAttribute('data-theme-pref', pref); }
   apply(stored());
+  // Motion details (js/main.js): with motion allowed, section headings start
+  // hidden until SplitText plays them (css/style.css; a 2.5s CSS fallback
+  // shows them if the script never runs).
+  if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) root.classList.add('motion-ok');
   if (mq) {
     var onChange = function () { if (stored() === 'system') { apply('system'); document.dispatchEvent(new CustomEvent('cch:theme')); } };
     if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);

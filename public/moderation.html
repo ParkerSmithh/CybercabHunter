@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -98,7 +98,7 @@
            moderator making it public — while it also has a counted ride — lets
            it appear on the public site. Registry facts and counts only. -->
       <div id="modVehicles" class="mt-16">
-        <h2 class="font-display font-bold text-2xl tracking-tight mb-2">REGISTRY VEHICLES</h2>
+        <h2 data-split class="font-display font-bold text-2xl tracking-tight mb-2">REGISTRY VEHICLES</h2>
         <p class="text-xs text-slate-500 leading-relaxed mb-3 max-w-2xl">Receipts create vehicles internally, but nothing confirms who actually issued a receipt, so a new vehicle stays private until you make it public. Public visibility alone is not enough: a vehicle also needs at least one counted ride before it appears on the public site.</p>
         <p id="modProvenanceNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Provenance describes how data entered Cybercab Hunter. It does not prove that a receipt was genuinely issued by Tesla.</p>
         <p id="modApprovalNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Approving a vehicle means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. Each approval or return to private is recorded in the vehicle's review history.</p>
@@ -125,7 +125,7 @@
              photo goes on the Zones map when it is approved; one approved
              without a camera can be added with "Add to map". -->
         <div id="modApproved" class="hidden mt-16">
-          <h2 class="font-display font-bold text-2xl tracking-tight mb-2">APPROVED IMAGES</h2>
+          <h2 data-split class="font-display font-bold text-2xl tracking-tight mb-2">APPROVED IMAGES</h2>
           <p class="text-xs text-slate-500 leading-relaxed mb-5 max-w-2xl">Photos from a traffic camera go on the Zones map when you approve them. If an approved photo is a traffic-camera capture but has no camera, use Add to map. The map shows the last 24 hours. Deleting a photo removes it from the public Sightings page and the Zones map.</p>
           <div id="modApprovedList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
         </div>
@@ -137,14 +137,14 @@
 </main>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>
 <!-- "Add to map": choose the traffic camera an approved photo came from. -->
 <dialog id="modMapDialog" aria-labelledby="modMapTitle" class="glass rounded-2xl p-6 w-[calc(100%-2rem)] max-w-sm bg-panel text-slate-100 backdrop:bg-black/60">
   <form id="modMapForm" method="dialog" class="space-y-4">
-    <h2 id="modMapTitle" class="font-display font-bold text-lg">Add to the Zones map</h2>
+    <h2 data-split id="modMapTitle" class="font-display font-bold text-lg">Add to the Zones map</h2>
     <div>
       <label for="modMapCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera</label>
       <select id="modMapCamera" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">

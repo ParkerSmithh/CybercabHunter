@@ -14,9 +14,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -113,7 +113,7 @@
       </form>
 
       <div id="impResults" class="hidden mt-10" aria-live="polite">
-        <h2 class="font-display font-bold text-xl mb-1">Results</h2>
+        <h2 data-split class="font-display font-bold text-xl mb-1">Results</h2>
         <p id="impSummary" class="text-xs text-slate-500 uppercase tracking-wider mb-4"></p>
         <ul id="impList" class="space-y-4"></ul>
       </div>
@@ -124,7 +124,7 @@
 </main>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>

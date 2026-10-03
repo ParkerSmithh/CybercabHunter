@@ -420,6 +420,105 @@ const CCC = (() => {
     });
   }
 
+  /* SplitText: an [data-split] h2 section heading's words rise into place
+     (fade + 8px, 40ms apart, ~0.5s), once, when the heading enters the view
+     (at once if it is already in view). Only text nodes are wrapped, so the
+     heading's text and any inner elements are unchanged. Under reduced
+     motion, or without IntersectionObserver, headings are simply shown. */
+  function initSplit() {
+    const heads = document.querySelectorAll('h2[data-split]');
+    if (!heads.length) return;
+    const still = reducedMotion() || typeof IntersectionObserver !== 'function';
+    if (still) { heads.forEach(h => h.classList.add('split-done')); return; }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        io.unobserve(e.target);
+        e.target.classList.remove('split-pending');
+        e.target.classList.add('split-play');
+      });
+    }, { threshold: 0.2 });
+    heads.forEach(h => {
+      let i = 0;
+      const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+      const texts = [];
+      while (walker.nextNode()) texts.push(walker.currentNode);
+      texts.forEach(node => {
+        const parts = node.nodeValue.split(/(\s+)/);
+        if (parts.every(p => !p.trim())) return;
+        const frag = document.createDocumentFragment();
+        parts.forEach(p => {
+          if (!p) return;
+          if (!p.trim()) { frag.appendChild(document.createTextNode(p)); return; }
+          const w = document.createElement('span');
+          w.className = 'split-word';
+          w.style.setProperty('--i', Math.min(i++, 8));
+          w.textContent = p;
+          frag.appendChild(w);
+        });
+        node.parentNode.replaceChild(frag, node);
+      });
+      h.classList.add('split-done', 'split-pending');
+      io.observe(h);
+    });
+  }
+
+  /* PixelCard: a newly chosen photo's preview starts as large pixel blocks
+     and resolves to full sharpness over ~0.8s (canvas over the preview: the
+     photo drawn small, then scaled up with smoothing off, in finer steps).
+     Visual only: the upload uses the file, never this canvas. The canvas is
+     always removed at the end, if the photo changes, if anything fails, and
+     in any case after 1.5s, so a preview is never left pixelated. Under
+     reduced motion the sharp preview shows at once. */
+  let pixelRun = 0;
+  async function pixelReveal(img) {
+    const run = ++pixelRun;
+    const host = img.parentElement;
+    if (host) host.querySelectorAll('canvas.pixel-veil').forEach(c => c.remove());
+    if (reducedMotion() || !host || typeof requestAnimationFrame !== 'function') return;
+    const src = img.src;
+    try { if (img.decode) await img.decode(); } catch (e) { return; }
+    if (run !== pixelRun || img.src !== src || !img.naturalWidth) return;
+    const w = img.clientWidth, h = img.clientHeight;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext && canvas.getContext('2d');
+    if (!w || !h || !ctx) return;
+    host.classList.add('pixel-host');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.className = 'pixel-veil';
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    Object.assign(canvas.style, { left: img.offsetLeft + 'px', top: img.offsetTop + 'px', width: w + 'px', height: h + 'px' });
+    host.appendChild(canvas);
+    // Where object-contain actually draws the photo inside the preview box.
+    const fit = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+    const dw = img.naturalWidth * fit, dh = img.naturalHeight * fit, dx = (w - dw) / 2, dy = (h - dh) / 2;
+    const small = document.createElement('canvas');
+    const sctx = small.getContext('2d');
+    const BLOCKS = [28, 20, 14, 10, 7, 5, 3, 2], STEP = 100;   // 8 steps x 100ms = 0.8s
+    const finish = () => { canvas.remove(); };
+    setTimeout(finish, 1500);   // the backstop: never left pixelated
+    const start = performance.now();
+    let shown = -1;
+    function frame(now) {
+      if (run !== pixelRun || img.src !== src || !canvas.isConnected) { finish(); return; }
+      const k = Math.floor((now - start) / STEP);
+      if (k >= BLOCKS.length) { finish(); return; }
+      if (k !== shown) {
+        shown = k;
+        const b = BLOCKS[k];
+        small.width = Math.max(1, Math.round(dw / b)); small.height = Math.max(1, Math.round(dh / b));
+        sctx.drawImage(img, 0, 0, small.width, small.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(small, 0, 0, small.width, small.height, dx, dy, dw, dh);
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
   /* ---------------- Confetti ---------------- */
   function spawnConfetti(originEl) {
     const colors = ['#D4AF37', '#F3E5AB', '#B8954A', '#ECEEF1'];   // the one accent, in three tones, plus ink
@@ -820,6 +919,7 @@ const CCC = (() => {
         previewUrl = URL.createObjectURL(file);
         photoPreview.src = previewUrl;
         photoPreview.classList.remove('hidden');
+        pixelReveal(photoPreview);   // visual only (PixelCard, above)
       } catch (err) { /* no preview; the upload still works */ }
       photoPrompt.textContent = 'Change Photo';
     });
@@ -1341,11 +1441,12 @@ const CCC = (() => {
     initMagnet();
     initTilt();
     initDecrypt();
+    initSplit();
     initElastic();
     initTeslaLink();
     initAccountMenu();
     initGmailOnboarding();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
+  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initRipple, initTeslaLink, initAccountMenu, initGmailOnboarding, init, avatarSrc, avatarInitials, renderAvatar };
 })();

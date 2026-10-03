@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -114,19 +114,19 @@
 
     <!-- Empty: nothing is public yet -->
     <div id="regEmpty" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 class="font-display font-bold text-2xl mb-3">NO VEHICLES FOUND</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-3">NO VEHICLES FOUND</h2>
       <p class="text-slate-400 text-sm leading-relaxed">Vehicles appear here once a moderator approves them. Check back soon.</p>
     </div>
 
     <!-- Search found nothing (the registry itself is not empty) -->
     <div id="regNoMatch" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 class="font-display font-bold text-2xl mb-3">No matches</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-3">No matches</h2>
       <p class="text-slate-400 text-sm leading-relaxed">No vehicle matches <span id="regNoMatchQuery" class="text-slate-200 font-semibold [overflow-wrap:anywhere]"></span>. Try part of a plate or VIN.</p>
     </div>
 
     <!-- Network/server failure — NOT the same as empty -->
     <div id="regError" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 class="font-display font-bold text-2xl mb-3">We couldn't load the registry</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-3">We couldn't load the registry</h2>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="regRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
     </div>
@@ -278,7 +278,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>

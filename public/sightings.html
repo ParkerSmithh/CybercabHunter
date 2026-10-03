@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -152,12 +152,12 @@
     </div>
 
     <div id="sightingsEmpty" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
-      <h2 class="font-display font-bold text-2xl mb-2">NO SIGHTINGS YET</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-2">NO SIGHTINGS YET</h2>
       <p id="sightingsEmptyText" class="text-sm text-slate-400 leading-relaxed"></p>
     </div>
 
     <div id="sightingsError" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
-      <h2 class="font-display font-bold text-2xl mb-2">WE COULDN'T LOAD SIGHTINGS</h2>
+      <h2 data-split class="font-display font-bold text-2xl mb-2">WE COULDN'T LOAD SIGHTINGS</h2>
       <p class="text-sm text-slate-400 leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="sightingsRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
     </div>
@@ -313,7 +313,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>

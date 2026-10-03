@@ -14,9 +14,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -147,14 +147,14 @@
       </div>
 
       <div class="glass rounded-2xl p-6">
-        <h2 class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cities</h2>
+        <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cities</h2>
         <ul id="riderCities" class="mt-4 space-y-3"></ul>
         <p id="riderNoCities" class="hidden mt-3 text-xs text-slate-500">No rides with a city recorded yet.</p>
       </div>
 
       <div class="glass rounded-2xl p-6">
         <div class="flex items-baseline justify-between gap-3">
-          <h2 class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles Discovered</h2>
+          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles Discovered</h2>
           <div id="riderCount" class="font-display font-bold text-2xl text-gold tabular-nums"></div>
         </div>
         <ul id="riderVehicles" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"></ul>
@@ -163,7 +163,7 @@
 
       <div class="glass rounded-2xl p-6">
         <div class="flex items-baseline justify-between gap-3">
-          <h2 class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Reviews</h2>
+          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Reviews</h2>
           <a href="/community" class="text-xs text-gold hover:underline">All reviews</a>
         </div>
         <div id="riderReviews" class="mt-4 space-y-3"></div>
@@ -319,7 +319,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>

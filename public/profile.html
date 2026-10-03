@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 <style>
   /* Locked = looks like plain text (no box); unlocked = looks like a normal
      input, toggled by swapping these two classes in js when Edit Profile
@@ -190,6 +190,14 @@
           <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110">Delete account</button>
         </div>
         <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-white/[0.08]">
+          <!-- Stepper (css/style.css .delete-steps): where you are in the deletion, for
+               guidance only. It reads the flow's state; it never changes it. -->
+          <ol id="deleteSteps" class="delete-steps" aria-label="Account deletion steps">
+            <li data-step="1"><span class="delete-step-dot" aria-hidden="true">1</span><span>Review what happens</span></li>
+            <li data-step="2"><span class="delete-step-dot" aria-hidden="true">2</span><span>Confirm</span></li>
+            <li data-step="3"><span class="delete-step-dot" aria-hidden="true">3</span><span>Done</span></li>
+          </ol>
+          <p id="deleteStepStatus" class="sr-only" role="status"></p>
           <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
           <p class="text-xs text-slate-400 mt-2">Deleting your account removes:</p>
           <ul class="text-xs text-slate-400 mt-1.5 space-y-1 list-disc pl-5">
@@ -347,7 +355,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 
@@ -550,6 +558,7 @@
         body = await resp.json().catch(() => ({}));
       } catch (e) { resp = null; }
       if (resp && resp.ok) {
+        setDeleteStep(3);   // stepper only (below): no effect on the deletion
         localStorage.removeItem(TESLA_SESSION_KEY);
         window.location.href = 'index.html?account=deleted';
         return;
@@ -563,6 +572,35 @@
         : "Couldn't delete your account. Please try again.";
     });
   }
+
+  // Delete-account stepper: 1 Review what happens (the panel is open),
+  // 2 Confirm (something is typed in the confirmation field), 3 Done (the
+  // server confirmed the deletion). It only reads the flow above and writes
+  // to its own list and status line; the confirmation, its checks and the
+  // request are untouched. The status line tells screen readers the step.
+  const DELETE_STEPS = ['Review what happens', 'Confirm', 'Done'];
+  function setDeleteStep(n) {
+    const list = document.getElementById('deleteSteps');
+    if (!list) return;
+    list.querySelectorAll('li').forEach(li => {
+      const k = Number(li.dataset.step);
+      li.classList.toggle('is-done', k < n);
+      if (k === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    });
+    list.style.setProperty('--progress', String((n - 1) / (DELETE_STEPS.length - 1)));
+    const status = document.getElementById('deleteStepStatus');
+    const text = `Step ${n} of ${DELETE_STEPS.length}: ${DELETE_STEPS[n - 1]}`;
+    if (status && status.textContent !== text) status.textContent = text;
+  }
+  (function initDeleteStepper() {
+    const openBtn = document.getElementById('deleteAccountBtn');
+    const input = document.getElementById('deleteAccountConfirm');
+    if (!openBtn || !input || !document.getElementById('deleteSteps')) return;
+    const sync = () => { if (openBtn.getAttribute('aria-expanded') === 'true') setDeleteStep(input.value.trim() ? 2 : 1); };
+    new MutationObserver(sync).observe(openBtn, { attributes: true, attributeFilter: ['aria-expanded'] });
+    input.addEventListener('input', sync);
+    setDeleteStep(1);
+  })();
 
   // ---- Profile picture ----
   function renderProfileAvatar() {

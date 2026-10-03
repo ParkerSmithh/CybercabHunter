@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -199,7 +199,7 @@
         <!-- Ride history summary -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
           <div class="flex items-baseline justify-between gap-3 mb-5">
-            <h2 class="font-display font-bold text-xl">RIDE HISTORY</h2>
+            <h2 data-split class="font-display font-bold text-xl">RIDE HISTORY</h2>
             <span class="text-xs text-slate-500">Counted rides only</span>
           </div>
           <div id="rideSummaryEmpty" class="hidden text-sm text-slate-500">No rides recorded yet.</div>
@@ -220,7 +220,7 @@
 
         <!-- Spending -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-1">SPENDING</h2>
+          <h2 data-split class="font-display font-bold text-xl mb-1">SPENDING</h2>
           <p class="text-xs text-slate-500 mb-5">From the fares printed on your receipts. Only you can see this.</p>
           <div id="spendingEmpty" class="hidden text-sm text-slate-500">No fares recorded yet. They'll appear here once a receipt with a fare is added.</div>
           <div id="spendingList" class="space-y-6"></div>
@@ -232,7 +232,7 @@
         <!-- Monthly activity -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll lg:col-span-2">
           <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1">
-            <h2 class="font-display font-bold text-xl">MONTHLY ACTIVITY</h2>
+            <h2 data-split class="font-display font-bold text-xl">MONTHLY ACTIVITY</h2>
             <span id="monthlySummary" class="text-xs text-slate-500">Rides per month, last 12 months</span>
           </div>
           <div id="monthlyEmpty" class="hidden text-sm text-slate-500 mt-4">Monthly activity appears once you have rides with a date.</div>
@@ -245,7 +245,7 @@
 
         <!-- Cities -->
         <div class="glass rounded-2xl p-7 reveal-on-scroll">
-          <h2 class="font-display font-bold text-xl mb-5">CITIES</h2>
+          <h2 data-split class="font-display font-bold text-xl mb-5">CITIES</h2>
           <div id="citiesList" class="space-y-3 text-sm"></div>
           <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
         </div>
@@ -254,7 +254,7 @@
       <!-- Ride list -->
       <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-5">
-          <h2 class="font-display font-bold text-xl">YOUR RIDES</h2>
+          <h2 data-split class="font-display font-bold text-xl">YOUR RIDES</h2>
           <span id="ridesTotal" class="text-xs text-slate-500"></span>
         </div>
         <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received.</div>
@@ -421,7 +421,7 @@
 </footer>
 
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 </script>

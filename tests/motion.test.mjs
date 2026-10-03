@@ -6,7 +6,9 @@
 // DecryptedText resolves once to the real eyebrow and keeps it readable by
 // screen readers, ElasticSlider never touches a slider's value, GlareHover is
 // a neutral 12% highlight for fine pointers only, and the CircularText badge
-// stands still under reduced motion.
+// stands still under reduced motion. Batch three: SplitText plays each
+// section heading once and keeps its text, the PixelCard preview always ends
+// sharp, and the delete-account Stepper only reads the deletion flow.
 // Run: node tests/motion.test.mjs
 
 import fs from 'node:fs';
@@ -219,6 +221,80 @@ console.log('8. GlareHover and CircularText (batch two)');
   check('the badge reads exactly "AUSTIN • LIVE FLEET • ", is decorative, with a gold center dot', /<svg class="spin-badge[^"]*"[^>]*aria-hidden="true"/.test(zones) && />AUSTIN • LIVE FLEET • <\/textPath>/.test(zones) && /<circle cx="40" cy="40" r="3\.5" style="fill:rgb\(var\(--gold\)\)"\/>/.test(zones));
   check('the badge text respects the 11px floor', /font-size:11px[^>]*><textPath href="#coverageBadgeRing"/.test(zones));
   check('one turn per 12s, CSS only, and still under reduced motion', /\.spin-badge\.is-spinning \.spin-ring\{animation:spin-badge 12s linear infinite;\}/.test(CSS) && /prefers-reduced-motion: reduce\)\{[^}]*\.spin-badge\.is-spinning \.spin-ring\{animation:none;\}/.test(CSS.replace(/\n\s*/g, '')));
+}
+
+console.log('9. SplitText (batch three)');
+{
+  const p = open('<h2 id="h" data-split>FLEET <span class="text-gold">ROI</span> NOW</h2>', { visible: false });
+  const h = p.d.getElementById('h');
+  p.CCC.initSplit();
+  const words = [...h.querySelectorAll('.split-word')];
+  check('every word is wrapped, inner elements kept, and the text is unchanged', words.map(w => w.textContent).join('|') === 'FLEET|ROI|NOW' && h.querySelector('span.text-gold .split-word') && h.textContent === 'FLEET ROI NOW');
+  check('off screen it waits (pending), and is observed once', h.classList.contains('split-pending') && p.observed.filter(x => x === h).length === 1);
+  const seen = open('<h2 id="h" data-split>SERVICE ZONES</h2>');
+  seen.CCC.initSplit();
+  await wait(20);
+  check('in view (already, on load) it plays at once, and only once', seen.d.getElementById('h').classList.contains('split-play') && !seen.d.getElementById('h').classList.contains('split-pending') && seen.observed.length === 1);
+  const still = open('<h2 id="h" data-split>REVIEWS</h2>', { media: ['reduce'] });
+  still.CCC.initSplit();
+  check('reduced motion: shown at once, never split', still.d.getElementById('h').classList.contains('split-done') && !still.d.querySelector('.split-word'));
+  check('40ms per word, 8px rise, stagger capped (~0.5s at most)', /\.split-play \.split-word\{animation:split-rise 320ms[^}]*calc\(var\(--i, 0\) \* 40ms\)/.test(CSS) && /translateY\(8px\)/.test(CSS) && /Math\.min\(i\+\+, 8\)/.test(MAIN));
+  check('headings hidden before paint only with motion allowed, with a CSS fallback that shows them', /\.motion-ok h2\[data-split\]:not\(\.split-done\)\{opacity:0; animation:split-failsafe 0s linear 2\.5s forwards;\}/.test(CSS) && /prefers-reduced-motion: reduce\)'\)\.matches\)\) root\.classList\.add\('motion-ok'\)/.test(read('public/js/theme.js')));
+  const files = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
+  const split = files.filter(f => /data-split/.test(read(`public/${f}`)));
+  check('only h2s (never the hero h1), and only on pages that load main.js', split.length > 5 && files.every(f => !/<h1[^>]*data-split/.test(read(`public/${f}`))) && split.every(f => /js\/main\.js\?v=/.test(read(`public/${f}`))), split.join(','));
+}
+
+console.log('10. PixelCard (batch three)');
+{
+  function photoPage(media) {
+    const p = open('<label id="host"><img id="img" src="blob:one"></label>', { media });
+    const img = p.d.getElementById('img');
+    Object.defineProperty(img, 'naturalWidth', { value: 800 }); Object.defineProperty(img, 'naturalHeight', { value: 600 });
+    Object.defineProperty(img, 'clientWidth', { value: 320 }); Object.defineProperty(img, 'clientHeight', { value: 224 });
+    img.decode = () => Promise.resolve();
+    const draws = [];
+    p.w.HTMLCanvasElement.prototype.getContext = function () { return { drawImage() { draws.push(1); }, setTransform() {}, clearRect() {}, imageSmoothingEnabled: true }; };
+    return { ...p, img, draws };
+  }
+  const p = photoPage([]);
+  p.CCC.pixelReveal(p.img);
+  await wait(250);
+  check('a new photo starts pixelated (a canvas veil over the preview, drawn in blocks)', p.d.querySelectorAll('canvas.pixel-veil').length === 1 && p.draws.length > 0);
+  await wait(800);
+  check('...and always ends fully sharp: the veil is gone after ~0.8s', p.d.querySelectorAll('canvas.pixel-veil').length === 0);
+  const q = photoPage([]);
+  q.CCC.pixelReveal(q.img);
+  await wait(150);
+  q.img.src = 'blob:two';
+  await wait(100);
+  check('picking another photo (or clearing it) removes the veil at once', q.d.querySelectorAll('canvas.pixel-veil').length === 0);
+  check('a 1.5s backstop removes the veil whatever happens', /setTimeout\(finish, 1500\)/.test(MAIN));
+  const r = photoPage(['reduce']);
+  r.CCC.pixelReveal(r.img);
+  await wait(150);
+  check('reduced motion: the sharp photo, no veil', r.d.querySelectorAll('canvas.pixel-veil').length === 0);
+  check('visual only: wired after the preview is set, and the upload still sends the picked file', /photoPreview\.classList\.remove\('hidden'\);\s*pixelReveal\(photoPreview\);/.test(MAIN) && !/pixel-veil[\s\S]{0,400}toBlob|FormData[\s\S]{0,200}pixel/.test(MAIN));
+}
+
+console.log('11. Stepper (batch three)');
+{
+  const profile = read('public/profile.html');
+  const del = profile.slice(profile.indexOf('function initDeleteAccount('), profile.indexOf('// Delete-account stepper'));
+  const withoutStepper = del.replace(/\n\s*setDeleteStep\(3\);[^\n]*/, '');
+  check('the deletion flow is untouched apart from one stepper call after a confirmed success', (del.match(/setDeleteStep/g) || []).length === 1 && /if \(resp && resp\.ok\) \{\s*setDeleteStep\(3\);/.test(del) && !/setDeleteStep/.test(withoutStepper));
+  check('...its checks are all still there: typed DELETE, disabled until then, the confirm body, the redirect', /if \(input\.value\.trim\(\) !== 'DELETE' \|\| !sessionId\) return;/.test(del) && /submit\.disabled = input\.value\.trim\(\) !== 'DELETE';/.test(del) && /body: JSON\.stringify\(\{ confirm: 'DELETE' \}\)/.test(del) && /window\.location\.href = 'index\.html\?account=deleted';/.test(del));
+  const stepper = profile.slice(profile.indexOf('// Delete-account stepper'), profile.indexOf('// ---- Profile picture ----'));
+  check('the stepper only reads the flow: it never writes the field, the button, the panel or calls the server', !/\.disabled\s*=|\.value\s*=|fetch\(|classList\.(add|remove|toggle)\('hidden'|\.click\(\)|\.focus\(\)/.test(stepper));
+  check('three steps in a labelled list, the current one marked aria-current="step", announced in a status line', /<ol id="deleteSteps"[^>]*aria-label="Account deletion steps"/.test(profile) && ['Review what happens', 'Confirm', 'Done'].every((t, i) => new RegExp(`data-step="${i + 1}"[^\\n]*<span>${t}</span>`).test(profile)) && /<p id="deleteStepStatus" class="sr-only" role="status"><\/p>/.test(profile) && /setAttribute\('aria-current', 'step'\)/.test(stepper) && /`Step \$\{n\} of \$\{DELETE_STEPS\.length\}: /.test(stepper));
+  const steps = CSS.slice(CSS.indexOf('/* Stepper (batch three)'), CSS.indexOf('/* PixelCard (batch three)'));
+  check('no gradients or shadows, only existing tokens', !/gradient|box-shadow/.test(steps) && !/rgba?\((?!var\(--)/.test(steps) && /#1a1204/.test(steps));
+}
+
+console.log('12. Not added in batch three');
+{
+  check('no carousel autoplay anywhere (no carousel was added: the vehicle page has no photo strip)', !/autoplay/i.test(MAIN + read('public/js/vehicle.js') + read('public/vehicle.html')));
+  check('no second grain layer: the existing static .bg-mesh grain is the only noise', (CSS.match(/feTurbulence/g) || []).length === 1);
 }
 
 t.finish();

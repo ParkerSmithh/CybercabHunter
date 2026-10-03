@@ -13,9 +13,9 @@
   window.scrollTo(0, 0);
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="js/theme.js?v=2"></script>
+<script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -107,7 +107,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Inputs -->
       <div class="lg:col-span-1">
-      <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Inputs</h2>
+      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Inputs</h2>
       <div class="glass rounded-2xl p-7 space-y-7 h-fit">
         <!-- Starting values: the fleet size is the live public registry count
              (GET /api/registry/stats); electricity and daily miles are examples. -->
@@ -168,7 +168,7 @@
 
       <!-- Outputs -->
       <div class="lg:col-span-2">
-      <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Projected Results</h2>
+      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Projected Results</h2>
       <div class="space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div class="glass rounded-2xl p-6">
@@ -334,7 +334,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/main.js?v=16"></script>
 <script>
   CCC.init();
 

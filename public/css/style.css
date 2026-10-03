@@ -218,9 +218,34 @@ html .glass[data-tilt].is-tilting{
 .spin-badge .spin-ring{transform-box:view-box; transform-origin:40px 40px;}
 .spin-badge.is-spinning .spin-ring{animation:spin-badge 12s linear infinite;}
 @keyframes spin-badge{ to{ transform:rotate(360deg); } }
+/* Stepper (batch three): profile.html's delete-account steps. A line under
+   the three dots fills to the current step; the current dot is gold. */
+.delete-steps{position:relative; display:flex; justify-content:space-between; gap:8px; margin-bottom:20px; padding:0; list-style:none; --progress:0;}
+.delete-steps::before,.delete-steps::after{content:''; position:absolute; top:13px; left:14px; right:14px; height:2px; border-radius:2px; background:rgb(var(--n-800));}
+.delete-steps::after{background:rgb(var(--gold)); transform-origin:left center; transform:scaleX(var(--progress)); transition:transform var(--t-slow) var(--ease);}
+.delete-steps li{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; text-align:center; font-size:12px; color:rgb(var(--n-400));}
+.delete-steps li:first-child{align-items:flex-start; text-align:left;}
+.delete-steps li:last-child{align-items:flex-end; text-align:right;}
+.delete-step-dot{width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:rgb(var(--surface)); border:1px solid rgb(var(--n-700)); color:rgb(var(--n-400)); transition:background-color var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);}
+.delete-steps li.is-done .delete-step-dot{border-color:rgb(var(--gold)); color:rgb(var(--gold-ink));}
+.delete-steps li[aria-current="step"]{color:rgb(var(--ink)); font-weight:600;}
+.delete-steps li[aria-current="step"] .delete-step-dot{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
+/* PixelCard (batch three): the canvas that resolves a new photo preview. */
+.pixel-host{position:relative;}
+.pixel-veil{position:absolute; pointer-events:none; image-rendering:pixelated;}
+/* SplitText (batch three): section headings. Hidden from first paint only
+   when motion is allowed (js/theme.js sets .motion-ok), shown by
+   js/main.js, or after 2.5s by CSS alone if the script never runs. */
+.motion-ok h2[data-split]:not(.split-done){opacity:0; animation:split-failsafe 0s linear 2.5s forwards;}
+@keyframes split-failsafe{ to{ opacity:1; } }
+.split-word{display:inline-block;}
+.split-pending .split-word{opacity:0; transform:translateY(8px);}
+.split-play .split-word{animation:split-rise 320ms var(--ease) backwards; animation-delay:calc(var(--i, 0) * 40ms);}
+@keyframes split-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 @media (prefers-reduced-motion: reduce){
-  .blur-word,.list-enter,.shine.is-shining::after,.spin-badge.is-spinning .spin-ring{animation:none;}
+  .blur-word,.split-play .split-word,.list-enter,.shine.is-shining::after,.spin-badge.is-spinning .spin-ring{animation:none;}
   .list-pending{opacity:1;}
+  .split-pending .split-word{opacity:1; transform:none;}
 }
 
 /* ---------- Header ---------- */
