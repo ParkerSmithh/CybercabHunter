@@ -1038,6 +1038,50 @@ async function run() {
     check('open questions are flagged, not asserted', /To be confirmed/.test(text) && /Limited Use/.test(text));
   }
 
+  console.log('27. TEMPORARY: the background sync reads Gmail only for allowlisted accounts');
+  {
+    const ctx = await makeApp();
+    await addRider(ctx, 'olive');                 // allowlisted (addRider)
+    await addRider(ctx, 'nina');
+    addReceipts(ctx.g, 3);
+    await connect(ctx, 'olive');
+    await connect(ctx, 'nina');
+    await drain(ctx, 'olive');
+    await drain(ctx, 'nina');
+    // nina's connection predates the gate: take her off the allowlist now.
+    GMAIL_CONNECT_ALLOWLIST.splice(GMAIL_CONNECT_ALLOWLIST.indexOf('nina@gmail.com'), 1);
+    const checked = u => conn(ctx, u).last_checked_at;
+
+    const callsBefore = ctx.g.total, ninaChecked = checked('nina');
+    const skipped = await syncUser(ctx.env, 'nina');
+    check('syncUser refuses an account off the allowlist: no Google call, no lock, nothing stamped',
+      skipped.skipped === 'not_allowlisted' && ctx.g.total === callsBefore && checked('nina') === ninaChecked && !conn(ctx, 'nina').sync_lock_until);
+    const ownerRun = await syncUser(ctx.env, 'olive');
+    check('...while an allowlisted account still syncs', !ownerRun.skipped && ctx.g.total > callsBefore);
+
+    // The scheduler syncs ONE rider per run, oldest check first. Make nina the
+    // most overdue: a skipped row must never take the slot from the owner.
+    let ownerRuns = 0, ninaPicked = 0;
+    for (let i = 0; i < 3; i++) {
+      ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = '2000-01-01 00:00:00' WHERE user_id = 'nina'`);
+      ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = '2001-01-01 00:00:00' WHERE user_id = 'olive'`);
+      await cron(ctx, { age: false });
+      if (checked('nina') !== '2000-01-01 00:00:00') ninaPicked++;
+      if (checked('olive') !== '2001-01-01 00:00:00') ownerRuns++;
+    }
+    check('the scheduled sync never selects her, even when she is first in line, and syncs the owner every run',
+      ninaPicked === 0 && ownerRuns === 3 && conn(ctx, 'olive').status === 'active' && !conn(ctx, 'olive').last_error);
+    check('her connection is left exactly as it was (the gate skips; it does not disconnect)', conn(ctx, 'nina').status === 'active');
+
+    // Gate disabled (the kill switch): the old behavior, she is synced again.
+    const before = ctx.g.total;
+    const ungated = await syncUser(ctx.env, 'nina', { gate: false });
+    check('gate disabled: syncUser reads her Gmail as before', !ungated.skipped && ctx.g.total > before);
+    ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = '2000-01-01 00:00:00' WHERE user_id = 'nina'`);
+    const picked = await runScheduledSync(ctx.env, { gate: false });
+    check('gate disabled: the scheduler selects her again (oldest first)', picked.due === 1 && checked('nina') !== '2000-01-01 00:00:00');
+  }
+
   t.finish();
 }
 
