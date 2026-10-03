@@ -28,6 +28,11 @@
   .toggle.on{background:linear-gradient(120deg,#F3E5AB,#D4AF37);}
   .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:rgb(var(--ink)); transition:transform var(--t) var(--ease);}
   .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
+  /* The Cybercab in both views' headers: one size and place. Under the text on
+     phones (centered), on the right from md up. */
+  .sim-hero-car{width:min(100%, 320px); height:auto; justify-self:center; user-select:none; filter:drop-shadow(0 24px 32px rgb(0 0 0 / 0.45));}
+  @media (min-width:768px){ .sim-hero-car{width:300px; justify-self:end;} }
+  @media (min-width:1024px){ .sim-hero-car{width:400px;} }
   /* Fleet ETA view (js/fleet-compare.js). Status colors use the
      theme's warn/ok inks, so both themes read correctly. */
   .skeleton-line{display:inline-block; height:1em; vertical-align:middle; border-radius:6px; background:rgb(var(--n-800));}
@@ -131,14 +136,16 @@
 </section>
 
 <div id="simPanelRoi" role="tabpanel" aria-labelledby="simTabRoi">
-<section class="relative overflow-hidden border-b border-[rgba(212,175,55,0.12)]">
-  <div class="relative z-[1] max-w-7xl mx-auto px-6 lg:px-10 py-8 flex items-center justify-center gap-16">
-    <div class="max-w-xl">
+<!-- Both views open with the same header: text on the left, the Cybercab on
+     the right (below the text on phones), same size and place (.sim-hero-car). -->
+<section class="relative overflow-hidden border-b border-white/[0.06]">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+    <div class="max-w-2xl">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET ROI</h1>
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg">Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
     </div>
-    <img src="images/Cybercab2.png" alt="Cybercab" class="hidden lg:block w-[420px] shrink-0" style="filter:drop-shadow(0 30px 40px rgba(0,0,0,0.55));">
+    <img src="images/Cybercab2.png" alt="A gold Tesla Cybercab" width="1200" height="896" class="sim-hero-car" decoding="async">
   </div>
 </section>
 
@@ -249,8 +256,9 @@
      (with its sample size), reported (with its source) or assumed. The model
      and its inputs: docs/fleet-eta-live-data-research.md §3. -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
     <div class="max-w-2xl">
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Fleet comparison</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET ETA</h1>
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-xl">Cybercab and Model Y robotaxis in Austin: what a ride costs, when they run, and how long a pickup might take.</p>
       <div class="mt-6 flex flex-wrap items-center gap-3">
@@ -262,7 +270,7 @@
         <p id="fleetLive" class="text-sm text-slate-400"><span class="skeleton-line w-48"></span></p>
       </div>
     </div>
-    <img src="images/Cybercab2.png" alt="A gold Tesla Cybercab" width="1200" height="896" class="hidden lg:block w-[380px] shrink-0 select-none" decoding="async">
+    <img src="images/Cybercab2.png" alt="A gold Tesla Cybercab" width="1200" height="896" class="sim-hero-car" decoding="async">
   </div>
 </section>
 
