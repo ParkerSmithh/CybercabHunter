@@ -22,7 +22,7 @@ const publicFiles = walk(PUBLIC).filter(f => !f.endsWith('.DS_Store')).map(rel);
 
 console.log('1. What is published');
 check('wrangler.jsonc publishes ./public and nothing else', /"assets":\s*\{[^}]*"directory":\s*"\.\/public"/.test(fs.readFileSync(`${ROOT}wrangler.jsonc`, 'utf8')));
-check('all 14 pages live in public/', pages.length === 14 && ['replay', 'index', 'vehicles', 'vehicle', 'infrastructure', 'moderation', 'signin', 'profile', 'rider-data', 'simulation', 'privacy', 'sightings', 'community', 'rider'].every(n => pages.includes(`${n}.html`)));
+check('all 15 pages live in public/', pages.length === 15 && ['replay', 'index', 'vehicles', 'vehicle', 'infrastructure', 'moderation', 'signin', 'profile', 'rider-data', 'simulation', 'dispatch-comparison', 'privacy', 'sightings', 'community', 'rider'].every(n => pages.includes(`${n}.html`)));
 check('no page is left at the repository root (it would not be published)', fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).length === 0);
 check('css/, js/ and images/ are inside public/', ['css', 'js', 'images'].every(d => fs.statSync(`${PUBLIC}${d}`).isDirectory()));
 check('the Tesla key is still served from its required path (.well-known/appspecific/...)', fs.existsSync(`${PUBLIC}.well-known/appspecific/com.tesla.3p.public-key.pem`));

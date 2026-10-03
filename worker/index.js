@@ -522,11 +522,11 @@ export default {
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
 
-    // The old Fleet ROI and Fleet ETA URLs both go to the Fleet ROI page
-    // (/simulation); the Fleet ETA tool itself was removed. Their
-    // old URLs (with or without .html) are permanent redirects there, so old
-    // links, bookmarks and link previews keep working.
-    const oldSimulationPage = url.pathname.match(/^\/(dispatch-comparison|fleet-calculator)(?:\.html)?$/);
+    // The old Fleet ROI URL goes to the Fleet ROI page (/simulation): a
+    // permanent redirect (with or without .html), so old links, bookmarks and
+    // link previews keep working. /dispatch-comparison is a page again (the
+    // fleet comparison, public/dispatch-comparison.html) and is not redirected.
+    const oldSimulationPage = url.pathname.match(/^\/fleet-calculator(?:\.html)?$/);
     if (oldSimulationPage && (request.method === 'GET' || request.method === 'HEAD')) {
       const target = new URL('/simulation', url);
       return Response.redirect(target, 301);

@@ -296,7 +296,7 @@ async function run() {
     check('/rider/<handle> serves rider.html (as /rider)', (await page.text()) === 'asset:/rider');
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(`public/${f}`).includes('data-nav="sightings"'));
     check('every page with the nav links to Community in the header AND the bottom bar',
-      pages.length === 11 && pages.every(f => (read(`public/${f}`).match(/href="\/community" data-nav="community"/g) || []).length === 2));
+      pages.length === 12 && pages.every(f => (read(`public/${f}`).match(/href="\/community" data-nav="community"/g) || []).length === 2));
     check('the bottom bar has 5 items', pages.every(f => (read(`public/${f}`).split('id="mobileBottomNav"')[1].split('</nav>')[0].match(/<a /g) || []).length === 5));
   }
 

@@ -179,8 +179,10 @@ async function run() {
 
     const ctx = await makeApp();
     const shape = await stats(ctx);
-    check('the endpoint carries only what the Zones panel shows: count + fares (no ETA-only active/Model Y/median miles)',
-      Object.keys(shape).join() === 'city,cybercabs,fares' && Object.keys(shape.fares).sort().join() === 'average_fare,computed_at,median_fare,min_rides,per_mile,rides,sources');
+    check('the endpoint carries the count, when it was taken, and the fares (no per-vehicle data, no active/Model Y/median miles)',
+      Object.keys(shape).join() === 'city,cybercabs,count_as_of,fares' && Object.keys(shape.fares).sort().join() === 'average_fare,computed_at,median_fare,min_rides,per_mile,rides,sources');
+    const age = Date.now() - Date.parse(shape.count_as_of);
+    check('count_as_of is an ISO 8601 UTC time, taken just now', /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(shape.count_as_of) && age >= 0 && age < 60000);
   }
 
   t.finish();

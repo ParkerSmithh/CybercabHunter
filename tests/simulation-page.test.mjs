@@ -74,17 +74,21 @@ async function run() {
   console.log('3. Navigation and old URLs');
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html'));
-    check('the old pages are gone', !pages.includes('dispatch-comparison.html') && !pages.includes('fleet-calculator.html'));
-    check('no page links to them any more', pages.every(f => !/dispatch-comparison|fleet-calculator/.test(read(f))));
+    check('the old Fleet ROI page is gone; the fleet comparison is a page again', !pages.includes('fleet-calculator.html') && pages.includes('dispatch-comparison.html'));
+    check('no page links to the old Fleet ROI URL any more', pages.every(f => !/fleet-calculator/.test(read(f))));
     check('no page says "Simulation" any more', pages.every(f => !/Simulation/.test(read(f))));
     const withNav = pages.filter(f => read(f).includes('id="navIndicator"'));
     check('every page with the header nav has one "Fleet ROI" tab (still /simulation)', withNav.length >= 8 && withNav.every(f => /<a href="\/simulation" data-nav="simulation"[^>]*>Fleet ROI<\/a>/.test(read(f))));
     check('...and the mobile bottom nav item reads "Fleet ROI"', withNav.every(f => (read(f).match(/data-nav="simulation"/g) || []).length === 2 && /data-nav="simulation"[^>]*>[\s\S]*?<span[^>]*>Fleet ROI<\/span>/.test(read(f).split('id="mobileBottomNav"')[1])));
     check('footers link to it as "Fleet ROI"', pages.filter(f => read(f).includes('<footer')).every(f => !/<a href="\/simulation" class="hover:text-white transition-colors">(?!Fleet ROI<)/.test(read(f))));
     const env = { ASSETS: { fetch: async () => new Response('static') } };
-    for (const path of ['/fleet-calculator', '/fleet-calculator.html', '/dispatch-comparison', '/dispatch-comparison.html']) {
+    for (const path of ['/fleet-calculator', '/fleet-calculator.html']) {
       const r = await worker.fetch(new Request(`https://cybercabhunter.com${path}`), env, {});
       check(`${path} permanently redirects to /simulation (the Fleet ROI page)`, r.status === 301 && r.headers.get('Location') === 'https://cybercabhunter.com/simulation');
+    }
+    for (const path of ['/dispatch-comparison', '/dispatch-comparison.html']) {
+      const r = await worker.fetch(new Request(`https://cybercabhunter.com${path}`), env, {});
+      check(`${path} is served as a page (the fleet comparison), not redirected`, r.status === 200 && (await r.text()) === 'static');
     }
   }
 

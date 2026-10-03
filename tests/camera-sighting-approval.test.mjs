@@ -228,7 +228,7 @@ async function run() {
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(`public/${f}`).includes('id="sightingForm"'));
     check('every page with the drawer has the optional picker, defaulting to "Not a traffic camera"',
-      pages.length === 11 && pages.every(f => /<select id="sightingCamera"[^>]*>\s*<option value="">Not a traffic camera<\/option>/.test(read(`public/${f}`)) && !/id="sightingCamera"[^>]*required/.test(read(`public/${f}`))));
+      pages.length === 12 && pages.every(f => /<select id="sightingCamera"[^>]*>\s*<option value="">Not a traffic camera<\/option>/.test(read(`public/${f}`)) && !/id="sightingCamera"[^>]*required/.test(read(`public/${f}`))));
     const ctx = await makeApp();
     const dom = new JSDOM(read('public/sightings.html').replace(/<script src="[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/sightings', pretendToBeVisual: true });
     const w = dom.window;
