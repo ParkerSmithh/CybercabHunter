@@ -162,8 +162,8 @@ p{text-wrap:pretty;}
 }
 
 /* ---------- Motion details (React Bits ports; js/main.js) ----------
-   Batch two adds DecryptedText (eyebrows, JS), GlareHover and CircularText
-   (below) and ElasticSlider (the thumb transform, simulation.html).
+   Batch two adds DecryptedText (eyebrows, JS), GlareHover (below) and
+   ElasticSlider (the thumb transform, simulation.html).
    BlurText: the homepage headline's words come out of a blur, 45ms apart,
    once on load (~0.6s in all). AnimatedList: cards fade and rise in.
    ShinyText: a light sweep across a gold Replay accent every 6s while it is
@@ -214,10 +214,6 @@ html .glass[data-tilt].is-tilting{
   opacity:0; transition:opacity var(--t) var(--ease);
 }
 .glass[data-tilt].is-tilting::after{opacity:1;}
-/* CircularText: the Zones badge turns once every 12s while on screen. */
-.spin-badge .spin-ring{transform-box:view-box; transform-origin:40px 40px;}
-.spin-badge.is-spinning .spin-ring{animation:spin-badge 12s linear infinite;}
-@keyframes spin-badge{ to{ transform:rotate(360deg); } }
 /* Stepper (batch three): profile.html's delete-account steps. A line under
    the three dots fills to the current step; the current dot is gold. */
 .delete-steps{position:relative; display:flex; justify-content:space-between; gap:8px; margin-bottom:20px; padding:0; list-style:none; --progress:0;}
@@ -243,7 +239,7 @@ html .glass[data-tilt].is-tilting{
 .split-play .split-word{animation:split-rise 320ms var(--ease) backwards; animation-delay:calc(var(--i, 0) * 40ms);}
 @keyframes split-rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 @media (prefers-reduced-motion: reduce){
-  .blur-word,.split-play .split-word,.list-enter,.shine.is-shining::after,.spin-badge.is-spinning .spin-ring{animation:none;}
+  .blur-word,.split-play .split-word,.list-enter,.shine.is-shining::after{animation:none;}
   .list-pending{opacity:1;}
   .split-pending .split-word{opacity:1; transform:none;}
 }

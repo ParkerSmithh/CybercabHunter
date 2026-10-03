@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -121,14 +121,7 @@
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
               <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums"><span id="coverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
             </div>
-            <!-- CircularText badge (css/style.css .spin-badge): one turn per 12s while on screen, still under reduced motion. Decorative. -->
-            <svg class="spin-badge shrink-0 w-20 h-20 -mt-2 -mr-1" viewBox="0 0 80 80" aria-hidden="true" focusable="false">
-              <defs><path id="coverageBadgeRing" d="M40 40 m-30 0 a30 30 0 1 1 60 0 a30 30 0 1 1 -60 0"/></defs>
-              <g class="spin-ring">
-                <text style="fill:rgb(var(--n-400));font-family:'Geist',sans-serif;font-size:11px;font-weight:600"><textPath href="#coverageBadgeRing" textLength="188" lengthAdjust="spacing">AUSTIN • LIVE FLEET • </textPath></text>
-              </g>
-              <circle cx="40" cy="40" r="3.5" style="fill:rgb(var(--gold))"/>
-            </svg>
+            <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Austin • Live fleet</p>
           </div>
           <p class="text-xs text-slate-400 leading-relaxed mt-3">First Robotaxi market. Launched as an invite pilot, now unsupervised.</p>
           <p class="text-xs text-slate-500 mt-2">In service since Jun 22, 2025</p>
@@ -300,7 +293,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=3"></script>
-<script src="js/main.js?v=16"></script>
+<script src="js/main.js?v=17"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
   CCC.init();

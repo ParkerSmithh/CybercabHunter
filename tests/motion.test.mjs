@@ -198,7 +198,7 @@ console.log('7. ElasticSlider (batch two)');
   check('wired to the three Fleet ROI sliders, read by the thumb transform', ['fleetSize', 'electricityRate', 'dailyMiles'].every(id => new RegExp(`id="${id}" data-elastic`).test(sim)) && (sim.match(/transform:translateX\(var\(--thumb-x, 0px\)\) scale\(var\(--thumb-sx, 1\), var\(--thumb-sy, 1\)\)/g) || []).length === 2);
 }
 
-console.log('8. GlareHover and CircularText (batch two)');
+console.log('8. GlareHover (batch two) and the Zones label');
 {
   const body = '<article id="c" class="glass" data-tilt></article>';
   const fine = open(body, { media: ['hover: hover'] });
@@ -218,9 +218,7 @@ console.log('8. GlareHover and CircularText (batch two)');
   const colors = [...glare.matchAll(/rgb\(([^)]*)\)/g)].map(m => m[1]);
   check('the glare is neutral white at 12% at most (no tint, no shadow)', colors.length === 2 && colors.every(c => /^255 255 255 \/ (0\.12|0)$/.test(c)) && !/box-shadow|filter/.test(glare));
   const zones = read('public/infrastructure.html');
-  check('the badge reads exactly "AUSTIN • LIVE FLEET • ", is decorative, with a gold center dot', /<svg class="spin-badge[^"]*"[^>]*aria-hidden="true"/.test(zones) && />AUSTIN • LIVE FLEET • <\/textPath>/.test(zones) && /<circle cx="40" cy="40" r="3\.5" style="fill:rgb\(var\(--gold\)\)"\/>/.test(zones));
-  check('the badge text respects the 11px floor', /font-size:11px[^>]*><textPath href="#coverageBadgeRing"/.test(zones));
-  check('one turn per 12s, CSS only, and still under reduced motion', /\.spin-badge\.is-spinning \.spin-ring\{animation:spin-badge 12s linear infinite;\}/.test(CSS) && /prefers-reduced-motion: reduce\)\{[^}]*\.spin-badge\.is-spinning \.spin-ring\{animation:none;\}/.test(CSS.replace(/\n\s*/g, '')));
+  check('the Zones "Austin • Live fleet" label is plain static text (no circle, no spin)', /<p class="[^"]*">Austin • Live fleet<\/p>/.test(zones) && !/spin-badge|textPath/.test(zones) && !/spin-badge/.test(CSS + MAIN));
 }
 
 console.log('9. SplitText (batch three)');

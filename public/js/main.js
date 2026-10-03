@@ -197,13 +197,13 @@ const CCC = (() => {
   }
 
   /* ShinyText: a light sweep across the gold Replay accents (.shine, CSS
-     keyframes on a transform). CircularText: the Zones badge's slow spin
-     (.spin-badge). Both run only while they are on screen. */
+     keyframes on a transform). The sweep runs only while the accent is on
+     screen. */
   function initShine() {
-    const els = document.querySelectorAll('.shine, .spin-badge');
+    const els = document.querySelectorAll('.shine');
     if (!els.length || reducedMotion() || typeof IntersectionObserver !== 'function') return;
     const io = new IntersectionObserver(entries => {
-      entries.forEach(e => e.target.classList.toggle(e.target.classList.contains('shine') ? 'is-shining' : 'is-spinning', e.isIntersecting));
+      entries.forEach(e => e.target.classList.toggle('is-shining', e.isIntersecting));
     });
     els.forEach(el => io.observe(el));
   }
