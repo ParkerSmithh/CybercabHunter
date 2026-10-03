@@ -209,14 +209,12 @@ async function run() {
     vehicle(ctx, 1, 'AAA1111', 'public'); ride(ctx, uuid(1)); ride(ctx, uuid(1), { rideKey: 'x2' });
     const noObserver = await home(ctx, { observer: 'none', reducedMotion: false });
     check('without IntersectionObserver the numbers still appear', noObserver.v() === '1' && noObserver.r() === '2');
-    // Animation: still starts as a dash, counts up on scroll, and lands on the exact real number.
+    // No count-up: with motion allowed the numbers are already on the page, without scrolling or waiting.
     const anim = await home(ctx, { reducedMotion: false });
-    const early = anim.v();
-    await new Promise(r => setTimeout(r, 1700));
-    check('with motion allowed it counts up and ends on the exact real value', anim.v() === '1' && anim.r() === '2' && early !== undefined);
+    check('with motion allowed the real values are shown at once (no count-up, no waiting to scroll into view)', anim.v() === '1' && anim.r() === '2');
   }
 
-  console.log('5b. Accessibility: the count-up is not announced (no live region), yet it still animates and ends on the real value');
+  console.log('5b. Accessibility: the stats are plain text (no live region), written once with the real value');
   {
     const ctx = await makeApp();
     for (let i = 1; i <= 3; i++) { const id = vehicle(ctx, i, `LIVE00${i}`, 'public'); ride(ctx, id); ride(ctx, id, { rideKey: `l${i}` }); }
@@ -226,7 +224,7 @@ async function run() {
     for (const id of Object.keys(changes)) new p.w.MutationObserver(m => { changes[id] += m.length; }).observe(p.d.getElementById(id), { childList: true, characterData: true, subtree: true });
     const end = Date.now() + 4000;
     while (Date.now() < end && !(p.v() === '3' && p.r() === '6')) await new Promise(r => setTimeout(r, 25));
-    check('the animation really rewrites the tile text many times (this is what must NOT be announced)', changes.statVehicles > 5 && changes.statRides > 5, `vehicles ${changes.statVehicles}, rides ${changes.statRides}`);
+    check('each tile is written once, straight to its value: no count-up frames rewrite it afterwards', changes.statVehicles === 0 && changes.statRides === 0 && p.v() === '3' && p.r() === '6', `vehicles ${changes.statVehicles}, rides ${changes.statRides}`);
     check('...and it lands on the exact real values (3 vehicles, 6 rides)', p.v() === '3' && p.r() === '6');
     for (const id of ['statVehicles', 'statRides']) {
       const el = p.d.getElementById(id);

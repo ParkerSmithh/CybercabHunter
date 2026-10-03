@@ -127,7 +127,7 @@
        Live counts (GET /api/registry/stats, js/home-stats.js). Each starts
        as an em dash and only becomes the server's number. -->
   <div class="max-w-7xl mx-auto px-6 lg:px-10 pb-4">
-    <dl class="grid grid-cols-2 border-y border-white/[0.07] divide-x divide-white/[0.07] reveal-on-scroll">
+    <dl class="grid grid-cols-2 border-y border-white/[0.07] divide-x divide-white/[0.07]">
       <div class="py-6 pr-6">
         <dt class="text-xs text-slate-500">Cybercabs Spotted</dt>
         <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white"><span id="statVehicles">—</span></dd>
@@ -143,8 +143,8 @@
 <!-- ===== Live map ===== -->
 <section class="pt-14 pb-20 lg:pt-20" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="reveal-on-scroll mb-6 flex flex-wrap items-end justify-between gap-4">
-      <h2 data-split class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white">SERVICE ZONES</h2>
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <h2 class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white">SERVICE ZONES</h2>
     <!-- One Austin/Dallas selector controls BOTH cards below (the mini map and
          the fleet chart) — Dallas has no map or fleet data yet, so it swaps
          both out for a single "not available" note rather than duplicating
@@ -159,9 +159,9 @@
       <!-- Austin service-area facts: a slim strip across the top, separate from
            the minimap below (nothing sits on the map). Hidden with the map and
            chart when Dallas is selected. -->
-      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 reveal-on-scroll sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
         <div class="shrink-0">
-          <div data-decrypt class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
+          <div class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
           <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight">AUSTIN</div>
         </div>
         <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8">Robotaxi service is currently available in this area.</p>
@@ -173,7 +173,7 @@
       </div>
 
       <!-- Austin mini map -->
-      <div id="homeZoneAustin" class="service-zone-card reveal-on-scroll">
+      <div id="homeZoneAustin" class="service-zone-card">
         <div id="zoneMap-austin" class="service-zone-map"></div>
         <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
           See Map
@@ -192,7 +192,7 @@
            map card's shape sets the grid row's height and this card stretches
            to fill it (the chart redraws to the box's real size). On phones,
            where the two stack, the chart keeps its own minimum height. -->
-      <div id="homeFleetChart" class="glass rounded-2xl p-5 reveal-on-scroll flex flex-col xl:col-span-2">
+      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1">
           <div class="min-w-0">
             <h3 class="font-display font-bold text-lg tracking-tight text-white">Fleet growth</h3>
@@ -212,7 +212,7 @@
 
       <!-- Dallas: shown instead of BOTH cards above (spans their combined
            width) — there is no map or registry data for Dallas yet. -->
-      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center reveal-on-scroll">
+      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center">
         <div class="font-display font-bold text-2xl text-gold mb-2">Not yet available</div>
         <p class="text-slate-400 text-sm max-w-sm mx-auto">Dallas zone and fleet information isn't available in Cybercab Hunter yet.</p>
       </div>
@@ -363,7 +363,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=4"></script>
 <script src="js/main.js?v=20"></script>
-<script src="js/home-stats.js?v=2"></script>
+<script src="js/home-stats.js?v=3"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script src="js/hero-video.js?v=3" defer></script>
 <script>
