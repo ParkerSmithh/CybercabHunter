@@ -191,6 +191,8 @@ console.log('7. ElasticSlider (batch two)');
   await wait(80);
   check('reduced motion: no stretch at all', !r2.style.getPropertyValue('--thumb-sx'));
   const sim = read('public/simulation.html');
+  const thumbShadows = [...sim.matchAll(/(?:slider|range)-thumb\{[^}]*?box-shadow:([^;]+);/g)].map(m => m[1]);
+  check('the slider handles cast a neutral shadow (the --shadow token), never a gold-tinted one', thumbShadows.length === 2 && thumbShadows.every(v => /rgb\(var\(--shadow\) \/ [\d.]+\)/.test(v) && !/rgba?\(\s*\d/.test(v)), thumbShadows.join(' | '));
   check('wired to the three Fleet ROI sliders, read by the thumb transform', ['fleetSize', 'electricityRate', 'dailyMiles'].every(id => new RegExp(`id="${id}" data-elastic`).test(sim)) && (sim.match(/transform:translateX\(var\(--thumb-x, 0px\)\) scale\(var\(--thumb-sx, 1\), var\(--thumb-sy, 1\)\)/g) || []).length === 2);
 }
 
