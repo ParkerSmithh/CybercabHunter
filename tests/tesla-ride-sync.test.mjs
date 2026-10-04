@@ -75,7 +75,7 @@ async function connect(env, u, state) {
   const start = await worker.fetch(req('/api/tesla/rides/connect', u), env, {});
   const { authorize_url } = await start.json();
   const st = new URL(authorize_url).searchParams.get('state');
-  const resp = await worker.fetch(post('/api/tesla/rides/callback', u, { callback_url: `https://auth.tesla.com/void/callback?code=CODE-${u}&state=${st}&issuer=x` }), env, {});
+  const resp = await worker.fetch(post('/api/tesla/rides/callback', u, { callback_url: `tesla://auth/callback?code=CODE-${u}&state=${st}&issuer=https%3A%2F%2Fauth.tesla.com%2Foauth2%2Fv3` }), env, {});
   return { resp, body: await resp.json(), authorizeUrl: new URL(authorize_url), state: st };
 }
 
@@ -83,6 +83,7 @@ const trips = (d1, u = 'u1') => d1.prepare(`SELECT t.*, s.status AS sub_status, 
 const vehicleByPlate = (d1, plate) => d1.prepare(`SELECT * FROM robotaxi_vehicles WHERE license_plate = ?`).bind(plate).first();
 
 const realFetch = globalThis.fetch;
+const authorizeUrlHasVoid = u => u.href.includes('void%2Fcallback') || u.href.includes('void/callback');
 
 async function run() {
   const tesla = { rides: [] };
@@ -96,7 +97,7 @@ async function run() {
     const u = new URL(body.authorize_url);
     check('auth.tesla.com authorize endpoint', u.origin === 'https://auth.tesla.com' && u.pathname === '/oauth2/v3/authorize');
     check('client_id "ownerapi" (never the Fleet client)', u.searchParams.get('client_id') === 'ownerapi');
-    check('redirect https://auth.tesla.com/void/callback', u.searchParams.get('redirect_uri') === 'https://auth.tesla.com/void/callback');
+    check('redirect tesla://auth/callback (Tesla retired the old void/callback for ownerapi)', u.searchParams.get('redirect_uri') === 'tesla://auth/callback' && !authorizeUrlHasVoid(u));
     check('scopes "openid email offline_access phone"', u.searchParams.get('scope') === 'openid email offline_access phone');
     check('PKCE S256 with a challenge, a state, and NO audience', u.searchParams.get('code_challenge_method') === 'S256' && !!u.searchParams.get('code_challenge') && !!u.searchParams.get('state') && !u.searchParams.has('audience'));
     check('the page is told the callback is pasted', body.callback === 'paste');
@@ -114,24 +115,26 @@ async function run() {
 
     for (const [label, url, code] of [
       ['a non-Tesla URL is refused', `https://evil.example/void/callback?code=c&state=${st}`, 'invalid_callback_url'],
+      ['another app scheme is refused', `evil://auth/callback?code=c&state=${st}`, 'invalid_callback_url'],
+      ['a tesla:// address that is not the auth callback is refused', `tesla://other/callback?code=c&state=${st}`, 'invalid_callback_url'],
       ['plain text is refused', 'not a url', 'invalid_callback_url'],
-      ['Tesla\'s error page = cancelled', `https://auth.tesla.com/void/callback?error=access_denied&state=${st}`, 'cancelled'],
-      ['no code = refused', `https://auth.tesla.com/void/callback?state=${st}`, 'missing_code_or_state']
+      ['Tesla\'s error redirect = cancelled', `tesla://auth/callback?error=access_denied&state=${st}`, 'cancelled'],
+      ['no code = refused', `tesla://auth/callback?state=${st}`, 'missing_code_or_state']
     ]) {
       const r = await worker.fetch(post('/api/tesla/rides/callback', 'u1', { callback_url: url }), env, {});
       check(label, r.status === 400 && (await r.json()).error === code);
     }
     check('...and none of those called Tesla', tesla.tokenCalls.length === 0);
 
-    const wrongUser = await worker.fetch(post('/api/tesla/rides/callback', 'u2', { callback_url: `https://auth.tesla.com/void/callback?code=c&state=${st}` }), env, {});
+    const wrongUser = await worker.fetch(post('/api/tesla/rides/callback', 'u2', { callback_url: `tesla://auth/callback?code=c&state=${st}` }), env, {});
     check('a state issued to another user -> 403, no token exchange', wrongUser.status === 403 && tesla.tokenCalls.length === 0);
-    const reuse = await worker.fetch(post('/api/tesla/rides/callback', 'u1', { callback_url: `https://auth.tesla.com/void/callback?code=c&state=${st}` }), env, {});
-    check('...and that state is spent (single-use)', reuse.status === 400 && (await reuse.json()).error === 'invalid_or_expired_state');
+    const reuse = await worker.fetch(post('/api/tesla/rides/callback', 'u1', { callback_url: `location: tesla://auth/callback?code=c&state=${st}` }), env, {});
+    check('...and that state is spent (single-use; a pasted "location:" header line is understood)', reuse.status === 400 && (await reuse.json()).error === 'invalid_or_expired_state');
 
     const { resp, body } = await connect(env, 'u1', tesla);
     const tokenReq = tesla.tokenCalls[0];
     check('success: connected', resp.status === 200 && body.success === true && body.connected === true);
-    check('code exchanged at auth.tesla.com with client ownerapi, the PKCE verifier and the void redirect', tokenReq.get('grant_type') === 'authorization_code' && tokenReq.get('client_id') === 'ownerapi' && tokenReq.get('code') === 'CODE-u1' && !!tokenReq.get('code_verifier') && tokenReq.get('redirect_uri') === 'https://auth.tesla.com/void/callback');
+    check('code exchanged at auth.tesla.com with client ownerapi, the PKCE verifier and the tesla:// redirect', tokenReq.get('grant_type') === 'authorization_code' && tokenReq.get('client_id') === 'ownerapi' && tokenReq.get('code') === 'CODE-u1' && !!tokenReq.get('code_verifier') && tokenReq.get('redirect_uri') === 'tesla://auth/callback');
     check('no client_secret and no audience sent', !tokenReq.has('client_secret') && !tokenReq.has('audience'));
     check('the ride history was fetched right away with the new token', tesla.historyCalls.at(-1).auth === 'Bearer access-1');
     check('the response IS the preview: both rides, newest first', body.rides.length === 2 && body.rides[0].ride_id === 'r-new' && body.rides[1].ride_id === 'r-old');

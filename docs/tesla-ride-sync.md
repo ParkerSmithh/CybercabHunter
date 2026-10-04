@@ -11,7 +11,7 @@ The endpoint and auth flow come from Ethan McKanna's public, MIT-licensed export
 - **Response:** `{"code":200,"data":{"rides":[...]}}`.
 - **Auth:** Tesla SSO OAuth2 with PKCE (S256).
   - `client_id`: `ownerapi`
-  - Redirect: `https://auth.tesla.com/void/callback`
+  - Redirect: `tesla://auth/callback`. The exporter's `https://auth.tesla.com/void/callback` has since been retired by Tesla for `ownerapi`: using it now fails with "The 'redirect_uri' supplied is not registered for this 'client_id'". `tesla://auth/callback` is the only registered redirect.
   - Token endpoint: `https://auth.tesla.com/oauth2/v3/token`
   - Scopes: `openid email offline_access phone`
   - No client secret and no audience.
@@ -22,8 +22,8 @@ The endpoint and auth flow come from Ethan McKanna's public, MIT-licensed export
 | Step | Route | What happens |
 |---|---|---|
 | 1. Connect | `GET /api/tesla/rides/connect` | Returns the Tesla authorize URL. The PKCE verifier and the single-use state are kept in KV for 10 minutes, bound to the rider's session. |
-| 2. Sign in | Tesla's site, in a new tab | The rider signs in to Tesla **themselves**. Cybercab Hunter never sees, asks for or stores Tesla credentials. Tesla then shows a blank page at `auth.tesla.com/void/callback?code=…`. |
-| 3. Paste | `POST /api/tesla/rides/callback` `{ callback_url }` | The rider pastes that page's address. Only an `auth.tesla.com` URL is accepted, and the state must belong to the same rider. The code is exchanged at `auth.tesla.com`, then both tokens are encrypted with `tokenCrypto` into the KV blob `tesla_rides_tokens:<user>`. D1's `tesla_ride_sync_connections` holds only a pointer. Rides are fetched immediately and the response is the **preview**. Nothing is imported yet. |
+| 2. Sign in | Tesla's site, in a new tab, on a computer | The rider signs in to Tesla **themselves**. Cybercab Hunter never sees, asks for or stores Tesla credentials. Tesla then redirects to its app scheme, `tesla://auth/callback?code=…`, which a desktop browser cannot open, so the page appears to do nothing. The rider copies that address from the developer tools' Network tab (with Preserve log on), where it appears as the `callback?code=…` entry. On a phone the Tesla app may claim the `tesla://` link instead, so connecting is done on a computer. |
+| 3. Paste | `POST /api/tesla/rides/callback` `{ callback_url }` | The rider pastes that address. Only `tesla://auth/callback?…` (optionally with the `location:` header name in front) or an `auth.tesla.com` address is accepted, and the state must belong to the same rider. The code is exchanged at `auth.tesla.com`, then both tokens are encrypted with `tokenCrypto` into the KV blob `tesla_rides_tokens:<user>`. D1's `tesla_ride_sync_connections` holds only a pointer. Rides are fetched immediately and the response is the **preview**. Nothing is imported yet. |
 | 4. Preview | `GET /api/tesla/rides/preview` | Lists each ride with a checkbox: date, route, miles, fare and plate. It shows no VIN, coordinates or billing data. Rides already stored, from either source, are marked. |
 | 5. Import | `POST /api/tesla/rides/import` `{ ride_ids }` | The rides are fetched from Tesla **again**; the browser only names which of the rider's rides to import. They are stored through `worker/ride-ingest.js`. This confirmation also turns auto-sync on. |
 | 6. Auto-sync | the 10-minute cron (`worker/index.js` `scheduled`) | Covers up to 2 riders per run, each at most every 6 hours. It refreshes the token when needed (a 401 triggers one forced refresh, then one retry). It imports only rides that started after the newest ride the rider was already shown, so a ride left unticked in the preview is never imported behind their back. When nothing is new, it only records `no_new_rides`. |
@@ -74,7 +74,7 @@ The UI is the **Tesla ride history** card on Rider Data (`public/rider-data.html
   - `tests/tesla-ride-sync.test.mjs`: connect, preview, import, dedupe, vehicles and auto-sync.
 
   It has **not** yet been run against a real Tesla account with Robotaxi ride history. The first live run should confirm:
-  - the code exchange from a Cloudflare Worker;
+  - that Tesla accepts `tesla://auth/callback` for the code exchange from a Cloudflare Worker, and how easily riders can copy it from the Network tab;
   - whether the minimal headers are accepted;
   - the format of `rideStartedAt` and `totalDue` (dollars assumed);
   - the `isValid`, `state` and `status` values on cancelled rides.

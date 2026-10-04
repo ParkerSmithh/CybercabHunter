@@ -8,17 +8,21 @@
 // McKanna's public exporter does (https://github.com/EthanMcKanna/robotaxi-history-exporter):
 // auth.tesla.com, client_id "ownerapi", PKCE (S256), no client secret, no
 // audience, scopes "openid email offline_access phone", redirect
-// https://auth.tesla.com/void/callback. An earlier version of this file
+// tesla://auth/callback. (The exporter's https://auth.tesla.com/void/callback
+// was retired by Tesla in 2026: Tesla now answers "The 'redirect_uri' supplied
+// is not registered for this 'client_id'". tesla://auth/callback is the only
+// redirect registered for ownerapi.) An earlier version of this file
 // avoided ownerapi on the (wrong) assumption that the endpoint was broken; the
 // separately-registered Fleet client is kept below as a second configuration
 // (TESLA_RIDES_CLIENT=fleet), but Ride Sync never uses Fleet credentials.
 //
 // The rider signs in to Tesla THEMSELVES, in their own browser. Cybercab
 // Hunter never sees, asks for or stores their Tesla credentials. Because the
-// ownerapi redirect is a Tesla-hosted blank page (we cannot point it at our
-// domain), the rider copies that page's address back to us; it carries only a
-// one-time authorization code, bound to their session by the PKCE verifier
-// and the single-use state.
+// ownerapi redirect is Tesla's own app scheme (tesla://, which we cannot point
+// at our domain and a desktop browser cannot open), the rider copies that
+// tesla://auth/callback?code=… address back to us from their browser's
+// developer tools; it carries only a one-time authorization code, bound to
+// their session by the PKCE verifier and the single-use state.
 //
 // FLOW
 //   1. GET  /api/tesla/rides/connect      -> Tesla authorize URL (PKCE + state in KV)
@@ -56,11 +60,11 @@ const OWNERAPI = {
   client: 'ownerapi',
   clientId: 'ownerapi',
   clientSecret: null,
-  redirectUri: 'https://auth.tesla.com/void/callback',
+  redirectUri: 'tesla://auth/callback',
   audience: null,
   scopes: 'openid email offline_access phone',
   tokenUrl: 'https://auth.tesla.com/oauth2/v3/token',
-  // The redirect lands on Tesla's blank page; the rider pastes its URL back.
+  // The redirect goes to the tesla:// app scheme; the rider pastes it back.
   callback: 'paste'
 };
 
@@ -238,13 +242,18 @@ async function handleCallback(request, env) {
   return Response.redirect(`${frontend}?tesla_rides=connected`, 302);
 }
 
-// The code and state from the address of Tesla's blank page. Only an
-// auth.tesla.com URL is accepted. Never logged (it carries a code).
+// The code and state from the callback address the rider pastes: Tesla's
+// tesla://auth/callback?code=… redirect (copied from the browser's developer
+// tools, with or without the "location:" header name in front), or an
+// auth.tesla.com address. Anything else is refused. Never logged (it carries
+// a code).
 function parsePastedCallback(raw) {
   if (typeof raw !== 'string' || raw.length > 4096) return { error: 'invalid_callback_url' };
   let url;
-  try { url = new URL(raw.trim()); } catch (err) { return { error: 'invalid_callback_url' }; }
-  if (url.protocol !== 'https:' || url.hostname !== 'auth.tesla.com') return { error: 'invalid_callback_url' };
+  try { url = new URL(raw.trim().replace(/^location:\s*/i, '')); } catch (err) { return { error: 'invalid_callback_url' }; }
+  const appCallback = url.protocol === 'tesla:' && url.hostname === 'auth' && url.pathname === '/callback';
+  const teslaWeb = url.protocol === 'https:' && url.hostname === 'auth.tesla.com';
+  if (!appCallback && !teslaWeb) return { error: 'invalid_callback_url' };
   if (url.searchParams.get('error')) return { error: 'cancelled' };
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
@@ -252,7 +261,7 @@ function parsePastedCallback(raw) {
   return { code, state };
 }
 
-// ---- 2b. Callback by paste (ownerapi) ----
+// ---- 2b. Callback by paste (ownerapi, tesla://auth/callback) ----
 //
 // POST { callback_url }, authenticated. The state must have been issued to
 // THIS session's user. On success the rider is connected and the response is

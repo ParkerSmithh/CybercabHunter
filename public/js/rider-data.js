@@ -403,14 +403,15 @@
   }
 
   // ---------- Tesla ride history (Tesla Ride Sync) ----------
-  // Connect -> Tesla sign-in in a new tab -> the rider pastes the address of
-  // Tesla's blank page -> preview with checkboxes -> import the ticked rides.
+  // Connect -> Tesla sign-in in a new tab -> the rider pastes Tesla's
+  // tesla://auth/callback?code=… redirect (from the Network tab) -> preview
+  // with checkboxes -> import the ticked rides.
   // Only ever opens auth.tesla.com; the browser never holds a Tesla token.
   const SYNC_PENDING_KEY = 'cchRideSyncPending';   // "waiting for the paste" survives a reload
   const SYNC_NOTICES = {
     connected: ['Connected. Review your rides below, then import the ones you want.', 'ok'],
-    invalid_callback_url: ['That isn\'t the address of Tesla\'s page. Copy the whole address from the tab Tesla opened.', 'warn'],
-    missing_code_or_state: ['That address has no sign-in code. Finish signing in to Tesla first, then copy the address.', 'warn'],
+    invalid_callback_url: ['That isn\'t the sign-in address. Copy the whole entry that starts with tesla://auth/callback?code= from the Network tab.', 'warn'],
+    missing_code_or_state: ['That address has no sign-in code. Finish signing in to Tesla first, then copy the callback?code= entry.', 'warn'],
     cancelled: ['The Tesla sign-in was cancelled. Nothing was connected.', 'info'],
     invalid_or_expired_state: ['That sign-in expired. Please connect again.', 'warn'],
     state_user_mismatch: ['That sign-in was started from a different Cybercab Hunter account.', 'warn'],
@@ -537,7 +538,8 @@
     $('rideSyncPaste').addEventListener('submit', async e => {
       e.preventDefault();
       const value = $('rideSyncPasteInput').value.trim();
-      if (!/^https:\/\/auth\.tesla\.com\//.test(value)) { syncNotice('invalid_callback_url'); return; }
+      // Tesla's app-scheme callback (optionally copied with its "location:" header name).
+      if (!/^(location:\s*)?(tesla:\/\/auth\/callback\?|https:\/\/auth\.tesla\.com\/)/i.test(value)) { syncNotice('invalid_callback_url'); return; }
       const btn = $('rideSyncPasteBtn');
       btn.disabled = true; btn.textContent = 'Connecting…';
       let resp;
