@@ -448,16 +448,28 @@ export default {
       return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);
     }
 
-    // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API
-    // routes above and from the earlier /oauth/robotaxi/* experiment. See
-    // worker/tesla-rides.js. No ride-history endpoint exists yet.
+    // Tesla Ride Sync — imports the rider's Robotaxi ride history from
+    // Tesla's ride-history endpoint with an `ownerapi` token, after a preview
+    // the rider confirms. Separate from the Fleet API routes above and from
+    // the earlier /oauth/robotaxi/* experiment. See worker/tesla-rides.js.
     if (url.pathname === '/api/tesla/rides/connect' && request.method === 'GET') {
       return withCors(await teslaRides.startAuthorization(request, env), request);
     }
-    // Reached by Tesla's own redirect, not a fetch() — no CORS handling,
-    // matching /oauth/tesla/callback and /oauth/robotaxi/callback.
+    // GET: reached by Tesla's own redirect (Fleet client only), not a fetch()
+    // — no CORS handling, matching /oauth/tesla/callback.
     if (url.pathname === '/api/tesla/rides/callback' && request.method === 'GET') {
       return await teslaRides.handleCallback(request, env);
+    }
+    // POST: the rider pastes the address of Tesla's blank callback page
+    // (ownerapi), with their bearer session. Answers with the ride preview.
+    if (url.pathname === '/api/tesla/rides/callback' && request.method === 'POST') {
+      return withCors(await teslaRides.completeAuthorization(request, env), request);
+    }
+    if (url.pathname === '/api/tesla/rides/preview' && request.method === 'GET') {
+      return withCors(await teslaRides.apiPreview(request, env), request);
+    }
+    if (url.pathname === '/api/tesla/rides/import' && request.method === 'POST') {
+      return withCors(await teslaRides.apiImport(request, env), request);
     }
     if (url.pathname === '/api/tesla/rides/status' && request.method === 'GET') {
       return withCors(await teslaRides.apiStatus(request, env), request);
@@ -564,7 +576,7 @@ export default {
   },
 
   // Cron trigger (wrangler.jsonc "triggers.crons"): polls connected Gmail
-  // accounts for new receipts. Does nothing until Gmail import is
+  // accounts for new receipts and Tesla Ride Sync riders for new rides. Does nothing until Gmail import is
   // configured (GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET /
   // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
   async scheduled(controller, env, ctx) {
@@ -574,6 +586,9 @@ export default {
       return;
     }
     ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));
+    // Tesla Ride Sync: a couple of consenting riders per run, each at most
+    // every few hours; imports only rides newer than what they were shown.
+    ctx.waitUntil(teslaRides.runScheduledSync(env).catch(() => {}));
     // Sighting photos are kept 30 days (worker/sightings-public.js); a small
     // bounded batch per run, independent of the Gmail sync above.
     ctx.waitUntil(expireSightingPhotos(env).catch(() => {}));

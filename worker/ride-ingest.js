@@ -11,9 +11,10 @@
 //      a later, parseable copy count the same ride twice.
 //   3. Same message / same content -> duplicate. Nothing changes.
 //   4. Same ride identity (ride_key, or date+pickup time with a compatible
-//      plate) -> the EXISTING ride is updated in place, subject to the
-//      ordering rule below, otherwise it is a duplicate. The ride is never
-//      counted twice.
+//      plate, or Tesla's own ride id, or — across sources — the same date,
+//      plate and fare with pickup times minutes apart) -> the EXISTING ride is
+//      updated in place, subject to the ordering rule below, otherwise it is
+//      a duplicate. The ride is never counted twice.
 //   5. Otherwise                   -> a new ride is created.
 //
 // ORDERING RULE. A value already stored is only replaced by a receipt that
@@ -26,7 +27,7 @@
 // overwritten), and every replaced value is snapshotted in trip_revisions.
 
 import { db } from './db.js';
-import { rideKeysCompatible } from './ride-canonical.js';
+import { rideKeysCompatible, TESLA_API_SOURCE } from './ride-canonical.js';
 import { isConfidentlyNewer } from './receipt-ordering.js';
 
 function newId() {
@@ -60,12 +61,45 @@ const FILL_ONLY_FIELDS = [
 const isPresent = v => v !== null && v !== undefined;
 const isAbsent = v => !isPresent(v);
 
-async function findExistingRide(sql, userId, ride) {
+// Pickup times (HH:MM) at most this far apart still name the same ride when
+// the date, plate and fare all match: a receipt and Tesla's ride history can
+// disagree by a minute or two about when a ride "started".
+const CROSS_SOURCE_PICKUP_WINDOW_MINUTES = 10;
+
+function minutesOf(hhmm) {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
+  return m ? +m[1] * 60 + +m[2] : null;
+}
+
+// A receipt and a Tesla-synced ride (Tesla Ride Sync) describing the same ride: same date + plate + fare, and pickup times within
+// the window when both are known. All three must be present on both sides —
+// a missing value never matches.
+async function findCrossSourceRide(sql, userId, ride) {
+  if (!ride.rideDate || !ride.licensePlate || ride.fareAmountCents === null || ride.fareAmountCents === undefined) return null;
+  const candidates = await db.findTripCandidatesByDatePlateFare(sql, userId, ride.rideDate, ride.licensePlate, ride.fareAmountCents);
+  const mine = minutesOf(ride.pickupTime);
+  return candidates.find(c => {
+    // Only a Tesla-synced ride against a receipt (either way round): receipts
+    // among themselves keep matching by identity alone, exactly as before.
+    if ((c.source === TESLA_API_SOURCE) === (ride.source === TESLA_API_SOURCE)) return false;
+    const theirs = minutesOf(c.pickup_time);
+    return mine === null || theirs === null || Math.abs(mine - theirs) <= CROSS_SOURCE_PICKUP_WINDOW_MINUTES;
+  }) || null;
+}
+
+export async function findExistingRide(sql, userId, ride) {
   if (!ride.rideKey) return null;
   const exact = await db.findTripByRideKey(sql, userId, ride.rideKey);
   if (exact) return exact;
   const candidates = await db.findTripCandidatesByTime(sql, userId, ride.rideDate, ride.pickupTime);
-  return candidates.find(c => rideKeysCompatible(c.ride_key, ride.rideKey)) || null;
+  const compatible = candidates.find(c => rideKeysCompatible(c.ride_key, ride.rideKey));
+  if (compatible) return compatible;
+  // Tesla's own ride id, when a Tesla-synced ride is on either side.
+  if (ride.externalRideId) {
+    const byId = await db.findTripByExternalRideId(sql, userId, ride.externalRideId);
+    if (byId && (byId.source === TESLA_API_SOURCE || ride.source === TESLA_API_SOURCE)) return byId;
+  }
+  return findCrossSourceRide(sql, userId, ride);
 }
 
 function submissionStatusFor(review) {

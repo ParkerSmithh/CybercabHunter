@@ -1,4 +1,7 @@
-// Tests for the Tesla Ride Sync OAuth/token foundation (worker/tesla-rides.js).
+// Tests for the Tesla Ride Sync OAuth/token foundation (worker/tesla-rides.js)
+// under its second configuration, the separately-registered Fleet client
+// (TESLA_RIDES_CLIENT=fleet). The default `ownerapi` flow, the preview,
+// import and auto-sync are tested in tests/tesla-ride-sync.test.mjs.
 // Uses an in-memory fake KV (real Map, same get/put/delete shape as
 // Cloudflare KV) and a small fake D1 that simulates just the SQL shapes
 // worker/db.js issues for tesla_ride_sync_connections — no live network,
@@ -81,6 +84,7 @@ async function makeEnv() {
     cybercabhunter_db: d1,
     TESLA_TOKEN_ENCRYPTION_KEY: ENCRYPTION_KEY_B64,
     FRONTEND_URL: 'https://cybercabhunter.com/',
+    TESLA_RIDES_CLIENT: 'fleet',
     TESLA_RIDES_CLIENT_ID: 'test-client-id',
     TESLA_RIDES_CLIENT_SECRET: 'test-client-secret'
   };

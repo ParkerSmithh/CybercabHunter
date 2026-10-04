@@ -402,6 +402,216 @@
     }
   }
 
+  // ---------- Tesla ride history (Tesla Ride Sync) ----------
+  // Connect -> Tesla sign-in in a new tab -> the rider pastes the address of
+  // Tesla's blank page -> preview with checkboxes -> import the ticked rides.
+  // Only ever opens auth.tesla.com; the browser never holds a Tesla token.
+  const SYNC_PENDING_KEY = 'cchRideSyncPending';   // "waiting for the paste" survives a reload
+  const SYNC_NOTICES = {
+    connected: ['Connected. Review your rides below, then import the ones you want.', 'ok'],
+    invalid_callback_url: ['That isn\'t the address of Tesla\'s page. Copy the whole address from the tab Tesla opened.', 'warn'],
+    missing_code_or_state: ['That address has no sign-in code. Finish signing in to Tesla first, then copy the address.', 'warn'],
+    cancelled: ['The Tesla sign-in was cancelled. Nothing was connected.', 'info'],
+    invalid_or_expired_state: ['That sign-in expired. Please connect again.', 'warn'],
+    state_user_mismatch: ['That sign-in was started from a different Cybercab Hunter account.', 'warn'],
+    token_exchange_failed: ['Tesla didn\'t accept that sign-in. Please connect again.', 'warn'],
+    tesla_unavailable: ['Tesla\'s ride history isn\'t answering right now. Your connection is saved; try "Review rides" later.', 'warn'],
+    reconnect_required: ['Your Tesla sign-in has expired. Connect again to keep importing rides.', 'warn'],
+    not_connected: ['Connect your Tesla account first.', 'info'],
+    no_rides: ['Tesla has no Robotaxi rides on this account yet.', 'info'],
+    disconnected: ['Disconnected. Rides already added stay until you remove them.', 'info'],
+    error: ['Something went wrong. Please try again.', 'warn']
+  };
+  let syncStatus = null;
+  let syncPreview = [];
+
+  function syncNotice(key, text) {
+    const [msg, kind] = SYNC_NOTICES[key] || SYNC_NOTICES.error;
+    const el = $('rideSyncNotice');
+    el.textContent = text || msg;
+    el.className = 'mt-4 w-full text-sm rounded-lg border px-4 py-3 ' + NOTICE_STYLE[kind || 'info'];
+    show('rideSyncNotice', true);
+  }
+  function setPending(on) {
+    try { if (on) sessionStorage.setItem(SYNC_PENDING_KEY, '1'); else sessionStorage.removeItem(SYNC_PENDING_KEY); } catch (e) { /* this visit only */ }
+  }
+  function isPending() {
+    try { return sessionStorage.getItem(SYNC_PENDING_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function renderSyncCard() {
+    const connected = !!(syncStatus && syncStatus.connected);
+    show('rideSyncCard', !!(syncStatus && syncStatus.configured));
+    show('rideSyncConnectBtn', !connected);
+    show('rideSyncReviewBtn', connected);
+    show('rideSyncDisconnectBtn', connected);
+    show('rideSyncPaste', !connected && isPending());
+    let lead = 'Import your Robotaxi rides straight from your Tesla account. You\'ll review them before anything is added.';
+    if (connected && syncStatus.auto_sync) {
+      lead = 'Connected. New rides are added automatically every few hours'
+        + (syncStatus.last_sync_at ? ` (last checked ${fmtDateTime(syncStatus.last_sync_at)}).` : '.');
+    } else if (connected) {
+      lead = 'Connected. Review your rides and import the ones you want.';
+    } else if (syncStatus && syncStatus.status === 'error') {
+      lead = 'Your Tesla sign-in expired. Connect again to keep importing rides.';
+    }
+    $('rideSyncLead').textContent = lead;
+  }
+
+  async function loadRideSync() {
+    let resp;
+    try { resp = await api('/api/tesla/rides/status'); } catch (e) { resp = null; }
+    syncStatus = resp && resp.ok ? resp.json : null;
+    renderSyncCard();
+  }
+
+  function selectedRideIds() {
+    return [...document.querySelectorAll('#rideSyncRows input[type="checkbox"]:checked')].map(c => c.value);
+  }
+  function updateImportButton() {
+    const n = selectedRideIds().length;
+    const btn = $('rideSyncImportBtn');
+    btn.textContent = n ? `Import ${plural(n, 'ride')}` : 'Import selected rides';
+    btn.disabled = n === 0;
+  }
+
+  function renderPreview(rides) {
+    syncPreview = rides || [];
+    const fresh = syncPreview.filter(r => r.importable && !r.already_imported);
+    const done = syncPreview.filter(r => r.already_imported).length;
+    if (!syncPreview.length) { show('rideSyncPreview', false); syncNotice('no_rides'); return; }
+    $('rideSyncPreviewSummary').textContent = `${plural(syncPreview.length, 'ride')} on your Tesla account`
+      + (done ? `, ${done} already in your rides.` : '.') + (fresh.length ? '' : ' Nothing new to import.');
+    $('rideSyncRows').innerHTML = syncPreview.map(r => {
+      const disabled = !r.importable || r.already_imported;
+      const note = r.already_imported ? 'Already in your rides' : !r.importable ? 'Can\'t be identified' : r.needs_review ? 'Will be held for review' : '';
+      const route = [r.from, r.to].filter(Boolean).map(esc).join(' → ') || '—';
+      return `<tr class="border-b border-white/5 last:border-0 ${disabled ? 'opacity-60' : ''}">
+        <td class="py-2.5 pl-4 pr-2 align-top"><input type="checkbox" value="${esc(r.ride_id)}" ${disabled ? 'disabled' : 'checked'} aria-label="Import the ride on ${esc(fmtDate(r.date))}" class="w-4 h-4 accent-[#D4AF37]"></td>
+        <td class="py-2.5 px-2 align-top whitespace-nowrap">${esc(fmtDate(r.date))}${r.pickup_time ? `<div class="text-xs text-slate-500">${esc(r.pickup_time)}</div>` : ''}</td>
+        <td class="py-2.5 px-2 pr-4 sm:pr-2 align-top sm:min-w-[180px]">${route}
+          <div class="sm:hidden text-xs text-slate-400 mt-0.5 tabular-nums">${esc(fmtMiles(r.miles))} · ${esc(fmtMoney(r.fare_cents, r.currency))} · <span class="font-mono">${esc(r.plate || '—')}</span></div>
+          ${note ? `<div class="text-xs text-slate-500 mt-0.5">${esc(note)}</div>` : ''}</td>
+        <td class="hidden sm:table-cell py-2.5 px-2 align-top text-right tabular-nums whitespace-nowrap">${esc(fmtMiles(r.miles))}</td>
+        <td class="hidden sm:table-cell py-2.5 px-2 align-top text-right tabular-nums whitespace-nowrap">${esc(fmtMoney(r.fare_cents, r.currency))}</td>
+        <td class="hidden sm:table-cell py-2.5 pl-2 pr-4 align-top font-mono text-xs">${esc(r.plate || '—')}</td>
+      </tr>`;
+    }).join('');
+    show('rideSyncPreview', true);
+    updateImportButton();
+  }
+
+  async function openPreview() {
+    const btn = $('rideSyncReviewBtn');
+    btn.disabled = true;
+    let resp;
+    try { resp = await api('/api/tesla/rides/preview'); } catch (e) { resp = null; }
+    btn.disabled = false;
+    const err = resp && resp.json && resp.json.preview_error;
+    if (!resp || !resp.json || err) { syncNotice(err || 'error'); await loadRideSync(); return; }
+    show('rideSyncNotice', false);
+    renderPreview(resp.json.rides);
+  }
+
+  function setupRideSync() {
+    $('rideSyncConnectBtn').addEventListener('click', async () => {
+      const btn = $('rideSyncConnectBtn');
+      btn.disabled = true;
+      // Open the tab now, inside the click, so it isn't blocked as a pop-up.
+      const tab = window.open('', '_blank');
+      let resp;
+      try { resp = await api('/api/tesla/rides/connect'); } catch (e) { resp = null; }
+      btn.disabled = false;
+      const url = resp && resp.ok && resp.json && resp.json.authorize_url;
+      if (!url || !/^https:\/\/auth\.tesla\.com\//.test(url)) {
+        if (tab) tab.close();
+        syncNotice('error');
+        return;
+      }
+      setPending(true);
+      renderSyncCard();
+      if (tab) { tab.opener = null; tab.location.href = url; } else { location.assign(url); return; }
+      $('rideSyncPasteInput').focus();
+    });
+
+    $('rideSyncPaste').addEventListener('submit', async e => {
+      e.preventDefault();
+      const value = $('rideSyncPasteInput').value.trim();
+      if (!/^https:\/\/auth\.tesla\.com\//.test(value)) { syncNotice('invalid_callback_url'); return; }
+      const btn = $('rideSyncPasteBtn');
+      btn.disabled = true; btn.textContent = 'Connecting…';
+      let resp;
+      try {
+        resp = await api('/api/tesla/rides/callback', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_url: value })
+        });
+      } catch (err) { resp = null; }
+      btn.disabled = false; btn.textContent = 'Continue';
+      $('rideSyncPasteInput').value = '';   // the code is single-use; don't leave it on screen
+      if (!resp || !resp.ok) {
+        const code = resp && resp.json && resp.json.error;
+        if (code === 'invalid_or_expired_state' || code === 'state_user_mismatch' || code === 'token_exchange_failed') setPending(false);
+        syncNotice(code || 'error');
+        renderSyncCard();
+        return;
+      }
+      setPending(false);
+      await loadRideSync();
+      if (resp.json.preview_error) { syncNotice(resp.json.preview_error); return; }
+      syncNotice('connected');
+      renderPreview(resp.json.rides);
+    });
+
+    $('rideSyncReviewBtn').addEventListener('click', openPreview);
+    $('rideSyncRows').addEventListener('change', updateImportButton);
+    $('rideSyncSelectAll').addEventListener('click', () => {
+      document.querySelectorAll('#rideSyncRows input[type="checkbox"]:not(:disabled)').forEach(c => { c.checked = true; });
+      updateImportButton();
+    });
+    $('rideSyncSelectNone').addEventListener('click', () => {
+      document.querySelectorAll('#rideSyncRows input[type="checkbox"]').forEach(c => { c.checked = false; });
+      updateImportButton();
+    });
+    $('rideSyncCancelBtn').addEventListener('click', () => { show('rideSyncPreview', false); show('rideSyncNotice', false); });
+
+    $('rideSyncImportBtn').addEventListener('click', async () => {
+      const ids = selectedRideIds();
+      if (!ids.length) return;
+      const btn = $('rideSyncImportBtn');
+      btn.disabled = true; btn.textContent = 'Importing…';
+      let resp;
+      try {
+        resp = await api('/api/tesla/rides/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_ids: ids })
+        });
+      } catch (e) { resp = null; }
+      if (!resp || !resp.ok || !resp.json || !resp.json.success) {
+        updateImportButton();
+        syncNotice((resp && resp.json && resp.json.error) || 'error');
+        return;
+      }
+      const r = resp.json;
+      show('rideSyncPreview', false);
+      const parts = [`${plural(r.added, 'ride')} added`];
+      if (r.duplicates) parts.push(`${r.duplicates} already in your rides`);
+      if (r.needs_review) parts.push(`${r.needs_review} held for review`);
+      syncNotice('connected', parts.join(', ') + '. New rides will now be added automatically.');
+      await loadRideSync();
+      refreshAll(false);
+    });
+
+    $('rideSyncDisconnectBtn').addEventListener('click', async () => {
+      const btn = $('rideSyncDisconnectBtn');
+      btn.disabled = true;
+      let resp;
+      try { resp = await api('/api/tesla/rides/disconnect', { method: 'POST' }); } catch (e) { resp = null; }
+      btn.disabled = false;
+      show('rideSyncPreview', false);
+      syncNotice(resp && resp.ok ? 'disconnected' : 'error');
+      await loadRideSync();
+    });
+  }
+
   // ---------- load ----------
   async function refreshAll(showSkeleton) {
     if (showSkeleton) setView('loading');
@@ -434,12 +644,12 @@
     setView('data');
     // The address only on a full load (or Retry) — not on the quiet refresh
     // after removing a ride, which would flash the card back to loading.
-    if (showSkeleton) loadGmail();
+    if (showSkeleton) { loadGmail(); loadRideSync(); }
   }
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupUnlink(); setupRideActions(); setupGmail();
+    setupUnlink(); setupRideActions(); setupGmail(); setupRideSync();
     $('dataRetry').addEventListener('click', () => refreshAll(true));
     $('ridesPrev').addEventListener('click', () => loadRides(ridesPage - 1));
     $('ridesNext').addEventListener('click', () => loadRides(ridesPage + 1));

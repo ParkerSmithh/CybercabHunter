@@ -29,11 +29,16 @@
 //   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 //   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 //
-// This is Tesla's private mobile-app authentication, not a documented or
-// partner-authorized API — see the project's architecture-audit
-// discussion for the full risk assessment. Access/refresh tokens are
-// never logged and never returned to the frontend; only booleans and
-// timestamps are.
+// This is Tesla's first-party mobile-app authentication, not a documented or
+// partner-authorized API. It DOES work for ride history: the exporter above
+// calls GET /mobile-app/ride/history with exactly this token (verified, Jan
+// 2026), which superseded earlier notes here that called the endpoint broken
+// or unverified. The ride import itself lives in Tesla Ride Sync
+// (worker/tesla-rides.js, worker/tesla-ride-provider.js), which runs this same
+// ownerapi flow on the KV token-blob storage; this older module and its
+// /oauth/robotaxi/* routes remain only for connections made through it.
+// Access/refresh tokens are never logged and never returned to the frontend;
+// only booleans and timestamps are.
 
 import { tokenCrypto } from './crypto.js';
 import { db } from './db.js';
@@ -195,9 +200,9 @@ async function refreshTokens(refreshToken) {
 // only — refreshing (and re-encrypting + persisting the rotated tokens)
 // first if the stored one is stale. Returns null if there's no active,
 // usable connection. Mirrors tesla.js's getValidAccessToken for the
-// separate connection; not used by anything yet — the ride-sync module
-// (next step) will call this. Never expose this return value to a
-// response.
+// separate connection. Tesla Ride Sync uses its own token store
+// (worker/tesla-rides.js getValidAccessToken), not this one. Never expose
+// this return value to a response.
 async function getValidAccessToken(env, userId) {
   const sql = env.cybercabhunter_db;
   const connection = await db.getRobotaxiOwnerConnectionByUserId(sql, userId);

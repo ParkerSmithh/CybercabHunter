@@ -114,6 +114,45 @@ async function findTripCandidatesByTime(sql, userId, rideDate, pickupTime) {
   return result.results || [];
 }
 
+// The same Tesla ride already stored under its own ride id (Tesla Ride Sync
+// stores rideId as external_ride_id; a receipt that carries the same id
+// matches it too).
+async function findTripByExternalRideId(sql, userId, externalRideId) {
+  return sql.prepare(`
+    SELECT t.*, s.status AS submission_status
+    FROM ${RIDES_FROM}
+    WHERE t.user_id = ? AND t.external_ride_id = ? AND t.superseded_by IS NULL
+    ORDER BY t.created_at ASC LIMIT 1
+  `).bind(userId, externalRideId).first();
+}
+
+// Cross-source candidates: same user, local date, plate (by its ride_key
+// suffix) and fare. The caller narrows these by pickup time.
+async function findTripCandidatesByDatePlateFare(sql, userId, rideDate, licensePlate, fareAmountCents) {
+  const result = await sql.prepare(`
+    SELECT t.*, s.status AS submission_status
+    FROM ${RIDES_FROM}
+    WHERE t.user_id = ? AND t.ride_date = ? AND t.ride_key LIKE ? AND t.fare_amount_cents = ? AND t.superseded_by IS NULL
+    ORDER BY t.created_at ASC
+  `).bind(userId, rideDate, `%|${licensePlate}`, fareAmountCents).all();
+  return result.results || [];
+}
+
+// Tesla ride ids this rider already has as rides from Tesla Ride Sync — the
+// preview marks those as already imported.
+async function listTeslaApiRideIds(sql, userId, source) {
+  const result = await sql.prepare(`
+    SELECT t.external_ride_id FROM trips t
+    WHERE t.user_id = ? AND t.source = ? AND t.external_ride_id IS NOT NULL AND t.superseded_by IS NULL
+  `).bind(userId, source).all();
+  return (result.results || []).map(r => r.external_ride_id);
+}
+
+async function getTripVehicleId(sql, userId, tripId) {
+  const row = await sql.prepare(`SELECT robotaxi_vehicle_id FROM trips WHERE id = ? AND user_id = ?`).bind(tripId, userId).first();
+  return row ? row.robotaxi_vehicle_id : null;
+}
+
 // Submission + trip written together in one atomic batch.
 async function createRideRecords(sql, { submissionId, tripId, userId, evidenceType, evidenceRef, submissionStatus, ride, robotaxiVehicleId }) {
   const submissionStmt = sql.prepare(`
@@ -591,6 +630,10 @@ export const rideQueries = {
   markReceiptReceived,
   findTripByRideKey,
   findTripCandidatesByTime,
+  findTripByExternalRideId,
+  findTripCandidatesByDatePlateFare,
+  listTeslaApiRideIds,
+  getTripVehicleId,
   createRideRecords,
   reviseTrip,
   setSubmissionStatus,
