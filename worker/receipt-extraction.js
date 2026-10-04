@@ -187,6 +187,20 @@ function unquoteLines(lines) {
   return lines.map(l => l.replace(/^(?:>[ \t]*)+/, '')).filter(Boolean);
 }
 
+// DuckDuckGo Email Protection forwards a receipt with its blocked tracking
+// images replaced by stray marks: a lone "x" or "[" (or "]", "|") on its own
+// line or after a value ("9:46 pm x", "[ | Careers"). They are not receipt
+// text: those tokens are removed from every line, and a line left empty is
+// dropped, so "9:46 pm x" is read as the time "9:46 pm" again. (Seen Oct 2026:
+// the marks hid the pickup time, so the drop-off time was read as the pickup
+// and the ride was stored twice.) Only exact standalone tokens are removed —
+// a word that merely contains "x" or a bracket is untouched.
+function dropTrackerArtifacts(lines) {
+  return lines
+    .map(l => l.split(/\s+/).filter(tok => tok !== 'x' && !/^[\[\]|]+$/.test(tok)).join(' ').trim())
+    .filter(Boolean);
+}
+
 // Gmail's plain-text rendering of Tesla's HTML receipt turns each address
 // into a Google Maps hyperlink and precedes some lines with image
 // alt-text — neither is real location data, so both are stripped from any
@@ -234,7 +248,9 @@ function parsePickupDropoff(lines) {
   if (pickupIdx === -1) return {};
 
   const timeRe = /^\d{1,2}:\d{2}\s*[ap]\.?m\.?$/i;
-  const stopRe = /^(payment|trip fare|total)\b/i;
+  // No word boundary needed: a forwarded copy can run the footer together
+  // ("PaymentTrip Fare$16.82…"), and that must still end the stop.
+  const stopRe = /^(payment|trip\s*fare|total\b)/i;
 
   function collectStop(startIdx) {
     const block = [];
@@ -332,7 +348,7 @@ export function extractTeslaReceiptFieldsV2(message) {
     fareMismatch = fare.mismatch;
   }
 
-  const stops = parsePickupDropoff(unquoteLines(splitLines(text)));
+  const stops = parsePickupDropoff(dropTrackerArtifacts(unquoteLines(splitLines(text))));
   if (stops.pickup_description) { fields.pickup_description = stops.pickup_description; fieldSources.pickup_description = 'extracted'; }
   if (stops.pickup_time) { fields.pickup_time = stops.pickup_time; fieldSources.pickup_time = 'extracted'; }
   if (stops.dropoff_description) { fields.dropoff_description = stops.dropoff_description; fieldSources.dropoff_description = 'extracted'; }

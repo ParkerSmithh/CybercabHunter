@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 
 import { parseRawEmail } from '../worker/receipt-parser.js';
 import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from '../worker/receipt-extraction.js';
+import { receiptBody } from './helpers/receipts.mjs';
 import { classifyReceipt } from '../worker/receipt-validation.js';
 import { computeReceiptHash } from '../worker/receipt-dedupe.js';
 import { normalizeRide } from '../worker/ride-canonical.js';
@@ -220,6 +221,26 @@ async function run() {
       const n = await nested(prefix);
       check(`nested quoting "${prefix} Pick up" still gives pickup 17:05 / drop-off 17:23`, n.pickup_time === '17:05' && n.dropoff_time === '17:23');
     }
+  }
+
+  console.log('13b. A receipt forwarded through DuckDuckGo Email Protection (stray "x" / "[" marks) — the Oct 2026 duplicate');
+  {
+    const clean = receiptBody({ date: 'September 12, 2026', summary: '9.9 mi · 30 min · YDB2810', fare: '$16.82',
+      pickup: '4016Hanover St, Dallas, TX 75225', pickupTime: '9:46 pm',
+      dropoff: 'The Spelled Milk, 712 W Davis St, Dallas, TX 75208', dropoffTime: '10:16 pm' });
+    // What the duck.com copy looked like: a mark after the pickup time, lone
+    // marks between the stops, and the footer run together.
+    const duck = clean
+      .replace('9:46 pm', '9:46 pm x\n[\nx\n[')
+      .replace('10:16 pm\n\nPayment\n\nTrip Fare $16.82', '10:16 pm\nPaymentTrip Fare$16.82Payment Method[')
+      .replace('If you have questions or concerns about your ride contact us.', 'If you have questions or concerns about your ride contact us\n[\n[\n2026 Tesla, Inc. Privacy & Legal\n[ | Careers\n[');
+    const a = extractTeslaReceiptFieldsV2({ subject: 'Your Tesla Robotaxi Receipt', text: clean }).fields;
+    const b = extractTeslaReceiptFieldsV2({ subject: 'Your Tesla Robotaxi Receipt', text: duck }).fields;
+    check('the DuckDuckGo copy reads the real pickup time (21:46), not the drop-off time', b.pickup_time === '21:46' && b.dropoff_time === '22:16');
+    check('...clean pickup and drop-off addresses, no marks or footer text', b.pickup_description === '4016Hanover St, Dallas, TX 75225' && b.dropoff_description === 'The Spelled Milk, 712 W Davis St, Dallas, TX 75208');
+    check('...so it reads exactly like the clean original (same ride identity: one ride, not two)', ['ride_date', 'pickup_time', 'dropoff_time', 'pickup_description', 'dropoff_description', 'license_plate', 'fare_amount_cents', 'distance'].every(k => a[k] === b[k]));
+    const keep = extractTeslaReceiptFieldsV2({ subject: 'Your Tesla Robotaxi Receipt', text: receiptBody({ pickup: 'Box Office X Lounge, 1 Main St, Austin, TX 78701' }) }).fields;
+    check('a capital X or a word containing x in a real place name is kept', keep.pickup_description === 'Box Office X Lounge, 1 Main St, Austin, TX 78701');
   }
 
   console.log('14. Unquoted receipts are unaffected: every existing fixture extracts exactly as before the quote fix');
