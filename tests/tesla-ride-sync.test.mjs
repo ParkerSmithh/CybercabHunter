@@ -131,6 +131,9 @@ async function run() {
     const reuse = await worker.fetch(post('/api/tesla/rides/callback', 'u1', { callback_url: `location: tesla://auth/callback?code=c&state=${st}` }), env, {});
     check('...and that state is spent (single-use; a pasted "location:" header line is understood)', reuse.status === 400 && (await reuse.json()).error === 'invalid_or_expired_state');
 
+    const consoleLine = await worker.fetch(req('/api/tesla/rides/connect', 'u1'), env, {}).then(r => r.json()).then(b => new URL(b.authorize_url).searchParams.get('state'));
+    const cl = await worker.fetch(post('/api/tesla/rides/callback', 'u2', { callback_url: `Failed to launch 'tesla://auth/callback?code=c&state=${consoleLine}' because the scheme does not have a registered handler.` }), env, {});
+    check('a whole Chrome Console "Failed to launch" message is understood (its state is read: another user -> 403)', cl.status === 403);
     const { resp, body } = await connect(env, 'u1', tesla);
     const tokenReq = tesla.tokenCalls[0];
     check('success: connected', resp.status === 200 && body.success === true && body.connected === true);

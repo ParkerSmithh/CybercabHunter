@@ -244,13 +244,17 @@ async function handleCallback(request, env) {
 
 // The code and state from the callback address the rider pastes: Tesla's
 // tesla://auth/callback?code=… redirect (copied from the browser's developer
-// tools, with or without the "location:" header name in front), or an
-// auth.tesla.com address. Anything else is refused. Never logged (it carries
+// tools: on its own, inside Chrome's "Failed to launch '…'" Console message,
+// or after a "location:" header name), or an auth.tesla.com address. Anything else is refused. Never logged (it carries
 // a code).
 function parsePastedCallback(raw) {
   if (typeof raw !== 'string' || raw.length > 4096) return { error: 'invalid_callback_url' };
+  // A pasted Chrome Console line ("Failed to launch 'tesla://auth/callback?…'
+  // because the scheme does not have a registered handler.") or a Network-tab
+  // "location:" header: take the tesla://auth/callback address out of it.
+  const embedded = raw.match(/tesla:\/\/auth\/callback\?[^\s'"<>]+/i);
   let url;
-  try { url = new URL(raw.trim().replace(/^location:\s*/i, '')); } catch (err) { return { error: 'invalid_callback_url' }; }
+  try { url = new URL(embedded ? embedded[0] : raw.trim().replace(/^location:\s*/i, '')); } catch (err) { return { error: 'invalid_callback_url' }; }
   const appCallback = url.protocol === 'tesla:' && url.hostname === 'auth' && url.pathname === '/callback';
   const teslaWeb = url.protocol === 'https:' && url.hostname === 'auth.tesla.com';
   if (!appCallback && !teslaWeb) return { error: 'invalid_callback_url' };
