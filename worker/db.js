@@ -1690,6 +1690,15 @@ async function listTeslaRideSyncDue(sql, { olderThanMinutes, limit }) {
   return (result.results || []).map(r => r.user_id);
 }
 
+// Connections still holding a token blob (anything not yet revoked) — for the
+// clean-up while Tesla Ride Sync is switched off.
+async function listTeslaRideSyncConnectionsToRevoke(sql, limit) {
+  const result = await sql.prepare(`
+    SELECT user_id, kv_token_key FROM tesla_ride_sync_connections WHERE status <> 'revoked' LIMIT ?
+  `).bind(limit).all();
+  return result.results || [];
+}
+
 // Records the VIN Tesla's ride history reported for a vehicle, once (an
 // existing reported_vin is never overwritten). Writes ONLY reported_vin*
 // — never vin, visibility or verification_status (migration 0024).
@@ -1774,6 +1783,7 @@ export const db = {
   setTeslaRideSyncAutoAfter,
   touchTeslaRideSync,
   listTeslaRideSyncDue,
+  listTeslaRideSyncConnectionsToRevoke,
   recordReportedVin,
   touchTeslaRideSyncRefresh,
   markTeslaRideSyncRevoked,

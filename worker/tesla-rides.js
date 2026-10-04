@@ -44,6 +44,17 @@
 // verification status.
 //
 // Tokens are never logged and never returned to the browser.
+//
+// OFF BY DEFAULT (TESLA_RIDE_SYNC_ENABLED). The first live run (Oct 2026)
+// signed in, exchanged the code and stored the tokens, but the ride-history
+// endpoint answered 401 to every attempt (both hosts, with and without the
+// app headers, and after a forced refresh). This matches Tesla's 2026
+// cut-off of third-party ownerapi tokens (rejected for their audience claim
+// since late May 2026). While it is off: every route answers 503 'disabled',
+// the Rider Data card is hidden (status reports configured:false), and the
+// cron revokes any remaining connection and deletes its stored token blob.
+// Set the Worker variable TESLA_RIDE_SYNC_ENABLED="true" to turn it back on
+// if a working, public method appears. See docs/tesla-ride-sync.md.
 
 import { tokenCrypto } from './crypto.js';
 import { db } from './db.js';
@@ -94,6 +105,11 @@ function config(env) {
 
 // ownerapi is a public PKCE client: nothing to configure. The Fleet client
 // needs its registered id and secret.
+export function isRideSyncEnabled(env) {
+  return env.TESLA_RIDE_SYNC_ENABLED === 'true' || env.TESLA_RIDE_SYNC_ENABLED === true;
+}
+const disabledResponse = () => Response.json({ success: false, error: 'disabled' }, { status: 503 });
+
 function isConfigured(cfg) {
   return cfg.client === 'ownerapi' || !!(cfg.clientId && cfg.clientSecret);
 }
@@ -176,6 +192,7 @@ async function consumeState(env, state) {
 async function startAuthorization(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
+  if (!isRideSyncEnabled(env)) return disabledResponse();
 
   const cfg = config(env);
   if (!isConfigured(cfg)) {
@@ -276,6 +293,7 @@ function parsePastedCallback(raw) {
 async function completeAuthorization(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
+  if (!isRideSyncEnabled(env)) return disabledResponse();
 
   const cfg = config(env);
   let body = null;
@@ -488,6 +506,7 @@ function summary(counts, vehiclesCreated) {
 async function apiPreview(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
+  if (!isRideSyncEnabled(env)) return disabledResponse();
   let preview;
   try {
     preview = await buildPreview(env, userId);
@@ -505,6 +524,7 @@ async function apiPreview(request, env) {
 async function apiImport(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
+  if (!isRideSyncEnabled(env)) return disabledResponse();
 
   let body = null;
   try { body = await request.json(); } catch (err) { body = null; }
@@ -537,6 +557,7 @@ async function apiImport(request, env) {
 
 // One rider: import rides that started after their cutoff and aren't stored.
 async function syncUser(env, userId, opts = {}) {
+  if (!isRideSyncEnabled(env)) return { skipped: 'disabled' };
   const sql = env.cybercabhunter_db;
   const connection = await db.getTeslaRideSyncConnectionByUserId(sql, userId);
   if (!connection || connection.status !== 'active') return { skipped: 'not_connected' };
@@ -565,7 +586,20 @@ async function syncUser(env, userId, opts = {}) {
   return { imported: counts.created, ...summary(counts, vehiclesCreated) };
 }
 
+// While Ride Sync is off: revoke every remaining connection and delete its
+// encrypted token blob, a few per run. Rides already imported stay.
+async function cleanUpWhileDisabled(env) {
+  const sql = env.cybercabhunter_db;
+  const rows = await db.listTeslaRideSyncConnectionsToRevoke(sql, 20);
+  for (const row of rows) {
+    await env.TESLA_SESSIONS.delete(row.kv_token_key);
+    await db.markTeslaRideSyncRevoked(sql, row.user_id);
+  }
+  return { disabled: true, revoked: rows.length };
+}
+
 async function runScheduledSync(env, opts = {}) {
+  if (!isRideSyncEnabled(env)) return cleanUpWhileDisabled(env);
   const sql = env.cybercabhunter_db;
   const due = await db.listTeslaRideSyncDue(sql, { olderThanMinutes: AUTO_SYNC_EVERY_MINUTES, limit: AUTO_SYNC_RIDERS_PER_RUN });
   let synced = 0;
@@ -584,7 +618,7 @@ async function apiStatus(request, env) {
 
   const connection = await db.getTeslaRideSyncConnectionByUserId(env.cybercabhunter_db, userId);
   return Response.json({
-    configured: isConfigured(config(env)),
+    configured: isRideSyncEnabled(env) && isConfigured(config(env)),
     connected: !!connection && connection.status === 'active',
     status: connection ? connection.status : 'never_connected',
     connected_at: connection ? connection.connected_at : null,

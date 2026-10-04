@@ -1,5 +1,13 @@
 # Tesla Ride Sync
 
+> **Status: switched off (Oct 2026).** The first live run worked up to the ride history itself: the rider signed in, the `tesla://auth/callback` code was exchanged at `auth.tesla.com` from the Worker, and the encrypted tokens were stored. The ride-history endpoint then answered **401 to every attempt**: both hosts, with and without the mobile app's headers, and again after a forced refresh. This matches Tesla's 2026 cut-off of third-party `ownerapi` tokens, which still refresh but have been rejected by Tesla's APIs for their audience claim since late May 2026 ([batpred #3965](https://github.com/springfall2008/batpred/issues/3965)). The reference exporter predates that change.
+>
+> While `TESLA_RIDE_SYNC_ENABLED` is not `"true"` (the default):
+> - every Ride Sync route answers `503 disabled`, and the Rider Data card is hidden;
+> - the cron revokes any remaining connection and deletes its stored token blob.
+>
+> All code and tests stay, so it can be switched back on (set the Worker variable `TESLA_RIDE_SYNC_ENABLED="true"`) if a working, public method appears. Receipt forwarding and Gmail are the ride sources meanwhile.
+
 Imports a rider's Robotaxi ride history straight from their own Tesla account, with their consent. Receipt forwarding (email, Gmail, paste/import) stays as the fallback ride source; both feed the same canonical ride pipeline.
 
 ## Upstream reference

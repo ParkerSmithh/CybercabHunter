@@ -20,9 +20,10 @@ const KEY = (() => {
   return btoa(bin);
 })();
 
-async function setup(users = ['u1']) {
+async function setup(users = ['u1'], { enabled = true } = {}) {
   const ctx = await makeEnv({ users });
   ctx.env.TESLA_TOKEN_ENCRYPTION_KEY = KEY;
+  if (enabled) ctx.env.TESLA_RIDE_SYNC_ENABLED = 'true';
   for (const u of users) await ctx.env.TESLA_SESSIONS.put(`session:sess-${u}`, JSON.stringify({ user_id: u }));
   return ctx;
 }
@@ -309,6 +310,38 @@ async function run() {
     const r2 = await connect(env2, 'u1', tesla);
     tesla.tokenStatus = 200;
     check('Tesla refuses the code exchange -> token_exchange_failed with Tesla\'s status', r2.resp.status === 502 && r2.body.error === 'token_exchange_failed' && r2.body.tesla_status === 403);
+  }
+
+  console.log('9. Switched off (the default): hidden, refused, and stored tokens cleaned up');
+  {
+    // A rider connected while it was on...
+    const { env, d1 } = await setup();
+    mockTesla(tesla);
+    tesla.rides = [];
+    await connect(env, 'u1', tesla);
+    check('(connected while on: a token blob exists)', !!(await env.TESLA_SESSIONS.get('tesla_rides_tokens:u1')));
+    // ...then the switch is off (the variable is absent in production).
+    delete env.TESLA_RIDE_SYNC_ENABLED;
+    const st = await (await worker.fetch(req('/api/tesla/rides/status', 'u1'), env, {})).json();
+    check('status reports configured:false, so the Rider Data card stays hidden', st.configured === false);
+    for (const [label, r] of [
+      ['connect', req('/api/tesla/rides/connect', 'u1')],
+      ['paste callback', post('/api/tesla/rides/callback', 'u1', { callback_url: 'tesla://auth/callback?code=c&state=s' })],
+      ['preview', req('/api/tesla/rides/preview', 'u1')],
+      ['import', post('/api/tesla/rides/import', 'u1', { ride_ids: ['x'] })]
+    ]) {
+      const resp = await worker.fetch(r, env, {});
+      check(`${label}: 503 disabled`, resp.status === 503 && (await resp.json()).error === 'disabled');
+    }
+    check('signed out is still 401 first', (await worker.fetch(req('/api/tesla/rides/connect', null), env, {})).status === 401);
+    const calls = tesla.historyCalls.length + tesla.tokenCalls.length;
+    const run = await teslaRides.runScheduledSync(env);
+    check('the cron makes no Tesla call; it revokes the connection', run.disabled === true && run.revoked === 1 && tesla.historyCalls.length + tesla.tokenCalls.length === calls);
+    check('...and deletes the stored token blob', await env.TESLA_SESSIONS.get('tesla_rides_tokens:u1') === null);
+    const row = await d1.prepare('SELECT status FROM tesla_ride_sync_connections WHERE user_id = ?').bind('u1').first();
+    check('...the connection row is revoked', row.status === 'revoked');
+    check('a second run has nothing left to clean', (await teslaRides.runScheduledSync(env)).revoked === 0);
+    check('syncUser does nothing while off', (await teslaRides.syncUser(env, 'u1')).skipped === 'disabled');
   }
 
   globalThis.fetch = realFetch;

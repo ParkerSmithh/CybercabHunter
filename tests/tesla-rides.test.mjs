@@ -84,6 +84,7 @@ async function makeEnv() {
     cybercabhunter_db: d1,
     TESLA_TOKEN_ENCRYPTION_KEY: ENCRYPTION_KEY_B64,
     FRONTEND_URL: 'https://cybercabhunter.com/',
+    TESLA_RIDE_SYNC_ENABLED: 'true',
     TESLA_RIDES_CLIENT: 'fleet',
     TESLA_RIDES_CLIENT_ID: 'test-client-id',
     TESLA_RIDES_CLIENT_SECRET: 'test-client-secret'
