@@ -141,76 +141,6 @@
         <p id="gmailNotice" class="hidden w-full text-sm rounded-lg border px-4 py-3" role="status"></p>
       </div>
 
-      <!-- Tesla Ride Sync (js/rider-data.js, worker/tesla-rides.js): imports the
-           rider's Robotaxi ride history from their own Tesla account. The rider
-           signs in on Tesla's site in a new tab; Tesla then redirects to its app
-           scheme (tesla://auth/callback?code=…), which Chrome logs to the Console
-           ("Failed to launch '…'"); they paste that message back here (a one-time code, never
-           their password). Nothing is imported until they confirm the preview. -->
-      <section id="rideSyncCard" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6" aria-labelledby="rideSyncTitle">
-        <div class="flex items-start justify-between gap-4 flex-wrap">
-          <div class="max-w-2xl">
-            <h2 id="rideSyncTitle" class="font-display font-bold text-base mb-1">Tesla ride history</h2>
-            <p id="rideSyncLead" class="text-slate-400 text-sm">Import your Robotaxi rides straight from your Tesla account. You'll review them before anything is added.</p>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap shrink-0">
-            <button id="rideSyncConnectBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Connect Tesla account</button>
-            <button id="rideSyncReviewBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors disabled:opacity-50">Review rides</button>
-            <button id="rideSyncDisconnectBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors disabled:opacity-50">Disconnect</button>
-          </div>
-        </div>
-
-        <!-- Step 2: paste the address of Tesla's blank page. -->
-        <form id="rideSyncPaste" class="hidden mt-5 border-t border-white/10 pt-5" novalidate>
-          <p class="text-sm text-slate-300 mb-3">Do this on a computer (Chrome, Edge or Safari). On a phone the Tesla app can take over the sign-in.</p>
-          <ol class="text-sm text-slate-300 space-y-1.5 list-decimal pl-5 mb-4">
-            <li>In the Tesla tab that just opened, open the developer tools (<kbd class="font-mono text-xs">F12</kbd>, or <kbd class="font-mono text-xs">⌥⌘I</kbd> on a Mac) and choose <strong>Console</strong>.</li>
-            <li>Sign in to Tesla. When you finish, the page seems to do nothing. That's expected: Tesla tries to open its app.</li>
-            <li>In the Console, find the message <code class="font-mono text-xs">Failed to launch 'tesla://auth/callback?code=…'</code>. Copy the whole message.<span id="rideSyncStateHintLine" class="hidden"> If there are several, use the one whose <code class="font-mono text-xs">state=</code> ends in <strong id="rideSyncStateHint" class="font-mono"></strong>.</span></li>
-            <li>Paste it below.</li>
-          </ol>
-          <label for="rideSyncPasteInput" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Console message</label>
-          <div class="flex gap-2 flex-wrap">
-            <input id="rideSyncPasteInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Failed to launch 'tesla://auth/callback?code=…'" class="flex-1 min-w-[220px] bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
-            <button id="rideSyncPasteBtn" type="submit" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Continue</button>
-          </div>
-          <p class="mt-2 text-xs text-slate-500">Cybercab Hunter never sees your Tesla password. The address holds a one-time code that only works with this sign-in, for about 10 minutes.</p>
-        </form>
-
-        <!-- Step 3: the preview. Ticked rides are imported on confirm. -->
-        <div id="rideSyncPreview" class="hidden mt-5 border-t border-white/10 pt-5">
-          <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
-            <p id="rideSyncPreviewSummary" class="text-sm text-slate-300"></p>
-            <div class="flex items-center gap-3 text-xs">
-              <button id="rideSyncSelectAll" type="button" class="text-slate-300 hover:text-white underline underline-offset-2">Select all</button>
-              <button id="rideSyncSelectNone" type="button" class="text-slate-300 hover:text-white underline underline-offset-2">Select none</button>
-            </div>
-          </div>
-          <div class="overflow-x-auto rounded-xl border border-white/10">
-            <table class="w-full text-sm">
-              <thead class="text-left text-xs text-slate-400 uppercase tracking-wider">
-                <tr class="border-b border-white/10">
-                  <th scope="col" class="py-2.5 pl-4 pr-2 w-8"><span class="sr-only">Import</span></th>
-                  <th scope="col" class="py-2.5 px-2 font-semibold">Date</th>
-                  <th scope="col" class="py-2.5 px-2 pr-4 sm:pr-2 font-semibold">Route</th>
-                  <th scope="col" class="hidden sm:table-cell py-2.5 px-2 font-semibold text-right">Miles</th>
-                  <th scope="col" class="hidden sm:table-cell py-2.5 px-2 font-semibold text-right">Fare</th>
-                  <th scope="col" class="hidden sm:table-cell py-2.5 pl-2 pr-4 font-semibold">Plate</th>
-                </tr>
-              </thead>
-              <tbody id="rideSyncRows"></tbody>
-            </table>
-          </div>
-          <div class="mt-4 flex items-center gap-3 flex-wrap">
-            <button id="rideSyncImportBtn" type="button" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Import selected rides</button>
-            <button id="rideSyncCancelBtn" type="button" class="text-sm text-slate-300 hover:text-white">Not now</button>
-          </div>
-          <p class="mt-3 text-xs text-slate-500">After this import, new rides are added automatically every few hours. Rides you leave unticked here are never added on their own.</p>
-        </div>
-
-        <p id="rideSyncNotice" class="hidden mt-4 w-full text-sm rounded-lg border px-4 py-3" role="status"></p>
-      </section>
-
       <!-- Overview hero — identity is kept minimal and read-only here for
            orientation only; editing lives on profile.html. -->
       <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-6 lg:p-8">
@@ -495,6 +425,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=23"></script>
+<script src="js/rider-data.js?v=17"></script>
 </body>
 </html>

@@ -1625,9 +1625,6 @@ async function createTeslaRideSyncConnection(sql, { userId, kvTokenKey, accessTo
       status = 'active',
       access_token_expires_at = excluded.access_token_expires_at,
       last_error = NULL,
-      -- A (re)connection starts without auto-sync consent: the rider confirms
-      -- an import from the preview again before anything syncs on its own.
-      auto_sync_after = NULL,
       updated_at = datetime('now')
   `).bind(newId(), userId, kvTokenKey, accessTokenExpiresAt).run();
 }
@@ -1660,56 +1657,6 @@ async function markTeslaRideSyncError(sql, userId, error) {
   await sql.prepare(`
     UPDATE tesla_ride_sync_connections SET status = 'error', last_error = ?, updated_at = datetime('now') WHERE user_id = ?
   `).bind(String(error).slice(0, 200), userId).run();
-}
-
-// Tesla Ride Sync's consent cutoff and last result (migration 0024).
-async function setTeslaRideSyncAutoAfter(sql, userId, autoSyncAfter) {
-  await sql.prepare(`
-    UPDATE tesla_ride_sync_connections SET auto_sync_after = ?, updated_at = datetime('now') WHERE user_id = ?
-  `).bind(autoSyncAfter, userId).run();
-}
-
-// result is a short code ('ok', 'no_new_rides', 'token_expired', ...) — never
-// a token or a raw Tesla response.
-async function touchTeslaRideSync(sql, userId, result) {
-  await sql.prepare(`
-    UPDATE tesla_ride_sync_connections SET last_sync_at = datetime('now'), last_sync_result = ?, updated_at = datetime('now') WHERE user_id = ?
-  `).bind(String(result).slice(0, 60), userId).run();
-}
-
-// Active connections the rider has consented to auto-sync (auto_sync_after
-// set), least recently synced first, not synced in the last `olderThanMinutes`.
-async function listTeslaRideSyncDue(sql, { olderThanMinutes, limit }) {
-  const result = await sql.prepare(`
-    SELECT user_id FROM tesla_ride_sync_connections
-    WHERE status = 'active' AND auto_sync_after IS NOT NULL
-      AND (last_sync_at IS NULL OR last_sync_at <= datetime('now', ?))
-    ORDER BY COALESCE(last_sync_at, '') ASC
-    LIMIT ?
-  `).bind(`-${Math.max(1, Math.floor(olderThanMinutes))} minutes`, limit).all();
-  return (result.results || []).map(r => r.user_id);
-}
-
-// Connections still holding a token blob (anything not yet revoked) — for the
-// clean-up while Tesla Ride Sync is switched off.
-async function listTeslaRideSyncConnectionsToRevoke(sql, limit) {
-  const result = await sql.prepare(`
-    SELECT user_id, kv_token_key FROM tesla_ride_sync_connections WHERE status <> 'revoked' LIMIT ?
-  `).bind(limit).all();
-  return result.results || [];
-}
-
-// Records the VIN Tesla's ride history reported for a vehicle, once (an
-// existing reported_vin is never overwritten). Writes ONLY reported_vin*
-// — never vin, visibility or verification_status (migration 0024).
-async function recordReportedVin(sql, vehicleId, vin, source) {
-  if (!vehicleId || !vin) return false;
-  const result = await sql.prepare(`
-    UPDATE robotaxi_vehicles
-    SET reported_vin = ?, reported_vin_source = ?, reported_vin_at = datetime('now')
-    WHERE id = ? AND reported_vin IS NULL
-  `).bind(String(vin).slice(0, 64), source, vehicleId).run();
-  return !!(result && result.meta && result.meta.changes > 0);
 }
 
 export { VEHICLE_VISIBILITY };
@@ -1780,11 +1727,6 @@ export const db = {
   markRobotaxiOwnerConnectionRevoked,
   createTeslaRideSyncConnection,
   getTeslaRideSyncConnectionByUserId,
-  setTeslaRideSyncAutoAfter,
-  touchTeslaRideSync,
-  listTeslaRideSyncDue,
-  listTeslaRideSyncConnectionsToRevoke,
-  recordReportedVin,
   touchTeslaRideSyncRefresh,
   markTeslaRideSyncRevoked,
   markTeslaRideSyncError

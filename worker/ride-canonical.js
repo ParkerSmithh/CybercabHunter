@@ -1,10 +1,9 @@
 // The canonical ride: the single shape every ride source must produce
 // before anything touches the database. A source adapter turns whatever a
 // source hands us into this shape (normalizeRide); ingestRide
-// (worker/ride-ingest.js) is the only thing that persists it. The sources
-// are forwarded/imported Tesla receipts and Tesla's own ride-history API
-// (Tesla Ride Sync, 'tesla-api'); a future source adds an adapter here and
-// reuses the rest unchanged.
+// (worker/ride-ingest.js) is the only thing that persists it. Today the
+// only sources are forwarded/imported Tesla receipts; a future source adds
+// an adapter here and reuses the rest unchanged.
 //
 // Principles enforced in this layer:
 //  - Missing stays missing. An absent distance or fare is null — never 0.
@@ -17,7 +16,6 @@
 import { normalizePlate as normalizePlateBase } from './plate.js';
 import { parseStateFromAddress, resolveTimezone } from './city-reference.js';
 import { localToUtcIso } from './ride-time.js';
-import { fromTeslaApi } from './tesla-ride-canonical.js';
 
 const MONTHS = {
   jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
@@ -75,7 +73,7 @@ function normalizeTime(raw) {
   return `${pad2(+m[1])}:${m[2]}`;
 }
 
-export function nonNegativeNumber(raw) {
+function nonNegativeNumber(raw) {
   if (raw === null || raw === undefined || raw === '') return null;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? n : null;
@@ -196,20 +194,12 @@ function fromReceipt(raw, source) {
   };
 }
 
-
-// ---- Tesla ride-history API (Tesla Ride Sync) ----
-// The adapter lives in worker/tesla-ride-canonical.js (it reads the API's VIN
-// field, which this receipt-path file never handles); registered below.
-export const TESLA_API_SOURCE = 'tesla-api';
-
 export const RIDE_SOURCES = {
   receipt_email: fromReceipt,
   receipt_import: fromReceipt,
   // A receipt read straight from the rider's Gmail (worker/gmail.js): the
   // same email, the same adapter — only how it arrived differs.
-  gmail_api: fromReceipt,
-  // Tesla's own ride-history API (Tesla Ride Sync, worker/tesla-rides.js).
-  [TESLA_API_SOURCE]: fromTeslaApi
+  gmail_api: fromReceipt
 };
 
 export function normalizeRide(raw, source) {

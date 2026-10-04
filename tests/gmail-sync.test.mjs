@@ -285,9 +285,8 @@ async function run() {
     const pending = [];
     await worker.scheduled({}, ctx.env, { waitUntil: p => pending.push(p) });
     await Promise.all(pending);
-    // Three jobs: the Gmail sync, Tesla Ride Sync (worker/tesla-rides.js) and
-    // the sighting-photo retention (worker/sightings-public.js).
-    check('the Worker exports a scheduled handler that is safe to run unconfigured', pending.length === 3 && ctx.g.calls.token === 0);
+    // Two jobs: the Gmail sync and the sighting-photo retention (worker/sightings-public.js).
+    check('the Worker exports a scheduled handler that is safe to run unconfigured', pending.length === 2 && ctx.g.calls.token === 0);
   }
 
   console.log('2. Connect: a separate Google authorization, for signed-in Google users only');

@@ -353,16 +353,6 @@ async function run() {
       const src = fs.readFileSync(`${ROOT}worker/${f}`, 'utf8').replace(/\/\/.*$/gm, '');
       check(`worker/${f} never touches visibility, VIN, approval, or verification state`, !/visibility|\bvin\b|approve|verification_status|setRegistryVehicleVin|changeRobotaxiVehicleVisibility/i.test(src));
     }
-    // Tesla Ride Sync reads the API's VIN, but only ever records it as a
-    // REPORTED vin (db.recordReportedVin): it never publishes, approves,
-    // verifies, or writes the moderator-entered vin.
-    for (const f of ['tesla-rides.js', 'tesla-ride-canonical.js', 'tesla-ride-provider.js']) {
-      const src = fs.readFileSync(`${ROOT}worker/${f}`, 'utf8').replace(/\/\/.*$/gm, '');
-      check(`worker/${f} never touches visibility, approval, verification, or the moderator vin`, !/visibility|approve|verification_status|setRegistryVehicleVin|changeRobotaxiVehicleVisibility|vin_set_by/i.test(src));
-    }
-    const dbSrcForVin = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
-    const reported = dbSrcForVin.slice(dbSrcForVin.indexOf('async function recordReportedVin'), dbSrcForVin.indexOf('export { VEHICLE_VISIBILITY }'));
-    check('db.recordReportedVin writes only reported_vin* (never vin, visibility or verification)', /SET reported_vin = \?, reported_vin_source = \?, reported_vin_at/.test(reported) && !/SET[^;]*\bvin\s*=|visibility|verification_status/.test(reported));
     const dbSrc = fs.readFileSync(`${ROOT}worker/db.js`, 'utf8');
     const fn = dbSrc.slice(dbSrc.indexOf('async function findOrCreateRobotaxiVehicleByPlate'), dbSrc.indexOf('// An accidental-double-submit guard'));
     check('the ONE function receipts use to reach a vehicle inserts only private rows and updates only last_seen_at/updated_at on a match',

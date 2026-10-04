@@ -11,7 +11,7 @@ receipt → extract (v2, v1 fallback) → classify → normalize → ingestRide 
               receipt-extraction.js   receipt-validation.js  ride-canonical.js  ride-ingest.js   db-rides.js
 ```
 
-A future source adds an adapter to `RIDE_SOURCES` and reuses everything after it. Tesla's own ride-history API is now one: **Tesla Ride Sync** (source `tesla-api`, `docs/tesla-ride-sync.md`) feeds the same pipeline, and a ride arriving by both routes is counted once.
+A future source adds an adapter to `RIDE_SOURCES` and reuses everything after it. **The undocumented Tesla mobile ride-history API is deliberately not a source** (see "Not implemented" below).
 
 ## Trust: authorization vs. validity
 
@@ -46,7 +46,7 @@ Missing stays missing: no distance/fare/duration is ever coerced to 0; `$0.00` i
 
 ## Not implemented (by decision)
 
-The Tesla Fleet API as a ride source (it returns the rider's *owned* vehicles, not the robotaxis they rode), VIN matching, and any Texas registry join. (Tesla's `ownerapi` ride-history endpoint, once listed here, is now Tesla Ride Sync: `docs/tesla-ride-sync.md`.) (A delete-my-rides control was listed here as a follow-up; it has since shipped — Rider Data's per-ride **Remove** button, `DELETE /api/trips/:id`.)
+The undocumented `ownership.tesla.com/mobile-app/ride/history` endpoint, the private `ownerapi` client as a ride source, the Tesla Fleet API as a ride source (it returns the rider's *owned* vehicles, not the robotaxis they rode), VIN matching, and any Texas registry join. (A delete-my-rides control was listed here as a follow-up; it has since shipped — Rider Data's per-ride **Remove** button, `DELETE /api/trips/:id`.)
 
 ---
 
