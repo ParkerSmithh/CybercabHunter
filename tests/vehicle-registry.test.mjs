@@ -246,7 +246,7 @@ async function run() {
     check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/Cybercab2.png"]').getAttribute('alt') || '').length > 0);
     check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
     check('a Cybercab approved without a VIN looks like a normal Cybercab card: the image and the Cybercab pill', !!manualCard.querySelector('img[src="images/Cybercab2.png"]') && [...manualCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab'));
-    check('only the vin-verified card says "VIN verified" — not the manual Cybercab, not the ordinary vehicle', /VIN verified/.test(cybercabCard.textContent) && !/VIN verified/.test(manualCard.textContent) && !/VIN verified/.test(ordinaryCard.textContent));
+    check('no card on the all-cars page says "VIN verified" (that badge is only on the vehicle\'s own page)', !/VIN verified/.test(p.d.getElementById('regList').textContent));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
     check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/Cybercab2.png'));
 
