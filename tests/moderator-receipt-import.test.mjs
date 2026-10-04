@@ -330,6 +330,25 @@ async function run() {
     check('the plate box shows it', w.document.getElementById('modVehiclePlate').value === 'XJR2195');
   }
 
+  console.log('11. Pasted receipts with the time on the stop line ("Pick up: 9:20 pm" / "Drop off: 9:33 pm") — Oct 2026');
+  {
+    const ctx = await makeApp();
+    const texts = [
+      `Ride with David Moss\nThanks for the ride, David Moss\nTrip Summary for October 3, 2026\n\nTrip Summary: $30.19 Total\n8.2 mi · 24 min · XVF3582\n\nPick up: 8:06 pm\nChili's Grill & Bar: 8:30 pm\n4420 N Lamar Blvd, Austin, TX 78756`,
+      `Trip Summary for October 3, 2026\nTotal: $18.79\n4.4 mi · 13 min · XVF3210\nPick up: 9:20 pm\n4420 N Lamar Blvd, Austin, TX 78756\nDrop off: 9:33 pm\nJW Marriott Austin\n110 E 2nd St, Austin, TX 78701`,
+      `Trip Summary for October 3, 2026\nTotal: $38.16\n10.6 mi · 27 min · XVF3584\nPick up: 10:12 pm\n701 Congress Ave, Austin, TX 78701\nDrop off: 10:40 pm`
+    ];
+    const r = await importAs(ctx, 'mod', texts.map(content => ({ kind: 'text', content })));
+    check('all three pasted receipts create a ride', r.status === 200 && r.body.results.length === 3 && r.body.results.every(x => x.outcome === 'created'));
+    const trips = ctx.d1.query(`SELECT pickup_time, dropoff_time, fare_amount_cents, pickup_description, dropoff_description FROM trips ORDER BY pickup_time`);
+    check('pickup and drop-off times are read from the stop lines', trips.map(t => `${t.pickup_time}-${t.dropoff_time}`).join() === '20:06-20:30,21:20-21:33,22:12-22:40');
+    check('fares are read', trips.map(t => t.fare_amount_cents).join() === '3019,1879,3816');
+    check('a named drop-off keeps its name and address; a "Drop off" label is not part of the description', trips[0].dropoff_description === "Chili's Grill & Bar, 4420 N Lamar Blvd, Austin, TX 78756" && trips[1].dropoff_description === 'JW Marriott Austin, 110 E 2nd St, Austin, TX 78701' && trips[1].pickup_description === '4420 N Lamar Blvd, Austin, TX 78756');
+    check('each plate gets its registry vehicle', ['XVF3582', 'XVF3210', 'XVF3584'].every(p => vehiclesFor(ctx, p).length === 1));
+    const again = await importAs(ctx, 'mod', [{ kind: 'text', content: texts[1] }]);
+    check('importing the same receipt again does not create a second ride', again.body.results[0].outcome !== 'created' && ctx.d1.query('SELECT COUNT(*) n FROM trips')[0].n === 3);
+  }
+
   t.finish();
 }
 

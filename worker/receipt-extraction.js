@@ -243,8 +243,60 @@ function stripLocationArtifacts(str) {
 // address); two collected lines are joined "Name, Address" (the real
 // dropoff has both) — this one rule produces the correct shape for either
 // case without hardcoding which stop gets a name.
+// A second layout (seen Oct 2026) puts each stop's time on its own header
+// line, with the address block BELOW it:
+//   Pick up: 9:20 pm            <- or "Pick up 9:20 pm"
+//   4420 N Lamar Blvd, ...
+//   Drop off: 9:33 pm           <- or the place name: "Chili's Grill & Bar: 8:30 pm"
+//   JW Marriott Austin
+//   110 E 2nd St, ...
+// A dropoff header that isn't literally "Drop off" is the place's name and
+// becomes the first part of the dropoff description. The dropoff block ends
+// at a payment/footer line, the next receipt's header, or another time line.
+const INLINE_TIME_RE = /^(.*?)[\s:·\-–]*\b(\d{1,2}:\d{2}\s*[ap]\.?m\.?)$/i;
+const BLOCK_END_RE = /^(payment|trip\s*fare|total\b|trip\s*summary|thanks\s+for|ride\s+with|if\s+you\s+have|©|\(?c\)?\s*\d{4}|\d{4}\s+tesla)/i;
+const MAX_STOP_LINES = 4;
+
+function parseInlineStops(lines, pickupIdx) {
+  const pickupTime = to24HourTime(lines[pickupIdx]);
+  const timeLine = l => { const m = l.match(INLINE_TIME_RE); return m && m[1].trim() ? m : null; };
+
+  const pickupBlock = [];
+  let i = pickupIdx + 1;
+  while (i < lines.length && !timeLine(lines[i]) && !BLOCK_END_RE.test(lines[i]) && pickupBlock.length < MAX_STOP_LINES) {
+    const cleaned = stripLocationArtifacts(lines[i]);
+    if (cleaned) pickupBlock.push(cleaned);
+    i++;
+  }
+
+  let dropoffTime = null;
+  const dropoffBlock = [];
+  const header = i < lines.length ? timeLine(lines[i]) : null;
+  if (header) {
+    dropoffTime = to24HourTime(header[2]);
+    const label = stripLocationArtifacts(header[1]);
+    if (label && !/^drop\s*off$/i.test(label)) dropoffBlock.push(label);
+    i++;
+    while (i < lines.length && !timeLine(lines[i]) && !BLOCK_END_RE.test(lines[i]) && dropoffBlock.length < MAX_STOP_LINES) {
+      const cleaned = stripLocationArtifacts(lines[i]);
+      if (cleaned) dropoffBlock.push(cleaned);
+      i++;
+    }
+  }
+
+  const join = block => (block.length ? stripLocationArtifacts(block.join(', ')) || null : null);
+  return {
+    pickup_description: join(pickupBlock),
+    pickup_time: pickupTime,
+    dropoff_description: join(dropoffBlock),
+    dropoff_time: dropoffTime
+  };
+}
+
 function parsePickupDropoff(lines) {
-  const pickupIdx = lines.findIndex(l => /^pick\s*up$/i.test(l));
+  const inlineIdx = lines.findIndex(l => /^pick\s*up\b[\s:·\-–]*\d{1,2}:\d{2}\s*[ap]\.?m\.?$/i.test(l));
+  const pickupIdx = lines.findIndex(l => /^pick\s*up:?$/i.test(l));
+  if (pickupIdx === -1 && inlineIdx !== -1) return parseInlineStops(lines, inlineIdx);
   if (pickupIdx === -1) return {};
 
   const timeRe = /^\d{1,2}:\d{2}\s*[ap]\.?m\.?$/i;
