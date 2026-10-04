@@ -381,16 +381,18 @@ async function fetchUserRides(env, userId, { fetchImpl } = {}) {
     try {
       return { rides: await fetchRides(token, fetchImpl ? { fetchImpl } : undefined) };
     } catch (err) {
+      // Tesla's statuses per attempt (no token data), logged for diagnosis.
+      if (err && err.attempts) console.log(`Tesla Ride Sync: ride history attempts ${JSON.stringify(err.attempts)}`);
       if (err instanceof TokenExpiredError && attempt === 0) {
         token = await getValidAccessToken(env, userId, { forceRefresh: true });
-        if (!token) return { error: 'reconnect_required' };
+        if (!token) return { error: 'reconnect_required', status: 401, attempts: err.attempts };
         continue;
       }
       if (err instanceof TokenExpiredError) {
         await db.markTeslaRideSyncError(env.cybercabhunter_db, userId, 'token_rejected');
-        return { error: 'reconnect_required' };
+        return { error: 'reconnect_required', status: 401, attempts: err.attempts };
       }
-      if (err instanceof RideHistoryError) return { error: 'tesla_unavailable', status: err.status };
+      if (err instanceof RideHistoryError) return { error: 'tesla_unavailable', status: err.status, attempts: err.attempts };
       return { error: 'tesla_unavailable', status: null };
     }
   }
@@ -432,7 +434,10 @@ function previewItem(ride, alreadyImported) {
 
 async function buildPreview(env, userId, opts) {
   const fetched = await fetchUserRides(env, userId, opts);
-  if (fetched.error) return { preview_error: fetched.error, rides: [] };
+  if (fetched.error) {
+    // Tesla's HTTP statuses (no body, no token) help tell what went wrong.
+    return { preview_error: fetched.error, tesla_status: fetched.status || null, tesla_attempts: fetched.attempts || [], rides: [] };
+  }
   const rides = normalizeAll(fetched.rides);
   const items = [];
   for (const ride of rides) items.push(previewItem(ride, await isAlreadyStored(env, userId, ride)));

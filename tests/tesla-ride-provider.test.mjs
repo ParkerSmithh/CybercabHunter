@@ -94,16 +94,21 @@ async function run() {
     let err = null;
     try { await fetchRides('tok', { fetchImpl: m.fetchImpl }); } catch (e) { err = e; }
     check('a distinct TokenExpiredError', err instanceof TokenExpiredError);
-    check('thrown at once: the fallback host is not tried with a rejected token', m.calls.length === 1);
+    check('only after the app headers and the fallback host also answered 401', m.calls.length === 4 && m.calls.filter(c => c.headers['X-Tesla-User-Agent']).length === 2 && err.attempts.join() === '401,401,401,401');
+
+    const appOnly = mock(c => (c.headers['X-Tesla-User-Agent'] ? page(rides(2)) : new Response('', { status: 401 })));
+    const ok = await fetchRides('tok', { fetchImpl: appOnly.fetchImpl });
+    check('LIVE CASE: 401 to the minimal request, 200 with the app headers -> the rides, no TokenExpiredError', ok.length === 2 && appOnly.calls.length === 2 && appOnly.calls[0].host === PRIMARY && !!appOnly.calls[1].headers['X-Tesla-User-Agent']);
 
     const later = mock(c => (c.page === 1 ? page(rides(PAGE_SIZE)) : new Response('', { status: 401 })));
     let err2 = null;
     try { await fetchRides('tok', { fetchImpl: later.fetchImpl }); } catch (e) { err2 = e; }
     check('a 401 on a later page also throws TokenExpiredError (no partial result)', err2 instanceof TokenExpiredError);
 
+    const none = mock(() => page([]));
     let err3 = null;
-    try { await fetchRides('', { fetchImpl: m.fetchImpl }); } catch (e) { err3 = e; }
-    check('no token at all -> TokenExpiredError without a request', err3 instanceof TokenExpiredError && m.calls.length === 1);
+    try { await fetchRides('', { fetchImpl: none.fetchImpl }); } catch (e) { err3 = e; }
+    check('no token at all -> TokenExpiredError without a request', err3 instanceof TokenExpiredError && none.calls.length === 0);
   }
 
   console.log('6. Both hosts fail -> RideHistoryError with the status');

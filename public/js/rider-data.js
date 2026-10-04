@@ -532,7 +532,11 @@
     try { resp = await api('/api/tesla/rides/preview'); } catch (e) { resp = null; }
     btn.disabled = false;
     const err = resp && resp.json && resp.json.preview_error;
-    if (!resp || !resp.json || err) { syncNotice(err || 'error'); await loadRideSync(); return; }
+    if (!resp || !resp.json || err) {
+      const att = resp && resp.json && (resp.json.tesla_attempts || []).map(x => x == null ? 'no answer' : x).join(', ');
+      syncNotice(err || 'error', att ? (SYNC_NOTICES[err] || SYNC_NOTICES.error)[0] + ` (Tesla answered: ${att})` : undefined);
+      await loadRideSync(); return;
+    }
     show('rideSyncNotice', false);
     renderPreview(resp.json.rides);
   }
@@ -601,7 +605,12 @@
       }
       setPending(false);
       await loadRideSync();
-      if (resp.json.preview_error) { syncNotice(resp.json.preview_error); return; }
+      if (resp.json.preview_error) {
+        const k = resp.json.preview_error;
+        const att = (resp.json.tesla_attempts || []).map(x => x == null ? 'no answer' : x).join(', ');
+        syncNotice(k, (SYNC_NOTICES[k] || SYNC_NOTICES.error)[0] + (att ? ` (Tesla answered: ${att})` : ''));
+        return;
+      }
       syncNotice('connected');
       renderPreview(resp.json.rides);
     });
