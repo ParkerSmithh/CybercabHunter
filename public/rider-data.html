@@ -166,7 +166,7 @@
           <ol class="text-sm text-slate-300 space-y-1.5 list-decimal pl-5 mb-4">
             <li>In the Tesla tab that just opened, open the developer tools (<kbd class="font-mono text-xs">F12</kbd>, or <kbd class="font-mono text-xs">⌥⌘I</kbd> on a Mac) and choose <strong>Console</strong>.</li>
             <li>Sign in to Tesla. When you finish, the page seems to do nothing. That's expected: Tesla tries to open its app.</li>
-            <li>In the Console, find the message <code class="font-mono text-xs">Failed to launch 'tesla://auth/callback?code=…'</code>. Copy the whole message.</li>
+            <li>In the Console, find the message <code class="font-mono text-xs">Failed to launch 'tesla://auth/callback?code=…'</code>. Copy the whole message.<span id="rideSyncStateHintLine" class="hidden"> If there are several, use the one whose <code class="font-mono text-xs">state=</code> ends in <strong id="rideSyncStateHint" class="font-mono"></strong>.</span></li>
             <li>Paste it below.</li>
           </ol>
           <label for="rideSyncPasteInput" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Console message</label>
@@ -495,6 +495,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=20"></script>
+<script src="js/rider-data.js?v=21"></script>
 </body>
 </html>

@@ -158,6 +158,9 @@ async function consumeState(env, state) {
   const stored = await env.TESLA_SESSIONS.get(stateKey);
   if (!stored) return null;
   await env.TESLA_SESSIONS.delete(stateKey); // single-use
+  // Remembered for an hour, so a second paste of the same sign-in is told
+  // "already used" rather than "expired".
+  await env.TESLA_SESSIONS.put(`tesla_rides_oauth_used:${state}`, '1', { expirationTtl: 3600 });
   try {
     const { user_id: userId, code_verifier: codeVerifier } = JSON.parse(stored);
     return userId && codeVerifier ? { userId, codeVerifier } : null;
@@ -281,7 +284,10 @@ async function completeAuthorization(request, env) {
   if (parsed.error) return Response.json({ success: false, error: parsed.error }, { status: 400 });
 
   const consumed = await consumeState(env, parsed.state);
-  if (!consumed) return Response.json({ success: false, error: 'invalid_or_expired_state' }, { status: 400 });
+  if (!consumed) {
+    const used = await env.TESLA_SESSIONS.get(`tesla_rides_oauth_used:${parsed.state}`);
+    return Response.json({ success: false, error: used ? 'state_already_used' : 'invalid_or_expired_state' }, { status: 400 });
+  }
   if (consumed.userId !== userId) return Response.json({ success: false, error: 'state_user_mismatch' }, { status: 403 });
 
   let tokenResponse;

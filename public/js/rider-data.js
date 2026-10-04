@@ -413,7 +413,9 @@
     invalid_callback_url: ['That isn\'t the sign-in address. Copy the Console message that mentions tesla://auth/callback?code=.', 'warn'],
     missing_code_or_state: ['That address has no sign-in code. Finish signing in to Tesla first, then copy the Console message.', 'warn'],
     cancelled: ['The Tesla sign-in was cancelled. Nothing was connected.', 'info'],
-    invalid_or_expired_state: ['That sign-in expired. Please connect again.', 'warn'],
+    invalid_or_expired_state: ['That sign-in expired (they last 10 minutes). Click Connect Tesla account again.', 'warn'],
+    state_already_used: ['That sign-in was already used. Click Connect Tesla account again for a fresh one.', 'warn'],
+    old_message: ['', 'warn'],
     state_user_mismatch: ['That sign-in was started from a different Cybercab Hunter account.', 'warn'],
     token_exchange_failed: ['Tesla didn\'t accept that sign-in. Please connect again.', 'warn'],
     tesla_unavailable: ['Tesla\'s ride history isn\'t answering right now. Your connection is saved; try "Review rides" later.', 'warn'],
@@ -433,8 +435,24 @@
     el.className = 'mt-4 w-full text-sm rounded-lg border px-4 py-3 ' + NOTICE_STYLE[kind || 'info'];
     show('rideSyncNotice', true);
   }
-  function setPending(on) {
-    try { if (on) sessionStorage.setItem(SYNC_PENDING_KEY, '1'); else sessionStorage.removeItem(SYNC_PENDING_KEY); } catch (e) { /* this visit only */ }
+  const SYNC_STATE_KEY = 'cchRideSyncState';       // the newest sign-in's state, to find its Console line
+  function setPending(on, state) {
+    try {
+      if (on) sessionStorage.setItem(SYNC_PENDING_KEY, '1'); else sessionStorage.removeItem(SYNC_PENDING_KEY);
+      if (on && state) sessionStorage.setItem(SYNC_STATE_KEY, state); else if (!on) sessionStorage.removeItem(SYNC_STATE_KEY);
+    } catch (e) { /* this visit only */ }
+  }
+  function expectedState() {
+    try { return sessionStorage.getItem(SYNC_STATE_KEY) || ''; } catch (e) { return ''; }
+  }
+  // Every tesla://auth/callback address in the pasted text (the Console can hold
+  // several lines from earlier attempts), with the state each carries.
+  function callbacksIn(text) {
+    return (text.match(/tesla:\/\/auth\/callback\?[^\s'"<>]+/gi) || []).map(u => {
+      let state = '';
+      try { state = new URL(u).searchParams.get('state') || ''; } catch (e) { /* unreadable */ }
+      return { url: u, state };
+    });
   }
   function isPending() {
     try { return sessionStorage.getItem(SYNC_PENDING_KEY) === '1'; } catch (e) { return false; }
@@ -447,6 +465,9 @@
     show('rideSyncReviewBtn', connected);
     show('rideSyncDisconnectBtn', connected);
     show('rideSyncPaste', !connected && isPending());
+    const st = expectedState();
+    $('rideSyncStateHint').textContent = st ? st.slice(-4) : '';
+    show('rideSyncStateHintLine', !!st);
     let lead = 'Import your Robotaxi rides straight from your Tesla account. You\'ll review them before anything is added.';
     if (connected && syncStatus.auto_sync) {
       lead = 'Connected. New rides are added automatically every few hours'
@@ -529,7 +550,10 @@
         syncNotice('error');
         return;
       }
-      setPending(true);
+      let issuedState = '';
+      try { issuedState = new URL(url).searchParams.get('state') || ''; } catch (e) { /* none */ }
+      setPending(true, issuedState);
+      show('rideSyncNotice', false);
       renderSyncCard();
       if (tab) { tab.opener = null; tab.location.href = url; } else { location.assign(url); return; }
       $('rideSyncPasteInput').focus();
@@ -537,9 +561,22 @@
 
     $('rideSyncPaste').addEventListener('submit', async e => {
       e.preventDefault();
-      const value = $('rideSyncPasteInput').value.trim();
+      let value = $('rideSyncPasteInput').value.trim();
       // Tesla's app-scheme callback: on its own, or inside the pasted Console message.
-      if (!/tesla:\/\/auth\/callback\?|^https:\/\/auth\.tesla\.com\//i.test(value)) { syncNotice('invalid_callback_url'); return; }
+      const found = callbacksIn(value);
+      if (!found.length && !/^https:\/\/auth\.tesla\.com\//i.test(value)) { syncNotice('invalid_callback_url'); return; }
+      const want = expectedState();
+      if (found.length && want) {
+        // Only the newest sign-in's line can work; an older one would just be refused.
+        const match = found.find(c => c.state === want);
+        if (!match) {
+          syncNotice('old_message', `That message is from an earlier sign-in. Copy the newest "Failed to launch" line: its state ends in ${want.slice(-4)}.`);
+          return;
+        }
+        value = match.url;
+      } else if (found.length) {
+        value = found[found.length - 1].url;
+      }
       const btn = $('rideSyncPasteBtn');
       btn.disabled = true; btn.textContent = 'Connecting…';
       let resp;
@@ -552,7 +589,7 @@
       $('rideSyncPasteInput').value = '';   // the code is single-use; don't leave it on screen
       if (!resp || !resp.ok) {
         const code = resp && resp.json && resp.json.error;
-        if (code === 'invalid_or_expired_state' || code === 'state_user_mismatch' || code === 'token_exchange_failed') setPending(false);
+        if (['invalid_or_expired_state', 'state_already_used', 'state_user_mismatch', 'token_exchange_failed'].includes(code)) setPending(false);
         syncNotice(code || 'error');
         renderSyncCard();
         return;
