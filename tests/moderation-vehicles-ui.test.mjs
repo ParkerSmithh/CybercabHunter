@@ -113,7 +113,7 @@ async function run() {
     check('an awaiting vehicle is listed with its plate', card.dataset.vehicleId === a && /AWT0001/.test(card.textContent));
     check('it shows its counted-ride count', /2 counted rides/.test(card.textContent));
     check('it is labelled "Private: Needs Review" and "Eligible for Approval"', /Private: Needs Review/.test(card.textContent) && /Eligible for Approval/.test(card.textContent) && card.dataset.approvalState === 'eligible_for_approval');
-    check('there is no ordinary "Approve" action anymore — only Approve Cybercab (in the Cybercab verification panel), disabled until a vin is on file', !card.querySelector('button[data-vehicle-action="approve"]') && !!card.querySelector('button[data-vehicle-action="approve-cybercab"]') && card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled && !card.querySelector('a[href^="vehicle/"]'));
+    check('approval is the one Approve Cybercab button (in the Cybercab verification panel), enabled with no VIN — VIN is never part of manual eligibility', !card.querySelector('button[data-vehicle-action="approve"]') && !!card.querySelector('button[data-vehicle-action="approve-cybercab"]') && !card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled && !card.querySelector('a[href^="vehicle/"]'));
     check('a vehicle with no counted rides is ALSO listed now: "Private" is every private vehicle, not just approval candidates', !!byPlate('NORIDES'));
     check('the sighting queue above is unaffected', page.sightingCards().length === 0);
   }
@@ -187,7 +187,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 1, 'public list');
     const card = page.cards()[0];
     check('an approved-but-ineligible vehicle says plainly it is hidden, with the reason', /Approved: Not Visible/.test(card.textContent) && /Not Eligible: approved, but hidden from the public/.test(card.textContent) && /No counted rides/.test(card.textContent));
-    check('it offers Return to Private and no public-page link', !!card.querySelector('button[data-vehicle-action="return"]') && !card.querySelector('a'));
+    check('it offers Return to Private and no public-page link', !!card.querySelector('button[data-vehicle-action="return"]') && !card.querySelector('a[href^="vehicle/"]'));
   }
   {
     // Facts about needs_review / rejected history, shown as plain notes.
@@ -327,7 +327,9 @@ async function run() {
     check('the disclaimer says provenance describes how data entered and does not prove a receipt came from Tesla', note === 'Provenance describes how data entered Cybercab Hunter. It does not prove that a receipt was genuinely issued by Tesla.');
     check('the disclaimer is inside the registry section, visible without any interaction', page.d.getElementById('modVehicles').contains(page.d.getElementById('modProvenanceNote')));
     const section = page.d.getElementById('modVehicles').textContent.replace(/\s+/g, ' ');
-    check('no restricted trust vocabulary anywhere in the registry section (trusted, verified, confidence, authentic, likely genuine)', !/trusted|verified|confidence|authentic|likely genuine/i.test(section.replace(/verification_status: \w+/g, '')));  // the existing DB field name/value is the one allowed use
+    // The existing DB field name/value, and "VIN verified" (the approval basis: approved with a VIN a moderator
+    // confirmed on Robotaxi Tracker, migrations/0025), are the only allowed uses.
+    check('no restricted trust vocabulary anywhere in the registry section (trusted, verified, confidence, authentic, likely genuine)', !/trusted|verified|confidence|authentic|likely genuine/i.test(section.replace(/verification_status: \w+/g, '').replace(/VIN verified/g, '')));
     check('no score, percentage or ranking is shown', !/score|rank|\d+\s*%|out of \d+/i.test(section));
   }
   {
@@ -448,7 +450,7 @@ async function run() {
     const trackerLink = card().querySelector('a[target="_blank"]');
     check('a plain external Robotaxi Tracker link exists, opening in a new tab safely (rel=noopener)', !!trackerLink && trackerLink.getAttribute('rel') === 'noopener' && /^https:\/\/robotaxitracker\.com\//.test(trackerLink.getAttribute('href')));
     check('it links to a real, general page — never an invented per-vehicle URL (no plate baked in)', !trackerLink.getAttribute('href').includes('CYB0001'));
-    check('a VIN input and Save VIN button exist, and Approve Cybercab starts disabled (no vin yet)', !!card().querySelector('input[data-vehicle-vin-input]') && !!card().querySelector('button[data-vehicle-action="save-vin"]') && card().querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
+    check('a VIN input and Save VIN button exist, and Approve Cybercab is already enabled (a VIN is optional)', !!card().querySelector('input[data-vehicle-vin-input]') && !!card().querySelector('button[data-vehicle-action="save-vin"]') && !card().querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
     check('Delete Vehicle remains available alongside the new controls', !!card().querySelector('button[data-vehicle-action="ask-delete"]'));
     check('nothing was requested yet beyond the initial listing', page.vehicleRequests('POST').length === 0);
 
@@ -457,11 +459,11 @@ async function run() {
     await page.waitFor(() => page.vehicleRequests('POST').length === 1, 'Save VIN request sent');
     const saveReq = page.vehicleRequests('POST')[0];
     check('Save VIN sent exactly one POST, to the vin endpoint — never the review endpoint — with the VIN in the body', saveReq.path === `/api/moderation/robotaxi-vehicles/${id}/vin` && JSON.parse(saveReq.body).vin === VIN);
-    await page.waitFor(() => /VIN on file/.test(card().textContent), 'card reflects the saved vin');
+    await page.waitFor(() => new RegExp(`VIN on file: ${VIN}`).test(card().textContent), 'card reflects the saved vin');
     check('entering and saving a VIN did NOT approve the vehicle: still private, no history row', ctx.d1.query('SELECT visibility FROM robotaxi_vehicles WHERE id = ?', id)[0].visibility === 'private' && ctx.d1.query('SELECT COUNT(*) AS n FROM robotaxi_vehicle_reviews')[0].n === 0);
     check('the saved VIN is shown on the card', new RegExp(VIN).test(card().textContent));
     check('Approve Cybercab is now enabled', !card().querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
-    check('the VIN input is gone now that a vin is on file (nothing left to overwrite from this card)', !card().querySelector('input[data-vehicle-vin-input]'));
+    check('the VIN stays editable: the input is pre-filled with it, and Clear VIN is offered', card().querySelector('input[data-vehicle-vin-input]').value === VIN && !!card().querySelector('button[data-vehicle-action="clear-vin"]'));
 
     page.click(card().querySelector('button[data-vehicle-action="approve-cybercab"]'));
     await page.waitFor(() => page.cards().length === 0, 'the now-public vehicle drops off the "Private" list');
@@ -473,16 +475,55 @@ async function run() {
     check('a distinct success toast is shown', /approved for the public registry/i.test(page.toastText()));
   }
   {
-    // Approve Cybercab stays gated purely on vin, even though the vehicle
-    // otherwise passes the ordinary guard (counted ride, unique plate) —
-    // there is no separate ordinary approve path anymore for it to fall back to.
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     vehicle(ctx, 'CYB0002'); // 1 counted ride by default -> guard passes, but no vin
     const page = await openPage(ctx.env, 'session-mod');
     await page.waitFor(() => page.cards().length === 1, 'vehicle list');
     const card = page.cards()[0];
     check('there is no ordinary Approve action to fall back on', !card.querySelector('button[data-vehicle-action="approve"]'));
-    check('Approve Cybercab is disabled purely for lack of a vin, even though the vehicle is otherwise eligible', card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled);
+    check('Approve Cybercab is enabled with no VIN, and says it will approve as Manual', !card.querySelector('button[data-vehicle-action="approve-cybercab"]').disabled && /approves it as Manual/.test(card.textContent));
+  }
+
+  console.log('12. Approving without a VIN (manual), adding the VIN later, and upgrading to VIN verified');
+  {
+    const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
+    const id = vehicle(ctx, 'MAN0001');
+    const page = await openPage(ctx.env, 'session-mod');
+    await page.waitFor(() => page.cards().length === 1, 'vehicle list');
+    approveVia(page);
+    await page.waitFor(() => page.cards().length === 0, 'drops off "Private"');
+    const reviewReq = page.vehicleRequests('POST').find(r => r.path.endsWith('/review'));
+    check('with no VIN on file the click sends approve_manual', !!reviewReq && JSON.parse(reviewReq.body).action === 'approve_manual');
+    const row = () => ctx.d1.query('SELECT visibility, vin, approval_basis FROM robotaxi_vehicles WHERE id = ?', id)[0];
+    check('the vehicle is public, approval_basis manual, and no VIN was invented', row().visibility === 'public' && row().approval_basis === 'manual' && row().vin === null);
+    check('the toast says it was approved as manual', /manual, no VIN/.test(page.toastText()));
+
+    const scope = page.d.getElementById('modVehicleScope'); scope.value = 'public';
+    scope.dispatchEvent(new page.w.Event('change', { bubbles: true }));
+    await page.waitFor(() => page.cards().length === 1, 'public list');
+    const card = () => page.cards()[0];
+    check('the public card shows the approval basis and still offers the VIN input', /Approval basis: Manual/.test(card().textContent) && !!card().querySelector('input[data-vehicle-vin-input]'));
+    check('Mark VIN Verified is not offered while there is no VIN', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
+
+    card().querySelector('input[data-vehicle-vin-input]').value = 'BADVIN';
+    page.click(card().querySelector('button[data-vehicle-action="save-vin"]'));
+    await page.waitFor(() => /valid VIN/.test(page.toastText()), 'invalid VIN toast');
+    check('a malformed VIN is refused, nothing saved', row().vin === null);
+
+    card().querySelector('input[data-vehicle-vin-input]').value = VIN;
+    page.click(card().querySelector('button[data-vehicle-action="save-vin"]'));
+    await page.waitFor(() => !!card().querySelector('button[data-vehicle-action="verify-vin"]'), 'verify button appears');
+    check('adding the VIN after approval saved it, still public and still manual (a VIN alone never upgrades)', row().vin === VIN && row().visibility === 'public' && row().approval_basis === 'manual');
+
+    page.click(card().querySelector('button[data-vehicle-action="verify-vin"]'));
+    await page.waitFor(() => /Approval basis: VIN verified/.test(card().textContent), 'card shows VIN verified');
+    const verifyReq = page.vehicleRequests('POST').filter(r => r.path.endsWith('/review')).pop();
+    check('Mark VIN Verified sent verify_vin, and the vehicle is now vin-verified', JSON.parse(verifyReq.body).action === 'verify_vin' && row().approval_basis === 'vin-verified' && row().visibility === 'public');
+    check('the verify button is gone once verified', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
+
+    page.click(card().querySelector('button[data-vehicle-action="clear-vin"]'));
+    await page.waitFor(() => /No VIN on file/.test(card().textContent), 'VIN cleared');
+    check('clearing the VIN keeps the vehicle public but drops it back to manual', row().vin === null && row().visibility === 'public' && row().approval_basis === 'manual');
   }
 
   t.finish();

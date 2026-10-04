@@ -4,7 +4,7 @@
 
 import { rideQueries } from './db-rides.js';
 import { gmailQueries } from './db-gmail.js';
-import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
+import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, approvalEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 
 // Registry visibility values. 'private' is the value this schema already
@@ -21,17 +21,19 @@ const VEHICLE_VISIBILITY = { PUBLIC: 'public', PRIVATE: 'private' };
 // only: nothing is deleted or rewritten when a vehicle stops being eligible.
 
 // What must be true for a moderator to APPROVE a vehicle for the public
-// registry (worker/moderation.js's review action): the evidence requirement of
-// the public gate above (registryEvidenceSql — a counted, non-superseded ride,
-// or for a sighting-origin vehicle a VIN on file; not a second definition)
-// PLUS a usable, UNIQUE plate,
+// registry (worker/moderation.js's review action): a counted, non-superseded
+// ride, or a sighting-origin vehicle (approvalEvidenceSql — once approved, its
+// approval_basis is what backs it under registryEvidenceSql), PLUS, when
+// requireVin, a VIN on file (Approve Cybercab), PLUS a usable, UNIQUE plate,
 // so approving one of several registry rows for the same plate can never make
 // an ambiguous vehicle public. Needs-review-only, rejected-only and orphaned
 // vehicles all fail on the ride requirement. `alias` is the robotaxi_vehicles
 // name/alias in the caller's statement; the inner v2 alias is private to it.
-function vehicleApprovalGuardSql(alias) {
+function vehicleApprovalGuardSql(alias, { requireVin = false } = {}) {
   const plate = sqlNormalizedPlate(`${alias}.license_plate`);
-  return `${registryEvidenceSql(alias)}
+  const vin = requireVin ? `
+    AND ${alias}.vin IS NOT NULL AND ${alias}.vin <> ''` : '';
+  return `${approvalEvidenceSql(alias)}${vin}
     AND ${plate} <> ''
     AND (SELECT COUNT(*) FROM robotaxi_vehicles v2
          WHERE ${sqlNormalizedPlate('v2.license_plate')} = ${plate}) = 1`;
@@ -620,7 +622,7 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
            -- vehicle — never the submitter's text, never a private vehicle's plate
            -- (the same gate as the public vehicle page). A primary-key lookup per row.
            pv.license_plate AS public_plate,
-           (pv.vin IS NOT NULL AND pv.vin <> '') AS public_cybercab
+           (pv.approval_basis = 'vin-verified') AS public_cybercab
     FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
     LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
@@ -1081,7 +1083,7 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', 
   const rows = await sql.prepare(`
     SELECT * FROM (
       SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
-             v.first_seen_at, v.last_seen_at, v.verification_status, v.vin,
+             v.first_seen_at, v.last_seen_at, v.verification_status, v.vin, v.approval_basis,
              (SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')}) AS trip_count,
              (SELECT MIN(ride_date) FROM ${physicalRidesFrom('v.id')}) AS first_ride_date,
              (SELECT MAX(ride_date) FROM ${physicalRidesFrom('v.id')}) AS last_ride_date,
@@ -1113,7 +1115,7 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', 
 async function getPublicRobotaxiVehicle(sql, vehicleId) {
   const row = await sql.prepare(`
     SELECT v.id, v.provider, v.license_plate, v.model, v.color, v.service_area,
-           v.first_seen_at, v.last_seen_at, v.verification_status, v.vin
+           v.first_seen_at, v.last_seen_at, v.verification_status, v.vin, v.approval_basis
     FROM robotaxi_vehicles v
     WHERE v.id = ? AND ${publicVehicleEligibleSql('v')}
   `).bind(vehicleId).first();
@@ -1224,6 +1226,7 @@ const REGISTRY_VEHICLE_MOD_SELECT = `
   SELECT v.id, v.license_plate, v.visibility, v.verification_status, v.origin,
          v.first_seen_at, v.last_seen_at, v.created_at,
          v.vin, v.vin_set_by_user_id, v.vin_set_at,
+         v.approval_basis, v.approval_basis_set_at,
          ${COUNTED_BY('')} AS counted_ride_count,
          ${COUNTED_BY(` AND t.source = 'receipt_email'`)} AS counted_email,
          ${COUNTED_BY(` AND t.source = 'receipt_import'`)} AS counted_import,
@@ -1260,9 +1263,9 @@ function evaluateVehicleApproval(row) {
   const notes = [];
 
   if (!normalizePlate(row.license_plate)) blocking.push('no_plate');
-  // A sighting-origin vehicle has no ride by construction; the VIN requirement
-  // that stands in for it is added at the response level by approve_cybercab
-  // ('no_vin'), exactly as for every vehicle.
+  // A sighting-origin vehicle has no ride by construction; a moderator's
+  // approval stands in for it. A VIN is never required to approve (only the
+  // VIN-gated approve_cybercab action adds 'no_vin', at the response level).
   if (counted === 0 && !fromSighting) blocking.push('no_counted_rides');
   if (row.plate_vehicle_count > 1) blocking.push('duplicate_plate');
 
@@ -1273,7 +1276,7 @@ function evaluateVehicleApproval(row) {
   if (row.total_trip_count === 0 && !fromSighting) notes.push('no_rides_on_record');
 
   const isPublic = row.visibility === VEHICLE_VISIBILITY.PUBLIC;
-  const publiclyEligible = isPublic && (counted > 0 || (fromSighting && !!row.vin));
+  const publiclyEligible = isPublic && (counted > 0 || (fromSighting && (!!row.vin || !!row.approval_basis)));
   let state;
   if (isPublic) state = publiclyEligible ? 'public' : 'not_eligible';
   else state = blocking.length === 0 ? 'eligible_for_approval' : 'not_eligible';
@@ -1297,6 +1300,11 @@ function toModeratorVehicle(row) {
     // The vehicle record's own status column ('unverified' by default). It is
     // NOT changed by anything in this workflow and says nothing about Tesla.
     verification_status: row.verification_status,
+    // Why this vehicle is public (migrations/0025): 'vin-verified' (approved
+    // with a Tracker-confirmed VIN on file), 'manual' (approved by a
+    // moderator with no VIN), or null (not approved).
+    approval_basis: row.approval_basis || null,
+    approval_basis_set_at: row.approval_basis_set_at || null,
     counted_ride_count: row.counted_ride_count,
     // Facts about the rest of what is attached to the vehicle.
     needs_review_ride_count: row.needs_review_ride_count,
@@ -1319,16 +1327,20 @@ function toModeratorVehicle(row) {
     // The same rule the public endpoints apply: setting visibility public is
     // necessary but NOT sufficient — a counted ride is also required.
     publicly_eligible: row.visibility === VEHICLE_VISIBILITY.PUBLIC
-      && (row.counted_ride_count > 0 || (row.origin === 'sighting' && !!row.vin)),
+      && (row.counted_ride_count > 0 || (row.origin === 'sighting' && (!!row.vin || !!row.approval_basis))),
     plate_vehicle_count: row.plate_vehicle_count,
     approval: approval,
-    // A SEPARATE gate from approval.can_approve, never a replacement for it:
-    // everything approval.can_approve already requires, PLUS a VIN already
-    // saved. evaluateVehicleApproval itself is untouched — Cybercab Hunter
-    // still does not know or guess whether this vehicle IS a Cybercab; a
-    // moderator's own choice to click Approve Cybercab (only enabled once a
-    // vin exists) is what asserts that, never anything computed here.
+    // The VIN-gated approve_cybercab action: everything approval.can_approve
+    // requires, PLUS a VIN already saved. Unchanged, so anything relying on it
+    // (the daily pipeline included) behaves exactly as before. A moderator can
+    // also approve with no VIN at all (approve_manual) whenever
+    // approval.can_approve is true — VIN is never part of manual eligibility.
+    // Cybercab Hunter still does not know or guess whether this vehicle IS a
+    // Cybercab; a moderator's own click is what asserts that.
     can_approve_cybercab: approval.can_approve && !!row.vin,
+    // Upgrade manual -> vin-verified (review action verify_vin): only a public
+    // vehicle, only with a VIN on file, only when not already vin-verified.
+    can_verify_vin: row.visibility === VEHICLE_VISIBILITY.PUBLIC && !!row.vin && row.approval_basis !== 'vin-verified',
     // Most recent moderator decision on this vehicle, or null if none has
     // ever been recorded (e.g. it was made private by the legacy cleanup).
     latest_review: row.last_review_action ? {
@@ -1449,20 +1461,46 @@ async function setRobotaxiVehicleVisibility(sql, vehicleId, visibility) {
   return !!(result && result.meta && result.meta.changes > 0);
 }
 
-// Records a VIN a moderator read directly off Robotaxi Tracker (worker/moderation.js's
-// POST .../vin). Writes ONLY vin/vin_set_by_user_id/vin_set_at — never
-// visibility, never a robotaxi_vehicle_reviews row, and (the WHERE clause
-// below) never overwrites an existing non-null vin: this statement's own
-// changes count is 0 if one is already set, so the caller can tell "no such
-// vehicle" and "vin already set" apart with one extra read, exactly like
-// changeRobotaxiVehicleVisibility's applied/not-applied pattern.
-// Returns whether the write happened.
+// Records, edits, or clears (vin null) the VIN a moderator read directly off
+// Robotaxi Tracker (worker/moderation.js's POST .../vin), before or after
+// approval. Writes ONLY vin/vin_set_by_user_id/vin_set_at — never
+// visibility, never a robotaxi_vehicle_reviews row — plus one honesty rule:
+// a 'vin-verified' approval was made on the OLD VIN, so changing or clearing
+// it drops approval_basis to 'manual' until a moderator verifies again
+// (verifyRegistryVehicleVin). A VIN write never upgrades anything. All SET
+// expressions read the row's values from before this UPDATE.
+// Returns whether a row was updated (false: no such vehicle).
 async function setRegistryVehicleVin(sql, vehicleId, moderatorId, vin) {
   const result = await sql.prepare(`
     UPDATE robotaxi_vehicles
-    SET vin = ?, vin_set_by_user_id = ?, vin_set_at = datetime('now'), updated_at = datetime('now')
-    WHERE id = ? AND vin IS NULL
-  `).bind(vin, moderatorId, vehicleId).run();
+    SET approval_basis = CASE
+          WHEN approval_basis = 'vin-verified' AND COALESCE(vin, '') <> COALESCE(?, '') THEN 'manual'
+          ELSE approval_basis END,
+        approval_basis_set_by_user_id = CASE
+          WHEN approval_basis = 'vin-verified' AND COALESCE(vin, '') <> COALESCE(?, '') THEN ?
+          ELSE approval_basis_set_by_user_id END,
+        approval_basis_set_at = CASE
+          WHEN approval_basis = 'vin-verified' AND COALESCE(vin, '') <> COALESCE(?, '') THEN datetime('now')
+          ELSE approval_basis_set_at END,
+        vin = ?, vin_set_by_user_id = ?, vin_set_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(vin, vin, moderatorId, vin, vin, moderatorId, vehicleId).run();
+  return !!(result && result.meta && result.meta.changes > 0);
+}
+
+// Upgrades a manually approved public vehicle to 'vin-verified' (review action
+// verify_vin). The moderator's explicit assertion that the VIN on file is the
+// one Robotaxi Tracker shows for this Cybercab — the same standard as Approve
+// Cybercab. Never touches visibility or the VIN itself. Returns whether the
+// upgrade happened (false: not public, no VIN, or already vin-verified).
+async function verifyRegistryVehicleVin(sql, vehicleId, moderatorId) {
+  const result = await sql.prepare(`
+    UPDATE robotaxi_vehicles
+    SET approval_basis = 'vin-verified', approval_basis_set_by_user_id = ?,
+        approval_basis_set_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ? AND visibility = 'public' AND vin IS NOT NULL AND vin <> ''
+      AND COALESCE(approval_basis, '') <> 'vin-verified'
+  `).bind(moderatorId, vehicleId).run();
   return !!(result && result.meta && result.meta.changes > 0);
 }
 
@@ -1496,11 +1534,20 @@ async function setRegistryVehicleVin(sql, vehicleId, moderatorId, vin) {
 // fleet is that model and color); service_area is fill-only, from the
 // vehicle's OWN earliest counted ride (never a community sighting — that
 // remains reviewVehicleSighting's separate, untouched fill path).
-async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, target, reason, cybercabApproval = false }) {
-  const action = target === VEHICLE_VISIBILITY.PUBLIC ? 'approved_public' : 'returned_private';
-  const guard = target === VEHICLE_VISIBILITY.PUBLIC
-    ? vehicleApprovalGuardSql('robotaxi_vehicles')
+// requireVin (approve_cybercab) adds "a VIN is on file" to the atomic guard;
+// a manual approval (approve_manual) passes false. Either way the approval
+// records approval_basis from the VIN on file at that moment: 'vin-verified'
+// with one, 'manual' without. Returning a vehicle to private clears it.
+async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, target, reason, cybercabApproval = false, requireVin = false }) {
+  const toPublic = target === VEHICLE_VISIBILITY.PUBLIC;
+  const action = toPublic ? 'approved_public' : 'returned_private';
+  const guard = toPublic
+    ? vehicleApprovalGuardSql('robotaxi_vehicles', { requireVin })
     : '1 = 1';
+  const basisFields = toPublic ? `,
+      approval_basis = CASE WHEN vin IS NOT NULL AND vin <> '' THEN 'vin-verified' ELSE 'manual' END,
+      approval_basis_set_by_user_id = ?, approval_basis_set_at = datetime('now')` : `,
+      approval_basis = NULL, approval_basis_set_by_user_id = NULL, approval_basis_set_at = NULL`;
   const plateOuter = sqlNormalizedPlate('robotaxi_vehicles.license_plate');
   const cybercabFields = cybercabApproval ? `,
       model = 'Cybercab',
@@ -1526,9 +1573,9 @@ async function changeRobotaxiVehicleVisibility(sql, { vehicleId, moderatorId, ta
   `).bind(newId(), moderatorId, action, reason || null, vehicleId, target);
 
   const update = sql.prepare(`
-    UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now')${cybercabFields}
+    UPDATE robotaxi_vehicles SET visibility = ?, updated_at = datetime('now')${cybercabFields}${basisFields}
     WHERE id = ? AND visibility <> ? AND ${guard}
-  `).bind(target, vehicleId, target);
+  `).bind(...(toPublic ? [target, moderatorId] : [target]), vehicleId, target);
 
   const results = await sql.batch([insert, update]);
   const updateResult = results[1];
@@ -1719,6 +1766,7 @@ export const db = {
   setRobotaxiVehicleVisibility,
   changeRobotaxiVehicleVisibility,
   setRegistryVehicleVin,
+  verifyRegistryVehicleVin,
   getRobotaxiVehicleReviews,
   getRobotaxiVehicleHistory,
   upsertRobotaxiOwnerConnection,

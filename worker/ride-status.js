@@ -74,12 +74,23 @@ export function physicalRidesFrom(vehicleRef) {
 // THE definition of what backs a registry vehicle. A receipt-origin vehicle
 // (every vehicle created by the receipt pipeline) needs a counted ride. A
 // sighting-origin vehicle — added by a moderator from a reviewed sighting —
-// has no ride by construction, so a moderator-entered VIN stands in for it:
-// the VIN is only ever written by a moderator, only while the vehicle is
-// private, and is never overwritten (worker/moderation.js).
+// has no ride by construction, so a moderator's own decision stands in for
+// it: a moderator-entered VIN, or a recorded approval (approval_basis, set
+// only by a moderator's approval and cleared when the vehicle is returned to
+// private — migrations/0025). Both are only ever written by a moderator
+// (worker/moderation.js).
 export function registryEvidenceSql(alias) {
   return `(${countedRideExistsSql(alias)}
-    OR (${alias}.origin = 'sighting' AND ${alias}.vin IS NOT NULL AND ${alias}.vin <> ''))`;
+    OR (${alias}.origin = 'sighting' AND ((${alias}.vin IS NOT NULL AND ${alias}.vin <> '')
+                                          OR ${alias}.approval_basis IS NOT NULL)))`;
+}
+
+// What must back a vehicle for a moderator to APPROVE it: a counted ride, or
+// for a sighting-origin vehicle nothing more (the moderator's approval itself
+// is what then backs it publicly, via approval_basis above). A VIN is not
+// required here; the VIN-gated Approve Cybercab action adds that check itself.
+export function approvalEvidenceSql(alias) {
+  return `(${countedRideExistsSql(alias)} OR ${alias}.origin = 'sighting')`;
 }
 
 // THE definition of public eligibility: a moderator has made the vehicle

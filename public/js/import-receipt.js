@@ -134,7 +134,7 @@
       } else {
         box.appendChild(el('p', 'text-slate-400', v.has_vin
           ? 'Private. A VIN is on file. Review it and use Approve Cybercab to publish.'
-          : 'Private. To publish it: verify it\'s a Cybercab, enter its VIN, then Approve Cybercab.'));
+          : 'Private. To publish it: verify it\'s a Cybercab, then Approve Cybercab. A VIN is optional.'));
       }
       const link = el('a', 'inline-block mt-2 text-cyan hover:underline', 'Open in Registry Vehicles →');
       link.href = 'moderation?plate=' + encodeURIComponent(v.license_plate || '') + '#modVehicles';

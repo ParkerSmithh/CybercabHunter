@@ -538,28 +538,47 @@
   // vehicles listing is a real, general page a moderator can search from.
   const ROBOTAXI_TRACKER_URL = 'https://robotaxitracker.com/vehicles';
 
-  // The VIN/Approve-Cybercab panel of the moderator card. Only meaningful for
-  // a vehicle a moderator might still approve (not already public, not mid
-  // delete-confirmation) — see vehicleCard. Save VIN and Approve Cybercab are
-  // always two separate clicks/requests: entering a VIN alone never approves
-  // anything, and the Approve Cybercab button stays disabled
-  // (v.can_approve_cybercab, computed server-side) until a vin is on file.
+  // The VIN / approval panel of the moderator card (shown for private AND
+  // public vehicles, never mid delete-confirmation — see vehicleCard).
+  //  - The VIN is optional and editable any time: Save VIN records, edits or
+  //    (with an empty box / Clear VIN) clears it. Saving a VIN never approves
+  //    or upgrades anything by itself.
+  //  - Private: one Approve button, enabled whenever the server says the
+  //    vehicle can be approved (v.approval.can_approve — never VIN-based).
+  //    With a VIN on file it sends approve_cybercab (approved as VIN
+  //    verified); without one, approve_manual (approved as Manual).
+  //  - Public: shows the approval basis; a Manual vehicle with a VIN on file
+  //    can be upgraded with Mark VIN Verified (v.can_verify_vin).
+  const BASIS_LABELS = { 'vin-verified': 'VIN verified', manual: 'Manual (approved without a verified VIN)' };
   function cybercabPanel(v) {
     const busy = vehicleBusy.has(v.id);
-    const vinRow = v.vin
-      ? `<div class="text-xs text-slate-300 mt-1">VIN on file: <span class="font-mono">${esc(v.vin)}</span></div>`
-      : `<div class="flex items-center gap-2 mt-1 flex-wrap">
-           <input type="text" data-vehicle-vin-input="${esc(v.id)}" placeholder="17-character VIN" maxlength="17" autocomplete="off"
+    const isPublic = v.visibility === 'public';
+    const vinRow = `<div class="text-xs text-slate-300 mt-2">${v.vin ? `VIN on file: <span class="font-mono">${esc(v.vin)}</span>` : 'No VIN on file (optional).'}</div>
+         <div class="flex items-center gap-2 mt-1 flex-wrap">
+           <input type="text" data-vehicle-vin-input="${esc(v.id)}" value="${esc(v.vin || '')}" placeholder="17-character VIN" maxlength="17" autocomplete="off"
              class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs font-mono uppercase w-48 disabled:opacity-50" ${busy ? 'disabled' : ''}>
            <button type="button" data-vehicle-action="save-vin" ${busy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.3)] text-slate-200 hover:bg-white/5 disabled:opacity-50">${busy ? 'Working…' : 'Save VIN'}</button>
+           ${v.vin ? `<button type="button" data-vehicle-action="clear-vin" ${busy ? 'disabled' : ''} class="text-xs px-3 py-2 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Clear VIN</button>` : ''}
          </div>`;
-    const approveDisabled = busy || !v.can_approve_cybercab;
+    let decision;
+    if (isPublic) {
+      const basis = v.approval_basis ? label(BASIS_LABELS, v.approval_basis) : 'Not recorded';
+      decision = `<div class="text-xs text-slate-300 mt-3">Approval basis: <span class="font-semibold">${esc(basis)}</span></div>
+        ${v.can_verify_vin ? `<button type="button" data-vehicle-action="verify-vin" ${busy ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Mark VIN Verified'}</button>
+        <div class="text-xs text-slate-500 mt-1">Only if Robotaxi Tracker shows this VIN as this Cybercab. Adds the public VIN verified badge.</div>` : ''}`;
+    } else {
+      const canApprove = !!(v.approval && v.approval.can_approve);
+      decision = `<button type="button" data-vehicle-action="approve-cybercab" ${busy || !canApprove ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve Cybercab'}</button>
+        <div class="text-xs text-slate-500 mt-1">${v.vin
+          ? 'Approves it as VIN verified (public VIN verified badge).'
+          : 'No VIN: approves it as Manual, with no VIN verified badge. You can add a VIN and verify it later.'}</div>`;
+    }
     return `<div class="mt-3 pt-3 border-t border-[rgba(212,175,55,0.1)]">
       <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Cybercab verification</div>
       <a href="${esc(ROBOTAXI_TRACKER_URL)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">Check Robotaxi Tracker →</a>
-      <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below, then approve. If it's shown as a Model Y (or anything else), use Delete Vehicle instead. There is no separate rejection step.</div>
+      <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below. The VIN is optional: you can approve without one and add it later. If it's shown as a Model Y (or anything else), use Delete Vehicle instead. There is no separate rejection step.</div>
       ${vinRow}
-      <button type="button" data-vehicle-action="approve-cybercab" ${approveDisabled ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve Cybercab'}</button>
+      ${decision}
     </div>`;
   }
 
@@ -588,7 +607,7 @@
     const sightingProvenance = fromSighting
       ? `<div class="text-xs text-slate-400 mt-3">
            <div class="font-semibold text-slate-300 mb-0.5">How this vehicle was added</div>
-           <div>From a community sighting, added to the registry without a receipt.${v.counted_ride_count > 0 ? '' : ' It has no receipt and no rides; a VIN you enter and approve stands in for a counted ride.'}</div>
+           <div>From a community sighting, added to the registry without a receipt.${v.counted_ride_count > 0 ? '' : ' It has no receipt and no rides; your approval stands in for a counted ride (a VIN is optional).'}</div>
          </div>`
       : '';
     const provenance = (rideProvenance || sightingProvenance)
@@ -598,9 +617,9 @@
     const record = `<div class="text-xs text-slate-500 mt-2">Vehicle record created ${esc(fmtDateTime(v.created_at))} · First seen ${esc(fmtDateTime(v.first_seen_at))} · Last ${fromSighting ? 'sighting' : 'receipt'} activity ${esc(fmtDateTime(v.last_seen_at))}</div>
       <div class="text-xs text-slate-500 mt-1" title="An existing field on the vehicle record. Moderation does not change it.">Record field verification_status: ${esc(v.verification_status || '—')}</div>`;
 
-    // No ordinary "Approve" action exists for registry vehicles — a private
-    // vehicle's only path to public visibility is Approve Cybercab, in the
-    // Cybercab verification panel below (cybercabPanel), which is vin-gated.
+    // A private vehicle's path to public visibility is the Approve button in
+    // the Cybercab verification panel below (cybercabPanel) — a VIN is
+    // optional there.
     // This card's own reasons/notes above already explain anything blocking
     // that (e.g. no counted ride, duplicate plate); Delete remains the only
     // action offered here for a private vehicle.
@@ -635,7 +654,7 @@
         ${actions}
         ${v.publicly_eligible && !mode ? `<a href="vehicle/${esc(v.id)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">View public page →</a>` : ''}
       </div>
-      ${mode !== 'delete' && v.visibility !== 'public' ? cybercabPanel(v) : ''}
+      ${mode !== 'delete' ? cybercabPanel(v) : ''}
     </div>`;
   }
 
@@ -722,6 +741,9 @@
       if (json.error === 'not_eligible') {
         const why = (json.blocking_reasons || []).map(c => label(REASON_LABELS, c)).join(', ');
         CCC.toast(`Not approved. Not eligible${why ? ': ' + why : ''}.`, 'error');
+      } else if (action === 'verify_vin') {
+        CCC.toast(json.error === 'already_vin_verified' ? 'That vehicle is already VIN verified.'
+          : json.error === 'no_vin' ? 'Save a VIN first.' : 'Only a public vehicle can be marked VIN verified.', 'info');
       } else {
         CCC.toast(json.error === 'already_public' ? 'That vehicle is already public.' : 'That vehicle is already private.', 'info');
       }
@@ -733,7 +755,10 @@
       return;
     }
     pendingReview.delete(vehicleId);
-    CCC.toast(action === 'approve_cybercab' ? 'Vehicle approved for the public registry.' : 'Vehicle returned to private.', 'success');
+    CCC.toast(action === 'verify_vin' ? 'Marked VIN verified.'
+      : action === 'return_private' ? 'Vehicle returned to private.'
+      : json.vehicle.approval_basis === 'vin-verified' ? 'Vehicle approved for the public registry (VIN verified).'
+      : 'Vehicle approved for the public registry (manual, no VIN).', 'success');
     // Visibility just changed, so this vehicle may no longer belong in the
     // currently selected scope (e.g. it must drop off "Public" the moment
     // it's returned to private, not sit there showing stale private info).
@@ -748,19 +773,21 @@
     renderVehicles();
   }
 
-  // POST .../vin — saves the VIN a moderator manually read off Robotaxi
-  // Tracker. Always a request separate from approval (submitReview,
-  // action approve_cybercab): saving a VIN here never changes visibility by
-  // itself, matching the server (worker/moderation.js's apiSetRegistryVehicleVin).
+  // POST .../vin — saves, edits or clears the VIN a moderator manually read
+  // off Robotaxi Tracker. Always a request separate from approval
+  // (submitReview): saving a VIN here never changes visibility or upgrades
+  // anything by itself, matching the server (worker/moderation.js's
+  // apiSetRegistryVehicleVin). An empty VIN clears it (unknown is valid).
   async function submitSetVin(vehicleId, rawVin) {
     const vin = (rawVin || '').trim().toUpperCase();
-    if (!vin) { CCC.toast('Enter a VIN first.', 'error'); return; }
+    const current = vehicles.find(v => v.id === vehicleId);
+    if (!vin && !(current && current.vin)) { CCC.toast('Enter a VIN first.', 'error'); return; }
     vehicleBusy.add(vehicleId);
     renderVehicles();
     let resp;
     try {
       resp = await api(`/api/moderation/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/vin`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vin })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vin: vin || null })
       });
     } catch (e) {
       vehicleBusy.delete(vehicleId);
@@ -779,14 +806,6 @@
       CCC.toast('That vehicle no longer exists. Removed from the list.', 'info');
       return;
     }
-    if (resp.status === 409) {
-      // Someone (possibly this same moderator, twice) already saved a VIN —
-      // never silently overwritten. Show the CURRENT vehicle, VIN and all.
-      if (json.vehicle) replaceVehicle(json.vehicle);
-      renderVehicles();
-      CCC.toast('This vehicle already has a VIN on file.', 'info');
-      return;
-    }
     if (!resp.ok || !json.vehicle) {
       renderVehicles();
       CCC.toast(json.error === 'invalid_vin' ? "That doesn't look like a valid VIN. Check it and try again." : "Couldn't save that VIN. Please try again.", 'error');
@@ -794,7 +813,7 @@
     }
     replaceVehicle(json.vehicle);
     renderVehicles();
-    CCC.toast('VIN saved.', 'success');
+    CCC.toast(json.vehicle.vin ? 'VIN saved.' : 'VIN cleared.', 'success');
   }
 
   // DELETE .../:id — removes the registry row AND every ride/receipt logged
@@ -842,7 +861,14 @@
       const id = card.dataset.vehicleId;
       const act = btn.dataset.vehicleAction;
       if (act === 'return') { submitReview(id, 'return_private'); }
-      else if (act === 'approve-cybercab') { submitReview(id, 'approve_cybercab'); }
+      else if (act === 'approve-cybercab') {
+        // With a VIN on file: the VIN-gated approve_cybercab (VIN verified).
+        // Without one: approve_manual (approved as Manual).
+        const v = vehicles.find(x => x.id === id);
+        submitReview(id, v && v.vin ? 'approve_cybercab' : 'approve_manual');
+      }
+      else if (act === 'verify-vin') { submitReview(id, 'verify_vin'); }
+      else if (act === 'clear-vin') { submitSetVin(id, ''); }
       else if (act === 'save-vin') {
         const input = card.querySelector(`[data-vehicle-vin-input="${CSS.escape(id)}"]`);
         submitSetVin(id, input ? input.value : '');

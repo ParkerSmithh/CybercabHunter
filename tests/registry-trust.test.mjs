@@ -400,7 +400,7 @@ async function run() {
     check('a moderator can make an eligible vehicle public through the review action -> 200', makePublic.status === 200 && mp.success === true);
     check('the stored visibility changed', vehicleRow(ctx, id).visibility === 'public');
     check('the response reports the fresh state, including eligibility', mp.vehicle.visibility === 'public' && mp.vehicle.counted_ride_count === 1 && mp.vehicle.publicly_eligible === true);
-    check('the response has exactly the registry + provenance fields and no rider/receipt data', JSON.stringify(Object.keys(mp.vehicle).sort()) === '["approval","can_approve_cybercab","counted_ride_count","counted_rides_by_source","created_at","first_counted_ride_date","first_seen_at","id","last_counted_ride_date","last_seen_at","latest_review","license_plate","needs_review_ride_count","origin","plate_vehicle_count","publicly_eligible","rejected_ride_count","total_trip_count","verification_status","vin","visibility"]' && !/rider|user_id|pickup|dropoff|@/i.test(JSON.stringify(mp).replace(/"moderator_user_id"/g, '')) && !/email/i.test(JSON.stringify(mp).replace(/receipt_email/g, '')));
+    check('the response has exactly the registry + provenance fields and no rider/receipt data', JSON.stringify(Object.keys(mp.vehicle).sort()) === '["approval","approval_basis","approval_basis_set_at","can_approve_cybercab","can_verify_vin","counted_ride_count","counted_rides_by_source","created_at","first_counted_ride_date","first_seen_at","id","last_counted_ride_date","last_seen_at","latest_review","license_plate","needs_review_ride_count","origin","plate_vehicle_count","publicly_eligible","rejected_ride_count","total_trip_count","verification_status","vin","visibility"]' && !/rider|user_id|pickup|dropoff|@/i.test(JSON.stringify(mp).replace(/"moderator_user_id"/g, '')) && !/email/i.test(JSON.stringify(mp).replace(/receipt_email/g, '')));
     check('the public endpoint now serves it', (await vehiclePage(ctx, id)).status === 200);
     // approve_cybercab itself DOES set model/color/service_area (tested thoroughly
     // elsewhere, in registry-review-approval.test.mjs) — snapshot again here, after
@@ -494,7 +494,7 @@ async function run() {
     const ra = await sightingsOf(ctx, a); const va = await vehiclePage(ctx, a);
     check('an ambiguous plate produces a plain empty list, with no collision hint', JSON.stringify(ra.json) === '{"sightings":[]}');
     check('the public vehicle response for a duplicate has the normal shape and does not mention the other vehicle', !va.text.includes(b) && !/ambig|duplicate|plate_vehicle_count/i.test(va.text + ra.text) && va.status === 200);
-    check('public vehicle fields are unchanged by Phase 3E (vin was added later, by the Cybercab verification workflow)', JSON.stringify(Object.keys(va.json.vehicle)) === '["id","provider","license_plate","model","color","service_area","first_seen_at","last_seen_at","verification_status","vin"]');
+    check('public vehicle fields are unchanged by Phase 3E (vin and approval_basis were added later, by the Cybercab verification workflow)', JSON.stringify(Object.keys(va.json.vehicle)) === '["id","provider","license_plate","model","color","service_area","first_seen_at","last_seen_at","verification_status","vin","approval_basis"]');
     check('moderator-only fields never appear publicly', !/counted_ride_count|publicly_eligible|visibility/.test(va.text));
   }
 

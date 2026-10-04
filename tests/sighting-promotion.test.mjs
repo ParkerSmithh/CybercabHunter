@@ -212,12 +212,22 @@ async function run() {
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}' WHERE id = '${SIGHT}'`);
     check('public AND a VIN makes a sighting vehicle eligible (200)', (await publicStatus(ctx, SIGHT)) === 200);
 
-    // the atomic in-write guard: no caller can make a VIN-less sighting vehicle public
+    // the atomic in-write guard: the VIN-gated approval (approve_cybercab, requireVin) refuses a VIN-less sighting vehicle
     ctx.d1.exec(`INSERT INTO robotaxi_vehicles (id, license_plate, origin, visibility) VALUES ('${NOV}', 'NOV1234', 'sighting', 'private')`);
-    const res = await db.changeRobotaxiVehicleVisibility(ctx.d1, { vehicleId: NOV, moderatorId: 'mod', target: 'public', cybercabApproval: true });
-    check('the audited write itself refuses a VIN-less sighting vehicle (nothing applied, no history row)',
+    const res = await db.changeRobotaxiVehicleVisibility(ctx.d1, { vehicleId: NOV, moderatorId: 'mod', target: 'public', cybercabApproval: true, requireVin: true });
+    check('the VIN-gated audited write refuses a VIN-less sighting vehicle (nothing applied, no history row)',
       res.applied === false && count(ctx, `SELECT COUNT(*) n FROM robotaxi_vehicle_reviews WHERE robotaxi_vehicle_id = '${NOV}'`) === 0
       && ctx.d1.query(`SELECT visibility FROM robotaxi_vehicles WHERE id = '${NOV}'`)[0].visibility === 'private');
+
+    // a manual approval (approve_manual, migrations/0025) of the same vehicle: the moderator's approval backs it
+    const man = await json(await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${NOV}/review`, 'mod', { action: 'approve_manual' }));
+    check('approve_manual makes a VIN-less sighting vehicle public, recorded as manual, with one history row',
+      man.success === true && man.vehicle.approval_basis === 'manual' && man.vehicle.vin === null
+      && count(ctx, `SELECT COUNT(*) n FROM robotaxi_vehicle_reviews WHERE robotaxi_vehicle_id = '${NOV}'`) === 1);
+    check('and it is publicly eligible (200)', (await publicStatus(ctx, NOV)) === 200);
+    await call(ctx, 'POST', `/api/moderation/robotaxi-vehicles/${NOV}/review`, 'mod', { action: 'return_private' });
+    check('returned to private, it 404s again and its approval basis is cleared',
+      (await publicStatus(ctx, NOV)) === 404 && ctx.d1.query(`SELECT approval_basis FROM robotaxi_vehicles WHERE id = '${NOV}'`)[0].approval_basis === null);
   }
 
   console.log('7. Migration 0014');
@@ -309,7 +319,7 @@ async function run() {
     check('the card says Private: Needs Review / Eligible for Approval / 0 counted rides', /Private: Needs Review/.test(text) && /Eligible for Approval/.test(text) && /0 counted rides/.test(text));
     check('the card is honest about provenance: added from a sighting, no receipt and no rides', /Added from a community sighting/.test(text) && /no receipt and no rides/.test(text) && !/Forwarded email:/.test(text));
     check('the Cybercab verification panel (Tracker link, VIN, Approve Cybercab) is present', /Cybercab verification/.test(text) && /Check Robotaxi Tracker/.test(text) && !!vc.querySelector('[data-vehicle-action="save-vin"]') && !!vc.querySelector('[data-vehicle-action="approve-cybercab"]'));
-    check('Approve Cybercab is disabled until a VIN is saved', vc.querySelector('[data-vehicle-action="approve-cybercab"]').disabled === true);
+    check('Approve Cybercab is enabled without a VIN (it approves as Manual)', vc.querySelector('[data-vehicle-action="approve-cybercab"]').disabled === false && /approves it as Manual/.test(text));
     check('Delete Vehicle is offered', !!vc.querySelector('[data-vehicle-action="ask-delete"]'));
   }
 

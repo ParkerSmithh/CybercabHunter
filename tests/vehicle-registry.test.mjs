@@ -23,9 +23,9 @@ const uuid = n => `${String(n).padStart(8, '0')}-0000-4000-8000-${String(n).padS
 // what a moderator would have saved via POST .../vin and approve_cybercab
 // (see tests/registry-review-approval.test.mjs for that write path itself) —
 // inserted directly here since this file tests the PUBLIC read side only.
-function vehicle(ctx, n, plate, { visibility = 'private', model = null, serviceArea = null, seen = '2026-09-01 00:00:00', created = '2026-08-01 00:00:00', vin = null } = {}) {
-  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, service_area, visibility, first_seen_at, last_seen_at, vin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(uuid(n), plate, model, serviceArea, visibility, created, seen, vin)._exec();
+function vehicle(ctx, n, plate, { visibility = 'private', model = null, serviceArea = null, seen = '2026-09-01 00:00:00', created = '2026-08-01 00:00:00', vin = null, basis = null } = {}) {
+  ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, service_area, visibility, first_seen_at, last_seen_at, vin, approval_basis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(uuid(n), plate, model, serviceArea, visibility, created, seen, vin, basis)._exec();
   return uuid(n);
 }
 const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', ...o });
@@ -69,7 +69,7 @@ async function run() {
     check('ride summary: latest ride date and service areas', a.last_ride_date === '2026-08-10' && /Austin/.test(a.service_areas) && b.last_ride_date === '2026-09-02' && b.service_areas === 'Dallas');
     check('ride summary: earliest ride date too', a.first_ride_date === '2026-08-09' && b.first_ride_date === '2026-08-29');
     check('missing values stay null (not 0 or a placeholder)', b.model === null && b.service_area === null && b.color === null && b.vin === null);
-    const allowed = ['color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'total_distance', 'trip_count', 'verification_status', 'vin'];
+    const allowed = ['approval_basis', 'color', 'first_ride_date', 'first_seen_at', 'id', 'last_ride_date', 'last_seen_at', 'license_plate', 'model', 'provider', 'service_area', 'service_areas', 'total_distance', 'trip_count', 'verification_status', 'vin'];
     check('an entry carries exactly the public fields', r.body.vehicles.every(v => Object.keys(v).sort().join() === allowed.join()));
     // total_distance is the ONE distance field allowed here: the same vehicle-level aggregate the detail endpoint already publishes.
     // Anything else distance-like (a per-ride distance) is still banned, along with fares, addresses and identities.
@@ -214,8 +214,8 @@ async function run() {
   {
     const ctx = await makeApp();
     const VIN = '5YJSA1E14FF101183';
-    const cybercab = vehicle(ctx, 10, 'CYB0010', { visibility: 'public', model: 'Cybercab', vin: VIN }); ride(ctx, cybercab);
-    const ordinary = vehicle(ctx, 11, 'ORD0011', { visibility: 'public' }); ride(ctx, ordinary);         // no vin: existing vehicles keep working unchanged
+    const cybercab = vehicle(ctx, 10, 'CYB0010', { visibility: 'public', model: 'Cybercab', vin: VIN, basis: 'vin-verified' }); ride(ctx, cybercab);
+    const ordinary = vehicle(ctx, 11, 'ORD0011', { visibility: 'public', basis: 'manual' }); ride(ctx, ordinary);         // no vin: existing vehicles keep working unchanged
     const vinButPrivate = vehicle(ctx, 12, 'PRV0012', { visibility: 'private', vin: VIN }); ride(ctx, vinButPrivate); // vin saved, never approved
     const vinButNoRide = vehicle(ctx, 13, 'NOR0013', { visibility: 'public', vin: VIN });                 // vin + approved, but no counted ride
 
@@ -226,6 +226,8 @@ async function run() {
     check('an ordinary approved vehicle with no vin still works exactly as before: vin is simply null', o.vin === null && o.license_plate === 'ORD0011');
     check('vin-but-private and vin-but-no-ride never expose their vin publicly (the shared VIN appears exactly once — only for the eligible Cybercab)', (JSON.stringify(r.body).match(new RegExp(VIN, 'g')) || []).length === 1);
     check('no moderation provenance (vin_set_by_user_id / vin_set_at) ever appears in the public payload', !/vin_set_by_user_id|vin_set_at/.test(JSON.stringify(r.body)));
+    check('the public list distinguishes the approval basis: vin-verified vs manual', c.approval_basis === 'vin-verified' && o.approval_basis === 'manual');
+    check('no approval-basis provenance (who/when) appears in the public payload', !/approval_basis_set/.test(JSON.stringify(r.body)));
 
     const detail = await call(ctx, `/api/robotaxi-vehicles/${cybercab}`);
     const detailBody = await detail.json();
@@ -241,6 +243,7 @@ async function run() {
     check('the Cybercab\'s card includes an <img src="images/Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="images/Cybercab2.png"]'));
     check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/Cybercab2.png"]').getAttribute('alt') || '').length > 0);
     check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
+    check('the vin-verified card shows the "VIN verified" badge; the manual card has no badge', /VIN verified/.test(cybercabCard.textContent) && !/VIN verified/.test(ordinaryCard.textContent));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
     check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/Cybercab2.png'));
 

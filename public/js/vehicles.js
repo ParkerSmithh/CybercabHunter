@@ -58,10 +58,23 @@
     return box;
   }
 
-  // Generic Cybercab illustration, shown only once a moderator has approved
-  // this vehicle as a Cybercab and saved its VIN (v.vin != null — see
-  // worker/vehicles.js's apiListVehicles, which only ever forwards a vin for
-  // a vehicle that already passed publicVehicleEligibleSql). It is the SAME
+  // VIN verified = approved with a VIN a moderator confirmed on Robotaxi
+  // Tracker (v.approval_basis, migrations/0025). A vehicle a moderator
+  // approved without a VIN ('manual') gets no badge, image or Cybercab pill —
+  // the page never implies a verification that doesn't exist.
+  const vinVerified = v => v.approval_basis === 'vin-verified';
+
+  // The "VIN verified" badge (the same element on the vehicle detail page,
+  // vVinVerifiedBadge).
+  function vinVerifiedBadge() {
+    const b = el('span', 'inline-flex items-center gap-1 mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-400/40 text-emerald-300 uppercase tracking-wide', '✓ VIN verified');
+    b.title = 'Approved with a VIN a moderator confirmed on Robotaxi Tracker';
+    return b;
+  }
+
+  // Generic Cybercab illustration, shown only for a VIN-verified vehicle
+  // (worker/vehicles.js's apiListVehicles only lists vehicles that already
+  // passed publicVehicleEligibleSql). It is the SAME
   // file for every vehicle, never a photo of that specific VIN. Built via
   // createElement/attribute assignment, never innerHTML, matching every
   // other element on this page.
@@ -77,17 +90,19 @@
     const li = el('li');
     const a = el('a', 'group block glass rounded-2xl p-6 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
     a.href = '/vehicle/' + encodeURIComponent(v.id);
-    if (v.vin) a.appendChild(cybercabImage());
+    if (vinVerified(v)) a.appendChild(cybercabImage());
     // The plate, styled like one (the same treatment as the Sightings cards).
     a.appendChild(el('h2', v.license_plate
       ? 'inline-block font-display font-bold text-lg tracking-[0.18em] px-3 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
       : 'font-display font-bold text-lg text-slate-400', v.license_plate || 'Plate not recorded'));
-    // A confirmed Cybercab (vin present) gets the same compact gold/yellow
-    // badge used on the vehicle detail page (vCybercabBadge), never plain
-    // text — matching styles exactly rather than inventing a new treatment.
-    // An unconfirmed vehicle keeps the existing plain-text model line as-is.
-    if (v.vin) {
-      a.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
+    // A VIN-verified Cybercab gets the same compact gold/yellow badge used on
+    // the vehicle detail page (vCybercabBadge) plus the VIN verified badge.
+    // Any other vehicle keeps the plain-text model line, and no badge.
+    if (vinVerified(v)) {
+      const badges = el('div', 'flex flex-wrap items-center gap-2');
+      badges.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
+      badges.appendChild(vinVerifiedBadge());
+      a.appendChild(badges);
     } else {
       a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere]', v.model || 'Model not confirmed'));
     }

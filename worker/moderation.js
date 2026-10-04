@@ -312,9 +312,10 @@ export async function apiPromoteVehicleSighting(request, env, submissionId) {
 // authenticated (forwarded email is not SPF/DKIM-verified; a pasted receipt
 // has no sender at all), so new vehicles start 'private'.
 //   - Making a vehicle PUBLIC is possible ONLY through the review action
-//     (POST .../review, approve_cybercab): strict approval rules (including a
-//     vin already on file), re-checked inside the write, and an audit row.
-//     No other route, action, or function can do it.
+//     (POST .../review, approve_cybercab or approve_manual): strict approval
+//     rules (approve_cybercab also requires a vin on file; approve_manual does
+//     not), re-checked inside the write, and an audit row. No other route,
+//     action, or function can do it.
 //   - Making a vehicle PRIVATE is the administrative takedown: the review
 //     action's return_private, or PATCH { visibility: "private" }. Both are audited.
 //   - Public visibility alone is still not enough: the public endpoints also
@@ -418,15 +419,26 @@ export async function apiSetVehicleVisibility(request, env, vehicleId) {
 }
 
 // POST /api/moderation/robotaxi-vehicles/:id/review
-//   { "action": "approve_cybercab" | "return_private", "reason"?: string }
+//   { "action": "approve_cybercab" | "approve_manual" | "verify_vin" | "return_private", "reason"?: string }
 //
 // The explicit moderator decision. Moderator approval means: a Cybercab
 // Hunter moderator reviewed this registry record and intentionally approved
 // it for public visibility. It is NOT evidence that any receipt was really
 // issued by Tesla, and nothing here says so.
 //
-// approve_cybercab is the ONLY way this endpoint ever grants public
-// visibility — there is no ordinary/ungated approval path. Refused with 409
+// approve_manual: the same approval with NO VIN requirement — a moderator can
+// approve a pending vehicle that has no VIN on file. Still an explicit
+// moderator action with the same rules otherwise (private, a counted ride or
+// sighting origin, a unique plate), checked atomically and audited the same
+// way. The vehicle's approval_basis records the difference (migrations/0025):
+// 'vin-verified' if a VIN was on file when approved, otherwise 'manual'.
+//
+// verify_vin: upgrades a public 'manual' vehicle to 'vin-verified' once a VIN
+// is on file — the moderator's assertion that it is the Tracker-confirmed VIN
+// of this Cybercab (the same standard as approve_cybercab). Changes nothing
+// else; 409 not_public / no_vin / already_vin_verified otherwise.
+//
+// approve_cybercab is unchanged (the daily pipeline relies on it): refused with 409
 // not_eligible (and the factual blocking_reasons) unless the vehicle is
 // private, has a counted non-superseded ride, has a unique plate, AND
 // already has a vin (saved separately beforehand via POST .../vin — see
@@ -456,7 +468,7 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   if (!body) {
     return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
   }
-  if (body.action !== 'approve_cybercab' && body.action !== 'return_private') {
+  if (!['approve_cybercab', 'approve_manual', 'verify_vin', 'return_private'].includes(body.action)) {
     return Response.json({ success: false, error: 'invalid_action' }, { status: 400 });
   }
   const parsed = parseReason(body);
@@ -470,7 +482,24 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
     return Response.json({ success: false, error: 'not_found' }, { status: 404 });
   }
 
-  const approving = body.action === 'approve_cybercab';
+  if (body.action === 'verify_vin') {
+    if (vehicle.visibility !== VEHICLE_VISIBILITY.PUBLIC) return Response.json({ success: false, error: 'not_public', vehicle }, { status: 409 });
+    if (!vehicle.vin) return Response.json({ success: false, error: 'no_vin', vehicle }, { status: 409 });
+    if (vehicle.approval_basis === 'vin-verified') return Response.json({ success: false, error: 'already_vin_verified', vehicle }, { status: 409 });
+    const upgraded = await db.verifyRegistryVehicleVin(sql, vehicleId, auth.userId);
+    const after = await db.getRegistryVehicleForModeration(sql, vehicleId);
+    if (!after) return Response.json({ success: false, error: 'not_found' }, { status: 404 });
+    if (!upgraded) {
+      // Lost a race (returned to private, VIN cleared, or verified by someone else).
+      const error = after.visibility !== VEHICLE_VISIBILITY.PUBLIC ? 'not_public'
+        : !after.vin ? 'no_vin' : 'already_vin_verified';
+      return Response.json({ success: false, error, vehicle: after }, { status: 409 });
+    }
+    return Response.json({ success: true, action: 'vin_verified', vehicle: after });
+  }
+
+  const approving = body.action === 'approve_cybercab' || body.action === 'approve_manual';
+  const requireVin = body.action === 'approve_cybercab';
   if (approving && vehicle.visibility === VEHICLE_VISIBILITY.PUBLIC) {
     return Response.json({ success: false, error: 'already_public', vehicle }, { status: 409 });
   }
@@ -478,10 +507,10 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
     return Response.json({ success: false, error: 'already_private', vehicle }, { status: 409 });
   }
   if (approving) {
-    // evaluateVehicleApproval (vehicle.approval) is never changed for this
-    // feature — approve_cybercab only ADDS 'no_vin' to the SAME blocking-reasons
-    // list the ordinary guard already computes, at the response level.
-    const blockingReasons = vehicle.vin
+    // evaluateVehicleApproval (vehicle.approval) never involves the VIN —
+    // approve_cybercab only ADDS 'no_vin' to the SAME blocking-reasons list
+    // the ordinary guard already computes, at the response level.
+    const blockingReasons = vehicle.vin || !requireVin
       ? vehicle.approval.blocking_reasons
       : [...vehicle.approval.blocking_reasons, 'no_vin'];
     if (blockingReasons.length > 0) {
@@ -492,7 +521,7 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
   const { applied } = await db.changeRobotaxiVehicleVisibility(sql, {
     vehicleId, moderatorId: auth.userId, reason: parsed.reason,
     target: approving ? VEHICLE_VISIBILITY.PUBLIC : VEHICLE_VISIBILITY.PRIVATE,
-    cybercabApproval: approving
+    cybercabApproval: approving, requireVin
   });
 
   const fresh = await db.getRegistryVehicleForModeration(sql, vehicleId);
@@ -502,7 +531,7 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
     if (!fresh) return Response.json({ success: false, error: 'not_found' }, { status: 404 });
     if (approving && fresh.visibility === VEHICLE_VISIBILITY.PUBLIC) return Response.json({ success: false, error: 'already_public', vehicle: fresh }, { status: 409 });
     if (!approving && fresh.visibility !== VEHICLE_VISIBILITY.PUBLIC) return Response.json({ success: false, error: 'already_private', vehicle: fresh }, { status: 409 });
-    const freshBlocking = fresh.vin
+    const freshBlocking = fresh.vin || !requireVin
       ? fresh.approval.blocking_reasons
       : [...fresh.approval.blocking_reasons, 'no_vin'];
     return Response.json({ success: false, error: 'not_eligible', blocking_reasons: freshBlocking, vehicle: fresh }, { status: 409 });
@@ -513,20 +542,22 @@ export async function apiReviewRegistryVehicle(request, env, vehicleId) {
 
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/i; // standard 17-char VIN shape, excludes I/O/Q — format only, never decoded
 
-// POST /api/moderation/robotaxi-vehicles/:id/vin   { "vin": string }
+// POST /api/moderation/robotaxi-vehicles/:id/vin   { "vin": string | null }
 //
-// Records the VIN a moderator read directly off Robotaxi Tracker (an
-// external site this app never queries programmatically — see the workflow
-// comment above apiReviewRegistryVehicle) after manually confirming for
-// themselves that the vehicle is a Cybercab. This is the ONLY way a vin is
-// ever written: nothing in this app derives, decodes, or looks one up.
+// Records, edits, or clears the VIN a moderator read directly off Robotaxi
+// Tracker (an external site this app never queries programmatically — see
+// the workflow comment above apiReviewRegistryVehicle) after manually
+// confirming for themselves that the vehicle is a Cybercab. This is the ONLY
+// way a vin is ever written: nothing in this app derives, decodes, guesses,
+// or looks one up. The VIN is optional: an empty string or null clears it
+// (unknown), which is always valid. Allowed before or after approval.
 //
-// Writes vin/vin_set_by_user_id/vin_set_at ONLY (db.setRegistryVehicleVin) —
+// Writes vin/vin_set_by_user_id/vin_set_at (db.setRegistryVehicleVin) —
 // never visibility, never a robotaxi_vehicle_reviews row, never any
-// ride/trip/eligibility data. Saving a VIN never approves anything by
-// itself; Approve Cybercab (apiReviewRegistryVehicle, action approve_cybercab)
-// is always a separate follow-up request. Refuses to overwrite an existing
-// vin (409 vin_already_set) rather than silently replacing it.
+// ride/trip data. Saving a VIN never approves or upgrades anything by
+// itself; approval and the manual -> vin-verified upgrade (verify_vin) are
+// always separate requests. Changing or clearing the VIN of a 'vin-verified'
+// vehicle drops it to 'manual', since that verification was of the old VIN.
 export async function apiSetRegistryVehicleVin(request, env, vehicleId) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
@@ -536,11 +567,11 @@ export async function apiSetRegistryVehicleVin(request, env, vehicleId) {
   }
 
   const body = await readJsonObject(request);
-  if (!body || typeof body.vin !== 'string') {
+  if (!body || (typeof body.vin !== 'string' && body.vin !== null)) {
     return Response.json({ success: false, error: 'invalid_body' }, { status: 400 });
   }
-  const vin = body.vin.trim().toUpperCase();
-  if (!VIN_RE.test(vin)) {
+  const vin = body.vin === null ? null : (body.vin.trim().toUpperCase() || null);
+  if (vin !== null && !VIN_RE.test(vin)) {
     return Response.json({ success: false, error: 'invalid_vin' }, { status: 400 });
   }
 
@@ -549,29 +580,16 @@ export async function apiSetRegistryVehicleVin(request, env, vehicleId) {
   if (!existing) {
     return Response.json({ success: false, error: 'not_found' }, { status: 404 });
   }
-  if (existing.vin) {
-    return Response.json({ success: false, error: 'vin_already_set', vehicle: existing }, { status: 409 });
-  }
-  // A vin may be saved only while the vehicle is still private. Approve
-  // Cybercab is the ONLY path that is meant to combine "vin present" with
-  // public visibility (see apiReviewRegistryVehicle); without this guard a
-  // vehicle already public through some other means — e.g. an ordinary
-  // vehicle approved before this registry required a vin, or any future
-  // path — could have a vin attached afterward and start showing publicly
-  // (vin and Cybercab2.png) without Approve Cybercab ever having run.
-  // Refusing here keeps that combination reachable only through the gated
-  // action, regardless of how a vehicle became public.
-  if (existing.visibility === VEHICLE_VISIBILITY.PUBLIC) {
-    return Response.json({ success: false, error: 'already_public', vehicle: existing }, { status: 409 });
+  if ((existing.vin || null) === vin) {
+    // Nothing changes (same VIN, or clearing one that isn't there).
+    return Response.json({ success: true, vehicle: existing });
   }
 
   const applied = await db.setRegistryVehicleVin(sql, vehicleId, auth.userId, vin);
   const fresh = await db.getRegistryVehicleForModeration(sql, vehicleId);
-  if (!applied) {
-    // Lost a race (another moderator saved one first, or the vehicle was
-    // deleted) between the read above and the atomic write.
-    if (!fresh) return Response.json({ success: false, error: 'not_found' }, { status: 404 });
-    return Response.json({ success: false, error: 'vin_already_set', vehicle: fresh }, { status: 409 });
+  if (!applied || !fresh) {
+    // Deleted between the read above and the write.
+    return Response.json({ success: false, error: 'not_found' }, { status: 404 });
   }
 
   return Response.json({ success: true, vehicle: fresh });

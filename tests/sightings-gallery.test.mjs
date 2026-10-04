@@ -62,7 +62,8 @@ const age = (ctx, id, days) => ctx.d1.exec(`UPDATE submissions SET submitted_at 
 const makePublic = (ctx, plate, vin = null) => {
   const id = ctx.d1.query('SELECT id FROM robotaxi_vehicles WHERE license_plate = ?', plate)[0].id;
   approveVehicle(ctx.d1, id, { withRide: true });
-  if (vin) ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '${vin}' WHERE id = '${id}'`);
+  // A VIN on an approved vehicle stands for Approve Cybercab: approval_basis 'vin-verified' (migrations/0025).
+  if (vin) ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '${vin}', approval_basis = 'vin-verified' WHERE id = '${id}'`);
   return id;
 };
 const publicIdOf = (ctx, id) => ctx.d1.query('SELECT public_id FROM vehicle_observations WHERE submission_id = ?', id)[0].public_id;
@@ -165,7 +166,7 @@ async function run() {
     makePublic(ctx, 'XJR2195', '5YJ3E1EA0KF000009');
     const { json } = await list(ctx);
     const full = json.sightings.find(s => s.city === 'Dallas'), bare = json.sightings.find(s => s.city === 'Austin');
-    check('once the vehicle is publicly eligible, its plate and the Cybercab label (VIN on file) are shown', full.plate === 'XJR2195' && full.cybercab === true && bare.cybercab === false);
+    check('once the vehicle is publicly eligible, its plate and the Cybercab label (VIN verified) are shown', full.plate === 'XJR2195' && full.cybercab === true && bare.cybercab === false);
     check('every field of a full sighting', full.location === 'NorthPark area' && full.plate === 'XJR2195' && full.spotted_at === '2026-09-20T19:30:00Z' && /^[0-9a-f]{32}$/.test(full.id) && full.image_url === `/api/sightings/${full.id}/photo`);
     check('no plate -> plate null', bare.plate === null);
     check('no approximate location -> location null', bare.location === null);

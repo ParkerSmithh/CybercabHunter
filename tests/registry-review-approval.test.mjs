@@ -196,7 +196,8 @@ async function run() {
       check(`an approved eligible vehicle${suffix ? ' (sightings)' : ''} is served`, (await pub(ctx, `/api/robotaxi-vehicles/${good}${suffix}`)).status === 200);
     }
     const goodText = (await pub(ctx, `/api/robotaxi-vehicles/${good}`)).text + (await pub(ctx, `/api/robotaxi-vehicles/${good}/sightings`)).text;
-    check('the public responses carry no review, moderator, reason or approval data', !/moderator|reason|review|approved_public|approval|latest_review|user_id|mod\b/.test(goodText));
+    // approval_basis ('vin-verified' | 'manual', migrations/0025) is the one deliberate public approval fact.
+    check('the public responses carry no review, moderator, reason or approval data (beyond approval_basis)', !/moderator|reason|review|approved_public|approval|latest_review|user_id|mod\b/.test(goodText.replace(/"approval_basis":("[a-z-]+"|null)/g, '')));
 
     // Approval made while eligible; the ride later disappears; the vehicle is hidden, then visible again if a counted ride returns.
     ctx.d1.exec(`DELETE FROM trips WHERE robotaxi_vehicle_id = '${good}'`);
@@ -561,7 +562,8 @@ async function run() {
     // non-empty vin. Pin all three pieces so the rule can't drift again without this test being revisited.
     check('the counted-ride definition itself is unchanged (a counted, non-superseded ride)', /WHERE t\.robotaxi_vehicle_id = \$\{alias\}\.id AND \$\{COUNTED_RIDES_WHERE\}/.test(rideStatusSrc));
     check('public eligibility is visibility public AND registryEvidenceSql, nothing else', /visibility = 'public' AND \$\{registryEvidenceSql\(alias\)\}/.test(rideStatusSrc));
-    check('registryEvidenceSql is a counted ride OR (sighting origin AND a non-empty vin) — no other alternative', /\(\$\{countedRideExistsSql\(alias\)\}\s+OR \(\$\{alias\}\.origin = 'sighting' AND \$\{alias\}\.vin IS NOT NULL AND \$\{alias\}\.vin <> ''\)\)/.test(rideStatusSrc));
+    // migrations/0025: a sighting-origin vehicle is also backed by a moderator's recorded approval (approval_basis).
+    check('registryEvidenceSql is a counted ride OR (sighting origin AND (a non-empty vin OR a recorded approval)) — no other alternative', /\(\$\{countedRideExistsSql\(alias\)\}\s+OR \(\$\{alias\}\.origin = 'sighting' AND \(\(\$\{alias\}\.vin IS NOT NULL AND \$\{alias\}\.vin <> ''\)\s+OR \$\{alias\}\.approval_basis IS NOT NULL\)\)\)/.test(rideStatusSrc));
     check('worker/db.js imports the real gate rather than defining its own copy', /import \{[^}]*publicVehicleEligibleSql[^}]*\}\s*from\s*'\.\/ride-status\.js'/.test(dbSrc) && !/^function publicVehicleEligibleSql/m.test(dbSrc));
   }
 
@@ -590,16 +592,17 @@ async function run() {
     check('now Approve Cybercab is allowed (existing guard already passed, and a vin is now present)', after.can_approve_cybercab === true);
     check('the vin does not leak into the public API before approval', (await pub(ctx, `/api/robotaxi-vehicles/${v}`)).status === 404);
 
-    check('an existing VIN cannot be silently overwritten: 409 vin_already_set, value unchanged', await (async () => {
+    check('an existing VIN can be edited (migrations/0025: the VIN is editable any time)', await (async () => {
       const r2 = await setVin(ctx, 'mod', v, VIN_B); const j2 = await r2.json();
-      return r2.status === 409 && j2.error === 'vin_already_set' && (await one(ctx, 'VIN0400')).vin === VIN_A;
+      return r2.status === 200 && j2.vehicle.vin === VIN_B && (await one(ctx, 'VIN0400')).vin === VIN_B;
     })());
-    check('overwrite is refused even for a different moderator', await (async () => {
+    check('a different moderator can edit it too, and the edit is attributed to them', await (async () => {
       await ctx.env.TESLA_SESSIONS.put('session:session-mod3', JSON.stringify({ user_id: 'mod3' }));
       ctx.d1.exec(`INSERT INTO users (id, role) VALUES ('mod3', 'moderator')`);
-      const r2 = await setVin(ctx, 'mod3', v, VIN_B);
-      return r2.status === 409 && (await one(ctx, 'VIN0400')).vin === VIN_A;
+      const r2 = await setVin(ctx, 'mod3', v, VIN_A);
+      return r2.status === 200 && (await one(ctx, 'VIN0400')).vin === VIN_A && ctx.d1.query('SELECT vin_set_by_user_id FROM robotaxi_vehicles WHERE id = ?', v)[0].vin_set_by_user_id === 'mod3';
     })());
+    check('editing the VIN still wrote no review row and left the vehicle private', rows(ctx).length === 0 && vis(ctx, v) === 'private');
 
     const bad = async (label, resp, status, error) => { const r = await resp; const j = await r.json(); check(`${label} -> ${status} ${error}`, r.status === status && j.error === error); };
     const fresh = rawVehicle(ctx, id(402), 'VIN0402');
@@ -625,41 +628,25 @@ async function run() {
     check('vin is unchanged after returning to private', (await one(ctx, 'VIN0400')).vin === VIN_A);
   }
 
-  console.log('7c. Regression: a vehicle that is already public cannot have a vin attached afterward (closes the bypass where a vin — and so Cybercab2.png — could reach the public site without Approve Cybercab ever running)');
+  console.log('7c. A vehicle that is already public can have a VIN added afterward — it never upgrades the approval by itself');
   {
-    // The ordinary/ungated approval action that used to make this reachable
-    // through normal moderation no longer exists at all (approve_cybercab is
-    // now the only way to grant public visibility, and it requires a vin
-    // first — so "public with no vin" can no longer happen through the API).
-    // The guard being tested here is defense-in-depth for any OTHER way a
-    // vehicle might already be public with no vin — e.g. a legacy row from
-    // before this registry required one — so it's set up directly, exactly
-    // like this file's other "flagged public" fixtures (see hiddenApproved
-    // in section 3 above).
+    // Before migrations/0025 the VIN endpoint refused public vehicles, because the public Cybercab
+    // badge/image keyed off the VIN alone. They now key off approval_basis 'vin-verified', which a
+    // VIN write never sets, so adding a VIN after approval can't imply a verification that didn't happen.
     const ctx = await makeApp({ rider: 'user', mod: 'moderator' });
     const v = rawVehicle(ctx, id(405), 'VIN0405', { visibility: 'public' }); seedRide(ctx.d1, { userId: 'rider', vehicleId: v, status: 'pending' });
 
-    check('setup: the vehicle is public with no vin', vis(ctx, v) === 'public' && (await one(ctx, 'VIN0405')).vin === null);
+    check('setup: the vehicle is public with no vin and no approval basis', vis(ctx, v) === 'public' && (await one(ctx, 'VIN0405')).vin === null && (await one(ctx, 'VIN0405')).approval_basis === null);
     const auditBefore = rows(ctx).length;
 
-    // 4-5: attempt the VIN endpoint on the now-public vehicle -> 409 already_public.
     const r = await setVin(ctx, 'mod', v, VIN_A); const j = await r.json();
-    check('the VIN endpoint refuses an already-public vehicle: 409 already_public', r.status === 409 && j.error === 'already_public' && j.vehicle.visibility === 'public');
-
-    // 6: the vehicle still has no vin.
-    check('the vehicle still has no vin after the refusal', (await one(ctx, 'VIN0405')).vin === null);
-
-    // 7: the public response carries no VIN/image signal.
+    check('the VIN endpoint accepts a public vehicle (200) and saves the VIN', r.status === 200 && j.vehicle.vin === VIN_A && j.vehicle.visibility === 'public');
+    check('the approval basis is NOT upgraded by saving a VIN', (await one(ctx, 'VIN0405')).approval_basis === null);
     const pr = await pub(ctx, `/api/robotaxi-vehicles/${v}`);
     const prBody = JSON.parse(pr.text);
-    check('the public response has vin: null — no VIN/image signal reaches the public site', pr.status === 200 && prBody.vehicle.vin === null && !pr.text.includes(VIN_A));
-
-    // 8: no extra review row or other vehicle-state change from the rejected request.
-    check('no review-history row was written by the rejected VIN request', rows(ctx).length === auditBefore);
-    check('visibility, ride/trip counts and everything else are untouched by the refusal', vis(ctx, v) === 'public' && ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
-
-    // The refusal is not a one-time fluke: repeating it behaves identically.
-    check('a repeated attempt is refused the same way', (await setVin(ctx, 'mod', v, VIN_B)).status === 409);
+    check('the public response shows the VIN as a plain fact but is not VIN verified', pr.status === 200 && prBody.vehicle.vin === VIN_A && prBody.vehicle.approval_basis !== 'vin-verified');
+    check('no review-history row was written by the VIN request', rows(ctx).length === auditBefore);
+    check('visibility and ride/trip counts are untouched', vis(ctx, v) === 'public' && ctx.d1.query('SELECT COUNT(*) AS n FROM trips')[0].n === 1);
   }
 
   console.log('8. Approve Cybercab: the existing approval guard, PLUS a VIN already on file — evaluateVehicleApproval itself is untouched');

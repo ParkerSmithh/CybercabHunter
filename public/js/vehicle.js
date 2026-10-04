@@ -49,14 +49,15 @@
 
     $('vLicensePlate').textContent = v.license_plate || 'Plate unknown';
 
-    // The Cybercab badge and the generic image both key off vin alone — set
-    // only once a moderator has approved this vehicle as a Cybercab
-    // (worker/vehicles.js only ever forwards a vin for an already
-    // publicly-eligible vehicle) — never inferred here. An ordinary approved
-    // vehicle with no vin gets no badge, since Cybercab Hunter never claims
-    // a classification it hasn't verified.
-    show('vCybercabBadge', !!v.vin);
-    show('vCybercabImage', !!v.vin);
+    // The Cybercab badge, the VIN verified badge and the generic image all key
+    // off approval_basis 'vin-verified' (approved with a VIN a moderator
+    // confirmed on Robotaxi Tracker — migrations/0025), never inferred here. A
+    // vehicle a moderator approved without a VIN ('manual') gets no badge,
+    // since Cybercab Hunter never claims a verification that doesn't exist.
+    const vinVerified = v.approval_basis === 'vin-verified';
+    show('vCybercabBadge', vinVerified);
+    show('vVinVerifiedBadge', vinVerified);
+    show('vCybercabImage', vinVerified);
 
     // One plain-text summary line built only from the facts actually on
     // record, joined with " · " — never a fixed template with "Not

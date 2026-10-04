@@ -202,7 +202,7 @@ async function run() {
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'public' WHERE id = '${vid}'`);
     check('public but no counted ride yet (not eligible, like the vehicle page): still no plate', (await list(ctx, '?city=austin')).sightings[0].plate === null && (await req(ctx, 'GET', `/api/robotaxi-vehicles/${vid}`)).status === 404);
     approveVehicle(ctx.d1, vid, { withRide: true });
-    ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '5YJ3E1EA0KF000011' WHERE id = '${vid}'`);
+    ctx.d1.exec(`UPDATE robotaxi_vehicles SET vin = '5YJ3E1EA0KF000011', approval_basis = 'vin-verified' WHERE id = '${vid}'`);
     const pub = (await list(ctx, '?city=austin')).sightings[0];
     check('publicly eligible (the vehicle page shows it): plate + Cybercab label', pub.plate === 'PRIV001' && pub.cybercab === true && (await req(ctx, 'GET', `/api/robotaxi-vehicles/${vid}`)).status === 200);
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'private' WHERE id = '${vid}'`);
