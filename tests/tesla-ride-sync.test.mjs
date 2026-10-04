@@ -296,6 +296,21 @@ async function run() {
     mockTesla(tesla);
   }
 
+  console.log('8. Failures say what failed');
+  {
+    const { env, d1 } = await setup();
+    mockTesla(tesla);
+    tesla.rides = [];
+    d1.exec('DROP TABLE tesla_ride_sync_connections');   // e.g. a database without the Ride Sync tables
+    const { resp, body } = await connect(env, 'u1', tesla);
+    check('Tesla accepts the code but storing fails -> 500 storage_failed (not a bare crash)', resp.status === 500 && body.error === 'storage_failed' && tesla.tokenCalls.length === 1);
+    const { env: env2 } = await setup();
+    tesla.tokenStatus = 403;
+    const r2 = await connect(env2, 'u1', tesla);
+    tesla.tokenStatus = 200;
+    check('Tesla refuses the code exchange -> token_exchange_failed with Tesla\'s status', r2.resp.status === 502 && r2.body.error === 'token_exchange_failed' && r2.body.tesla_status === 403);
+  }
+
   globalThis.fetch = realFetch;
   t.finish();
 }

@@ -418,6 +418,8 @@
     old_message: ['', 'warn'],
     state_user_mismatch: ['That sign-in was started from a different Cybercab Hunter account.', 'warn'],
     token_exchange_failed: ['Tesla didn\'t accept that sign-in. Please connect again.', 'warn'],
+    storage_failed: ['Tesla accepted the sign-in, but saving the connection failed on our side.', 'warn'],
+    preview_failed: ['Connected, but your rides couldn\'t be listed. Try "Review rides".', 'warn'],
     tesla_unavailable: ['Tesla\'s ride history isn\'t answering right now. Your connection is saved; try "Review rides" later.', 'warn'],
     reconnect_required: ['Your Tesla sign-in has expired. Connect again to keep importing rides.', 'warn'],
     not_connected: ['Connect your Tesla account first.', 'info'],
@@ -589,8 +591,11 @@
       $('rideSyncPasteInput').value = '';   // the code is single-use; don't leave it on screen
       if (!resp || !resp.ok) {
         const code = resp && resp.json && resp.json.error;
-        if (['invalid_or_expired_state', 'state_already_used', 'state_user_mismatch', 'token_exchange_failed'].includes(code)) setPending(false);
-        syncNotice(code || 'error');
+        if (['invalid_or_expired_state', 'state_already_used', 'state_user_mismatch', 'token_exchange_failed', 'storage_failed'].includes(code)) setPending(false);
+        // Anything unrecognised says what the server actually answered.
+        const detail = !resp ? 'no answer from the server' : `HTTP ${resp.status}${code ? ', ' + code : ''}${resp.json && resp.json.tesla_status ? ', Tesla ' + resp.json.tesla_status : ''}`;
+        if (code && SYNC_NOTICES[code] && code !== 'error') syncNotice(code, SYNC_NOTICES[code][0] + (resp.json.tesla_status ? ` (Tesla ${resp.json.tesla_status})` : ''));
+        else syncNotice('error', `Something went wrong (${detail}). Please try again.`);
         renderSyncCard();
         return;
       }

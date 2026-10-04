@@ -25,12 +25,24 @@ function parseInstant(raw) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+// One formatter per zone: building an Intl.DateTimeFormat is the costly part,
+// and a rider's whole history is usually in one or two zones.
+const FORMATTERS = new Map();
+function formatterFor(zone) {
+  let f = FORMATTERS.get(zone);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    FORMATTERS.set(zone, f);
+  }
+  return f;
+}
+
 // The wall-clock date (YYYY-MM-DD) and time (HH:MM) of an instant in a zone.
 function localDateTime(ms, zone) {
   const parts = {};
-  for (const p of new Intl.DateTimeFormat('en-US', {
-    timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-  }).formatToParts(new Date(ms))) parts[p.type] = p.value;
+  for (const p of formatterFor(zone).formatToParts(new Date(ms))) parts[p.type] = p.value;
   return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
 

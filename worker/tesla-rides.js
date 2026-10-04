@@ -133,7 +133,7 @@ async function postToken(cfg, fields) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: tokenBodyFor(cfg, fields)
   });
-  if (!resp.ok) throw new Error(`token request failed: ${resp.status}`);
+  if (!resp.ok) { const e = new Error(`token request failed: ${resp.status}`); e.status = resp.status; throw e; }
   const json = await resp.json();
   if (!json || !json.access_token) throw new Error('token response without an access token');
   return json;
@@ -296,12 +296,26 @@ async function completeAuthorization(request, env) {
       grant_type: 'authorization_code', code: parsed.code, code_verifier: consumed.codeVerifier, redirect_uri: cfg.redirectUri
     });
   } catch (err) {
-    return Response.json({ success: false, error: 'token_exchange_failed' }, { status: 502 });
+    // Tesla's HTTP status (never its body) helps tell a refused code from a blocked request.
+    console.log(`Tesla Ride Sync: code exchange failed (${err.status || 'network'})`);
+    return Response.json({ success: false, error: 'token_exchange_failed', tesla_status: err.status || null }, { status: 502 });
   }
-  await storeTokens(env, userId, tokenResponse);
+  try {
+    await storeTokens(env, userId, tokenResponse);
+  } catch (err) {
+    // e.g. the database is missing migration 0024. The message names no token.
+    console.log(`Tesla Ride Sync: storing the connection failed: ${String(err && err.message).slice(0, 200)}`);
+    return Response.json({ success: false, error: 'storage_failed' }, { status: 500 });
+  }
   console.log('Tesla Ride Sync: connected');
 
-  const preview = await buildPreview(env, userId);
+  let preview;
+  try {
+    preview = await buildPreview(env, userId);
+  } catch (err) {
+    console.log(`Tesla Ride Sync: preview failed: ${String(err && err.message).slice(0, 200)}`);
+    preview = { preview_error: 'preview_failed', rides: [] };
+  }
   return Response.json({ success: true, connected: true, ...preview });
 }
 
@@ -469,7 +483,13 @@ function summary(counts, vehiclesCreated) {
 async function apiPreview(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
-  const preview = await buildPreview(env, userId);
+  let preview;
+  try {
+    preview = await buildPreview(env, userId);
+  } catch (err) {
+    console.log(`Tesla Ride Sync: preview failed: ${String(err && err.message).slice(0, 200)}`);
+    return Response.json({ preview_error: 'preview_failed', rides: [] }, { status: 500 });
+  }
   return Response.json(preview, { status: preview.preview_error === 'not_connected' ? 409 : 200 });
 }
 
