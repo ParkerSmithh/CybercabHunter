@@ -215,18 +215,19 @@ async function run() {
     const ctx = await makeApp();
     const VIN = '5YJSA1E14FF101183';
     const cybercab = vehicle(ctx, 10, 'CYB0010', { visibility: 'public', model: 'Cybercab', vin: VIN, basis: 'vin-verified' }); ride(ctx, cybercab);
-    const ordinary = vehicle(ctx, 11, 'ORD0011', { visibility: 'public', basis: 'manual' }); ride(ctx, ordinary);         // no vin: existing vehicles keep working unchanged
+    const ordinary = vehicle(ctx, 11, 'ORD0011', { visibility: 'public' }); ride(ctx, ordinary);         // no vin, no approval basis: existing vehicles keep working unchanged
+    const manual = vehicle(ctx, 14, 'MAN0014', { visibility: 'public', model: 'Cybercab', basis: 'manual' }); ride(ctx, manual); // approved as a Cybercab without a VIN
     const vinButPrivate = vehicle(ctx, 12, 'PRV0012', { visibility: 'private', vin: VIN }); ride(ctx, vinButPrivate); // vin saved, never approved
     const vinButNoRide = vehicle(ctx, 13, 'NOR0013', { visibility: 'public', vin: VIN });                 // vin + approved, but no counted ride
 
     const r = await list(ctx);
-    check('only the eligible vehicles are listed (vin-but-private and vin-but-no-ride stay excluded, same gate as always)', r.body.vehicles.map(v => v.id).sort().join() === [cybercab, ordinary].sort().join());
-    const c = r.body.vehicles.find(v => v.id === cybercab), o = r.body.vehicles.find(v => v.id === ordinary);
+    check('only the eligible vehicles are listed (vin-but-private and vin-but-no-ride stay excluded, same gate as always)', r.body.vehicles.map(v => v.id).sort().join() === [cybercab, ordinary, manual].sort().join());
+    const c = r.body.vehicles.find(v => v.id === cybercab), o = r.body.vehicles.find(v => v.id === ordinary), m = r.body.vehicles.find(v => v.id === manual);
     check('the approved Cybercab carries its vin in the public list', c.vin === VIN);
     check('an ordinary approved vehicle with no vin still works exactly as before: vin is simply null', o.vin === null && o.license_plate === 'ORD0011');
     check('vin-but-private and vin-but-no-ride never expose their vin publicly (the shared VIN appears exactly once — only for the eligible Cybercab)', (JSON.stringify(r.body).match(new RegExp(VIN, 'g')) || []).length === 1);
     check('no moderation provenance (vin_set_by_user_id / vin_set_at) ever appears in the public payload', !/vin_set_by_user_id|vin_set_at/.test(JSON.stringify(r.body)));
-    check('the public list distinguishes the approval basis: vin-verified vs manual', c.approval_basis === 'vin-verified' && o.approval_basis === 'manual');
+    check('the public list distinguishes the approval basis: vin-verified vs manual', c.approval_basis === 'vin-verified' && m.approval_basis === 'manual' && o.approval_basis === null);
     check('no approval-basis provenance (who/when) appears in the public payload', !/approval_basis_set/.test(JSON.stringify(r.body)));
 
     const detail = await call(ctx, `/api/robotaxi-vehicles/${cybercab}`);
@@ -237,13 +238,15 @@ async function run() {
 
     // Cars registry page: Cybercab2.png shown iff v.vin is present, and never for a vehicle without one.
     const p = await open(ctx, null);
-    check('two cards render (the Cybercab and the ordinary vehicle)', p.cards().length === 2);
+    check('three cards render (the two Cybercabs and the ordinary vehicle)', p.cards().length === 3);
     const cybercabCard = p.cards().find(a => /CYB0010/.test(a.textContent));
     const ordinaryCard = p.cards().find(a => /ORD0011/.test(a.textContent));
+    const manualCard = p.cards().find(a => /MAN0014/.test(a.textContent));
     check('the Cybercab\'s card includes an <img src="images/Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="images/Cybercab2.png"]'));
     check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/Cybercab2.png"]').getAttribute('alt') || '').length > 0);
     check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
-    check('the vin-verified card shows the "VIN verified" badge; the manual card has no badge', /VIN verified/.test(cybercabCard.textContent) && !/VIN verified/.test(ordinaryCard.textContent));
+    check('a Cybercab approved without a VIN looks like a normal Cybercab card: the image and the Cybercab pill', !!manualCard.querySelector('img[src="images/Cybercab2.png"]') && [...manualCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab'));
+    check('only the vin-verified card says "VIN verified" — not the manual Cybercab, not the ordinary vehicle', /VIN verified/.test(cybercabCard.textContent) && !/VIN verified/.test(manualCard.textContent) && !/VIN verified/.test(ordinaryCard.textContent));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
     check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/Cybercab2.png'));
 

@@ -49,15 +49,15 @@
 
     $('vLicensePlate').textContent = v.license_plate || 'Plate unknown';
 
-    // The Cybercab badge, the VIN verified badge and the generic image all key
-    // off approval_basis 'vin-verified' (approved with a VIN a moderator
-    // confirmed on Robotaxi Tracker — migrations/0025), never inferred here. A
-    // vehicle a moderator approved without a VIN ('manual') gets no badge,
-    // since Cybercab Hunter never claims a verification that doesn't exist.
-    const vinVerified = v.approval_basis === 'vin-verified';
-    show('vCybercabBadge', vinVerified);
-    show('vVinVerifiedBadge', vinVerified);
-    show('vCybercabImage', vinVerified);
+    // The Cybercab badge and the generic image show for any approved Cybercab
+    // (approval_basis set by Approve Cybercab, with or without a VIN —
+    // migrations/0025). The VIN verified badge shows only for 'vin-verified'
+    // (approved with a VIN a moderator confirmed on Robotaxi Tracker), since
+    // Cybercab Hunter never claims a verification that doesn't exist.
+    const approvedCybercab = v.approval_basis === 'vin-verified' || v.approval_basis === 'manual';
+    show('vCybercabBadge', approvedCybercab);
+    show('vVinVerifiedBadge', v.approval_basis === 'vin-verified');
+    show('vCybercabImage', approvedCybercab);
 
     // One plain-text summary line built only from the facts actually on
     // record, joined with " · " — never a fixed template with "Not

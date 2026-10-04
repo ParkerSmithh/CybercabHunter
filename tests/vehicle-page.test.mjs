@@ -255,7 +255,7 @@ async function run() {
     approveVehicle(d1, manualId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}', approval_basis = 'manual' WHERE id = '${manualId}'`);
     const manualPage = await openPage({ cybercabhunter_db: d1 }, manualId);
-    check('a manual vehicle: its VIN shows in the summary, but no VIN verified badge, Cybercab badge or image', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `VIN ${VIN}` && !manualPage.visible('vVinVerifiedBadge') && !manualPage.visible('vCybercabBadge') && !manualPage.visible('vCybercabImage'));
+    check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, but no VIN verified badge', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `VIN ${VIN}` && !manualPage.visible('vVinVerifiedBadge') && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
     check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'images/Cybercab2.png');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);

@@ -175,7 +175,7 @@ export async function apiListPublicSightings(request, env, ctx) {
       city: displayCity(r.service_area),
       location: publicLocation(r.approx_location),   // street/place + city, never a house number
       plate: r.public_plate || null,                   // only a publicly eligible registry vehicle's plate
-      cybercab: !!r.public_cybercab,                   // that vehicle is VIN verified (the registry's Cybercab label)
+      cybercab: !!r.public_cybercab,                   // that vehicle was approved as a Cybercab (the registry's Cybercab label)
       spotted_at: toIso(r.observed_at),
       // The area's local time zone, so the time is shown as it was there
       // (e.g. Austin in US Central); null when the area is unknown.

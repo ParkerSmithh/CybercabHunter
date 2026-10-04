@@ -187,6 +187,7 @@ async function run() {
     const vehiclesJs = fs.readFileSync(`${ROOT}public/js/vehicles.js`, 'utf8');
     const vehicleJs = fs.readFileSync(`${ROOT}public/js/vehicle.js`, 'utf8');
     check('the registry list and vehicle page key the VIN verified badge off approval_basis, not the VIN alone', /approval_basis === 'vin-verified'/.test(vehiclesJs) && /approval_basis === 'vin-verified'/.test(vehicleJs) && !/show\('vCybercabBadge', !!v\.vin\)/.test(vehicleJs));
+    check('a manual Cybercab still gets the normal Cybercab image and pill (only the VIN verified badge is withheld)', /approval_basis === 'manual'/.test(vehiclesJs) && /show\('vVinVerifiedBadge', v\.approval_basis === 'vin-verified'\)/.test(vehicleJs));
   }
 
   console.log('7. Sighting-origin vehicles: a manual approval backs them publicly');

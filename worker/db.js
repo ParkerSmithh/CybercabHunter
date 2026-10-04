@@ -622,7 +622,7 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
            -- vehicle — never the submitter's text, never a private vehicle's plate
            -- (the same gate as the public vehicle page). A primary-key lookup per row.
            pv.license_plate AS public_plate,
-           (pv.approval_basis = 'vin-verified') AS public_cybercab
+           (pv.approval_basis IS NOT NULL) AS public_cybercab
     FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
     LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
