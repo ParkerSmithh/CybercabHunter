@@ -440,7 +440,10 @@ export function extractTeslaReceiptFieldsV2(message) {
       hasFare: fields.fare_amount_cents !== undefined,
       hasDistance: fields.distance !== undefined,
       hasRideId: !!fields.external_ride_id,
-      hasPickupDropoff: !!(fields.pickup_description && fields.dropoff_description),
+      // Both stops are on the receipt: both locations, or (when a stop's
+      // address is missing, e.g. a pasted receipt whose pickup line is only
+      // "Pick up: 8:06 pm") both stop times.
+      hasPickupDropoff: !!((fields.pickup_description && fields.dropoff_description) || (fields.pickup_time && fields.dropoff_time)),
       hasTripDate: !!fields.ride_date,
       fareMismatch
     }

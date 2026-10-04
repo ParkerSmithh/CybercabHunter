@@ -340,6 +340,7 @@ async function run() {
     ];
     const r = await importAs(ctx, 'mod', texts.map(content => ({ kind: 'text', content })));
     check('all three pasted receipts create a ride', r.status === 200 && r.body.results.length === 3 && r.body.results.every(x => x.outcome === 'created'));
+    check('all three are accepted, not sent to review (two are missing one stop\'s address but have both stop times)', r.body.results.every(x => x.review_status === 'accepted'));
     const trips = ctx.d1.query(`SELECT pickup_time, dropoff_time, fare_amount_cents, pickup_description, dropoff_description FROM trips ORDER BY pickup_time`);
     check('pickup and drop-off times are read from the stop lines', trips.map(t => `${t.pickup_time}-${t.dropoff_time}`).join() === '20:06-20:30,21:20-21:33,22:12-22:40');
     check('fares are read', trips.map(t => t.fare_amount_cents).join() === '3019,1879,3816');
