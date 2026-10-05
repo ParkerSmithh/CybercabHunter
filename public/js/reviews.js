@@ -175,19 +175,13 @@
   let added = [];            // new files: [{ file, url }]
   let vehiclesLoaded = false;
 
-  function setRating(n) {
-    rating = n;
-    document.querySelectorAll('#reviewStars [data-star]').forEach(b => {
-      const v = Number(b.dataset.star);
-      b.classList.toggle('is-on', v <= n);
-      b.setAttribute('aria-checked', String(v === n));
-    });
-  }
-  $('reviewStars').addEventListener('click', e => { const b = e.target.closest('[data-star]'); if (b) setRating(Number(b.dataset.star)); });
-  $('reviewStars').addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); setRating(Math.min(5, rating + 1)); }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); setRating(Math.max(1, rating - 1)); }
+  // The rating input (js/peek-rating.js): hover previews, click commits,
+  // clicking the chosen star again or Backspace clears.
+  const ratingInput = PeekRating.create($('reviewStars'), {
+    labels: ['Poor', 'Fair', 'Good', 'Great', 'Superb'],
+    onChange: n => { rating = n; }
   });
+  function setRating(n) { rating = n; ratingInput.setValue(n, { silent: true }); }
   $('reviewBody').addEventListener('input', () => { $('reviewBodyCount').textContent = String($('reviewBody').value.length); });
 
   function formError(msg) { $('reviewFormError').textContent = msg || ''; $('reviewFormError').classList.toggle('hidden', !msg); }

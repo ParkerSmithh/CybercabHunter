@@ -285,7 +285,7 @@ async function run() {
         if (u.startsWith('/api/')) return worker.fetch(new Request(`https://x${u}`, opts), ctx.env, {});
         return new Response('{}', { status: 404 });
       };
-      w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/community.js')}\n${read('public/js/reviews.js')}`);
+      w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/community.js')}\n${read('public/js/peek-rating.js')}\n${read('public/js/reviews.js')}`);
       await new Promise(r => setTimeout(r, 200));
       return { w, d: w.document, text: id => w.document.getElementById(id).textContent.replace(/\s+/g, ' ').trim() };
     }
@@ -318,6 +318,40 @@ async function run() {
     mine.querySelector('[data-comment-form]').dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
     await new Promise(r => setTimeout(r, 120));
     check('commenting from the card: the thread and count update', mine.querySelector('[data-comment-count]').textContent === '1' && /Thanks all/.test(mine.querySelector('[data-comment-list]').textContent));
+    {
+      const group = signed.d.getElementById('reviewStars');
+      const star = n => group.querySelector(`[data-value="${n}"]`);
+      const checked = () => [...group.querySelectorAll('[role="radio"]')].filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.value).join();
+      const on = () => group.querySelectorAll('.is-on').length;
+      mine.querySelector('[data-edit]').click();
+      await new Promise(r => setTimeout(r, 150));
+      check('the rating is a PeekRating radiogroup: 5 labelled radios, the review\'s 5 checked, one tab stop', group.getAttribute('role') === 'radiogroup' && group.querySelectorAll('[role="radio"]').length === 5 && checked() === '5' && star(5).tabIndex === 0 && star(1).tabIndex === -1 && star(4).getAttribute('aria-label') === '4 stars, Great');
+      star(2).dispatchEvent(new signed.w.MouseEvent('pointermove', { bubbles: true, clientX: 40 }));
+      check('hovering previews: 2 stars lit and lifted, the tip says Fair, the value is unchanged', on() === 2 && star(2).classList.contains('is-peek') && group.classList.contains('is-tipping') && group.querySelector('.peek-rating__tip').textContent === 'Fair' && checked() === '5');
+      group.dispatchEvent(new signed.w.MouseEvent('pointerleave'));
+      check('leaving restores the value and hides the tip', on() === 5 && !group.classList.contains('is-tipping') && !group.querySelector('.is-peek'));
+      star(3).click();
+      check('clicking commits and pops', checked() === '3' && star(3).classList.contains('is-pop') && star(3).tabIndex === 0);
+      star(3).click();
+      check('clicking the chosen star again clears it', checked() === '' && on() === 0);
+      const key = k => group.dispatchEvent(new signed.w.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      key('End'); const end = checked();
+      key('ArrowLeft'); const left = checked();
+      key('Home'); const home = checked();
+      key('Backspace'); const cleared = checked();
+      key('ArrowRight'); key('ArrowRight'); key('ArrowRight'); key('ArrowRight');
+      check('keyboard: End 5, ArrowLeft 4, Home 1, Backspace clears, ArrowRight steps up (focus follows)', end === '5' && left === '4' && home === '1' && cleared === '' && checked() === '4' && signed.d.activeElement === star(4));
+      let sent = null;
+      const realFetch = signed.w.fetch;
+      signed.w.fetch = async (url, opts = {}) => {
+        if (opts.method === 'PATCH') { sent = opts.body.get('rating'); return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+        return realFetch(url, opts);
+      };
+      signed.d.getElementById('reviewForm').dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise(r => setTimeout(r, 150));
+      check('the chosen rating is what the form sends (4)', sent === '4');
+      signed.w.fetch = realFetch;
+    }
     signed.d.querySelector('#reviewSort [data-sort="rating"]').click();
     await new Promise(r => setTimeout(r, 150));
     check('sorting by Highest rated re-orders the list', signed.d.querySelector('#reviewList [data-review]').dataset.review === a.id && signed.d.querySelector('#reviewSort [data-sort="rating"]').getAttribute('aria-pressed') === 'true');
