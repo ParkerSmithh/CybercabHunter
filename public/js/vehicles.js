@@ -85,7 +85,10 @@
     if (approvedCybercab(v)) a.appendChild(cybercabImage());
     // The plate, styled like one (the same treatment as the Sightings cards).
     a.appendChild(el('h2', v.license_plate
-      ? 'inline-block font-display font-bold text-lg tracking-[0.18em] px-3 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
+      // leading-none + tight padding hug the characters; the right padding is
+      // reduced by the letter-spacing so the trailing space after the last
+      // character doesn't make the right side wider than the left.
+      ? 'inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
       : 'font-display font-bold text-lg text-slate-400', v.license_plate || 'Plate not recorded'));
     // An approved Cybercab gets the same compact gold/yellow badge used on
     // the vehicle detail page (vCybercabBadge). Any other vehicle keeps the
