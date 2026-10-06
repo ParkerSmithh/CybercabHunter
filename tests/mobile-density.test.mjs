@@ -66,4 +66,6 @@ const rd = read('rider-data.html');
 check('Rider Data: the rides table scroll box contains its sr-only label (it used to widen the page to 546px on phones)', /<div id="ridesTableWrap" class="hidden overflow-x-auto relative">/.test(rd));
 check('Rider Data: overview 3 across and ride history 4 across on phones', /grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3/.test(rd) && /grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm max-sm:grid-cols-4/.test(rd));
 
+check('Sightings: two photo cards per row on phones (1 / 2 / 3 / 4 from 480px up as before)', /<div id="sightingsGrid" class="grid grid-cols-1 min-\[480px\]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 max-sm:grid-cols-2/.test(sightings));
+
 t.finish();

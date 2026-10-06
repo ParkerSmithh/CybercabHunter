@@ -73,7 +73,7 @@
   // over it, then the plate, the place and the exact time. Fields that weren't
   // provided are simply left out.
   function card(s) {
-    const article = el('article', 'group glass rounded-2xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] transition-[border-color] duration-200 ease-out');
+    const article = el('article', 'group glass rounded-2xl max-sm:rounded-xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] transition-[border-color] duration-200 ease-out');
     article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
@@ -103,33 +103,34 @@
     }
     article.appendChild(frame);
 
-    const body = el('div', 'p-3.5 flex flex-col gap-2');
+    // Phones (max-sm:) show two cards per row, so a smaller body.
+    const body = el('div', 'p-3.5 flex flex-col gap-2 max-sm:p-2.5 max-sm:gap-1.5');
     // Facts sit below the photo, never on it: the city (only when it isn't
     // the city already picked in the filter above), the Cybercab badge, and
     // how long ago it was spotted.
     const since = ago(s.spotted_at);
-    const meta = el('div', 'flex items-center gap-2 flex-wrap');
+    const meta = el('div', 'flex items-center gap-2 flex-wrap max-sm:gap-1.5');
     const filtered = (CITY_NAMES[city] || '').toLowerCase();
-    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide', s.city));
-    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
+    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide max-sm:text-[9px] max-sm:px-1.5', s.city));
+    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide max-sm:text-[9px] max-sm:px-1.5', 'Cybercab'));
     if (since) {
-      const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400');
+      const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400 max-sm:text-[11px] max-sm:gap-0.5');
       badge.innerHTML = CLOCK;
       badge.appendChild(document.createTextNode(since));
       meta.appendChild(badge);
     }
     if (meta.childNodes.length) body.appendChild(meta);
     // The plate, styled like one.
-    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)]', s.plate));
+    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 max-sm:text-xs max-sm:px-2 max-sm:py-0.5 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)]', s.plate));
     if (s.location) {
-      const where = el('p', 'flex items-start gap-1.5 text-xs text-slate-300 leading-snug [overflow-wrap:anywhere]');
+      const where = el('p', 'flex items-start gap-1.5 text-xs text-slate-300 leading-snug [overflow-wrap:anywhere] max-sm:gap-1 max-sm:text-[11px]');
       where.innerHTML = PIN;
       where.appendChild(document.createTextNode(s.location));
       body.appendChild(where);
     }
     const when = fmtSpotted(s.spotted_at, s.time_zone);
     if (when) {
-      const time = el('time', 'text-xs text-slate-500', when);
+      const time = el('time', 'text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight', when);
       time.dateTime = s.spotted_at;
       body.appendChild(time);
     }
