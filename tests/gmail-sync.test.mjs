@@ -16,13 +16,20 @@ import { seedUser } from './helpers/d1-sqlite.mjs';
 import { receiptBody, eml, inboundMessage } from './helpers/receipts.mjs';
 import { tokenCrypto } from '../worker/crypto.js';
 import { db } from '../worker/db.js';
-import { syncUser, runScheduledSync, GMAIL_SCOPE, RECEIPT_QUERY, GMAIL_CONNECT_ALLOWLIST } from '../worker/gmail.js';
+import { syncUser as syncUserRaw, runScheduledSync as runScheduledSyncRaw, GMAIL_SCOPE, RECEIPT_QUERY, GMAIL_CONNECT_ALLOWLIST, GMAIL_SYNC_ENABLED } from '../worker/gmail.js';
 import worker from '../worker/index.js';
+import { expireSightingPhotos } from '../worker/sightings-public.js';
 
 // TEMPORARY gate (worker/gmail.js GMAIL_CONNECT_ALLOWLIST, until Google verifies
 // gmail.readonly): this file tests the connect flow itself, so its test riders are
 // allowlisted here. The gate is tested in tests/gmail-connect-allowlist.test.mjs.
 GMAIL_CONNECT_ALLOWLIST.push('alice@gmail.com', 'bob@gmail.com');
+
+// The Gmail sync ships switched OFF (worker/gmail.js GMAIL_SYNC_ENABLED, owner
+// decision 2026-10-05). This file tests the sync itself, so its direct calls
+// run with the switch on; section 28 checks the shipped (off) default.
+const syncUser = (env, userId, opts = {}) => syncUserRaw(env, userId, { syncEnabled: true, ...opts });
+const runScheduledSync = (env, opts = {}) => runScheduledSyncRaw(env, { syncEnabled: true, ...opts });
 
 const t = makeCheck();
 const { check } = t;
@@ -179,7 +186,12 @@ async function connect(ctx, user, { authAs, scope, waitUntil } = {}) {
   ctx.g.issueCode(code, authAs || `sub-${user}`, scope);
   const pending = [];
   const resp = await call(ctx, 'GET', `/api/gmail/callback?code=${code}&state=${state}`, null, { execCtx: { waitUntil: p => pending.push(p) } });
-  if (waitUntil !== false) await Promise.all(pending);
+  if (waitUntil !== false) {
+    const outs = await Promise.all(pending);   // the callback's own first step
+    // Skipped by the GMAIL_SYNC_ENABLED switch (off as shipped)? Then run that same
+    // list-only first step with the switch on, as the callback would have.
+    if (outs.some(o => o && o.skipped === 'sync_disabled')) await syncUser(ctx.env, user, { maxMessages: 0 });
+  }
   return { location: resp.headers.get('Location'), status: resp.status, pending };
 }
 const result = loc => new URL(loc).searchParams.get('gmail');
@@ -229,7 +241,9 @@ async function cron(ctx, { age = true } = {}) {
   if (age) ageChecks(ctx);
   const { out, cost } = await measured(ctx, async () => {
     const pending = [];
-    await worker.scheduled({ cron: '*/10 * * * *' }, ctx.env, { waitUntil: p => pending.push(p) });
+    // Exactly the jobs worker.scheduled starts in one invocation, with the Gmail
+    // sync switched on (the shipped worker.scheduled has it off: section 28).
+    pending.push(runScheduledSync(ctx.env), expireSightingPhotos(ctx.env));
     return (await Promise.all(pending))[0];
   });
   return { ...out, cost };
@@ -534,7 +548,7 @@ async function run() {
     await connect(c5, 'bob');
     c5.d1.exec(`UPDATE gmail_connections SET last_checked_at = datetime('now','-1 hour'), sync_lock_until = NULL`);
     const pending = [];
-    await worker.scheduled({ cron: '*/10 * * * *' }, c5.env, { waitUntil: p => pending.push(p) });
+    pending.push(runScheduledSync(c5.env));   // the cron's Gmail job, switch on (section 28 covers the shipped switch)
     const runs = await Promise.all(pending);
     check('one scheduled run syncs ONE due connection (Free-plan budget)', runs[0].due === 1 && runs[0].synced === 1);
     const second = await runScheduledSync(c5.env);
@@ -1049,6 +1063,36 @@ async function run() {
     ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = '2000-01-01 00:00:00' WHERE user_id = 'nina'`);
     const picked = await runScheduledSync(ctx.env, { gate: false });
     check('gate disabled: the scheduler selects her again (oldest first)', picked.due === 1 && checked('nina') !== '2000-01-01 00:00:00');
+  }
+
+  console.log('28. Kill switch: as shipped, the Gmail sync reads nothing, for any account');
+  {
+    const ctx = await makeApp();
+    ctx.g.addMessage({ body: receiptBody({ date: 'September 20, 2026' }), subject: 'Robotaxi Ride Receipt on September 20, 2026', ageDays: 6 });
+    await connect(ctx, 'alice');                       // allowlisted, active, with a stored token
+    check('the shipped switch is off', GMAIL_SYNC_ENABLED === false);
+    ctx.d1.exec(`UPDATE gmail_connections SET last_checked_at = datetime('now','-1 hour'), sync_lock_until = NULL`);   // due now
+    const before = { ...ctx.g.calls };
+    const rowBefore = conn(ctx, 'alice');
+    const pending = [];
+    await worker.scheduled({ cron: '*/10 * * * *' }, ctx.env, { waitUntil: p => pending.push(p) });
+    const [gmailJob] = await Promise.all(pending);
+    check('the real 10-minute cron skips the Gmail sync (sync_disabled)', gmailJob && gmailJob.skipped === 'sync_disabled');
+    check('...and the sighting-photo job still runs alongside it', pending.length === 2);
+    check('direct calls with the defaults are refused too', (await runScheduledSyncRaw(ctx.env)).skipped === 'sync_disabled' && (await syncUserRaw(ctx.env, 'alice')).skipped === 'sync_disabled');
+    check('...even with the allowlist gate lifted', (await runScheduledSyncRaw(ctx.env, { gate: false })).skipped === 'sync_disabled' && (await syncUserRaw(ctx.env, 'alice', { gate: false })).skipped === 'sync_disabled');
+    check('not a single Google call was made', JSON.stringify(ctx.g.calls) === JSON.stringify(before));
+    const rowAfter = conn(ctx, 'alice');
+    check('the connection is not touched (not checked, not locked, cursor unchanged)', rowAfter.last_checked_at === rowBefore.last_checked_at && !rowAfter.sync_lock_until && rowAfter.sync_cursor === rowBefore.sync_cursor);
+    check('no ride was imported', ctx.d1.query("SELECT COUNT(*) AS n FROM trips WHERE user_id = 'alice'")[0].n === 0);
+    const fresh = await makeApp();
+    const r = await json(await call(fresh, 'POST', '/api/gmail/connect', 'alice'));
+    const state = new URL(r.authorize_url).searchParams.get('state');
+    fresh.g.issueCode('code-x', 'sub-alice');
+    const waits = [];
+    await call(fresh, 'GET', `/api/gmail/callback?code=code-x&state=${state}`, null, { execCtx: { waitUntil: p => waits.push(p) } });
+    const outs = await Promise.all(waits);
+    check('right after connecting, the first step is skipped and Gmail is not listed', outs.length === 1 && outs[0].skipped === 'sync_disabled' && !fresh.g.calls.list);
   }
 
   t.finish();

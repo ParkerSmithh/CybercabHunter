@@ -102,6 +102,14 @@ export function gmailConnectAllowed(identity, enabled = GMAIL_CONNECT_GATE_ENABL
 }
 // ---- end TEMPORARY ----
 
+// Kill switch for READING Gmail (owner decision 2026-10-05): rides come from
+// forwarded receipts (worker/receipt-ingestion.js), so the Gmail sync is
+// dormant. While false, neither the 10-minute scheduled sync
+// (runScheduledSync) nor syncUser reads any mailbox, for any account
+// (allowlisted or not). Separate from the connect gate above, which is left as
+// it is. Flip to true to bring the sync back.
+export const GMAIL_SYNC_ENABLED = false;
+
 // Real Tesla Robotaxi receipts are titled "Robotaxi Ride Receipt on <date>".
 // The subject, not the sender, is searched: relays such as DuckDuckGo Email
 // Protection rewrite the sender but not the subject. The receipt classifier
@@ -591,7 +599,8 @@ async function processOneMessage(env, userId, accessToken, messageId, syncRunId,
 // returns { skipped: 'locked' }. `maxMessages` (default 1) caps downloads in
 // this step; 0 only lists (used right after connecting). `budget` is the
 // invocation's Google-call budget, shared with the caller.
-export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCATION, budget = newBudget(), gate = GMAIL_CONNECT_GATE_ENABLED } = {}) {
+export async function syncUser(env, userId, { maxMessages = MESSAGES_PER_INVOCATION, budget = newBudget(), gate = GMAIL_CONNECT_GATE_ENABLED, syncEnabled = GMAIL_SYNC_ENABLED } = {}) {
+  if (!syncEnabled) return { skipped: 'sync_disabled' };   // GMAIL_SYNC_ENABLED kill switch
   const sql = env.cybercabhunter_db;
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
   // TEMPORARY — remove after Google OAuth verification completes: no Gmail read for an
@@ -752,7 +761,8 @@ function tally(counts) {
 // like everyone else. With N connected riders each gets a step at least
 // every N runs (N × 10 minutes); no rider — not even one with a long
 // backfill — can hold the front. Riders mid-step (locked) are skipped.
-export async function runScheduledSync(env, { gate = GMAIL_CONNECT_GATE_ENABLED } = {}) {
+export async function runScheduledSync(env, { gate = GMAIL_CONNECT_GATE_ENABLED, syncEnabled = GMAIL_SYNC_ENABLED } = {}) {
+  if (!syncEnabled) return { skipped: 'sync_disabled' };   // GMAIL_SYNC_ENABLED kill switch: nothing is read or pruned
   if (!isGmailConfigured(env)) return { skipped: 'not_configured' };
   const sql = env.cybercabhunter_db;
   const budget = newBudget();
@@ -762,7 +772,7 @@ export async function runScheduledSync(env, { gate = GMAIL_CONNECT_GATE_ENABLED 
   const due = await db.listGmailConnectionsDue(sql, { olderThanMinutes: DUE_AFTER_MINUTES, limit: RIDERS_PER_INVOCATION, onlyEmails: gate ? GMAIL_CONNECT_ALLOWLIST : null });
   let synced = 0;
   for (const userId of due) {
-    try { await syncUser(env, userId, { budget, gate }); } catch (err) { /* one rider never stops the rest */ }
+    try { await syncUser(env, userId, { budget, gate, syncEnabled }); } catch (err) { /* one rider never stops the rest */ }
     synced++;
   }
   return { due: due.length, synced };
