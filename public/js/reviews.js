@@ -106,23 +106,23 @@
     const photos = (r.photos || []).map((p, i) => `<button type="button" data-photo="${esc(p.url)}" class="block aspect-square rounded-lg overflow-hidden bg-panel border border-white/[0.06]" aria-label="Enlarge photo ${i + 1}"><img src="${esc(p.url)}" alt="" loading="lazy" class="w-full h-full object-cover"></button>`).join('');
     const edited = r.updated_at && r.updated_at !== r.created_at ? ' · edited' : '';
     return `
-      <article class="py-5 first:pt-1 border-t border-white/[0.07] first:border-t-0" data-review="${esc(r.id)}">
-        <header class="flex items-start gap-3">
-          ${avatarHtml(r.author)}
+      <article class="py-5 first:pt-1 border-t border-white/[0.07] first:border-t-0 max-sm:py-3.5" data-review="${esc(r.id)}">
+        <header class="flex items-start gap-3 max-sm:gap-2.5">
+          ${avatarHtml(r.author, 'w-10 h-10 max-sm:w-8 max-sm:h-8')}
           <div class="min-w-0 flex-1">
             <div class="flex items-baseline gap-2 flex-wrap">${nameHtml(r.author)}<span class="text-xs text-slate-500">${esc(relative(r.created_at))}${edited}</span></div>
             <div class="mt-1"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.2)] bg-[rgba(212,175,55,0.06)] text-xs text-slate-400"><svg class="w-3 h-3 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>Cybercab ${vehicle}</span></div>
           </div>
-          <span class="shrink-0 text-gold text-base tracking-wider" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
+          <span class="shrink-0 text-gold text-base tracking-wider max-sm:text-xs max-sm:tracking-normal" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
         </header>
-        <p class="mt-3 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words" data-body></p>
+        <p class="mt-3 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words max-sm:mt-2 max-sm:text-[13px] max-sm:leading-snug" data-body></p>
         ${photos ? `<div class="mt-3 grid grid-cols-3 gap-2 max-w-sm">${photos}</div>` : ''}
-        <footer class="mt-3 flex items-center gap-2 flex-wrap">
-          <button type="button" data-like aria-pressed="${r.liked}" class="review-like inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${HEART}<span data-like-count>${r.like_count}</span><span class="sr-only"> likes</span></button>
-          <button type="button" data-comments aria-expanded="false" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${BUBBLE}<span data-comment-count>${r.comment_count}</span><span class="sr-only"> comments</span></button>
+        <footer class="mt-3 flex items-center gap-2 flex-wrap max-sm:mt-1.5">
+          <button type="button" data-like aria-pressed="${r.liked}" class="review-like inline-flex items-center gap-1.5 px-3 py-1.5 max-sm:min-h-[40px] rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${HEART}<span data-like-count>${r.like_count}</span><span class="sr-only"> likes</span></button>
+          <button type="button" data-comments aria-expanded="false" class="inline-flex items-center gap-1.5 px-3 py-1.5 max-sm:min-h-[40px] rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${BUBBLE}<span data-comment-count>${r.comment_count}</span><span class="sr-only"> comments</span></button>
           <span class="flex-1"></span>
-          ${r.mine ? '<button type="button" data-edit class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">Edit</button>' : ''}
-          ${r.can_delete ? '<button type="button" data-delete class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">Delete</button>' : ''}
+          ${r.mine ? '<button type="button" data-edit class="px-3 py-1.5 max-sm:min-h-[40px] rounded-lg text-xs font-semibold text-slate-400 hover:text-white">Edit</button>' : ''}
+          ${r.can_delete ? '<button type="button" data-delete class="px-3 py-1.5 max-sm:min-h-[40px] rounded-lg text-xs font-semibold text-slate-400 hover:text-white">Delete</button>' : ''}
         </footer>
         <div data-thread class="hidden mt-3 pt-3 border-t border-white/[0.06]">
           <ul data-comment-list class="space-y-3"></ul>

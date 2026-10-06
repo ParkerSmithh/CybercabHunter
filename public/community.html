@@ -78,7 +78,7 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<section class="py-16 max-sm:py-10">
+<section class="py-16 max-sm:pt-6 max-sm:pb-8">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 max-sm:gap-4">
       <div class="min-w-0">
@@ -90,7 +90,7 @@
       <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
            from the first character, only riders with a public profile. -->
       <div id="riderSearch" class="relative w-full lg:w-80 shrink-0">
-        <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Find riders</label>
+        <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5 max-sm:sr-only">Find riders</label>
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
           <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
@@ -105,7 +105,7 @@
          js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
          GET /api/registry/stats, js/community.js). Each starts as an em dash
          and stays one if it can't be loaded — never a made-up 0. -->
-    <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-sm:mt-5 max-sm:grid-cols-4 max-sm:gap-1.5">
+    <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-sm:mt-3 max-sm:grid-cols-4 max-sm:gap-1.5">
       <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statReviews">—</span></div>
@@ -130,10 +130,10 @@
 
     <!-- Reviews and the leaderboard side by side on lg+ (reviews the wider
          column); stacked on smaller screens. -->
-    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start max-sm:mt-4 max-sm:gap-4">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start max-sm:mt-3 max-sm:gap-3">
     <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
          and breakdown are computed live by the server over the reviews shown. -->
-    <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 min-w-0">
+    <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 min-w-0 max-sm:p-3.5">
       <div class="flex items-start justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-2">
         <div class="flex items-start gap-3 min-w-0 max-sm:gap-2.5">
           <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
@@ -147,13 +147,13 @@
         <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold max-sm:shrink-0 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs max-sm:whitespace-nowrap bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">Write a review</button>
       </div>
       <!-- Summary: the average, and how the ratings break down (5★ → 1★). Shown once there is a review to summarise; until then the empty state says it once. -->
-      <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07] max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-4 max-sm:mt-4 max-sm:py-4">
+      <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07] max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-4 max-sm:mt-3 max-sm:py-3">
         <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08] max-sm:text-left max-sm:pr-4 max-sm:border-r max-sm:border-white/[0.08]">
           <div id="reviewAverage" class="stat-value font-semibold text-5xl text-gold leading-none max-sm:text-4xl">—</div>
-          <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem]" aria-hidden="true"></div>
+          <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem] max-sm:text-sm max-sm:mt-1 max-sm:min-h-0" aria-hidden="true"></div>
           <div id="reviewCount" class="text-xs text-slate-500 mt-1">No reviews yet</div>
         </div>
-        <ul id="reviewBreakdown" class="space-y-1.5" aria-label="Ratings breakdown">
+        <ul id="reviewBreakdown" class="space-y-1.5 max-sm:space-y-1" aria-label="Ratings breakdown">
           <li class="flex items-center gap-3 text-xs" data-stars="5"><span class="w-8 shrink-0 text-slate-400 tabular-nums">5 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
           <li class="flex items-center gap-3 text-xs" data-stars="4"><span class="w-8 shrink-0 text-slate-400 tabular-nums">4 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
           <li class="flex items-center gap-3 text-xs" data-stars="3"><span class="w-8 shrink-0 text-slate-400 tabular-nums">3 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
@@ -196,7 +196,7 @@
         </div>
       </form>
 
-      <div id="reviewSort" role="group" aria-label="Sort reviews" class="hidden mt-5 inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+      <div id="reviewSort" role="group" aria-label="Sort reviews" class="hidden mt-5 max-sm:mt-3 inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
         <button type="button" data-sort="recent" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most recent</button>
         <button type="button" data-sort="rating" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Highest rated</button>
         <button type="button" data-sort="likes" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most liked</button>
@@ -207,8 +207,8 @@
         <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
         <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
       </div>
-      <div id="reviewList" class="hidden mt-4"></div>
-      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(212,175,55,0.25)] bg-white/[0.02] p-8 text-center">
+      <div id="reviewList" class="hidden mt-4 max-sm:mt-2"></div>
+      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(212,175,55,0.25)] bg-white/[0.02] p-8 text-center max-sm:mt-3 max-sm:p-5">
         <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
         <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
         <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
@@ -225,9 +225,9 @@
          buttons appear only once there is more than one board. -->
     <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mb-4 flex flex-wrap gap-2"></div>
 
-    <div class="glass rounded-2xl p-4 sm:p-6">
-      <div class="flex items-start gap-3">
-        <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
+    <div class="glass rounded-2xl p-4 sm:p-6 max-sm:p-3.5">
+      <div class="flex items-start gap-3 max-sm:gap-2.5">
+        <span class="w-10 h-10 max-sm:w-8 max-sm:h-8 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21l8 0"/> <path d="M12 17l0 4"/> <path d="M7 4l10 0"/> <path d="M17 4v8a5 5 0 0 1 -10 0v-8"/> <path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
         </span>
         <div class="min-w-0 flex-1">
@@ -235,7 +235,7 @@
             <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight max-sm:text-base">MOST VEHICLES DISCOVERED</h2>
             <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 6</span>
           </div>
-          <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
+          <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed max-sm:text-[11px] max-sm:leading-snug">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
         </div>
       </div>
 
@@ -245,7 +245,7 @@
         <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
         <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
       </div>
-      <ol id="boardList" class="hidden mt-4 space-y-2"></ol>
+      <ol id="boardList" class="hidden mt-4 space-y-2 max-sm:mt-3 max-sm:space-y-1.5"></ol>
       <div id="boardEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
         <div class="font-display font-bold text-gold tracking-wide">No discoveries yet</div>
         <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Be the first: ride in a Cybercab and add your receipt, or submit a sighting of one that isn't in the registry yet.</p>
@@ -255,10 +255,10 @@
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
       <!-- Totals over every credited spotter, not just the top 6 (js/community.js). -->
-      <p id="boardTotals" class="hidden mt-4 pt-3 border-t border-white/[0.06] text-xs text-slate-500"></p>
+      <p id="boardTotals" class="hidden mt-4 pt-3 border-t border-white/[0.06] text-xs text-slate-500 max-sm:mt-3 max-sm:text-[11px]"></p>
     </div>
 
-    <p class="text-xs text-slate-500 mt-4 leading-relaxed">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to appear as “Private spotter”.</p>
+    <p class="text-xs text-slate-500 mt-4 leading-relaxed max-sm:mt-3 max-sm:text-[11px] max-sm:leading-snug">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to appear as “Private spotter”.</p>
     </div>
     </div>
   </div>
@@ -412,9 +412,9 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=7"></script>
+<script src="js/community.js?v=8"></script>
 <script src="js/peek-rating.js?v=1"></script>
-<script src="js/reviews.js?v=5"></script>
+<script src="js/reviews.js?v=6"></script>
 <script src="js/rider-search.js?v=2"></script>
 </body>
 </html>

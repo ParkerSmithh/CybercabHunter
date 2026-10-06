@@ -24,16 +24,16 @@
     const sub = e.handle ? `@${esc(e.handle)}` : (e.name === 'Private spotter' ? 'Profile private' : 'No public profile yet');
     const inner = `
       ${rankBadge}
-      <span class="w-10 h-10 shrink-0 rounded-xl overflow-hidden">${avatarHtml(e)}</span>
+      <span class="w-10 h-10 max-sm:w-9 max-sm:h-9 shrink-0 rounded-xl overflow-hidden">${avatarHtml(e)}</span>
       <span class="min-w-0 flex-1 text-left">
         <span class="block font-semibold text-sm text-slate-100 truncate">${esc(e.name)}</span>
         <span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}</span>
       </span>
       <span class="shrink-0 text-right">
-        <span class="block stat-value font-semibold text-xl ${first ? 'text-gold' : 'text-white'} leading-none">${esc(e.count)}</span>
+        <span class="block stat-value font-semibold text-xl max-sm:text-lg ${first ? 'text-gold' : 'text-white'} leading-none">${esc(e.count)}</span>
         <span class="block text-[11px] uppercase tracking-wide text-slate-500 mt-1">${e.count === 1 ? 'vehicle' : 'vehicles'}</span>
       </span>`;
-    const box = `w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${first
+    const box = `w-full flex items-center gap-3 p-3 max-sm:gap-2.5 max-sm:px-2.5 max-sm:py-2 rounded-xl border transition-colors ${first
       ? 'border-[rgba(212,175,55,0.45)] bg-gradient-to-r from-[rgba(212,175,55,0.12)] to-transparent'
       : 'border-transparent hover:bg-white/[0.03]'}`;
     if (e.profile && e.handle) {
