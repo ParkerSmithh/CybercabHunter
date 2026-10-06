@@ -29,6 +29,19 @@
   .lg-faq summary::-webkit-details-marker{display:none;}
   .lg-faq-chev{transition:transform var(--t) var(--ease);}
   .lg-faq[open] .lg-faq-chev{transform:rotate(180deg);}
+  /* Step 1: the multiple-choice options. .is-selected is set by js/link-gmail.js. */
+  .lg-choice{display:flex; align-items:center; gap:16px; padding:18px 20px; border-radius:12px; cursor:pointer; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.08)); background:rgb(var(--glass) / var(--glass-a)); transition:border-color var(--t) var(--ease), background-color var(--t) var(--ease), transform var(--t-fast) var(--ease);}
+  .lg-choice:hover{border-color:rgb(var(--gold) / 0.45);}
+  .lg-choice:active{transform:scale(0.995);}
+  .lg-choice.is-selected{border-color:rgb(var(--gold)); background:rgb(var(--gold) / 0.07);}
+  .lg-choice:has(input:focus-visible){outline:2px solid rgb(var(--focus)); outline-offset:2px;}
+  .lg-choice-key{position:relative; flex-shrink:0; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:590; color:rgb(var(--n-300)); border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.14)); transition:background-color var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);}
+  .lg-choice.is-selected .lg-choice-key{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
+  .lg-choice-check{display:none;}
+  .lg-choice.is-selected .lg-choice-letter{display:none;}
+  .lg-choice.is-selected .lg-choice-check{display:flex;}
+  .lg-choice-icon{flex-shrink:0; color:rgb(var(--gold-ink)); opacity:0.75;}
+  @media (max-width: 420px){ .lg-choice{padding:16px; gap:12px;} .lg-choice-icon{display:none;} }
   .lg-refresh.is-busy svg{animation:lg-spin 0.8s linear infinite;}
   @keyframes lg-spin{to{transform:rotate(360deg);}}
   @media (prefers-reduced-motion: reduce){ .lg-refresh.is-busy svg{animation:none;} .lg-faq-chev{transition:none;} }
@@ -106,22 +119,18 @@
 
     <div class="mb-8 lg:mb-10">
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">LINK GMAIL</h1>
-      <p class="mt-3 max-w-2xl text-[15px] text-slate-400 leading-relaxed">Your rides come from your Tesla receipt emails. Send them to your private address below and each ride shows up in Rider Data.</p>
+      <p class="mt-3 max-w-2xl text-[15px] text-slate-400 leading-relaxed">Your rides come from your Tesla receipt emails. Forward them to your private Cybercab Hunter address and each ride shows up in Rider Data.</p>
     </div>
 
-    <!-- Loading: skeleton in the shape of the ready layout -->
+    <!-- Loading: skeleton in the shape of step 1 (the method question) -->
     <div id="lgLoading" class="hidden" aria-busy="true" aria-live="polite">
       <span class="sr-only">Loading your forwarding address…</span>
-      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8">
-        <div class="space-y-6">
-          <div class="glass rounded-2xl p-6 lg:p-8 animate-pulse">
-            <div class="h-3 w-40 rounded bg-white/10 mb-5"></div>
-            <div class="h-12 w-full rounded-lg bg-white/[0.06] mb-4"></div>
-            <div class="h-3 w-3/4 rounded bg-white/5"></div>
-          </div>
-          <div class="glass rounded-2xl p-6 lg:p-8 h-72 animate-pulse"></div>
-        </div>
-        <div class="glass rounded-2xl p-6 h-64 animate-pulse"></div>
+      <div class="max-w-2xl animate-pulse">
+        <div class="h-7 w-80 max-w-full rounded bg-white/10 mb-3"></div>
+        <div class="h-3 w-56 rounded bg-white/5 mb-6"></div>
+        <div class="h-[84px] rounded-xl border border-white/[0.06] bg-white/[0.02] mb-3"></div>
+        <div class="h-[84px] rounded-xl border border-white/[0.06] bg-white/[0.02] mb-6"></div>
+        <div class="h-11 w-36 rounded-lg bg-white/10"></div>
       </div>
     </div>
 
@@ -139,255 +148,305 @@
       <a href="signin.html?returnTo=%2Flink-gmail" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
     </div>
 
-    <!-- Ready -->
-    <div id="lgReady" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8 items-start">
+    <!-- Ready: step 1 (choose a method) or step 2 (set it up) -->
+    <div id="lgReady" class="hidden">
 
-      <!-- 1. Your forwarding address -->
-      <section aria-labelledby="lgAddressHeading" class="glass rounded-2xl p-6 lg:p-8 min-w-0 lg:col-start-1 lg:row-start-1">
-        <h2 id="lgAddressHeading" class="font-display font-bold text-lg">Your forwarding address</h2>
+      <!-- Step 1: how will receipts be sent? A multiple-choice question;
+           Continue opens that method's setup (?method=auto or ?method=manual). -->
+      <form id="lgChoose" class="hidden max-w-2xl" novalidate>
+        <fieldset>
+          <legend class="font-display font-bold text-2xl lg:text-[28px] tracking-tight text-white">How do you want to send your receipts?</legend>
+          <p class="mt-2 text-sm text-slate-400">Choose one. You can switch at any time.</p>
+          <div class="mt-6 space-y-3">
+            <label class="lg-choice" data-choice="auto">
+              <input type="radio" name="lgMethod" value="auto" class="sr-only" aria-describedby="lgChoiceDesc-auto">
+              <span class="lg-choice-key" aria-hidden="true"><span class="lg-choice-letter">A</span><span class="lg-choice-check"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span></span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-display font-bold text-[17px] text-white">Forward automatically</span>
+                <span id="lgChoiceDesc-auto" class="block mt-1 text-sm text-slate-400 leading-relaxed">Set it up once in Gmail and every new receipt forwards itself. <span class="text-slate-500">One-time setup on a computer.</span></span>
+              </span>
+              <span class="lg-choice-icon" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg></span>
+            </label>
+            <label class="lg-choice" data-choice="manual">
+              <input type="radio" name="lgMethod" value="manual" class="sr-only" aria-describedby="lgChoiceDesc-manual">
+              <span class="lg-choice-key" aria-hidden="true"><span class="lg-choice-letter">B</span><span class="lg-choice-check"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span></span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-display font-bold text-[17px] text-white">Forward each receipt</span>
+                <span id="lgChoiceDesc-manual" class="block mt-1 text-sm text-slate-400 leading-relaxed">After each ride, forward the Tesla receipt email yourself. <span class="text-slate-500">No setup. Works in the Gmail app.</span></span>
+              </span>
+              <span class="lg-choice-icon" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></svg></span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button id="lgContinue" type="submit" disabled class="btn-magnetic inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-40 disabled:cursor-not-allowed">
+            Continue
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+          </button>
+          <p id="lgChooseHint" class="text-xs text-slate-500">Select an option to continue.</p>
+        </div>
+      </form>
 
-        <div id="lgAddressReady" class="hidden">
-          <div class="mt-4 flex flex-col sm:flex-row sm:items-stretch gap-3">
-            <code id="lgAddress" class="flex-1 min-w-0 select-all [overflow-wrap:anywhere] font-mono text-[15px] sm:text-[14px] lg:text-[15px] text-white rounded-lg border border-[rgba(212,175,55,0.3)] bg-panel px-4 py-3.5 leading-snug"></code>
-            <button type="button" data-copy="address" class="btn-magnetic shrink-0 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
-              <span data-copy-label>Copy address</span>
+      <!-- Step 2: setup for the chosen method -->
+      <div id="lgSetup" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8 items-start">
+
+        <div class="min-w-0 lg:col-start-1 lg:row-start-1">
+          <button id="lgChangeMethod" type="button" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+            Change method
+          </button>
+          <h2 id="lgSetupTitle" tabindex="-1" class="mt-3 font-display font-bold text-2xl lg:text-[28px] tracking-tight text-white outline-none"></h2>
+          <p id="lgSetupLede" class="mt-2 text-sm text-slate-400 leading-relaxed max-w-[62ch]"></p>
+        </div>
+
+        <section aria-labelledby="lgAddressHeading" class="glass rounded-2xl p-6 lg:p-8 min-w-0 lg:col-start-1 lg:row-start-2">
+          <h2 id="lgAddressHeading" class="font-display font-bold text-lg">Your forwarding address</h2>
+
+          <div id="lgAddressReady" class="hidden">
+            <div class="mt-4 flex flex-col sm:flex-row sm:items-stretch gap-3">
+              <code id="lgAddress" class="flex-1 min-w-0 select-all [overflow-wrap:anywhere] font-mono text-[15px] sm:text-[14px] lg:text-[15px] text-white rounded-lg border border-[rgba(212,175,55,0.3)] bg-panel px-4 py-3.5 leading-snug"></code>
+              <button type="button" data-copy="address" class="btn-magnetic shrink-0 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                <span data-copy-label>Copy address</span>
+              </button>
+            </div>
+
+            <p class="mt-4 flex gap-3 text-sm text-slate-300 leading-relaxed">
+              <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>
+              <span><strong class="font-semibold text-white">Treat this address like a password.</strong> Anyone who has it can send receipts into your account, so don't post it or share it.</span>
+            </p>
+
+            <div class="mt-5 pt-5 border-t border-white/[0.06]">
+              <button id="lgRotateOpen" type="button" aria-expanded="false" aria-controls="lgRotateConfirm" class="text-sm text-slate-400 hover:text-white underline underline-offset-4 decoration-white/20 hover:decoration-white/60 transition-colors">Get a new address</button>
+              <div id="lgRotateConfirm" class="hidden rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4" role="group" aria-labelledby="lgRotateTitle">
+                <p id="lgRotateTitle" class="text-sm font-semibold text-white">Get a new address?</p>
+                <p class="mt-1 text-sm text-slate-400 leading-relaxed">Your current address stops working immediately. If you set up automatic forwarding, you'll need to add the new address in Gmail and change your filter to use it.</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <button id="lgRotateConfirmBtn" type="button" class="px-4 py-2.5 rounded-lg text-sm font-bold border border-amber-400/50 text-amber-200 hover:bg-amber-400/10 transition-colors disabled:opacity-50">Yes, get a new address</button>
+                  <button id="lgRotateCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.2)] text-slate-300 hover:text-white transition-colors">Keep this one</button>
+                </div>
+              </div>
+            </div>
+            <p id="lgRotateNotice" class="hidden" role="status"></p>
+          </div>
+
+          <!-- RECEIPT_DOMAIN not configured: no working address to show yet -->
+          <div id="lgAddressPending" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+            <p class="text-sm font-semibold text-white">Coming soon</p>
+            <p class="mt-1 text-sm text-slate-400 leading-relaxed">We're finishing the email setup on our side. Your private forwarding address will appear here as soon as it's ready.</p>
+          </div>
+
+          <!-- 409 address_revoked -->
+          <div id="lgAddressRevoked" class="hidden mt-4 rounded-xl border border-amber-400/40 p-5">
+            <p class="text-sm font-semibold text-amber-200">Your forwarding address is turned off</p>
+            <p class="mt-1 text-sm text-slate-400 leading-relaxed">Receipts sent to it are no longer accepted for this account.</p>
+          </div>
+        </section>
+
+        <aside aria-labelledby="lgStatusHeading" class="glass rounded-2xl p-6 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:sticky lg:top-24">
+          <div class="flex items-center justify-between gap-3">
+            <h2 id="lgStatusHeading" class="font-display font-bold text-lg">Status</h2>
+            <button id="lgRefresh" type="button" aria-label="Check status now" title="Check now" class="lg-refresh w-9 h-9 -mr-1.5 rounded-lg inline-flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-60">
+              <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
             </button>
           </div>
 
-          <p class="mt-4 flex gap-3 text-sm text-slate-300 leading-relaxed">
-            <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>
-            <span><strong class="font-semibold text-white">Treat this address like a password.</strong> Anyone who has it can send receipts into your account, so don't post it or share it.</span>
-          </p>
-
-          <div class="mt-5 pt-5 border-t border-white/[0.06]">
-            <button id="lgRotateOpen" type="button" aria-expanded="false" aria-controls="lgRotateConfirm" class="text-sm text-slate-400 hover:text-white underline underline-offset-4 decoration-white/20 hover:decoration-white/60 transition-colors">Get a new address</button>
-            <div id="lgRotateConfirm" class="hidden rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4" role="group" aria-labelledby="lgRotateTitle">
-              <p id="lgRotateTitle" class="text-sm font-semibold text-white">Get a new address?</p>
-              <p class="mt-1 text-sm text-slate-400 leading-relaxed">Your current address stops working immediately. If you set up automatic forwarding, you'll need to add the new address in Gmail and change your filter to use it.</p>
-              <div class="mt-4 flex flex-wrap gap-2">
-                <button id="lgRotateConfirmBtn" type="button" class="px-4 py-2.5 rounded-lg text-sm font-bold border border-amber-400/50 text-amber-200 hover:bg-amber-400/10 transition-colors disabled:opacity-50">Yes, get a new address</button>
-                <button id="lgRotateCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.2)] text-slate-300 hover:text-white transition-colors">Keep this one</button>
+          <div aria-live="polite">
+            <div id="lgStateOn" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-emerald-400/40 bg-emerald-400/[0.05] p-4">
+              <svg class="w-5 h-5 shrink-0 text-emerald-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+              <div>
+                <p class="text-sm font-semibold text-emerald-200">Receiving receipts</p>
+                <p class="text-xs text-slate-400 mt-0.5">Your receipts are reaching us.</p>
+              </div>
+            </div>
+            <div id="lgStateOff" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4">
+              <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
+              <div>
+                <p class="text-sm font-semibold text-amber-200">Not receiving yet</p>
+                <p class="text-xs text-slate-400 mt-0.5"><span data-for="auto">Finish the steps to start.</span><span data-for="manual">Forward a receipt to start.</span></p>
               </div>
             </div>
           </div>
-          <p id="lgRotateNotice" class="hidden" role="status"></p>
-        </div>
 
-        <!-- RECEIPT_DOMAIN not configured: no working address to show yet -->
-        <div id="lgAddressPending" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
-          <p class="text-sm font-semibold text-white">Coming soon</p>
-          <p class="mt-1 text-sm text-slate-400 leading-relaxed">We're finishing the email setup on our side. Your private forwarding address will appear here as soon as it's ready.</p>
-        </div>
+          <dl class="mt-5 space-y-3 text-sm">
+            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Last receipt</dt><dd id="lgLastReceived" class="font-semibold text-white tabular-nums text-right">-</dd></div>
+            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Emails processed</dt><dd id="lgProcessed" class="font-semibold text-white tabular-nums">-</dd></div>
+            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Rides added</dt><dd id="lgAdded" class="font-semibold text-gold tabular-nums">-</dd></div>
+            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Duplicates skipped</dt><dd id="lgDuplicates" class="font-semibold text-white tabular-nums">-</dd></div>
+          </dl>
 
-        <!-- 409 address_revoked -->
-        <div id="lgAddressRevoked" class="hidden mt-4 rounded-xl border border-amber-400/40 p-5">
-          <p class="text-sm font-semibold text-amber-200">Your forwarding address is turned off</p>
-          <p class="mt-1 text-sm text-slate-400 leading-relaxed">Receipts sent to it are no longer accepted for this account.</p>
-        </div>
-      </section>
+          <p id="lgStatusError" class="hidden mt-4 text-xs text-amber-200" role="alert">Couldn't check just now. We'll try again shortly.</p>
+          <p id="lgChecked" class="mt-4 text-xs text-slate-500"></p>
 
-      <!-- 3. Live status (sidebar on desktop, right under the address on phones) -->
-      <aside aria-labelledby="lgStatusHeading" class="glass rounded-2xl p-6 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
-        <div class="flex items-center justify-between gap-3">
-          <h2 id="lgStatusHeading" class="font-display font-bold text-lg">Status</h2>
-          <button id="lgRefresh" type="button" aria-label="Check status now" title="Check now" class="lg-refresh w-9 h-9 -mr-1.5 rounded-lg inline-flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-60">
-            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
-          </button>
-        </div>
+          <a href="rider-data.html" class="mt-5 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-2 text-sm font-semibold text-slate-200 hover:text-white transition-colors">
+            See your rides in Rider Data
+            <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
+          </a>
+        </aside>
 
-        <div aria-live="polite">
-          <div id="lgStateOn" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-emerald-400/40 bg-emerald-400/[0.05] p-4">
-            <svg class="w-5 h-5 shrink-0 text-emerald-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
-            <div>
-              <p class="text-sm font-semibold text-emerald-200">Receiving receipts</p>
-              <p class="text-xs text-slate-400 mt-0.5">Your receipts are reaching us.</p>
-            </div>
-          </div>
-          <div id="lgStateOff" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4">
-            <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
-            <div>
-              <p class="text-sm font-semibold text-amber-200">Not receiving yet</p>
-              <p class="text-xs text-slate-400 mt-0.5">Forward a receipt or finish automatic setup to start.</p>
-            </div>
-          </div>
-        </div>
+        <div class="min-w-0 flex flex-col gap-6 lg:col-start-1 lg:row-start-3">
 
-        <dl class="mt-5 space-y-3 text-sm">
-          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Last receipt</dt><dd id="lgLastReceived" class="font-semibold text-white tabular-nums text-right">-</dd></div>
-          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Emails processed</dt><dd id="lgProcessed" class="font-semibold text-white tabular-nums">-</dd></div>
-          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Rides added</dt><dd id="lgAdded" class="font-semibold text-gold tabular-nums">-</dd></div>
-          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Duplicates skipped</dt><dd id="lgDuplicates" class="font-semibold text-white tabular-nums">-</dd></div>
-        </dl>
+          <!-- Forward automatically: a Gmail forwarding address + a filter -->
+          <section id="lgAuto" class="hidden glass rounded-2xl p-6 lg:p-8" aria-label="Automatic forwarding steps">
+          <ol class="lg-steps space-y-7">
+            <li class="lg-step">
+              <span class="lg-step-num" aria-hidden="true">1</span>
+              <div class="min-w-0">
+                <h4 class="font-semibold text-white">Copy your forwarding address</h4>
+                <button type="button" data-copy="address" class="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><span data-copy-label>Copy address</span></button>
+              </div>
+            </li>
 
-        <p id="lgStatusError" class="hidden mt-4 text-xs text-amber-200" role="alert">Couldn't check just now. We'll try again shortly.</p>
-        <p id="lgChecked" class="mt-4 text-xs text-slate-500"></p>
+            <li class="lg-step">
+              <span class="lg-step-num" aria-hidden="true">2</span>
+              <div class="min-w-0">
+                <h4 class="font-semibold text-white">Add it as a forwarding address in Gmail</h4>
+                <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
+                <p class="lg-path mt-2">
+                  <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">Forwarding and POP/IMAP</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">Add a forwarding address</span>
+                </p>
+                <p class="mt-3 text-sm text-slate-300 leading-relaxed">Paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
+              </div>
+            </li>
 
-        <a href="rider-data.html" class="mt-5 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-2 text-sm font-semibold text-slate-200 hover:text-white transition-colors">
-          See your rides in Rider Data
-          <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
-        </a>
-      </aside>
+            <li class="lg-step">
+              <span class="lg-step-num" aria-hidden="true">3</span>
+              <div class="min-w-0 w-full">
+                <h4 class="font-semibold text-white">Enter the confirmation code</h4>
+                <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Gmail emails a code to your forwarding address. It appears right here.</p>
 
-      <div class="min-w-0 space-y-6 lg:col-start-1 lg:row-start-2">
+                <div aria-live="polite">
+                  <div id="lgCodeWaiting" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-dashed border-white/[0.14] px-4 py-4">
+                    <span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true">
+                      <span class="absolute inset-0 rounded-full bg-gold/60 motion-safe:animate-ping"></span>
+                      <span class="relative w-2.5 h-2.5 rounded-full bg-gold"></span>
+                    </span>
+                    <span class="text-sm text-slate-300">Waiting for Gmail's code. This page checks on its own.</span>
+                  </div>
+                  <div id="lgCodeShown" class="hidden mt-3 rounded-xl border border-[rgba(212,175,55,0.4)] bg-gold/[0.06] p-4 sm:p-5">
+                    <p class="text-xs text-slate-400">Your Gmail confirmation code</p>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-3">
+                      <span id="lgCode" class="font-mono text-3xl sm:text-4xl tracking-[0.12em] text-white tabular-nums select-all"></span>
+                      <button type="button" data-copy="code" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors"><span data-copy-label>Copy code</span></button>
+                    </div>
+                    <p id="lgCodeWhen" class="mt-2 text-xs text-slate-500"></p>
+                  </div>
+                  <div id="lgCodeDone" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-emerald-400/40 px-4 py-4">
+                    <svg class="w-5 h-5 shrink-0 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+                    <span class="text-sm text-slate-300">Forwarding is confirmed. Receipts are arriving.</span>
+                  </div>
+                </div>
 
-        <!-- 2. Two ways to send receipts -->
-        <section aria-labelledby="lgWaysHeading">
-          <h2 id="lgWaysHeading" class="font-display font-bold text-2xl tracking-tight mt-4 mb-1">Two ways to send receipts</h2>
-          <p class="text-sm text-slate-400 leading-relaxed mb-5 max-w-[60ch]">Use either one, or both. They send to the same address.</p>
+                <p class="mt-3 text-sm text-slate-300 leading-relaxed">Type the code into Gmail's <strong class="font-semibold text-white">Confirmation code</strong> box under Forwarding and POP/IMAP, then click <strong class="font-semibold text-white">Verify</strong>.</p>
+              </div>
+            </li>
 
-          <!-- No setup: forward by hand -->
-          <article class="glass rounded-2xl p-6 lg:p-8">
-            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-              <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></svg>
+            <li class="lg-step">
+              <span class="lg-step-num" aria-hidden="true">4</span>
+              <div class="min-w-0">
+                <h4 class="font-semibold text-white">Create a filter for Tesla receipts</h4>
+                <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
+                <p class="lg-path mt-2">
+                  <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">Create a new filter</span>
+                </p>
+                <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
+                  <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
+                  Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it to</strong>, and choose your address. Then click <strong class="font-semibold text-white">Create filter</strong> again.</p>
+              </div>
+            </li>
+
+            <li class="lg-step">
+              <span class="lg-step-num lg-step-num--done" aria-hidden="true">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
               </span>
               <div class="min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <h3 class="font-display font-bold text-lg">Forward each receipt</h3>
-                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-400/40 text-emerald-200">No setup</span>
-                </div>
-                <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">After a ride, open the Tesla receipt email in Gmail, tap <strong class="font-semibold text-white">Forward</strong>, and send it to your address. That's it. Nothing changes in your settings, and it works the same in the Gmail app.</p>
-                <button type="button" data-copy="address" class="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><span data-copy-label>Copy address</span></button>
+                <h4 class="font-semibold text-white">Done</h4>
+                <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Every future receipt now forwards itself. Status on this page turns green when the first one arrives.</p>
               </div>
-            </div>
-          </article>
+            </li>
+          </ol>
 
-          <!-- One-time setup: Gmail forwards for them -->
-          <article class="glass rounded-2xl p-6 lg:p-8 mt-6">
-            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-              <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg>
-              </span>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <h3 class="font-display font-bold text-lg">Forward automatically</h3>
-                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold">One-time setup</span>
-                </div>
-                <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">Set this up once and every new receipt forwards itself. Gmail only has these settings on its website, so do this on a computer.</p>
-              </div>
+          <div class="mt-8 pt-6 border-t border-white/[0.06]">
+            <h4 class="text-sm font-semibold text-white mb-3">Trouble?</h4>
+            <div class="space-y-2">
+              <details class="lg-faq rounded-lg border border-white/[0.08]">
+                <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">Code not showing?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
+                <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">Wait a minute and refresh. Gmail can be slow to send it. If it still hasn't come, check that you pasted the whole address in step 2.</p>
+              </details>
+              <details class="lg-faq rounded-lg border border-white/[0.08]">
+                <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">No receipts arriving?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
+                <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">In Gmail settings, check that your forwarding address shows as confirmed under Forwarding and POP/IMAP, and that your filter is still listed under Filters and Blocked Addresses. If you got a new address on this page, the filter needs the new one.</p>
+              </details>
             </div>
+          </div>
+          </section>
 
-            <ol class="lg-steps mt-7 space-y-7">
+          <!-- Forward each receipt: nothing changes in Gmail -->
+          <section id="lgManual" class="hidden glass rounded-2xl p-6 lg:p-8" aria-label="Forwarding steps">
+            <ol class="lg-steps space-y-7">
               <li class="lg-step">
                 <span class="lg-step-num" aria-hidden="true">1</span>
                 <div class="min-w-0">
                   <h4 class="font-semibold text-white">Copy your forwarding address</h4>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Or save it as a contact in Gmail, so it's quick to pick next time.</p>
                   <button type="button" data-copy="address" class="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><span data-copy-label>Copy address</span></button>
                 </div>
               </li>
-
               <li class="lg-step">
                 <span class="lg-step-num" aria-hidden="true">2</span>
                 <div class="min-w-0">
-                  <h4 class="font-semibold text-white">Add it as a forwarding address in Gmail</h4>
-                  <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
-                  <p class="lg-path mt-2">
-                    <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">Forwarding and POP/IMAP</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">Add a forwarding address</span>
-                  </p>
-                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">Paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
+                  <h4 class="font-semibold text-white">After a ride, open the Tesla receipt email</h4>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">In the Gmail app or on the Gmail website.</p>
                 </div>
               </li>
-
               <li class="lg-step">
                 <span class="lg-step-num" aria-hidden="true">3</span>
-                <div class="min-w-0 w-full">
-                  <h4 class="font-semibold text-white">Enter the confirmation code</h4>
-                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Gmail emails a code to your forwarding address. It appears right here.</p>
-
-                  <div aria-live="polite">
-                    <div id="lgCodeWaiting" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-dashed border-white/[0.14] px-4 py-4">
-                      <span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true">
-                        <span class="absolute inset-0 rounded-full bg-gold/60 motion-safe:animate-ping"></span>
-                        <span class="relative w-2.5 h-2.5 rounded-full bg-gold"></span>
-                      </span>
-                      <span class="text-sm text-slate-300">Waiting for Gmail's code. This page checks on its own.</span>
-                    </div>
-                    <div id="lgCodeShown" class="hidden mt-3 rounded-xl border border-[rgba(212,175,55,0.4)] bg-gold/[0.06] p-4 sm:p-5">
-                      <p class="text-xs text-slate-400">Your Gmail confirmation code</p>
-                      <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-3">
-                        <span id="lgCode" class="font-mono text-3xl sm:text-4xl tracking-[0.12em] text-white tabular-nums select-all"></span>
-                        <button type="button" data-copy="code" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors"><span data-copy-label>Copy code</span></button>
-                      </div>
-                      <p id="lgCodeWhen" class="mt-2 text-xs text-slate-500"></p>
-                    </div>
-                    <div id="lgCodeDone" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-emerald-400/40 px-4 py-4">
-                      <svg class="w-5 h-5 shrink-0 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
-                      <span class="text-sm text-slate-300">Forwarding is confirmed. Receipts are arriving.</span>
-                    </div>
-                  </div>
-
-                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">Type the code into Gmail's <strong class="font-semibold text-white">Confirmation code</strong> box under Forwarding and POP/IMAP, then click <strong class="font-semibold text-white">Verify</strong>.</p>
-                </div>
-              </li>
-
-              <li class="lg-step">
-                <span class="lg-step-num" aria-hidden="true">4</span>
                 <div class="min-w-0">
-                  <h4 class="font-semibold text-white">Create a filter for Tesla receipts</h4>
-                  <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
-                  <p class="lg-path mt-2">
-                    <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                    <span class="gp">Create a new filter</span>
-                  </p>
-                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
-                    <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
-                    Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it to</strong>, and choose your address. Then click <strong class="font-semibold text-white">Create filter</strong> again.</p>
+                  <h4 class="font-semibold text-white">Tap Forward and send it to your address</h4>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Paste your address in the <strong class="font-semibold text-slate-200">To</strong> box and tap <strong class="font-semibold text-slate-200">Send</strong>. You don't need to write anything.</p>
                 </div>
               </li>
-
               <li class="lg-step">
-                <span class="lg-step-num lg-step-num--done" aria-hidden="true">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
-                </span>
+                <span class="lg-step-num lg-step-num--done" aria-hidden="true"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg></span>
                 <div class="min-w-0">
                   <h4 class="font-semibold text-white">Done</h4>
-                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Every future receipt now forwards itself. Status on this page turns green when the first one arrives.</p>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Do the same after each ride. Status on this page updates when a receipt arrives.</p>
                 </div>
               </li>
             </ol>
+            <div class="mt-8 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p class="text-sm text-slate-400">Rather not do this after every ride?</p>
+              <button type="button" data-method-switch="auto" class="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Set up automatic forwarding</button>
+            </div>
+          </section>
 
-            <div class="mt-8 pt-6 border-t border-white/[0.06]">
-              <h4 class="text-sm font-semibold text-white mb-3">Trouble?</h4>
-              <div class="space-y-2">
-                <details class="lg-faq rounded-lg border border-white/[0.08]">
-                  <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">Code not showing?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
-                  <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">Wait a minute and refresh. Gmail can be slow to send it. If it still hasn't come, check that you pasted the whole address in step 2.</p>
-                </details>
-                <details class="lg-faq rounded-lg border border-white/[0.08]">
-                  <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">No receipts arriving?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
-                  <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">In Gmail settings, check that your forwarding address shows as confirmed under Forwarding and POP/IMAP, and that your filter is still listed under Filters and Blocked Addresses. If you got a new address on this page, the filter needs the new one.</p>
-                </details>
+          <!-- Past rides (both methods) -->
+          <section aria-labelledby="lgBackfillHeading" class="rounded-2xl border border-white/[0.08] p-6 lg:p-8">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+              <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
+              </span>
+              <div class="min-w-0">
+                <h2 id="lgBackfillHeading" class="font-display font-bold text-lg">Bring your past rides</h2>
+                <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]"><span data-for="auto">Filters only forward new mail, so receipts from before you set this up need one manual pass.</span><span data-for="manual">Receipts from rides you've already taken can be sent the same way, once.</span></p>
+                <ol class="mt-4 space-y-2.5 text-sm text-slate-300 leading-relaxed list-decimal pl-5 marker:text-slate-500">
+                  <li>In Gmail, search for
+                    <button type="button" data-copy="from:tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>from:tesla.com</span></button>
+                    to find your old receipts.</li>
+                  <li>Open each receipt and forward it to your address.</li>
+                  <li>Send them one at a time. Gmail's <span class="text-white">Forward as attachment</span> option bundles emails in a way we can't read.</li>
+                </ol>
+                <p class="mt-4 text-sm text-slate-400 leading-relaxed">Not sure if you already sent one? Send it anyway. Duplicates are caught automatically, so a ride is never counted twice.</p>
               </div>
             </div>
-          </article>
-        </section>
-
-        <!-- Backfill -->
-        <section aria-labelledby="lgBackfillHeading" class="rounded-2xl border border-white/[0.08] p-6 lg:p-8">
-          <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-            <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
-            </span>
-            <div class="min-w-0">
-              <h2 id="lgBackfillHeading" class="font-display font-bold text-lg">Bring your past rides</h2>
-              <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">Filters only forward new mail, so receipts from before you set this up need one manual pass.</p>
-              <ol class="mt-4 space-y-2.5 text-sm text-slate-300 leading-relaxed list-decimal pl-5 marker:text-slate-500">
-                <li>In Gmail, search for
-                  <button type="button" data-copy="from:tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>from:tesla.com</span></button>
-                  to find your old receipts.</li>
-                <li>Open each receipt and forward it to your address.</li>
-                <li>Send them one at a time. Gmail's <span class="text-white">Forward as attachment</span> option bundles emails in a way we can't read.</li>
-              </ol>
-              <p class="mt-4 text-sm text-slate-400 leading-relaxed">Not sure if you already sent one? Send it anyway. Duplicates are caught automatically, so a ride is never counted twice.</p>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -534,6 +593,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/link-gmail.js?v=1"></script>
+<script src="js/link-gmail.js?v=2"></script>
 </body>
 </html>

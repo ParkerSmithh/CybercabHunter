@@ -6,6 +6,11 @@
    receipts are arriving, and totals). Every call carries only the bearer
    session; nothing in a request can name another rider.
    Views: loading, error (a request failed, NOT signed out), signedOut, ready.
+   Ready has two steps: the rider first answers "How do you want to send your
+   receipts?" (multiple choice: forward automatically, or forward each
+   receipt), then sees the setup for that method. The step lives in the URL
+   (?method=auto | ?method=manual, none = the question), so Back, refresh and
+   links work.
    While the page is open and visible, sync status is re-checked on a timer
    (faster while the rider waits for Gmail's code) and whenever the rider
    comes back to this tab, so finishing a step in Gmail shows up here without
@@ -22,6 +27,18 @@
 
   let sessionId = null;
   try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) { /* storage blocked: treated as signed out */ }
+
+  const METHODS = {
+    auto: {
+      title: 'Forward automatically',
+      lede: 'Set this up once in Gmail and every new receipt forwards itself. Gmail only has these settings on its website, so do this on a computer.'
+    },
+    manual: {
+      title: 'Forward each receipt',
+      lede: "After a ride, forward the Tesla receipt email to your address. Nothing changes in your Gmail settings, and it works in the Gmail app."
+    }
+  };
+  const METHOD_KEY = 'linkGmailMethod';   // last answer, only to preselect it next time
 
   let address = null;        // the full address, only when the domain is configured
   let status = null;         // last sync-status payload
@@ -234,6 +251,82 @@
     setInterval(() => { if (checkedAt) $('lgChecked').textContent = fmtChecked(); }, 5000);
   }
 
+  // ---------- step 1: choose a method, step 2: set it up ----------
+  const methodFromUrl = () => {
+    const m = new URLSearchParams(location.search).get('method');
+    return METHODS[m] ? m : null;
+  };
+  const selectedChoice = () => {
+    const el = document.querySelector('input[name="lgMethod"]:checked');
+    return el ? el.value : null;
+  };
+
+  function markChoice(method) {
+    all('input[name="lgMethod"]').forEach(input => {
+      input.checked = input.value === method;
+      input.closest('.lg-choice').classList.toggle('is-selected', input.checked);
+    });
+    $('lgContinue').disabled = !method;
+    show('lgChooseHint', !method);
+  }
+
+  // Renders the step for `method` (null = the question). Moves focus to the
+  // new step's heading so keyboard and screen-reader users land on it.
+  function showMethod(method, { focus = true } = {}) {
+    show('lgChoose', !method);
+    show('lgSetup', !!method);
+    if (method) {
+      show('lgAuto', method === 'auto');
+      show('lgManual', method === 'manual');
+      all('[data-for]').forEach(el => el.classList.toggle('hidden', el.dataset.for !== method));
+      $('lgSetupTitle').textContent = METHODS[method].title;
+      $('lgSetupLede').textContent = METHODS[method].lede;
+      markChoice(method);
+    } else {
+      let remembered = null;
+      try { remembered = localStorage.getItem(METHOD_KEY); } catch (e) { /* storage blocked */ }
+      if (!selectedChoice()) markChoice(METHODS[remembered] ? remembered : null);
+    }
+    if (focus) {
+      window.scrollTo(0, 0);
+      const target = method ? $('lgSetupTitle') : document.querySelector('#lgChoose legend');
+      if (target) { if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: true }); }
+    }
+  }
+
+  function goTo(method) {
+    const params = new URLSearchParams(location.search);
+    if (method) params.set('method', method); else params.delete('method');
+    const query = params.toString();
+    history.pushState({ method }, '', location.pathname + (query ? '?' + query : ''));
+    showMethod(method);
+  }
+
+  function setupChoice() {
+    all('input[name="lgMethod"]').forEach(input => input.addEventListener('change', () => {
+      markChoice(input.value);
+      try { localStorage.setItem(METHOD_KEY, input.value); } catch (e) { /* this visit only */ }
+    }));
+    $('lgChoose').addEventListener('submit', e => {
+      e.preventDefault();
+      const method = selectedChoice();
+      if (method) goTo(method);
+    });
+    // Multiple-choice keys: A or B picks that option while the question has focus.
+    $('lgChoose').addEventListener('keydown', e => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const method = { a: 'auto', b: 'manual' }[(e.key || '').toLowerCase()];
+      if (!method) return;
+      const input = document.querySelector(`input[name="lgMethod"][value="${method}"]`);
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.focus();
+    });
+    $('lgChangeMethod').addEventListener('click', () => goTo(null));
+    all('[data-method-switch]').forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.methodSwitch)));
+    window.addEventListener('popstate', () => showMethod(methodFromUrl()));
+  }
+
   // ---------- load ----------
   async function load() {
     setView('loading');
@@ -252,12 +345,13 @@
     status = sync.json; checkedAt = Date.now();
     renderStatus();
     setView('ready');
+    showMethod(methodFromUrl(), { focus: false });
     schedulePoll();
   }
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupCopy(); setupRotate(); setupStatus();
+    setupCopy(); setupRotate(); setupStatus(); setupChoice();
     $('lgRetry').addEventListener('click', load);
     load();
   }
