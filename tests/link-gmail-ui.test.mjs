@@ -298,7 +298,7 @@ async function run() {
     check('...and the stale "confirmed" state is hidden', !page.visible('lgCodeDone') && !page.visible('lgCodeWaiting'));
     // Digits are spaced so screen readers read them one by one.
     check('...marked as new, and announced', page.visible('lgCodeNew') && page.text('lgCodeAnnounce').replace(/\s/g, '').endsWith('482913775'));
-    check('status still says receipts are arriving (that is still true)', page.visible('lgStateOn'));
+    check('status says "Not receiving yet" while a code waits to be typed into Gmail (setup unfinished)', page.visible('lgStateOff') && !page.visible('lgStateOn'));
 
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_code_received_at = datetime('now', '-2 minutes') WHERE user_id = 'u1'");
     await ctx.email('u1', { ...CONFIRMATION, body: 'Confirmation code: 555000111' });   // Gmail sends a newer code
@@ -315,6 +315,25 @@ async function run() {
     const before = page.requests.length;
     const polled = await page.waitFor(() => page.requests.length > before, 'auto-view poll', 9500);
     check('while waiting for a code on the automatic setup, the page re-checks within ~8 seconds even after receipts', polled);
+  }
+
+  console.log('12. Bug 2026-10-05: "Receiving receipts" only when the CURRENT address is linked');
+  {
+    const ctx = await makeApp();
+    await ctx.email('u1', { body: receiptBody() });                         // receipts arrived in the past...
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET opaque_token = 'fresh0token', last_received_at = NULL WHERE user_id = 'u1'");   // ...then a new address (rotate)
+    const page = await openPage(ctx, 'u1', { search: '?method=auto' });
+    check('past receipts alone do not make the headline say "Receiving receipts"', page.visible('lgStateOff') && !page.visible('lgStateOn'));
+    check('...step 3 waits for Gmail\'s code instead of saying receipts are reaching the address', page.visible('lgCodeWaiting') && !page.visible('lgCodeDone'));
+    check('...the historical totals still show below', page.text('lgProcessed') === '1' && page.text('lgAdded') === '1');
+
+    await ctx.email('u1', CONFIRMATION);                                    // mid-setup in Gmail
+    await page.refresh();
+    check('a confirmation code waiting to be typed into Gmail is "Not receiving yet"', page.visible('lgStateOff') && page.visible('lgCodeShown'));
+
+    await ctx.email('u1', { body: receiptBody({ pickupTime: '9:40 am' }) });   // Gmail verified and forwarded a receipt
+    await page.refresh();
+    check('a receipt at the current address, with no code pending: "Receiving receipts"', page.visible('lgStateOn') && !page.visible('lgStateOff') && page.visible('lgCodeDone'));
   }
 
   opened.forEach(w => w.close());

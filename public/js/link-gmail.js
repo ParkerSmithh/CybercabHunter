@@ -182,13 +182,23 @@
   }
 
   // ---------- status ----------
+  // Forwarding is linked when the CURRENT address has received mail and no
+  // Gmail confirmation code is waiting to be typed in. The API's `receiving`
+  // is historical (any emailed receipt, ever, on any address) and stays true
+  // after a new address or a re-setup, so it must not drive the headline
+  // (bug 2026-10-05). last_received_at is per address: a new address resets
+  // it, and the worker clears the code when the next receipt arrives.
+  const isLinked = f => !!f.last_received_at && !f.confirmation_code;
+
   function renderStatus() {
     if (!status) return;
     const f = status.forwarding, totals = (status.receipt_sync && status.receipt_sync.totals) || {};
 
+    const linked = isLinked(f);
+
     // Live status card
-    show('lgStateOn', f.receiving);
-    show('lgStateOff', !f.receiving);
+    show('lgStateOn', linked);
+    show('lgStateOff', !linked);
     $('lgLastReceived').textContent = fmtWhen(f.last_received_at);
     $('lgProcessed').textContent = fmtInt(totals.processed);
     $('lgAdded').textContent = fmtInt(totals.added);
@@ -197,13 +207,12 @@
 
     // Step 3: Gmail's confirmation code. A stored code is always unused: the
     // worker clears it when the next receipt arrives. So a code on file is
-    // shown no matter what happened before. "receiving" only says that
-    // receipts arrived at some point; it must not hide a fresh code from a
-    // rider who is re-adding the address in Gmail (bug 2026-10-05).
+    // shown no matter what happened before, so a rider re-adding the address
+    // in Gmail always sees the fresh code (bug 2026-10-05).
     const code = f.confirmation_code;
     show('lgCodeShown', !!code);
-    show('lgCodeWaiting', !code && !f.receiving);
-    show('lgCodeDone', !code && !!f.receiving);
+    show('lgCodeWaiting', !code && !linked);
+    show('lgCodeDone', !code && linked);
     const key = code ? `${code}|${f.confirmation_code_received_at || ''}` : null;
     if (key !== codeKey) {
       if (code) {
@@ -255,7 +264,7 @@
     const f = status && status.forwarding;
     if (!f) return POLL_MS.steady;
     if (f.confirmation_code) return POLL_MS.first;
-    if (currentMethod === 'auto' || !f.receiving) return POLL_MS.code;
+    if (currentMethod === 'auto' || !isLinked(f)) return POLL_MS.code;
     return POLL_MS.steady;
   }
   function schedulePoll() {
