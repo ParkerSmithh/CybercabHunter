@@ -114,7 +114,15 @@ async function run() {
     check('extracts the code from a real-looking Google message', detectGmailForwardingConfirmation(ok)?.code === '123456789');
     check('ignores the same text from any non-Google sender', detectGmailForwardingConfirmation({ ...ok, from: 'evil@example.com' }) === null);
     check('ignores a Google message that is not the confirmation', detectGmailForwardingConfirmation({ ...ok, subject: 'Security alert' }) === null);
-    check('no code in the body -> null', detectGmailForwardingConfirmation({ ...ok, text: 'click the link' }) === null);
+    const noCode = detectGmailForwardingConfirmation({ ...ok, text: 'click the link' });
+    check('no code or link: still recognised as the confirmation (never a receipt), with nothing to show', !!noCode && noCode.code === null && noCode.link === null);
+    const linkOnly = detectGmailForwardingConfirmation({ ...ok, text: 'please click the link below:\n\nhttps://mail-settings.google.com/mail/vf-%5BABC%5D-xyz\n\nIf you click' });
+    check('link only (2026 format): the link is read', linkOnly.code === null && linkOnly.link === 'https://mail-settings.google.com/mail/vf-%5BABC%5D-xyz');
+    check('...and the Gmail account that asked, from the subject', linkOnly.requestedBy === 'a@b.com');
+    check('a code in the subject "(#123456789)" is read too', detectGmailForwardingConfirmation({ ...ok, subject: '(#987654321) Gmail Forwarding Confirmation - Receive Mail from a@b.com', text: 'click' }).code === '987654321');
+    for (const bad of ['http://mail-settings.google.com/mail/vf-x', 'https://mail-settings.google.com.evil.com/mail/vf-x', 'https://evil.com/?u=https://mail.google.com/mail/', 'https://mail.google.com/other']) {
+      check(`never keeps a link that is not https on Google mail settings: ${bad}`, detectGmailForwardingConfirmation({ ...ok, text: bad }).link === null);
+    }
   }
 
   console.log('8. Migration 0009 on legacy-shaped data: preserves every row, collapses duplicates without deleting, re-evaluates status');

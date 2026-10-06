@@ -6,7 +6,7 @@
 
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import { receiptBody, eml, inboundMessage, sentAt, PASSENGER_NAME, PAYMENT_LAST4 } from './helpers/receipts.mjs';
-import { handleIncomingEmail } from '../worker/receipt-ingestion.js';
+import { handleIncomingEmail, apiGetSyncStatus } from '../worker/receipt-ingestion.js';
 import { apiImportReceipts } from '../worker/receipt-import.js';
 import { db } from '../worker/db.js';
 
@@ -268,6 +268,52 @@ async function run() {
     await send(ctx, 'u1', { body: receiptBody() });
     addr = ctx.d1.query('SELECT forwarding_code, last_received_at FROM receipt_ingestion_addresses')[0];
     check('once a real receipt arrives the code is cleared and last_received_at set', addr.forwarding_code === null && !!addr.last_received_at);
+  }
+
+  console.log('16b. Bug 2026-10-05: Gmail\'s link-only confirmation (no code) is captured, not rejected as a non-receipt');
+  {
+    // Shaped like the confirmations production received on 2026-10-06: Gmail
+    // Team sender, "(Gmail Forwarding Confirmation - Receive Mail from ..."
+    // subject with no "(#code)", multipart text + HTML, a confirm link and no
+    // numeric code anywhere.
+    const ctx = await makeEnv();
+    const to = ctx.addressFor('u1');
+    const link = 'https://mail-settings.google.com/mail/vf-%5BANGjdJ8xQ%5D-Zk3pQ9wYx2';
+    const raw = (from, href) => [
+      `From: Gmail Team <${from}>`, `To: ${to}`,
+      'Subject: (Gmail Forwarding Confirmation - Receive Mail from rider@gmail.com',
+      `Message-ID: <CALp43s${Math.random().toString(36).slice(2)}@mail.gmail.com>`, 'Date: Tue, 6 Oct 2026 02:31:15 +0000',
+      'MIME-Version: 1.0', 'Content-Type: multipart/alternative; boundary="b1"', '',
+      '--b1', 'Content-Type: text/plain; charset="UTF-8"', '',
+      `rider@gmail.com has requested to automatically forward mail to your email address ${to}.`,
+      'To allow rider@gmail.com to automatically forward mail to your address, please click the link below to confirm the request:',
+      '', href, '',
+      'If you click the link and it appears to be broken, please copy and paste it into a new browser window.',
+      '--b1', 'Content-Type: text/html; charset="UTF-8"', '',
+      `<p>rider@gmail.com has requested to automatically forward mail to your email address.</p><p><a href="${href.replace(/&/g, '&amp;')}">Confirm forwarding</a></p>`,
+      '--b1--', ''
+    ].join('\r\n');
+    const deliver = async (from, href) => { const m = inboundMessage(raw(from, href), to); await handleIncomingEmail(m, ctx.env); return m; };
+
+    await deliver('forwarding-noreply@google.com', link);
+    const addr = () => ctx.d1.query('SELECT forwarding_code, forwarding_link, forwarding_requested_by, forwarding_code_received_at FROM receipt_ingestion_addresses')[0];
+    check('the confirm link is stored for the rider', addr().forwarding_link === link && !!addr().forwarding_code_received_at);
+    check('...with the Gmail account that asked to forward', addr().forwarding_requested_by === 'rider@gmail.com');
+    check('...and no code (there was none)', addr().forwarding_code === null);
+    const outcome = ctx.d1.query('SELECT status, error_code FROM receipt_ingestions ORDER BY rowid DESC LIMIT 1')[0];
+    check('it is logged as a forwarding confirmation, not "not_recognized_as_tesla_receipt"', outcome.error_code === 'gmail_forwarding_confirmation');
+    check('no ride and no submission created', trips(ctx).length === 0 && ctx.d1.query('SELECT COUNT(*) n FROM submissions')[0].n === 0);
+
+    const status = await (await apiGetSyncStatus(new Request('https://x/api/rides/sync-status'), ctx.env, 'u1')).json();
+    check('sync-status returns the link and the requesting account', status.forwarding.confirmation_link === link && status.forwarding.confirmation_requested_by === 'rider@gmail.com');
+
+    await deliver('forwarding-noreply@google.com', 'https://evil.example.com/mail/vf-steal');
+    check('a link to any host other than Google\'s mail settings is never stored', addr().forwarding_link === link);
+    await deliver('noreply@evil.example.com', 'https://mail-settings.google.com/mail/vf-other');
+    check('a look-alike not from Google cannot replace the link', addr().forwarding_link === link);
+
+    await send(ctx, 'u1', { body: receiptBody() });
+    check('once a real receipt arrives the link is cleared too', addr().forwarding_link === null && addr().forwarding_requested_by === null);
   }
 
   console.log('17. An unknown recipient is bounced with no database writes');

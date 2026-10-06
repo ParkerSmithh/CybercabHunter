@@ -361,7 +361,8 @@ async function rotateReceiptIngestionAddress(sql, userId) {
   const token = crypto.randomUUID().replace(/-/g, '');
   const result = await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET opaque_token = ?, last_received_at = NULL, forwarding_code = NULL, forwarding_code_received_at = NULL
+    SET opaque_token = ?, last_received_at = NULL, forwarding_code = NULL, forwarding_link = NULL,
+        forwarding_requested_by = NULL, forwarding_code_received_at = NULL
     WHERE user_id = ? AND status = 'active'
   `).bind(token, userId).run();
   if (!result || !result.meta || !result.meta.changes) {

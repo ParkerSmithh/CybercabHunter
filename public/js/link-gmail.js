@@ -188,7 +188,18 @@
   // after a new address or a re-setup, so it must not drive the headline
   // (bug 2026-10-05). last_received_at is per address: a new address resets
   // it, and the worker clears the code when the next receipt arrives.
-  const isLinked = f => !!f.last_received_at && !f.confirmation_code;
+  const isLinked = f => !!f.last_received_at && !pendingConfirmation(f);
+  // Gmail's confirmation: a confirm link (2026 format, no code) and/or a code.
+  const pendingConfirmation = f => !!(f.confirmation_code || safeConfirmLink(f.confirmation_link));
+  // The worker only stores https links on Google's mail-settings hosts; checked
+  // again here so nothing else can ever become the button's href.
+  function safeConfirmLink(link) {
+    if (!link) return null;
+    try {
+      const u = new URL(link);
+      return u.protocol === 'https:' && (u.hostname === 'mail-settings.google.com' || u.hostname === 'mail.google.com') ? u.href : null;
+    } catch (e) { return null; }
+  }
 
   function renderStatus() {
     if (!status) return;
@@ -205,32 +216,42 @@
     $('lgDuplicates').textContent = fmtInt(totals.duplicates);
     $('lgChecked').textContent = fmtChecked();
 
-    // Step 3: Gmail's confirmation code. A stored code is always unused: the
-    // worker clears it when the next receipt arrives. So a code on file is
+    // Step 3: Gmail's confirmation (link and/or code). A stored one is always
+    // unused: the worker clears it when the next receipt arrives. So it is
     // shown no matter what happened before, so a rider re-adding the address
-    // in Gmail always sees the fresh code (bug 2026-10-05).
+    // in Gmail always sees the fresh one (bug 2026-10-05).
     const code = f.confirmation_code;
-    show('lgCodeShown', !!code);
-    show('lgCodeWaiting', !code && !linked);
-    show('lgCodeDone', !code && linked);
-    const key = code ? `${code}|${f.confirmation_code_received_at || ''}` : null;
+    const link = safeConfirmLink(f.confirmation_link);
+    const pending = !!(code || link);
+    show('lgCodeShown', pending);
+    show('lgCodeWaiting', !pending && !linked);
+    show('lgCodeDone', !pending && linked);
+    show('lgConfirmLinkWrap', !!link);
+    show('lgCodeWrap', !!code);
+    show('lgHowLink', !code || !!link);
+    $('lgHowCode').firstChild.textContent = link || !code ? 'If Gmail gives you a code instead, type it into the ' : 'Type the code into Gmail\'s ';
+    const key = pending ? `${code || ''}|${link || ''}|${f.confirmation_code_received_at || ''}` : null;
     if (key !== codeKey) {
-      if (code) {
+      if (pending) {
         // New: it arrived while the page was open, or just before it was opened.
         const arrived = sqlDate(f.confirmation_code_received_at);
         const recent = arrived && !isNaN(arrived) && Date.now() - arrived.getTime() < 15 * 60000;
         codeIsNew = codeKey !== undefined || !!recent;
-        if (codeKey !== undefined) $('lgCodeAnnounce').textContent = `New Gmail confirmation code: ${code.split('').join(' ')}`;
+        if (codeKey !== undefined) $('lgCodeAnnounce').textContent = code
+          ? `New Gmail confirmation code: ${code.split('').join(' ')}`
+          : 'Gmail\'s confirmation arrived. Use the Confirm in Gmail button in step 3.';
       } else {
         codeIsNew = false;
       }
       codeKey = key;
     }
-    show('lgCodeNew', !!code && codeIsNew);
-    if (code) {
-      $('lgCode').textContent = code;
-      $('lgCodeWhen').textContent = 'Arrived ' + fmtWhen(f.confirmation_code_received_at).toLowerCase();
-    }
+    show('lgCodeNew', pending && codeIsNew);
+    if (code) $('lgCode').textContent = code;
+    if (link) $('lgConfirmLink').href = link;
+    const who = f.confirmation_requested_by;
+    show('lgRequestedBy', !!(link && who));
+    if (link && who) $('lgRequestedBy').textContent = `Requested by ${who}. Only confirm if that is your Gmail.`;
+    if (pending) $('lgCodeWhen').textContent = 'Arrived ' + fmtWhen(f.confirmation_code_received_at).toLowerCase();
   }
 
   async function refreshStatus() {
@@ -263,7 +284,7 @@
   function pollDelay() {
     const f = status && status.forwarding;
     if (!f) return POLL_MS.steady;
-    if (f.confirmation_code) return POLL_MS.first;
+    if (pendingConfirmation(f)) return POLL_MS.first;
     if (currentMethod === 'auto' || !isLinked(f)) return POLL_MS.code;
     return POLL_MS.steady;
   }

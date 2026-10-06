@@ -69,13 +69,16 @@ export async function handleIncomingEmail(message, env) {
   }
 
   // Gmail's "confirm forwarding" message is delivered to this address, where
-  // the rider can't see it. Keep only the code, to show it to them.
+  // the rider can't see it. Keep only its code and/or confirm link, to show
+  // them. It is never a receipt, even when neither can be read.
   const confirmation = detectGmailForwardingConfirmation(parsedMessage);
   if (confirmation) {
-    await db.saveForwardingCode(sql, userId, confirmation.code);
+    const readable = !!(confirmation.code || confirmation.link);
+    if (readable) await db.saveForwardingCode(sql, userId, confirmation);
+    else console.warn('gmail forwarding confirmation without a code or link', { textLength: parsedMessage.text.length, htmlLength: parsedMessage.html.length });
     await db.createReceiptIngestion(sql, {
       id: newId(), userId, status: 'rejected', outcome: 'forwarding_confirmation',
-      errorCode: 'gmail_forwarding_confirmation', syncRunId: runId
+      errorCode: readable ? 'gmail_forwarding_confirmation' : 'gmail_forwarding_confirmation_unreadable', syncRunId: runId
     });
     counts.seen += 1;
     await db.finishSyncRun(sql, runId, { status: 'completed', ...tally(counts) });
@@ -183,6 +186,10 @@ export async function apiGetSyncStatus(request, env, userId) {
       local_part: address ? `u_${address.opaque_token}` : null,
       domain_configured: !!domain,
       confirmation_code: address ? address.forwarding_code : null,
+      // Gmail's confirm link (2026 confirmations have no code), and the Gmail
+      // account that asked to forward, so the rider can check it is theirs.
+      confirmation_link: address ? address.forwarding_link : null,
+      confirmation_requested_by: address ? address.forwarding_requested_by : null,
       confirmation_code_received_at: address ? address.forwarding_code_received_at : null,
       // A receipt that arrived BY EMAIL and was recognised — even one we already
       // had — proves forwarding works. An imported ride does not. last_received_at

@@ -203,7 +203,7 @@ async function run() {
   {
     const src = fs.readFileSync(`${ROOT}migrations/0025_vehicle_approval_basis.sql`, 'utf8');
     const code = src.replace(/--.*$/gm, '');
-    check('0025 is the next migration number', fs.readdirSync(`${ROOT}migrations`).filter(f => f.endsWith('.sql')).sort().pop() === '0025_vehicle_approval_basis.sql');
+    check('0025 is its own migration number (no other file shares it)', fs.readdirSync(`${ROOT}migrations`).filter(f => f.startsWith('0025_')).join() === '0025_vehicle_approval_basis.sql');
     check('it only adds columns and backfills approval_basis — no DROP/DELETE, and never touches visibility', !/\b(DROP|DELETE)\b/i.test(code) && !/SET\s+visibility/i.test(code) && (code.match(/ALTER TABLE robotaxi_vehicles ADD COLUMN/g) || []).length === 3);
 
     // Apply every migration up to 0024, seed production-like rows, then apply 0025 on top.

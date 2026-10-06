@@ -75,17 +75,46 @@ export function findTeslaSender(message) {
 }
 
 // Gmail will not start auto-forwarding to a new address until the address
-// confirms a code that Gmail emails to it. That email lands at the rider's
-// Cybercab Hunter address, where the rider can't read it, so the code is
-// pulled out to be shown to the rider on Rider Data. Only a message that
-// really is from Google is honoured, and only the numeric code is kept —
-// never a link.
+// confirms the request. That email lands at the rider's Cybercab Hunter
+// address, where the rider can't read it, so what they need to confirm is
+// pulled out and shown to them on /link-gmail. Gmail's confirmation has
+// carried a numeric code, a confirm link, or (since 2026) only the link, so
+// both are read. Only a message that claims to be from Google is honoured,
+// and only an https link on Google's mail-settings hosts is kept, so a
+// spoofed message can never put a link to anywhere else on the page.
+//
+// Returns null for anything that is not a Gmail forwarding confirmation, and
+// otherwise { code, link, requestedBy } where each may be null (both null:
+// recognised but unreadable; it is still never treated as a receipt).
+const CONFIRM_LINK_HOSTS = new Set(['mail-settings.google.com', 'mail.google.com']);
+const URL_RE = /https:\/\/[^\s"'<>]+/gi;
+
+function confirmLink(message) {
+  const candidates = [
+    ...((message.html || '').match(/href\s*=\s*["']([^"']+)["']/gi) || []).map(h => h.replace(/^href\s*=\s*["']|["']$/gi, '')),
+    ...(toPlainText(message).match(URL_RE) || [])
+  ];
+  for (const raw of candidates) {
+    const candidate = raw.replace(/&amp;/gi, '&').replace(/[).,;]+$/, '');
+    let url;
+    try { url = new URL(candidate); } catch (e) { continue; }
+    if (url.protocol === 'https:' && CONFIRM_LINK_HOSTS.has(url.hostname) && /^\/mail\//.test(url.pathname) && candidate.length <= 2048) return url.href;
+  }
+  return null;
+}
+
 export function detectGmailForwardingConfirmation(message) {
   const domain = emailDomain(message.from);
   if (domain !== 'google.com' && domain !== 'gmail.com') return null;
-  if (!/Gmail\s+Forwarding\s+Confirmation/i.test(message.subject || '')) return null;
+  const subject = message.subject || '';
+  if (!/Gmail\s+Forwarding\s+Confirmation/i.test(subject)) return null;
 
   const text = toPlainText(message);
-  const m = text.match(/confirmation\s+code\s*[:\-]?\s*(\d{6,9})/i) || text.match(/\bcode\s*[:\-]?\s*(\d{6,9})\b/i);
-  return m ? { code: m[1] } : null;
+  const m = text.match(/confirmation\s+code\s*[:\-]?\s*(\d{6,9})/i) || text.match(/\bcode\s*[:\-]?\s*(\d{6,9})\b/i) || subject.match(/\(#(\d{6,9})\)/);
+  const from = subject.match(/Receive\s+Mail\s+from\s+(\S+@[^\s)]+)/i);
+  return {
+    code: m ? m[1] : null,
+    link: confirmLink(message),
+    requestedBy: from ? from[1].toLowerCase().slice(0, 254) : null
+  };
 }

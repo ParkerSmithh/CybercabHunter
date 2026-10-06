@@ -290,7 +290,7 @@ async function run() {
     await ctx.email('u1', { body: receiptBody() });                         // forwarding worked before
     const page = await openPage(ctx, 'u1', { search: '?method=auto' });
     check('before any new code: receipts are arriving, step 3 says no code is waiting', page.visible('lgStateOn') && page.visible('lgCodeDone') && !page.visible('lgCodeShown'));
-    check('...without claiming the setup is finished (a rider may be re-adding the address)', /new code will appear here/i.test(page.text('lgCodeDone')));
+    check('...without claiming the setup is finished (a rider may be re-adding the address)', /new confirmation will appear here/i.test(page.text('lgCodeDone')));
 
     await ctx.email('u1', CONFIRMATION);                                    // rider re-adds the address in Gmail
     await page.refresh();
@@ -334,6 +334,30 @@ async function run() {
     await ctx.email('u1', { body: receiptBody({ pickupTime: '9:40 am' }) });   // Gmail verified and forwarded a receipt
     await page.refresh();
     check('a receipt at the current address, with no code pending: "Receiving receipts"', page.visible('lgStateOn') && !page.visible('lgStateOff') && page.visible('lgCodeDone'));
+  }
+
+  console.log('13. Bug 2026-10-05: Gmail\'s link-only confirmation shows a "Confirm in Gmail" button');
+  {
+    const ctx = await makeApp();
+    const link = 'https://mail-settings.google.com/mail/vf-%5BANGjdJ8xQ%5D-Zk3pQ9wYx2';
+    const page = await openPage(ctx, 'u1', { search: '?method=auto' });
+    check('before Gmail sends anything: step 3 waits', page.visible('lgCodeWaiting') && !page.visible('lgCodeShown'));
+    await ctx.email('u1', { from: 'Gmail Team <forwarding-noreply@google.com>', subject: '(Gmail Forwarding Confirmation - Receive Mail from rider@gmail.com', body: `rider@gmail.com has requested to automatically forward mail to your email address.\nTo allow it, please click the link below to confirm the request:\n\n${link}\n\nIf you click the link and it appears to be broken, copy it into a new window.` });
+    await page.refresh();
+    check('the confirmation shows with a "Confirm in Gmail" button to Gmail\'s link', page.visible('lgCodeShown') && page.visible('lgConfirmLinkWrap') && page.$('lgConfirmLink').href === link);
+    check('...opening in a new tab without handing this page to Gmail', page.$('lgConfirmLink').target === '_blank' && /noopener/.test(page.$('lgConfirmLink').rel));
+    check('...naming the Gmail account that asked, to check it is theirs', page.visible('lgRequestedBy') && /rider@gmail\.com/.test(page.text('lgRequestedBy')));
+    check('...no code box (there is no code), marked new and announced', !page.visible('lgCodeWrap') && page.visible('lgCodeNew') && /Confirm in Gmail/.test(page.text('lgCodeAnnounce')));
+    check('...and the headline stays "Not receiving yet" until forwarding is confirmed', page.visible('lgStateOff'));
+
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_link = 'https://evil.example.com/mail/vf-x' WHERE user_id = 'u1'");
+    await page.refresh();
+    check('a stored link that is not Google\'s mail settings is never used as the button', !page.visible('lgConfirmLinkWrap') && page.$('lgConfirmLink').href !== 'https://evil.example.com/mail/vf-x');
+
+    ctx.d1.exec(`UPDATE receipt_ingestion_addresses SET forwarding_link = '${link}' WHERE user_id = 'u1'`);
+    await ctx.email('u1', { body: receiptBody() });
+    await page.refresh();
+    check('once forwarding works (a receipt arrives), the link is used up: "Receiving receipts"', !page.visible('lgCodeShown') && page.visible('lgCodeDone') && page.visible('lgStateOn'));
   }
 
   opened.forEach(w => w.close());

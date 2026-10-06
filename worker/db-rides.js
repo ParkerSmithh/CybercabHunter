@@ -73,12 +73,14 @@ async function createReceiptIngestion(sql, {
   ).run();
 }
 
-async function saveForwardingCode(sql, userId, code) {
+// Gmail's forwarding confirmation: its code and/or confirm link (either may
+// be null), and the Gmail account that asked to forward.
+async function saveForwardingCode(sql, userId, { code = null, link = null, requestedBy = null }) {
   await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET forwarding_code = ?, forwarding_code_received_at = datetime('now')
+    SET forwarding_code = ?, forwarding_link = ?, forwarding_requested_by = ?, forwarding_code_received_at = datetime('now')
     WHERE user_id = ? AND status = 'active'
-  `).bind(code, userId).run();
+  `).bind(code, link, requestedBy, userId).run();
 }
 
 // A real receipt has arrived, so forwarding demonstrably works and the
@@ -86,7 +88,8 @@ async function saveForwardingCode(sql, userId, code) {
 async function markReceiptReceived(sql, userId) {
   await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET last_received_at = datetime('now'), forwarding_code = NULL, forwarding_code_received_at = NULL
+    SET last_received_at = datetime('now'), forwarding_code = NULL, forwarding_link = NULL,
+        forwarding_requested_by = NULL, forwarding_code_received_at = NULL
     WHERE user_id = ?
   `).bind(userId).run();
 }
@@ -344,7 +347,8 @@ async function deleteRideForUser(sql, userId, tripId) {
 async function getSyncStatus(sql, userId) {
   const [address, totals, lastRun, lastReceived, review, unidentified] = await sql.batch([
     sql.prepare(`
-      SELECT opaque_token, created_at, last_received_at, forwarding_code, forwarding_code_received_at
+      SELECT opaque_token, created_at, last_received_at, forwarding_code, forwarding_link,
+             forwarding_requested_by, forwarding_code_received_at
       FROM receipt_ingestion_addresses WHERE user_id = ? AND status = 'active'
     `).bind(userId),
     sql.prepare(`
