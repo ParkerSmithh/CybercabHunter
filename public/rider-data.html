@@ -128,22 +128,19 @@
       </div>
 
       <!-- Connected accounts: the Tesla account (text + Unlink Tesla, only when
-           linked) and a Gmail button beside it (only when the server reports
-           Gmail import as configured): "Unlink Gmail" when connected, "Connect
-           Gmail" otherwise — the existing /api/gmail/connect and
-           /api/gmail/disconnect. Linking Tesla happens from the header button
-           on every other page; unlinking clears the connection without
-           touching the account or session. The Fleet API connection exposes
-           vehicle information only — rides come from receipts, not from it.
-           updateAccountsPanel() in js/rider-data.js shows the panel when either
-           part applies. -->
+           linked). Linking Tesla happens from the header button on every
+           other page; unlinking clears the connection without touching the
+           account or session. The Fleet API connection exposes vehicle
+           information only; rides come from forwarded receipts (Link Gmail
+           above). #gmailNotice explains a one-time ?gmail= result from the
+           dormant Gmail OAuth callback. updateAccountsPanel() in
+           js/rider-data.js shows the panel when either part applies. -->
       <div id="accountsPanel" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div id="dataUnlinkTeslaPrompt" class="hidden max-w-2xl">
           <div class="font-display font-bold text-base mb-1">Tesla account connected</div>
           <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap shrink-0">
-          <button id="gmailToggleBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-50">Connect Gmail</button>
           <button id="teslaUnlinkBtn" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-[#0F141C] border border-[rgba(212,175,55,0.2)] text-slate-100 hover:bg-white/5 transition-colors">Unlink Tesla</button>
         </div>
         <p id="gmailNotice" class="hidden w-full text-sm rounded-lg border px-4 py-3" role="status"></p>
@@ -433,6 +430,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=17"></script>
+<script src="js/rider-data.js?v=18"></script>
 </body>
 </html>

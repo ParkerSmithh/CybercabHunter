@@ -86,15 +86,17 @@ async function run() {
     check('after cancelling at Google: still signed in, Rider Data loads, and it says Gmail was not connected', !back.d.getElementById('dataSignedIn').classList.contains('hidden') && /cancelled/.test(back.d.getElementById('gmailNotice').textContent) && !back.modal());
   }
 
-  console.log("6. Rider Data's own Connect Gmail still works");
+  console.log('6. Rider Data: "Link Gmail" is the only Gmail action');
   {
     const ctx = await makeApp();
     const rd = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-alice' } });
-    await rd.waitFor(() => !rd.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
-    check('the Rider Data "Connect Gmail" button is shown (and no prompt)', rd.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail' && !rd.modal());
-    rd.d.getElementById('gmailToggleBtn').dispatchEvent(new rd.w.MouseEvent('click', { bubbles: true }));
-    await rd.waitFor(() => rd.requests.some(r => r.path === '/api/gmail/connect'));
-    check('its Connect Gmail still calls /api/gmail/connect', rd.requests.some(r => r.path === '/api/gmail/connect' && r.method === 'POST'));
+    await rd.waitFor(() => !rd.d.getElementById('dataSignedIn').classList.contains('hidden'));
+    await rd.settle(300);
+    const gmailActions = [...rd.d.querySelectorAll('a, button')].filter(el => /gmail/i.test(el.textContent));
+    check('one "Link Gmail" button, and every Gmail-related control leads to the setup page',
+      !!rd.d.getElementById('linkGmailBtn') && gmailActions.length >= 1 && gmailActions.every(el => el.tagName === 'A' && el.getAttribute('href') === '/link-gmail' && el.textContent.trim() === 'Link Gmail'));
+    check('no Connect/Unlink Gmail button exists, and no Gmail request was made', !rd.d.getElementById('gmailToggleBtn') && !rd.requests.some(r => r.path.startsWith('/api/gmail/')));
+    check('the accounts panel stays hidden when Tesla is not linked', rd.d.getElementById('accountsPanel').classList.contains('hidden'));
   }
 
   console.log('8. TEMPORARY: Gmail connect is allowlisted until Google verifies gmail.readonly');
@@ -105,7 +107,7 @@ async function run() {
     check('the match is on the signed-in Google email, case-insensitive; no Google identity is never allowed',
       gmailConnectAllowed({ email: 'ContactJoeClos@Gmail.com' }) && !gmailConnectAllowed({ email: 'carol@gmail.com' }) && !gmailConnectAllowed(null) && !gmailConnectAllowed({ email: null }));
     check('every gate is marked TEMPORARY for removal after verification',
-      (gmailSrc.match(/TEMPORARY/g) || []).length >= 4 && /TEMPORARY/.test(read('public/js/rider-data.js')));
+      (gmailSrc.match(/TEMPORARY/g) || []).length >= 4);
 
     const ctx = await makeApp();
     for (const [u, email] of [['carol', 'carol@gmail.com'], ['owner', 'contactjoeclos@gmail.com']]) {
@@ -128,14 +130,13 @@ async function run() {
     const status = async u => (await worker.fetch(new Request('https://x/api/gmail/status', { headers: { Origin: 'https://cybercabhunter.com', Authorization: `Bearer session-${u}` } }), ctx.env, {})).json();
     check('status reports connect_allowed: false for the rider, true for the owner', (await status('carol')).connect_allowed === false && (await status('owner')).connect_allowed === true);
 
-    const rdCarol = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-carol' } });
-    await rdCarol.waitFor(() => !rdCarol.d.getElementById('dataSignedIn').classList.contains('hidden'));
-    await rdCarol.settle(300);
-    check('Rider Data: no "Connect Gmail" button for a rider not on the allowlist (and nothing was requested)',
-      rdCarol.d.getElementById('gmailToggleBtn').classList.contains('hidden') && !rdCarol.requests.some(r => r.path === '/api/gmail/connect'));
-    const rdOwner = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-owner' } });
-    await rdOwner.waitFor(() => !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
-    check('Rider Data: the owner sees "Connect Gmail"', !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden') && rdOwner.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail');
+    for (const u of ['carol', 'owner']) {
+      const rd = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: `session-${u}` } });
+      await rd.waitFor(() => !rd.d.getElementById('dataSignedIn').classList.contains('hidden'));
+      await rd.settle(300);
+      check(`Rider Data (${u}): no Connect Gmail button even though the gate ${u === 'owner' ? 'allows' : 'refuses'} it, and no Gmail request`,
+        !rd.d.getElementById('gmailToggleBtn') && !rd.requests.some(r => r.path.startsWith('/api/gmail/')));
+    }
 
     const carolSignIn = await signIn(ctx, 'carol');
     await carolSignIn.settle(400);
