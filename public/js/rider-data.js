@@ -128,7 +128,7 @@
     $('spendingList').innerHTML = list.map(s => `
       <div>
         <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total · ${esc(s.currency)}</div>
-        <div class="font-display font-bold text-4xl mb-4">${esc(fmtMoney(s.totalCents, s.currency))}</div>
+        <div class="font-display font-bold text-4xl mb-4 max-sm:text-3xl max-sm:mb-3">${esc(fmtMoney(s.totalCents, s.currency))}</div>
         <div class="grid grid-cols-3 gap-4 text-sm">
           <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Median fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.medianCents, s.currency))}</div></div>
           <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Average fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
@@ -214,7 +214,7 @@
         <button type="button" data-action="confirm-remove" data-id="${esc(id)}" class="text-xs px-2 py-1 rounded border border-crimson/50 text-crimson hover:bg-crimson/10">Remove</button>
         <button type="button" data-action="cancel-remove" class="text-xs px-2 py-1 ml-1 rounded border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>`;
     }
-    return `<button type="button" data-action="ask-remove" data-id="${esc(id)}" aria-label="Remove this ride from your history" class="text-xs text-slate-500 hover:text-crimson underline-offset-2 hover:underline">Remove</button>`;
+    return `<button type="button" data-action="ask-remove" data-id="${esc(id)}" aria-label="Remove this ride from your history" class="max-sm:min-h-[40px] max-sm:inline-flex max-sm:items-center text-xs text-slate-500 hover:text-crimson underline-offset-2 hover:underline">Remove</button>`;
   }
 
   function renderRides(body) {
@@ -232,13 +232,13 @@
       if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
-        <td class="py-3 pr-4 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>
-        <td class="py-3 pr-4">${esc(r.city || '—')}</td>
-        <td class="py-3 pr-4 text-right whitespace-nowrap">${esc(fmtMiles(r.distance))}</td>
-        <td class="py-3 pr-4 text-right whitespace-nowrap">${esc(fare)}</td>
-        <td class="py-3 pr-4 font-display font-bold">${esc(r.vehicle_plate || '—')}</td>
-        <td class="py-3 pr-4 text-slate-400 whitespace-nowrap">${esc(SOURCE_LABELS[r.source] || r.source)}</td>
-        <td class="py-3 text-right whitespace-nowrap">${removeCell(r.id)}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5">${esc(r.city || '—')}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fmtMiles(r.distance))}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fare)}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 font-display font-bold">${esc(r.vehicle_plate || '—')}</td>
+        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-slate-400 whitespace-nowrap">${esc(SOURCE_LABELS[r.source] || r.source)}</td>
+        <td class="py-3 max-sm:py-1 text-right whitespace-nowrap">${removeCell(r.id)}</td>
       </tr>`;
     }).join('');
 

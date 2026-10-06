@@ -76,10 +76,10 @@
     $('riderCount').textContent = String(vehicles.length);
     $('riderVehicles').innerHTML = vehicles.map(v => {
       const detail = [v.model, v.color, v.service_area].filter(Boolean).map(esc).join(' · ');
-      return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[rgba(212,175,55,0.5)] transition-colors">
+      return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 p-3 max-sm:gap-1.5 max-sm:px-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[rgba(212,175,55,0.5)] transition-colors">
         <span class="min-w-0">
           <span class="block font-display font-bold text-sm tracking-wide truncate">${esc(v.license_plate || 'Plate not listed')}</span>
-          ${detail ? `<span class="block text-xs text-slate-500 truncate">${detail}</span>` : ''}
+          ${detail ? `<span class="block text-xs text-slate-500 truncate max-sm:text-[10px]">${detail}</span>` : ''}
         </span>
         <span class="shrink-0 text-slate-500" aria-hidden="true">&rsaquo;</span>
       </a></li>`;

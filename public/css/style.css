@@ -494,6 +494,8 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .theme-switch button{padding:6px 12px; border-radius:999px; font-size:12px; font-weight:510; color:rgb(var(--n-400)); transition:color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);}
 .theme-switch button:hover{color:rgb(var(--ink));}
 .theme-switch button[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
+/* Phones: a 40px tap height (the switch is otherwise unchanged). */
+@media (max-width:639px){ .theme-switch button{min-height:40px; padding:6px 9px; font-size:11px;} }
 
 /* The sticky header and the phone tab bar are edged on one side only. */
 header.glass{border-width:0 0 1px;}

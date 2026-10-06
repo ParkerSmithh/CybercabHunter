@@ -11,7 +11,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=34">
+<link rel="stylesheet" href="css/style.css?v=35">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -33,31 +33,31 @@
 <!-- DRAFT: describes what the code does today. It has NOT been reviewed by a
      lawyer and makes no legal or compliance claims. Items marked "To be
      confirmed" need a decision before this is published as the policy. -->
-<main id="main" tabindex="-1" class="py-14">
-  <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed">
+<main id="main" tabindex="-1" class="py-14 max-sm:py-8">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed max-sm:space-y-7">
 
     <div id="privacyDraftNotice" class="rounded-xl border border-amber-400/40 bg-amber-400/5 px-5 py-4 text-amber-200">
       <strong>Draft — pending legal review.</strong> This page describes how Cybercab Hunter currently handles data. It is not yet a reviewed privacy policy, and sections marked “To be confirmed” are still open.
     </div>
 
     <div>
-      <h1 class="font-display font-bold text-3xl tracking-tight mb-3 text-slate-100">Privacy</h1>
+      <h1 class="font-display font-bold text-3xl tracking-tight mb-3 text-slate-100 max-sm:text-[1.625rem] max-sm:mb-2">Privacy</h1>
       <p>Cybercab Hunter is a community tracker for Tesla Robotaxi rides and vehicles. This page explains what information it uses and how.</p>
     </div>
 
     <section>
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Your account</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">Your account</h2>
       <p>If you sign in with Google, Cybercab Hunter receives your Google account identifier, email address, name and profile picture, and uses them to create and recognize your account. Normal sign-in does not give Cybercab Hunter any access to your Gmail.</p>
     </section>
 
     <section>
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Ride receipts</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">Ride receipts</h2>
       <p class="mb-2">Your rides come from Tesla Robotaxi receipt emails. A receipt can reach Cybercab Hunter by being forwarded to your private receipt address, by being imported, or — only if you choose to connect it — directly from Gmail (below).</p>
       <p>From each receipt, Cybercab Hunter keeps the ride details it needs for Rider Data: the ride date, pickup and drop-off times, pickup and drop-off locations, distance, duration, fare and the vehicle’s license plate. The email itself is read to extract those details and is not stored. Your name and payment details that appear in a receipt are not kept.</p>
     </section>
 
     <section id="gmail">
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Optional Gmail connection</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">Optional Gmail connection</h2>
       <ul class="list-disc pl-5 space-y-2">
         <li><strong>What it is.</strong> From Rider Data you can choose to connect the Gmail account you signed in with. This is separate from signing in and asks Google for read-only Gmail access (the “gmail.readonly” permission).</li>
         <li><strong>Why.</strong> So your Tesla Robotaxi receipts are added to Rider Data automatically, without forwarding them yourself.</li>
@@ -69,7 +69,7 @@
     </section>
 
     <section>
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">What is public</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">What is public</h2>
       <p class="mb-2">Cybercab Hunter publishes a public registry of Robotaxi vehicles. A vehicle appears there only after a moderator has reviewed and approved it, and the public pages show vehicle-level information (such as the license plate and ride counts) derived from receipts.</p>
       <p class="mb-2">Community profile: unless you turn it off, your display name, username, profile picture (for Google sign-in, the picture from your Google account), bio, the month you joined, the public registry vehicles you discovered, and counts from your rides (how many rides you have recorded, how many different Cybercabs you have ridden in, and the cities you have ridden in, with the number of rides in each) are shown on the Community leaderboard and on your public profile page. Only counts and city names are shown, never fares, dates, times, addresses or the plates of vehicles you rode in. This is on by default for every account. Turn off “Community leaderboard &amp; public profile” on your Profile page at any time to appear only as “Private spotter” (a rank and count, with no name or picture).</p>
       <p class="mb-2">Cybercab reviews: a review you post on the Community page (its stars, text, photos and the vehicle it is about) and your comments on reviews are public. They show your display name, username and profile picture, unless you have turned off “Community leaderboard &amp; public profile”, in which case they show as “Anonymous”. Location and other metadata are removed from review photos before they are stored. Who liked a review is never shown, only how many people did. You can delete your own reviews and comments at any time.</p>
@@ -78,13 +78,13 @@
     </section>
 
     <section>
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Deleting your data</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">Deleting your data</h2>
       <p>Rider Data lets you remove individual rides or all of your rides.</p>
       <p class="text-amber-200/90 mt-2">To be confirmed: account deletion process, data retention periods for other data, and a contact address for privacy questions.</p>
     </section>
 
     <section>
-      <h2 class="font-display font-bold text-xl text-slate-100 mb-2">Google API Services</h2>
+      <h2 class="font-display font-bold text-xl text-slate-100 mb-2 max-sm:text-lg max-sm:mb-1.5">Google API Services</h2>
       <p class="text-amber-200/90">To be confirmed after legal review: the statement describing Cybercab Hunter’s use of information received from Google APIs under the Google API Services User Data Policy, including the Limited Use requirements.</p>
     </section>
 

@@ -15,7 +15,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=34">
+<link rel="stylesheet" href="css/style.css?v=35">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -78,13 +78,13 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<section class="py-16">
+<section class="py-16 max-sm:py-10">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 max-sm:gap-4">
       <div class="min-w-0">
         <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Riders &amp; Spotters</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">COMMUNITY</h1>
-        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
+        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:mt-1 max-sm:text-[1.75rem]">COMMUNITY</h1>
+        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed max-sm:mt-1.5 max-sm:text-xs max-sm:leading-snug">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
       </div>
 
       <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
@@ -105,51 +105,51 @@
          js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
          GET /api/registry/stats, js/community.js). Each starts as an em dash
          and stays one if it can't be loaded — never a made-up 0. -->
-    <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Reviews</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statReviews">—</span></div>
-        <div class="text-xs text-slate-500">Posted by signed-in riders</div>
+    <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-sm:mt-5 max-sm:grid-cols-4 max-sm:gap-1.5">
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statReviews">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden">Posted by signed-in riders</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Average rating</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statRating">—</span><span class="text-sm text-slate-500"> / 5</span></div>
-        <div class="text-xs text-slate-500">Across all reviews</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statRating">—</span><span class="text-sm text-slate-500 max-sm:text-[10px]"> / 5</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden">Across all reviews</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Spotters</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statSpotters">—</span></div>
-        <div class="text-xs text-slate-500">Credited with a discovery</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Spotters</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statSpotters">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden">Credited with a discovery</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Public Cybercabs</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums"><span id="statVehicles">—</span></div>
-        <div class="text-xs text-slate-500">In the public registry</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Public Cybercabs</span><span class="sm:hidden">Cybercabs</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statVehicles">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden">In the public registry</div>
       </div>
     </div>
 
     <!-- Reviews and the leaderboard side by side on lg+ (reviews the wider
          column); stacked on smaller screens. -->
-    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start max-sm:mt-4 max-sm:gap-4">
     <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
          and breakdown are computed live by the server over the reviews shown. -->
     <div id="reviews" class="glass rounded-2xl p-4 sm:p-6 min-w-0">
-      <div class="flex items-start justify-between gap-4 flex-wrap">
-        <div class="flex items-start gap-3">
+      <div class="flex items-start justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-2">
+        <div class="flex items-start gap-3 min-w-0 max-sm:gap-2.5">
           <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
           </span>
           <div>
             <h2 data-split class="font-display font-bold text-lg leading-tight">REVIEWS</h2>
-            <p class="text-xs text-slate-500 mt-1">What riders say about the Cybercab.</p>
+            <p class="text-xs text-slate-500 mt-1 max-sm:text-[11px] max-sm:leading-snug">What riders say about the Cybercab.</p>
           </div>
         </div>
-        <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">Write a review</button>
+        <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold max-sm:shrink-0 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs max-sm:whitespace-nowrap bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">Write a review</button>
       </div>
       <!-- Summary: the average, and how the ratings break down (5★ → 1★). Shown once there is a review to summarise; until then the empty state says it once. -->
-      <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07]">
-        <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08]">
-          <div id="reviewAverage" class="stat-value font-semibold text-5xl text-gold leading-none">—</div>
+      <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07] max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-4 max-sm:mt-4 max-sm:py-4">
+        <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08] max-sm:text-left max-sm:pr-4 max-sm:border-r max-sm:border-white/[0.08]">
+          <div id="reviewAverage" class="stat-value font-semibold text-5xl text-gold leading-none max-sm:text-4xl">—</div>
           <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem]" aria-hidden="true"></div>
           <div id="reviewCount" class="text-xs text-slate-500 mt-1">No reviews yet</div>
         </div>
@@ -197,9 +197,9 @@
       </form>
 
       <div id="reviewSort" role="group" aria-label="Sort reviews" class="hidden mt-5 inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-        <button type="button" data-sort="recent" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Most recent</button>
-        <button type="button" data-sort="rating" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Highest rated</button>
-        <button type="button" data-sort="likes" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold">Most liked</button>
+        <button type="button" data-sort="recent" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most recent</button>
+        <button type="button" data-sort="rating" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Highest rated</button>
+        <button type="button" data-sort="likes" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most liked</button>
       </div>
 
       <div id="reviewLoading" class="mt-4 space-y-2" aria-busy="true">
@@ -232,7 +232,7 @@
         </span>
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline justify-between gap-3">
-            <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight">MOST VEHICLES DISCOVERED</h2>
+            <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight max-sm:text-base">MOST VEHICLES DISCOVERED</h2>
             <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 6</span>
           </div>
           <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
@@ -378,25 +378,25 @@
 </div>
 
 <footer class="border-t border-white/[0.06] mt-8">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-12 grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] md:items-start">
-    <div>
-      <a href="index.html" class="inline-flex items-center gap-2.5">
-        <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold tracking-tight">CYBERCAB HUNTER</span>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-12 grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] md:items-start max-sm:py-8 max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-4 max-sm:gap-y-6">
+    <div class="max-sm:contents">
+      <a href="index.html" class="inline-flex items-center gap-2.5 max-sm:gap-2 max-sm:row-start-1 max-sm:col-start-1 max-sm:self-center">
+        <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain max-sm:w-8 max-sm:h-8 max-[374px]:hidden">
+        <span class="font-display font-bold tracking-tight max-sm:text-[13px] max-sm:whitespace-nowrap">CYBERCAB HUNTER</span>
       </a>
-      <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed max-sm:row-start-2 max-sm:col-span-2 max-sm:mt-0 max-sm:max-w-none max-sm:text-xs max-sm:leading-snug">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
     </div>
-    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5 text-sm text-slate-400">
-      <a href="infrastructure.html" class="hover:text-white transition-colors">Zones</a>
-      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
-      <a href="/sightings" class="hover:text-white transition-colors">Sightings</a>
-      <a href="/community" class="hover:text-white transition-colors">Community</a>
-      <a href="/replay?range=month" class="hover:text-white transition-colors">Replay</a>
-      <a href="/simulation" class="hover:text-white transition-colors">Simulation</a>
-      <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5 text-sm text-slate-400 max-sm:row-start-3 max-sm:col-span-2 max-sm:grid-cols-3 max-sm:gap-x-4 max-sm:gap-y-0">
+      <a href="infrastructure.html" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Zones</a>
+      <a href="/vehicles" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Cars</a>
+      <a href="/sightings" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Sightings</a>
+      <a href="/community" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Community</a>
+      <a href="/replay?range=month" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Replay</a>
+      <a href="/simulation" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Simulation</a>
+      <a href="/privacy" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Privacy</a>
     </nav>
-    <div>
-      <p id="themeSwitchLabel" class="text-xs text-slate-500 mb-2">Appearance</p>
+    <div class="max-sm:row-start-1 max-sm:col-start-2 max-sm:justify-self-end">
+      <p id="themeSwitchLabel" class="text-xs text-slate-500 mb-2 max-sm:sr-only">Appearance</p>
       <div class="theme-switch" role="group" aria-labelledby="themeSwitchLabel">
         <button type="button" data-theme-set="system" aria-pressed="false">System</button>
         <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
@@ -404,7 +404,7 @@
       </div>
     </div>
   </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500 max-sm:py-4 max-sm:text-[11px]">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
 </footer>
 
 <script src="js/calc.js?v=4"></script>

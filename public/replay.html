@@ -16,7 +16,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=34">
+<link rel="stylesheet" href="css/style.css?v=35">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -84,16 +84,16 @@
 <main id="main" tabindex="-1">
 <section class="pt-3 lg:pt-4 pb-3 lg:pb-4">
   <div id="replayContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100dvh-5rem)] lg:min-h-[560px]">
-    <aside id="replayPanel" class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto replay-panel">
+    <aside id="replayPanel" class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 lg:max-h-[calc(100%-2rem)] lg:overflow-y-auto replay-panel max-sm:p-4 max-sm:mb-3">
       <!-- Range: a segmented control, like the Zones city switch. This Month leads. -->
       <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-        <button type="button" data-range="month" class="replay-range flex-1 py-2 rounded-lg text-xs font-bold tracking-wide">This Month</button>
-        <button type="button" data-range="24h" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide">24 Hours</button>
-        <button type="button" data-range="7d" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide">7 Days</button>
+        <button type="button" data-range="month" class="replay-range flex-1 py-2 rounded-lg text-xs font-bold tracking-wide max-sm:min-h-[40px]">This Month</button>
+        <button type="button" data-range="24h" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide max-sm:min-h-[40px]">24 Hours</button>
+        <button type="button" data-range="7d" class="replay-range flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide max-sm:min-h-[40px]">7 Days</button>
       </div>
 
       <!-- Header -->
-      <div class="flex items-start justify-between gap-3 mt-5">
+      <div class="flex items-start justify-between gap-3 mt-5 max-sm:mt-4">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap">Replay · <span id="replayRangeLabel">This Month</span></p>
           <h1 class="font-display font-bold text-xl leading-tight mt-1">AUSTIN, TX</h1>
@@ -102,7 +102,7 @@
       </div>
 
       <!-- Map key, right under the heading -->
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-slate-400">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-slate-400 max-sm:gap-x-3 max-sm:gap-y-1.5 max-sm:text-[11px]">
         <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" class="w-4 h-4 object-contain rounded-full ring-2 ring-[#D4AF37] bg-white">Camera watch</span>
         <span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rotate-45 bg-[#D4AF37] border border-white"></span>Spotter</span>
         <span class="flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-full bg-[#fffaec] border-[1.5px] border-[rgba(60,50,30,0.75)]"></span>Camera, no sighting yet</span>
@@ -110,40 +110,40 @@
       </div>
 
       <!-- Replay clock -->
-      <div class="mt-4 p-4 rounded-xl border border-[rgba(212,175,55,0.14)] bg-gradient-to-br from-[rgba(212,175,55,0.07)] to-transparent">
+      <div class="mt-4 p-4 max-sm:mt-3 max-sm:p-3 rounded-xl border border-[rgba(212,175,55,0.14)] bg-gradient-to-br from-[rgba(212,175,55,0.07)] to-transparent">
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Replay Clock</p>
-        <div id="replayClockTime" class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums">—</div>
-        <div id="replayClockDate" class="text-xs text-slate-400 mt-2">—</div>
+        <div id="replayClockTime" class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums max-sm:text-2xl max-sm:mt-1.5">—</div>
+        <div id="replayClockDate" class="text-xs text-slate-400 mt-2 max-sm:mt-1">—</div>
       </div>
 
       <!-- Running totals -->
       <dl class="grid grid-cols-2 gap-2 mt-2">
-        <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+        <div class="p-3 max-sm:px-3 max-sm:py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
           <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sightings so far</dt>
-          <dd class="font-display font-bold text-xl text-slate-100 mt-1"><span id="replayCounter" class="replay-odometer" aria-live="off" aria-label="0 sightings"></span></dd>
+          <dd class="font-display font-bold text-xl text-slate-100 mt-1 max-sm:text-lg max-sm:mt-0.5"><span id="replayCounter" class="replay-odometer" aria-live="off" aria-label="0 sightings"></span></dd>
         </div>
-        <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+        <div class="p-3 max-sm:px-3 max-sm:py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
           <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cameras lit</dt>
-          <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums"><span id="replayCamerasLit">0</span><span class="text-sm text-slate-500"> / <span id="replayCamerasTotal">—</span></span></dd>
+          <dd class="font-display font-bold text-xl text-slate-100 mt-1 tabular-nums max-sm:text-lg max-sm:mt-0.5"><span id="replayCamerasLit">0</span><span class="text-sm text-slate-500"> / <span id="replayCamerasTotal">—</span></span></dd>
         </div>
       </dl>
 
       <!-- Playback: play/pause, speed, and the activity ribbon (a histogram of
            the window that fills gold as the playhead moves; drag it to scrub). -->
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 mb-2">Playback</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 mb-2 max-sm:mt-4">Playback</p>
       <div class="flex items-center gap-2">
         <button type="button" id="replayPlay" aria-label="Play" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-gradient-to-br from-goldsoft to-gold text-[#1a1204]"></button>
         <div id="replaySpeed" role="group" aria-label="Speed" class="flex-1 flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-          <button type="button" data-speed="1" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">1×</button>
-          <button type="button" data-speed="4" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">4×</button>
-          <button type="button" data-speed="16" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">16×</button>
-          <button type="button" data-speed="60" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold">60×</button>
+          <button type="button" data-speed="1" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px]">1×</button>
+          <button type="button" data-speed="4" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px]">4×</button>
+          <button type="button" data-speed="16" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px]">16×</button>
+          <button type="button" data-speed="60" class="replay-speed flex-1 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px]">60×</button>
         </div>
       </div>
       <canvas id="replayRibbon" class="block w-full h-12 mt-3 cursor-pointer touch-none" role="slider" tabindex="0" aria-label="Replay timeline" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></canvas>
       <div class="flex justify-between text-[11px] text-slate-500 mt-1"><span id="replayStartLabel"></span><span id="replayEndLabel"></span></div>
 
-      <button type="button" id="replayShare" class="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
+      <button type="button" id="replayShare" class="w-full mt-4 py-2.5 max-sm:mt-3 max-sm:min-h-[40px] rounded-lg text-xs font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5">Copy link</button>
       <p class="text-xs text-slate-500 leading-relaxed mt-3">Camera-watch detections and approved spotter sightings at each camera's location. Public, approved data only. Nothing is estimated.</p>
     </aside>
 

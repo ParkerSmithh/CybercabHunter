@@ -43,4 +43,27 @@ const zones = read('infrastructure.html');
 check('Zones keeps its 2-column fare pairs, tightened on phones', /<dl class="grid grid-cols-2 gap-x-4 gap-y-4 max-sm:gap-y-2\.5">/.test(zones));
 check('the Zones Replay button still sits below the map below lg (fit fix 4)', /id="zonesReplay"[^>]*class="shine mt-3 self-end lg:!absolute/.test(zones));
 
+// Every other page (Oct 2026, second pass).
+const pages = ['index', 'sightings', 'vehicles', 'community', 'simulation', 'vehicle', 'rider', 'rider-data', 'profile', 'link-gmail'];
+check('the shared footer is compact on phones (brand + Appearance on one row, links in 3 columns) on every page that has it',
+  pages.every(f => /<nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 [^"]*max-sm:grid-cols-3/.test(read(`${f}.html`)) && /<div class="max-sm:row-start-1 max-sm:col-start-2 max-sm:justify-self-end">/.test(read(`${f}.html`))));
+check('every footer link is a 40px tap row on phones', pages.every(f => (read(`${f}.html`).match(/class="hover:text-white transition-colors max-sm:min-h-\[40px\] max-sm:flex max-sm:items-center">/g) || []).length === 7));
+const css = fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8');
+check('the Appearance switch buttons are 40px tall on phones', /@media \(max-width:639px\)\{ \.theme-switch button\{min-height:40px;/.test(css));
+check('every page loads the same stylesheet version', new Set([...pages, 'infrastructure', 'moderation', 'replay', 'privacy', 'signin', 'moderation/import-receipt'].map(f => (/css\/style\.css\?v=(\d+)/.exec(read(`${f}.html`)) || [])[1])).size === 1);
+
+const community = read('community.html');
+check('Community: the four stats in one row on phones (2 / 4 from sm up as before)', /<div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 [^"]*max-sm:grid-cols-4/.test(community));
+const sim = read('simulation.html');
+check('Fleet ROI: the three results in one row on phones', /<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-sm:grid-cols-3 max-sm:gap-2">/.test(sim));
+check('Fleet ETA: the two pickup-wait estimates side by side on phones', /<div class="grid gap-6 lg:grid-cols-2 max-sm:grid-cols-2 max-sm:gap-2\.5">/.test(sim));
+check('Fleet ROI header still stacks on phones (fit fix 2): no phone override of its one-column grid', /grid grid-cols-1 sm:grid-cols-\[minmax\(0,1fr\)_auto\][^"]*max-sm:py-6/.test(sim) && !/sim-hero-car[^>]*max-sm:/.test(sim));
+check('the ROI sliders get a 40px touch strip on phones, the 4px track unchanged', /@media \(max-width:639px\)\{\s*input\[type=range\]\{height:40px; background:transparent;\}/.test(sim));
+check('Vehicle page: the four ride stats in one row on phones', /<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm max-sm:grid-cols-4 max-sm:gap-2">/.test(read('vehicle.html')));
+const rider = read('rider.html');
+check('Rider profile: stats 3 across and discovered vehicles 2 across on phones', /<div id="riderStats" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3/.test(rider) && /<ul id="riderVehicles" class="[^"]*max-sm:grid-cols-2/.test(rider));
+const rd = read('rider-data.html');
+check('Rider Data: the rides table scroll box contains its sr-only label (it used to widen the page to 546px on phones)', /<div id="ridesTableWrap" class="hidden overflow-x-auto relative">/.test(rd));
+check('Rider Data: overview 3 across and ride history 4 across on phones', /grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3/.test(rd) && /grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm max-sm:grid-cols-4/.test(rd));
+
 t.finish();

@@ -18,7 +18,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=34">
+<link rel="stylesheet" href="css/style.css?v=35">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -118,27 +118,27 @@
 
     <!-- Loaded vehicle -->
     <div id="vehicleLoaded" class="hidden">
-      <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4">
+      <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4 max-sm:mb-4 max-sm:p-4 max-sm:flex-row max-sm:items-center max-sm:gap-3">
         <div class="flex-1 min-w-0">
-          <div class="flex flex-wrap items-center gap-3 mb-3">
-            <h1 id="vLicensePlate" class="font-display font-bold text-2xl sm:text-3xl tracking-[0.18em] px-4 py-2 rounded-lg bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]"></h1>
-            <span id="vCybercabBadge" class="hidden text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide">Cybercab</span>
+          <div class="flex flex-wrap items-center gap-3 mb-3 max-sm:gap-2 max-sm:mb-2">
+            <h1 id="vLicensePlate" class="font-display font-bold text-2xl sm:text-3xl tracking-[0.18em] px-4 py-2 max-sm:text-lg max-sm:px-2.5 max-sm:py-1 rounded-lg bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]"></h1>
+            <span id="vCybercabBadge" class="hidden text-xs font-bold px-3 py-1.5 max-sm:text-[10px] max-sm:px-2 max-sm:py-1 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide">Cybercab</span>
           </div>
-          <p id="vSummaryLine" class="hidden text-sm text-slate-400 [overflow-wrap:anywhere]"></p>
+          <p id="vSummaryLine" class="hidden text-sm text-slate-400 [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-snug"></p>
         </div>
-        <img id="vCybercabImage" src="images/Cybercab2.png" alt="Cybercab (generic vehicle-type image, not a photo of this specific vehicle)" class="hidden w-full max-w-[140px] sm:max-w-[160px] lg:w-40 lg:max-w-none shrink-0 object-contain mx-auto lg:mx-0">
+        <img id="vCybercabImage" src="images/Cybercab2.png" alt="Cybercab (generic vehicle-type image, not a photo of this specific vehicle)" class="hidden w-full max-w-[140px] sm:max-w-[160px] lg:w-40 lg:max-w-none shrink-0 object-contain mx-auto lg:mx-0 max-sm:w-24 max-sm:mx-0">
       </div>
 
-      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8">
-        <h2 data-split class="font-display font-bold text-xl tracking-tight text-white mb-1">Recorded ride history</h2>
-        <p class="text-xs text-slate-500 mb-5">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
-          <div><div class="text-slate-500 text-xs mb-1">Rides Recorded</div><div id="vTripCount" class="stat-value text-xl font-semibold text-white"></div></div>
-          <div><div class="text-slate-500 text-xs mb-1">Recorded Distance</div><div id="vTotalDistance" class="stat-value text-xl font-semibold text-white"></div></div>
-          <div><div class="text-slate-500 text-xs mb-1">First Recorded Ride</div><div id="vFirstRide" class="stat-value text-xl font-semibold text-white"></div></div>
-          <div><div class="text-slate-500 text-xs mb-1">Latest Recorded Ride</div><div id="vLastRide" class="stat-value text-xl font-semibold text-white"></div></div>
+      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8 max-sm:p-4 max-sm:mb-4">
+        <h2 data-split class="font-display font-bold text-xl tracking-tight text-white mb-1 max-sm:text-lg">Recorded ride history</h2>
+        <p class="text-xs text-slate-500 mb-5 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-4">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm max-sm:grid-cols-4 max-sm:gap-2">
+          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Rides Recorded</span><span class="sm:hidden">Rides</span></div><div id="vTripCount" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
+          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Recorded Distance</span><span class="sm:hidden">Distance</span></div><div id="vTotalDistance" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
+          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">First Recorded Ride</span><span class="sm:hidden">First ride</span></div><div id="vFirstRide" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
+          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Latest Recorded Ride</span><span class="sm:hidden">Latest ride</span></div><div id="vLastRide" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
         </div>
-        <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-5 leading-relaxed"></p>
+        <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-5 leading-relaxed max-sm:mt-4"></p>
       </div>
     </div>
 
@@ -249,25 +249,25 @@
 </div>
 
 <footer class="border-t border-white/[0.06] mt-8">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-12 grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] md:items-start">
-    <div>
-      <a href="index.html" class="inline-flex items-center gap-2.5">
-        <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain">
-        <span class="font-display font-bold tracking-tight">CYBERCAB HUNTER</span>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-12 grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] md:items-start max-sm:py-8 max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:gap-x-4 max-sm:gap-y-6">
+    <div class="max-sm:contents">
+      <a href="index.html" class="inline-flex items-center gap-2.5 max-sm:gap-2 max-sm:row-start-1 max-sm:col-start-1 max-sm:self-center">
+        <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain max-sm:w-8 max-sm:h-8 max-[374px]:hidden">
+        <span class="font-display font-bold tracking-tight max-sm:text-[13px] max-sm:whitespace-nowrap">CYBERCAB HUNTER</span>
       </a>
-      <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed max-sm:row-start-2 max-sm:col-span-2 max-sm:mt-0 max-sm:max-w-none max-sm:text-xs max-sm:leading-snug">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
     </div>
-    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5 text-sm text-slate-400">
-      <a href="infrastructure.html" class="hover:text-white transition-colors">Zones</a>
-      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
-      <a href="/sightings" class="hover:text-white transition-colors">Sightings</a>
-      <a href="/community" class="hover:text-white transition-colors">Community</a>
-      <a href="/replay?range=month" class="hover:text-white transition-colors">Replay</a>
-      <a href="/simulation" class="hover:text-white transition-colors">Simulation</a>
-      <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5 text-sm text-slate-400 max-sm:row-start-3 max-sm:col-span-2 max-sm:grid-cols-3 max-sm:gap-x-4 max-sm:gap-y-0">
+      <a href="infrastructure.html" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Zones</a>
+      <a href="/vehicles" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Cars</a>
+      <a href="/sightings" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Sightings</a>
+      <a href="/community" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Community</a>
+      <a href="/replay?range=month" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Replay</a>
+      <a href="/simulation" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Simulation</a>
+      <a href="/privacy" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Privacy</a>
     </nav>
-    <div>
-      <p id="themeSwitchLabel" class="text-xs text-slate-500 mb-2">Appearance</p>
+    <div class="max-sm:row-start-1 max-sm:col-start-2 max-sm:justify-self-end">
+      <p id="themeSwitchLabel" class="text-xs text-slate-500 mb-2 max-sm:sr-only">Appearance</p>
       <div class="theme-switch" role="group" aria-labelledby="themeSwitchLabel">
         <button type="button" data-theme-set="system" aria-pressed="false">System</button>
         <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
@@ -275,7 +275,7 @@
       </div>
     </div>
   </div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500 max-sm:py-4 max-sm:text-[11px]">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
 </footer>
 
 <script src="js/calc.js?v=4"></script>

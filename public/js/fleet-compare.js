@@ -147,17 +147,18 @@
   // ---- pickup wait estimate
   function etaMarkup(r) {
     if (r.state === 'few-cars') {
-      return '<p class="font-display font-semibold text-2xl text-white">Wait could be much longer</p>'
-        + '<p class="text-sm text-slate-400 mt-2">Too few cars would be free in this scenario to estimate a wait.</p>';
+      return '<p class="font-display font-semibold text-2xl text-white max-sm:text-base">Wait could be much longer</p>'
+        + '<p class="text-sm text-slate-400 mt-2 max-sm:text-[11px] max-sm:leading-snug">Too few cars would be free in this scenario to estimate a wait.</p>';
     }
     if (r.state !== 'ok') {
-      return '<p class="font-display font-semibold text-2xl text-white">Not available</p>'
-        + '<p class="text-sm text-slate-400 mt-2">The live fleet count is needed for this estimate.</p>';
+      return '<p class="font-display font-semibold text-2xl text-white max-sm:text-base">Not available</p>'
+        + '<p class="text-sm text-slate-400 mt-2 max-sm:text-[11px] max-sm:leading-snug">The live fleet count is needed for this estimate.</p>';
     }
     const high = r.highCapped ? `${r.high}+` : String(r.high);
     const range = r.low === r.high && !r.highCapped ? `${r.low}` : `${r.low}-${high}`;
-    return `<p class="stat-value font-semibold text-5xl text-white leading-none">${range}<span class="text-xl text-slate-400 font-medium ml-2">min</span></p>`
-      + `<p class="text-sm text-slate-300 mt-3">Most likely about ${r.likely} min</p>`;
+    // max-sm: phones show the two estimates side by side, so smaller type.
+    return `<p class="stat-value font-semibold text-5xl text-white leading-none max-sm:text-2xl max-sm:whitespace-nowrap">${range}<span class="text-xl text-slate-400 font-medium ml-2 max-sm:text-sm max-sm:ml-1">min</span></p>`
+      + `<p class="text-sm text-slate-300 mt-3 max-sm:text-xs max-sm:mt-2">Most likely about ${r.likely} min</p>`;
   }
   // The estimates are polite live regions: only write when the estimate itself
   // changed, so the 30-second tick doesn't make a screen reader repeat them.
