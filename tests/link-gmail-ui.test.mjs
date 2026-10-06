@@ -284,6 +284,39 @@ async function run() {
     check('an unknown ?method shows the question', junk.visible('lgChoose') && !junk.visible('lgSetup'));
   }
 
+  console.log('11. Bug 2026-10-05: a fresh confirmation code always shows, even after receipts have arrived');
+  {
+    const ctx = await makeApp();
+    await ctx.email('u1', { body: receiptBody() });                         // forwarding worked before
+    const page = await openPage(ctx, 'u1', { search: '?method=auto' });
+    check('before any new code: receipts are arriving, step 3 says no code is waiting', page.visible('lgStateOn') && page.visible('lgCodeDone') && !page.visible('lgCodeShown'));
+    check('...without claiming the setup is finished (a rider may be re-adding the address)', /new code will appear here/i.test(page.text('lgCodeDone')));
+
+    await ctx.email('u1', CONFIRMATION);                                    // rider re-adds the address in Gmail
+    await page.refresh();
+    check('the new code is shown in step 3 even though receipts arrived before', page.visible('lgCodeShown') && page.text('lgCode') === '482913775');
+    check('...and the stale "confirmed" state is hidden', !page.visible('lgCodeDone') && !page.visible('lgCodeWaiting'));
+    // Digits are spaced so screen readers read them one by one.
+    check('...marked as new, and announced', page.visible('lgCodeNew') && page.text('lgCodeAnnounce').replace(/\s/g, '').endsWith('482913775'));
+    check('status still says receipts are arriving (that is still true)', page.visible('lgStateOn'));
+
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_code_received_at = datetime('now', '-2 minutes') WHERE user_id = 'u1'");
+    await ctx.email('u1', { ...CONFIRMATION, body: 'Confirmation code: 555000111' });   // Gmail sends a newer code
+    await page.refresh();
+    check('a newer code replaces the older one', page.text('lgCode') === '555000111' && page.visible('lgCodeNew'));
+
+    const fresh = await openPage(ctx, 'u1', { search: '?method=auto' });
+    check('opening the page with a stored code shows it straight away', fresh.visible('lgCodeShown') && fresh.text('lgCode') === '555000111');
+
+    await ctx.email('u1', { body: receiptBody({ pickupTime: '9:40 am' }) });       // forwarding confirmed: Gmail sends a receipt
+    await page.refresh();
+    check('once a receipt arrives after the code, the code is used up and step 3 settles', !page.visible('lgCodeShown') && page.visible('lgCodeDone'));
+
+    const before = page.requests.length;
+    const polled = await page.waitFor(() => page.requests.length > before, 'auto-view poll', 9500);
+    check('while waiting for a code on the automatic setup, the page re-checks within ~8 seconds even after receipts', polled);
+  }
+
   opened.forEach(w => w.close());
   t.finish();
 }

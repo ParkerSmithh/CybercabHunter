@@ -44,6 +44,9 @@
   let status = null;         // last sync-status payload
   let checkedAt = null;      // when status was last fetched
   let pollTimer = null;
+  let currentMethod = null;  // the setup on screen: 'auto', 'manual' or null (the question)
+  let codeKey;               // code + arrival time last rendered (undefined until the first render)
+  let codeIsNew = false;
   let inFlight = false;
 
   // ---------- formatting ----------
@@ -192,12 +195,29 @@
     $('lgDuplicates').textContent = fmtInt(totals.duplicates);
     $('lgChecked').textContent = fmtChecked();
 
-    // Step 3: Gmail's confirmation code. A received receipt clears the stored
-    // code server-side, so "receiving" means this step is already behind them.
+    // Step 3: Gmail's confirmation code. A stored code is always unused: the
+    // worker clears it when the next receipt arrives. So a code on file is
+    // shown no matter what happened before. "receiving" only says that
+    // receipts arrived at some point; it must not hide a fresh code from a
+    // rider who is re-adding the address in Gmail (bug 2026-10-05).
     const code = f.confirmation_code;
+    show('lgCodeShown', !!code);
     show('lgCodeWaiting', !code && !f.receiving);
-    show('lgCodeShown', !!code && !f.receiving);
-    show('lgCodeDone', !!f.receiving);
+    show('lgCodeDone', !code && !!f.receiving);
+    const key = code ? `${code}|${f.confirmation_code_received_at || ''}` : null;
+    if (key !== codeKey) {
+      if (code) {
+        // New: it arrived while the page was open, or just before it was opened.
+        const arrived = sqlDate(f.confirmation_code_received_at);
+        const recent = arrived && !isNaN(arrived) && Date.now() - arrived.getTime() < 15 * 60000;
+        codeIsNew = codeKey !== undefined || !!recent;
+        if (codeKey !== undefined) $('lgCodeAnnounce').textContent = `New Gmail confirmation code: ${code.split('').join(' ')}`;
+      } else {
+        codeIsNew = false;
+      }
+      codeKey = key;
+    }
+    show('lgCodeNew', !!code && codeIsNew);
     if (code) {
       $('lgCode').textContent = code;
       $('lgCodeWhen').textContent = 'Arrived ' + fmtWhen(f.confirmation_code_received_at).toLowerCase();
@@ -229,10 +249,14 @@
     }
   }
 
+  // Fastest while a code may be on its way: the automatic setup is open and no
+  // code is showing (even if receipts arrived before), or nothing has arrived yet.
   function pollDelay() {
     const f = status && status.forwarding;
-    if (!f || f.receiving) return POLL_MS.steady;
-    return f.confirmation_code ? POLL_MS.first : POLL_MS.code;
+    if (!f) return POLL_MS.steady;
+    if (f.confirmation_code) return POLL_MS.first;
+    if (currentMethod === 'auto' || !f.receiving) return POLL_MS.code;
+    return POLL_MS.steady;
   }
   function schedulePoll() {
     clearTimeout(pollTimer);
@@ -273,6 +297,8 @@
   // Renders the step for `method` (null = the question). Moves focus to the
   // new step's heading so keyboard and screen-reader users land on it.
   function showMethod(method, { focus = true } = {}) {
+    currentMethod = method;
+    if (status) schedulePoll();   // the automatic setup polls faster
     show('lgChoose', !method);
     show('lgSetup', !!method);
     if (method) {

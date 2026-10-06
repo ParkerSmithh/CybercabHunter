@@ -327,7 +327,7 @@
                     <span class="text-sm text-slate-300">Waiting for Gmail's code. This page checks on its own.</span>
                   </div>
                   <div id="lgCodeShown" class="hidden mt-3 rounded-xl border border-[rgba(212,175,55,0.4)] bg-gold/[0.06] p-4 sm:p-5">
-                    <p class="text-xs text-slate-400">Your Gmail confirmation code</p>
+                    <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">Your Gmail confirmation code <span id="lgCodeNew" class="hidden shrink-0 whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gold text-[#1a1204]">New code</span></p>
                     <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-3">
                       <span id="lgCode" class="font-mono text-3xl sm:text-4xl tracking-[0.12em] text-white tabular-nums select-all"></span>
                       <button type="button" data-copy="code" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors"><span data-copy-label>Copy code</span></button>
@@ -336,7 +336,7 @@
                   </div>
                   <div id="lgCodeDone" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-emerald-400/40 px-4 py-4">
                     <svg class="w-5 h-5 shrink-0 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
-                    <span class="text-sm text-slate-300">Forwarding is confirmed. Receipts are arriving.</span>
+                    <span class="text-sm text-slate-300">No code waiting. Receipts are already reaching your address. If you add it in Gmail again, the new code will appear here.</span>
                   </div>
                 </div>
 
@@ -451,6 +451,7 @@
     </div>
 
     <p id="lgCopyAnnounce" class="sr-only" aria-live="polite"></p>
+    <p id="lgCodeAnnounce" class="sr-only" aria-live="assertive"></p>
   </div>
 </section>
 </main>
@@ -593,6 +594,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/link-gmail.js?v=2"></script>
+<script src="js/link-gmail.js?v=3"></script>
 </body>
 </html>
