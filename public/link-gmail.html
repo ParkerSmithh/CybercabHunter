@@ -15,7 +15,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 <style>
   /* Link Gmail page only: Gmail menu paths, the numbered setup steps and the
      troubleshooting disclosures. Colors come from the site tokens (css/style.css). */
@@ -84,7 +84,7 @@
   </div>
 </header>
 
-<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
+<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:var(--safe-bottom,env(safe-area-inset-bottom))" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
     <span class="text-[11px] font-semibold">Zones</span>

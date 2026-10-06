@@ -282,10 +282,17 @@ header nav a[aria-current="page"]{color:rgb(var(--ink)) !important;}
 }
 
 /* ---------- Mobile bottom nav ----------
-   Fixed to the viewport bottom below lg; the body gets matching padding so
-   nothing sits under it. The home-indicator inset is on the bar itself. */
+   Fixed to the viewport bottom below lg. The bar grows by the home-indicator
+   inset (--safe-bottom, its inline padding), so the body's clearance must
+   include the same inset or the footer slides under the bar on iPhones
+   (half-hidden Appearance toggle, 2026-10-06). 5rem = the ~62px bar plus a
+   little room. */
+:root{--safe-bottom:env(safe-area-inset-bottom, 0px);}
 @media (max-width:1023px){
-  body:has(#mobileBottomNav){padding-bottom:4.5rem;}
+  body:has(#mobileBottomNav){
+    padding-bottom:calc(5rem + var(--safe-bottom));
+    scroll-padding-bottom:calc(5rem + var(--safe-bottom));
+  }
 }
 #mobileBottomNav a{position:relative; color:rgb(var(--n-400));}
 

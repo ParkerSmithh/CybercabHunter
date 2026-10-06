@@ -16,7 +16,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" />
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -55,7 +55,7 @@
   </div>
 </header>
 
-<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
+<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:var(--safe-bottom,env(safe-area-inset-bottom))" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
     <span class="text-[11px] font-semibold">Zones</span>
@@ -151,7 +151,7 @@
          The stage: a light basemap, a time-of-day tint, and ONE canvas for every
          dot, ping and glow (js/replay.js) — no DOM markers, so thousands of
          sightings stay smooth on a phone. -->
-    <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] lg:p-0 lg:h-auto lg:absolute lg:inset-0">
+    <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0">
       <div id="replayStage" class="replay-stage relative rounded-xl overflow-hidden w-full h-full lg:rounded-2xl">
         <div id="replayMap" class="absolute inset-0"></div>
         <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>

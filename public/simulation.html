@@ -15,7 +15,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -31,6 +31,9 @@
   /* The Cybercab in both views' headers: one size and place, always to the
      right of the text (smaller on phones, beside the heading). */
   .sim-hero-car{width:120px; height:auto; align-self:start; margin-top:28px; user-select:none; filter:drop-shadow(0 16px 24px rgb(0 0 0 / 0.45));}
+  /* Phones: the car sits above the text instead of squeezing it (it was
+     beside it, leaving the description a ~200px column). */
+  @media (max-width:639px){ .sim-hero-car{order:-1; margin-top:0;} }
   @media (min-width:768px){ .sim-hero-car{width:300px; align-self:center; margin-top:0; filter:drop-shadow(0 24px 32px rgb(0 0 0 / 0.45));} }
   @media (min-width:1024px){ .sim-hero-car{width:400px;} }
   /* Fleet ETA view (js/fleet-compare.js). Status colors use the
@@ -98,7 +101,7 @@
   </div>
 </header>
 
-<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
+<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:var(--safe-bottom,env(safe-area-inset-bottom))" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
     <span class="text-[11px] font-semibold">Zones</span>
@@ -137,9 +140,10 @@
 
 <div id="simPanelRoi" role="tabpanel" aria-labelledby="simTabRoi">
 <!-- Both views open with the same header: text on the left, the Cybercab on
-     the right, same size and place (.sim-hero-car; smaller on phones). -->
+     the right, same size and place (.sim-hero-car; on phones, smaller and
+     above the text). -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center">
     <div class="max-w-2xl">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET ROI</h1>
@@ -256,7 +260,7 @@
      (with its sample size), reported (with its source) or assumed. The model
      and its inputs: docs/fleet-eta-live-data-research.md §3. -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center">
     <div class="max-w-2xl">
       <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Fleet comparison</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight">FLEET ETA</h1>
