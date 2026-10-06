@@ -81,14 +81,14 @@
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <!-- Header: the title, what this page is, and the replay map. -->
-    <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5 max-sm:mb-5 max-sm:flex-row max-sm:items-end max-sm:gap-3">
       <div class="min-w-0">
         <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Community spotted</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">SIGHTINGS</h1>
-        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Every approved photo of a Cybercab out in the wild, newest first. The page checks for new ones every minute.</p>
+        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:mt-1 max-sm:text-[1.75rem]">SIGHTINGS</h1>
+        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed max-sm:mt-1.5 max-sm:text-xs max-sm:leading-snug">Every approved photo of a Cybercab out in the wild, newest first. The page checks for new ones every minute.</p>
       </div>
       <!-- This month's replay map: every camera-spotted Cybercab so far this month (replay.html). -->
-      <a id="sightingsReplay" href="/replay?range=month" class="shine shrink-0 self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">
+      <a id="sightingsReplay" href="/replay?range=month" class="shine shrink-0 self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold max-sm:self-end max-sm:min-h-[40px] max-sm:gap-1.5 max-sm:px-3 max-sm:text-xs max-sm:whitespace-nowrap bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>
         Replay Map
       </a>
@@ -96,36 +96,36 @@
 
     <!-- Stats for the selected city, from sighting timestamps in Austin time (GET /api/sightings?stats=1).
          Each value starts as an em dash and only becomes a number the server sent. -->
-    <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <div class="glass rounded-xl p-4 min-w-0 border-[rgba(212,175,55,0.35)] bg-gradient-to-br from-[rgba(212,175,55,0.1)] to-transparent">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">All time</div>
-        <div id="statTotal" class="mt-1.5 font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
-        <div class="text-xs text-slate-500">Approved sightings</div>
+    <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 max-sm:grid-cols-3 max-sm:gap-2 max-sm:mb-5">
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5 border-[rgba(212,175,55,0.35)] bg-gradient-to-br from-[rgba(212,175,55,0.1)] to-transparent">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">All time</div>
+        <div id="statTotal" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
+        <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Approved sightings</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Last 7 days</div>
-        <div id="statWeek" class="mt-1.5 font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
-        <div class="text-xs text-slate-500">Seen in the last 7 days</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Last 7 days</div>
+        <div id="statWeek" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+        <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Seen in the last 7 days</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Today</div>
-        <div id="statToday" class="mt-1.5 font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
-        <div id="statTodayLabel" class="text-xs text-slate-500">Cybercabs spotted today</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Today</div>
+        <div id="statToday" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+        <div id="statTodayLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Cybercabs spotted today</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">This month</div>
-        <div id="statMonth" class="mt-1.5 font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
-        <div id="statMonthLabel" class="text-xs text-slate-500">Sightings this month</div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">This month</div>
+        <div id="statMonth" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+        <div id="statMonthLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Sightings this month</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Peak hour</div>
-        <div id="statPeakHour" class="mt-1.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
-        <div id="statPeakCount" class="text-xs text-slate-500"></div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Peak hour</div>
+        <div id="statPeakHour" class="mt-1.5 max-sm:mt-0.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(9px,2.7vw,11px)] max-sm:whitespace-normal max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
+        <div id="statPeakCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">All-time best day</div>
-        <div id="statBestDay" class="mt-1.5 font-display font-bold text-base text-white leading-snug tabular-nums">—</div>
-        <div id="statBestCount" class="text-xs text-slate-500"></div>
+      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">All-time best day</span><span class="sm:hidden">Best day</span></div>
+        <div id="statBestDay" class="mt-1.5 max-sm:mt-0.5 max-sm:text-[clamp(10px,3vw,13px)] max-sm:whitespace-nowrap font-display font-bold text-base text-white leading-snug tabular-nums">—</div>
+        <div id="statBestCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
     </div>
 
@@ -317,6 +317,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=22"></script>
+<script src="js/sightings.js?v=23"></script>
 </body>
 </html>

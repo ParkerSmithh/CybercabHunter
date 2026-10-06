@@ -256,9 +256,10 @@ async function run() {
     // its existing plain-text model line untouched.
     const badge = cybercabCard.querySelector('span');
     check('the Cybercab card shows a "Cybercab" badge (a <span>, not a plain <p> model line)', !!badge && badge.textContent.trim() === 'Cybercab');
-    check('the badge reuses the exact detail-page vCybercabBadge classes (border, rounded-full, gold-tinted border, uppercase)', badge.className === 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide');
+    // Phone-only (max-sm:) classes compact the two-column phone grid; every other class must stay the detail page's.
+    check('the badge reuses the exact detail-page vCybercabBadge classes (border, rounded-full, gold-tinted border, uppercase)', badge.className.split(' ').filter(c => !c.startsWith('max-sm:')).join(' ') === 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide');
     check('the Cybercab card does NOT also render a plain-text model paragraph', !cybercabCard.querySelector('p') || !/^Cybercab$/.test((cybercabCard.querySelector('p') || {}).textContent || ''));
-    check('the ordinary vehicle\'s card keeps its existing plain-text model line, not a badge', !ordinaryCard.querySelector('span') && /Model not confirmed/.test(ordinaryCard.textContent));
+    check('the ordinary vehicle\'s card keeps its existing plain-text model line, not a badge', ![...ordinaryCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab') && /Model not confirmed/.test(ordinaryCard.textContent));
     check('the underlying data/classification logic is unchanged — this is presentation only (the API still reports the same vin/model as before)', c.vin === VIN && r.body.vehicles.find(v => v.id === ordinary).vin === null);
   }
 

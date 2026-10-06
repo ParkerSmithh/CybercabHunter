@@ -197,7 +197,6 @@
   // ---------- stat cards ----------
   const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
   const plural = (n, one, many) => `${Number(n).toLocaleString('en-US')} ${n === 1 ? one : many}`;
-  const fmtHour = h => `${(h % 12) || 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
   function fmtDay(ymd) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
     if (!m) return null;
@@ -227,7 +226,14 @@
     $('statMonthLabel').textContent = monthName ? `Sightings in ${monthName}` : 'Sightings this month';
     const peak = ok && stats.peak_hour;
     if (peak && Number.isInteger(peak.hour) && peak.hour >= 0 && peak.hour < 24 && isCount(peak.count)) {
-      const hourSpan = h => el('span', 'whitespace-nowrap', fmtHour(h));
+      // "11:00 AM" everywhere; phones (max-sm:) hide the ":00", since a peak
+      // hour always starts on the hour, so the range fits the narrower card
+      // on one line. The text itself (textContent) is unchanged.
+      const hourSpan = h => {
+        const span = el('span', 'whitespace-nowrap');
+        span.append(String((h % 12) || 12), el('span', 'max-sm:hidden', ':00'), ` ${h < 12 ? 'AM' : 'PM'}`);
+        return span;
+      };
       $('statPeakHour').replaceChildren(hourSpan(peak.hour), document.createTextNode(' - '), hourSpan((peak.hour + 1) % 24));
       // Over ALL sightings, not one day: say so ("3 of 16 sightings since Sep 29").
       const since = fmtDay(stats.first_day);

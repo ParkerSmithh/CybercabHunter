@@ -51,10 +51,19 @@
     return e;
   }
 
-  function stat(label, value) {
+  // phoneLabel: an optional shorter label shown only on phones (max-sm:),
+  // where the cards are two to a row; sm and up always show `label`.
+  function stat(label, value, phoneLabel) {
     const box = el('div', 'min-w-0');
-    box.appendChild(el('div', 'text-xs text-slate-500 mb-0.5', label));
-    box.appendChild(el('div', 'stat-value text-[15px] font-semibold text-white [overflow-wrap:anywhere]', value));
+    const lbl = el('div', 'text-xs text-slate-500 mb-0.5 max-sm:text-[10px] max-sm:leading-tight max-sm:truncate');
+    if (phoneLabel) {
+      lbl.appendChild(el('span', 'max-sm:hidden', label));
+      lbl.appendChild(el('span', 'sm:hidden', phoneLabel));
+    } else {
+      lbl.textContent = label;
+    }
+    box.appendChild(lbl);
+    box.appendChild(el('div', 'stat-value text-[15px] font-semibold text-white [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-tight max-sm:[overflow-wrap:normal]', value));
     return box;
   }
 
@@ -73,13 +82,14 @@
     const img = document.createElement('img');
     img.src = 'images/Cybercab2.png';
     img.alt = 'Cybercab (generic vehicle-type image, not a photo of this specific vehicle)';
-    img.className = 'w-full h-32 object-contain mb-4';
+    img.className = 'w-full h-32 object-contain mb-4 max-sm:h-16 max-sm:mb-2';
     return img;
   }
 
   function card(v) {
     const li = el('li');
-    const a = el('a', 'group block glass rounded-2xl p-6 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
+    // Phones (max-sm:) get a compact two-column card; sm and up are unchanged.
+    const a = el('a', 'group block glass rounded-2xl p-6 max-sm:p-3 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
     a.href = '/vehicle/' + encodeURIComponent(v.id);
     if (approvedCybercab(v)) a.appendChild(cybercabImage());
     // The plate, styled like one (the same treatment as the Sightings cards).
@@ -87,22 +97,22 @@
       // leading-none + tight padding hug the characters; the right padding is
       // reduced by the letter-spacing so the trailing space after the last
       // character doesn't make the right side wider than the left.
-      ? 'inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
+      ? 'inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
       : 'font-display font-bold text-lg text-slate-400', v.license_plate || 'Plate not recorded'));
     // An approved Cybercab gets the same compact gold/yellow badge used on
     // the vehicle detail page (vCybercabBadge). Any other vehicle keeps the
     // plain-text model line, and no badge.
     if (approvedCybercab(v)) {
-      a.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide', 'Cybercab'));
+      a.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide max-sm:block max-sm:w-fit max-sm:mt-1.5 max-sm:text-[9px] max-sm:px-2 max-sm:py-0.5', 'Cybercab'));
     } else {
-      a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere]', v.model || 'Model not confirmed'));
+      a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere] max-sm:text-xs', v.model || 'Model not confirmed'));
     }
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
-    a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere]', area || 'Service area not recorded'));
-    const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07]');
+    a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere] max-sm:text-[10px]', area || 'Service area not recorded'));
+    const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07] max-sm:gap-x-2 max-sm:gap-y-2 max-sm:mt-3 max-sm:pt-2.5');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
-    stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance)));
+    stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance), 'Distance'));
     // First/Last seen reflect the RIDE dates a receipt reported (v.first_ride_date/last_ride_date),
     // not when the registry row was created or last touched — those are ingestion timestamps
     // (v.first_seen_at/last_seen_at) that can be much later than the ride itself if a receipt was

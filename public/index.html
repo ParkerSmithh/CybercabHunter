@@ -97,20 +97,20 @@
      With reduced motion or Save-Data: the poster, no pin. -->
 <main id="main" tabindex="-1">
 <div id="heroPin">
-<section id="hero" class="sticky top-16 min-h-[600px] flex items-end overflow-hidden">
+<section id="hero" class="sticky top-16 min-h-[600px] flex items-end overflow-hidden max-sm:min-h-[540px]">
   <video id="heroVideo" class="absolute inset-x-0 top-0 w-full aspect-video object-cover [-webkit-mask-image:linear-gradient(to_bottom,#000_70%,transparent)] [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] lg:inset-x-auto lg:right-0 lg:h-full lg:w-auto lg:min-w-[60%] lg:translate-x-[12%] lg:[-webkit-mask-image:linear-gradient(to_right,transparent,#000_30%)] lg:[mask-image:linear-gradient(to_right,transparent,#000_30%)]" poster="images/CybercabAnimation-poster.jpg" muted playsinline preload="none" disablepictureinpicture aria-label="Animation: a gold Tesla Cybercab opens both doors and turns to face the camera">
     <source src="/videos/cybercab-animation-web" type="video/mp4">
   </video>
   <canvas id="heroFrames" class="absolute inset-x-0 top-0 w-full aspect-video object-cover [-webkit-mask-image:linear-gradient(to_bottom,#000_70%,transparent)] [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] lg:inset-x-auto lg:right-0 lg:h-full lg:w-auto lg:min-w-[60%] lg:translate-x-[12%] lg:[-webkit-mask-image:linear-gradient(to_right,transparent,#000_30%)] lg:[mask-image:linear-gradient(to_right,transparent,#000_30%)] hidden" width="1600" height="900" aria-hidden="true"></canvas>
   <div class="hero-scrim absolute inset-0" aria-hidden="true"></div>
-  <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16">
+  <div class="relative max-w-7xl mx-auto px-6 lg:px-10 w-full pt-24 pb-16 max-sm:pb-12">
     <div class="max-w-xl">
       <!-- BlurText (css/style.css .blur-word): each word comes out of a blur, once, on load. -->
-      <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper">
+      <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper max-sm:text-[2.375rem]">
         <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#D4AF37]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
       </h1>
-      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed reveal-on-scroll" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
-      <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll" data-delay="320">
+      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed reveal-on-scroll max-sm:mt-3 max-sm:text-sm" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+      <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll max-sm:mt-5" data-delay="320">
         <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
           Browse sightings
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
@@ -128,46 +128,46 @@
        as an em dash and only becomes the server's number. -->
   <div class="max-w-7xl mx-auto px-6 lg:px-10 pb-4">
     <dl class="grid grid-cols-2 border-y border-white/[0.07] divide-x divide-white/[0.07]">
-      <div class="py-6 pr-6">
+      <div class="py-6 pr-6 max-sm:py-4 max-sm:pr-4">
         <dt class="text-xs text-slate-500">Cybercabs Spotted</dt>
-        <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white"><span id="statVehicles">—</span></dd>
+        <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statVehicles">—</span></dd>
       </div>
-      <div class="py-6 pl-6 sm:pl-10">
+      <div class="py-6 pl-6 sm:pl-10 max-sm:py-4 max-sm:pl-4">
         <dt class="text-xs text-slate-500">Total Rides</dt>
-        <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white"><span id="statRides">—</span></dd>
+        <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statRides">—</span></dd>
       </div>
     </dl>
   </div>
 </section>
 
 <!-- ===== Live map ===== -->
-<section class="pt-14 pb-20 lg:pt-20" id="map">
+<section class="pt-14 pb-20 lg:pt-20 max-sm:pt-10 max-sm:pb-14" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <h2 class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white">SERVICE ZONES</h2>
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4 max-sm:flex-nowrap max-sm:items-center max-sm:gap-2">
+      <h2 class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white max-sm:text-xl max-sm:whitespace-nowrap">SERVICE ZONES</h2>
     <!-- One Austin/Dallas selector controls BOTH cards below (the mini map and
          the fleet chart) — Dallas has no map or fleet data yet, so it swaps
          both out for a single "not available" note rather than duplicating
          the toggle per card. -->
-      <div class="flex items-center gap-2" id="homeCitySelector" role="group" aria-label="City">
-        <button type="button" data-city="austin" aria-pressed="true" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border">Austin</button>
-        <button type="button" data-city="dallas" aria-pressed="false" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border">Dallas</button>
+      <div class="flex items-center gap-2 max-sm:gap-1.5 max-sm:shrink-0" id="homeCitySelector" role="group" aria-label="City">
+        <button type="button" data-city="austin" aria-pressed="true" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Austin</button>
+        <button type="button" data-city="dallas" aria-pressed="false" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Dallas</button>
       </div>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:gap-3">
 
       <!-- Austin service-area facts: a slim strip across the top, separate from
            the minimap below (nothing sits on the map). Hidden with the map and
            chart when Dallas is selected. -->
-      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 max-sm:flex-row max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3.5">
         <div class="shrink-0">
           <div class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
-          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight">AUSTIN</div>
+          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight max-sm:text-xl max-sm:mt-0.5">AUSTIN</div>
         </div>
-        <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8">Robotaxi service is currently available in this area.</p>
-        <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8">
+        <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8 max-sm:order-last max-sm:w-full max-sm:text-xs max-sm:leading-snug">Robotaxi service is currently available in this area.</p>
+        <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8 max-sm:ml-auto max-sm:gap-2 max-sm:pt-0 max-sm:border-t-0 max-sm:border-l max-sm:pl-3 max-sm:text-xs">
           <svg class="w-5 h-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>
-          <span class="whitespace-nowrap">Service Hours</span>
+          <span class="whitespace-nowrap max-sm:sr-only">Service Hours</span>
           <span class="stat-value font-semibold text-white ml-auto md:ml-3 whitespace-nowrap">6AM - 10PM</span>
         </div>
       </div>
@@ -175,7 +175,7 @@
       <!-- Austin mini map -->
       <div id="homeZoneAustin" class="service-zone-card">
         <div id="zoneMap-austin" class="service-zone-map"></div>
-        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
+        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
           See Map
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
@@ -192,17 +192,17 @@
            map card's shape sets the grid row's height and this card stretches
            to fill it (the chart redraws to the box's real size). On phones,
            where the two stack, the chart keeps its own minimum height. -->
-      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1">
+      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2 max-sm:p-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 max-sm:flex-row max-sm:items-start max-sm:justify-between max-sm:gap-2">
           <div class="min-w-0">
-            <h3 class="font-display font-bold text-lg tracking-tight text-white">FLEET GROWTH</h3>
-            <p class="text-xs text-slate-500 mt-0.5">Austin Cybercabs documented in the registry, over time</p>
+            <h3 class="font-display font-bold text-lg tracking-tight text-white max-sm:text-base max-sm:whitespace-nowrap">FLEET GROWTH</h3>
+            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
           </div>
-          <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0" id="fleetChartRange" role="group" aria-label="Time range">
-            <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400">90D</button>
-            <button data-range="6m" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400">6M</button>
-            <button data-range="1y" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400">1Y</button>
-            <button data-range="all" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400">All</button>
+          <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
+            <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
+            <button data-range="6m" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">6M</button>
+            <button data-range="1y" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">1Y</button>
+            <button data-range="all" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">All</button>
           </div>
         </div>
         <!-- min-h only matters on phones (cards stacked); from sm up the card
@@ -800,8 +800,8 @@
 
     // Range buttons
     const rangeBtns = document.querySelectorAll('#fleetChartRange .range-btn');
-    const INACTIVE_RANGE = 'range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400';
-    const ACTIVE_RANGE = 'range-btn text-xs font-semibold px-2 py-1 rounded-md text-white bg-white/[0.08]';
+    const INACTIVE_RANGE = 'range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]';
+    const ACTIVE_RANGE = 'range-btn text-xs font-semibold px-2 py-1 rounded-md text-white bg-white/[0.08] max-sm:min-h-[40px] max-sm:min-w-[36px]';
     rangeBtns.forEach(btn => {
       btn.className = btn.dataset.range === activeRange ? ACTIVE_RANGE : INACTIVE_RANGE;
       btn.addEventListener('click', () => {

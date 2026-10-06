@@ -89,14 +89,14 @@
        itself — otherwise there'd be no way back to Austin. The map is
        hidden (not removed) for Dallas, since there's nothing to show it. -->
   <div id="zoneContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100dvh-5rem)] lg:min-h-[520px]">
-    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 reveal-on-scroll">
+    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 reveal-on-scroll max-sm:p-4 max-sm:mb-3">
       <!-- City switch: a segmented control. js below swaps the two class strings. -->
       <div id="citySelector" role="group" aria-label="City" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-        <button data-city="austin" aria-pressed="true" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors bg-white/[0.08] text-white">Austin</button>
-        <button data-city="dallas" aria-pressed="false" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors text-slate-400 hover:text-slate-200">Dallas</button>
+        <button data-city="austin" aria-pressed="true" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors max-sm:min-h-[40px] bg-white/[0.08] text-white">Austin</button>
+        <button data-city="dallas" aria-pressed="false" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors max-sm:min-h-[40px] text-slate-400 hover:text-slate-200">Dallas</button>
       </div>
 
-      <div id="austinContent" class="mt-5">
+      <div id="austinContent" class="mt-5 max-sm:mt-4">
         <!-- Zone header -->
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -115,36 +115,36 @@
         </div>
 
         <!-- Coverage -->
-        <div class="mt-5 pt-5 border-t border-white/[0.07]">
+        <div class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
-              <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums"><span id="coverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
+              <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums max-sm:text-2xl max-sm:mt-1.5"><span id="coverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
             </div>
             <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Austin • Live fleet</p>
           </div>
-          <p class="text-xs text-slate-400 leading-relaxed mt-3">First Robotaxi market. Launched as an invite pilot, now unsupervised.</p>
+          <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">First Robotaxi market. Launched as an invite pilot, now unsupervised.</p>
           <p class="text-xs text-slate-500 mt-2">In service since Jun 22, 2025</p>
         </div>
 
         <!-- Fleet & fares -->
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 pt-5 border-t border-white/[0.07] mb-3">Fleet &amp; Fares</p>
-        <dl class="grid grid-cols-2 gap-x-4 gap-y-4">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mt-5 pt-5 border-t border-white/[0.07] mb-3 max-sm:mt-4 max-sm:pt-4 max-sm:mb-2">Fleet &amp; Fares</p>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-4 max-sm:gap-y-2.5">
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cybercabs</dt>
-            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1"><span id="fleetCountOut">—</span></dd>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Cybercabs</dt>
+            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1 max-sm:text-lg max-sm:mt-0.5"><span id="fleetCountOut">—</span></dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Median Fare</dt>
-            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1"><span id="medianFareOut">—</span></dd>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Median Fare</dt>
+            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1 max-sm:text-lg max-sm:mt-0.5"><span id="medianFareOut">—</span></dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Avg Fare</dt>
-            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1"><span id="avgFareOut">—</span></dd>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Avg Fare</dt>
+            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1 max-sm:text-lg max-sm:mt-0.5"><span id="avgFareOut">—</span></dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Per Mile</dt>
-            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1"><span id="perMileOut">—</span></dd>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Per Mile</dt>
+            <dd class="stat-value font-semibold text-xl text-slate-100 mt-1 max-sm:text-lg max-sm:mt-0.5"><span id="perMileOut">—</span></dd>
           </div>
         </dl>
         <!-- Sample size and freshness of the fare stats (GET /api/fleet-stats). -->
@@ -345,7 +345,7 @@
 
   // ---- City selector ----
   const cityBtns = document.querySelectorAll('.city-btn');
-  const CITY_BTN_BASE = 'city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors';
+  const CITY_BTN_BASE = 'city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors max-sm:min-h-[40px]';
   const CITY_BTN_ACTIVE = `${CITY_BTN_BASE} bg-white/[0.08] text-white`;
   const CITY_BTN_INACTIVE = `${CITY_BTN_BASE} text-slate-400 hover:text-slate-200`;
   const austinContent = document.getElementById('austinContent');
