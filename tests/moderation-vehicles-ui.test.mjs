@@ -503,7 +503,7 @@ async function run() {
     await page.waitFor(() => page.cards().length === 1, 'public list');
     const card = () => page.cards()[0];
     check('the public card shows the approval basis and still offers the VIN input', /Approval basis: Manual/.test(card().textContent) && !!card().querySelector('input[data-vehicle-vin-input]'));
-    check('Mark VIN Verified is not offered while there is no VIN', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
+    check('there is no separate Mark VIN Verified button', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
 
     card().querySelector('input[data-vehicle-vin-input]').value = 'BADVIN';
     page.click(card().querySelector('button[data-vehicle-action="save-vin"]'));
@@ -512,14 +512,13 @@ async function run() {
 
     card().querySelector('input[data-vehicle-vin-input]').value = VIN;
     page.click(card().querySelector('button[data-vehicle-action="save-vin"]'));
-    await page.waitFor(() => !!card().querySelector('button[data-vehicle-action="verify-vin"]'), 'verify button appears');
-    check('adding the VIN after approval saved it, still public and still manual (a VIN alone never upgrades)', row().vin === VIN && row().visibility === 'public' && row().approval_basis === 'manual');
-
-    page.click(card().querySelector('button[data-vehicle-action="verify-vin"]'));
     await page.waitFor(() => /Approval basis: VIN verified/.test(card().textContent), 'card shows VIN verified');
-    const verifyReq = page.vehicleRequests('POST').filter(r => r.path.endsWith('/review')).pop();
-    check('Mark VIN Verified sent verify_vin, and the vehicle is now vin-verified', JSON.parse(verifyReq.body).action === 'verify_vin' && row().approval_basis === 'vin-verified' && row().visibility === 'public');
-    check('the verify button is gone once verified', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
+    const posts = page.vehicleRequests('POST');
+    const vinReq = posts.filter(r => r.path.endsWith('/vin')).pop(), verifyReq = posts.filter(r => r.path.endsWith('/review')).pop();
+    check('Save VIN on a public manual vehicle saves the VIN, then marks it VIN verified in one click', !!vinReq && JSON.parse(vinReq.body).vin === VIN && JSON.parse(verifyReq.body).action === 'verify_vin' && posts.indexOf(vinReq) < posts.indexOf(verifyReq));
+    check('...the vehicle is now vin-verified and still public', row().vin === VIN && row().approval_basis === 'vin-verified' && row().visibility === 'public');
+    check('...and the toast says both happened', /VIN saved.*VIN verified/i.test(page.toastText()));
+    check('still no verify button anywhere', !card().querySelector('button[data-vehicle-action="verify-vin"]'));
 
     page.click(card().querySelector('button[data-vehicle-action="clear-vin"]'));
     await page.waitFor(() => /No VIN on file/.test(card().textContent), 'VIN cleared');

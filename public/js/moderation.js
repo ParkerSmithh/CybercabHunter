@@ -547,8 +547,9 @@
   //    vehicle can be approved (v.approval.can_approve — never VIN-based).
   //    With a VIN on file it sends approve_cybercab (approved as VIN
   //    verified); without one, approve_manual (approved as Manual).
-  //  - Public: shows the approval basis; a Manual vehicle with a VIN on file
-  //    can be upgraded with Mark VIN Verified (v.can_verify_vin).
+  //  - Public: shows the approval basis. On a Manual vehicle, Save VIN also
+  //    marks it VIN verified in the same click (see submitSetVin); there is
+  //    no separate Mark VIN Verified button.
   const BASIS_LABELS = { 'vin-verified': 'VIN verified', manual: 'Manual (approved without a verified VIN)' };
   function cybercabPanel(v) {
     const busy = vehicleBusy.has(v.id);
@@ -564,8 +565,7 @@
     if (isPublic) {
       const basis = v.approval_basis ? label(BASIS_LABELS, v.approval_basis) : 'Not recorded';
       decision = `<div class="text-xs text-slate-300 mt-3">Approval basis: <span class="font-semibold">${esc(basis)}</span></div>
-        ${v.can_verify_vin ? `<button type="button" data-vehicle-action="verify-vin" ${busy ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Mark VIN Verified'}</button>
-        <div class="text-xs text-slate-500 mt-1">Only if Robotaxi Tracker shows this VIN as this Cybercab. Adds the public VIN verified badge.</div>` : ''}`;
+        ${v.approval_basis !== 'vin-verified' ? `<div class="text-xs text-slate-500 mt-1">Save VIN marks it VIN verified (public badge). Only save a VIN Robotaxi Tracker shows for this Cybercab.</div>` : ''}`;
     } else {
       const canApprove = !!(v.approval && v.approval.can_approve);
       decision = `<button type="button" data-vehicle-action="approve-cybercab" ${busy || !canApprove ? 'disabled' : ''} class="mt-2 btn-magnetic bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${busy ? 'Working…' : 'Approve Cybercab'}</button>
@@ -755,7 +755,7 @@
       return;
     }
     pendingReview.delete(vehicleId);
-    CCC.toast(action === 'verify_vin' ? 'Marked VIN verified.'
+    CCC.toast(action === 'verify_vin' ? 'VIN saved. Vehicle is now VIN verified.'
       : action === 'return_private' ? 'Vehicle returned to private.'
       : json.vehicle.approval_basis === 'vin-verified' ? 'Vehicle approved for the public registry (VIN verified).'
       : 'Vehicle approved for the public registry (manual, no VIN).', 'success');
@@ -812,6 +812,11 @@
       return;
     }
     replaceVehicle(json.vehicle);
+    // A public Manual vehicle: saving its VIN is the moderator's confirmation,
+    // so it is marked VIN verified in the same click (owner request
+    // 2026-10-05). The server still checks it (public, VIN on file, not
+    // already verified) and the separate verify_vin action stays the record.
+    if (json.vehicle.vin && json.vehicle.can_verify_vin) { await submitReview(vehicleId, 'verify_vin'); return; }
     renderVehicles();
     CCC.toast(json.vehicle.vin ? 'VIN saved.' : 'VIN cleared.', 'success');
   }
