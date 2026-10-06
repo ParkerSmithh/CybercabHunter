@@ -113,10 +113,18 @@
     <!-- Signed-in data -->
     <div id="dataSignedIn" class="hidden">
 
-      <div class="mb-8">
-        <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Your Data</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">RIDER DATA</h1>
-        <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Built entirely from your own Robotaxi receipts. Everything on this page is visible only to you.</p>
+      <!-- "Link Gmail" opens the receipt-forwarding setup page (/link-gmail,
+           js/link-gmail.js): the way rides get into the site. -->
+      <div class="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+        <div>
+          <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Your Data</p>
+          <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">RIDER DATA</h1>
+          <p class="mt-3 max-w-2xl text-sm text-slate-400 leading-relaxed">Built entirely from your own Robotaxi receipts. Everything on this page is visible only to you.</p>
+        </div>
+        <a id="linkGmailBtn" href="/link-gmail" class="btn-magnetic shrink-0 self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></svg>
+          Link Gmail
+        </a>
       </div>
 
       <!-- Connected accounts: the Tesla account (text + Unlink Tesla, only when
@@ -257,7 +265,7 @@
           <h2 data-split class="font-display font-bold text-xl">YOUR RIDES</h2>
           <span id="ridesTotal" class="text-xs text-slate-500"></span>
         </div>
-        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received.</div>
+        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received. <a href="/link-gmail" class="text-gold hover:underline underline-offset-2">Link Gmail</a> to start sending them.</div>
         <div id="ridesTableWrap" class="hidden overflow-x-auto">
           <table class="w-full text-sm">
             <thead>

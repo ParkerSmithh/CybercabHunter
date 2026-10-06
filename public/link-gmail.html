@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Send your Tesla Robotaxi receipt emails to your private address so your rides appear in Rider Data.">
+<meta name="theme-color" content="#090B0F">
+<link rel="icon" type="image/png" href="images/Cybercab2.png">
+<link rel="apple-touch-icon" href="images/Cybercab2.png">
+<title>Cybercab Hunter | Link Gmail</title>
+<script>
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+  window.scrollTo(0, 0);
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="js/theme.js?v=4"></script>
+<link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css?v=33">
+<style>
+  /* Link Gmail page only: Gmail menu paths, the numbered setup steps and the
+     troubleshooting disclosures. Colors come from the site tokens (css/style.css). */
+  .lg-path{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  .gp{display:inline-flex; align-items:center; padding:3px 8px; border-radius:6px; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.08)); background:rgb(var(--ink) / 0.04); color:rgb(var(--ink)); font-size:13px; font-weight:510; line-height:1.4;}
+  .gp-sep{color:rgb(var(--n-500)); font-size:14px;}
+  .lg-step{position:relative; display:grid; grid-template-columns:28px minmax(0,1fr); column-gap:16px;}
+  .lg-step:not(:last-child)::before{content:''; position:absolute; left:13.5px; top:36px; bottom:-20px; width:1px; background:rgb(var(--line) / calc(var(--line-a) + 0.06));}
+  .lg-step-num{width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:590; color:rgb(var(--gold-ink)); border:1px solid rgb(var(--gold) / 0.45); background:rgb(var(--surface));}
+  .lg-step-num--done{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
+  .lg-faq summary::-webkit-details-marker{display:none;}
+  .lg-faq-chev{transition:transform var(--t) var(--ease);}
+  .lg-faq[open] .lg-faq-chev{transform:rotate(180deg);}
+  .lg-refresh.is-busy svg{animation:lg-spin 0.8s linear infinite;}
+  @keyframes lg-spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){ .lg-refresh.is-busy svg{animation:none;} .lg-faq-chev{transition:none;} }
+</style>
+</head>
+<body class="bg-void text-slate-100 font-body">
+<div class="bg-mesh"></div>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <img src="images/Cybercab2.png" alt="Cybercab Hunter" class="w-12 h-12 object-contain">
+      <div class="leading-tight">
+        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
+        <div class="text-[11px] text-slate-400 tracking-[0.16em] font-semibold">HUNTER</div>
+      </div>
+    </a>
+    <nav class="hidden lg:flex items-center gap-8 relative">
+      <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
+      <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
+      <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
+      <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
+      <a href="/simulation" data-nav="simulation" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Simulation</a>
+      <div id="navIndicator"></div>
+    </nav>
+    <div class="flex items-center gap-3">
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
+      <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
+      <div id="accountSignedOut">
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+      </div>
+      <div id="accountSignedIn" class="hidden">
+        <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
+          <svg id="accountAvatarIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"></svg>
+          <img id="accountAvatarImg" class="w-full h-full rounded-xl object-cover hidden" alt="">
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:env(safe-area-inset-bottom)" aria-label="Primary">
+  <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
+    <span class="text-[11px] font-semibold">Zones</span>
+  </a>
+  <a href="/vehicles" data-nav="vehicles" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+    <span class="text-[11px] font-semibold">Cars</span>
+  </a>
+  <a href="/sightings" data-nav="sightings" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+    <span class="text-[11px] font-semibold">Sightings</span>
+  </a>
+  <a href="/community" data-nav="community" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/> <path d="M16 3.13a4 4 0 0 1 0 7.75"/> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+    <span class="text-[11px] font-semibold">Community</span>
+  </a>
+  <a href="/simulation" data-nav="simulation" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l16 0"/> <path d="M4 15l4 -6l4 2l4 -5l4 4"/></svg>
+    <span class="text-[11px] font-semibold">Simulation</span>
+  </a>
+</nav>
+
+
+<main id="main" tabindex="-1">
+<section class="py-12 lg:py-16">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+
+    <a href="rider-data.html" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors mb-6">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+      Rider Data
+    </a>
+
+    <div class="mb-8 lg:mb-10">
+      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white">LINK GMAIL</h1>
+      <p class="mt-3 max-w-2xl text-[15px] text-slate-400 leading-relaxed">Your rides come from your Tesla receipt emails. Send them to your private address below and each ride shows up in Rider Data.</p>
+    </div>
+
+    <!-- Loading: skeleton in the shape of the ready layout -->
+    <div id="lgLoading" class="hidden" aria-busy="true" aria-live="polite">
+      <span class="sr-only">Loading your forwarding address…</span>
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8">
+        <div class="space-y-6">
+          <div class="glass rounded-2xl p-6 lg:p-8 animate-pulse">
+            <div class="h-3 w-40 rounded bg-white/10 mb-5"></div>
+            <div class="h-12 w-full rounded-lg bg-white/[0.06] mb-4"></div>
+            <div class="h-3 w-3/4 rounded bg-white/5"></div>
+          </div>
+          <div class="glass rounded-2xl p-6 lg:p-8 h-72 animate-pulse"></div>
+        </div>
+        <div class="glass rounded-2xl p-6 h-64 animate-pulse"></div>
+      </div>
+    </div>
+
+    <!-- Error: a request failed. This is NOT the signed-out state. -->
+    <div id="lgError" class="hidden glass rounded-2xl p-8 lg:p-10 max-w-xl">
+      <h2 class="font-display font-bold text-2xl mb-3">We couldn't load your forwarding address</h2>
+      <p id="lgErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. You're still signed in. Try again in a moment.</p>
+      <button id="lgRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
+    </div>
+
+    <!-- Signed out -->
+    <div id="lgSignedOut" class="hidden glass rounded-2xl p-8 lg:p-10 max-w-xl">
+      <h2 class="font-display font-bold text-2xl mb-3">Sign in to link Gmail</h2>
+      <p class="text-slate-400 text-sm leading-relaxed mb-6">Each rider gets a private forwarding address for their Tesla receipts. Sign in to see yours.</p>
+      <a href="signin.html?returnTo=%2Flink-gmail" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+    </div>
+
+    <!-- Ready -->
+    <div id="lgReady" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8 items-start">
+
+      <!-- 1. Your forwarding address -->
+      <section aria-labelledby="lgAddressHeading" class="glass rounded-2xl p-6 lg:p-8 min-w-0 lg:col-start-1 lg:row-start-1">
+        <h2 id="lgAddressHeading" class="font-display font-bold text-lg">Your forwarding address</h2>
+
+        <div id="lgAddressReady" class="hidden">
+          <div class="mt-4 flex flex-col sm:flex-row sm:items-stretch gap-3">
+            <code id="lgAddress" class="flex-1 min-w-0 select-all [overflow-wrap:anywhere] font-mono text-[15px] sm:text-[14px] lg:text-[15px] text-white rounded-lg border border-[rgba(212,175,55,0.3)] bg-panel px-4 py-3.5 leading-snug"></code>
+            <button type="button" data-copy="address" class="btn-magnetic shrink-0 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+              <span data-copy-label>Copy address</span>
+            </button>
+          </div>
+
+          <p class="mt-4 flex gap-3 text-sm text-slate-300 leading-relaxed">
+            <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>
+            <span><strong class="font-semibold text-white">Treat this address like a password.</strong> Anyone who has it can send receipts into your account, so don't post it or share it.</span>
+          </p>
+
+          <div class="mt-5 pt-5 border-t border-white/[0.06]">
+            <button id="lgRotateOpen" type="button" aria-expanded="false" aria-controls="lgRotateConfirm" class="text-sm text-slate-400 hover:text-white underline underline-offset-4 decoration-white/20 hover:decoration-white/60 transition-colors">Get a new address</button>
+            <div id="lgRotateConfirm" class="hidden rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4" role="group" aria-labelledby="lgRotateTitle">
+              <p id="lgRotateTitle" class="text-sm font-semibold text-white">Get a new address?</p>
+              <p class="mt-1 text-sm text-slate-400 leading-relaxed">Your current address stops working immediately. If you set up automatic forwarding, you'll need to add the new address in Gmail and change your filter to use it.</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button id="lgRotateConfirmBtn" type="button" class="px-4 py-2.5 rounded-lg text-sm font-bold border border-amber-400/50 text-amber-200 hover:bg-amber-400/10 transition-colors disabled:opacity-50">Yes, get a new address</button>
+                <button id="lgRotateCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.2)] text-slate-300 hover:text-white transition-colors">Keep this one</button>
+              </div>
+            </div>
+          </div>
+          <p id="lgRotateNotice" class="hidden" role="status"></p>
+        </div>
+
+        <!-- RECEIPT_DOMAIN not configured: no working address to show yet -->
+        <div id="lgAddressPending" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+          <p class="text-sm font-semibold text-white">Coming soon</p>
+          <p class="mt-1 text-sm text-slate-400 leading-relaxed">We're finishing the email setup on our side. Your private forwarding address will appear here as soon as it's ready.</p>
+        </div>
+
+        <!-- 409 address_revoked -->
+        <div id="lgAddressRevoked" class="hidden mt-4 rounded-xl border border-amber-400/40 p-5">
+          <p class="text-sm font-semibold text-amber-200">Your forwarding address is turned off</p>
+          <p class="mt-1 text-sm text-slate-400 leading-relaxed">Receipts sent to it are no longer accepted for this account.</p>
+        </div>
+      </section>
+
+      <!-- 3. Live status (sidebar on desktop, right under the address on phones) -->
+      <aside aria-labelledby="lgStatusHeading" class="glass rounded-2xl p-6 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
+        <div class="flex items-center justify-between gap-3">
+          <h2 id="lgStatusHeading" class="font-display font-bold text-lg">Status</h2>
+          <button id="lgRefresh" type="button" aria-label="Check status now" title="Check now" class="lg-refresh w-9 h-9 -mr-1.5 rounded-lg inline-flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-60">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+          </button>
+        </div>
+
+        <div aria-live="polite">
+          <div id="lgStateOn" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-emerald-400/40 bg-emerald-400/[0.05] p-4">
+            <svg class="w-5 h-5 shrink-0 text-emerald-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+            <div>
+              <p class="text-sm font-semibold text-emerald-200">Receiving receipts</p>
+              <p class="text-xs text-slate-400 mt-0.5">Your receipts are reaching us.</p>
+            </div>
+          </div>
+          <div id="lgStateOff" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4">
+            <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
+            <div>
+              <p class="text-sm font-semibold text-amber-200">Not receiving yet</p>
+              <p class="text-xs text-slate-400 mt-0.5">Forward a receipt or finish automatic setup to start.</p>
+            </div>
+          </div>
+        </div>
+
+        <dl class="mt-5 space-y-3 text-sm">
+          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Last receipt</dt><dd id="lgLastReceived" class="font-semibold text-white tabular-nums text-right">-</dd></div>
+          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Emails processed</dt><dd id="lgProcessed" class="font-semibold text-white tabular-nums">-</dd></div>
+          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Rides added</dt><dd id="lgAdded" class="font-semibold text-gold tabular-nums">-</dd></div>
+          <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Duplicates skipped</dt><dd id="lgDuplicates" class="font-semibold text-white tabular-nums">-</dd></div>
+        </dl>
+
+        <p id="lgStatusError" class="hidden mt-4 text-xs text-amber-200" role="alert">Couldn't check just now. We'll try again shortly.</p>
+        <p id="lgChecked" class="mt-4 text-xs text-slate-500"></p>
+
+        <a href="rider-data.html" class="mt-5 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-2 text-sm font-semibold text-slate-200 hover:text-white transition-colors">
+          See your rides in Rider Data
+          <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
+        </a>
+      </aside>
+
+      <div class="min-w-0 space-y-6 lg:col-start-1 lg:row-start-2">
+
+        <!-- 2. Two ways to send receipts -->
+        <section aria-labelledby="lgWaysHeading">
+          <h2 id="lgWaysHeading" class="font-display font-bold text-2xl tracking-tight mt-4 mb-1">Two ways to send receipts</h2>
+          <p class="text-sm text-slate-400 leading-relaxed mb-5 max-w-[60ch]">Use either one, or both. They send to the same address.</p>
+
+          <!-- No setup: forward by hand -->
+          <article class="glass rounded-2xl p-6 lg:p-8">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+              <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></svg>
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-display font-bold text-lg">Forward each receipt</h3>
+                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-400/40 text-emerald-200">No setup</span>
+                </div>
+                <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">After a ride, open the Tesla receipt email in Gmail, tap <strong class="font-semibold text-white">Forward</strong>, and send it to your address. That's it. Nothing changes in your settings, and it works the same in the Gmail app.</p>
+                <button type="button" data-copy="address" class="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><span data-copy-label>Copy address</span></button>
+              </div>
+            </div>
+          </article>
+
+          <!-- One-time setup: Gmail forwards for them -->
+          <article class="glass rounded-2xl p-6 lg:p-8 mt-6">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+              <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg>
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-display font-bold text-lg">Forward automatically</h3>
+                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold">One-time setup</span>
+                </div>
+                <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">Set this up once and every new receipt forwards itself. Gmail only has these settings on its website, so do this on a computer.</p>
+              </div>
+            </div>
+
+            <ol class="lg-steps mt-7 space-y-7">
+              <li class="lg-step">
+                <span class="lg-step-num" aria-hidden="true">1</span>
+                <div class="min-w-0">
+                  <h4 class="font-semibold text-white">Copy your forwarding address</h4>
+                  <button type="button" data-copy="address" class="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><span data-copy-label>Copy address</span></button>
+                </div>
+              </li>
+
+              <li class="lg-step">
+                <span class="lg-step-num" aria-hidden="true">2</span>
+                <div class="min-w-0">
+                  <h4 class="font-semibold text-white">Add it as a forwarding address in Gmail</h4>
+                  <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
+                  <p class="lg-path mt-2">
+                    <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">Forwarding and POP/IMAP</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">Add a forwarding address</span>
+                  </p>
+                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">Paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
+                </div>
+              </li>
+
+              <li class="lg-step">
+                <span class="lg-step-num" aria-hidden="true">3</span>
+                <div class="min-w-0 w-full">
+                  <h4 class="font-semibold text-white">Enter the confirmation code</h4>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Gmail emails a code to your forwarding address. It appears right here.</p>
+
+                  <div aria-live="polite">
+                    <div id="lgCodeWaiting" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-dashed border-white/[0.14] px-4 py-4">
+                      <span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true">
+                        <span class="absolute inset-0 rounded-full bg-gold/60 motion-safe:animate-ping"></span>
+                        <span class="relative w-2.5 h-2.5 rounded-full bg-gold"></span>
+                      </span>
+                      <span class="text-sm text-slate-300">Waiting for Gmail's code. This page checks on its own.</span>
+                    </div>
+                    <div id="lgCodeShown" class="hidden mt-3 rounded-xl border border-[rgba(212,175,55,0.4)] bg-gold/[0.06] p-4 sm:p-5">
+                      <p class="text-xs text-slate-400">Your Gmail confirmation code</p>
+                      <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-3">
+                        <span id="lgCode" class="font-mono text-3xl sm:text-4xl tracking-[0.12em] text-white tabular-nums select-all"></span>
+                        <button type="button" data-copy="code" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors"><span data-copy-label>Copy code</span></button>
+                      </div>
+                      <p id="lgCodeWhen" class="mt-2 text-xs text-slate-500"></p>
+                    </div>
+                    <div id="lgCodeDone" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-emerald-400/40 px-4 py-4">
+                      <svg class="w-5 h-5 shrink-0 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+                      <span class="text-sm text-slate-300">Forwarding is confirmed. Receipts are arriving.</span>
+                    </div>
+                  </div>
+
+                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">Type the code into Gmail's <strong class="font-semibold text-white">Confirmation code</strong> box under Forwarding and POP/IMAP, then click <strong class="font-semibold text-white">Verify</strong>.</p>
+                </div>
+              </li>
+
+              <li class="lg-step">
+                <span class="lg-step-num" aria-hidden="true">4</span>
+                <div class="min-w-0">
+                  <h4 class="font-semibold text-white">Create a filter for Tesla receipts</h4>
+                  <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
+                  <p class="lg-path mt-2">
+                    <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                    <span class="gp">Create a new filter</span>
+                  </p>
+                  <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
+                    <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
+                    Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it to</strong>, and choose your address. Then click <strong class="font-semibold text-white">Create filter</strong> again.</p>
+                </div>
+              </li>
+
+              <li class="lg-step">
+                <span class="lg-step-num lg-step-num--done" aria-hidden="true">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <h4 class="font-semibold text-white">Done</h4>
+                  <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Every future receipt now forwards itself. Status on this page turns green when the first one arrives.</p>
+                </div>
+              </li>
+            </ol>
+
+            <div class="mt-8 pt-6 border-t border-white/[0.06]">
+              <h4 class="text-sm font-semibold text-white mb-3">Trouble?</h4>
+              <div class="space-y-2">
+                <details class="lg-faq rounded-lg border border-white/[0.08]">
+                  <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">Code not showing?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
+                  <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">Wait a minute and refresh. Gmail can be slow to send it. If it still hasn't come, check that you pasted the whole address in step 2.</p>
+                </details>
+                <details class="lg-faq rounded-lg border border-white/[0.08]">
+                  <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">No receipts arriving?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
+                  <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">In Gmail settings, check that your forwarding address shows as confirmed under Forwarding and POP/IMAP, and that your filter is still listed under Filters and Blocked Addresses. If you got a new address on this page, the filter needs the new one.</p>
+                </details>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- Backfill -->
+        <section aria-labelledby="lgBackfillHeading" class="rounded-2xl border border-white/[0.08] p-6 lg:p-8">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+            <span class="shrink-0 w-10 h-10 rounded-xl border border-[rgba(212,175,55,0.3)] text-gold flex items-center justify-center" aria-hidden="true">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>
+            </span>
+            <div class="min-w-0">
+              <h2 id="lgBackfillHeading" class="font-display font-bold text-lg">Bring your past rides</h2>
+              <p class="mt-2 text-[15px] text-slate-300 leading-relaxed max-w-[62ch]">Filters only forward new mail, so receipts from before you set this up need one manual pass.</p>
+              <ol class="mt-4 space-y-2.5 text-sm text-slate-300 leading-relaxed list-decimal pl-5 marker:text-slate-500">
+                <li>In Gmail, search for
+                  <button type="button" data-copy="from:tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(212,175,55,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>from:tesla.com</span></button>
+                  to find your old receipts.</li>
+                <li>Open each receipt and forward it to your address.</li>
+                <li>Send them one at a time. Gmail's <span class="text-white">Forward as attachment</span> option bundles emails in a way we can't read.</li>
+              </ol>
+              <p class="mt-4 text-sm text-slate-400 leading-relaxed">Not sure if you already sent one? Send it anyway. Duplicates are caught automatically, so a ride is never counted twice.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <p id="lgCopyAnnounce" class="sr-only" aria-live="polite"></p>
+  </div>
+</section>
+</main>
+
+
+<div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
+<div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="font-display font-bold text-xl">Account</h2>
+    <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+  </div>
+  <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
+    <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
+  </div>
+  <div class="space-y-1 mb-6">
+    <a href="profile.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/> <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+      Profile
+    </a>
+    <a href="rider-data.html" class="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-200 hover:bg-white/5 transition-colors">
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6"/> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10"/> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14"/> <path d="M4 20h14"/></svg>
+      Rider Data
+    </a>
+  </div>
+  <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/> <path d="M9 12h12l-3 -3"/> <path d="M18 15l3 -3"/></svg>
+    Sign out
+  </button>
+</div>
+
+<div id="sightingBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
+<div id="sightingDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="font-display font-bold text-xl">Submit a sighting</h2>
+    <button id="closeSightingDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+  </div>
+  <div id="sightingSignInRequired" class="hidden text-center py-6">
+    <p class="text-sm text-slate-400 mb-5">Sign in to submit a vehicle sighting.</p>
+    <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
+  </div>
+  <form id="sightingForm" class="space-y-5">
+    <div>
+      <span class="text-[13px] font-medium text-slate-300">Photo</span>
+      <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
+        <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
+        <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
+        <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
+      </label>
+      <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+      <p id="sightingPhotoError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
+    </div>
+    <div>
+      <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <!-- Options come from the supported service areas (GET /api/service-areas). -->
+      <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+        <option value="">Choose a city</option>
+      </select>
+    </div>
+    <div>
+      <label for="sightingLoc" class="text-[13px] font-medium text-slate-300">Location <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <!-- Only a real place can be chosen: type, then pick from the suggestions
+           (GET /api/places, OpenStreetMap via worker/places.js). -->
+      <div class="relative mt-2">
+        <input id="sightingLoc" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="sightingLocOptions" aria-describedby="sightingLocHelp" disabled placeholder="Choose a city first" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">
+        <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
+      </div>
+      <input id="sightingLocId" type="hidden">
+      <p id="sightingLocHelp" class="text-xs text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
+      <p id="sightingLocError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
+    </div>
+    <div>
+      <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
+    </div>
+    <div>
+      <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
+      <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+        <option value="">Not a traffic camera</option>
+      </select>
+      <p id="sightingCameraHelp" class="text-xs text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
+    </div>
+    <div>
+      <label for="sightingNotes" class="text-[13px] font-medium text-slate-300">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
+    </div>
+    <div>
+      <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+    </div>
+    <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
+    <p class="text-xs text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
+  </form>
+  <div id="sightingSuccess" class="hidden text-center py-8" role="status">
+    <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
+      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+    </div>
+    <h3 class="font-display font-bold text-xl mb-2">Sighting submitted!</h3>
+    <p class="text-sm text-slate-400 mb-7">Your photo has been received and is awaiting review.</p>
+    <div class="flex gap-3 justify-center">
+      <button id="sightingAnother" type="button" class="px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Submit another</button>
+      <button id="sightingDone" type="button" class="btn-magnetic px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Done</button>
+    </div>
+  </div>
+</div>
+
+<footer class="border-t border-white/[0.06] mt-8">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-12 grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] md:items-start">
+    <div>
+      <a href="index.html" class="inline-flex items-center gap-2.5">
+        <img src="images/Cybercab2.png" alt="Cybercab Hunter home" class="w-10 h-10 object-contain">
+        <span class="font-display font-bold tracking-tight">CYBERCAB HUNTER</span>
+      </a>
+      <p class="text-sm text-slate-500 mt-3 max-w-xs leading-relaxed">Crowdsourced tracking and analytics for Tesla's autonomous Cybercab fleet.</p>
+    </div>
+    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5 text-sm text-slate-400">
+      <a href="infrastructure.html" class="hover:text-white transition-colors">Zones</a>
+      <a href="/vehicles" class="hover:text-white transition-colors">Cars</a>
+      <a href="/sightings" class="hover:text-white transition-colors">Sightings</a>
+      <a href="/community" class="hover:text-white transition-colors">Community</a>
+      <a href="/replay?range=month" class="hover:text-white transition-colors">Replay</a>
+      <a href="/simulation" class="hover:text-white transition-colors">Simulation</a>
+      <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+    </nav>
+    <div>
+      <p id="themeSwitchLabel" class="text-xs text-slate-500 mb-2">Appearance</p>
+      <div class="theme-switch" role="group" aria-labelledby="themeSwitchLabel">
+        <button type="button" data-theme-set="system" aria-pressed="false">System</button>
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
+</footer>
+
+<script src="js/calc.js?v=4"></script>
+<script src="js/main.js?v=21"></script>
+<script>
+  CCC.init();
+</script>
+<script src="js/link-gmail.js?v=1"></script>
+</body>
+</html>
