@@ -127,12 +127,12 @@
 
     $('spendingList').innerHTML = list.map(s => `
       <div>
-        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total · ${esc(s.currency)}</div>
-        <div class="font-display font-bold text-4xl mb-4 max-sm:text-3xl max-sm:mb-3">${esc(fmtMoney(s.totalCents, s.currency))}</div>
-        <div class="grid grid-cols-3 gap-4 text-sm">
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Median fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.medianCents, s.currency))}</div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Average fare</div><div class="font-display font-bold text-lg">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
-          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1">Free rides</div><div class="font-display font-bold text-lg">${esc(fmtInt(s.freeCount))}</div></div>
+        <div class="text-xs text-slate-500 uppercase tracking-wider mb-1 max-sm:text-[10px] max-sm:mb-0.5">Total · ${esc(s.currency)}</div>
+        <div class="font-display font-bold text-4xl mb-4 max-sm:text-2xl max-sm:mb-2.5">${esc(fmtMoney(s.totalCents, s.currency))}</div>
+        <div class="grid grid-cols-3 gap-4 text-sm max-sm:gap-2">
+          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1 max-sm:text-[9.5px] max-sm:tracking-wide max-sm:leading-tight max-sm:whitespace-nowrap">Median fare</div><div class="font-display font-bold text-lg max-sm:text-sm">${esc(fmtMoney(s.medianCents, s.currency))}</div></div>
+          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1 max-sm:text-[9.5px] max-sm:tracking-wide max-sm:leading-tight max-sm:whitespace-nowrap">Average fare</div><div class="font-display font-bold text-lg max-sm:text-sm">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
+          <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1 max-sm:text-[9.5px] max-sm:tracking-wide max-sm:leading-tight max-sm:whitespace-nowrap">Free rides</div><div class="font-display font-bold text-lg max-sm:text-sm">${esc(fmtInt(s.freeCount))}</div></div>
         </div>
       </div>`).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
 
@@ -165,7 +165,7 @@
         const pct = max ? Math.max(6, Math.round((n / max) * 100)) : 0;
         const dist = row && row.rides_with_distance > 0 ? ` · ${Number(row.total_distance).toFixed(1)} mi` : '';
         return `<div class="flex-1 flex flex-col items-center justify-end h-full" title="${esc(m.label)}: ${plural(n, 'ride')}${esc(dist)}">
-          <span class="text-xs text-slate-400 mb-1 h-4">${n || ''}</span>
+          <span class="text-xs text-slate-400 mb-1 h-4 max-sm:text-[10px] max-sm:h-3.5">${n || ''}</span>
           <div class="w-full rounded-t-md ${n ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-white/5'}" style="height:${n ? pct * 0.85 : 3}%"></div>
         </div>`;
       }).join('');
@@ -193,13 +193,13 @@
       const dist = c.rides_with_distance > 0
         ? fmtMiles(c.total_distance) + (c.rides_with_distance < c.ride_count ? ` (${c.rides_with_distance} of ${c.ride_count} rides)` : '')
         : 'distance unknown';
-      return `<div class="p-3 rounded-xl border border-[rgba(212,175,55,0.08)]">
+      return `<div class="p-3 max-sm:px-3 max-sm:py-2.5 rounded-xl border border-[rgba(212,175,55,0.08)]">
         <div class="flex items-center justify-between">
           <span class="font-semibold">${esc(c.service_area)}</span>
           <span class="font-display font-bold text-slate-300">${esc(plural(c.ride_count, 'ride'))}</span>
         </div>
         <div class="mt-2 h-1.5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
-        <div class="text-xs text-slate-500 mt-1.5">${pct}% of rides · ${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
+        <div class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:mt-1">${pct}% of rides · ${esc(dist)} · first ride ${esc(fmtDate(c.first_ride_date))}</div>
       </div>`;
     }).join('');
   }
@@ -232,12 +232,12 @@
       if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5">${esc(r.city || '—')}</td>
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fmtMiles(r.distance))}</td>
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fare)}</td>
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 font-display font-bold">${esc(r.vehicle_plate || '—')}</td>
-        <td class="py-3 pr-4 max-sm:py-2 max-sm:pr-2.5 text-slate-400 whitespace-nowrap">${esc(SOURCE_LABELS[r.source] || r.source)}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5">${esc(r.city || '—')}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fmtMiles(r.distance))}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 text-right whitespace-nowrap">${esc(fare)}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 font-display font-bold">${esc(r.vehicle_plate || '—')}</td>
+        <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 text-slate-400 whitespace-nowrap">${esc(SOURCE_LABELS[r.source] || r.source)}</td>
         <td class="py-3 max-sm:py-1 text-right whitespace-nowrap">${removeCell(r.id)}</td>
       </tr>`;
     }).join('');
