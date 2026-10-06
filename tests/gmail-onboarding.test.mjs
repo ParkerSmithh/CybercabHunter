@@ -1,9 +1,10 @@
-// The Gmail onboarding prompt shown right after a successful Google sign-in
-// (public/js/main.js, initGmailOnboarding). It only offers the EXISTING
-// Gmail connect flow (POST /api/gmail/connect); nothing about Google sign-in,
-// Gmail OAuth, scopes or the importer changes. Real pages (index.html,
-// rider-data.html) + real calc.js/main.js in jsdom, the REAL Worker router and
-// real SQL (every migration).
+// The Gmail OAuth onboarding prompt that used to appear right after a Google
+// sign-in is gone (owner decision 2026-10-05): forwarding receipts to the
+// rider's address (/link-gmail) is the only ride source, so no rider is ever
+// offered a Gmail connect prompt after signing in. The Gmail OAuth backend,
+// its allowlist gate and Rider Data's own button are untouched and still
+// tested here. Real pages + real calc.js/main.js in jsdom, the REAL Worker
+// router and real SQL (every migration).
 // Run: node tests/gmail-onboarding.test.mjs
 
 import fs from 'node:fs';
@@ -65,91 +66,22 @@ async function open(ctx, { page = 'index.html', path = '/', search = '', hashSes
   return pg;
 }
 const signIn = (ctx, user, opts = {}) => open(ctx, { search: '?signin=success', hashSession: user, ...opts });
-const click = (pg, id) => pg.d.getElementById(id).dispatchEvent(new pg.w.MouseEvent('click', { bubbles: true }));
 
 async function run() {
-  console.log('1. A new Google user without Gmail: the prompt appears right after sign-in');
+  console.log('1. No Gmail connect prompt after sign-in, for anyone');
   {
     const ctx = await makeApp();
-    const pg = await signIn(ctx, 'alice');
-    check('the session from the sign-in fragment is stored, as before', pg.w.localStorage.getItem('teslaSessionId') === 'session-alice' && !pg.w.location.hash.includes('tesla_session'));
-    check('the ?signin=success result is still shown and scrubbed, as before', !pg.w.location.search.includes('signin=') && /Signed in/.test((pg.d.getElementById('toastRoot') || {}).textContent || ''));
-    check('the onboarding prompt appears', !!pg.modal() && pg.modal().classList.contains('modal-backdrop'));
-    check('title and explanation', /Automatically import your Tesla Robotaxi receipts\?/.test(pg.text()) && /Connect Gmail to automatically find your Robotaxi receipt emails and add your rides to Cybercab Hunter\./.test(pg.text()));
-    check('Connect Gmail with its note, Skip for now with its note', !!pg.d.getElementById('gmailOnboardingConnect') && /Only the Robotaxi receipt emails needed for your ride history are imported\./.test(pg.text()) && !!pg.d.getElementById('gmailOnboardingSkip') && /You can connect Gmail later from Rider Data\./.test(pg.text()));
-    check('it says Gmail is optional and that sign-in alone gives no Gmail access', /Gmail is optional/.test(pg.text()) && /Signing in with Google doesn't give Cybercab Hunter access to your Gmail/.test(pg.text()) && /Google asks for your permission first/.test(pg.text()));
-    check('it is an accessible dialog, reusing the existing modal styles', pg.modal().querySelector('[role="dialog"][aria-modal="true"]') && pg.modal().querySelector('.modal-panel.glass-strong'));
-    check('it only read the account and Gmail status — nothing was connected', pg.requests.some(r => r.path === '/api/gmail/status') && !pg.requests.some(r => r.path === '/api/gmail/connect'));
-  }
+    for (const [page, path] of [['index.html', '/'], ['link-gmail.html', '/link-gmail']]) {
+      const pg = await signIn(ctx, 'alice', { page, path });
+      await pg.settle(400);
+      check(`${page}: the session from the sign-in fragment is stored and the fragment scrubbed`, pg.w.localStorage.getItem('teslaSessionId') === 'session-alice' && !pg.w.location.hash.includes('tesla_session'));
+      check(`${page}: "Signed in" is still shown and ?signin= scrubbed`, !pg.w.location.search.includes('signin=') && /Signed in/.test((pg.d.getElementById('toastRoot') || {}).textContent || ''));
+      check(`${page}: no Gmail prompt, and no Gmail status or connect request`, !pg.modal() && !pg.d.querySelector('[role="dialog"]') && !pg.requests.some(r => r.path.startsWith('/api/gmail/')));
+    }
+    check('main.js has no Gmail onboarding or connect code left', !/gmailOnboarding|\/api\/gmail\//.test(MAIN));
 
-  console.log('2. When NOT to show it');
-  {
-    const ctx = await makeApp();
-    ctx.d1.exec(`INSERT INTO gmail_connections (id, user_id, google_sub, email, status, encrypted_refresh_token) VALUES ('gm1','alice','sub-a','alice@gmail.com','active','enc')`);
-    check('Gmail already connected: no prompt', !(await signIn(ctx, 'alice')).modal());
-    ctx.d1.exec(`UPDATE gmail_connections SET status = 'error', encrypted_refresh_token = NULL WHERE user_id = 'alice'`);
-    check('Gmail connected but needing a reconnect: no onboarding prompt (Rider Data handles it)', !(await signIn(ctx, 'alice')).modal());
-    const off = await makeApp({ configured: false });
-    check('Gmail import not configured on the server: no prompt', !(await signIn(off, 'alice')).modal());
-    const ctx2 = await makeApp();
-    check('an ordinary page load (no ?signin=success), signed in, not connected: no prompt', !(await open(ctx2, { storage: { teslaSessionId: 'session-alice' } })).modal());
-    check('a cancelled or failed sign-in: no prompt', !(await open(ctx2, { search: '?signin=cancelled' })).modal() && !(await open(ctx2, { search: '?signin=error' })).modal());
-    check('Tesla linking (?tesla=linked) is not a Google sign-in: no prompt', !(await open(ctx2, { search: '?tesla=linked', storage: { teslaSessionId: 'session-alice' } })).modal());
-    check('an invalid session after sign-in: no prompt', !(await open(ctx2, { search: '?signin=success', hashSession: 'nobody' })).modal());
-  }
-
-  console.log('3. Skip for now: dismissed, and not shown again on later sign-ins');
-  {
-    const ctx = await makeApp();
-    const pg = await signIn(ctx, 'alice');
-    click(pg, 'gmailOnboardingSkip');
-    await pg.waitFor(() => !pg.modal());
-    check('Skip closes the prompt', !pg.modal());
-    check('Skip is remembered for this account', pg.w.localStorage.getItem('gmailOnboardingDone:alice') === '1');
-    check('Skip connects nothing', !pg.requests.some(r => r.path === '/api/gmail/connect') && ctx.d1.query('SELECT COUNT(*) n FROM gmail_connections')[0].n === 0);
-    const again = await signIn(ctx, 'alice', { storage: { 'gmailOnboardingDone:alice': '1' } });
-    check('the next Google sign-in: no prompt', !again.modal());
-    const bob = await signIn(ctx, 'bob', { storage: { 'gmailOnboardingDone:alice': '1' } });
-    check("another account on the same browser is still offered it (the flag is per account)", !!bob.modal());
-    const esc = await signIn(ctx, 'bob');
-    esc.d.dispatchEvent(new esc.w.KeyboardEvent('keydown', { key: 'Escape' }));
-    await esc.waitFor(() => !esc.modal());
-    check('Escape also dismisses it and is remembered', !esc.modal() && esc.w.localStorage.getItem('gmailOnboardingDone:bob') === '1');
-  }
-
-  console.log('4. Connect Gmail: the EXISTING /api/gmail/connect flow');
-  {
-    const ctx = await makeApp();
-    const pg = await signIn(ctx, 'alice');
-    click(pg, 'gmailOnboardingConnect');
-    await pg.waitFor(() => pg.requests.some(r => r.path === '/api/gmail/connect'));
-    const req = pg.requests.find(r => r.path === '/api/gmail/connect');
-    check('Connect Gmail POSTs to /api/gmail/connect with only the bearer session', req && req.method === 'POST' && req.auth === 'Bearer session-alice' && !/user/.test(req.path));
-    const stateKeys = () => [...ctx.env.TESLA_SESSIONS._store.keys()].filter(k => k.startsWith('gmail_state:'));
-    await pg.waitFor(() => stateKeys().length === 1);
-    const state = stateKeys();
-    check("the server issued its normal single-use OAuth state for this user (the same flow as Rider Data's button)", state.length === 1 && JSON.parse(ctx.env.TESLA_SESSIONS._store.get(state[0])).user_id === 'alice');
-    check('choosing Connect is remembered too (no re-prompt; Rider Data covers a retry)', pg.w.localStorage.getItem('gmailOnboardingDone:alice') === '1');
-    check('no error is shown while it hands off to Google', pg.d.getElementById('gmailOnboardingError').classList.contains('hidden'));
-  }
-
-  console.log('5. Connect failures and a cancelled Google screen never block the site');
-  {
-    const ctx = await makeApp();
-    const failing = await signIn(ctx, 'alice', { intercept: async p => (p === '/api/gmail/connect' ? Response.json({ success: false, error: 'gmail_not_configured' }, { status: 503 }) : null) });
-    click(failing, 'gmailOnboardingConnect');
-    await failing.waitFor(() => !failing.d.getElementById('gmailOnboardingError').classList.contains('hidden'));
-    check('a connect error is shown inside the prompt, with a way out', /Couldn't start connecting Gmail/.test(failing.text()) && !!failing.d.getElementById('gmailOnboardingSkip') && !failing.d.getElementById('gmailOnboardingConnect').disabled);
-    click(failing, 'gmailOnboardingSkip');
-    await failing.waitFor(() => !failing.modal());
-    check('…and Skip then closes it; the rider is still signed in', !failing.modal() && failing.w.localStorage.getItem('teslaSessionId') === 'session-alice');
-    const offline = await signIn(ctx, 'bob', { intercept: async p => { if (p === '/api/gmail/connect') throw new TypeError('network down'); return null; } });
-    click(offline, 'gmailOnboardingConnect');
-    await offline.waitFor(() => !offline.d.getElementById('gmailOnboardingError').classList.contains('hidden'));
-    check('a network failure is handled the same way', /Couldn't start connecting Gmail/.test(offline.text()));
-
-    // Google's consent screen cancelled: the existing callback sends the rider to Rider Data (?gmail=cancelled).
-    const back = await open(ctx, { page: 'rider-data.html', path: '/rider-data', search: '?gmail=cancelled', storage: { teslaSessionId: 'session-alice', 'gmailOnboardingDone:alice': '1' } });
+    // Google's consent screen cancelled (from Rider Data's own button): the existing callback sends the rider to Rider Data (?gmail=cancelled).
+    const back = await open(ctx, { page: 'rider-data.html', path: '/rider-data', search: '?gmail=cancelled', storage: { teslaSessionId: 'session-alice' } });
     await back.waitFor(() => !back.d.getElementById('dataSignedIn').classList.contains('hidden'));
     check('after cancelling at Google: still signed in, Rider Data loads, and it says Gmail was not connected', !back.d.getElementById('dataSignedIn').classList.contains('hidden') && /cancelled/.test(back.d.getElementById('gmailNotice').textContent) && !back.modal());
   }
@@ -159,7 +91,7 @@ async function run() {
     const ctx = await makeApp();
     const rd = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-alice' } });
     await rd.waitFor(() => !rd.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
-    check('the Rider Data "Connect Gmail" button is shown (no onboarding prompt on a normal visit)', rd.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail' && !rd.modal());
+    check('the Rider Data "Connect Gmail" button is shown (and no prompt)', rd.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail' && !rd.modal());
     rd.d.getElementById('gmailToggleBtn').dispatchEvent(new rd.w.MouseEvent('click', { bubbles: true }));
     await rd.waitFor(() => rd.requests.some(r => r.path === '/api/gmail/connect'));
     check('its Connect Gmail still calls /api/gmail/connect', rd.requests.some(r => r.path === '/api/gmail/connect' && r.method === 'POST'));
@@ -173,7 +105,7 @@ async function run() {
     check('the match is on the signed-in Google email, case-insensitive; no Google identity is never allowed',
       gmailConnectAllowed({ email: 'ContactJoeClos@Gmail.com' }) && !gmailConnectAllowed({ email: 'carol@gmail.com' }) && !gmailConnectAllowed(null) && !gmailConnectAllowed({ email: null }));
     check('every gate is marked TEMPORARY for removal after verification',
-      (gmailSrc.match(/TEMPORARY/g) || []).length >= 4 && /TEMPORARY/.test(read('public/js/rider-data.js')) && /TEMPORARY/.test(MAIN));
+      (gmailSrc.match(/TEMPORARY/g) || []).length >= 4 && /TEMPORARY/.test(read('public/js/rider-data.js')));
 
     const ctx = await makeApp();
     for (const [u, email] of [['carol', 'carol@gmail.com'], ['owner', 'contactjoeclos@gmail.com']]) {
@@ -196,12 +128,12 @@ async function run() {
     const status = async u => (await worker.fetch(new Request('https://x/api/gmail/status', { headers: { Origin: 'https://cybercabhunter.com', Authorization: `Bearer session-${u}` } }), ctx.env, {})).json();
     check('status reports connect_allowed: false for the rider, true for the owner', (await status('carol')).connect_allowed === false && (await status('owner')).connect_allowed === true);
 
-    const rdCarol = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-carol', 'gmailOnboardingDone:carol': '1' } });
+    const rdCarol = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-carol' } });
     await rdCarol.waitFor(() => !rdCarol.d.getElementById('dataSignedIn').classList.contains('hidden'));
     await rdCarol.settle(300);
     check('Rider Data: no "Connect Gmail" button for a rider not on the allowlist (and nothing was requested)',
       rdCarol.d.getElementById('gmailToggleBtn').classList.contains('hidden') && !rdCarol.requests.some(r => r.path === '/api/gmail/connect'));
-    const rdOwner = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-owner', 'gmailOnboardingDone:owner': '1' } });
+    const rdOwner = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-owner' } });
     await rdOwner.waitFor(() => !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden'));
     check('Rider Data: the owner sees "Connect Gmail"', !rdOwner.d.getElementById('gmailToggleBtn').classList.contains('hidden') && rdOwner.d.getElementById('gmailToggleBtn').textContent === 'Connect Gmail');
 
@@ -209,8 +141,8 @@ async function run() {
     await carolSignIn.settle(400);
     check('right after Google sign-in, a rider not on the allowlist is not offered Gmail', !carolSignIn.modal() && !carolSignIn.requests.some(r => r.path === '/api/gmail/connect'));
     const ownerSignIn = await signIn(ctx, 'owner');
-    await ownerSignIn.waitFor(() => !!ownerSignIn.modal());
-    check('...while the owner still is (the flow stays end-to-end for the verification demo)', !!ownerSignIn.modal());
+    await ownerSignIn.settle(400);
+    check('...nor is the allowlisted owner (the popup is gone; the gate itself stays)', !ownerSignIn.modal() && !ownerSignIn.requests.some(r => r.path.startsWith('/api/gmail/')));
   }
 
   console.log('7. Nothing about Google sign-in or Gmail OAuth changed');
@@ -219,7 +151,7 @@ async function run() {
     check('Google sign-in still requests only openid email profile', /const SCOPES = 'openid email profile';/.test(signin) && !/gmail/i.test(signin.match(/const SCOPES = .*/)[0]));
     const gmail = read('worker/gmail.js');
     check('Gmail OAuth scope is still gmail.readonly', /export const GMAIL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/gmail\.readonly';/.test(gmail));
-    check('the prompt never requests Gmail scopes or builds an OAuth URL itself', !/googleapis\.com\/auth|accounts\.google\.com\/o\/oauth2/.test(MAIN) && /\/api\/gmail\/connect/.test(MAIN));
+    check('main.js never requests Gmail scopes or builds an OAuth URL itself', !/googleapis\.com\/auth|accounts\.google\.com\/o\/oauth2/.test(MAIN));
   }
 
   t.finish();
