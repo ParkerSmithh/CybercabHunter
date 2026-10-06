@@ -51,12 +51,10 @@
 
     // The Cybercab badge and the generic image show for any approved Cybercab
     // (approval_basis set by Approve Cybercab, with or without a VIN —
-    // migrations/0025). The VIN verified badge shows only for 'vin-verified'
-    // (approved with a VIN a moderator confirmed on Robotaxi Tracker), since
-    // Cybercab Hunter never claims a verification that doesn't exist.
+    // migrations/0025). There is no "VIN verified" badge (owner request
+    // 2026-10-05): the VIN itself, when on file, is shown in the summary line.
     const approvedCybercab = v.approval_basis === 'vin-verified' || v.approval_basis === 'manual';
     show('vCybercabBadge', approvedCybercab);
-    show('vVinVerifiedBadge', v.approval_basis === 'vin-verified');
     show('vCybercabImage', approvedCybercab);
 
     // One plain-text summary line built only from the facts actually on

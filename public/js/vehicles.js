@@ -59,9 +59,8 @@
   }
 
   // Every moderator approval is an Approve Cybercab (v.approval_basis is set,
-  // migrations/0025), so both kinds get the Cybercab image and pill. The
-  // "VIN verified" badge is shown only on the vehicle's own page
-  // (vVinVerifiedBadge in vehicle.html), never on these cards.
+  // migrations/0025), so both kinds get the Cybercab image and pill. No page
+  // shows a "VIN verified" badge.
   const approvedCybercab = v => v.approval_basis === 'vin-verified' || v.approval_basis === 'manual';
 
   // Generic Cybercab illustration, shown for an approved Cybercab

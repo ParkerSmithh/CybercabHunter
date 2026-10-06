@@ -186,8 +186,8 @@ async function run() {
     // The front end: badge only on vin-verified (see also vehicle-registry / vehicle-page tests).
     const vehiclesJs = fs.readFileSync(`${ROOT}public/js/vehicles.js`, 'utf8');
     const vehicleJs = fs.readFileSync(`${ROOT}public/js/vehicle.js`, 'utf8');
-    check('the vehicle page keys the VIN verified badge off approval_basis, not the VIN alone; the all-cars cards never show it', /show\('vVinVerifiedBadge', v\.approval_basis === 'vin-verified'\)/.test(vehicleJs) && !vehiclesJs.includes('✓ VIN verified') && !/vinVerifiedBadge/.test(vehiclesJs));
-    check('a manual Cybercab still gets the normal Cybercab image and pill (only the VIN verified badge is withheld)', /approval_basis === 'manual'/.test(vehiclesJs) && /show\('vVinVerifiedBadge', v\.approval_basis === 'vin-verified'\)/.test(vehicleJs));
+    check('no page shows a "VIN verified" badge (vehicle page or all-cars cards)', !/VinVerifiedBadge|✓ VIN verified/.test(vehicleJs) && !vehiclesJs.includes('✓ VIN verified') && !/vinVerifiedBadge/.test(vehiclesJs));
+    check('a manual Cybercab still gets the normal Cybercab image and pill', /approval_basis === 'manual'/.test(vehiclesJs) && /approval_basis === 'manual'/.test(vehicleJs));
   }
 
   console.log('7. Sighting-origin vehicles: a manual approval backs them publicly');

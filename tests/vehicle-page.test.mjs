@@ -227,8 +227,7 @@ async function run() {
     // so the Cybercab badge/image must stay hidden and no vin VALUE — nor
     // any session/token material — may ever appear (see 5b below for a
     // vehicle that DOES have one).
-    // (The hidden "VIN verified" badge's own label and tooltip are static page text, not a vin value.)
-    check('the Cybercab badge and image stay hidden for a vehicle with no vin, and no vin value is shown', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage') && !page.visible('vVinVerifiedBadge') && !rendered.replace(/VIN verified|Approved with a VIN a moderator confirmed on Robotaxi Tracker/g, '').includes('VIN'));
+    check('the Cybercab badge and image stay hidden for a vehicle with no vin, and no vin value is shown', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage') && !rendered.includes('VIN'));
     check('no session/token material appears anywhere on the page', !/access_token|refresh_token|\bsession\b/i.test(rendered));
   }
 
@@ -238,7 +237,7 @@ async function run() {
     const noVinId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'ORD0011');
     approveVehicle(d1, noVinId, { withRide: true });
     const noVinPage = await openPage({ cybercabhunter_db: d1 }, noVinId);
-    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — no Cybercab badge/image', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vCybercabBadge') && !noVinPage.visible('vCybercabImage') && !noVinPage.visible('vVinVerifiedBadge'));
+    check('an ordinary approved vehicle with no vin: existing behavior is completely unchanged — no Cybercab badge/image', noVinPage.visible('vehicleLoaded') && !noVinPage.visible('vCybercabBadge') && !noVinPage.visible('vCybercabImage'));
 
     const VIN = '5YJSA1E14FF101183';
     const cybercabId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'CYB0010');
@@ -248,14 +247,14 @@ async function run() {
     check('a vehicle with a vin: it appears in the one-line summary, rendering the exact value', page.visible('vSummaryLine') && page.text('vSummaryLine') === `VIN ${VIN}`);
     check('the Cybercab badge shows once a moderator-verified vin is present', page.visible('vCybercabBadge') && page.text('vCybercabBadge') === 'Cybercab');
     check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
-    check('the VIN verified badge is shown for a vin-verified vehicle', page.visible('vVinVerifiedBadge') && /VIN verified/.test(page.text('vVinVerifiedBadge')));
+    check('no "VIN verified" badge on the page; the VIN itself is shown in the summary line', !page.d.getElementById('vVinVerifiedBadge') && !/VIN verified/.test(page.d.body.textContent) && page.text('vSummaryLine').includes(`VIN ${VIN}`));
 
     // Approved manually (no VIN at approval), VIN added later but never verified: the VIN is a plain fact, no badges.
     const manualId = await db.findOrCreateRobotaxiVehicleByPlate(d1, 'MAN0010');
     approveVehicle(d1, manualId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}', approval_basis = 'manual' WHERE id = '${manualId}'`);
     const manualPage = await openPage({ cybercabhunter_db: d1 }, manualId);
-    check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, but no VIN verified badge', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `VIN ${VIN}` && !manualPage.visible('vVinVerifiedBadge') && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
+    check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, ', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `VIN ${VIN}` && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
     check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'images/Cybercab2.png');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
