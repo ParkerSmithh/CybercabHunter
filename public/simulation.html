@@ -39,7 +39,7 @@
   .sim-hero-car{width:120px; height:auto; align-self:start; margin-top:28px; user-select:none; filter:drop-shadow(0 16px 24px rgb(0 0 0 / 0.45));}
   /* Phones: the car sits above the text instead of squeezing it (it was
      beside it, leaving the description a ~200px column). */
-  @media (max-width:639px){ .sim-hero-car{order:-1; margin-top:0;} }
+  @media (max-width:639px){ .sim-hero-car{order:-1; margin-top:0; width:88px;} }
   @media (min-width:768px){ .sim-hero-car{width:300px; align-self:center; margin-top:0; filter:drop-shadow(0 24px 32px rgb(0 0 0 / 0.45));} }
   @media (min-width:1024px){ .sim-hero-car{width:400px;} }
   /* Fleet ETA view (js/fleet-compare.js). Status colors use the
@@ -135,11 +135,11 @@
      (Fleet ROI = the fleet investment calculator, Fleet ETA = the dispatch
      comparison). Fleet ROI opens first; the choice is kept in the URL
      (?view=eta); the old Fleet ETA URL redirects there. -->
-<section class="pt-8">
+<section class="pt-8 max-sm:pt-4">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div id="simTabs" role="tablist" aria-label="Simulation" class="flex flex-wrap gap-2">
-      <button id="simTabRoi" type="button" role="tab" data-view="roi" aria-selected="true" aria-controls="simPanelRoi" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border">FLEET ROI</button>
-      <button id="simTabEta" type="button" role="tab" data-view="eta" aria-selected="false" aria-controls="simPanelEta" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border">FLEET ETA</button>
+      <button id="simTabRoi" type="button" role="tab" data-view="roi" aria-selected="true" aria-controls="simPanelRoi" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">FLEET ROI</button>
+      <button id="simTabEta" type="button" role="tab" data-view="eta" aria-selected="false" aria-controls="simPanelEta" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">FLEET ETA</button>
     </div>
   </div>
 </section>
@@ -164,35 +164,35 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5">
       <!-- Inputs -->
       <div class="lg:col-span-1">
-      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3">Inputs</h2>
-      <div class="glass rounded-2xl p-7 space-y-7 h-fit max-sm:p-5 max-sm:space-y-5">
+      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3 max-sm:mb-2">Inputs</h2>
+      <div class="glass rounded-2xl p-7 space-y-7 h-fit max-sm:p-4 max-sm:space-y-3.5">
         <!-- Starting values: the fleet size is the live public registry count
              (GET /api/registry/stats); electricity and daily miles are examples. -->
-        <p id="roiStartNote" class="text-xs text-slate-400 leading-relaxed -mb-2">Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them.</p>
-        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07]">
+        <p id="roiStartNote" class="text-xs text-slate-400 leading-relaxed -mb-2 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-0">Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them.</p>
+        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07] max-sm:pb-3">
           <label class="text-[13px] font-medium text-slate-300">Tesla Network Cut</label>
-          <span class="stat-value font-semibold text-white text-lg"><span id="networkCutOut">0</span>%</span>
+          <span class="stat-value font-semibold text-white text-lg max-sm:text-base"><span id="networkCutOut">0</span>%</span>
         </div>
-        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07]">
+        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07] max-sm:pb-3">
           <label class="text-[13px] font-medium text-slate-300">Cost per Unit</label>
-          <span class="stat-value font-semibold text-white text-lg">$<span id="costPerCabOut">0</span></span>
+          <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="costPerCabOut">0</span></span>
         </div>
-        <div class="pb-4 border-b border-white/[0.07]">
+        <div class="pb-4 border-b border-white/[0.07] max-sm:pb-3">
           <div class="flex items-center justify-between">
             <label class="text-[13px] font-medium text-slate-300">Passenger Fare</label>
-            <span class="stat-value font-semibold text-white text-lg">$<span id="baseFareOut">0.00</span> + $<span id="perMileFareOut">0.00</span>/mi</span>
+            <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="baseFareOut">0.00</span> + $<span id="perMileFareOut">0.00</span>/mi</span>
           </div>
-          <div class="text-xs text-slate-500 mt-1.5">Base fare per trip, plus per-mile rate (~5 mi avg trip)</div>
+          <div class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:mt-1">Base fare per trip, plus per-mile rate (~5 mi avg trip)</div>
         </div>
         <div>
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Fleet Size</label>
             <input type="number" id="fleetSizeLabel" min="0" max="100" step="1" value="0" class="stat-value font-semibold text-white text-lg bg-transparent w-16 text-right outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]">
           </div>
           <input type="range" id="fleetSize" data-elastic min="0" max="100" step="1" value="0">
         </div>
         <div>
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Electricity Rate</label>
             <div class="flex items-center gap-1">
               <span class="text-slate-400 text-sm font-semibold">$</span>
@@ -203,7 +203,7 @@
           <input type="range" id="electricityRate" data-elastic min="0" max="0.40" step="0.01" value="0.12">
         </div>
         <div>
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Daily Miles / Cab</label>
             <div class="flex items-center gap-1">
               <input type="number" id="milesLabel" min="0" max="400" step="1" value="150" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
@@ -212,7 +212,7 @@
           </div>
           <input type="range" id="dailyMiles" data-elastic min="0" max="400" step="1" value="150">
         </div>
-        <div class="flex items-center justify-between pt-2">
+        <div class="flex items-center justify-between pt-2 max-sm:pt-0">
           <label class="text-[13px] font-medium text-slate-300">Inductive Loss Factor <span id="lossLabel" class="text-slate-300">(8%)</span></label>
           <div id="lossToggle" class="toggle on"><div class="toggle-dot"></div></div>
         </div>
@@ -225,7 +225,7 @@
 
       <!-- Outputs -->
       <div class="lg:col-span-2">
-      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3">Projected Results</h2>
+      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3 max-sm:mb-2">Projected Results</h2>
       <div class="space-y-6 max-sm:space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-sm:grid-cols-3 max-sm:gap-2">
           <div class="glass rounded-2xl p-6 min-w-0 max-sm:px-2.5 max-sm:py-3">
@@ -248,7 +248,7 @@
             <span id="breakevenLabel" class="stat-value font-semibold text-gold">— mo</span>
           </div>
           <svg id="cashFlowChart" viewBox="0 0 600 200" class="w-full h-auto mt-2" preserveAspectRatio="none"></svg>
-          <div class="text-xs text-slate-500 mt-2">Projected net cash position from initial fleet capital outlay through recovery.</div>
+          <div class="text-xs text-slate-500 mt-2 max-sm:text-[11px] max-sm:leading-snug">Projected net cash position from initial fleet capital outlay through recovery.</div>
         </div>
       </div>
       </div>
@@ -273,8 +273,8 @@
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-xl max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">Cybercab and Model Y robotaxis in Austin: what a ride costs, when they run, and how long a pickup might take.</p>
       <div class="mt-6 flex flex-wrap items-center gap-3 max-sm:mt-4 max-sm:gap-x-3 max-sm:gap-y-2">
         <div class="flex items-center gap-2" role="group" aria-label="City">
-          <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
-          <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">Dallas</button>
+          <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">Austin</button>
+          <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">Dallas</button>
         </div>
         <!-- The live fleet count and its age (count_as_of). -->
         <p id="fleetLive" class="text-sm text-slate-400"><span class="skeleton-line w-48"></span></p>
@@ -294,7 +294,7 @@
 
 <div id="austinContent">
 <!-- ===== Fares ===== -->
-<section class="pt-12 lg:pt-16 max-sm:pt-8" aria-labelledby="faresHeading">
+<section class="pt-12 lg:pt-16 max-sm:pt-6" aria-labelledby="faresHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-3 mb-6 max-sm:mb-4">
       <h2 id="faresHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl">Fares</h2>
@@ -325,12 +325,12 @@
             <dd id="perMileN" class="text-xs text-slate-500 mt-1"></dd>
           </div>
         </dl>
-        <div class="mt-6 pt-5 border-t border-white/[0.07] flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 sm:gap-4">
+        <div class="mt-6 pt-5 border-t border-white/[0.07] flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 sm:gap-4 max-sm:mt-4 max-sm:pt-3 max-sm:flex-row max-sm:items-baseline max-sm:justify-between max-sm:gap-3">
           <div>
-            <p class="text-sm text-slate-300">Tesla's Austin rate, as reported</p>
-            <p class="text-xs text-slate-500 mt-0.5">App pricing reported in Mar 2026, not measured here. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://www.notateslaapp.com/news/3757/tesla-increases-robotaxi-base-fare-drastically-increasing-short" target="_blank" rel="noopener">Source</a></p>
+            <p class="text-sm text-slate-300 max-sm:text-xs">Tesla's Austin rate, as reported</p>
+            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">App pricing reported in Mar 2026, not measured here. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://www.notateslaapp.com/news/3757/tesla-increases-robotaxi-base-fare-drastically-increasing-short" target="_blank" rel="noopener">Source</a></p>
           </div>
-          <p class="stat-value font-semibold text-lg text-white whitespace-nowrap"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span>/mi</p>
+          <p class="stat-value font-semibold text-lg text-white whitespace-nowrap max-sm:text-sm"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span>/mi</p>
         </div>
       </article>
 
@@ -341,7 +341,7 @@
           <span class="tag">Reported rate</span>
         </div>
         <p class="mt-5 stat-value font-semibold text-3xl text-white max-sm:mt-3 max-sm:text-2xl"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span><span class="text-lg text-slate-400 font-medium">/mi</span></p>
-        <p class="mt-3 text-sm text-slate-400 leading-relaxed max-w-md">Tesla's Austin robotaxi rate as reported from the app in Mar 2026. Cybercab Hunter has no measured Model Y fares, so this is the rate card, not what riders paid. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://robotaxiprice.com/tesla-robotaxi-price/" target="_blank" rel="noopener">Source</a></p>
+        <p class="mt-3 text-sm text-slate-400 leading-relaxed max-w-md max-sm:mt-2 max-sm:text-xs max-sm:leading-snug">Tesla's Austin robotaxi rate as reported from the app in Mar 2026. Cybercab Hunter has no measured Model Y fares, so this is the rate card, not what riders paid. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://robotaxiprice.com/tesla-robotaxi-price/" target="_blank" rel="noopener">Source</a></p>
       </article>
     </div>
 
@@ -376,7 +376,7 @@
 </section>
 
 <!-- ===== Operating hours ===== -->
-<section class="pt-14 lg:pt-20 max-sm:pt-10" aria-labelledby="hoursHeading">
+<section class="pt-14 lg:pt-20 max-sm:pt-7" aria-labelledby="hoursHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <h2 id="hoursHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Operating hours</h2>
     <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
@@ -404,22 +404,22 @@
         </div>
         <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
       </div>
-      <p id="hoursNowText" class="text-xs text-slate-500 mt-3"></p>
+      <p id="hoursNowText" class="text-xs text-slate-500 mt-3 max-sm:mt-2"></p>
     </div>
   </div>
 </section>
 
 <!-- ===== Pickup wait estimate ===== -->
-<section class="pt-14 lg:pt-20 pb-16 max-sm:pt-10 max-sm:pb-10" aria-labelledby="etaHeading">
+<section class="pt-14 lg:pt-20 pb-16 max-sm:pt-7 max-sm:pb-8" aria-labelledby="etaHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
       <h2 id="etaHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl">Pickup wait estimate</h2>
       <div class="flex items-center gap-3">
         <span id="scenarioLabel" class="text-sm text-slate-400">Scenario</span>
         <div class="flex items-center gap-2" role="group" aria-labelledby="scenarioLabel">
-          <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors">Quiet</button>
-          <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors">Typical</button>
-          <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors">Busy</button>
+          <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
+          <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
+          <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Busy</button>
         </div>
       </div>
     </div>
