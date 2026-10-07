@@ -58,6 +58,9 @@
   :root[data-theme="light"] .cc-doors-stage img, :root[data-theme="light"] .cc-doors-stage canvas{mix-blend-mode:normal;}
   .cc-doors-stage canvas{opacity:0;}
   .cc-doors.is-live .cc-doors-stage canvas{opacity:1;}
+  /* Once the canvas paints, the still must go: under `lighten` both layers
+     would show (whichever is brighter), ghosting the closed doors through. */
+  .cc-doors.is-live .cc-doors-stage img{visibility:hidden;}
   .cc-doors-btn{display:inline-flex; align-items:center; gap:.4rem; min-height:36px; padding:0 .9rem; border-radius:999px; border:1px solid rgb(var(--gold) / 0.35); font-size:.75rem; font-weight:600; letter-spacing:.02em; color:rgb(var(--gold-ink, var(--gold))); background:transparent; transition:background-color var(--t, .2s) var(--ease, ease);}
   .cc-doors-btn:hover{background:rgb(var(--gold) / 0.08);}
   .cc-doors-btn svg{transition:transform var(--t, .2s) var(--ease, ease);}

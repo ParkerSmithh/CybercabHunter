@@ -62,6 +62,7 @@ async function run() {
     check('Fleet ROI and Fleet ETA each have one', /id="simPanelRoi"[\s\S]*data-cc-doors[\s\S]*id="simPanelEta"[\s\S]*data-cc-doors/.test(HTML) && (HTML.match(/data-cc-doors>/g) || []).length === 2);
     check('the page loads js/cybercab-doors.js', /<script src="js\/cybercab-doors\.js[^"]*"><\/script>/.test(HTML));
     check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/00\.webp"[^>]*width="800" height="438"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/438/.test(HTML));
+    check('once the canvas is live the still image is hidden (under lighten blending both would show, ghosting the closed doors)', /\.cc-doors\.is-live \.cc-doors-stage img\{visibility:hidden;\}/.test(HTML));
     check('only frame 00 is referenced by the page itself (the rest load on intent)', !/cybercab-doors\/[dm]\/(0[1-9]|[1-7]\d)\.webp/.test(HTML));
   }
 
