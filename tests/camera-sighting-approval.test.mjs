@@ -439,7 +439,7 @@ async function run() {
     await approve(ctx, plainDal);
     const wrong = await addToMap(ctx, plainDal, CAM);
     check('Add to map refuses a camera from another city (400 invalid_traffic_camera), nothing placed', wrong.status === 400 && wrong.json.error === 'invalid_traffic_camera' && !rows(ctx).some(x => x.source_submission_id === plainDal));
-    const right = await addToMap(ctx, plainDal, 'txdot-dal-1108');
+    const right = await addToMap(ctx, plainDal, 'txdot-dal-1000');
     check('...and accepts one of its own city\'s cameras', right.status === 200 && rows(ctx).find(x => x.source_submission_id === plainDal).city === 'dallas');
   }
 

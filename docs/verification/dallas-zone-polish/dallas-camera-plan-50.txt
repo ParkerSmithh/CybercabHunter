@@ -1,0 +1,51 @@
+# Final Dallas camera plan supplied by owner; latitude,longitude.
+txdot-dal-1011 | Spur 366 @ EB Tunnel Cam 2 | 32.788412,-96.801985
+txdot-dal-624 | IH345 @ Live Oak | 32.786490,-96.792466
+txdot-dal-1025 | Spur 366 @ US75 South | 32.792190,-96.794784
+txdot-dal-1105 | US75 @ Knox North | 32.824010,-96.785090
+txdot-dal-1018 | Spur 366 @ IH35E East | 32.782900,-96.808860
+txdot-dal-1106 | US75 @ Knox South | 32.818880,-96.787810
+txdot-dal-1110 | US75 @ McCommas | 32.831930,-96.780810
+txdot-dal-546 | IH30 @ Cadiz | 32.773527,-96.796527
+txdot-dal-707 | IH35E @ Hi Line | 32.788413,-96.812574
+txdot-dal-1102 | US75 @ Hall | 32.801180,-96.792780
+txdot-dal-1103 | US75 @ Haskell | 32.809170,-96.792980
+txdot-dal-1118 | US75 @ Mockingbird | 32.837550,-96.778240
+txdot-dal-679 | IH35E @ Dallas North Tollway | 32.795993,-96.815026
+txdot-dal-669 | IH35E @ Commerce NB | 32.775962,-96.810896
+txdot-dal-618 | IH30 @ St Paul | 32.774993,-96.790007
+txdot-dal-628 | IH345 @ Taylor | 32.781147,-96.783982
+txdot-dal-580 | IH30 @ IH35E Mixmaster | 32.769758,-96.803163
+txdot-dal-739 | IH35E @ Medical District | 32.807119,-96.841998
+txdot-dal-735 | IH35E @ Market Center | 32.801830,-96.826034
+txdot-dal-1150 | US75 @ University | 32.845630,-96.773140
+txdot-dal-1121 | US75 @ NorthPark | 32.868710,-96.769940
+txdot-dal-716 | IH35E @ Inwood | 32.811353,-96.849913
+txdot-dal-819 | IH45 @ Good Latimer | 32.774753,-96.778996
+txdot-dal-620 | IH30 @ Trinity River | 32.770406,-96.816810
+txdot-dal-534 | IH30 @ 2nd Ave | 32.780827,-96.771499
+txdot-dal-575 | IH30 @ Haskell | 32.786311,-96.767594
+txdot-dal-548 | IH30 @ Carroll | 32.790066,-96.762514
+txdot-dal-537 | IH30 @ Beckley | 32.769251,-96.823261
+txdot-dal-604 | IH30 @ Munger | 32.791236,-96.755750
+txdot-dal-823 | IH45 @ Loop 12 | 32.701176,-96.753359
+txdot-dal-667 | IH35E @ Colorado Blvd | 32.759083,-96.809991
+txdot-dal-670 | IH35E @ Commonwealth | 32.811806,-96.861388
+txdot-dal-822 | IH45 @ Linfield | 32.714454,-96.756825
+txdot-dal-619 | IH30 @ Sylvan | 32.767695,-96.835073
+txdot-dal-686 | IH35E @ East 8th Street | 32.751477,-96.809007
+txdot-dal-553 | IH30 @ Dolphin | 32.791161,-96.737497
+txdot-dal-741 | IH35E @ Mockingbird | 32.818490,-96.869311
+txdot-dal-556 | IH30 @ Edgefield | 32.764859,-96.842734
+txdot-dal-820 | IH45 @ Lamar North | 32.751446,-96.770120
+txdot-dal-614 | IH30 @ Samuell | 32.793664,-96.726677
+txdot-dal-572 | IH30 @ Hampton | 32.766679,-96.856420
+txdot-dal-736 | IH35E @ Marsalis | 32.743320,-96.815831
+txdot-dal-757 | IH35E @ Regal Row | 32.835306,-96.875199
+txdot-dal-999 | SH183 @ Profit | 32.823926,-96.880031
+txdot-dal-1000 | SH183 @ Regal Row | 32.828247,-96.886688
+txdot-dal-997 | SH183 @ Mockingbird | 32.819615,-96.873687
+txdot-dal-946 | Loop 12 @ SH183 East | 32.838557,-96.915002
+txdot-dal-1002 | SH183 @ SH114 | 32.835491,-96.901512
+txdot-dal-579 | IH30 @ Hunnicut | 32.795173,-96.714988
+txdot-dal-755 | IH35E @ Raceway | 32.845138,-96.877725
