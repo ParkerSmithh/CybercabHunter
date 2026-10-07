@@ -30,11 +30,11 @@
 
   const METHODS = {
     auto: {
-      title: 'Forward automatically',
+      title: 'FORWARD AUTOMATICALLY',
       lede: 'Set this up once in Gmail and every new receipt forwards itself. Gmail only has these settings on its website, so do this on a computer.'
     },
     manual: {
-      title: 'Forward each receipt',
+      title: 'FORWARD EACH RECEIPT',
       lede: "After a ride, forward the Tesla receipt email to your address. Nothing changes in your Gmail settings, and it works in the Gmail app."
     }
   };

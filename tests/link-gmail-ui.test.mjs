@@ -240,7 +240,7 @@ async function run() {
     check('arriving on the page asks the question first; no setup is shown yet', page.visible('lgChoose') && !page.visible('lgSetup'));
     check('it is a multiple-choice question: a fieldset with a legend and two radio options', page.d.querySelector('#lgChoose fieldset legend').textContent === 'How do you want to send your receipts?' && page.d.querySelectorAll('#lgChoose input[type="radio"][name="lgMethod"]').length === 2);
     const labels = [...page.d.querySelectorAll('.lg-choice')].map(l => [l.querySelector('.lg-choice-letter').textContent, l.querySelector('.font-display').textContent]);
-    check('A is "Forward automatically", B is "Forward each receipt"', JSON.stringify(labels) === JSON.stringify([['A', 'Forward automatically'], ['B', 'Forward each receipt']]));
+    check('A is "Forward automatically", B is "Forward each receipt"', JSON.stringify(labels) === JSON.stringify([['A', 'FORWARD AUTOMATICALLY'], ['B', 'FORWARD EACH RECEIPT']]));
     check('nothing is preselected and Continue waits for an answer', !page.d.querySelector('input[name="lgMethod"]:checked') && page.$('lgContinue').disabled);
     page.submitChoice();
     check('submitting without an answer goes nowhere', page.visible('lgChoose') && page.method() === null);
@@ -248,7 +248,7 @@ async function run() {
     page.choose('auto');
     check('choosing an option highlights it and enables Continue', page.d.querySelector('[data-choice="auto"]').classList.contains('is-selected') && !page.d.querySelector('[data-choice="manual"]').classList.contains('is-selected') && !page.$('lgContinue').disabled);
     page.submitChoice();
-    check('Continue with "Forward automatically" opens its setup (?method=auto)', page.method() === 'auto' && page.visible('lgSetup') && !page.visible('lgChoose') && page.text('lgSetupTitle') === 'Forward automatically');
+    check('Continue with "Forward automatically" opens its setup (?method=auto)', page.method() === 'auto' && page.visible('lgSetup') && !page.visible('lgChoose') && page.text('lgSetupTitle') === 'FORWARD AUTOMATICALLY');
     check('...with the address, the Gmail steps, past rides and status', page.visible('lgAddressReady') && page.visible('lgAuto') && !page.visible('lgManual') && !!page.d.getElementById('lgBackfillHeading') && /Forwarding and POP\/IMAP/.test(page.text('lgAuto')));
     check('...and method-specific wording only for this method', [...page.d.querySelectorAll('[data-for="auto"]')].every(e => !e.classList.contains('hidden')) && [...page.d.querySelectorAll('[data-for="manual"]')].every(e => e.classList.contains('hidden')));
     check('focus moves to the setup heading', page.d.activeElement === page.$('lgSetupTitle'));
@@ -257,7 +257,7 @@ async function run() {
     check('"Change method" goes back to the question, keeping the current answer selected', page.visible('lgChoose') && page.method() === null && page.d.querySelector('input[name="lgMethod"]:checked').value === 'auto');
     page.choose('manual');
     page.submitChoice();
-    check('Continue with "Forward each receipt" opens its setup (?method=manual)', page.method() === 'manual' && page.text('lgSetupTitle') === 'Forward each receipt' && page.visible('lgManual') && !page.visible('lgAuto'));
+    check('Continue with "Forward each receipt" opens its setup (?method=manual)', page.method() === 'manual' && page.text('lgSetupTitle') === 'FORWARD EACH RECEIPT' && page.visible('lgManual') && !page.visible('lgAuto'));
     check('...the manual steps need no Gmail settings', !/Forwarding and POP\/IMAP|Create a new filter/.test(page.text('lgManual')) && /Tap Forward/.test(page.text('lgManual')));
     const manualCopy = page.d.querySelector('#lgManual [data-copy="address"]');
     page.click(manualCopy);
