@@ -24,18 +24,20 @@ const LAUNCH_CLAIMS = [
 ];
 
 function run() {
-  // Zones (Dallas launch, 2026-10-07): the Dallas panel now states reported
-  // real-world facts (launch date, hours, introductory fare, service area), so
-  // the rule is that each is SOURCED on the panel itself; never the placeholder,
-  // and still never an unsourced launch claim in the "has/hasn't launched" style.
+  // Zones (Dallas zone polish): the Dallas panel mirrors Austin's (zone name,
+  // Operating, map key, Coverage in mi², the area and launch date); never the
+  // placeholder, and never an unsourced launch claim.
   {
     const html = read('infrastructure.html');
     const start = html.indexOf('id="dallasContent"');
     check('infrastructure.html: has a #dallasContent Dallas panel', start !== -1);
     const panel = html.slice(start, html.indexOf('<!-- Map: a tall card on mobile', start));
     check('infrastructure.html: the Dallas panel is no longer a "not available" placeholder', !/isn'?t (available|built) in Cybercab Hunter/i.test(panel) && !/NOT YET AVAILABLE/.test(panel));
-    check('infrastructure.html: the Dallas facts are shown with their sources linked (FOX 4, Dallas Innovates)', /In service since Apr 18, 2026/.test(panel) && /6 AM – 2 AM daily/.test(panel) && /href="https:\/\/www\.fox4news\.com\/[^"]+"/.test(panel) && /href="https:\/\/dallasinnovates\.com\/[^"]+"/.test(panel));
-    check('infrastructure.html: no geofence size is claimed (Tesla has published none)', /Coverage size not published/.test(panel) && !/mi²/.test(panel));
+    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Locations', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'In service since April 18, 2026', 'Fleet &amp; Fares'];
+    const at = order.map(x => panel.indexOf(x));
+    check('infrastructure.html: the Dallas panel has Austin\'s structure, in order', at.every((i, k) => i !== -1 && (k === 0 || i > at[k - 1])));
+    check('infrastructure.html: the Dallas coverage is 81 mi² (counted up like Austin\'s)', /id="dalCoverageOut"/.test(panel) && /countUp\(document\.getElementById\('dalCoverageOut'\), 81\)/.test(html));
+    check('infrastructure.html: no 2 AM, "not published" or "TxDOT cameras" left in the Dallas panel', !/2 AM|not published|TxDOT cameras/i.test(panel));
     for (const claim of LAUNCH_CLAIMS) {
       check(`infrastructure.html: the Dallas panel makes no unsourced launch claim (${claim})`, !claim.test(panel));
     }
@@ -49,11 +51,29 @@ function run() {
     const start = html.indexOf('id="homeZoneDallasInfo"');
     check('index.html: a Dallas facts strip exists', start !== -1);
     const strip = html.slice(start, html.indexOf('<!-- Austin mini map -->', start));
-    check('index.html: the Dallas strip has Dallas hours (6AM - 2AM), not Austin\'s', /6AM - 2AM/.test(strip) && !/11PM/.test(strip));
+    check('index.html: the Dallas strip has Dallas hours (6AM - 11PM)', /6AM - 11PM/.test(strip) && !/2AM/.test(strip));
+    check('index.html: the Dallas minimap draws the Dallas service zone', /initZoneMap\('zoneMap-dallas', 'Dallas', \[[^\]]+\], CCCAustinMap\.DALLAS_SERVICE_ZONE\)/.test(html));
     for (const claim of LAUNCH_CLAIMS) {
       check(`index.html: the Dallas strip makes no unsourced launch claim (${claim})`, !claim.test(strip));
     }
     check('index.html: a Dallas minimap card links to the Dallas Zones map', /id="homeZoneDallas"[\s\S]*?href="infrastructure\.html\?city=dallas"/.test(html));
+  }
+
+  // The Dallas service zone (js/austin-map.js): a closed ring inside the Dallas
+  // metro, about Tesla's 81 mi²; Fleet ETA shows 6 AM - 11 PM.
+  {
+    const src = fs.readFileSync(new URL('../public/js/austin-map.js', import.meta.url), 'utf8');
+    const ring = JSON.parse(src.match(/const DALLAS_SERVICE_ZONE = (\[[\s\S]*?\]);/)[1].replace(/\s/g, ''));
+    const closed = JSON.stringify(ring[0]) === JSON.stringify(ring.at(-1));
+    const inDallas = ring.every(([lng, lat]) => lng > -97 && lng < -96.6 && lat > 32.7 && lat < 32.9);
+    const k = Math.cos(32.8 * Math.PI / 180) * 111.32 * 110.57;
+    let a2 = 0;
+    for (let i = 0; i < ring.length - 1; i++) a2 += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+    const mi2 = Math.abs(a2 / 2) * k / 2.58999;
+    check(`the Dallas zone is a closed ring in Dallas, ~81 mi² (${mi2.toFixed(1)})`, closed && inDallas && ring.length > 10 && mi2 > 75 && mi2 < 87);
+    const sim = read('simulation.html');
+    const dal = sim.slice(sim.indexOf('<div id="dallasContent"'), sim.indexOf('<div id="accountBackdrop"'));
+    check('simulation.html: Dallas hours are 6:00 AM - 11:00 PM; no 2 AM, "not published" or TxDOT cameras', /6:00 AM - 11:00 PM/.test(dal) && !/\b2:00 AM|\b2 AM|not published|TxDOT cameras|hasn't published/i.test(dal));
   }
 
   t.finish();

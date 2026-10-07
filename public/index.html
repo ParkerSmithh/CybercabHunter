@@ -184,7 +184,7 @@
         <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8 max-sm:ml-auto max-sm:gap-2 max-sm:pt-0 max-sm:border-t-0 max-sm:border-l max-sm:pl-3 max-sm:text-xs">
           <svg class="w-5 h-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>
           <span class="whitespace-nowrap max-sm:sr-only">Service Hours</span>
-          <span class="stat-value font-semibold text-white ml-auto md:ml-3 whitespace-nowrap">6AM - 2AM</span>
+          <span class="stat-value font-semibold text-white ml-auto md:ml-3 whitespace-nowrap">6AM - 11PM</span>
         </div>
       </div>
 
@@ -381,10 +381,10 @@
 </footer>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="js/calc.js?v=5"></script>
+<script src="js/calc.js?v=6"></script>
 <script src="js/main.js?v=24"></script>
 <script src="js/home-stats.js?v=3"></script>
-<script src="js/austin-map.js?v=6"></script>
+<script src="js/austin-map.js?v=7"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>
   CCC.init();
@@ -405,7 +405,7 @@
 
   // ---- Service zone maps (app-style yellow zone display) ----
   // zoneCoords: the city's service-zone polygon, or null when none is
-  // published (Dallas): then viewBounds frames the map and no zone is drawn.
+  // published: then viewBounds frames the map and no zone is drawn.
   function initZoneMap(containerId, cityName, cityCenter, zoneCoords, viewBounds) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -451,10 +451,8 @@
   initZoneMap('zoneMap-austin', 'Austin', [-97.7431, 30.2672], serviceZoneCoords);
 
   // ---- Home Austin/Dallas selector: controls BOTH the mini map and the fleet
-  // chart below. Dallas has no map or registry data yet, so selecting it just
-  // swaps both cards for one "not available" note (same wording used on the
-  // Zones page, so it reads as one consistent disclosure, not two different
-  // claims about Dallas). -->
+  // chart below: each city has its own hours strip and minimap, and the chart
+  // redraws with that city's registry data.
   (function initHomeCitySelector() {
     const cityBtns = document.querySelectorAll('#homeCitySelector .city-btn');
     const parts = {
@@ -468,10 +466,10 @@
         cityBtns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
         const city = btn.dataset.city === 'dallas' ? 'dallas' : 'austin';
         for (const [key, els] of Object.entries(parts)) els.forEach(el => { if (el) el.classList.toggle('hidden', key !== city); });
-        // Central Dallas (the reported service area); created on first view.
+        // The Dallas service zone (js/austin-map.js); created on first view.
         if (city === 'dallas' && !dallasMapReady) {
           dallasMapReady = true;
-          initZoneMap('zoneMap-dallas', 'Dallas', [-96.797, 32.7767], null, [[-96.86, 32.76], [-96.74, 32.88]]);
+          initZoneMap('zoneMap-dallas', 'Dallas', [-96.797, 32.7767], CCCAustinMap.DALLAS_SERVICE_ZONE);
         }
         if (window.setFleetChartCity) window.setFleetChartCity(city === 'dallas' ? 'Dallas' : 'Austin');
       });

@@ -25,9 +25,8 @@ const CCC_CALC = (() => {
 
   // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
   const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 23 * 60, timeZone: 'America/Chicago' };
-  // Dallas (launched Apr 18, 2026): 6 AM to 2 AM daily, reported by FOX 4 and
-  // Dallas Innovates. The window crosses midnight (closeMinute < openMinute).
-  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  // Dallas (launched Apr 18, 2026): 6 AM to 11 PM daily (owner-confirmed, Oct 2026).
+  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 23 * 60, timeZone: 'America/Chicago' };
   // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
   // $3.25 base + $1.00 per mile. Not a published rate card.
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
@@ -143,8 +142,8 @@ const CCC_CALC = (() => {
       .formatToParts(date);
     const get = type => Number((parts.find(p => p.type === type) || {}).value);
     const minuteOfDay = (get('hour') % 24) * 60 + get('minute');
-    // A window that crosses midnight (e.g. Dallas, 6 AM to 2 AM) is open after
-    // the opening time OR before the closing time.
+    // A window that crosses midnight (closeMinute < openMinute, e.g. 6 AM to
+    // 2 AM) is open after the opening time OR before the closing time.
     const open = hours.closeMinute > hours.openMinute
       ? minuteOfDay >= hours.openMinute && minuteOfDay < hours.closeMinute
       : minuteOfDay >= hours.openMinute || minuteOfDay < hours.closeMinute;

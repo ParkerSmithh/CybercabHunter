@@ -524,9 +524,8 @@
 
 <!-- ===== Dallas (launched Apr 18, 2026) =====
      Filled by js/fleet-compare.js from GET /api/fleet-stats?city=dallas and
-     the Dallas constants in js/calc.js (reported hours and rate, the owner's
-     fixed Model Y count). No pickup-wait number: the model needs the service
-     area's size, and Tesla has published no Dallas geofence. -->
+     the Dallas constants in js/calc.js (hours, reported rate, the owner's
+     fixed Model Y count). No pickup-wait number: the model is Austin's. -->
 <div id="dallasContent" class="hidden">
 <section class="pt-12 lg:pt-16 max-sm:pt-6" aria-labelledby="dalFleetHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
@@ -587,20 +586,18 @@
       <div class="flex flex-wrap items-center justify-between gap-3 max-sm:flex-nowrap">
         <div>
           <p class="font-display font-semibold text-lg text-white max-sm:text-base">Dallas robotaxi</p>
-          <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span class="max-sm:whitespace-nowrap">6:00 AM - 2:00 AM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+          <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span class="max-sm:whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
         </div>
         <span id="dalServiceStatus" class="service-status max-sm:shrink-0 max-sm:text-[11px] max-sm:px-2.5">Checking</span>
       </div>
-      <!-- The service day on a 24-hour clock: open from 6 AM, past midnight to 2 AM. -->
+      <!-- The service day on a 24-hour clock: open 6 AM to 11 PM. -->
       <div class="mt-7 max-sm:mt-5" aria-hidden="true">
         <div class="hours-track relative h-2 rounded-full">
-          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:0;width:8.333%"></div>
-          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:25%;right:0"></div>
+          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:25%;width:70.833%"></div>
           <div id="dalHoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
         </div>
         <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
       </div>
-      <p class="text-xs text-slate-500 mt-3 max-sm:mt-2">Reported by <a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">FOX 4</a> and <a href="https://dallasinnovates.com/tesla-launches-robotaxis-in-dallas-and-houston/" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">Dallas Innovates</a>.</p>
     </div>
   </div>
 </section>
@@ -610,7 +607,7 @@
     <h2 id="dalEtaHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Pickup wait estimate</h2>
     <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
       <p class="stat-value font-semibold text-3xl text-slate-400 max-sm:text-2xl">—</p>
-      <p class="text-sm text-slate-400 mt-3 leading-relaxed max-sm:text-xs max-sm:leading-snug">The estimate needs the service area's size. Tesla hasn't published a Dallas geofence (reported: downtown north to Northwest Highway, incl. Highland Park), so Cybercab Hunter shows no number rather than a guessed one.</p>
+      <p class="text-sm text-slate-400 mt-3 leading-relaxed max-sm:text-xs max-sm:leading-snug">The pickup-wait model is calibrated on Austin's fleet and zone and isn't modelled for Dallas yet, so Cybercab Hunter shows no number rather than a guessed one.</p>
     </div>
   </div>
 </section>
@@ -751,7 +748,7 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/calc.js?v=5"></script>
+<script src="js/calc.js?v=6"></script>
 <script src="js/main.js?v=24"></script>
 <script>
   CCC.init();

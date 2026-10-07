@@ -282,10 +282,11 @@ async function run() {
     const ZONES = fs.readFileSync(`${ROOT}public/infrastructure.html`, 'utf8');
     const zonesScript = [...ZONES.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map'));
     const zones = await runMap(zonesScript.replace(/CCC\.init\(\);|CCC\.(animateCounter|countUp)\([^;]*;/g, ''), ZONES.replace(/<script[\s\S]*?<\/script>/g, ''));
-    check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
+    check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 6 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
+    check('...Austin\'s zone keeps its layer ids; Dallas\'s is a second, suffixed zone', ['zone-fill', 'zone-line-glow', 'zone-line', 'zone-fill-dallas', 'zone-line-glow-dallas', 'zone-line-dallas'].every(id => zones.layers.some(l => l.id === id)));
     check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v6)', /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v7)', /<script src="js\/austin-map\.js\?v=7"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=7"><\/script>/.test(ZONES));
   }
 
   t.finish();

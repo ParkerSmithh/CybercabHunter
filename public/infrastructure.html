@@ -157,9 +157,8 @@
         <p id="fareBasis" class="text-xs text-slate-500 mt-2"></p>
       </div>
 
-      <!-- Dallas (launched Apr 18, 2026). Every fact here is a reported one with
-           its source; Tesla has not published a Dallas geofence or its size, so
-           there is no zone outline or coverage number, never an invented one. -->
+      <!-- Dallas (launched April 18, 2026): the same structure as Austin's panel.
+           Zone: js/austin-map.js DALLAS_SERVICE_ZONE; 81 mi² is Tesla's figure. -->
       <div id="dallasContent" class="hidden mt-5 max-sm:mt-4">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -171,31 +170,23 @@
           </span>
         </div>
 
-        <!-- Map key: camera-spotted Cybercabs (no Dallas charging locations are published) -->
+        <!-- Map key, right under the zone name -->
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-xs text-slate-400">
-          <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs (TxDOT cameras)</span>
+          <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#D4AF37;box-shadow:0 0 0 2px rgba(8,10,16,0.55)"></span>Charging Locations</span>
+          <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
         </div>
 
-        <!-- Service area -->
+        <!-- Coverage -->
         <div class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4">
           <div class="flex items-start justify-between gap-3">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service Area</p>
-            <p class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Dallas • Live fleet</p>
+            <div>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
+              <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums max-sm:text-2xl max-sm:mt-1.5"><span id="dalCoverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
+            </div>
+            <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Dallas • Live fleet</p>
           </div>
-          <p class="text-sm text-slate-200 leading-relaxed mt-2 max-sm:text-xs max-sm:leading-snug">Central Dallas, from downtown north to Northwest Highway, including Highland Park.</p>
-          <p class="text-xs text-slate-500 mt-1.5">Coverage size not published</p>
-          <p class="text-xs text-slate-500 mt-2">In service since Apr 18, 2026</p>
-          <dl class="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 max-sm:mt-3 max-sm:gap-y-2">
-            <div>
-              <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Hours</dt>
-              <dd class="font-semibold text-sm text-slate-100 mt-1 max-sm:mt-0.5">6 AM – 2 AM daily</dd>
-            </div>
-            <div>
-              <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">Reported fare</dt>
-              <dd class="font-semibold text-sm text-slate-100 mt-1 max-sm:mt-0.5">$3.25 + $1.00/mi</dd>
-            </div>
-          </dl>
-          <p class="text-[11px] text-slate-500 leading-snug mt-2">Introductory rate as reported at launch; Model Y fleet, Cybercab expected. Sources: <a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">FOX 4</a>, <a href="https://dallasinnovates.com/tesla-launches-robotaxis-in-dallas-and-houston/" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">Dallas Innovates</a>.</p>
+          <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">Central Dallas, from downtown north to Northwest Highway, including Highland Park.</p>
+          <p class="text-xs text-slate-500 mt-2">In service since April 18, 2026</p>
         </div>
 
         <!-- Fleet & fares (GET /api/fleet-stats?city=dallas) -->
@@ -379,15 +370,16 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="js/calc.js?v=5"></script>
+<script src="js/calc.js?v=6"></script>
 <script src="js/main.js?v=24"></script>
-<script src="js/austin-map.js?v=6"></script>
+<script src="js/austin-map.js?v=7"></script>
 <script src="js/map-search.js?v=2"></script>
 <script>
   CCC.init();
 
   // Count up the zone stats once they are in view, like the homepage stats bar.
   CCC.countUp(document.getElementById('coverageOut'), 264);
+  CCC.countUp(document.getElementById('dalCoverageOut'), 81);   // counts when Dallas is first shown
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
   // The Cybercab count is the public Austin registry; the fares come from
@@ -492,6 +484,7 @@
   map.on('load', () => {
     CCCAustinMap.styleBasemap(map);
     CCCAustinMap.addServiceZone(map, serviceZoneCoords);
+    CCCAustinMap.addServiceZone(map, CCCAustinMap.DALLAS_SERVICE_ZONE, { id: 'dallas' });
   });
 
   // Charging locations and camera-spotted Cybercabs (shared with the homepage
@@ -503,12 +496,14 @@
   const search = window.CCCMapSearch ? CCCMapSearch.attach(map, { area: () => currentCity }) : null;
 
   // ---- The selected city: map view, camera markers, search, replay link, title ----
-  // Central Dallas, the reported service area (downtown north to Northwest
-  // Highway, incl. Highland Park); Tesla has published no Dallas geofence.
-  const DALLAS_VIEW = [[-96.86, 32.76], [-96.74, 32.88]];
+  // Dallas: framed on its service zone (js/austin-map.js), like Austin.
+  const dallasZoneBounds = CCCAustinMap.DALLAS_SERVICE_ZONE.reduce(
+    (b, c) => b.extend(c),
+    new maplibregl.LngLatBounds(CCCAustinMap.DALLAS_SERVICE_ZONE[0], CCCAustinMap.DALLAS_SERVICE_ZONE[0])
+  );
   const CITY_META = {
     austin: { title: document.title, description: document.querySelector('meta[name="description"]').getAttribute('content'), replay: '/replay?range=month' },
-    dallas: { title: 'Cybercab Hunter | Dallas Zone Information', description: 'The Dallas Cybercab service area on a live map, with TxDOT traffic-camera spots, hours, reported fares and fleet stats.', replay: '/replay?range=month&city=dallas' }
+    dallas: { title: 'Cybercab Hunter | Dallas Zone Information', description: 'The Dallas Cybercab service zone on a live map, with traffic-camera spots and fleet and fare stats.', replay: '/replay?range=month&city=dallas' }
   };
   function setCity(city) {
     if (city === currentCity) return;
@@ -520,7 +515,7 @@
     if (search) search.reset();
     if (features && features.refreshCameras) features.refreshCameras();
     if (city === 'dallas') {
-      map.fitBounds(DALLAS_VIEW, { padding: 24, animate: false });
+      map.fitBounds(dallasZoneBounds, { padding: 24, animate: false });
       if (!dallasStatsLoaded) {
         dallasStatsLoaded = true;
         loadFleetStats('dallas', { count: 'dalFleetCountOut', median: 'dalMedianFareOut', avg: 'dalAvgFareOut', perMile: 'dalPerMileOut', basis: 'dalFareBasis' });

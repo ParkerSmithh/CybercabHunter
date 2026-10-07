@@ -6,6 +6,8 @@
        the replay passes a quieter look)
      - SERVICE_ZONE: the Austin service-zone boundary, for the replay (the
        Zones page and homepage keep their own copy; a test keeps all three equal)
+     - DALLAS_SERVICE_ZONE: the Dallas service-zone boundary (Zones page and
+       homepage minimap; the only copy)
      - addFeatures(map): the Zones map's markers only (not the minimap) —
        the real, publicly reported Cybercab charging locations (gold pins)
      - Cybercabs spotted by the traffic-camera watch (GET /api/camera-sightings,
@@ -47,18 +49,35 @@ window.CCCAustinMap = (function () {
     [-97.8367691, 30.2969208], [-97.8253403, 30.2669239], [-97.8089523, 30.2478867]
   ];
 
+  // The Dallas service zone (lng, lat), digitized from Tesla's in-app Dallas
+  // zone map (owner screenshot, Oct 2026), georeferenced on the map's own
+  // labels and checked against the basemap: Northwest Highway on the north,
+  // Loop 12 on the west, White Rock Lake on the east, Love Field cut out of the
+  // northwest corner. ~80 mi² as traced; Tesla gives 81 mi².
+  const DALLAS_SERVICE_ZONE = [
+    [-96.85815, 32.8603], [-96.84597, 32.86391], [-96.82591, 32.86737], [-96.77756, 32.86617],
+    [-96.77756, 32.87189], [-96.76234, 32.87189], [-96.75249, 32.8749], [-96.74443, 32.87309],
+    [-96.73905, 32.8609], [-96.73959, 32.84374], [-96.73601, 32.82447], [-96.72921, 32.81363],
+    [-96.73726, 32.77976], [-96.75284, 32.76381], [-96.78562, 32.74318], [-96.81481, 32.73566],
+    [-96.92172, 32.74695], [-96.92316, 32.81619], [-96.89665, 32.81965], [-96.87964, 32.83501],
+    [-96.85421, 32.84208], [-96.84525, 32.84856], [-96.85815, 32.8603]
+  ];
+
   // The service zone in gold: a light wash (the streets show through), a soft
   // wide glow, then a crisp bright outline. Call on load. `look` overrides the
   // strengths (the replay keeps the zone quiet under its gold markers).
+  // look.id names a second zone on the same map (Dallas): its source and layers
+  // get that suffix; without it the ids are Austin's, as before.
   function addServiceZone(map, coords, look = {}) {
     const L = Object.assign({ fill: 0.13, glow: 0.45, line: '#FFD23F', width: 2.5, lineOpacity: 1 }, look);
-    map.addSource('service-zone', {
+    const sfx = L.id ? '-' + L.id : '';
+    map.addSource('service-zone' + sfx, {
       type: 'geojson',
       data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
     });
-    map.addLayer({ id: 'zone-fill', type: 'fill', source: 'service-zone', paint: { 'fill-color': '#FFC72C', 'fill-opacity': L.fill } });
-    map.addLayer({ id: 'zone-line-glow', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': L.glow } });
-    map.addLayer({ id: 'zone-line', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': L.line, 'line-width': L.width, 'line-opacity': L.lineOpacity } });
+    map.addLayer({ id: 'zone-fill' + sfx, type: 'fill', source: 'service-zone' + sfx, paint: { 'fill-color': '#FFC72C', 'fill-opacity': L.fill } });
+    map.addLayer({ id: 'zone-line-glow' + sfx, type: 'line', source: 'service-zone' + sfx, layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': L.glow } });
+    map.addLayer({ id: 'zone-line' + sfx, type: 'line', source: 'service-zone' + sfx, layout: { 'line-join': 'round' }, paint: { 'line-color': L.line, 'line-width': L.width, 'line-opacity': L.lineOpacity } });
   }
 
   // opts.city: optional () => 'austin' | 'dallas' (the Zones page's selected
@@ -166,5 +185,5 @@ window.CCCAustinMap = (function () {
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
     return { refreshCameras: refreshCameraMarkers };
   }
-  return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE };
+  return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
 })();
