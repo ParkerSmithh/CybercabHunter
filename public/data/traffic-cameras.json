@@ -490,31 +490,10 @@
   "city": "austin"
  },
  {
-  "camera_id": "txdot-dal-1017",
-  "name": "Spur 366 @ Field St",
-  "lat": 32.785657,
-  "lng": -96.806658,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-1030",
-  "name": "Spur 366 @ WB Tunnel Cam 4",
-  "lat": 32.789865,
-  "lng": -96.801877,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-1022",
-  "name": "Spur 366 @ Routh St.",
-  "lat": 32.793912,
-  "lng": -96.795172,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-628",
-  "name": "IH345 @ Taylor",
-  "lat": 32.781147,
-  "lng": -96.783982,
+  "camera_id": "txdot-dal-1011",
+  "name": "Spur 366 @ EB Tunnel Cam 2",
+  "lat": 32.788412,
+  "lng": -96.801985,
   "city": "dallas"
  },
  {
@@ -525,150 +504,66 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-681",
-  "name": "IH35E @ Danieldale",
-  "lat": 32.633865,
-  "lng": -96.822938,
+  "camera_id": "txdot-dal-1025",
+  "name": "Spur 366 @ US75 South",
+  "lat": 32.79219,
+  "lng": -96.794784,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-785",
-  "name": "IH35E @ US67",
-  "lat": 32.710823,
-  "lng": -96.830033,
+  "camera_id": "txdot-dal-1105",
+  "name": "US75 @ Knox North",
+  "lat": 32.82401,
+  "lng": -96.78509,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-580",
-  "name": "IH30 @ IH35E Mixmaster",
-  "lat": 32.769758,
-  "lng": -96.803163,
+  "camera_id": "txdot-dal-1018",
+  "name": "Spur 366 @ IH35E East",
+  "lat": 32.7829,
+  "lng": -96.80886,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-679",
-  "name": "IH35E @ Dallas North Tollway",
-  "lat": 32.795993,
-  "lng": -96.815026,
+  "camera_id": "txdot-dal-1106",
+  "name": "US75 @ Knox South",
+  "lat": 32.81888,
+  "lng": -96.78781,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-757",
-  "name": "IH35E @ Regal Row",
-  "lat": 32.835306,
-  "lng": -96.875199,
+  "camera_id": "txdot-dal-1110",
+  "name": "US75 @ McCommas",
+  "lat": 32.83193,
+  "lng": -96.78081,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-764",
-  "name": "IH35E @ Royal South",
-  "lat": 32.891553,
-  "lng": -96.897779,
+  "camera_id": "txdot-dal-546",
+  "name": "IH30 @ Cadiz",
+  "lat": 32.773527,
+  "lng": -96.796527,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-905",
-  "name": "LBJ Express IH35E @ Harry Hines NB",
-  "lat": 32.914512,
-  "lng": -96.897677,
+  "camera_id": "txdot-dal-707",
+  "name": "IH35E @ Hi Line",
+  "lat": 32.788413,
+  "lng": -96.812574,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-652",
-  "name": "IH35E @ Belt Line SB",
-  "lat": 32.953193,
-  "lng": -96.910489,
+  "camera_id": "txdot-dal-1102",
+  "name": "US75 @ Hall",
+  "lat": 32.80118,
+  "lng": -96.79278,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-700",
-  "name": "IH35E @ Frankford SB",
-  "lat": 32.991414,
-  "lng": -96.944786,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-674",
-  "name": "IH35E @ Corporate Dr",
-  "lat": 33.017923,
-  "lng": -96.982664,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-879",
-  "name": "IH635 @ Olympus",
-  "lat": 32.919102,
-  "lng": -96.974832,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-935",
-  "name": "LBJ Express IH635 @ Webb Chapel EB Express Lanes",
-  "lat": 32.912818,
-  "lng": -96.873908,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-924",
-  "name": "LBJ Express IH635 @ Midway Intersection EB",
-  "lat": 32.924543,
-  "lng": -96.839228,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-930",
-  "name": "LBJ Express IH635 @ Preston WB Express Lanes",
-  "lat": 32.925597,
-  "lng": -96.803555,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-923",
-  "name": "LBJ Express IH635 @ Merit",
-  "lat": 32.924171,
-  "lng": -96.772254,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-853",
-  "name": "IH635 @ Forest",
-  "lat": 32.90552,
-  "lng": -96.72676,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-878",
-  "name": "IH635 @ Oates",
-  "lat": 32.83976,
-  "lng": -96.63362,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-497",
-  "name": "IH20 @ IH635 North",
-  "lat": 32.703778,
-  "lng": -96.625328,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-869",
-  "name": "IH635 @ Lake June",
-  "lat": 32.735849,
-  "lng": -96.611766,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-1108",
-  "name": "US75 @ Lemmon",
-  "lat": 32.80498,
-  "lng": -96.79354,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-1096",
-  "name": "US75 @ Fitzhugh",
-  "lat": 32.81437,
-  "lng": -96.79027,
+  "camera_id": "txdot-dal-1103",
+  "name": "US75 @ Haskell",
+  "lat": 32.80917,
+  "lng": -96.79298,
   "city": "dallas"
  },
  {
@@ -679,52 +574,80 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1123",
-  "name": "US75 @ Park Lane",
-  "lat": 32.873515,
-  "lng": -96.769986,
+  "camera_id": "txdot-dal-679",
+  "name": "IH35E @ Dallas North Tollway",
+  "lat": 32.795993,
+  "lng": -96.815026,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1099",
-  "name": "US75 @ Forest",
-  "lat": 32.910059,
-  "lng": -96.769262,
+  "camera_id": "txdot-dal-669",
+  "name": "IH35E @ Commerce NB",
+  "lat": 32.775962,
+  "lng": -96.810896,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1079",
-  "name": "US75 @ Arapaho",
-  "lat": 32.96399,
-  "lng": -96.72367,
+  "camera_id": "txdot-dal-618",
+  "name": "IH30 @ St Paul",
+  "lat": 32.774993,
+  "lng": -96.790007,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1130",
-  "name": "US75 @ Renner",
-  "lat": 32.995308,
-  "lng": -96.709811,
+  "camera_id": "txdot-dal-628",
+  "name": "IH345 @ Taylor",
+  "lat": 32.781147,
+  "lng": -96.783982,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1077",
-  "name": "US75 @ 15th St (Plano)",
-  "lat": 33.014466,
-  "lng": -96.708591,
+  "camera_id": "txdot-dal-580",
+  "name": "IH30 @ IH35E Mixmaster",
+  "lat": 32.769758,
+  "lng": -96.803163,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-607",
-  "name": "IH30 @ Park N Ride",
-  "lat": 32.758872,
-  "lng": -96.981045,
+  "camera_id": "txdot-dal-739",
+  "name": "IH35E @ Medical District",
+  "lat": 32.807119,
+  "lng": -96.841998,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-591",
-  "name": "IH30 @ Loop 12",
-  "lat": 32.766021,
-  "lng": -96.913077,
+  "camera_id": "txdot-dal-735",
+  "name": "IH35E @ Market Center",
+  "lat": 32.80183,
+  "lng": -96.826034,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1150",
+  "name": "US75 @ University",
+  "lat": 32.84563,
+  "lng": -96.77314,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1121",
+  "name": "US75 @ NorthPark",
+  "lat": 32.86871,
+  "lng": -96.76994,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-716",
+  "name": "IH35E @ Inwood",
+  "lat": 32.811353,
+  "lng": -96.849913,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-819",
+  "name": "IH45 @ Good Latimer",
+  "lat": 32.774753,
+  "lng": -96.778996,
   "city": "dallas"
  },
  {
@@ -742,38 +665,31 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-590",
-  "name": "IH30 @ Lawnview",
-  "lat": 32.791665,
-  "lng": -96.732602,
+  "camera_id": "txdot-dal-575",
+  "name": "IH30 @ Haskell",
+  "lat": 32.786311,
+  "lng": -96.767594,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-601",
-  "name": "IH30 @ Motley East",
-  "lat": 32.814002,
-  "lng": -96.646935,
+  "camera_id": "txdot-dal-548",
+  "name": "IH30 @ Carroll",
+  "lat": 32.790066,
+  "lng": -96.762514,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-608",
-  "name": "IH30 @ PGBT East",
-  "lat": 32.858924,
-  "lng": -96.550768,
+  "camera_id": "txdot-dal-537",
+  "name": "IH30 @ Beckley",
+  "lat": 32.769251,
+  "lng": -96.823261,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-844",
-  "name": "IH45 @ Wintergreen South",
-  "lat": 32.633515,
-  "lng": -96.69931,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-830",
-  "name": "IH45 @ Overton South",
-  "lat": 32.723875,
-  "lng": -96.761612,
+  "camera_id": "txdot-dal-604",
+  "name": "IH30 @ Munger",
+  "lat": 32.791236,
+  "lng": -96.75575,
   "city": "dallas"
  },
  {
@@ -784,59 +700,143 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-994",
-  "name": "SH183 @ Henry Dr",
-  "lat": 32.836837,
-  "lng": -96.982519,
+  "camera_id": "txdot-dal-667",
+  "name": "IH35E @ Colorado Blvd",
+  "lat": 32.759083,
+  "lng": -96.809991,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-997",
-  "name": "SH183 @ Mockingbird",
-  "lat": 32.819615,
-  "lng": -96.873687,
+  "camera_id": "txdot-dal-670",
+  "name": "IH35E @ Commonwealth",
+  "lat": 32.811806,
+  "lng": -96.861388,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-956",
-  "name": "Loop 12 @ Union Bower South",
-  "lat": 32.81675,
-  "lng": -96.92196,
+  "camera_id": "txdot-dal-1085",
+  "name": "US75 @ Caruth Haven",
+  "lat": 32.86115,
+  "lng": -96.77049,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1053",
-  "name": "US175 @ Loop 12",
-  "lat": 32.713677,
-  "lng": -96.683644,
+  "camera_id": "txdot-dal-839",
+  "name": "IH45 @ US175 South",
+  "lat": 32.761256,
+  "lng": -96.774321,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-466",
-  "name": "IH20 @ Belt Line",
-  "lat": 32.672674,
-  "lng": -96.985596,
+  "camera_id": "txdot-dal-619",
+  "name": "IH30 @ Sylvan",
+  "lat": 32.767695,
+  "lng": -96.835073,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-508",
-  "name": "IH20 @ Lumley Rd",
-  "lat": 32.702978,
-  "lng": -96.553763,
+  "camera_id": "txdot-dal-686",
+  "name": "IH35E @ East 8th Street",
+  "lat": 32.751477,
+  "lng": -96.809007,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-460",
-  "name": "High Five N.E. 1",
-  "lat": 32.927164,
-  "lng": -96.760603,
+  "camera_id": "txdot-dal-553",
+  "name": "IH30 @ Dolphin",
+  "lat": 32.791161,
+  "lng": -96.737497,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-981",
-  "name": "SH114 @ Wingren Dr",
-  "lat": 32.862201,
-  "lng": -96.937443,
+  "camera_id": "txdot-dal-741",
+  "name": "IH35E @ Mockingbird",
+  "lat": 32.81849,
+  "lng": -96.869311,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-556",
+  "name": "IH30 @ Edgefield",
+  "lat": 32.764859,
+  "lng": -96.842734,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1119",
+  "name": "US75 @ Monticello",
+  "lat": 32.82846,
+  "lng": -96.783,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1140",
+  "name": "US75 @ SMU Blvd.",
+  "lat": 32.842216,
+  "lng": -96.774989,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1109",
+  "name": "US75 @ Lovers Lane",
+  "lat": 32.85148,
+  "lng": -96.77148,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-572",
+  "name": "IH30 @ Hampton",
+  "lat": 32.766679,
+  "lng": -96.85642,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-736",
+  "name": "IH35E @ Marsalis",
+  "lat": 32.74332,
+  "lng": -96.815831,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-757",
+  "name": "IH35E @ Regal Row",
+  "lat": 32.835306,
+  "lng": -96.875199,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-999",
+  "name": "SH183 @ Profit",
+  "lat": 32.823926,
+  "lng": -96.880031,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1096",
+  "name": "US75 @ Fitzhugh",
+  "lat": 32.81437,
+  "lng": -96.79027,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-650",
+  "name": "IH35E @ Beckley",
+  "lat": 32.74033,
+  "lng": -96.822979,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1108",
+  "name": "US75 @ Lemmon",
+  "lat": 32.80498,
+  "lng": -96.79354,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1024",
+  "name": "Spur 366 @ US75 North",
+  "lat": 32.795741,
+  "lng": -96.794736,
   "city": "dallas"
  }
 ]

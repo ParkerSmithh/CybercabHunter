@@ -71,6 +71,17 @@ function run() {
     for (let i = 0; i < ring.length - 1; i++) a2 += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
     const mi2 = Math.abs(a2 / 2) * k / 2.58999;
     check(`the Dallas zone is a closed ring in Dallas, ~81 mi² (${mi2.toFixed(1)})`, closed && inDallas && ring.length > 10 && mi2 > 75 && mi2 < 87);
+    const cameras = JSON.parse(read('data/traffic-cameras.json')).filter(c => c.city === 'dallas');
+    check('Dallas has exactly 50 distinct TxDOT cameras', cameras.length === 50 && new Set(cameras.map(c => c.camera_id)).size === 50 && cameras.every(c => /^txdot-dal-\d+$/.test(c.camera_id)));
+    // Ray casting against the actual shared map polygon, rather than its bounding box.
+    for (const camera of cameras) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > camera.lat) !== (yj > camera.lat) && camera.lng < (xj - xi) * (camera.lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      check(`${camera.camera_id} (${camera.name}) is inside the Dallas service zone`, inside);
+    }
     const sim = read('simulation.html');
     const dal = sim.slice(sim.indexOf('<div id="dallasContent"'), sim.indexOf('<div id="accountBackdrop"'));
     check('simulation.html: Dallas hours are 6:00 AM - 11:00 PM; no 2 AM, "not published" or TxDOT cameras', /6:00 AM - 11:00 PM/.test(dal) && !/\b2:00 AM|\b2 AM|not published|TxDOT cameras|hasn't published/i.test(dal));

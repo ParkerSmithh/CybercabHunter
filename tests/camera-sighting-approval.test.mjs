@@ -75,7 +75,7 @@ async function run() {
     check('then the 20 backup cameras, in order (camera-watch-backup-20-coords.json)', backup.length === 20 && backup.every((s, i) => same(shipped[50 + i], s)));
     check('the backups are the 20 requested ids', backup.map(c => c.camera_id).join() === '699,173,220,787,471,92,202,168,283,150,117,302,325,1444,401,240,1356,227,452,525');
     check('each entry is exactly { camera_id, name, lat, lng, city }', shipped.every(c => Object.keys(c).join() === 'camera_id,name,lat,lng,city' && typeof c.camera_id === 'string'));
-    check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 120 && trafficCameraFor('txdot-dal-1017').name === 'Spur 366 @ Field St' && trafficCameraFor('txdot-dal-1017').city === 'dallas' && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
+    check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 120 && trafficCameraFor('txdot-dal-1011').name === 'Spur 366 @ EB Tunnel Cam 2' && trafficCameraFor('txdot-dal-1011').city === 'dallas' && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
   }
 
   console.log('2. Submit: camera_id is saved; omitting it changes nothing');
@@ -412,7 +412,7 @@ async function run() {
   console.log('14. Dallas launch: Dallas cameras, city-scoped map feeds, no cross-city mixing');
   {
     const ctx = await makeApp();
-    const DAL_CAM = 'txdot-dal-1017';   // Spur 366 @ Field St (TxDOT)
+    const DAL_CAM = 'txdot-dal-1011';   // Spur 366 @ EB Tunnel Cam 2 (TxDOT)
     const dal = await submit(ctx, { service_area: 'Dallas', camera_id: DAL_CAM });
     check('a Dallas photo can name a Dallas (TxDOT) camera', dal.status === 201 && obs(ctx, dal.json.submission_id).camera_id === DAL_CAM);
     const crossA = await submit(ctx, { service_area: 'Dallas', camera_id: CAM });
