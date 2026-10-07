@@ -2,14 +2,15 @@
    the butterfly doors swing up; again and they close. Used in place of the
    car image on Fleet ROI and Fleet ETA (simulation.html [data-cc-doors]).
 
-   Frames: images/cybercab-doors/{d,m}/00-71.webp. 72 real frames of the
+   Frames: images/cybercab-doors/{d,m}/000-107.webp. 108 real frames of the
    door swing from docs/cybercab-doors-source/CybercabOpening.mp4 (video
    frames 9-145: closed, matching CybercabClosed.png, to both doors at their
    highest, the pose in CybercabOpen.png; sources kept out of public/), picked evenly by how much the picture changes so the
    doors move at a steady pace. d = 800px wide, m = 480px; the set is chosen
    from the rendered width x pixel density.
 
-   Playback: 72 frames in DURATION_MS (~85 distinct frames per second), and
+   Playback: 108 frames in DURATION_MS (1.5 s, ~72 distinct frames per
+   second; slowed from 0.85 s on owner review), and
    between two frames the canvas crossfades by the exact position, so every
    display refresh (60-120 Hz) shows a new picture. The clock is in
    milliseconds, so 120 Hz screens play at the same speed, just smoother.
@@ -20,13 +21,13 @@
    without the sequence. Reduced motion: the doors jump straight to open or
    closed. */
 (function () {
-  const FRAMES = 72;
-  const DURATION_MS = 850;
+  const FRAMES = 108;
+  const DURATION_MS = 1500;
   const DIR = 'images/cybercab-doors/';
   const sets = {};   // 'd' | 'm' -> { frames: [], ready: Promise }
   const reduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
-  const pad = n => String(n).padStart(2, '0');
+  const pad = n => String(n).padStart(3, '0');
 
   // Every frame of one size, decoded before use, so drawing never stalls.
   function loadSet(key) {

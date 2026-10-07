@@ -50,9 +50,9 @@ async function run() {
   {
     for (const set of ['d', 'm']) {
       const files = fs.readdirSync(`${ROOT}public/images/cybercab-doors/${set}`).filter(f => f.endsWith('.webp')).sort();
-      check(`${set}: 72 WebP frames, 00-71`, files.length === 72 && files[0] === '00.webp' && files[71] === '71.webp');
+      check(`${set}: 108 WebP frames, 000-107`, files.length === 108 && files[0] === '000.webp' && files[107] === '107.webp');
       const bytes = files.reduce((n, f) => n + fs.statSync(`${ROOT}public/images/cybercab-doors/${set}/${f}`).size, 0);
-      check(`${set}: under the weight budget (${Math.round(bytes / 1024)} KB)`, bytes < (set === 'd' ? 1300 : 700) * 1024);
+      check(`${set}: under the weight budget (${Math.round(bytes / 1024)} KB)`, bytes < (set === 'd' ? 1900 : 1000) * 1024);
     }
   }
 
@@ -61,9 +61,9 @@ async function run() {
     check('no static car image left in the two headers', !/<img src="images\/Cybercab2\.png"[^>]*class="sim-hero-car"/.test(HTML));
     check('Fleet ROI and Fleet ETA each have one', /id="simPanelRoi"[\s\S]*data-cc-doors[\s\S]*id="simPanelEta"[\s\S]*data-cc-doors/.test(HTML) && (HTML.match(/data-cc-doors>/g) || []).length === 2);
     check('the page loads js/cybercab-doors.js', /<script src="js\/cybercab-doors\.js[^"]*"><\/script>/.test(HTML));
-    check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/00\.webp"[^>]*width="800" height="438"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/438/.test(HTML));
+    check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/000\.webp"[^>]*width="800" height="438"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/438/.test(HTML));
     check('once the canvas is live the still image is hidden (under lighten blending both would show, ghosting the closed doors)', /\.cc-doors\.is-live \.cc-doors-stage img\{visibility:hidden;\}/.test(HTML));
-    check('only frame 00 is referenced by the page itself (the rest load on intent)', !/cybercab-doors\/[dm]\/(0[1-9]|[1-7]\d)\.webp/.test(HTML));
+    check('only frame 00 is referenced by the page itself (the rest load on intent)', !/cybercab-doors\/[dm]\/(00[1-9]|0[1-9]\d|10[0-7])\.webp/.test(HTML));
   }
 
   console.log('3. Behavior');
@@ -75,14 +75,14 @@ async function run() {
     check('no frames are fetched until someone shows intent', p.loaded.length === 0);
     roi.dispatchEvent(new p.w.Event('pointerenter'));
     await p.wait(10);
-    check('hover intent preloads all 72 frames of one size', p.loaded.length === 72 && p.loaded.every(u => /cybercab-doors\/[dm]\/\d\d\.webp$/.test(u)));
+    check('hover intent preloads all 108 frames of one size', p.loaded.length === 108 && p.loaded.every(u => /cybercab-doors\/[dm]\/\d{3}\.webp$/.test(u)));
     roi.querySelector('[data-cc-stage]').click();
     check('clicking the car opens: "Close doors", aria-expanded true on both', JSON.stringify(state(roi)) === JSON.stringify({ label: 'Close doors', stage: 'true', button: 'true', aria: "Close the Cybercab's doors" }));
-    await p.wait(1100);
-    check('the animation runs and ends on the last frame (doors fully open)', p.draws.length > 10 && p.draws.at(-1) === '71.webp' && roi.classList.contains('is-live'));
+    await p.wait(1800);
+    check('the animation runs and ends on the last frame (doors fully open)', p.draws.length > 10 && p.draws.at(-1) === '107.webp' && roi.classList.contains('is-live'));
     roi.querySelector('[data-cc-button]').click();
-    await p.wait(1100);
-    check('the button closes it again, ending on the first frame', state(roi).label === 'Open doors' && p.draws.at(-1) === '00.webp');
+    await p.wait(1800);
+    check('the button closes it again, ending on the first frame', state(roi).label === 'Open doors' && p.draws.at(-1) === '000.webp');
     const stage = roi.querySelector('[data-cc-stage]');
     stage.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     check('Enter on the car toggles it', state(roi).label === 'Close doors');
@@ -98,10 +98,10 @@ async function run() {
     const [roi] = p.roots;
     roi.querySelector('[data-cc-stage]').click();
     await p.wait(60);
-    check('one paint, of the last frame', p.draws.length === 1 && p.draws[0] === '71.webp' && state(roi).label === 'Close doors');
+    check('one paint, of the last frame', p.draws.length === 1 && p.draws[0] === '107.webp' && state(roi).label === 'Close doors');
     roi.querySelector('[data-cc-stage]').click();
     await p.wait(60);
-    check('closing paints the first frame once', p.draws.length === 2 && p.draws[1] === '00.webp');
+    check('closing paints the first frame once', p.draws.length === 2 && p.draws[1] === '000.webp');
     p.w.close();
   }
 
