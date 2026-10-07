@@ -175,7 +175,7 @@ async function run() {
     check('a Dallas car carries a Dallas tag; an Austin car does not', [...cardB.querySelectorAll('span')].some(x => x.textContent.trim() === 'Dallas') && ![...cardA.querySelectorAll('span')].some(x => x.textContent.trim() === 'Dallas'));
     check('each card links to the correct /vehicle/<id>', cardA.getAttribute('href') === `/vehicle/${a}` && cardB.getAttribute('href') === `/vehicle/${b}`);
     check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(cardA.textContent) && /Model not confirmed/.test(cardA.textContent) && /Model Y/.test(cardB.textContent));
-    check('service area falls back to the cities of the counted rides', /Austin/.test(cardA.textContent) && /Dallas/.test(cardB.textContent));
+    check('service area falls back to the cities of the counted rides (a Dallas card shows it as its Dallas tag, once)', /Austin/.test(cardA.textContent) && (cardB.textContent.match(/Dallas/g) || []).length === 1);
     check('ride count is shown', /Rides\s*1/.test(p.cards()[0].textContent));
     check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Aug 5, 2026/.test(cardA.textContent) && /Jul 4, 2026/.test(cardB.textContent));
     check('the ingestion timestamps are NOT what is displayed for First/Last seen', !/Sep 19, 2026|Sep 20, 2026/.test(cardA.textContent + cardB.textContent));
@@ -298,7 +298,7 @@ async function run() {
 
     // XJR1903's ride is in Dallas, so the search runs in the Dallas list (Dallas launch).
     const p = await open(ctx, null, 'https://cybercabhunter.com/vehicles?city=dallas');
-    check('the page has a search box, for plate or VIN', !!p.d.getElementById('regSearch') && p.d.getElementById('regSearch').placeholder === 'Search by plate or VIN');
+    check('the page has a search box, for plate or VIN', !!p.d.getElementById('regSearch') && p.d.getElementById('regSearch').placeholder === 'Plate or VIN' && /plate or VIN/i.test(p.d.getElementById('regSearchHint').textContent));
     const type = async v => { const s = p.d.getElementById('regSearch'); s.value = v; s.dispatchEvent(new p.w.Event('input')); };
     await type('xjr');
     await p.waitFor(() => p.requests.some(r => /[?&]q=xjr/.test(r.path)) && p.cards().length === 1 && /XJR1903/.test(p.cards()[0].textContent));

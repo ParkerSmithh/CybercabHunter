@@ -122,8 +122,9 @@
     }
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
-    a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere] max-sm:text-[10px]', area || 'Service area not recorded'));
-    // Dallas cars carry a Dallas tag (the Dallas launch); Austin cards are unchanged.
+    // Dallas cars carry a Dallas tag (the Dallas launch) in place of the plain
+    // city line (it would say Dallas twice); Austin cards are unchanged.
+    if (!isDallas(v)) a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere] max-sm:text-[10px]', area || 'Service area not recorded'));
     if (isDallas(v)) a.appendChild(el('span', 'inline-block mt-2 text-[11px] font-bold px-2.5 py-1 rounded-full border border-cyan/40 text-cyan uppercase tracking-wide max-sm:text-[9px] max-sm:px-2 max-sm:py-0.5 max-sm:mt-1.5', 'Dallas'));
     const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07] max-sm:gap-x-2 max-sm:gap-y-2 max-sm:mt-3 max-sm:pt-2.5');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
