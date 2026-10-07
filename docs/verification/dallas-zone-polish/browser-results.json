@@ -1,0 +1,60 @@
+[
+ {
+  "w": 1280,
+  "zones": {
+   "text": " Service Zone DALLAS, TX Operating Charging Locations Cybercabs Coverage 81mi² Dallas • Live fleet Central Dallas, from downtown north to Northwest Highway, including Highland Park. In service since April 18, 2026 Fleet & Fares Cybercabs 2 Median Fare $6.45 Avg Fare $6.45 Per Mile $2.02 Based on 2 rides · updated Oct 7, 2026 ",
+   "bad": false,
+   "cov": "81"
+  },
+  "overflow": 0
+ },
+ {
+  "w": 1280,
+  "homeStrip": "Service Area DALLAS Robotaxi service operates in central Dallas, from downtown north to Northwest Highway. Service Hours 6AM - 11PM",
+  "overflow": 0
+ },
+ {
+  "w": 1280,
+  "sim": {
+   "hours": "6:00 AM - 11:00 PM",
+   "status": "Operating now",
+   "bad": false
+  },
+  "overflow": 0
+ },
+ {
+  "w": 1280,
+  "errs": []
+ },
+ {
+  "w": 390,
+  "zones": {
+   "text": " Service Zone DALLAS, TX Operating Charging Locations Cybercabs Coverage 0mi² Dallas • Live fleet Central Dallas, from downtown north to Northwest Highway, including Highland Park. In service since April 18, 2026 Fleet & Fares Cybercabs — Median Fare — Avg Fare — Per Mile — Based on 2 rides · updated Oct 7, 2026 ",
+   "bad": false,
+   "cov": "0"
+  },
+  "overflow": 0
+ },
+ {
+  "w": 390,
+  "cov_after_open": "81"
+ },
+ {
+  "w": 390,
+  "homeStrip": "Service Area DALLAS Robotaxi service operates in central Dallas, from downtown north to Northwest Highway. Service Hours 6AM - 11PM",
+  "overflow": 0
+ },
+ {
+  "w": 390,
+  "sim": {
+   "hours": "6:00 AM - 11:00 PM",
+   "status": "Operating now",
+   "bad": false
+  },
+  "overflow": 0
+ },
+ {
+  "w": 390,
+  "errs": []
+ }
+]
