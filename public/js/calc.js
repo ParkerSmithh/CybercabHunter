@@ -25,6 +25,14 @@ const CCC_CALC = (() => {
 
   // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
   const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 23 * 60, timeZone: 'America/Chicago' };
+  // Dallas (launched Apr 18, 2026): 6 AM to 2 AM daily, reported by FOX 4 and
+  // Dallas Innovates. The window crosses midnight (closeMinute < openMinute).
+  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
+  // $3.25 base + $1.00 per mile. Not a published rate card.
+  const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
+  // Dallas Model Y fleet: a fixed figure set by the owner (no live source).
+  const DALLAS_MODEL_Y_FLEET = 65;
 
   // Tesla's Austin robotaxi rate as reported from the app (not an official rate card):
   // $3.00 base + $1.40/mi since 2026-03-12 (Not a Tesla App / Basenor reporting).
@@ -135,7 +143,11 @@ const CCC_CALC = (() => {
       .formatToParts(date);
     const get = type => Number((parts.find(p => p.type === type) || {}).value);
     const minuteOfDay = (get('hour') % 24) * 60 + get('minute');
-    const open = minuteOfDay >= hours.openMinute && minuteOfDay < hours.closeMinute;
+    // A window that crosses midnight (e.g. Dallas, 6 AM to 2 AM) is open after
+    // the opening time OR before the closing time.
+    const open = hours.closeMinute > hours.openMinute
+      ? minuteOfDay >= hours.openMinute && minuteOfDay < hours.closeMinute
+      : minuteOfDay >= hours.openMinute || minuteOfDay < hours.closeMinute;
     return {
       open,
       minuteOfDay,
@@ -146,6 +158,7 @@ const CCC_CALC = (() => {
   return {
     fleetFinancials,
     SERVICE_HOURS, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
+    DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET,
     etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus
   };
 })();

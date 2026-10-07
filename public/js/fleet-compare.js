@@ -1,6 +1,6 @@
 /* Cybercab Hunter: the Fleet ETA view of the Simulation page (simulation.html, /simulation?view=eta).
 
-   Live data: GET /api/fleet-stats?city=austin (worker/fleet-stats.js), the
+   Live data: GET /api/fleet-stats?city=austin|dallas (worker/fleet-stats.js), the
    public Austin Cybercab count with the time it was taken (count_as_of) and
    the fare model from the site's own rides (recomputed daily). It is fetched
    on load and every 5 minutes while the page is visible.
@@ -183,7 +183,45 @@
     });
   });
 
-  // ---- city (Dallas has no data in Cybercab Hunter yet)
+  // ---- Dallas (launched Apr 18, 2026): its own live count and measured fares
+  // (GET /api/fleet-stats?city=dallas), the reported hours and rate and the
+  // fixed Model Y count (js/calc.js). No pickup-wait number (see the page).
+  let dallasLoaded = false;
+  let dallasTimer = null;
+  function renderDallasHours() {
+    const st = C.serviceStatus(new Date(), C.DALLAS_SERVICE_HOURS);
+    const badge = $('dalServiceStatus');
+    if (badge) { badge.textContent = st.label; badge.classList.toggle('is-open', st.open); }
+    const now = $('dalHoursNow');
+    if (now) now.style.left = `${(st.minuteOfDay / 1440) * 100}%`;
+  }
+  async function loadDallas() {
+    setText($('dalModelY'), String(C.DALLAS_MODEL_Y_FLEET));
+    setText($('dalFare5'), money(C.reportedFare(5, C.DALLAS_REPORTED_RATE)));
+    renderDallasHours();
+    let d = null;
+    try {
+      const r = await fetch('/api/fleet-stats?city=dallas');
+      if (r.ok) d = await r.json();
+    } catch (e) { d = null; }
+    if (d && typeof d.cybercabs === 'number') {
+      setText($('dalCybercabs'), String(d.cybercabs));
+      const age = ago(d.count_as_of);
+      setText($('dalCybercabsNote'), `Public Cybercabs tracked in Dallas · as of ${age || 'an unknown time'}`);
+      const f = d.fares || {};
+      const has = typeof f.median_fare === 'number';
+      setText($('dalMedianFare'), has ? money(f.median_fare) : '—');
+      setText($('dalAvgFare'), has ? money(f.average_fare) : '—');
+      setText($('dalPerMile'), has ? money(f.per_mile) : '—');
+      setText($('dalFaresBasis'), has ? `Based on ${plural(f.rides, 'logged Dallas ride')}` : 'No logged Dallas rides with a fare yet');
+    } else {
+      setText($('dalCybercabs'), '—');
+      setText($('dalCybercabsNote'), 'Live fleet count unavailable');
+      setText($('dalFaresBasis'), 'Fare data unavailable');
+    }
+  }
+
+  // ---- city
   document.querySelectorAll('[data-city]').forEach(btn => {
     btn.addEventListener('click', () => {
       const dallas = btn.dataset.city === 'dallas';
@@ -191,6 +229,11 @@
       $('austinContent').classList.toggle('hidden', dallas);
       $('dallasContent').classList.toggle('hidden', !dallas);
       $('fleetLive').classList.toggle('hidden', dallas);
+      if (dallas) {
+        if (!dallasLoaded) { dallasLoaded = true; loadDallas(); }
+        renderDallasHours();
+        if (!dallasTimer) dallasTimer = setInterval(() => { if (!document.hidden) renderDallasHours(); }, 60000);
+      }
     });
   });
 

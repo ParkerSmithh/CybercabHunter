@@ -166,7 +166,7 @@ async function run() {
     live.w.close();
 
     // The camera base layer: every watched camera from the start, lit once a sighting lands there.
-    const cams = JSON.parse(read('public/data/traffic-cameras.json'));
+    const cams = JSON.parse(read('public/data/traffic-cameras.json')).filter(c => (c.city || 'austin') === 'austin');   // the Austin replay draws Austin's cameras (Dallas launch)
     const cov = await makeApp();
     detection(cov, NOW - 10 * H, { camera: cams[0].camera_id });
     detection(cov, NOW - 4 * H, { camera: cams[1].camera_id });

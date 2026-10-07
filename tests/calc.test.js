@@ -95,7 +95,19 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
   assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.SERVICE_HOURS.closeMinute), '11:00 PM');
 }
 
+// Dallas (launched Apr 18, 2026): 6 AM to 2 AM crosses midnight; Austin is unchanged.
+{
+  const cdt = (h, m) => new Date(Date.UTC(2026, 9, 7, h + 5, m));   // Oct 7, 2026 is CDT (UTC-5)
+  const dal = (h, m) => CCC_CALC.serviceStatus(cdt(h, m), CCC_CALC.DALLAS_SERVICE_HOURS).open;
+  const aus = (h, m) => CCC_CALC.serviceStatus(cdt(h, m)).open;
+  assert.deepStrictEqual([dal(1, 30), dal(2, 30), dal(5, 59), dal(6, 0), dal(23, 30)], [true, false, false, true, true]);
+  assert.deepStrictEqual([aus(1, 30), aus(6, 0), aus(22, 59), aus(23, 0)], [false, true, true, false]);
+  assert.strictEqual(CCC_CALC.reportedFare(5, CCC_CALC.DALLAS_REPORTED_RATE), 8.25);
+  assert.strictEqual(CCC_CALC.DALLAS_MODEL_Y_FLEET, 65);
+}
+
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
+  'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
   'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
   'ageHours', 'clockLabel', 'etaRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'reportedFare', 'serviceStatus'
 ]);

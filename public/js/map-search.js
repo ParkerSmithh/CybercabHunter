@@ -12,7 +12,11 @@ window.CCCMapSearch = (function () {
   const DEBOUNCE_MS = 250;
   const ZOOM = 15.5;
 
-  function attach(map) {
+  // opts.area: optional () => 'austin' | 'dallas', the city whose places are
+  // suggested (default Austin; Austin requests are unchanged). Returns
+  // { reset } to clear the box and the pin, e.g. on a city switch.
+  function attach(map, opts = {}) {
+    const areaOf = typeof opts.area === 'function' ? opts.area : () => 'austin';
     const $ = id => document.getElementById(id);
     const input = $('mapSearchInput'), list = $('mapSearchList'), clear = $('mapSearchClear'), status = $('mapSearchStatus');
     if (!input || !list || !map) return;
@@ -101,7 +105,8 @@ window.CCCMapSearch = (function () {
       const mine = ++seq;
       let resp;
       try {
-        resp = await fetch(`/api/places/map?q=${encodeURIComponent(q)}`);
+        const area = areaOf();
+        resp = await fetch(`/api/places/map?q=${encodeURIComponent(q)}${area === 'austin' ? '' : `&area=${encodeURIComponent(area)}`}`);
       } catch (e) { resp = null; }
       if (mine !== seq) return;               // a newer search is under way
       if (!resp || !resp.ok) {
@@ -146,6 +151,13 @@ window.CCCMapSearch = (function () {
       say('');
       input.focus();
     });
+
+    return {
+      reset() {
+        input.value = ''; places = []; seq++; close(); showClear(); say('');
+        if (pin) { pin.remove(); pin = null; }
+      }
+    };
   }
 
   return { attach };

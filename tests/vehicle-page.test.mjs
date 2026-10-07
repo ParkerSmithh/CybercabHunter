@@ -103,7 +103,8 @@ async function run() {
     check('the loaded view is shown, no error/not-found/invalid state', page.visible('vehicleLoaded') && !page.visible('vehicleError') && !page.visible('vehicleNotFound') && !page.visible('vehicleInvalid'));
     check('license plate renders', page.text('vLicensePlate') === 'XJR2195');
     check('no Cybercab badge or image for a vehicle with no vin (never claim a classification that was not verified)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
-    check('no summary line when there is nothing to summarize (no color/service_area/vin on record)', !page.visible('vSummaryLine'));
+    // Dallas launch: with no city of its own, a vehicle shows its rides' city (here Dallas, the fixture default).
+    check('with no color/service_area/vin on record, the summary is just where its rides were', page.visible('vSummaryLine') && page.text('vSummaryLine') === 'Rides in Dallas');
     check('the header no longer shows model text, a "Provider" label, the verification disclaimer, or first/last seen — that clutter was removed', !/Not independently verified|Provider|Model not confirmed|First Seen|Last Seen/.test(page.d.getElementById('vehicleLoaded').textContent));
   }
 
@@ -244,7 +245,7 @@ async function run() {
     approveVehicle(d1, cybercabId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}', approval_basis = 'vin-verified' WHERE id = '${cybercabId}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, cybercabId);
-    check('a vehicle with a vin: it appears in the one-line summary, rendering the exact value', page.visible('vSummaryLine') && page.text('vSummaryLine') === `VIN ${VIN}`);
+    check('a vehicle with a vin: it appears in the one-line summary, rendering the exact value', page.visible('vSummaryLine') && page.text('vSummaryLine') === `Rides in Dallas · VIN ${VIN}`);
     check('the Cybercab badge shows once a moderator-verified vin is present', page.visible('vCybercabBadge') && page.text('vCybercabBadge') === 'Cybercab');
     check('the generic Cybercab image is shown alongside it', page.visible('vCybercabImage'));
     check('no "VIN verified" badge on the page; the VIN itself is shown in the summary line', !page.d.getElementById('vVinVerifiedBadge') && !/VIN verified/.test(page.d.body.textContent) && page.text('vSummaryLine').includes(`VIN ${VIN}`));
@@ -254,7 +255,7 @@ async function run() {
     approveVehicle(d1, manualId, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET vin = '${VIN}', approval_basis = 'manual' WHERE id = '${manualId}'`);
     const manualPage = await openPage({ cybercabhunter_db: d1 }, manualId);
-    check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, ', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `VIN ${VIN}` && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
+    check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, ', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `Rides in Dallas · VIN ${VIN}` && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
     check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'images/Cybercab2.png');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
@@ -280,7 +281,7 @@ async function run() {
     check('the page loads normally rather than erroring on hostile content', page.visible('vehicleLoaded'));
     check('no actual <img onerror> element was created from the hostile string — it never became markup (the page has 2 legitimate logo <img> tags, neither with onerror)', page.d.querySelectorAll('img[onerror]').length === 0);
     check('the hostile plate renders as literal, inert text content', page.text('vLicensePlate') === hostile);
-    check('the hostile vin renders as literal, inert text content too, inside the one-line summary', page.visible('vSummaryLine') && page.text('vSummaryLine') === `VIN ${hostile}`);
+    check('the hostile vin renders as literal, inert text content too, inside the one-line summary', page.visible('vSummaryLine') && page.text('vSummaryLine') === `Rides in Dallas · VIN ${hostile}`);
   }
 
   console.log('7. Page shell: assets and links must resolve correctly when the page is served at /vehicle/<id> (moved here from the retired vehicle-sightings-ui.test.mjs)');

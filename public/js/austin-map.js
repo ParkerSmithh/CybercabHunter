@@ -61,7 +61,11 @@ window.CCCAustinMap = (function () {
     map.addLayer({ id: 'zone-line', type: 'line', source: 'service-zone', layout: { 'line-join': 'round' }, paint: { 'line-color': L.line, 'line-width': L.width, 'line-opacity': L.lineOpacity } });
   }
 
-  function addFeatures(map) {
+  // opts.city: optional () => 'austin' | 'dallas' (the Zones page's selected
+  // city); the camera markers follow it. Austin requests are unchanged.
+  // Returns { refreshCameras } so the page can reload them on a city switch.
+  function addFeatures(map, opts = {}) {
+    const cityOf = typeof opts.city === 'function' ? opts.city : () => 'austin';
     function addPin(lat, lng, color, html, size = 14) {
       const el = document.createElement('span');
       el.className = 'marker-pulse';
@@ -144,18 +148,23 @@ window.CCCAustinMap = (function () {
       }
     }
 
+    let cameraSeq = 0;   // only the newest request's answer is shown (a city switch mid-request)
     async function refreshCameraMarkers() {
+      const mine = ++cameraSeq;
+      const city = cityOf();
       let detections = [];
       try {
-        const r = await fetch('/api/camera-sightings');
+        const r = await fetch(city === 'austin' ? '/api/camera-sightings' : `/api/camera-sightings?city=${encodeURIComponent(city)}`);
         const body = r.ok ? await r.json() : [];
         detections = Array.isArray(body) ? body : [];
       } catch (e) { detections = []; }
+      if (mine !== cameraSeq) return;
       reconcileCameraMarkers(detections);
     }
 
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
+    return { refreshCameras: refreshCameraMarkers };
   }
   return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE };
 })();

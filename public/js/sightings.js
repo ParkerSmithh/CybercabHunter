@@ -371,10 +371,18 @@
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
+  // The Replay Map button replays the selected city's camera captures (it
+  // was hard-coded to Austin's: bug 2026-10-07). Austin keeps its old URL.
+  function syncReplayLink() {
+    const a = $('sightingsReplay');
+    if (a) a.setAttribute('href', city === 'austin' ? '/replay?range=month' : `/replay?range=month&city=${encodeURIComponent(city)}`);
+  }
+
   function selectCity(next) {
     if (!CITY_NAMES[next]) next = defaultCity;
     city = next;
     setActiveFilter();
+    syncReplayLink();
     // Keep the choice in the URL, so a filtered view can be shared or reloaded.
     try {
       const url = new URL(location.href);

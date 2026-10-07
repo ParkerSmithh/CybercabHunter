@@ -61,7 +61,11 @@
     // record, joined with " · " — never a fixed template with "Not
     // recorded" filler for whatever is missing.
     const clauses = [];
+    // The vehicle's city: its own, or (with none of its own) where its rides were
+    // (the Cars page's rule, Dallas launch) -- a car first seen in Dallas shows Dallas.
+    const rideCities = h.service_areas ? String(h.service_areas).split(',').map(c => c.trim()).filter(Boolean) : [];
     if (v.service_area) clauses.push(`Operating in ${v.service_area}`);
+    else if (rideCities.length) clauses.push(`Rides in ${rideCities.join(', ')}`);
     if (v.color) clauses.push(`${v.color} exterior`);
     if (v.vin) clauses.push(`VIN ${v.vin}`);
     $('vSummaryLine').textContent = clauses.join(' · ');

@@ -34,6 +34,11 @@ window.CCCReplay = (function () {
   const PING_MS = 1100;           // a landing ping's life, in real time
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
+  // The city replayed (?city=dallas; Austin by default, its URLs unchanged).
+  // Dallas: its TxDOT camera captures, framed on the metro its cameras cover;
+  // no zone outline (Tesla has published no Dallas geofence). Same time zone.
+  const CITY = (() => { try { return new URLSearchParams(location.search).get('city') === 'dallas' ? 'dallas' : 'austin'; } catch (e) { return 'austin'; } })();
+  const DALLAS_BOUNDS = [[-96.99, 32.63], [-96.55, 33.02]];
 
   // ---- Time (Austin) ----
   function zoneParts(ms) {
@@ -79,6 +84,7 @@ window.CCCReplay = (function () {
     let cursor = null;
     for (let page = 0; page < MAX_PAGES; page++) {
       const q = new URLSearchParams({ from: isoZ(start), to: isoZ(end), limit: '1000' });
+      if (CITY !== 'austin') q.set('city', CITY);
       if (cursor) q.set('cursor', cursor);
       const r = await fetchImpl(`/api/camera-sightings/history?${q}`);
       if (!r.ok) throw new Error('http_' + r.status);
@@ -153,6 +159,7 @@ window.CCCReplay = (function () {
     const panel = $('replayPanel');
     const sideInset = () => (panel && window.innerWidth >= 1024 ? panel.offsetWidth + 32 : 0);
     const zoneBounds = () => {
+      if (CITY === 'dallas') return DALLAS_BOUNDS;
       const z = window.CCCAustinMap ? CCCAustinMap.SERVICE_ZONE : [[-97.87, 30.14], [-97.55, 30.46]];
       const lng = z.map(c => c[0]), lat = z.map(c => c[1]);
       return [[Math.min(...lng), Math.min(...lat)], [Math.max(...lng), Math.max(...lat)]];
@@ -230,7 +237,7 @@ window.CCCReplay = (function () {
         ctx.clearRect(0, 0, w, h);
         // The service zone, on the canvas so it sits ABOVE the sky tint (a map
         // layer would vanish under the night indigo) and under every marker.
-        if (window.CCCAustinMap) {
+        if (window.CCCAustinMap && CITY === 'austin') {
           ctx.beginPath();
           CCCAustinMap.SERVICE_ZONE.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
           ctx.closePath();
@@ -388,6 +395,7 @@ window.CCCReplay = (function () {
     $('replayShare').addEventListener('click', async () => {
       // A shareable link pinned to the day being viewed.
       const q = new URLSearchParams({ range: state.range, date: state.date || todayDate() });
+      if (CITY !== 'austin') q.set('city', CITY);
       const link = `${location.origin}/replay?${q}`;
       try { await navigator.clipboard.writeText(link); if (window.CCC && CCC.toast) CCC.toast('Replay link copied.', 'success'); }
       catch (e) { window.prompt('Copy this link:', link); }
@@ -401,7 +409,7 @@ window.CCCReplay = (function () {
 
     // The camera base layer (the same list the server checks sightings against).
     fetch('data/traffic-cameras.json').then(r => (r.ok ? r.json() : [])).then(list => {
-      state.cameras = (Array.isArray(list) ? list : []).filter(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng)).map(c => ({ camera_id: String(c.camera_id), lat: c.lat, lng: c.lng }));
+      state.cameras = (Array.isArray(list) ? list : []).filter(c => c && (c.city || 'austin') === CITY && Number.isFinite(c.lat) && Number.isFinite(c.lng)).map(c => ({ camera_id: String(c.camera_id), lat: c.lat, lng: c.lng }));
       draw();
     }).catch(() => {});
 
@@ -410,6 +418,11 @@ window.CCCReplay = (function () {
     load(location.search);
   }
 
+  if (CITY === 'dallas') {
+    document.title = 'Cybercab Hunter | Dallas Replay';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', 'Every camera-spotted Cybercab this month, replayed on a map of Dallas as it happened.');
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   return { state, windowFor, binsFor, countUpTo, histogram, tintAt, skyAt, phaseAt, fetchAll, zoneMidnight, RANGES, SPEEDS };
 })();

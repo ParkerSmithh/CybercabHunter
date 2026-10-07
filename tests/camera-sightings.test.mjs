@@ -178,7 +178,7 @@ async function run() {
     const calls = [];
     w.fetch = async u => { calls.push(String(u)); return responder(String(u)); };
     // The page script, after the shared charging/camera features it calls (js/austin-map.js).
-    const script = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8') + '\n' + [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map)'));
+    const script = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8') + '\n' + [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map'));
     w.eval(script);
     await new Promise(r => setTimeout(r, 20));
     const cams = () => markers.filter(m => m.el.className === 'camera-cybercab');   // every camera marker ever created
@@ -280,12 +280,12 @@ async function run() {
     check('the gold service zone', zoneColors(home.layers).length === 3 && zoneColors(home.layers).every(c => /^#FF(C72C|D23F)$/.test(c)));
 
     const ZONES = fs.readFileSync(`${ROOT}public/infrastructure.html`, 'utf8');
-    const zonesScript = [...ZONES.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map)'));
+    const zonesScript = [...ZONES.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map'));
     const zones = await runMap(zonesScript.replace(/CCC\.init\(\);|CCC\.(animateCounter|countUp)\([^;]*;/g, ''), ZONES.replace(/<script[\s\S]*?<\/script>/g, ''));
     check('the Zones page map: the same gold service zone (no red)', zoneColors(zones.layers).length === 3 && zoneColors(zones.layers).every(c => /^#FF(C72C|D23F)$/.test(c)) && !/E82127/.test(zonesScript));
     check('...the same basemap look', zones.paints['water.fill-color'] === '#0c1119' && zones.paints['background.background-color'] === '#080a10');
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v5)', /<script src="js\/austin-map\.js\?v=5"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=5"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v6)', /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=6"><\/script>/.test(ZONES));
   }
 
   t.finish();

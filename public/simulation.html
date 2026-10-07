@@ -522,11 +522,98 @@
 </section>
 </div>
 
-<div id="dallasContent" class="hidden max-w-7xl mx-auto px-6 lg:px-10 py-16">
-  <div class="glass rounded-2xl p-10 lg:p-16 text-center">
-    <h2 class="font-display font-bold text-2xl text-white">Not yet available</h2>
-    <p class="mt-3 text-slate-400 max-w-md mx-auto">The fleet comparison for Dallas isn't available in Cybercab Hunter yet.</p>
+<!-- ===== Dallas (launched Apr 18, 2026) =====
+     Filled by js/fleet-compare.js from GET /api/fleet-stats?city=dallas and
+     the Dallas constants in js/calc.js (reported hours and rate, the owner's
+     fixed Model Y count). No pickup-wait number: the model needs the service
+     area's size, and Tesla has published no Dallas geofence. -->
+<div id="dallasContent" class="hidden">
+<section class="pt-12 lg:pt-16 max-sm:pt-6" aria-labelledby="dalFleetHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <h2 id="dalFleetHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Fleet</h2>
+    <div class="grid gap-6 grid-cols-2 max-sm:gap-3">
+      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Cybercab</h3>
+          <span class="tag tag-live">Live</span>
+        </div>
+        <p class="mt-4 stat-value font-semibold text-3xl text-gold max-sm:text-2xl max-sm:mt-3"><span id="dalCybercabs"><span class="skeleton-line w-12"></span></span></p>
+        <p id="dalCybercabsNote" class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:leading-snug">Public Cybercabs tracked in Dallas</p>
+      </article>
+      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Model Y</h3>
+          <span class="tag tag-assumed">Fixed</span>
+        </div>
+        <p class="mt-4 stat-value font-semibold text-3xl text-white max-sm:text-2xl max-sm:mt-3"><span id="dalModelY">65</span></p>
+        <p class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:leading-snug">A fixed figure; Cybercab Hunter has no live Model Y source.</p>
+      </article>
+    </div>
   </div>
+</section>
+
+<section class="pt-14 lg:pt-20 max-sm:pt-7" aria-labelledby="dalFaresHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <h2 id="dalFaresHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Fares</h2>
+    <div class="grid gap-6 lg:grid-cols-2 max-sm:gap-4">
+      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="font-display font-semibold text-lg text-white">Measured</h3>
+          <span id="dalFaresTag" class="tag">From logged rides</span>
+        </div>
+        <dl class="mt-5 grid grid-cols-3 gap-4 max-sm:mt-4 max-sm:gap-2">
+          <div><dt class="text-xs text-slate-400">Median fare</dt><dd class="mt-1.5"><span id="dalMedianFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
+          <div><dt class="text-xs text-slate-400">Average fare</dt><dd class="mt-1.5"><span id="dalAvgFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
+          <div><dt class="text-xs text-slate-400">Per mile</dt><dd class="mt-1.5"><span id="dalPerMile" class="stat-value font-semibold text-2xl text-gold max-sm:text-lg">—</span></dd></div>
+        </dl>
+        <p id="dalFaresBasis" class="text-xs text-slate-500 mt-3"></p>
+      </article>
+      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="font-display font-semibold text-lg text-white">Reported rate</h3>
+          <span class="tag tag-assumed">Reported</span>
+        </div>
+        <p class="mt-4 stat-value font-semibold text-2xl text-white max-sm:text-lg">$3.25 + $1.00/mi</p>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed max-sm:text-xs max-sm:leading-snug">Dallas's introductory rate as reported at launch (<a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-200">FOX 4</a>, Apr 2026); not a published rate card. A 5-mile trip: <span id="dalFare5" class="stat-value text-slate-200">$8.25</span>.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="pt-14 lg:pt-20 max-sm:pt-7" aria-labelledby="dalHoursHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <h2 id="dalHoursHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Operating hours</h2>
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 max-sm:flex-nowrap">
+        <div>
+          <p class="font-display font-semibold text-lg text-white max-sm:text-base">Dallas robotaxi</p>
+          <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span class="max-sm:whitespace-nowrap">6:00 AM - 2:00 AM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+        </div>
+        <span id="dalServiceStatus" class="service-status max-sm:shrink-0 max-sm:text-[11px] max-sm:px-2.5">Checking</span>
+      </div>
+      <!-- The service day on a 24-hour clock: open from 6 AM, past midnight to 2 AM. -->
+      <div class="mt-7 max-sm:mt-5" aria-hidden="true">
+        <div class="hours-track relative h-2 rounded-full">
+          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:0;width:8.333%"></div>
+          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:25%;right:0"></div>
+          <div id="dalHoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+      </div>
+      <p class="text-xs text-slate-500 mt-3 max-sm:mt-2">Reported by <a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">FOX 4</a> and <a href="https://dallasinnovates.com/tesla-launches-robotaxis-in-dallas-and-houston/" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-300">Dallas Innovates</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="pt-14 lg:pt-20 pb-16 max-sm:pt-7 max-sm:pb-8" aria-labelledby="dalEtaHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <h2 id="dalEtaHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Pickup wait estimate</h2>
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+      <p class="stat-value font-semibold text-3xl text-slate-400 max-sm:text-2xl">—</p>
+      <p class="text-sm text-slate-400 mt-3 leading-relaxed max-sm:text-xs max-sm:leading-snug">The estimate needs the service area's size. Tesla hasn't published a Dallas geofence (reported: downtown north to Northwest Highway, incl. Highland Park), so Cybercab Hunter shows no number rather than a guessed one.</p>
+    </div>
+  </div>
+</section>
 </div>
 </div>
 </main>
@@ -664,8 +751,8 @@
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/calc.js?v=4"></script>
-<script src="js/main.js?v=23"></script>
+<script src="js/calc.js?v=5"></script>
+<script src="js/main.js?v=24"></script>
 <script>
   CCC.init();
 
@@ -927,7 +1014,7 @@
       });
   })();
 </script>
-<script src="js/fleet-compare.js?v=2"></script>
+<script src="js/fleet-compare.js?v=3"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 </body>
 </html>

@@ -409,6 +409,40 @@ async function run() {
     w.close();
   }
 
+  console.log('14. Dallas launch: Dallas cameras, city-scoped map feeds, no cross-city mixing');
+  {
+    const ctx = await makeApp();
+    const DAL_CAM = 'txdot-dal-1017';   // Spur 366 @ Field St (TxDOT)
+    const dal = await submit(ctx, { service_area: 'Dallas', camera_id: DAL_CAM });
+    check('a Dallas photo can name a Dallas (TxDOT) camera', dal.status === 201 && obs(ctx, dal.json.submission_id).camera_id === DAL_CAM);
+    const crossA = await submit(ctx, { service_area: 'Dallas', camera_id: CAM });
+    const crossB = await submit(ctx, { service_area: 'Austin', camera_id: DAL_CAM });
+    check('an Austin camera on a Dallas photo (or the reverse) is refused: 400 invalid_traffic_camera', crossA.status === 400 && crossA.json.error === 'invalid_traffic_camera' && crossB.status === 400 && crossB.json.error === 'invalid_traffic_camera');
+
+    const r = await approve(ctx, dal.json.submission_id);
+    const row = rows(ctx).find(x => x.source_submission_id === dal.json.submission_id);
+    check('approving it places it on the map as a Dallas detection, at the TxDOT camera', r.json.map && r.json.map.on_map === true && row && row.city === 'dallas' && row.camera_id === DAL_CAM && row.lat === trafficCameraFor(DAL_CAM).lat);
+    const aus = (await submit(ctx, { service_area: 'Austin', camera_id: CAM })).json.submission_id;
+    await approve(ctx, aus);
+    check('an Austin detection is stored as Austin', rows(ctx).find(x => x.source_submission_id === aus).city === 'austin');
+
+    const feed = async qs => (await call(ctx, `/api/camera-sightings${qs}`, { session: null }));
+    const austinFeed = (await feed('')).json.map(d => d.camera_id), dallasFeed = (await feed('?city=dallas')).json.map(d => d.camera_id);
+    check('the default (Austin) map feed has only Austin captures; ?city=dallas only Dallas ones', austinFeed.join() === CAM && dallasFeed.join() === DAL_CAM);
+    check('an unsupported city: 400 invalid_city', (await feed('?city=houston')).status === 400);
+    const now = Date.now(), iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const hist = async c => (await call(ctx, `/api/camera-sightings/history?from=${iso(now - 86400000)}&to=${iso(now + 60000)}${c ? '&city=' + c : ''}`, { session: null })).json.detections.map(d => d.camera_id);
+    check('the replay history is city-scoped the same way', (await hist('')).join() === CAM && (await hist('dallas')).join() === DAL_CAM);
+
+    // Add to map: a Dallas sighting cannot be placed at an Austin camera.
+    const plainDal = (await submit(ctx, { service_area: 'Dallas', license_plate: 'DAL1234' })).json.submission_id;
+    await approve(ctx, plainDal);
+    const wrong = await addToMap(ctx, plainDal, CAM);
+    check('Add to map refuses a camera from another city (400 invalid_traffic_camera), nothing placed', wrong.status === 400 && wrong.json.error === 'invalid_traffic_camera' && !rows(ctx).some(x => x.source_submission_id === plainDal));
+    const right = await addToMap(ctx, plainDal, 'txdot-dal-1108');
+    check('...and accepts one of its own city\'s cameras', right.status === 200 && rows(ctx).find(x => x.source_submission_id === plainDal).city === 'dallas');
+  }
+
   t.finish();
 }
 

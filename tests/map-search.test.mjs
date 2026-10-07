@@ -71,7 +71,10 @@ async function run() {
     photon.calls.length = 0;
     check('under 3 characters: empty, and Photon is not called', (await search(ctx, 'ab')).json.places.length === 0 && photon.calls.length === 0);
     check('over 120 characters: 400', (await search(ctx, 'x'.repeat(121))).status === 400);
-    check('only Austin: another area is refused (400)', (await search(ctx, 'congress', '&area=dallas')).status === 400);
+    const dal = await search(ctx, 'hanover', '&area=dallas');
+    check('Dallas (Dallas launch): searches inside the Dallas box', dal.status === 200 && dal.json.places.some(p => p.id === HANOVER.id) && photon.calls.at(-1).searchParams.get('bbox') === '-97.2,32.55,-96.45,33.15');
+    check('an Austin place is not offered for Dallas', !(await search(ctx, 'congress', '&area=dallas')).json.places.some(p => p.id === CONGRESS.id));
+    check('a city without a Zones map is refused (400)', (await search(ctx, 'congress', '&area=houston')).status === 400);
     check('cacheable publicly (it is public map data)', /public/.test(r.headers.get('Cache-Control')));
     photon.failing = true;
     const down = await search(ctx, 'congress');
@@ -134,7 +137,7 @@ async function run() {
   {
     const html = read('public/infrastructure.html');
     check('the page has the search box inside the map card', /<div id="austinMapWrap"[\s\S]*id="mapSearchInput"[\s\S]*id="infraMap"/.test(html));
-    check('the page loads js/map-search.js and attaches it to the Zones map', /<script src="js\/map-search\.js[^"]*"><\/script>/.test(html) && /CCCMapSearch\.attach\(map\)/.test(html));
+    check('the page loads js/map-search.js and attaches it to the Zones map', /<script src="js\/map-search\.js[^"]*"><\/script>/.test(html) && /CCCMapSearch\.attach\(map[,)]/.test(html));
   }
 
   t.finish();

@@ -110,7 +110,8 @@ export async function apiSearchPlaces(request, env) {
 }
 
 // GET /api/places/map?q=  — the Zones map's search box (public/js/map-search.js).
-// Public (the Zones map is), Austin only (the only area with a map), and the
+// Public (the Zones map is), for a city with a Zones map (Austin, Dallas;
+// ?area=, default austin), and the
 // one place search that returns coordinates: the map needs them to fly to a
 // place. That is safe here because these are searched public places, never a
 // sighting's location (/api/places above still never returns coordinates).
@@ -119,23 +120,24 @@ export async function apiSearchPlaces(request, env) {
 // and cached publicly, since the answer is the same for everyone.
 //   -> { places: [{ id, label, lat, lng }] }
 const MAP_SEARCH_CACHE_SECONDS = 86400;
+const MAP_SEARCH_AREAS = ['austin', 'dallas'];   // the cities with a Zones map
 export async function apiSearchMapPlaces(request, env, ctx) {
   const params = new URL(request.url).searchParams;
   const area = serviceAreaFor(params.get('area') || 'austin');
-  if (!area || area.key !== 'austin') return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
+  if (!area || !MAP_SEARCH_AREAS.includes(area.key)) return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
   const q = (params.get('q') || '').trim().replace(/\s+/g, ' ');
   if (q.length < MIN_QUERY) return Response.json({ places: [] });
   if (q.length > MAX_QUERY) return Response.json({ success: false, error: 'query_too_long' }, { status: 400 });
 
   // One cache entry per normalized query, shared by every visitor.
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?q=${encodeURIComponent(q.toLowerCase())}`);
+  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?area=${area.key}&q=${encodeURIComponent(q.toLowerCase())}`);
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
   }
   if (env.SEARCH_LIMITER) {
-    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';   // one limit across both cities
     let allowed = true;
     try { allowed = (await env.SEARCH_LIMITER.limit({ key: `map-search:${await sha256Hex(ip)}` })).success !== false; } catch (e) { /* fail open */ }
     if (!allowed) return Response.json({ success: false, error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': '60' } });

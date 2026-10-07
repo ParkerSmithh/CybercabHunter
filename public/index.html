@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Live tracker for Tesla's Cybercab robotaxi fleet in Austin: community sightings, the service-zone map, fleet growth and ride stats.">
+<meta name="description" content="Live tracker for Tesla's Cybercab robotaxi fleet in Austin and Dallas: community sightings, the service-zone map, fleet growth and ride stats.">
 <meta name="theme-color" content="#090B0F">
 <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="64x64" href="images/icons/favicon-64.png">
@@ -146,10 +146,9 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4 max-sm:flex-nowrap max-sm:items-center max-sm:gap-2">
       <h2 class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white max-sm:text-xl max-sm:whitespace-nowrap">SERVICE ZONES</h2>
-    <!-- One Austin/Dallas selector controls BOTH cards below (the mini map and
-         the fleet chart) — Dallas has no map or fleet data yet, so it swaps
-         both out for a single "not available" note rather than duplicating
-         the toggle per card. -->
+    <!-- One Austin/Dallas selector controls everything below: the facts strip
+         and mini map swap to that city's, and the one fleet chart redraws with
+         that city's registry vehicles. -->
       <div class="flex items-center gap-2 max-sm:gap-1.5 max-sm:shrink-0" id="homeCitySelector" role="group" aria-label="City">
         <button type="button" data-city="austin" aria-pressed="true" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Austin</button>
         <button type="button" data-city="dallas" aria-pressed="false" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Dallas</button>
@@ -173,10 +172,37 @@
         </div>
       </div>
 
+      <!-- Dallas service-area facts (the Dallas launch): the same strip, shown
+           instead of Austin's when Dallas is selected. Reported facts; the
+           Zones page shows them with their sources. -->
+      <div id="homeZoneDallasInfo" class="hidden glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 max-sm:flex-row max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3.5">
+        <div class="shrink-0">
+          <div class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
+          <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight max-sm:text-xl max-sm:mt-0.5">DALLAS</div>
+        </div>
+        <p class="text-sm text-slate-300/90 leading-relaxed md:flex-1 md:border-l md:border-white/10 md:pl-8 max-sm:order-last max-sm:w-full max-sm:text-xs max-sm:leading-snug">Robotaxi service operates in central Dallas, from downtown north to Northwest Highway.</p>
+        <div class="flex items-center gap-3 text-sm text-slate-400 shrink-0 pt-4 border-t border-white/10 md:pt-0 md:border-t-0 md:border-l md:pl-8 max-sm:ml-auto max-sm:gap-2 max-sm:pt-0 max-sm:border-t-0 max-sm:border-l max-sm:pl-3 max-sm:text-xs">
+          <svg class="w-5 h-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>
+          <span class="whitespace-nowrap max-sm:sr-only">Service Hours</span>
+          <span class="stat-value font-semibold text-white ml-auto md:ml-3 whitespace-nowrap">6AM - 2AM</span>
+        </div>
+      </div>
+
       <!-- Austin mini map -->
       <div id="homeZoneAustin" class="service-zone-card">
         <div id="zoneMap-austin" class="service-zone-map"></div>
         <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
+          See Map
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
+        </a>
+      </div>
+
+      <!-- Dallas mini map: the same interactive minimap, centered on central
+           Dallas. No zone outline: Tesla has published no Dallas geofence. Its
+           map is created the first time Dallas is selected (a hidden box has no size). -->
+      <div id="homeZoneDallas" class="service-zone-card hidden">
+        <div id="zoneMap-dallas" class="service-zone-map"></div>
+        <a href="infrastructure.html?city=dallas" aria-label="See the full Dallas map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
           See Map
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
@@ -197,7 +223,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 max-sm:flex-row max-sm:items-start max-sm:justify-between max-sm:gap-2">
           <div class="min-w-0">
             <h3 class="font-display font-bold text-lg tracking-tight text-white max-sm:text-base max-sm:whitespace-nowrap">FLEET GROWTH</h3>
-            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
+            <p id="fleetChartCaption" class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
           </div>
           <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
             <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
@@ -209,13 +235,6 @@
         <!-- min-h only matters on phones (cards stacked); from sm up the card
              takes the map card's height, so no minimum may push it taller. -->
         <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2"></div>
-      </div>
-
-      <!-- Dallas: shown instead of BOTH cards above (spans their combined
-           width) — there is no map or registry data for Dallas yet. -->
-      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center">
-        <div class="font-display font-bold text-2xl text-gold mb-2">Not yet available</div>
-        <p class="text-slate-400 text-sm max-w-sm mx-auto">Dallas zone and fleet information isn't available in Cybercab Hunter yet.</p>
       </div>
 
       <!-- Add more city cards here as Cybercab expands: copy the Austin map
@@ -362,10 +381,10 @@
 </footer>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="js/calc.js?v=4"></script>
-<script src="js/main.js?v=23"></script>
+<script src="js/calc.js?v=5"></script>
+<script src="js/main.js?v=24"></script>
 <script src="js/home-stats.js?v=3"></script>
-<script src="js/austin-map.js?v=5"></script>
+<script src="js/austin-map.js?v=6"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>
   CCC.init();
@@ -385,7 +404,9 @@
   ];
 
   // ---- Service zone maps (app-style yellow zone display) ----
-  function initZoneMap(containerId, cityName, cityCenter, zoneCoords) {
+  // zoneCoords: the city's service-zone polygon, or null when none is
+  // published (Dallas): then viewBounds frames the map and no zone is drawn.
+  function initZoneMap(containerId, cityName, cityCenter, zoneCoords, viewBounds) {
     const el = document.getElementById(containerId);
     if (!el) return;
     // An interactive minimap of the Zones page map: drag to pan; zoom with the
@@ -394,7 +415,7 @@
     const zoneMap = new maplibregl.Map({
       container: containerId,
       style: CCCAustinMap.styleUrl(),
-      center: zoneCoords[0],
+      center: zoneCoords ? zoneCoords[0] : cityCenter,
       zoom: 9,
       cooperativeGestures: true,
       dragRotate: false,
@@ -408,13 +429,17 @@
       // The same dark basemap and gold zone as the Zones page map (js/austin-map.js).
       CCCAustinMap.styleBasemap(zoneMap);
 
-      const bounds = zoneCoords.reduce(
-        (b, c) => b.extend(c),
-        new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0])
-      );
-      // The whole zone, centered with an even margin (nothing overlays the map).
-      zoneMap.fitBounds(bounds, { padding: 28, animate: false });
-      CCCAustinMap.addServiceZone(zoneMap, zoneCoords);
+      if (zoneCoords) {
+        const bounds = zoneCoords.reduce(
+          (b, c) => b.extend(c),
+          new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0])
+        );
+        // The whole zone, centered with an even margin (nothing overlays the map).
+        zoneMap.fitBounds(bounds, { padding: 28, animate: false });
+        CCCAustinMap.addServiceZone(zoneMap, zoneCoords);
+      } else if (viewBounds) {
+        zoneMap.fitBounds(viewBounds, { padding: 28, animate: false });
+      }
 
       const labelEl = document.createElement('div');
       labelEl.style.cssText = 'display:flex;align-items:center;gap:7px;white-space:nowrap;';
@@ -432,40 +457,27 @@
   // claims about Dallas). -->
   (function initHomeCitySelector() {
     const cityBtns = document.querySelectorAll('#homeCitySelector .city-btn');
-    const austinMap = document.getElementById('homeZoneAustin');
-    const austinInfo = document.getElementById('homeZoneAustinInfo');
-    const austinChart = document.getElementById('homeFleetChart');
-    const dallasNote = document.getElementById('homeZoneDallasNote');
-    if (!cityBtns.length || !austinMap || !austinChart || !dallasNote) return;
+    const parts = {
+      austin: [document.getElementById('homeZoneAustinInfo'), document.getElementById('homeZoneAustin')],
+      dallas: [document.getElementById('homeZoneDallasInfo'), document.getElementById('homeZoneDallas')]
+    };
+    if (!cityBtns.length) return;
+    let dallasMapReady = false;
     cityBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         cityBtns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
-        const isDallas = btn.dataset.city === 'dallas';
-        austinMap.classList.toggle('hidden', isDallas);
-        if (austinInfo) austinInfo.classList.toggle('hidden', isDallas);
-        austinChart.classList.toggle('hidden', isDallas);
-        dallasNote.classList.toggle('hidden', !isDallas);
+        const city = btn.dataset.city === 'dallas' ? 'dallas' : 'austin';
+        for (const [key, els] of Object.entries(parts)) els.forEach(el => { if (el) el.classList.toggle('hidden', key !== city); });
+        // Central Dallas (the reported service area); created on first view.
+        if (city === 'dallas' && !dallasMapReady) {
+          dallasMapReady = true;
+          initZoneMap('zoneMap-dallas', 'Dallas', [-96.797, 32.7767], null, [[-96.86, 32.76], [-96.74, 32.88]]);
+        }
+        if (window.setFleetChartCity) window.setFleetChartCity(city === 'dallas' ? 'Dallas' : 'Austin');
       });
     });
   })();
 
-  // ---- Fleet Growth chart (Austin) ----
-  //
-  // What this plots: the cumulative count of Austin Cybercabs that have
-  // appeared in Cybercab Hunter's PUBLIC registry, stepped up at each
-  // vehicle's EXACT first_seen_at (not bucketed to a calendar day — a burst
-  // of registrations spread across many distinct minutes stays a fine real
-  // staircase instead of collapsing into one or two giant vertical jumps).
-  // Every point comes straight from GET /api/robotaxi-vehicles — the exact
-  // same publicVehicleEligibleSql set the "Cybercabs Spotted" stat above and
-  // the Cars page already count — fetched with no session, same as
-  // js/home-stats.js. No point is invented, smoothed, or redistributed, and
-  // this grows on its own as new vehicles are added — no manual editing.
-  //
-  // What this is NOT: Tesla's real fleet size. It's how much of the fleet
-  // *we've documented*, which depends on crowdsourced sighting/receipt
-  // activity, not on Tesla's actual deployment pace — hence "documented in
-  // the registry" in the card's own subtitle rather than a bare "Fleet Size".
   function initFleetGrowthChart() {
     const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
     const mount = document.getElementById('fleetChartMount');
@@ -495,7 +507,7 @@
     // Dallas chart calls the same fetchFirstSeenDatesForCity() with its own
     // city string instead of copying this filter by hand and risking it
     // drifting from Austin's.
-    const CHART_CITY = 'Austin';
+    let CHART_CITY = 'Austin';   // switched by the city selector (window.setFleetChartCity)
 
     // Paginate the SAME public endpoint the rest of the site uses
     // (LIST_MAX_LIMIT is 100 server-side), keeping only vehicles whose
@@ -572,7 +584,7 @@
     }
 
     function render() {
-      if (!series || !series.length) { setMessage('No Austin registry vehicles yet.'); return; }
+      if (!series || !series.length) { setMessage(`No ${CHART_CITY} registry vehicles yet.`); return; }
       const hadFocus = document.activeElement && document.activeElement.id === 'fleetPlayBtn';
       drawChart(windowedPoints());
       // A redraw (a resize) mid-timelapse picks the frame back up where it was.
@@ -627,7 +639,7 @@
       const lastX = x(last.date.getTime());
 
       mount.innerHTML = `
-        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="Cumulative Austin Cybercabs documented in the registry, currently ${last.count}">
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="Cumulative ${CHART_CITY} Cybercabs documented in the registry, currently ${last.count}">
           ${gridLines}
           <path id="fleetArea" d="${areaD}" fill="${GOLD}" fill-opacity="0.1" stroke="none"/>
           <path id="fleetLine" d="${d}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
@@ -826,14 +838,29 @@
       requestAnimationFrame(() => { resizeQueued = false; render(); });
     }).observe(mount);
 
-    setMessage('Loading…');
-    fetchFirstSeenDatesForCity(CHART_CITY)
-      .then(dates => {
-        series = toStepSeries(dates);
-        if (!series.length) { setMessage('No Austin registry vehicles yet.'); return; }
-        render();
-      })
-      .catch(() => setMessage('Could not load fleet data.'));
+    // One chart for the selected city: each city's series is fetched once
+    // (with the same exact-service_area rule) and redrawn on a switch.
+    const seriesByCity = {};
+    let loadSeq = 0;
+    function loadCity(city) {
+      const mine = ++loadSeq;
+      CHART_CITY = city;
+      const caption = document.getElementById('fleetChartCaption');
+      if (caption) caption.textContent = `${city} Cybercabs documented in the registry, over time`;
+      if (seriesByCity[city]) { series = seriesByCity[city]; if (!series.length) setMessage(`No ${city} registry vehicles yet.`); else render(); return; }
+      series = null;
+      setMessage('Loading…');
+      fetchFirstSeenDatesForCity(city)
+        .then(dates => {
+          if (mine !== loadSeq) return;   // the city changed meanwhile
+          series = seriesByCity[city] = toStepSeries(dates);
+          if (!series.length) { setMessage(`No ${city} registry vehicles yet.`); return; }
+          render();
+        })
+        .catch(() => { if (mine === loadSeq) setMessage('Could not load fleet data.'); });
+    }
+    window.setFleetChartCity = city => { if (city !== CHART_CITY || !series) loadCity(city); };
+    loadCity('Austin');
   }
   initFleetGrowthChart();
 </script>
