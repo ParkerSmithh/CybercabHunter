@@ -34,6 +34,19 @@
   let total = 0;
   let busy = false;
   let query = '';      // the search the current list reflects
+  // The city whose Cybercabs are listed (Austin by default; ?city=dallas in the URL).
+  const CITIES = ['austin', 'dallas'];
+  let city = 'austin';
+  try {
+    const fromUrl = new URLSearchParams(location.search).get('city');
+    if (CITIES.includes(fromUrl)) city = fromUrl;
+  } catch (e) { /* default */ }
+  // A Dallas car: its own city is Dallas, or (with none of its own) its rides are in Dallas.
+  const isDallas = v => {
+    const own = String(v.service_area || '').trim().toLowerCase();
+    if (own) return own === 'dallas';
+    return String(v.service_areas || '').toLowerCase().split(',').some(c => c.trim() === 'dallas');
+  };
   let generation = 0;  // bumped per new search, so a slow older response is dropped
 
   function setView(view) {
@@ -110,6 +123,8 @@
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
     a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere] max-sm:text-[10px]', area || 'Service area not recorded'));
+    // Dallas cars carry a Dallas tag (the Dallas launch); Austin cards are unchanged.
+    if (isDallas(v)) a.appendChild(el('span', 'inline-block mt-2 text-[11px] font-bold px-2.5 py-1 rounded-full border border-cyan/40 text-cyan uppercase tracking-wide max-sm:text-[9px] max-sm:px-2 max-sm:py-0.5 max-sm:mt-1.5', 'Dallas'));
     const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07] max-sm:gap-x-2 max-sm:gap-y-2 max-sm:mt-3 max-sm:pt-2.5');
     stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
     stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance), 'Distance'));
@@ -137,7 +152,7 @@
 
   async function fetchPage(offset) {
     const q = query ? '&q=' + encodeURIComponent(query) : '';
-    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}&sort=${encodeURIComponent(sort)}${q}`);
+    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}&sort=${encodeURIComponent(sort)}&city=${city}${q}`);
     if (!resp.ok) throw new Error('http_' + resp.status);
     const body = await resp.json();
     if (!body || !Array.isArray(body.vehicles)) throw new Error('bad_body');
@@ -156,7 +171,11 @@
       total = Number(body.total) || 0;
       if (!body.vehicles.length) {
         if (query) { $('regNoMatchQuery').textContent = '\u201c' + query + '\u201d'; setView('nomatch'); }
-        else setView('empty');
+        else {
+          const h = document.querySelector('#regEmpty h2');
+          if (h) h.textContent = city === 'dallas' ? 'No Dallas Cybercabs yet' : 'No vehicles found';
+          setView('empty');
+        }
         return;
       }
       render(body.vehicles);
@@ -216,6 +235,22 @@
     } catch (e) { /* not essential */ }
     loadFirst();
   });
+
+  // City buttons: Austin / Dallas, kept in the URL like the sort.
+  const cityBtns = [...document.querySelectorAll('#regCity [data-city]')];
+  const syncCity = () => cityBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.city === city)));
+  syncCity();
+  cityBtns.forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.city === city) return;
+    city = b.dataset.city;
+    syncCity();
+    try {
+      const url = new URL(location.href);
+      if (city === 'austin') url.searchParams.delete('city'); else url.searchParams.set('city', city);
+      history.replaceState(null, '', url);
+    } catch (e) { /* not essential */ }
+    loadFirst();
+  }));
 
   $('regRetry').addEventListener('click', loadFirst);
   $('regMore').addEventListener('click', loadMore);

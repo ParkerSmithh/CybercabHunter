@@ -172,21 +172,31 @@
     renderApproved();
   }
 
-  // The camera list for the Add to map dialog (the same file the Submit form uses).
+  // The camera list for the Add to map dialog (the same file the Submit form
+  // uses). The dialog lists the cameras of the sighting's own city (each entry
+  // is tagged with its city; untagged is Austin); the server refuses a camera
+  // from another city anyway.
   let camerasLoaded = null;
+  let allCameras = [];
   function loadCameras() {
     if (!camerasLoaded) {
       camerasLoaded = fetch('data/traffic-cameras.json').then(r => (r.ok ? r.json() : [])).then(cameras => {
-        const select = $('modMapCamera');
-        (Array.isArray(cameras) ? cameras : []).slice().sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.camera_id;
-          opt.textContent = `${c.name} (#${c.camera_id})`;
-          select.appendChild(opt);
-        });
+        allCameras = Array.isArray(cameras) ? cameras : [];
       }).catch(() => { camerasLoaded = null; });
     }
     return camerasLoaded;
+  }
+  const sightingCity = a => (String(a.service_area || '').trim().toLowerCase() === 'dallas' ? 'dallas' : 'austin');
+  function renderCameraOptions(city) {
+    const select = $('modMapCamera');
+    [...select.options].filter(o => o.value).forEach(o => o.remove());   // keep the placeholder
+    allCameras.filter(c => (c.city || 'austin') === city)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.camera_id;
+        opt.textContent = `${c.name} (#${c.camera_id})`;
+        select.appendChild(opt);
+      });
   }
 
   let mapTarget = null;   // the approved sighting the dialog is for
@@ -195,6 +205,7 @@
     if (!a) return;
     mapTarget = submissionId;
     await loadCameras();
+    renderCameraOptions(sightingCity(a));
     $('modMapCamera').value = a.camera_id || '';
     const dialog = $('modMapDialog');
     if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');

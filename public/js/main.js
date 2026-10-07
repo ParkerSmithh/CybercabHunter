@@ -755,30 +755,49 @@ const CCC = (() => {
       } catch (e) { /* retried the next time the drawer opens */ }
     }
 
-    // ---- Traffic camera (optional): the 50 City of Austin cameras, from the
-    // same list the server checks against (public/data/traffic-cameras.json).
-    // Left at "Not a traffic camera", nothing about the sighting changes.
+    // ---- Traffic camera (optional): the selected city's cameras, from the same
+    // list the server checks against (public/data/traffic-cameras.json, each
+    // entry tagged with its city; an untagged one is Austin). With no city or
+    // Austin chosen, exactly the Austin cameras; with Dallas, the TxDOT Dallas
+    // cameras. Left at "Not a traffic camera", nothing about the sighting changes.
     let camerasLoaded = false;
+    let allCameras = [];
+    const cameraHelp = document.getElementById('sightingCameraHelp');
+    const cameraHelpAustin = cameraHelp ? cameraHelp.textContent : '';
+    const CAMERA_HELP = {
+      dallas: cameraHelpAustin.replace('a City of Austin traffic-camera capture', 'a TxDOT (Dallas-area) traffic-camera capture')
+    };
+    const cameraCityKey = () => { const a = selectedArea(); return a && a.key === 'dallas' ? 'dallas' : 'austin'; };
+    function renderTrafficCameras() {
+      if (!cameraField) return;
+      const city = cameraCityKey();
+      const current = cameraField.value;
+      [...cameraField.options].slice(1).forEach(o => o.remove());   // keep "Not a traffic camera"
+      allCameras.filter(c => (c.city || 'austin') === city)
+        .sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.camera_id;
+          opt.textContent = `${c.name} (#${c.camera_id})`;
+          cameraField.appendChild(opt);
+        });
+      // A camera from the other city is not kept.
+      cameraField.value = current && [...cameraField.options].some(o => o.value === current) ? current : '';
+      if (cameraHelp) cameraHelp.textContent = CAMERA_HELP[city] || cameraHelpAustin;
+    }
     async function loadTrafficCameras() {
       if (camerasLoaded || !cameraField) return;
       try {
         const resp = await fetch('data/traffic-cameras.json');
         const cameras = resp.ok ? await resp.json() : null;
         if (!Array.isArray(cameras)) return;
-        const current = cameraField.value;
-        [...cameraField.options].slice(1).forEach(o => o.remove());   // keep "Not a traffic camera"
-        cameras.slice().sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.camera_id;
-          opt.textContent = `${c.name} (#${c.camera_id})`;
-          cameraField.appendChild(opt);
-        });
-        if (current) cameraField.value = current;
+        allCameras = cameras;
+        renderTrafficCameras();
         camerasLoaded = true;
       } catch (e) { /* retried the next time the drawer opens */ }
     }
 
     serviceAreaField.addEventListener('change', () => {
+      renderTrafficCameras();   // the camera list follows the City
       // A picked Location may not be in the new City: start it over.
       locationField.value = '';
       if (locIdField) locIdField.value = '';

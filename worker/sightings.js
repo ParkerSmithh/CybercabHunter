@@ -30,7 +30,7 @@ import { db } from './db.js';
 import { verifyPlace } from './places.js';
 import { serviceAreaFor } from './service-areas.js';
 import { timeZoneFor, resolveObservedAt } from './timezones.js';
-import { trafficCameraFor } from './traffic-cameras.js';
+import { trafficCameraFor, cameraCity } from './traffic-cameras.js';
 
 const MAX_PLATE_RAW = 20;
 const MAX_SERVICE_AREA = 100;
@@ -299,15 +299,15 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     observedAt = resolved.observedAt;
   }
 
-  // Traffic camera (optional): only one of the listed Austin cameras
-  // (public/data/traffic-cameras.json). Most photos have none. When one is
-  // given, approving the sighting also puts it on the Zones map
-  // (worker/moderation.js). A camera sighting can't be in another city.
+  // Traffic camera (optional): only one of the listed cameras
+  // (public/data/traffic-cameras.json) of the sighting's own city. Most photos
+  // have none. When one is given, approving the sighting also puts it on the
+  // Zones map (worker/moderation.js).
   let cameraId = null;
   const cameraField = form.get('camera_id');
   if (typeof cameraField === 'string' && cameraField.trim()) {
     const camera = trafficCameraFor(cameraField);
-    if (!camera || (area && area.key !== 'austin')) return bad('invalid_traffic_camera');
+    if (!camera || (area && area.key !== cameraCity(camera))) return bad('invalid_traffic_camera');
     cameraId = camera.camera_id;
   }
 

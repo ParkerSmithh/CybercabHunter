@@ -21,7 +21,7 @@ function vehicle(ctx, n, plate, { origin = 'receipt', vin = null } = {}) {
 }
 // A ride whose data arrived at `createdAt` (and hasn't been changed since).
 const ride = (ctx, vid, rideDate, distance, createdAt) => {
-  const id = seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', rideDate, distance, createdAt, rideKey: `k-${vid}-${rideDate}-${createdAt}` });
+  const id = seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', serviceArea: 'Austin', rideDate, distance, createdAt, rideKey: `k-${vid}-${rideDate}-${createdAt}` });   // Austin: the Cars page's default city
   ctx.d1.exec(`UPDATE trips SET updated_at = created_at WHERE id = '${id}'`);
   return id;
 };

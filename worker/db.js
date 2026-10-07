@@ -1057,7 +1057,12 @@ export const REGISTRY_SORTS = {
   most_rides: `trip_count DESC, ${RECENT_FIRST}`
 };
 
-async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent' } = {}) {
+// q searches the plate and the VIN only (owner request 2026-10-07: not model,
+// colour or city). city (a service-area name, optional) keeps vehicles whose
+// own city is that one, or, for a vehicle with no city of its own, that have a
+// counted ride there (a car first seen in Dallas is a Dallas car). Austin
+// lists every public vehicle that is not a Dallas car.
+async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent', city = null } = {}) {
   const order = REGISTRY_SORTS[sort] || REGISTRY_SORTS.recent;
   const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
   const text = String(q || '').trim();
@@ -1065,19 +1070,25 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', 
   let search = '';
   const searchBinds = [];
   if (text) {
-    const like = s => '%' + s.replace(/[\\%_]/g, c => '\\' + c) + '%';
-    const conds = [
-      `UPPER(v.model) LIKE ? ESCAPE '\\'`,
-      `UPPER(v.color) LIKE ? ESCAPE '\\'`,
-      `UPPER(v.service_area) LIKE ? ESCAPE '\\'`,
-      `EXISTS (SELECT 1 ${counted(` AND UPPER(t.service_area) LIKE ? ESCAPE '\\'`)})`
-    ];
-    searchBinds.push(...Array(4).fill(like(text.toUpperCase())));
+    const like = s => '%' + s + '%';
     if (compact) {
-      conds.push(`${sqlNormalizedPlate('v.license_plate')} LIKE ?`, `UPPER(v.vin) LIKE ?`);
+      search = ` AND (${sqlNormalizedPlate('v.license_plate')} LIKE ? OR UPPER(v.vin) LIKE ?)`;
       searchBinds.push(like(compact), like(compact));   // already A-Z0-9 only: nothing to escape
+    } else {
+      search = ' AND 0';   // no letters or digits: nothing can match a plate or a VIN
     }
-    search = ` AND (${conds.join(' OR ')})`;
+  }
+  if (city) {
+    // A vehicle is in a city when its own city is that one, or (with no city
+    // of its own) a counted ride was there. Dallas lists Dallas cars; Austin,
+    // the only city before Dallas, lists every other public vehicle, exactly
+    // the list it always had minus the Dallas cars, so nothing disappears.
+    const inCity = `(lower(trim(COALESCE(v.service_area, ''))) = ?
+      OR (trim(COALESCE(v.service_area, '')) = '' AND EXISTS (SELECT 1 ${counted(` AND lower(trim(t.service_area)) = ?`)})))`;
+    const c = String(city).trim().toLowerCase();
+    search += c === 'austin' ? ` AND NOT ${inCity}` : ` AND ${inCity}`;
+    const other = c === 'austin' ? 'dallas' : c;
+    searchBinds.push(other, other);
   }
   // last_data_at (when this vehicle's newest counted receipt data arrived) is
   // used only for ordering; the API does not return it.

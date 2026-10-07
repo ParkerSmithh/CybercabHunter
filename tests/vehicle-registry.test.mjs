@@ -28,7 +28,9 @@ function vehicle(ctx, n, plate, { visibility = 'private', model = null, serviceA
     .bind(uuid(n), plate, model, serviceArea, visibility, created, seen, vin, basis)._exec();
   return uuid(n);
 }
-const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', ...o });
+// Rides default to Austin here (the Cars page lists one city at a time since the
+// Dallas launch; seedRide's own default is Dallas). Pass serviceArea to override.
+const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', serviceArea: 'Austin', ...o });
 const call = (ctx, path, init = {}) => worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com', ...(init.headers || {}) } }), ctx.env, {});
 const list = async (ctx, qs = '') => { const r = await call(ctx, `/api/robotaxi-vehicles${qs}`); return { status: r.status, headers: r.headers, body: await r.json() }; };
 
@@ -131,8 +133,8 @@ async function run() {
 
   console.log('4. Page: rendering, links and states (real js/vehicles.js in jsdom)');
   const CALC = read('js/calc.js'), MAIN = read('js/main.js'), PAGE = read('js/vehicles.js'), HTML = read('vehicles.html');
-  async function open(ctx, intercept) {
-    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/vehicles', pretendToBeVisual: true });
+  async function open(ctx, intercept, url = 'https://cybercabhunter.com/vehicles') {
+    const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
     const w = dom.window;
     w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
     const requests = [];
@@ -163,14 +165,21 @@ async function run() {
     check('the loaded state is shown (not empty, not error, not loading)', p.vis('regLoaded') && !p.vis('regEmpty') && !p.vis('regError') && !p.vis('regLoading'));
     // Order: most recently RIDDEN first (a's ride is Aug 5, b's Jul 4) — not
     // by when the registry row was last touched (b's is later).
-    check('one card per public vehicle, most recently ridden first', p.cards().length === 2 && /XFY4946/.test(p.cards()[0].textContent) && /XJR1903/.test(p.cards()[1].textContent));
-    check('each card links to the correct /vehicle/<id>', p.cards()[0].getAttribute('href') === `/vehicle/${a}` && p.cards()[1].getAttribute('href') === `/vehicle/${b}`);
-    check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(p.cards()[0].textContent) && /Model not confirmed/.test(p.cards()[0].textContent) && /Model Y/.test(p.cards()[1].textContent));
-    check('service area falls back to the cities of the counted rides', /Austin/.test(p.cards()[0].textContent) && /Dallas/.test(p.cards()[1].textContent));
+    // Dallas launch: the list is one city at a time (Austin by default). a's ride
+    // is in Austin, b's in Dallas (neither has a city of its own).
+    const pd = await open(ctx, null, 'https://cybercabhunter.com/vehicles?city=dallas');
+    const cardA = p.cards()[0], cardB = pd.cards()[0];
+    check('Austin (the default) lists the Austin car only; Dallas lists the Dallas car only', p.cards().length === 1 && /XFY4946/.test(cardA.textContent) && pd.cards().length === 1 && /XJR1903/.test(cardB.textContent));
+    check('the city buttons show which city is listed', p.d.querySelector('#regCity [data-city="austin"]').getAttribute('aria-pressed') === 'true' && pd.d.querySelector('#regCity [data-city="dallas"]').getAttribute('aria-pressed') === 'true');
+    check('the page asks the API for that city', p.requests.some(r => /city=austin/.test(r.path)) && pd.requests.some(r => /city=dallas/.test(r.path)));
+    check('a Dallas car carries a Dallas tag; an Austin car does not', [...cardB.querySelectorAll('span')].some(x => x.textContent.trim() === 'Dallas') && ![...cardA.querySelectorAll('span')].some(x => x.textContent.trim() === 'Dallas'));
+    check('each card links to the correct /vehicle/<id>', cardA.getAttribute('href') === `/vehicle/${a}` && cardB.getAttribute('href') === `/vehicle/${b}`);
+    check('the plate is shown, and a null model reads "Model not confirmed"', /XFY4946/.test(cardA.textContent) && /Model not confirmed/.test(cardA.textContent) && /Model Y/.test(cardB.textContent));
+    check('service area falls back to the cities of the counted rides', /Austin/.test(cardA.textContent) && /Dallas/.test(cardB.textContent));
     check('ride count is shown', /Rides\s*1/.test(p.cards()[0].textContent));
-    check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Aug 5, 2026/.test(p.cards()[0].textContent) && /Jul 4, 2026/.test(p.cards()[1].textContent));
-    check('the ingestion timestamps are NOT what is displayed for First/Last seen', !/Sep 19, 2026|Sep 20, 2026/.test(p.cards()[0].textContent + p.cards()[1].textContent));
-    check('the count line says "2 vehicles"', p.d.getElementById('regCount').textContent === '2 vehicles');
+    check('First/Last seen show the RIDE\'s own date (from the receipt), not when the registry row was created/touched', /Aug 5, 2026/.test(cardA.textContent) && /Jul 4, 2026/.test(cardB.textContent));
+    check('the ingestion timestamps are NOT what is displayed for First/Last seen', !/Sep 19, 2026|Sep 20, 2026/.test(cardA.textContent + cardB.textContent));
+    check('the count line counts the listed city ("1 vehicle" each)', p.d.getElementById('regCount').textContent === '1 vehicle' && pd.d.getElementById('regCount').textContent === '1 vehicle');
     check('a private vehicle is not on the page, in text or links', !/HIDDEN33/.test(p.d.body.textContent) && ![...p.d.querySelectorAll('a')].some(x => (x.getAttribute('href') || '').includes(hid)));
     check('the page calls only the public list endpoint, with no Authorization header', p.requests.every(r => r.path.startsWith('/api/robotaxi-vehicles') && !('Authorization' in r.headers)) && p.requests.length === 1);
     check('the "Show more" button is hidden when everything fits', !p.vis('regMore'));
@@ -263,7 +272,7 @@ async function run() {
     check('the underlying data/classification logic is unchanged — this is presentation only (the API still reports the same vin/model as before)', c.vin === VIN && r.body.vehicles.find(v => v.id === ordinary).vin === null);
   }
 
-  console.log('4c. Search: plate, VIN, model and city, across every public vehicle');
+  console.log('4c. Search: plate and VIN only, across every public vehicle; the city is a filter');
   {
     const ctx = await makeApp();
     const VIN = '7SAYGDEE1RA000123';
@@ -273,7 +282,12 @@ async function run() {
     const ids = async q => (await list(ctx, '?q=' + encodeURIComponent(q))).body.vehicles.map(v => v.id).sort().join();
     check('a plate matches ignoring case, hyphens and spaces', await ids('abc1234') === a && await ids('ABC-1234') === a && await ids('c 12') === a);
     check('a partial VIN matches', await ids('a000123') === b && await ids(VIN) === b);
-    check('model and ride city match', await ids('cyber') === b && await ids('dallas') === b && await ids('austin') === a);
+    // Owner request 2026-10-07: search is VIN and plate ONLY; the city is a
+    // separate filter (?city=) and the model never matches.
+    check('model and city no longer match the search box', await ids('cyber') === '' && await ids('dallas') === '' && await ids('austin') === '');
+    const byCity = async c => (await list(ctx, '?city=' + c)).body.vehicles.map(v => v.id).sort().join();
+    check('?city= keeps each city\'s vehicles (by its own city, or its rides\' city when it has none)', await byCity('dallas') === b && await byCity('austin') === a);
+    check('an unknown ?city= is 400', (await list(ctx, '?city=houston')).status === 400);
     check('search never reveals a private vehicle', !(await ids('ABC')).includes(hidden) && await ids('ABC9999') === '');
     const r = await list(ctx, '?q=zzz');
     check('no match: an empty list with total 0, still 200', r.status === 200 && r.body.vehicles.length === 0 && r.body.total === 0);
@@ -282,19 +296,20 @@ async function run() {
     check('injection-style search input is just text', (await list(ctx, "?q=' OR 1=1 --")).body.total === 0 && (await list(ctx)).body.total === 2);
     check('total counts the matches, not the registry', (await list(ctx, '?q=abc')).body.total === 1);
 
-    const p = await open(ctx, null);
-    check('the page has a search box', !!p.d.getElementById('regSearch'));
+    // XJR1903's ride is in Dallas, so the search runs in the Dallas list (Dallas launch).
+    const p = await open(ctx, null, 'https://cybercabhunter.com/vehicles?city=dallas');
+    check('the page has a search box, for plate or VIN', !!p.d.getElementById('regSearch') && p.d.getElementById('regSearch').placeholder === 'Search by plate or VIN');
     const type = async v => { const s = p.d.getElementById('regSearch'); s.value = v; s.dispatchEvent(new p.w.Event('input')); };
     await type('xjr');
-    await p.waitFor(() => p.cards().length === 1 && /XJR1903/.test(p.cards()[0].textContent));
+    await p.waitFor(() => p.requests.some(r => /[?&]q=xjr/.test(r.path)) && p.cards().length === 1 && /XJR1903/.test(p.cards()[0].textContent));
     check('typing filters the list via the API (q= sent)', p.cards().length === 1 && p.requests.some(r => /[?&]q=xjr/.test(r.path)));
     check('the count reflects the matches', p.d.getElementById('regCount').textContent === '1 vehicle');
     await type('nothing-here');
     await p.waitFor(() => p.vis('regNoMatch'));
     check('no results shows "No matches" with the query as text, not the empty-registry message', p.vis('regNoMatch') && !p.vis('regEmpty') && /nothing-here/.test(p.d.getElementById('regNoMatchQuery').textContent));
     await type('');
-    await p.waitFor(() => p.cards().length === 2);
-    check('clearing the search restores the full list', p.cards().length === 2 && p.vis('regLoaded'));
+    await p.waitFor(() => p.cards().length === 1 && p.vis('regLoaded'));
+    check('clearing the search restores the full (Dallas) list', p.cards().length === 1 && p.vis('regLoaded') && /XJR1903/.test(p.cards()[0].textContent));
   }
 
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');

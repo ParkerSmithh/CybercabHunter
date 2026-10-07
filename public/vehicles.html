@@ -87,13 +87,19 @@
       <p class="text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug">Every Cybercab riders and spotters have reported, with the rides and sightings recorded for each.</p>
     </div>
 
-    <!-- Search: plate, VIN, model, color or city (server-side, across every public vehicle) -->
+    <!-- City: Austin or Dallas Cybercabs (GET /api/robotaxi-vehicles?city=..., kept in the URL) -->
+    <div id="regCity" role="group" aria-label="Show Cybercabs in" class="flex flex-wrap gap-2 mb-4 max-sm:mb-3">
+      <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
+      <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Dallas</button>
+    </div>
+
+    <!-- Search: plate or VIN only (server-side, across the chosen city's public vehicles) -->
     <!-- Search on the left, sort on the right (lined up with the grid's right edge) -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8 max-sm:flex-row max-sm:items-center max-sm:gap-2 max-sm:mb-5">
     <form id="regSearchForm" role="search" class="relative w-full sm:max-w-md max-sm:flex-1 max-sm:min-w-0" onsubmit="return false">
       <label for="regSearch" class="sr-only">Search vehicles</label>
       <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
-      <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Search by plate, VIN, model or city" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
+      <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Search by plate or VIN" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
     </form>
     <!-- Order of the list (GET /api/robotaxi-vehicles?sort=...) -->
     <label for="regSort" class="sr-only">Sort vehicles</label>
@@ -283,6 +289,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicles.js?v=9"></script>
+<script src="js/vehicles.js?v=10"></script>
 </body>
 </html>

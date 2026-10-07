@@ -1,9 +1,10 @@
 // Cybercabs spotted by the hourly traffic-camera watch, for the Zones page map.
 //
-//   GET  /api/camera-sightings                 public
+//   GET  /api/camera-sightings[?city=austin|dallas]   public (default austin)
 //     -> [{ camera_id, camera_name, lat, lng, observed_at, image_url }]
-//        Detections from the trailing 24 hours, ONE per camera (its latest),
-//        newest first. image_url is null while a detection has no stored image.
+//        Detections from the trailing 24 hours in that city, ONE per camera
+//        (its latest), newest first. image_url is null while a detection has
+//        no stored image. An unsupported city: 400 invalid_city.
 //
 //   GET  /api/camera-sightings/<id>/image      public
 //     -> the stored JPEG (R2 is not public; the Worker serves it).
@@ -40,7 +41,7 @@
 
 import { tokensMatch, readBearerToken } from './connector.js';
 import { serviceAreaFor, isInServiceArea } from './service-areas.js';
-import { trafficCameraFor } from './traffic-cameras.js';
+import { trafficCameraFor, cameraCity } from './traffic-cameras.js';
 
 const WINDOW_MS = 24 * 3600 * 1000;
 // Edge cache for the public list (Cache API; works on the custom domain). The
@@ -70,7 +71,15 @@ export function onLiveMap(observedAt, now = Date.now()) {
   return Number.isFinite(ms) && ms >= now - WINDOW_MS && ms <= now + MAX_FUTURE_SKEW_MS;
 }
 
+// The city a camera-feed request asks for (?city=, default austin), or null.
+function requestedCity(request) {
+  const area = serviceAreaFor(new URL(request.url).searchParams.get('city') || 'austin');
+  return area ? area.key : null;
+}
+
 export async function apiListCameraSightings(request, env, ctx, { now = Date.now() } = {}) {
+  const city = requestedCity(request);
+  if (!city) return fail(400, 'invalid_city');
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
   if (cache) {
@@ -81,10 +90,10 @@ export async function apiListCameraSightings(request, env, ctx, { now = Date.now
     `SELECT id, camera_id, camera_name, lat, lng, observed_at, image_r2_key FROM (
        SELECT *, ROW_NUMBER() OVER (PARTITION BY camera_id ORDER BY observed_at DESC, created_at DESC, id DESC) AS rn
        FROM camera_detections
-       WHERE observed_at >= ? AND observed_at <= ?
+       WHERE city = ? AND observed_at >= ? AND observed_at <= ?
      ) WHERE rn = 1
      ORDER BY observed_at DESC, camera_id`
-  ).bind(toStoredIso(now - WINDOW_MS), toStoredIso(now + MAX_FUTURE_SKEW_MS)).all();
+  ).bind(city, toStoredIso(now - WINDOW_MS), toStoredIso(now + MAX_FUTURE_SKEW_MS)).all();
   const response = Response.json((results || []).map(r => ({
     camera_id: r.camera_id,
     camera_name: r.camera_name,
@@ -118,6 +127,8 @@ const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
 export async function apiCameraSightingsHistory(request, env, ctx, { now = Date.now() } = {}) {
   const params = new URL(request.url).searchParams;
+  const city = requestedCity(request);
+  if (!city) return fail(400, 'invalid_city');
   const fromRaw = params.get('from'), toRaw = params.get('to');
   if (!ISO_Z_RE.test(fromRaw || '') || !ISO_Z_RE.test(toRaw || '')) return fail(400, 'invalid_range');
   const fromMs = Date.parse(fromRaw), toMs = Date.parse(toRaw);
@@ -141,14 +152,14 @@ export async function apiCameraSightingsHistory(request, env, ctx, { now = Date.
   const { results } = await env.cybercabhunter_db.prepare(`
     SELECT d.id, d.camera_id, d.camera_name, d.lat, d.lng, d.observed_at, d.source_submission_id
     FROM camera_detections d
-    WHERE d.observed_at >= ? AND d.observed_at < ?
+    WHERE d.city = ? AND d.observed_at >= ? AND d.observed_at < ?
       ${after ? 'AND (d.observed_at > ? OR (d.observed_at = ? AND d.id > ?))' : ''}
       AND (d.source_submission_id IS NULL OR EXISTS (
         SELECT 1 FROM submissions s WHERE s.id = d.source_submission_id
           AND s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_ref IS NOT NULL))
     ORDER BY d.observed_at ASC, d.id ASC
     LIMIT ?
-  `).bind(...[from, to, ...(after ? [after.t, after.t, after.id] : []), limit + 1]).all();
+  `).bind(...[city, from, to, ...(after ? [after.t, after.t, after.id] : []), limit + 1]).all();
   const rows = results || [];
   const page = rows.slice(0, limit);
   const last = page[page.length - 1];
@@ -256,7 +267,8 @@ export async function apiCreateCameraSighting(request, env, { now = Date.now() }
 // map row never points at another record's storage key. Nothing about the
 // sighting beyond its time and photo is used: no plate, no VIN, no registry link.
 // Returns { placed: true, id, existing? } or { placed: false, error }:
-//   invalid_traffic_camera — not one of the cameras
+//   invalid_traffic_camera — not one of the cameras, or a camera in another
+//                            city than the sighting's
 //   not_found              — no such approved photo sighting with a stored photo
 //   photo_missing          — the photo is gone from storage
 export async function placeSightingOnMap(env, submissionId, cameraId) {
@@ -264,12 +276,15 @@ export async function placeSightingOnMap(env, submissionId, cameraId) {
   if (!camera) return { placed: false, error: 'invalid_traffic_camera' };
   const sql = env.cybercabhunter_db;
   const sighting = await sql.prepare(`
-    SELECT s.id AS submission_id, s.evidence_ref, o.observed_at
+    SELECT s.id AS submission_id, s.evidence_ref, o.observed_at, o.service_area
     FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
     WHERE s.id = ? AND s.submission_type = 'vehicle_sighting' AND s.status = 'approved'
       AND s.evidence_type = 'photo' AND s.evidence_ref IS NOT NULL
   `).bind(submissionId).first();
   if (!sighting) return { placed: false, error: 'not_found' };
+  // A sighting filed in one supported city can't go on another city's map.
+  const sightingArea = serviceAreaFor(sighting.service_area);
+  if (sightingArea && sightingArea.key !== cameraCity(camera)) return { placed: false, error: 'invalid_traffic_camera' };
 
   // One map row per sighting: re-approving or retrying changes nothing.
   const already = await sql.prepare('SELECT id, observed_at FROM camera_detections WHERE source_submission_id = ?').bind(submissionId).first();
@@ -293,9 +308,9 @@ export async function placeSightingOnMap(env, submissionId, cameraId) {
 
   const id = crypto.randomUUID();
   const inserted = await sql.prepare(`
-    INSERT OR IGNORE INTO camera_detections (id, camera_id, camera_name, lat, lng, observed_at, image_r2_key, source_submission_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, camera.camera_id, camera.name, camera.lat, camera.lng, observedAt, key, submissionId).run();
+    INSERT OR IGNORE INTO camera_detections (id, camera_id, camera_name, lat, lng, observed_at, image_r2_key, source_submission_id, city)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, camera.camera_id, camera.name, camera.lat, camera.lng, observedAt, key, submissionId, cameraCity(camera)).run();
   if (inserted.meta && inserted.meta.changes === 0) {
     // A concurrent approval/Add to map won the insert; use its row.
     const winner = await sql.prepare('SELECT id FROM camera_detections WHERE source_submission_id = ? OR (camera_id = ? AND observed_at = ?)')

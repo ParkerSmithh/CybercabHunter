@@ -22,6 +22,7 @@
 // as-is.
 
 import { db, REGISTRY_SORTS } from './db.js';
+import { serviceAreaFor } from './service-areas.js';
 
 export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,13 +59,17 @@ export async function apiListVehicles(request, env) {
   const asInt = (raw, fallback) => (/^\d{1,6}$/.test(raw || '') ? Number(raw) : fallback);
   const limit = Math.min(Math.max(asInt(params.get('limit'), LIST_DEFAULT_LIMIT), 1), LIST_MAX_LIMIT);
   const offset = asInt(params.get('offset'), 0);
-  // Free-text search (plate, VIN, model, color, city); capped so a pasted
-  // essay can't become an expensive scan pattern.
+  // Search by plate or VIN only; capped so a pasted essay can't become an
+  // expensive scan pattern.
   const q = (params.get('q') || '').trim().slice(0, LIST_MAX_QUERY);
+  // Optional city (?city=austin|dallas): only that city's vehicles. Unknown: 400.
+  const cityParam = params.get('city');
+  const area = cityParam ? serviceAreaFor(cityParam) : null;
+  if (cityParam && !area) return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   // Order (the Cars page's sort menu); anything unrecognized = most recently used.
   const sort = REGISTRY_SORTS[params.get('sort')] ? params.get('sort') : 'recent';
 
-  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset, q, sort });
+  const { vehicles, total } = await db.getPublicRobotaxiVehicles(env.cybercabhunter_db, { limit, offset, q, sort, city: area ? area.name : null });
   return Response.json({
     vehicles: vehicles.map(v => ({
       id: v.id,
@@ -92,7 +97,7 @@ export async function apiListVehicles(request, env) {
       total_distance: v.total_distance,
       service_areas: v.service_areas
     })),
-    total, limit, offset, q, sort
+    total, limit, offset, q, sort, city: area ? area.key : null
   }, {
     headers: { 'Cache-Control': 'public, max-age=60' }
   });

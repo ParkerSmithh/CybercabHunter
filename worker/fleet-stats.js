@@ -1,6 +1,6 @@
 // Live Fleet & Fares stats (the Zones page panel).
 //
-//   GET /api/fleet-stats?city=austin   public, edge-cached
+//   GET /api/fleet-stats?city=austin|dallas   public, edge-cached
 //   -> { city, cybercabs, count_as_of,
 //        fares: { rides, min_rides, median_fare, average_fare, per_mile,
 //                 computed_at, sources } }
@@ -45,6 +45,9 @@ import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './rid
 import { serviceAreaFor } from './service-areas.js';
 
 export const FARE_MIN_RIDES = 1;
+// The cities with a fleet panel (Zones, homepage, Fleet ETA). Dallas added for
+// the Dallas launch; every other city is refused (400 invalid_city).
+export const FLEET_CITIES = ['austin', 'dallas'];
 export const FLEET_STATS_CRON = '0 11 * * *';        // daily, 6 AM CDT / 5 AM CST
 const COUNT_CACHE_SECONDS = 300;
 const KM_TO_MI = 0.621371;
@@ -105,7 +108,7 @@ export async function computeFareStats(sql, cityName, nowMs = Date.now()) {
 // The daily job: recompute and store the fare model for every supported city.
 export async function recomputeFleetStats(env, nowMs = Date.now()) {
   const out = {};
-  for (const key of ['austin']) {
+  for (const key of FLEET_CITIES) {
     const fares = await computeFareStats(env.cybercabhunter_db, serviceAreaFor(key).name, nowMs);
     await env.TESLA_SESSIONS.put(kvKey(key), JSON.stringify(fares));
     out[key] = fares;
@@ -126,7 +129,7 @@ async function storedFares(env, area) {
 
 export async function apiFleetStats(request, env, ctx) {
   const cityParam = (new URL(request.url).searchParams.get('city') || 'austin').toLowerCase();
-  const area = cityParam === 'austin' ? serviceAreaFor('austin') : null;   // Austin is the only city with fleet data
+  const area = FLEET_CITIES.includes(cityParam) ? serviceAreaFor(cityParam) : null;
   if (!area) return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });

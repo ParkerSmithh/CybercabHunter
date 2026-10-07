@@ -68,12 +68,14 @@ async function run() {
     const backup = JSON.parse(read('camera-watch-backup-20-coords.json'));
     const shipped = JSON.parse(read('public/data/traffic-cameras.json'));
     const same = (c, s) => c && c.camera_id === String(s.camera_id) && c.name === s.name.trim() && c.lat === s.lat && c.lng === s.lng;
-    check('public/data/traffic-cameras.json has 70 distinct cameras', shipped.length === 70 && new Set(shipped.map(c => c.camera_id)).size === 70);
+    const austin = shipped.filter(c => c.city === 'austin'), dallas = shipped.filter(c => c.city === 'dallas');
+    check('public/data/traffic-cameras.json has 120 distinct cameras: 70 Austin, then 50 Dallas', shipped.length === 120 && new Set(shipped.map(c => c.camera_id)).size === 120 && austin.length === 70 && dallas.length === 50 && shipped.slice(0, 70).every(c => c.city === 'austin'));
+    check('the Dallas cameras are TxDOT ids (txdot-dal-<OBJECTID>) inside the Dallas metro box', dallas.every(c => /^txdot-dal-\d+$/.test(c.camera_id) && c.lat >= 32.55 && c.lat <= 33.15 && c.lng >= -97.20 && c.lng <= -96.45 && c.name.length > 3));
     check('the first 50 are the watch cameras, untouched and in place (camera-watch-50-coords.json)', source.length === 50 && source.every((s, i) => same(shipped[i], s)));
     check('then the 20 backup cameras, in order (camera-watch-backup-20-coords.json)', backup.length === 20 && backup.every((s, i) => same(shipped[50 + i], s)));
     check('the backups are the 20 requested ids', backup.map(c => c.camera_id).join() === '699,173,220,787,471,92,202,168,283,150,117,302,325,1444,401,240,1356,227,452,525');
-    check('each entry is exactly { camera_id, name, lat, lng }', shipped.every(c => Object.keys(c).join() === 'camera_id,name,lat,lng' && typeof c.camera_id === 'string'));
-    check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 70 && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
+    check('each entry is exactly { camera_id, name, lat, lng, city }', shipped.every(c => Object.keys(c).join() === 'camera_id,name,lat,lng,city' && typeof c.camera_id === 'string'));
+    check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 120 && trafficCameraFor('txdot-dal-1017').name === 'Spur 366 @ Field St' && trafficCameraFor('txdot-dal-1017').city === 'dallas' && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
   }
 
   console.log('2. Submit: camera_id is saved; omitting it changes nothing');
@@ -201,7 +203,7 @@ async function run() {
     check('(the plate made a private registry vehicle linked to the sighting)', !!obs(ctx, s).robotaxi_vehicle_id);
     await approve(ctx, s);
     const row = rows(ctx)[0];
-    check('the map row has no plate, VIN or vehicle id', Object.keys(row).join() === 'id,camera_id,camera_name,lat,lng,observed_at,image_r2_key,created_at,source_submission_id' && !JSON.stringify(row).includes('PLATE99'));
+    check('the map row has no plate, VIN or vehicle id', Object.keys(row).join() === 'id,camera_id,camera_name,lat,lng,observed_at,image_r2_key,created_at,source_submission_id,city' && !JSON.stringify(row).includes('PLATE99'));
     const pub = (await call(ctx, '/api/camera-sightings', { session: null })).json;
     check('the public feed shows no plate or vehicle id', !JSON.stringify(pub).includes('PLATE99') && !JSON.stringify(pub).includes(obs(ctx, s).robotaxi_vehicle_id));
     const code = ['worker/camera-sightings.js', 'worker/traffic-cameras.js'].map(f => read(f).replace(/^\s*\/\/.*$/gm, '')).join('\n');

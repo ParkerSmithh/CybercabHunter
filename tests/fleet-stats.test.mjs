@@ -139,7 +139,10 @@ async function run() {
     check('a private vehicle adds to no count and no fare', s.cybercabs === 0 && s.fares.rides === 0 && s.fares.median_fare === null);
     check('the response names no vehicle, plate, ride or user', !/-0000-4000-8000-|PLT|VIN|"r-\d|rider|user/i.test(raw));
     check('the private vehicle page still 404s', (await worker.fetch(new Request(`https://x/api/robotaxi-vehicles/${hidden}`), ctx.env, {})).status === 404);
-    check('only Austin is served (other cities: 400)', (await worker.fetch(new Request('https://x/api/fleet-stats?city=dallas'), ctx.env, {})).status === 400);
+    const dal = await worker.fetch(new Request('https://x/api/fleet-stats?city=dallas'), ctx.env, {});
+    const dalJson = await dal.json();
+    check('Dallas is served too (Dallas launch), with its own count, never Austin\'s', dal.status === 200 && dalJson.city === 'dallas' && typeof dalJson.cybercabs === 'number');
+    check('an unsupported city: 400', (await worker.fetch(new Request('https://x/api/fleet-stats?city=houston'), ctx.env, {})).status === 400);
     check('edge-cacheable', /public, max-age=300/.test(r.headers.get('Cache-Control')));
   }
 

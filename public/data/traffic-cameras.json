@@ -3,420 +3,840 @@
   "camera_id": "1493",
   "name": "SH 71 SVRD / CARDINAL LOOP (PRESIDENTIAL BLVD)",
   "lat": 30.213114,
-  "lng": -97.658532
+  "lng": -97.658532,
+  "city": "austin"
  },
  {
   "camera_id": "1494",
   "name": "SH 71 SVRD / PRESIDENTIAL BLVD (CARDINAL LOOP)",
   "lat": 30.21267,
-  "lng": -97.65884
+  "lng": -97.65884,
+  "city": "austin"
  },
  {
   "camera_id": "538",
   "name": "SH 71 SVRD / PRESIDENTIAL BLVD (CARDINAL LOOP)",
   "lat": 30.21267,
-  "lng": -97.65884
+  "lng": -97.65884,
+  "city": "austin"
  },
  {
   "camera_id": "64",
   "name": "MARTIN LUTHER KING JR BLVD / CONGRESS AVE (MLK/Capitol Mall)",
   "lat": 30.280687,
-  "lng": -97.738106
+  "lng": -97.738106,
+  "city": "austin"
  },
  {
   "camera_id": "216",
   "name": "FM 969 RD / ED BLUESTEIN BLVD SVRD (Martin Luther King Jr Blvd / US 183)",
   "lat": 30.285421,
-  "lng": -97.664047
+  "lng": -97.664047,
+  "city": "austin"
  },
  {
   "camera_id": "1480",
   "name": "4703 BLK S CONGRESS AVE (4912 S Congress)",
   "lat": 30.212057,
-  "lng": -97.77082
+  "lng": -97.77082,
+  "city": "austin"
  },
  {
   "camera_id": "795",
   "name": "400 BLK S CONGRESS AVE (Music Lane)",
   "lat": 30.253627,
-  "lng": -97.748178
+  "lng": -97.748178,
+  "city": "austin"
  },
  {
   "camera_id": "133",
   "name": "6TH ST / CONGRESS AVE",
   "lat": 30.268066,
-  "lng": -97.742813
+  "lng": -97.742813,
+  "city": "austin"
  },
  {
   "camera_id": "722",
   "name": "CONGRESS AVE / RIVERSIDE DR",
   "lat": 30.257143,
-  "lng": -97.746872
+  "lng": -97.746872,
+  "city": "austin"
  },
  {
   "camera_id": "919",
   "name": "CONGRESS AVE / BEN WHITE BLVD SVRD",
   "lat": 30.222479,
-  "lng": -97.764168
+  "lng": -97.764168,
+  "city": "austin"
  },
  {
   "camera_id": "57",
   "name": "GUADALUPE ST / LAMAR BLVD",
   "lat": 30.316647,
-  "lng": -97.732246
+  "lng": -97.732246,
+  "city": "austin"
  },
  {
   "camera_id": "61",
   "name": "GUADALUPE ST / MARTIN LUTHER KING JR BLVD",
   "lat": 30.281733,
-  "lng": -97.741928
+  "lng": -97.741928,
+  "city": "austin"
  },
  {
   "camera_id": "63",
   "name": "LAVACA ST / MARTIN LUTHER KING JR BLVD",
   "lat": 30.281328,
-  "lng": -97.740509
+  "lng": -97.740509,
+  "city": "austin"
  },
  {
   "camera_id": "93",
   "name": "LAMAR BLVD / MARTIN LUTHER KING JR BLVD",
   "lat": 30.283602,
-  "lng": -97.752075
+  "lng": -97.752075,
+  "city": "austin"
  },
  {
   "camera_id": "95",
   "name": "6TH ST / LAMAR BLVD",
   "lat": 30.271538,
-  "lng": -97.753967
+  "lng": -97.753967,
+  "city": "austin"
  },
  {
   "camera_id": "97",
   "name": "LAMAR BLVD / RIVERSIDE DR",
   "lat": 30.264525,
-  "lng": -97.757103
+  "lng": -97.757103,
+  "city": "austin"
  },
  {
   "camera_id": "106",
   "name": "CESAR CHAVEZ ST / LAVACA ST",
   "lat": 30.264071,
-  "lng": -97.746941
+  "lng": -97.746941,
+  "city": "austin"
  },
  {
   "camera_id": "132",
   "name": "6TH ST / LAVACA ST",
   "lat": 30.268717,
-  "lng": -97.745201
+  "lng": -97.745201,
+  "city": "austin"
  },
  {
   "camera_id": "229",
   "name": "BEN WHITE BLVD SVRD / LAMAR BLVD SVRD",
   "lat": 30.233683,
-  "lng": -97.796661
+  "lng": -97.796661,
+  "city": "austin"
  },
  {
   "camera_id": "351",
   "name": "6TH ST / GUADALUPE ST",
   "lat": 30.269024,
-  "lng": -97.746262
+  "lng": -97.746262,
+  "city": "austin"
  },
  {
   "camera_id": "1320",
   "name": "LAMAR BLVD / 46TH ST",
   "lat": 30.315098,
-  "lng": -97.736192
+  "lng": -97.736192,
+  "city": "austin"
  },
  {
   "camera_id": "517",
   "name": "3201 BLK S LAMAR BLVD (BROKEN SPOKE)",
   "lat": 30.240471,
-  "lng": -97.786667
+  "lng": -97.786667,
+  "city": "austin"
  },
  {
   "camera_id": "781",
   "name": "2100 BLK S LAMAR BLVD (Oxford Ave)",
   "lat": 30.248083,
-  "lng": -97.77121
+  "lng": -97.77121,
+  "city": "austin"
  },
  {
   "camera_id": "816",
   "name": "GUADALUPE ST / 26TH ST",
   "lat": 30.29047,
-  "lng": -97.74128
+  "lng": -97.74128,
+  "city": "austin"
  },
  {
   "camera_id": "1145",
   "name": "BEN WHITE BLVD / RIVERSIDE DR",
   "lat": 30.21806,
-  "lng": -97.69058
+  "lng": -97.69058,
+  "city": "austin"
  },
  {
   "camera_id": "1190",
   "name": "GUADALUPE ST / 46TH ST",
   "lat": 30.313028,
-  "lng": -97.73252
+  "lng": -97.73252,
+  "city": "austin"
  },
  {
   "camera_id": "102",
   "name": "CONGRESS AVE / BARTON SPRINGS RD",
   "lat": 30.259111,
-  "lng": -97.74614
+  "lng": -97.74614,
+  "city": "austin"
  },
  {
   "camera_id": "248",
   "name": "CONGRESS AVE / SLAUGHTER LN",
   "lat": 30.167107,
-  "lng": -97.788559
+  "lng": -97.788559,
+  "city": "austin"
  },
  {
   "camera_id": "31",
   "name": "BARTON SPRINGS RD / RIVERSIDE DR (OTC - NORTHWEST)",
   "lat": 30.257478,
-  "lng": -97.748989
+  "lng": -97.748989,
+  "city": "austin"
  },
  {
   "camera_id": "32",
   "name": "BARTON SPRINGS RD / RIVERSIDE DR (OTC - NORTHEAST)",
   "lat": 30.257391,
-  "lng": -97.749041
+  "lng": -97.749041,
+  "city": "austin"
  },
  {
   "camera_id": "39",
   "name": "CESAR CHAVEZ ST / SAN JACINTO BLVD (FOUR SEASONS - WEST)",
   "lat": 30.261807,
-  "lng": -97.74283
+  "lng": -97.74283,
+  "city": "austin"
  },
  {
   "camera_id": "40",
   "name": "CESAR CHAVEZ ST / SAN JACINTO BLVD (FOUR SEASONS - EAST)",
   "lat": 30.261684,
-  "lng": -97.742403
+  "lng": -97.742403,
+  "city": "austin"
  },
  {
   "camera_id": "50",
   "name": "CESAR CHAVEZ ST / BRAZOS ST (BRAZOS GARAGE)",
   "lat": 30.263094,
-  "lng": -97.743067
+  "lng": -97.743067,
+  "city": "austin"
  },
  {
   "camera_id": "65",
   "name": "MARTIN LUTHER KING JR BLVD / TRINITY ST",
   "lat": 30.279638,
-  "lng": -97.734512
+  "lng": -97.734512,
+  "city": "austin"
  },
  {
   "camera_id": "66",
   "name": "MARTIN LUTHER KING JR BLVD / RED RIVER ST",
   "lat": 30.278975,
-  "lng": -97.732193
+  "lng": -97.732193,
+  "city": "austin"
  },
  {
   "camera_id": "71",
   "name": "38TH ST / GUADALUPE ST",
   "lat": 30.302742,
-  "lng": -97.738144
+  "lng": -97.738144,
+  "city": "austin"
  },
  {
   "camera_id": "89",
   "name": "38TH ST / LAMAR BLVD",
   "lat": 30.305197,
-  "lng": -97.74305
+  "lng": -97.74305,
+  "city": "austin"
  },
  {
   "camera_id": "98",
   "name": "LAMAR BLVD / OLTORF ST",
   "lat": 30.248413,
-  "lng": -97.769951
+  "lng": -97.769951,
+  "city": "austin"
  },
  {
   "camera_id": "155",
   "name": "PLEASANT VALLEY RD / RIVERSIDE DR",
   "lat": 30.234114,
-  "lng": -97.722809
+  "lng": -97.722809,
+  "city": "austin"
  },
  {
   "camera_id": "200",
   "name": "RIVERSIDE DR / MONTOPOLIS DR",
   "lat": 30.224932,
-  "lng": -97.703438
+  "lng": -97.703438,
+  "city": "austin"
  },
  {
   "camera_id": "702",
   "name": "MARTIN LUTHER KING JR BLVD / COLORADO ST",
   "lat": 30.281042,
-  "lng": -97.73946
+  "lng": -97.73946,
+  "city": "austin"
  },
  {
   "camera_id": "949",
   "name": "BEN WHITE BLVD SVRD / MONTOPOLIS DR",
   "lat": 30.212687,
-  "lng": -97.712097
+  "lng": -97.712097,
+  "city": "austin"
  },
  {
   "camera_id": "1276",
   "name": "BASTROP HWY / MONTOPOLIS TO BASTROP NB RAMP (US 183/Montopolis)",
   "lat": 30.242779,
-  "lng": -97.690212
+  "lng": -97.690212,
+  "city": "austin"
  },
  {
   "camera_id": "19",
   "name": "BRAKER LN / LAMAR BLVD",
   "lat": 30.381935,
-  "lng": -97.686371
+  "lng": -97.686371,
+  "city": "austin"
  },
  {
   "camera_id": "58",
   "name": "KOENIG LN / LAMAR BLVD",
   "lat": 30.325943,
-  "lng": -97.726334
+  "lng": -97.726334,
+  "city": "austin"
  },
  {
   "camera_id": "218",
   "name": "ANDERSON LN SVRD / LAMAR BLVD SVRD",
   "lat": 30.34849,
-  "lng": -97.7125
+  "lng": -97.7125,
+  "city": "austin"
  },
  {
   "camera_id": "458",
   "name": "KOENIG LN / GUADALUPE ST",
   "lat": 30.323502,
-  "lng": -97.723831
+  "lng": -97.723831,
+  "city": "austin"
  },
  {
   "camera_id": "541",
   "name": "SH 130 SVRD / 290 HWY SVRD",
   "lat": 30.339815,
-  "lng": -97.591461
+  "lng": -97.591461,
+  "city": "austin"
  },
  {
   "camera_id": "573",
   "name": "ANDERSON LN SVRD / LAMAR BLVD SVRD",
   "lat": 30.347004,
-  "lng": -97.712425
+  "lng": -97.712425,
+  "city": "austin"
  },
  {
   "camera_id": "800",
   "name": "BRAKER LN / DOMAIN DR (Pickle Research Campus Driveway)",
   "lat": 30.392347,
-  "lng": -97.725624
+  "lng": -97.725624,
+  "city": "austin"
  },
  {
   "camera_id": "699",
   "name": "RIVERSIDE DR / WILLOW CREEK DR",
   "lat": 30.23768,
-  "lng": -97.725662
+  "lng": -97.725662,
+  "city": "austin"
  },
  {
   "camera_id": "173",
   "name": "BRAKER LN / METRIC BLVD",
   "lat": 30.392342,
-  "lng": -97.708283
+  "lng": -97.708283,
+  "city": "austin"
  },
  {
   "camera_id": "220",
   "name": "FM 620 RD / ANDERSON MILL RD",
   "lat": 30.45545,
-  "lng": -97.825806
+  "lng": -97.825806,
+  "city": "austin"
  },
  {
   "camera_id": "787",
   "name": "RIVERSIDE DR / PARKER LN",
   "lat": 30.243229,
-  "lng": -97.729309
+  "lng": -97.729309,
+  "city": "austin"
  },
  {
   "camera_id": "471",
   "name": "BURNET RD / GAULT LN",
   "lat": 30.404934,
-  "lng": -97.716049
+  "lng": -97.716049,
+  "city": "austin"
  },
  {
   "camera_id": "92",
   "name": "LAMAR BLVD / 24TH ST",
   "lat": 30.288534,
-  "lng": -97.75277
+  "lng": -97.75277,
+  "city": "austin"
  },
  {
   "camera_id": "202",
   "name": "BURLESON RD / MC KINNEY FALLS PKWY",
   "lat": 30.191999,
-  "lng": -97.698387
+  "lng": -97.698387,
+  "city": "austin"
  },
  {
   "camera_id": "168",
   "name": "BRODIE LN / SLAUGHTER LN",
   "lat": 30.18355,
-  "lng": -97.849793
+  "lng": -97.849793,
+  "city": "austin"
  },
  {
   "camera_id": "283",
   "name": "DEAN KEETON ST / LAFAYETTE AVE",
   "lat": 30.284424,
-  "lng": -97.721809
+  "lng": -97.721809,
+  "city": "austin"
  },
  {
   "camera_id": "150",
   "name": "CESAR CHAVEZ ST / PLEASANT VALLEY RD",
   "lat": 30.252989,
-  "lng": -97.712784
+  "lng": -97.712784,
+  "city": "austin"
  },
  {
   "camera_id": "117",
   "name": "MENCHACA RD / SLAUGHTER LN",
   "lat": 30.173737,
-  "lng": -97.823731
+  "lng": -97.823731,
+  "city": "austin"
  },
  {
   "camera_id": "302",
   "name": "LAMAR BLVD / PAYTON GIN RD",
   "lat": 30.357647,
-  "lng": -97.700111
+  "lng": -97.700111,
+  "city": "austin"
  },
  {
   "camera_id": "325",
   "name": "BRAKER LN / DESSAU RD",
   "lat": 30.372438,
-  "lng": -97.665733
+  "lng": -97.665733,
+  "city": "austin"
  },
  {
   "camera_id": "1444",
   "name": "GUADALUPE ST / 17TH ST",
   "lat": 30.279736,
-  "lng": -97.742287
+  "lng": -97.742287,
+  "city": "austin"
  },
  {
   "camera_id": "401",
   "name": "MANOR RD / LOYOLA LN",
   "lat": 30.310062,
-  "lng": -97.667152
+  "lng": -97.667152,
+  "city": "austin"
  },
  {
   "camera_id": "240",
   "name": "MANOR RD / NORTHEAST DR",
   "lat": 30.308533,
-  "lng": -97.670769
+  "lng": -97.670769,
+  "city": "austin"
  },
  {
   "camera_id": "1356",
   "name": "IH 35 SVRD / 6TH ST",
   "lat": 30.265636,
-  "lng": -97.7342
+  "lng": -97.7342,
+  "city": "austin"
  },
  {
   "camera_id": "227",
   "name": "MC NEIL DR / PARMER LN",
   "lat": 30.44385,
-  "lng": -97.742394
+  "lng": -97.742394,
+  "city": "austin"
  },
  {
   "camera_id": "452",
   "name": "AIRPORT BLVD / ZACH SCOTT ST",
   "lat": 30.294119,
-  "lng": -97.707878
+  "lng": -97.707878,
+  "city": "austin"
  },
  {
   "camera_id": "525",
   "name": "4601 BLK MC KINNEY FALLS PKWY (TX Parks and Wildlife)",
   "lat": 30.188358,
-  "lng": -97.713356
+  "lng": -97.713356,
+  "city": "austin"
+ },
+ {
+  "camera_id": "txdot-dal-1017",
+  "name": "Spur 366 @ Field St",
+  "lat": 32.785657,
+  "lng": -96.806658,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1030",
+  "name": "Spur 366 @ WB Tunnel Cam 4",
+  "lat": 32.789865,
+  "lng": -96.801877,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1022",
+  "name": "Spur 366 @ Routh St.",
+  "lat": 32.793912,
+  "lng": -96.795172,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-628",
+  "name": "IH345 @ Taylor",
+  "lat": 32.781147,
+  "lng": -96.783982,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-624",
+  "name": "IH345 @ Live Oak",
+  "lat": 32.78649,
+  "lng": -96.792466,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-681",
+  "name": "IH35E @ Danieldale",
+  "lat": 32.633865,
+  "lng": -96.822938,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-785",
+  "name": "IH35E @ US67",
+  "lat": 32.710823,
+  "lng": -96.830033,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-580",
+  "name": "IH30 @ IH35E Mixmaster",
+  "lat": 32.769758,
+  "lng": -96.803163,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-679",
+  "name": "IH35E @ Dallas North Tollway",
+  "lat": 32.795993,
+  "lng": -96.815026,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-757",
+  "name": "IH35E @ Regal Row",
+  "lat": 32.835306,
+  "lng": -96.875199,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-764",
+  "name": "IH35E @ Royal South",
+  "lat": 32.891553,
+  "lng": -96.897779,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-905",
+  "name": "LBJ Express IH35E @ Harry Hines NB",
+  "lat": 32.914512,
+  "lng": -96.897677,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-652",
+  "name": "IH35E @ Belt Line SB",
+  "lat": 32.953193,
+  "lng": -96.910489,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-700",
+  "name": "IH35E @ Frankford SB",
+  "lat": 32.991414,
+  "lng": -96.944786,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-674",
+  "name": "IH35E @ Corporate Dr",
+  "lat": 33.017923,
+  "lng": -96.982664,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-879",
+  "name": "IH635 @ Olympus",
+  "lat": 32.919102,
+  "lng": -96.974832,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-935",
+  "name": "LBJ Express IH635 @ Webb Chapel EB Express Lanes",
+  "lat": 32.912818,
+  "lng": -96.873908,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-924",
+  "name": "LBJ Express IH635 @ Midway Intersection EB",
+  "lat": 32.924543,
+  "lng": -96.839228,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-930",
+  "name": "LBJ Express IH635 @ Preston WB Express Lanes",
+  "lat": 32.925597,
+  "lng": -96.803555,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-923",
+  "name": "LBJ Express IH635 @ Merit",
+  "lat": 32.924171,
+  "lng": -96.772254,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-853",
+  "name": "IH635 @ Forest",
+  "lat": 32.90552,
+  "lng": -96.72676,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-878",
+  "name": "IH635 @ Oates",
+  "lat": 32.83976,
+  "lng": -96.63362,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-497",
+  "name": "IH20 @ IH635 North",
+  "lat": 32.703778,
+  "lng": -96.625328,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-869",
+  "name": "IH635 @ Lake June",
+  "lat": 32.735849,
+  "lng": -96.611766,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1108",
+  "name": "US75 @ Lemmon",
+  "lat": 32.80498,
+  "lng": -96.79354,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1096",
+  "name": "US75 @ Fitzhugh",
+  "lat": 32.81437,
+  "lng": -96.79027,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1118",
+  "name": "US75 @ Mockingbird",
+  "lat": 32.83755,
+  "lng": -96.77824,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1123",
+  "name": "US75 @ Park Lane",
+  "lat": 32.873515,
+  "lng": -96.769986,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1099",
+  "name": "US75 @ Forest",
+  "lat": 32.910059,
+  "lng": -96.769262,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1079",
+  "name": "US75 @ Arapaho",
+  "lat": 32.96399,
+  "lng": -96.72367,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1130",
+  "name": "US75 @ Renner",
+  "lat": 32.995308,
+  "lng": -96.709811,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1077",
+  "name": "US75 @ 15th St (Plano)",
+  "lat": 33.014466,
+  "lng": -96.708591,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-607",
+  "name": "IH30 @ Park N Ride",
+  "lat": 32.758872,
+  "lng": -96.981045,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-591",
+  "name": "IH30 @ Loop 12",
+  "lat": 32.766021,
+  "lng": -96.913077,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-620",
+  "name": "IH30 @ Trinity River",
+  "lat": 32.770406,
+  "lng": -96.81681,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-534",
+  "name": "IH30 @ 2nd Ave",
+  "lat": 32.780827,
+  "lng": -96.771499,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-590",
+  "name": "IH30 @ Lawnview",
+  "lat": 32.791665,
+  "lng": -96.732602,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-601",
+  "name": "IH30 @ Motley East",
+  "lat": 32.814002,
+  "lng": -96.646935,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-608",
+  "name": "IH30 @ PGBT East",
+  "lat": 32.858924,
+  "lng": -96.550768,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-844",
+  "name": "IH45 @ Wintergreen South",
+  "lat": 32.633515,
+  "lng": -96.69931,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-830",
+  "name": "IH45 @ Overton South",
+  "lat": 32.723875,
+  "lng": -96.761612,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-838",
+  "name": "IH45 @ US175 North",
+  "lat": 32.767054,
+  "lng": -96.776523,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-994",
+  "name": "SH183 @ Henry Dr",
+  "lat": 32.836837,
+  "lng": -96.982519,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-997",
+  "name": "SH183 @ Mockingbird",
+  "lat": 32.819615,
+  "lng": -96.873687,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-956",
+  "name": "Loop 12 @ Union Bower South",
+  "lat": 32.81675,
+  "lng": -96.92196,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-1053",
+  "name": "US175 @ Loop 12",
+  "lat": 32.713677,
+  "lng": -96.683644,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-466",
+  "name": "IH20 @ Belt Line",
+  "lat": 32.672674,
+  "lng": -96.985596,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-508",
+  "name": "IH20 @ Lumley Rd",
+  "lat": 32.702978,
+  "lng": -96.553763,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-460",
+  "name": "High Five N.E. 1",
+  "lat": 32.927164,
+  "lng": -96.760603,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-981",
+  "name": "SH114 @ Wingren Dr",
+  "lat": 32.862201,
+  "lng": -96.937443,
+  "city": "dallas"
  }
 ]
