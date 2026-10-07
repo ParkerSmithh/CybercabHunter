@@ -693,10 +693,10 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-838",
-  "name": "IH45 @ US175 North",
-  "lat": 32.767054,
-  "lng": -96.776523,
+  "camera_id": "txdot-dal-823",
+  "name": "IH45 @ Loop 12",
+  "lat": 32.701176,
+  "lng": -96.753359,
   "city": "dallas"
  },
  {
@@ -714,17 +714,10 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1085",
-  "name": "US75 @ Caruth Haven",
-  "lat": 32.86115,
-  "lng": -96.77049,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-839",
-  "name": "IH45 @ US175 South",
-  "lat": 32.761256,
-  "lng": -96.774321,
+  "camera_id": "txdot-dal-822",
+  "name": "IH45 @ Linfield",
+  "lat": 32.714454,
+  "lng": -96.756825,
   "city": "dallas"
  },
  {
@@ -763,24 +756,17 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1119",
-  "name": "US75 @ Monticello",
-  "lat": 32.82846,
-  "lng": -96.783,
+  "camera_id": "txdot-dal-820",
+  "name": "IH45 @ Lamar North",
+  "lat": 32.751446,
+  "lng": -96.77012,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1140",
-  "name": "US75 @ SMU Blvd.",
-  "lat": 32.842216,
-  "lng": -96.774989,
-  "city": "dallas"
- },
- {
-  "camera_id": "txdot-dal-1109",
-  "name": "US75 @ Lovers Lane",
-  "lat": 32.85148,
-  "lng": -96.77148,
+  "camera_id": "txdot-dal-614",
+  "name": "IH30 @ Samuell",
+  "lat": 32.793664,
+  "lng": -96.726677,
   "city": "dallas"
  },
  {
@@ -812,31 +798,45 @@
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1096",
-  "name": "US75 @ Fitzhugh",
-  "lat": 32.81437,
-  "lng": -96.79027,
+  "camera_id": "txdot-dal-1000",
+  "name": "SH183 @ Regal Row",
+  "lat": 32.828247,
+  "lng": -96.886688,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-650",
-  "name": "IH35E @ Beckley",
-  "lat": 32.74033,
-  "lng": -96.822979,
+  "camera_id": "txdot-dal-997",
+  "name": "SH183 @ Mockingbird",
+  "lat": 32.819615,
+  "lng": -96.873687,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1108",
-  "name": "US75 @ Lemmon",
-  "lat": 32.80498,
-  "lng": -96.79354,
+  "camera_id": "txdot-dal-946",
+  "name": "Loop 12 @ SH183 East",
+  "lat": 32.838557,
+  "lng": -96.915002,
   "city": "dallas"
  },
  {
-  "camera_id": "txdot-dal-1024",
-  "name": "Spur 366 @ US75 North",
-  "lat": 32.795741,
-  "lng": -96.794736,
+  "camera_id": "txdot-dal-1002",
+  "name": "SH183 @ SH114",
+  "lat": 32.835491,
+  "lng": -96.901512,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-579",
+  "name": "IH30 @ Hunnicut",
+  "lat": 32.795173,
+  "lng": -96.714988,
+  "city": "dallas"
+ },
+ {
+  "camera_id": "txdot-dal-755",
+  "name": "IH35E @ Raceway",
+  "lat": 32.845138,
+  "lng": -96.877725,
   "city": "dallas"
  }
 ]

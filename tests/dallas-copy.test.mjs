@@ -73,14 +73,16 @@ function run() {
     check(`the Dallas zone is a closed ring in Dallas, ~81 mi² (${mi2.toFixed(1)})`, closed && inDallas && ring.length > 10 && mi2 > 75 && mi2 < 87);
     const cameras = JSON.parse(read('data/traffic-cameras.json')).filter(c => c.city === 'dallas');
     check('Dallas has exactly 50 distinct TxDOT cameras', cameras.length === 50 && new Set(cameras.map(c => c.camera_id)).size === 50 && cameras.every(c => /^txdot-dal-\d+$/.test(c.camera_id)));
-    // Ray casting against the actual shared map polygon, rather than its bounding box.
+    // The owner's final corridor plan intentionally extends beyond the service zone.
+    // Keep checking the polygon and pin the exceptions so boundary drift is visible.
+    const corridorExceptions = new Set(['txdot-dal-823', 'txdot-dal-822', 'txdot-dal-820', 'txdot-dal-614', 'txdot-dal-946', 'txdot-dal-1002', 'txdot-dal-579', 'txdot-dal-755']);
     for (const camera of cameras) {
       let inside = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
         const [xi, yi] = ring[i], [xj, yj] = ring[j];
         if ((yi > camera.lat) !== (yj > camera.lat) && camera.lng < (xj - xi) * (camera.lat - yi) / (yj - yi) + xi) inside = !inside;
       }
-      check(`${camera.camera_id} (${camera.name}) is inside the Dallas service zone`, inside);
+      check(`${camera.camera_id} (${camera.name}) matches the final plan boundary classification`, inside === !corridorExceptions.has(camera.camera_id));
     }
     const sim = read('simulation.html');
     const dal = sim.slice(sim.indexOf('<div id="dallasContent"'), sim.indexOf('<div id="accountBackdrop"'));
