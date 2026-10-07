@@ -5,8 +5,12 @@
    Frames: images/cybercab-doors/{d,m}/000-107.webp. 108 real frames of the
    door swing from docs/cybercab-doors-source/CybercabOpening.mp4 (video
    frames 9-145: closed, matching CybercabClosed.png, to both doors at their
-   highest, the pose in CybercabOpen.png; sources kept out of public/), picked evenly by how much the picture changes so the
-   doors move at a steady pace. d = 800px wide, m = 480px; the set is chosen
+   highest, the pose in CybercabOpen.png; sources kept out of public/),
+   picked evenly by how much the picture changes so the doors move at a
+   steady pace. Stabilized: the source camera drifts down ~13px and zooms
+   out ~1% while the doors rise, which read as the car bobbing, so each
+   frame is shifted and scaled back onto frame 0 (measured on the wheels
+   and bumper; ~1-3px of perspective remains). d = 800px wide, m = 480px; the set is chosen
    from the rendered width x pixel density.
 
    Playback: 108 frames in DURATION_MS (1.5 s, ~72 distinct frames per
@@ -24,6 +28,7 @@
   const FRAMES = 108;
   const DURATION_MS = 1500;
   const DIR = 'images/cybercab-doors/';
+  const FRAMES_VERSION = 3;   // bump when the frames are regenerated (same names, new pixels)
   const sets = {};   // 'd' | 'm' -> { frames: [], ready: Promise }
   const reduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
@@ -41,7 +46,7 @@
         if (img.decode) img.decode().then(done, done); else done();
       };
       img.onerror = () => resolve();   // a missing frame falls back to its neighbour
-      img.src = `${DIR}${key}/${pad(i)}.webp`;
+      img.src = `${DIR}${key}/${pad(i)}.webp?v=${FRAMES_VERSION}`;
     })));
     sets[key] = { frames, ready };
     return sets[key];

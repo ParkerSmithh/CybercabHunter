@@ -48,9 +48,9 @@
      theme they are drawn with `lighten`: the page's own background shows
      through the studio and the car sits directly on the page, no panel or
      edge. Light mode keeps a black rounded studio panel (lighten would wash
-     the car out on a light page). The 800:438 box is reserved up front. */
+     the car out on a light page). The 800:446 box is reserved up front. */
   .cc-doors{display:flex; flex-direction:column; align-items:center; gap:.6rem;}
-  .cc-doors-stage{position:relative; width:100%; aspect-ratio:800/438; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; border-radius:16px;}
+  .cc-doors-stage{position:relative; width:100%; aspect-ratio:800/446; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; border-radius:16px;}
   .cc-doors-stage:focus-visible{box-shadow:0 0 0 2px rgb(var(--gold));}
   :root[data-theme="light"] .cc-doors-stage{background:#000; overflow:hidden; transition:box-shadow var(--t, .2s) var(--ease, ease);}
   :root[data-theme="light"] .cc-doors-stage:hover{box-shadow:0 0 0 1px rgb(var(--gold) / 0.35);}
@@ -186,7 +186,7 @@
          first frame, so the box is reserved before any script runs. -->
     <div class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <img src="images/cybercab-doors/m/000.webp" srcset="images/cybercab-doors/m/000.webp 480w, images/cybercab-doors/d/000.webp 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
+        <img src="images/cybercab-doors/m/000.webp?v=3" srcset="images/cybercab-doors/m/000.webp?v=3 480w, images/cybercab-doors/d/000.webp?v=3 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="446" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
       </div>
       <button type="button" class="cc-doors-btn" data-cc-button aria-expanded="false" aria-label="Open the Cybercab's doors">
@@ -323,7 +323,7 @@
          first frame, so the box is reserved before any script runs. -->
     <div class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <img src="images/cybercab-doors/m/000.webp" srcset="images/cybercab-doors/m/000.webp 480w, images/cybercab-doors/d/000.webp 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
+        <img src="images/cybercab-doors/m/000.webp?v=3" srcset="images/cybercab-doors/m/000.webp?v=3 480w, images/cybercab-doors/d/000.webp?v=3 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="446" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
       </div>
       <button type="button" class="cc-doors-btn" data-cc-button aria-expanded="false" aria-label="Open the Cybercab's doors">
@@ -928,6 +928,6 @@
   })();
 </script>
 <script src="js/fleet-compare.js?v=2"></script>
-<script src="js/cybercab-doors.js?v=2"></script>
+<script src="js/cybercab-doors.js?v=3"></script>
 </body>
 </html>

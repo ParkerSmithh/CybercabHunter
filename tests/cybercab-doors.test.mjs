@@ -24,11 +24,11 @@ function openPage({ reduced = false } = {}) {
   const draws = [];
   w.matchMedia = q => ({ matches: reduced && /reduce/.test(q), addEventListener() {}, removeEventListener() {} });
   w.HTMLCanvasElement.prototype.getContext = function () {
-    return { globalAlpha: 1, drawImage(img) { if (this.globalAlpha === 1) draws.push(img.src.split('/').pop()); } };
+    return { globalAlpha: 1, drawImage(img) { if (this.globalAlpha === 1) draws.push(img.src.split('/').pop().split('?')[0]); } };
   };
   // Images "load" at once, with a natural size, and record what was fetched.
   w.Image = class {
-    constructor() { this.naturalWidth = 800; this.naturalHeight = 438; }
+    constructor() { this.naturalWidth = 800; this.naturalHeight = 446; }
     set src(v) { this._src = v; loaded.push(v); setTimeout(() => this.onload && this.onload(), 0); }
     get src() { return this._src; }
   };
@@ -61,7 +61,7 @@ async function run() {
     check('no static car image left in the two headers', !/<img src="images\/Cybercab2\.png"[^>]*class="sim-hero-car"/.test(HTML));
     check('Fleet ROI and Fleet ETA each have one', /id="simPanelRoi"[\s\S]*data-cc-doors[\s\S]*id="simPanelEta"[\s\S]*data-cc-doors/.test(HTML) && (HTML.match(/data-cc-doors>/g) || []).length === 2);
     check('the page loads js/cybercab-doors.js', /<script src="js\/cybercab-doors\.js[^"]*"><\/script>/.test(HTML));
-    check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/000\.webp"[^>]*width="800" height="438"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/438/.test(HTML));
+    check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/000\.webp\?v=\d+"[^>]*width="800" height="446"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/446/.test(HTML));
     check('once the canvas is live the still image is hidden (under lighten blending both would show, ghosting the closed doors)', /\.cc-doors\.is-live \.cc-doors-stage img\{visibility:hidden;\}/.test(HTML));
     check('only frame 00 is referenced by the page itself (the rest load on intent)', !/cybercab-doors\/[dm]\/(00[1-9]|0[1-9]\d|10[0-7])\.webp/.test(HTML));
   }
@@ -75,7 +75,7 @@ async function run() {
     check('no frames are fetched until someone shows intent', p.loaded.length === 0);
     roi.dispatchEvent(new p.w.Event('pointerenter'));
     await p.wait(10);
-    check('hover intent preloads all 108 frames of one size', p.loaded.length === 108 && p.loaded.every(u => /cybercab-doors\/[dm]\/\d{3}\.webp$/.test(u)));
+    check('hover intent preloads all 108 frames of one size', p.loaded.length === 108 && p.loaded.every(u => /cybercab-doors\/[dm]\/\d{3}\.webp\?v=\d+$/.test(u)));
     roi.querySelector('[data-cc-stage]').click();
     check('clicking the car opens: "Close doors", aria-expanded true on both', JSON.stringify(state(roi)) === JSON.stringify({ label: 'Close doors', stage: 'true', button: 'true', aria: "Close the Cybercab's doors" }));
     await p.wait(1800);
