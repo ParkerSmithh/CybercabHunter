@@ -62,3 +62,20 @@ On an iPhone 14 (34px inset) the bar is 62 + 34 = **96px** tall over **72px** of
 - `style.css?v=33` → `v=34` on every page.
 
 Verified at 390×844 with a simulated 34px inset: the bar measured 96px, and the footer ended **18–19px above it** on all six pages above, with no horizontal overflow. Desktop screenshots at 1280px matched `main`. Deployed Oct 6, 2026 (worker version `768122bd`). On-device check on a physical iPhone was still pending when this entry was written.
+
+## Cybercab door animation ghosted the closed car through the open doors — Oct 6, 2026
+**Symptom:** On `/simulation` (Fleet ROI and Fleet ETA), clicking the interactive Cybercab made the doors "phase through" the frames: as the butterfly doors rose, the closed car stayed visible underneath, with a doubled headlight line and the closed door's outline over the body. Reported by the owner from the live site on Oct 6, 2026, shortly after the change that caused it went live.
+
+**Evidence:** The component in `public/simulation.html` stacks two layers in `.cc-doors-stage`: a still `<img>` of frame 00 (doors closed), and above it the `<canvas>` that plays the animation. Commit `ce00ecc` (Oct 6, 23:19 CDT) gave **both** layers `mix-blend-mode: lighten`, so the car's black studio would blend into the page. Lighten keeps the brighter of the layer and what's beneath it. Before that commit the opaque canvas simply covered the still; after it, every pixel showed whichever was brighter, the closed car (`<img>`) or the open car (canvas).
+
+Measured on the live site in headless Chromium at 1280px: after opening, the stage was compared pixel by pixel with frame 71 alone (the fully open frame) lightened over the page color. **21,095 of 148,200 pixels** differed by more than 60, a mean difference of **11.98**, with the `<img>` still `visibility: visible` under the canvas.
+
+The blend change's own check had sampled only the stage's corner and bottom-edge pixels (both matched the page, `rgb(8, 9, 10)`) and never compared the car itself, which is why the bug shipped.
+
+**Fix:** Commit `fdae3f2` (Oct 6, 2026, 23:28 CDT) adds `.cc-doors.is-live .cc-doors-stage img{visibility:hidden;}`: once the canvas paints its first frame (the component adds `is-live`), the still is hidden. The still remains for first paint and no-JS, so the box is still reserved before any script runs.
+
+Verified on the live site after deploy (worker version `d7b01f89`), by the same comparison:
+- **Ghosting gone:** **1,796** pixels off by more than 60 (1.2%), mean difference **1.90**, and the `<img>` is `visibility: hidden`. The remaining difference is edge resampling: the 800px frame is scaled to 520px by CSS, while the reference was drawn at 520px.
+- **Both directions clean:** screenshots mid-opening, mid-closing and closed again show no doubling.
+- **Regression test:** `tests/cybercab-doors.test.mjs` checks that the rule exists.
+- **Still holds:** re-measured after the slower swing in `30e19a0` (108 frames, 1.5 s), giving a mean difference of 1.88 against the new last frame, 107.
