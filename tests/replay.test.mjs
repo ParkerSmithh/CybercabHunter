@@ -193,7 +193,7 @@ async function run() {
 
     const empty = await makeApp();
     const none = await page(empty, '?range=7d', { reduceMotion: true });
-    check('a window with no sightings: an honest empty state, counter 0, nothing faked', !none.d.getElementById('replayEmpty').classList.contains('hidden') && Number(none.d.getElementById('replayCounter').dataset.value) === 0 && none.R.state.dots.length === 0);
+    check('a window with no sightings: no empty-state box (removed on owner request), counter 0, nothing faked', !none.d.getElementById('replayEmpty') && Number(none.d.getElementById('replayCounter').dataset.value) === 0 && none.R.state.dots.length === 0);
     none.w.close();
   }
 
@@ -212,6 +212,7 @@ async function run() {
     check('the replay\'s service zone is the Zones page\'s boundary (and the homepage\'s)', shared === coordsIn(zones, /const serviceZoneCoords = \[([\s\S]*?)\];/) && shared === coordsIn(read('public/index.html'), /const serviceZoneCoords = \[([\s\S]*?)\];/));
     const rjs = read('public/js/replay.js');
     check('the sidebar heading names the city (AUSTIN, TX by default; DALLAS, TX for ?city=dallas)', /<h1 id="replayCity"[^>]*>AUSTIN, TX<\/h1>/.test(html) && /heading\.textContent = 'DALLAS, TX'/.test(rjs));
+    check('Dallas replays start framed on the Dallas service zone, like Austin', /CITY === 'dallas' \? CCCAustinMap\.DALLAS_SERVICE_ZONE : CCCAustinMap\.SERVICE_ZONE\)/.test(rjs.slice(rjs.indexOf('const zoneBounds'))) && !/DALLAS_BOUNDS/.test(rjs));
     check('Dallas replays draw the Dallas service zone; Austin keeps its own', /CITY === 'dallas' \? CCCAustinMap\.DALLAS_SERVICE_ZONE : CCCAustinMap\.SERVICE_ZONE/.test(rjs));
     const zoneAt = rjs.indexOf('ring.forEach'), camsAt = rjs.indexOf('for (const c of state.cameras)'), heatAt = rjs.indexOf('// Heat:');
     check('the zone is drawn on the canvas (above the sky tint), before cameras and sightings', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && zoneAt > 0 && zoneAt < camsAt && camsAt < heatAt && !/addServiceZone\(state\.map/.test(rjs));

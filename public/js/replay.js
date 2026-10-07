@@ -35,10 +35,9 @@ window.CCCReplay = (function () {
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
   // The city replayed (?city=dallas; Austin by default, its URLs unchanged).
-  // Dallas: its TxDOT camera captures, framed on the metro its cameras cover,
-  // with its service zone outlined like Austin's. Same time zone.
+  // Dallas: its TxDOT camera captures, framed on its service zone like Austin
+  // (cameras outside it are a pan away). Same time zone.
   const CITY = (() => { try { return new URLSearchParams(location.search).get('city') === 'dallas' ? 'dallas' : 'austin'; } catch (e) { return 'austin'; } })();
-  const DALLAS_BOUNDS = [[-96.99, 32.63], [-96.55, 33.02]];
 
   // ---- Time (Austin) ----
   function zoneParts(ms) {
@@ -159,8 +158,9 @@ window.CCCReplay = (function () {
     const panel = $('replayPanel');
     const sideInset = () => (panel && window.innerWidth >= 1024 ? panel.offsetWidth + 32 : 0);
     const zoneBounds = () => {
-      if (CITY === 'dallas') return DALLAS_BOUNDS;
-      const z = window.CCCAustinMap ? CCCAustinMap.SERVICE_ZONE : [[-97.87, 30.14], [-97.55, 30.46]];
+      const z = window.CCCAustinMap
+        ? (CITY === 'dallas' ? CCCAustinMap.DALLAS_SERVICE_ZONE : CCCAustinMap.SERVICE_ZONE)
+        : (CITY === 'dallas' ? [[-96.93, 32.73], [-96.72, 32.88]] : [[-97.87, 30.14], [-97.55, 30.46]]);
       const lng = z.map(c => c[0]), lat = z.map(c => c[1]);
       return [[Math.min(...lng), Math.min(...lat)], [Math.max(...lng), Math.max(...lat)]];
     };
@@ -376,13 +376,11 @@ window.CCCReplay = (function () {
       $('replayStartLabel').textContent = fmtEdge(win.start);
       $('replayEndLabel').textContent = fmtEdge(win.end);
       $('replayLoading').classList.remove('hidden');
-      $('replayEmpty').classList.add('hidden');
       let dots = [];
       try { dots = await fetchAll(win.start, win.end); } catch (e) { dots = []; }
       state.dots = dots;
       bins = histogram(dots, win.start, win.end, binsFor(win.range, win.start, win.end));
       $('replayLoading').classList.add('hidden');
-      $('replayEmpty').classList.toggle('hidden', dots.length > 0);
       if (reduceMotion) { seek(state.end); return; }   // no animation: straight to the full picture
       seek(state.start);
       if (dots.length) play();
