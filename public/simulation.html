@@ -37,20 +37,25 @@
   .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
   /* The Cybercab in both views' headers: one size and place, always to the
      right of the text (smaller on phones, beside the heading). */
-  .sim-hero-car{width:200px; height:auto; align-self:start; margin-top:28px; user-select:none;}
+  .sim-hero-car{width:240px; height:auto; align-self:start; margin-top:28px; user-select:none;}
   /* Phones: the car sits above the text instead of squeezing it (it was
      beside it, leaving the description a ~200px column). Big enough to tap. */
-  @media (max-width:639px){ .sim-hero-car{order:-1; margin-top:0; width:220px;} }
-  @media (min-width:768px){ .sim-hero-car{width:300px; align-self:center; margin-top:0;} }
-  @media (min-width:1024px){ .sim-hero-car{width:400px;} }
-  /* Interactive Cybercab (js/cybercab-doors.js). The frames are shot on black,
-     so the car sits in a black studio panel: seamless on the dark canvas, a
-     framed showroom in light mode. The 800:438 box is reserved up front. */
+  @media (max-width:639px){ .sim-hero-car{order:-1; margin-top:0; width:280px; max-width:100%;} }
+  @media (min-width:768px){ .sim-hero-car{width:380px; align-self:center; margin-top:0;} }
+  @media (min-width:1024px){ .sim-hero-car{width:520px;} }
+  /* Interactive Cybercab (js/cybercab-doors.js). The frames are shot on a
+     black studio whose near-blacks are crushed to pure black, so in the dark
+     theme they are drawn with `lighten`: the page's own background shows
+     through the studio and the car sits directly on the page, no panel or
+     edge. Light mode keeps a black rounded studio panel (lighten would wash
+     the car out on a light page). The 800:438 box is reserved up front. */
   .cc-doors{display:flex; flex-direction:column; align-items:center; gap:.6rem;}
-  .cc-doors-stage{position:relative; width:100%; aspect-ratio:800/438; border-radius:16px; overflow:hidden; background:#000; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; transition:box-shadow var(--t, .2s) var(--ease, ease);}
-  .cc-doors-stage:hover{box-shadow:0 0 0 1px rgb(var(--gold) / 0.35);}
+  .cc-doors-stage{position:relative; width:100%; aspect-ratio:800/438; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; border-radius:16px;}
   .cc-doors-stage:focus-visible{box-shadow:0 0 0 2px rgb(var(--gold));}
-  .cc-doors-stage img, .cc-doors-stage canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  :root[data-theme="light"] .cc-doors-stage{background:#000; overflow:hidden; transition:box-shadow var(--t, .2s) var(--ease, ease);}
+  :root[data-theme="light"] .cc-doors-stage:hover{box-shadow:0 0 0 1px rgb(var(--gold) / 0.35);}
+  .cc-doors-stage img, .cc-doors-stage canvas{position:absolute; inset:0; width:100%; height:100%; display:block; mix-blend-mode:lighten;}
+  :root[data-theme="light"] .cc-doors-stage img, :root[data-theme="light"] .cc-doors-stage canvas{mix-blend-mode:normal;}
   .cc-doors-stage canvas{opacity:0;}
   .cc-doors.is-live .cc-doors-stage canvas{opacity:1;}
   .cc-doors-btn{display:inline-flex; align-items:center; gap:.4rem; min-height:36px; padding:0 .9rem; border-radius:999px; border:1px solid rgb(var(--gold) / 0.35); font-size:.75rem; font-weight:600; letter-spacing:.02em; color:rgb(var(--gold-ink, var(--gold))); background:transparent; transition:background-color var(--t, .2s) var(--ease, ease);}
@@ -167,7 +172,7 @@
      the right, same size and place (.sim-hero-car; on phones, above the text).
      The car is the interactive door component (js/cybercab-doors.js). -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center max-sm:py-6 max-sm:gap-3">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 md:items-center max-sm:py-6 max-sm:gap-3">
     <div class="max-w-2xl">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ROI</h1>
@@ -178,7 +183,7 @@
          first frame, so the box is reserved before any script runs. -->
     <div class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <img src="images/cybercab-doors/m/00.webp" srcset="images/cybercab-doors/m/00.webp 480w, images/cybercab-doors/d/00.webp 800w" sizes="(min-width:1024px) 400px, (min-width:768px) 300px, 220px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
+        <img src="images/cybercab-doors/m/00.webp" srcset="images/cybercab-doors/m/00.webp 480w, images/cybercab-doors/d/00.webp 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
       </div>
       <button type="button" class="cc-doors-btn" data-cc-button aria-expanded="false" aria-label="Open the Cybercab's doors">
@@ -296,7 +301,7 @@
      (with its sample size), reported (with its source) or assumed. The model
      and its inputs: docs/fleet-eta-live-data-research.md §3. -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-4 md:gap-8 md:items-center max-sm:py-6 max-sm:gap-3">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 md:items-center max-sm:py-6 max-sm:gap-3">
     <div class="max-w-2xl">
       <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Fleet comparison</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ETA</h1>
@@ -315,7 +320,7 @@
          first frame, so the box is reserved before any script runs. -->
     <div class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <img src="images/cybercab-doors/m/00.webp" srcset="images/cybercab-doors/m/00.webp 480w, images/cybercab-doors/d/00.webp 800w" sizes="(min-width:1024px) 400px, (min-width:768px) 300px, 220px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
+        <img src="images/cybercab-doors/m/00.webp" srcset="images/cybercab-doors/m/00.webp 480w, images/cybercab-doors/d/00.webp 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 280px" width="800" height="438" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
       </div>
       <button type="button" class="cc-doors-btn" data-cc-button aria-expanded="false" aria-label="Open the Cybercab's doors">
