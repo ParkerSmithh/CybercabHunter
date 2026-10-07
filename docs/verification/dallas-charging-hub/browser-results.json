@@ -1,0 +1,74 @@
+[
+  {
+    "width": 1280,
+    "height": 900,
+    "austinPins": 2,
+    "legendIdentical": true,
+    "geometry": {
+      "x": 480.0000000000486,
+      "y": 116.63966154323522,
+      "mapWidth": 1230,
+      "mapHeight": 818,
+      "sidebarRight": 335,
+      "style": {
+        "width": "18px",
+        "height": "18px",
+        "color": "rgb(212, 175, 55)"
+      },
+      "bounds": [
+        [
+          -97.18614446280964,
+          32.69847828312737
+        ],
+        [
+          -96.72011677685943,
+          32.95890834587206
+        ]
+      ]
+    },
+    "popupLines": [
+      "Charging Location",
+      "Irving Robotaxi Hub",
+      "4203 W Royal Ln, Irving, TX — 35,049 sqft warehouse remodel, 16 V4 Supercharger stalls, 212 vehicle storage spots (zoning approved by Irving City Council ~Jul 16, 2026)"
+    ],
+    "citySwitchVerified": true,
+    "overflow": 0,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "austinPins": 2,
+    "legendIdentical": true,
+    "geometry": {
+      "x": 24,
+      "y": 184.63314583784629,
+      "mapWidth": 332,
+      "mapHeight": 598,
+      "sidebarRight": -42.727508544921875,
+      "style": {
+        "width": "18px",
+        "height": "18px",
+        "color": "rgb(212, 175, 55)"
+      },
+      "bounds": [
+        [
+          -97.02752535211233,
+          32.58510795936287
+        ],
+        [
+          -96.70596464788694,
+          33.0718027889972
+        ]
+      ]
+    },
+    "popupLines": [
+      "Charging Location",
+      "Irving Robotaxi Hub",
+      "4203 W Royal Ln, Irving, TX — 35,049 sqft warehouse remodel, 16 V4 Supercharger stalls, 212 vehicle storage spots (zoning approved by Irving City Council ~Jul 16, 2026)"
+    ],
+    "citySwitchVerified": true,
+    "overflow": 0,
+    "errors": []
+  }
+]

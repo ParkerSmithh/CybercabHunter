@@ -491,16 +491,24 @@
   // minimap): js/austin-map.js.
   // Both follow the selected city (Dallas: its TxDOT camera captures and places).
   let currentCity = 'austin';   // declared first: the features read it right away
-  const features = CCCAustinMap.addFeatures(map, { city: () => currentCity });
+  const dallasChargingLocations = [
+    // Owner-verified address/coordinates, geocoded 2026-10-07. Public sources:
+    // TeslaNorth, 2026-05-17: https://teslanorth.com/2026/05/17/teslas-24-acre-robotaxi-hub-just-got-exposed-in-city-documents/
+    // Irving City Council May 7 / July 16, 2026 coverage (citizenportal.ai);
+    // @scotsrule08 drive-by, 2026-05-21: https://x.com/scotsrule08/status/2057582124987724121
+    { name: 'Irving Robotaxi Hub', lat: 32.92182, lng: -97.00428, note: '4203 W Royal Ln, Irving, TX — 35,049 sqft warehouse remodel, 16 V4 Supercharger stalls, 212 vehicle storage spots (zoning approved by Irving City Council ~Jul 16, 2026)' }
+  ];
+  const features = CCCAustinMap.addFeatures(map, { city: () => currentCity, dallasChargingLocations });
   // Place search (js/map-search.js); the map works without it.
   const search = window.CCCMapSearch ? CCCMapSearch.attach(map, { area: () => currentCity }) : null;
 
   // ---- The selected city: map view, camera markers, search, replay link, title ----
-  // Dallas: framed on its service zone (js/austin-map.js), like Austin.
+  // Dallas: frame the service zone and the documented Irving fleet hub.
   const dallasZoneBounds = CCCAustinMap.DALLAS_SERVICE_ZONE.reduce(
     (b, c) => b.extend(c),
     new maplibregl.LngLatBounds(CCCAustinMap.DALLAS_SERVICE_ZONE[0], CCCAustinMap.DALLAS_SERVICE_ZONE[0])
   );
+  dallasChargingLocations.forEach(c => dallasZoneBounds.extend([c.lng, c.lat]));
   const CITY_META = {
     austin: { title: document.title, description: document.querySelector('meta[name="description"]').getAttribute('content'), replay: '/replay?range=month' },
     dallas: { title: 'Cybercab Hunter | Dallas Zone Information', description: 'The Dallas Cybercab service zone on a live map, with traffic-camera spots and fleet and fare stats.', replay: '/replay?range=month&city=dallas' }
@@ -514,8 +522,14 @@
     document.getElementById('zonesReplay').setAttribute('href', meta.replay);
     if (search) search.reset();
     if (features && features.refreshCameras) features.refreshCameras();
+    if (features && features.refreshChargingLocations) features.refreshChargingLocations();
     if (city === 'dallas') {
-      map.fitBounds(dallasZoneBounds, { padding: 24, animate: false });
+      // Leave room for the western hub pin and its 240px popup beside the sidebar.
+      const panel = document.getElementById('zonePanel');
+      const padding = window.innerWidth >= 1024
+        ? { top: 24, right: 24, bottom: 24, left: panel.offsetLeft + panel.offsetWidth + 144 }
+        : 24;
+      map.fitBounds(dallasZoneBounds, { padding, animate: false });
       if (!dallasStatsLoaded) {
         dallasStatsLoaded = true;
         loadFleetStats('dallas', { count: 'dalFleetCountOut', median: 'dalMedianFareOut', avg: 'dalAvgFareOut', perMile: 'dalPerMileOut', basis: 'dalFareBasis' });
