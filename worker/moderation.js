@@ -20,7 +20,7 @@ import { parseManualRideDate, parseManualRideDistance } from './ride-input.js';
 import { readImportItems, runImport, runSummary, itemBase } from './receipt-import.js';
 import { rideReviewState } from './ride-status.js';
 import { sightingPhotoForModerator, deleteSightingPhoto, deleteSightingPhotoByPublicId } from './sightings-public.js';
-import { placeSightingOnMap } from './camera-sightings.js';
+import { placeSightingOnMap, onLiveMap } from './camera-sightings.js';
 import { trafficCameraFor } from './traffic-cameras.js';
 
 // Returns { userId } when the caller is authenticated AND holds the
@@ -115,7 +115,9 @@ export async function apiListApprovedPhotoSightings(request, env) {
       approx_location: r.approx_location,
       license_plate: r.license_plate,
       ...cameraFields(r.camera_id),
-      on_map: !!r.on_map
+      on_map: !!r.on_map,
+      // On the public Zones map right now (its capture is under 24 hours old).
+      visible_on_map: !!r.on_map && onLiveMap(r.map_observed_at)
     }))
   });
 }
@@ -153,7 +155,7 @@ export async function apiAddSightingToMap(request, env, submissionId) {
   }
   // Record the camera on the sighting when it had none (never overwritten).
   await sql.prepare(`UPDATE vehicle_observations SET camera_id = ? WHERE submission_id = ? AND camera_id IS NULL`).bind(camera.camera_id, submissionId).run();
-  return Response.json({ success: true, submission_id: submissionId, on_map: true, already_on_map: !!result.existing });
+  return Response.json({ success: true, submission_id: submissionId, on_map: true, already_on_map: !!result.existing, visible_on_map: onLiveMap(result.observed_at) });
 }
 
 // GET /api/moderation/vehicle-sightings/:submissionId/photo — the photo of a
@@ -245,7 +247,7 @@ export async function apiReviewVehicleSighting(request, env, submissionId) {
   if (decision === 'approved' && existing.camera_id) {
     let map;
     try { map = await placeSightingOnMap(env, submissionId, existing.camera_id); } catch (err) { map = { placed: false, error: 'map_failed' }; }
-    return Response.json({ success: true, submission_id: submissionId, status: decision, map: { on_map: !!map.placed, ...(map.placed ? {} : { error: map.error }) } });
+    return Response.json({ success: true, submission_id: submissionId, status: decision, map: { on_map: !!map.placed, visible_on_map: !!map.placed && onLiveMap(map.observed_at), ...(map.placed ? {} : { error: map.error }) } });
   }
 
   return Response.json({ success: true, submission_id: submissionId, status: decision });
@@ -301,7 +303,7 @@ export async function apiPromoteVehicleSighting(request, env, submissionId) {
   if (existing.camera_id) {
     let map;
     try { map = await placeSightingOnMap(env, submissionId, existing.camera_id); } catch (err) { map = { placed: false, error: 'map_failed' }; }
-    return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle, map: { on_map: !!map.placed, ...(map.placed ? {} : { error: map.error }) } }, { status: 201 });
+    return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle, map: { on_map: !!map.placed, visible_on_map: !!map.placed && onLiveMap(map.observed_at), ...(map.placed ? {} : { error: map.error }) } }, { status: 201 });
   }
   return Response.json({ success: true, submission_id: submissionId, status: 'approved', vehicle }, { status: 201 });
 }

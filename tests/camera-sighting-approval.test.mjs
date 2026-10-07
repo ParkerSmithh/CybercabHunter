@@ -327,6 +327,86 @@ async function run() {
     w.close();
   }
 
+  console.log('12. Truthful map status: "on the map" only while the capture is in the public Zones feed (last 24 hours)');
+  {
+    // Investigation 2026-10-06: the Oct 4 "badge but no marker" approvals all had
+    // committed, well-formed rows in the feed; but a capture filed more than 24
+    // hours before it is approved or added gets a row the feed never returns, and
+    // was still reported as "on the map".
+    const ctx = await makeApp();
+    const ago = (id, hours) => ctx.d1.exec(`UPDATE vehicle_observations SET observed_at = datetime('now', '-${hours} hours') WHERE submission_id = '${id}'`);
+    const feed = async () => (await call(ctx, '/api/camera-sightings', { session: null })).json.map(d => d.camera_id);
+
+    const fresh = (await submit(ctx, { service_area: 'Austin', license_plate: 'FRESH12' })).json.submission_id;
+    await approve(ctx, fresh);
+    ago(fresh, 23);
+    const r1 = await addToMap(ctx, fresh, '538');
+    check('Add to map, filed 23 hours ago: on the map and visible', r1.status === 200 && r1.json.on_map === true && r1.json.visible_on_map === true);
+    check('...and the public Zones feed returns it (the /map flow, native stored observed_at)', (await feed()).includes('538'));
+
+    const stale = (await submit(ctx, { service_area: 'Austin', license_plate: 'STALE12' })).json.submission_id;
+    await approve(ctx, stale);
+    ago(stale, 30);
+    const r2 = await addToMap(ctx, stale, '1493');
+    check('Add to map, filed 30 hours ago: the row is recorded (on_map) but NOT visible', r2.status === 200 && r2.json.on_map === true && r2.json.visible_on_map === false && rows(ctx).some(r => r.source_submission_id === stale));
+    check('...and indeed the public Zones feed does not return it', !(await feed()).includes('1493'));
+    const again = await addToMap(ctx, stale, '1493');
+    check('...retrying says the same (already_on_map, still not visible)', again.json.already_on_map === true && again.json.visible_on_map === false);
+
+    const oldCam = (await submit(ctx, { service_area: 'Austin', camera_id: '61' })).json.submission_id;
+    ago(oldCam, 30);
+    const r3 = await approve(ctx, oldCam);
+    check('Approve a camera sighting filed 30 hours ago: placed, but the response says it is not visible', r3.status === 200 && r3.json.map.on_map === true && r3.json.map.visible_on_map === false && !(await feed()).includes('61'));
+
+    const list = (await call(ctx, '/api/moderation/approved-photo-sightings')).json.sightings;
+    const of = id => list.find(x => x.submission_id === id);
+    check('the approved list agrees with the feed: fresh visible, stale and old-camera not', of(fresh).on_map && of(fresh).visible_on_map === true && of(stale).on_map && of(stale).visible_on_map === false && of(oldCam).on_map && of(oldCam).visible_on_map === false);
+    const plain = (await submit(ctx, { service_area: 'Austin', license_plate: 'PLAIN34' })).json.submission_id;
+    await approve(ctx, plain);
+    const plainRow = (await call(ctx, '/api/moderation/approved-photo-sightings')).json.sightings.find(x => x.submission_id === plain);
+    check('not on the map at all: on_map false, visible_on_map false', plainRow.on_map === false && plainRow.visible_on_map === false);
+  }
+
+  console.log('13. Moderation page: the badge and toasts never claim a marker the map will not show');
+  {
+    const ctx = await makeApp();
+    const ago = (id, hours) => ctx.d1.exec(`UPDATE vehicle_observations SET observed_at = datetime('now', '-${hours} hours') WHERE submission_id = '${id}'`);
+    const fresh = (await recent(ctx)).json.submission_id;
+    await approve(ctx, fresh);
+    const old = (await submit(ctx, { service_area: 'Austin', camera_id: '61' })).json.submission_id;
+    ago(old, 30);
+    await approve(ctx, old);
+    const stale = (await submit(ctx, { service_area: 'Austin', license_plate: 'STALE34' })).json.submission_id;
+    await approve(ctx, stale);
+    ago(stale, 30);
+    const dom = new JSDOM(read('public/moderation.html'), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/moderation.html', pretendToBeVisual: true });
+    const w = dom.window;
+    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+    w.localStorage.setItem('teslaSessionId', 'session-mod');
+    w.URL.createObjectURL = () => 'blob:x';
+    w.fetch = async (url, init = {}) => {
+      const u = String(url);
+      if (u === 'data/traffic-cameras.json') return new Response(read('public/data/traffic-cameras.json'));
+      return worker.fetch(new Request(`https://x${u.replace(WORKER_ORIGIN, '')}`, init), ctx.env, {});
+    };
+    w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/moderation.js')}`);
+    await new Promise(r => setTimeout(r, 150));
+    const d = w.document;
+    const card = id => d.querySelector(`#modApprovedList [data-approved-id="${id}"]`);
+    check('a fresh capture reads "On the Zones map ✓"', card(fresh).textContent.includes('On the Zones map ✓'));
+    check('a capture over 24 hours old never reads "On the Zones map ✓"; it says it is off the map, and why', !card(old).textContent.includes('On the Zones map ✓') && /Off the Zones map/.test(card(old).textContent) && /24 hours/.test(card(old).textContent) && !card(old).querySelector('[data-approved-action="add-to-map"]'));
+
+    card(stale).querySelector('button[data-approved-action="add-to-map"]').click();
+    await new Promise(r => setTimeout(r, 80));
+    d.getElementById('modMapCamera').value = '538';
+    d.getElementById('modMapForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
+    await new Promise(r => setTimeout(r, 150));
+    const toast = d.getElementById('toastRoot').lastElementChild.textContent;
+    check('Add to map on a capture over 24 hours old: the toast says it will not show, not "Added ✓"', !/Added to the Zones map ✓/.test(toast) && /24 hours/.test(toast));
+    check('...and its card says off the map, not ✓', !card(stale).textContent.includes('On the Zones map ✓') && /Off the Zones map/.test(card(stale).textContent));
+    w.close();
+  }
+
   t.finish();
 }
 

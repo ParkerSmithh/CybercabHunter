@@ -61,6 +61,15 @@ const imageUrl = row => (row.image_r2_key ? `/api/camera-sightings/${row.id}/ima
 // "YYYY-MM-DDTHH:MM:SSZ" — the one stored form (whole seconds, UTC).
 export const toStoredIso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
+// Whether a detection with this observed_at is in the public Zones feed right
+// now: the same window as the list query below. The moderation page reports
+// "on the Zones map" only when this is true (a capture filed over 24 hours
+// before it is placed gets a row the map never shows; 2026-10-06).
+export function onLiveMap(observedAt, now = Date.now()) {
+  const ms = Date.parse(observedAt);
+  return Number.isFinite(ms) && ms >= now - WINDOW_MS && ms <= now + MAX_FUTURE_SKEW_MS;
+}
+
 export async function apiListCameraSightings(request, env, ctx, { now = Date.now() } = {}) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
@@ -263,14 +272,14 @@ export async function placeSightingOnMap(env, submissionId, cameraId) {
   if (!sighting) return { placed: false, error: 'not_found' };
 
   // One map row per sighting: re-approving or retrying changes nothing.
-  const already = await sql.prepare('SELECT id FROM camera_detections WHERE source_submission_id = ?').bind(submissionId).first();
-  if (already) return { placed: true, id: already.id, existing: true };
+  const already = await sql.prepare('SELECT id, observed_at FROM camera_detections WHERE source_submission_id = ?').bind(submissionId).first();
+  if (already) return { placed: true, id: already.id, existing: true, observed_at: already.observed_at };
   const observedMs = Date.parse(String(sighting.observed_at).replace(' ', 'T') + 'Z');
   if (!Number.isFinite(observedMs)) return { placed: false, error: 'not_found' };
   const observedAt = toStoredIso(observedMs);
   // ...and one per camera per moment: a watch upload at that exact time stays as it is.
   const sameMoment = await sql.prepare('SELECT id FROM camera_detections WHERE camera_id = ? AND observed_at = ?').bind(camera.camera_id, observedAt).first();
-  if (sameMoment) return { placed: true, id: sameMoment.id, existing: true };
+  if (sameMoment) return { placed: true, id: sameMoment.id, existing: true, observed_at: observedAt };
 
   const object = await env.EVIDENCE_BUCKET.get(sighting.evidence_ref);
   if (!object) return { placed: false, error: 'photo_missing' };
@@ -291,9 +300,9 @@ export async function placeSightingOnMap(env, submissionId, cameraId) {
     // A concurrent approval/Add to map won the insert; use its row.
     const winner = await sql.prepare('SELECT id FROM camera_detections WHERE source_submission_id = ? OR (camera_id = ? AND observed_at = ?)')
       .bind(submissionId, camera.camera_id, observedAt).first();
-    return { placed: true, id: winner ? winner.id : null, existing: true };
+    return { placed: true, id: winner ? winner.id : null, existing: true, observed_at: observedAt };
   }
-  return { placed: true, id };
+  return { placed: true, id, observed_at: observedAt };
 }
 
 // Removes the map detections made from these sightings (their copied images

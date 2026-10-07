@@ -571,9 +571,9 @@ async function getVehicleSightingSubmission(sql, submissionId) {
 async function getRecentApprovedPhotoSightings(sql, limit) {
   const result = await sql.prepare(`
     SELECT s.id AS submission_id, s.reviewed_at, o.observed_at, o.service_area, o.approx_location, o.license_plate, o.camera_id,
-           EXISTS (SELECT 1 FROM camera_detections d
+           (SELECT MAX(d.observed_at) FROM camera_detections d
                    WHERE d.source_submission_id = s.id
-                      OR (d.camera_id = o.camera_id AND d.observed_at = replace(o.observed_at, ' ', 'T') || 'Z')) AS on_map
+                      OR (d.camera_id = o.camera_id AND d.observed_at = replace(o.observed_at, ' ', 'T') || 'Z')) AS map_observed_at
     FROM submissions s
     JOIN vehicle_observations o ON o.submission_id = s.id
     WHERE s.submission_type = 'vehicle_sighting' AND s.status = 'approved'
@@ -581,7 +581,7 @@ async function getRecentApprovedPhotoSightings(sql, limit) {
     ORDER BY s.reviewed_at DESC, s.id DESC
     LIMIT ?
   `).bind(limit).all();
-  return result.results || [];
+  return (result.results || []).map(r => ({ ...r, on_map: r.map_observed_at !== null }));
 }
 
 // ---- Public Cybercab Sightings gallery (worker/sightings-public.js) ----

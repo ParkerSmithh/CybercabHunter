@@ -136,8 +136,12 @@
 
   function approvedCard(a) {
     const facts = [a.service_area || 'Area unknown', fmtDateTime(a.observed_at)];
-    const status = a.on_map
+    // "On the Zones map ✓" only while the map actually shows it: the public
+    // feed keeps a capture for 24 hours (visible_on_map; 2026-10-06).
+    const status = a.on_map && a.visible_on_map !== false
       ? '<div class="text-xs font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
+      : a.on_map
+      ? '<div class="text-xs text-slate-400 leading-snug" data-off-map>Off the Zones map: the map shows the last 24 hours</div>'
       : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.45)] text-gold hover:bg-[rgba(212,175,55,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
     return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-approved-id="${esc(a.submission_id)}">
       <div class="mod-photo relative rounded-lg overflow-hidden">
@@ -214,9 +218,11 @@
     if (resp && resp.status === 401) { setView('signedOut'); return; }
     if (resp && resp.status === 403) { setView('forbidden'); return; }
     if (resp && resp.ok) {
-      approved = approved.map(a => (a.submission_id === submissionId ? { ...a, on_map: true } : a));
+      const visible = !(resp.json && resp.json.visible_on_map === false);
+      approved = approved.map(a => (a.submission_id === submissionId ? { ...a, on_map: true, visible_on_map: visible } : a));
       renderApproved();
-      CCC.toast(resp.json && resp.json.already_on_map ? 'Already on the Zones map.' : 'Added to the Zones map ✓', 'success');
+      if (!visible) CCC.toast("Recorded, but this capture is over 24 hours old, so it won't show on the Zones map.", 'info');
+      else CCC.toast(resp.json && resp.json.already_on_map ? 'Already on the Zones map.' : 'Added to the Zones map ✓', 'success');
       loadApproved();   // picks up the recorded camera name
       return;
     }
@@ -374,7 +380,10 @@
   function approvedMessage(json, base) {
     const map = json && json.map;
     if (!map) return base + '.';
-    return map.on_map ? `${base}. On the Zones map ✓` : `${base}. It couldn't be placed on the Zones map. Use Add to map below.`;
+    if (!map.on_map) return `${base}. It couldn't be placed on the Zones map. Use Add to map below.`;
+    return map.visible_on_map === false
+      ? `${base}. Recorded for the map, but it's over 24 hours old, so it won't show on the Zones map.`
+      : `${base}. On the Zones map ✓`;
   }
 
   async function promote(submissionId) {
