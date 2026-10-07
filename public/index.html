@@ -154,12 +154,12 @@
         <button type="button" data-city="dallas" aria-pressed="false" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Dallas</button>
       </div>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:gap-2.5 max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)]">
 
       <!-- Austin service-area facts: a slim strip across the top, separate from
            the minimap below (nothing sits on the map). Hidden with the map and
            chart when Dallas is selected. -->
-      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 max-sm:flex-row max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3.5">
+      <div id="homeZoneAustinInfo" class="glass rounded-2xl px-6 py-5 sm:col-span-2 xl:col-span-3 max-sm:col-span-2 flex flex-col md:flex-row md:items-center gap-4 md:gap-8 max-sm:flex-row max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3.5">
         <div class="shrink-0">
           <div class="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Service Area</div>
           <div class="font-display font-bold text-3xl mt-1 text-white tracking-tight max-sm:text-xl max-sm:mt-0.5">AUSTIN</div>
@@ -173,9 +173,9 @@
       </div>
 
       <!-- Austin mini map -->
-      <div id="homeZoneAustin" class="service-zone-card">
+      <div id="homeZoneAustin" class="service-zone-card max-sm:!aspect-auto max-sm:min-h-[230px]">
         <div id="zoneMap-austin" class="service-zone-map"></div>
-        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
+        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] max-sm:top-2 max-sm:left-2 max-sm:px-2.5 max-sm:gap-1 rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
           See Map
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
@@ -192,13 +192,13 @@
            map card's shape sets the grid row's height and this card stretches
            to fill it (the chart redraws to the box's real size). On phones,
            where the two stack, the chart keeps its own minimum height. -->
-      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2 max-sm:p-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 max-sm:flex-row max-sm:items-start max-sm:justify-between max-sm:gap-2">
+      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2 max-sm:p-3 min-w-0">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 max-sm:flex-col max-sm:gap-1">
           <div class="min-w-0">
-            <h3 class="font-display font-bold text-lg tracking-tight text-white max-sm:text-base max-sm:whitespace-nowrap">FLEET GROWTH</h3>
-            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
+            <h3 class="font-display font-bold text-lg tracking-tight text-white max-sm:text-sm max-sm:whitespace-nowrap">FLEET GROWTH</h3>
+            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:leading-tight">Austin Cybercabs documented in the registry, over time</p>
           </div>
-          <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
+          <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:-ml-1.5 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
             <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
             <button data-range="6m" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">6M</button>
             <button data-range="1y" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">1Y</button>
@@ -207,12 +207,12 @@
         </div>
         <!-- min-h only matters on phones (cards stacked); from sm up the card
              takes the map card's height, so no minimum may push it taller. -->
-        <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2"></div>
+        <div id="fleetChartMount" class="relative flex-1 min-h-[220px] sm:min-h-0 mt-2 max-sm:min-h-[100px] max-sm:mt-1"></div>
       </div>
 
       <!-- Dallas: shown instead of BOTH cards above (spans their combined
            width) — there is no map or registry data for Dallas yet. -->
-      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 glass rounded-2xl p-10 text-center">
+      <div id="homeZoneDallasNote" class="hidden sm:col-span-2 max-sm:col-span-2 glass rounded-2xl p-10 text-center">
         <div class="font-display font-bold text-2xl text-gold mb-2">Not yet available</div>
         <p class="text-slate-400 text-sm max-w-sm mx-auto">Dallas zone and fleet information isn't available in Cybercab Hunter yet.</p>
       </div>
@@ -604,8 +604,10 @@
       // chart's, so a fixed viewBox scaled non-uniformly would skew the
       // circular end-dot into an ellipse and visibly distort the text. Reading
       // the true box and drawing 1:1 into it means no scaling happens at all.
-      const w = Math.max(280, Math.round(mount.clientWidth) || 600);
-      const h = Math.max(160, Math.round(mount.clientHeight) || 220);
+      // Floors low enough for the phone layout (chart beside the map); desktop
+      // boxes are always larger, so they are drawn exactly as before.
+      const w = Math.max(140, Math.round(mount.clientWidth) || 600);
+      const h = Math.max(90, Math.round(mount.clientHeight) || 220);
       const padL = 30, padR = 10, padT = 14, padB = 8;
       const plotW = w - padL - padR, plotH = h - padT - padB;
       const minX = points[0].date.getTime(), maxX = points[points.length - 1].date.getTime();
@@ -639,7 +641,7 @@
         <div id="fleetTooltip" class="absolute hidden pointer-events-none glass rounded-lg px-3 py-2 text-xs" style="z-index:5;"></div>
         <div class="absolute flex items-center gap-3" style="right:${padR + 6}px; bottom:${padB + 6}px; z-index:6;">
           <div id="fleetPlayReadout" class="hidden pointer-events-none whitespace-nowrap text-sm tabular-nums"></div>
-          <button type="button" id="fleetPlayBtn" class="h-8 pl-3.5 pr-3 rounded-full flex items-center gap-2 text-xs font-semibold transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" style="background:${GOLD}; color:#1a1204;"><span>Timelapse</span><span id="fleetPlayIcon" class="flex items-center"></span></button>
+          <button type="button" id="fleetPlayBtn" class="h-8 pl-3.5 pr-3 max-sm:h-10 max-sm:w-10 max-sm:p-0 max-sm:justify-center rounded-full flex items-center gap-2 text-xs font-semibold transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70" style="background:${GOLD}; color:#1a1204;"><span class="max-sm:sr-only">Timelapse</span><span id="fleetPlayIcon" class="flex items-center"></span></button>
         </div>
       `;
 
