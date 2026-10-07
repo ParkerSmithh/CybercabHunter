@@ -332,6 +332,25 @@ html [class*="from-goldsoft"]{background-image:none; background-color:rgb(var(--
 .drawer.is-open{transform:none;}
 .drawer-backdrop{opacity:0; pointer-events:none; transition:opacity var(--t) var(--ease);}
 .drawer-backdrop.is-open{opacity:1; pointer-events:auto;}
+/* Map side drawer (Zones, Replay; js/main.js initMapDrawer). Below lg the
+   map fills the view and the panel slides in from the left over a blurred,
+   darkened map. The doubled class outranks .reveal-on-scroll, which the
+   panel also carries. lg and up: the floating panel, untouched. */
+@media (max-width:1023px){
+  .map-drawer.map-drawer{
+    position:fixed; top:0; bottom:0; left:0; z-index:120; margin:0;
+    width:min(88vw,360px); max-height:none; overflow-y:auto; overscroll-behavior:contain;
+    border-radius:0 16px 16px 0;
+    padding-top:calc(env(safe-area-inset-top, 0px) + 14px); padding-bottom:calc(var(--safe-bottom) + 20px);
+    background:rgb(var(--surface) / 0.96); box-shadow:12px 0 40px -12px rgb(0 0 0 / 0.6);
+    opacity:1; transform:translateX(-104%); visibility:hidden;
+    transition:transform var(--t-slow) var(--ease), visibility 0s linear var(--t-slow);
+  }
+  .map-drawer.map-drawer.is-open{transform:none; visibility:visible; transition:transform var(--t-slow) var(--ease);}
+  .map-drawer-backdrop{position:fixed; inset:0; z-index:119; background:rgb(0 0 0 / 0.5);
+    -webkit-backdrop-filter:blur(8px) saturate(0.85); backdrop-filter:blur(8px) saturate(0.85);}
+}
+@media (min-width:1024px){ .map-drawer-toggle, .map-drawer-head, .map-drawer-backdrop{display:none !important;} }
 .modal-backdrop{opacity:0; pointer-events:none; transition:opacity var(--t) var(--ease);}
 .modal-backdrop.is-open{opacity:1; pointer-events:auto;}
 .modal-panel{transform:translateY(12px) scale(0.985); opacity:0; transition:transform var(--t-slow) var(--ease), opacity var(--t) var(--ease);}

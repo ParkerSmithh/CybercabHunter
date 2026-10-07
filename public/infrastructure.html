@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=35">
+<link rel="stylesheet" href="css/style.css?v=36">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -89,7 +89,12 @@
        itself — otherwise there'd be no way back to Austin. The map is
        hidden (not removed) for Dallas, since there's nothing to show it. -->
   <div id="zoneContent" class="mx-4 lg:mx-6 lg:relative lg:h-[calc(100dvh-5rem)] lg:min-h-[520px]">
-    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 reveal-on-scroll max-sm:p-4 max-sm:mb-3">
+    <div class="glass rounded-2xl p-5 mb-4 lg:mb-0 lg:absolute lg:top-4 lg:left-4 lg:z-10 lg:w-80 reveal-on-scroll max-sm:p-4 max-sm:mb-3 map-drawer" id="zonePanel" aria-label="Zone details">
+      <!-- Below lg this panel is a side drawer (js/main.js initMapDrawer). -->
+      <div class="map-drawer-head flex items-center justify-between gap-3 -mt-1 mb-3">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Zone details</span>
+        <button type="button" data-map-drawer-close aria-label="Close zone details" class="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-2xl leading-none text-slate-300 hover:bg-white/10">&times;</button>
+      </div>
       <!-- City switch: a segmented control. js below swaps the two class strings. -->
       <div id="citySelector" role="group" aria-label="City" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
         <button data-city="austin" aria-pressed="true" class="city-btn flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors max-sm:min-h-[40px] bg-white/[0.08] text-white">Austin</button>
@@ -163,7 +168,8 @@
 
     <!-- Map: a tall card on mobile, a full-bleed backdrop filling #zoneContent on lg+.
          Hidden (not removed) while Dallas is selected, same as the panel above. -->
-    <div id="austinMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0 reveal-on-scroll">
+    <div id="austinMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0 reveal-on-scroll max-lg:h-[calc(100dvh-10.5rem-var(--safe-bottom,0px))] max-lg:min-h-[320px]">
+      <button type="button" data-map-drawer-toggle aria-controls="zonePanel" aria-expanded="false" class="map-drawer-toggle absolute top-5 left-5 z-10 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl glass-strong text-xs font-semibold text-white shadow-[0_6px_18px_-8px_rgba(0,0,0,0.6)]"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h7"/><circle cx="18" cy="15" r="3"/></svg>Zone details</button>
       <div id="infraMap" class="rounded-xl overflow-hidden w-full flex-1 min-h-0 lg:flex-none lg:h-full lg:rounded-2xl"></div>
       <!-- This month's replay: every camera-spotted Cybercab so far this month (replay.html).
            Below lg it sits under the map instead of covering its corner (.shine
@@ -175,6 +181,7 @@
     </div>
   </div>
 </section>
+<div class="drawer-backdrop map-drawer-backdrop" data-map-drawer-backdrop aria-hidden="true"></div>
 <style>
   /* No footer on this page, and the map is meant to be the whole view — so
      the page itself should never scroll past it, even if a viewport's exact
@@ -295,7 +302,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=4"></script>
-<script src="js/main.js?v=22"></script>
+<script src="js/main.js?v=23"></script>
 <script src="js/austin-map.js?v=5"></script>
 <script>
   CCC.init();

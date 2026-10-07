@@ -68,4 +68,18 @@ check('Rider Data: overview 3 across and ride history 4 across on phones', /grid
 
 check('Sightings: two photo cards per row on phones (1 / 2 / 3 / 4 from 480px up as before)', /<div id="sightingsGrid" class="grid grid-cols-1 min-\[480px\]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 max-sm:grid-cols-2/.test(sightings));
 
+// Zones and Replay (Oct 2026): below lg the map fills the screen and the
+// details panel becomes a side drawer over a blurred, darkened map.
+const replayPage = read('replay.html');
+const mainJs = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
+for (const [name, html, id] of [['Zones', zones, 'zonePanel'], ['Replay', replayPage, 'replayPanel']]) {
+  check(`${name}: the details panel is a side drawer below lg, with a close button`, new RegExp(`<(div|aside) (id="${id}" class="[^"]*map-drawer"|class="[^"]*map-drawer" id="${id}")`).test(html) && /data-map-drawer-close aria-label="Close /.test(html));
+  check(`${name}: a toggle on the map opens the drawer`, new RegExp(`data-map-drawer-toggle aria-controls="${id}" aria-expanded="false" class="map-drawer-toggle [^"]*min-h-\\[40px\\]`).test(html));
+  check(`${name}: a backdrop blurs and darkens the map behind the drawer`, /class="drawer-backdrop map-drawer-backdrop" data-map-drawer-backdrop aria-hidden="true"/.test(html));
+  check(`${name}: the map fills the phone screen below lg`, /max-lg:h-\[calc\(100dvh-10\.5rem-var\(--safe-bottom,0px\)\)\]/.test(html));
+}
+check('the drawer slides in from the left with a blurred backdrop, below lg only', /@media \(max-width:1023px\)\{\s*\.map-drawer\.map-drawer\{[^}]*transform:translateX\(-104%\)/.test(css) && /\.map-drawer-backdrop\{[^}]*backdrop-filter:blur\(8px\)/.test(css));
+check('the drawer toggle, header and backdrop never show from lg up', /@media \(min-width:1024px\)\{ \.map-drawer-toggle, \.map-drawer-head, \.map-drawer-backdrop\{display:none !important;\} \}/.test(css));
+check('main.js wires the drawer (toggle, backdrop, close, Escape) and closes it at lg', /function initMapDrawer\(\)/.test(mainJs) && /e\.key === 'Escape'/.test(mainJs) && /matchMedia\('\(min-width: 1024px\)'\)/.test(mainJs) && /initMapDrawer\(\);/.test(mainJs));
+
 t.finish();

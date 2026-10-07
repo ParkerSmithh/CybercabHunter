@@ -1303,6 +1303,34 @@ const CCC = (() => {
       .catch(() => showSignedOut());
   }
 
+  /* ---------------- Map side drawer (Zones, Replay) ----------------
+     Below lg the map fills the screen and its panel slides in from the left
+     over a blurred, darkened map (css/style.css .map-drawer). lg and up keep
+     the floating panel; there the toggle, close row and backdrop are hidden. */
+  function initMapDrawer() {
+    const toggle = document.querySelector('[data-map-drawer-toggle]');
+    if (!toggle) return;
+    const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+    const backdrop = document.querySelector('[data-map-drawer-backdrop]');
+    if (!panel || !backdrop) return;
+    const set = (open, moveFocus) => {
+      panel.classList.toggle('is-open', open);
+      backdrop.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      if (!moveFocus) return;
+      if (open) { const close = panel.querySelector('[data-map-drawer-close]'); if (close) close.focus(); }
+      else toggle.focus();
+    };
+    toggle.addEventListener('click', () => set(!panel.classList.contains('is-open'), true));
+    backdrop.addEventListener('click', () => set(false, true));
+    panel.querySelectorAll('[data-map-drawer-close]').forEach(b => b.addEventListener('click', () => set(false, true)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('is-open')) set(false, true); });
+    if (!window.matchMedia) return;
+    const wide = window.matchMedia('(min-width: 1024px)');
+    const onWide = () => { if (wide.matches) set(false, false); };
+    if (wide.addEventListener) wide.addEventListener('change', onWide); else wide.addListener(onWide);
+  }
+
   /* ---------------- Init ---------------- */
   function init() {
     initNav();
@@ -1317,6 +1345,7 @@ const CCC = (() => {
     initElastic();
     initTeslaLink();
     initAccountMenu();
+    initMapDrawer();
   }
 
   return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
