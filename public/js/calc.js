@@ -32,6 +32,8 @@ const CCC_CALC = (() => {
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
   // Dallas Model Y fleet: a fixed figure set by the owner (no live source).
   const DALLAS_MODEL_Y_FLEET = 65;
+  // Dallas service zone, 81 mi² (Tesla's figure; js/austin-map.js DALLAS_SERVICE_ZONE).
+  const DALLAS_AREA_SQ_MI = 81;
 
   // Tesla's Austin robotaxi rate as reported from the app (not an official rate card):
   // $3.00 base + $1.40/mi since 2026-03-12 (Not a Tesla App / Basenor reporting).
@@ -157,7 +159,7 @@ const CCC_CALC = (() => {
   return {
     fleetFinancials,
     SERVICE_HOURS, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
-    DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET,
+    DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET, DALLAS_AREA_SQ_MI,
     etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus
   };
 })();

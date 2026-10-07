@@ -35,8 +35,8 @@ window.CCCReplay = (function () {
   const MAX_PAGES = 40;
   const GOLD = '#D4AF37';
   // The city replayed (?city=dallas; Austin by default, its URLs unchanged).
-  // Dallas: its TxDOT camera captures, framed on the metro its cameras cover;
-  // no zone outline (Tesla has published no Dallas geofence). Same time zone.
+  // Dallas: its TxDOT camera captures, framed on the metro its cameras cover,
+  // with its service zone outlined like Austin's. Same time zone.
   const CITY = (() => { try { return new URLSearchParams(location.search).get('city') === 'dallas' ? 'dallas' : 'austin'; } catch (e) { return 'austin'; } })();
   const DALLAS_BOUNDS = [[-96.99, 32.63], [-96.55, 33.02]];
 
@@ -237,9 +237,10 @@ window.CCCReplay = (function () {
         ctx.clearRect(0, 0, w, h);
         // The service zone, on the canvas so it sits ABOVE the sky tint (a map
         // layer would vanish under the night indigo) and under every marker.
-        if (window.CCCAustinMap && CITY === 'austin') {
+        const ring = window.CCCAustinMap && (CITY === 'dallas' ? CCCAustinMap.DALLAS_SERVICE_ZONE : CCCAustinMap.SERVICE_ZONE);
+        if (ring) {
           ctx.beginPath();
-          CCCAustinMap.SERVICE_ZONE.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+          ring.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
           ctx.closePath();
           ctx.fillStyle = 'rgba(255,199,44,0.10)'; ctx.fill();
           ctx.lineJoin = 'round';
@@ -420,6 +421,8 @@ window.CCCReplay = (function () {
 
   if (CITY === 'dallas') {
     document.title = 'Cybercab Hunter | Dallas Replay';
+    const heading = document.getElementById('replayCity');
+    if (heading) heading.textContent = 'DALLAS, TX';
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute('content', 'Every camera-spotted Cybercab this month, replayed on a map of Dallas as it happened.');
   }

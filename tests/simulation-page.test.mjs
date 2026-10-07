@@ -60,7 +60,9 @@ async function run() {
     check('Fleet ETA: Dallas shows the "not yet available" note', p.d.getElementById('austinContent').classList.contains('hidden') && !p.d.getElementById('dallasContent').classList.contains('hidden') && dallas.getAttribute('aria-pressed') === 'true');
     const busy = p.d.querySelector('[data-scenario="busy"]');
     busy.click();
-    check('Fleet ETA: one scenario button is selected at a time', busy.getAttribute('aria-pressed') === 'true' && p.d.querySelectorAll('[data-scenario][aria-pressed="true"]').length === 1);
+    const pressed = [...p.d.querySelectorAll('[data-scenario][aria-pressed="true"]')];
+    check('Fleet ETA: one scenario selected at a time, the same in the Austin and Dallas sections', busy.getAttribute('aria-pressed') === 'true' && pressed.length === 2 && pressed.every(b => b.dataset.scenario === 'busy'));
+    check('Fleet ETA Dallas: no Fleet card; the pickup wait has a live Cybercab and a fixed 65 Model Y estimate', !p.d.getElementById('dalFleetHeading') && !!p.d.getElementById('dalEtaCybercab') && !!p.d.getElementById('dalEtaModelY') && !/isn't modelled for Dallas/.test(p.d.getElementById('dallasContent').textContent));
     check('Fleet ETA: the old dispatch-comparison page is folded in (no separate page)', !fs.existsSync(`${ROOT}public/dispatch-comparison.html`));
     const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
     check('no element id is used twice on the combined page', ids.length === new Set(ids).size);

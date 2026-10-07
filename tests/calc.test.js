@@ -111,7 +111,7 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
 }
 
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
-  'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
+  'DALLAS_AREA_SQ_MI', 'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
   'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
   'ageHours', 'clockLabel', 'etaRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'reportedFare', 'serviceStatus'
 ]);

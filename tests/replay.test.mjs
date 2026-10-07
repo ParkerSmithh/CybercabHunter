@@ -211,7 +211,9 @@ async function run() {
     const shared = coordsIn(read('public/js/austin-map.js'), /const SERVICE_ZONE = \[([\s\S]*?)\];/);
     check('the replay\'s service zone is the Zones page\'s boundary (and the homepage\'s)', shared === coordsIn(zones, /const serviceZoneCoords = \[([\s\S]*?)\];/) && shared === coordsIn(read('public/index.html'), /const serviceZoneCoords = \[([\s\S]*?)\];/));
     const rjs = read('public/js/replay.js');
-    const zoneAt = rjs.indexOf('CCCAustinMap.SERVICE_ZONE.forEach'), camsAt = rjs.indexOf('for (const c of state.cameras)'), heatAt = rjs.indexOf('// Heat:');
+    check('the sidebar heading names the city (AUSTIN, TX by default; DALLAS, TX for ?city=dallas)', /<h1 id="replayCity"[^>]*>AUSTIN, TX<\/h1>/.test(html) && /heading\.textContent = 'DALLAS, TX'/.test(rjs));
+    check('Dallas replays draw the Dallas service zone; Austin keeps its own', /CITY === 'dallas' \? CCCAustinMap\.DALLAS_SERVICE_ZONE : CCCAustinMap\.SERVICE_ZONE/.test(rjs));
+    const zoneAt = rjs.indexOf('ring.forEach'), camsAt = rjs.indexOf('for (const c of state.cameras)'), heatAt = rjs.indexOf('// Heat:');
     check('the zone is drawn on the canvas (above the sky tint), before cameras and sightings', /<script src="js\/austin-map\.js[^"]*"><\/script>\s*<script src="js\/replay\.js/.test(html) && zoneAt > 0 && zoneAt < camsAt && camsAt < heatAt && !/addServiceZone\(state\.map/.test(rjs));
     check('the tint sits under the canvas in the stage', html.indexOf('id="replayTint"') < html.indexOf('id="replayCanvas"'));
     // Laid out like the Zones page: a full-height map with a floating sidebar on lg+, no footer.

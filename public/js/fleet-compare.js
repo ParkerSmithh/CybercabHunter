@@ -173,20 +173,42 @@
     const idle = C.ETA_SCENARIOS[scenario].idleShare;
     $('inputIdle').firstChild.textContent = `${Math.round(idle[0] * 100)}% to ${Math.round(idle[2] * 100)}% `;
     setText($('inputFleet'), data ? String(data.cybercabs) : 'Unavailable');
+    renderDallasEta();
   }
   document.querySelectorAll('[data-modely-fleet]').forEach(el => { el.textContent = String(MODEL_Y_FLEET); });
   document.querySelectorAll('[data-scenario]').forEach(btn => {
     btn.addEventListener('click', () => {
       scenario = btn.dataset.scenario;
-      document.querySelectorAll('[data-scenario]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+      // Austin's and Dallas's buttons share the scenario.
+      document.querySelectorAll('[data-scenario]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scenario === scenario)));
       renderEta();
     });
   });
 
   // ---- Dallas (launched Apr 18, 2026): its own live count and measured fares
   // (GET /api/fleet-stats?city=dallas), the reported hours and rate and the
-  // fixed Model Y count (js/calc.js). No pickup-wait number (see the page).
+  // fixed Model Y count (js/calc.js). The pickup wait is Austin's model over
+  // the 81 mi² Dallas zone, from the live count and the fixed Model Y fleet.
   let dallasLoaded = false;
+  let dallas = null;   // GET /api/fleet-stats?city=dallas, once loaded
+  const DALLAS_ETA = Object.assign({}, C.ETA_ASSUMPTIONS, { areaSqMi: C.DALLAS_AREA_SQ_MI });
+  function renderDallasEta() {
+    if (!dallasLoaded) return;
+    const cyber = $('dalEtaCybercab');
+    if (!cyber) return;
+    setHTML($('dalEtaModelY'), etaMarkup(C.etaRange({ fleetSize: C.DALLAS_MODEL_Y_FLEET, scenario, assumptions: DALLAS_ETA })));
+    if (dallas === null) return;   // still loading: the skeleton stays
+    const ok = dallas && typeof dallas.cybercabs === 'number';
+    if (ok && dallas.cybercabs === 0) {
+      setHTML(cyber, '<p class="font-display font-semibold text-2xl text-white max-sm:text-base">No Cybercabs yet</p>'
+        + '<p class="text-sm text-slate-400 mt-2 max-sm:text-[11px] max-sm:leading-snug">No public Cybercabs are tracked in Dallas yet.</p>');
+    } else {
+      setHTML(cyber, etaMarkup(C.etaRange({ fleetSize: ok ? dallas.cybercabs : NaN, scenario, assumptions: DALLAS_ETA })));
+    }
+    setText($('dalEtaCybercabBasis'), ok
+      ? `From ${plural(dallas.cybercabs, 'public Cybercab')} tracked in Dallas, as of ${ago(dallas.count_as_of) || 'an unknown time'}.`
+      : 'Live fleet count unavailable.');
+  }
   let dallasTimer = null;
   function renderDallasHours() {
     const st = C.serviceStatus(new Date(), C.DALLAS_SERVICE_HOURS);
@@ -196,18 +218,18 @@
     if (now) now.style.left = `${(st.minuteOfDay / 1440) * 100}%`;
   }
   async function loadDallas() {
-    setText($('dalModelY'), String(C.DALLAS_MODEL_Y_FLEET));
+    document.querySelectorAll('[data-dal-modely-fleet]').forEach(el => { el.textContent = String(C.DALLAS_MODEL_Y_FLEET); });
     setText($('dalFare5'), money(C.reportedFare(5, C.DALLAS_REPORTED_RATE)));
     renderDallasHours();
+    renderDallasEta();
     let d = null;
     try {
       const r = await fetch('/api/fleet-stats?city=dallas');
       if (r.ok) d = await r.json();
     } catch (e) { d = null; }
-    if (d && typeof d.cybercabs === 'number') {
-      setText($('dalCybercabs'), String(d.cybercabs));
-      const age = ago(d.count_as_of);
-      setText($('dalCybercabsNote'), `Public Cybercabs tracked in Dallas · as of ${age || 'an unknown time'}`);
+    dallas = d && typeof d.cybercabs === 'number' ? d : false;
+    renderDallasEta();
+    if (dallas) {
       const f = d.fares || {};
       const has = typeof f.median_fare === 'number';
       setText($('dalMedianFare'), has ? money(f.median_fare) : '—');
@@ -215,8 +237,6 @@
       setText($('dalPerMile'), has ? money(f.per_mile) : '—');
       setText($('dalFaresBasis'), has ? `Based on ${plural(f.rides, 'logged Dallas ride')}` : 'No logged Dallas rides with a fare yet');
     } else {
-      setText($('dalCybercabs'), '—');
-      setText($('dalCybercabsNote'), 'Live fleet count unavailable');
       setText($('dalFaresBasis'), 'Fare data unavailable');
     }
   }
