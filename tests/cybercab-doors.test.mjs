@@ -63,6 +63,7 @@ async function run() {
     check('the page loads js/cybercab-doors.js', /<script src="js\/cybercab-doors\.js[^"]*"><\/script>/.test(HTML));
     check('the first frame is a plain <img> with its size, so the box is reserved before any script runs', /<img src="images\/cybercab-doors\/m\/000\.webp\?v=\d+"[^>]*width="800" height="446"/.test(HTML) && /\.cc-doors-stage\{[^}]*aspect-ratio:800\/446/.test(HTML));
     check('once the canvas is live the still image is hidden (under lighten blending both would show, ghosting the closed doors)', /\.cc-doors\.is-live \.cc-doors-stage img\{visibility:hidden;\}/.test(HTML));
+    check('no CSS blend mode: the page colour is baked into the frames (CSS blending did not apply on a real iPhone)', !/mix-blend-mode/.test(HTML));
     check('only frame 00 is referenced by the page itself (the rest load on intent)', !/cybercab-doors\/[dm]\/(00[1-9]|0[1-9]\d|10[0-7])\.webp/.test(HTML));
   }
 

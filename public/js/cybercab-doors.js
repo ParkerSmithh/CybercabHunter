@@ -10,7 +10,9 @@
    steady pace. Stabilized: the source camera drifts down ~13px and zooms
    out ~1% while the doors rise, which read as the car bobbing, so each
    frame is shifted and scaled back onto frame 0 (measured on the wheels
-   and bumper; ~1-3px of perspective remains). d = 800px wide, m = 480px; the set is chosen
+   and bumper; ~1-3px of perspective remains). The studio is the page's
+   dark background, rgb(8, 9, 10), baked into the pixels, so the frames sit
+   on the page seamlessly in any browser with no CSS blending. d = 800px wide, m = 480px; the set is chosen
    from the rendered width x pixel density.
 
    Playback: 108 frames in DURATION_MS (1.5 s, ~72 distinct frames per
@@ -28,7 +30,7 @@
   const FRAMES = 108;
   const DURATION_MS = 1500;
   const DIR = 'images/cybercab-doors/';
-  const FRAMES_VERSION = 3;   // bump when the frames are regenerated (same names, new pixels)
+  const FRAMES_VERSION = 4;   // bump when the frames are regenerated (same names, new pixels)
   const sets = {};   // 'd' | 'm' -> { frames: [], ready: Promise }
   const reduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
