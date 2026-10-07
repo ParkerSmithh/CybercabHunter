@@ -89,7 +89,7 @@ window.CCCAustinMap = (function () {
       const el = document.createElement('span');
       el.className = 'marker-pulse';
       el.style.cssText = `display:block;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 0 2px rgba(8,10,16,0.55);color:${color};`;
-      new maplibregl.Marker({ element: el, anchor: 'center' })
+      return new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .setPopup(new maplibregl.Popup({ offset: size / 2 + 6 }).setHTML(html))
         .addTo(map);
@@ -108,6 +108,23 @@ window.CCCAustinMap = (function () {
         18
       );
     });
+
+    // Optional Dallas hubs belong to the Zones page; Austin's pins stay unchanged.
+    let dallasChargingMarkers = [];
+    function refreshChargingLocations() {
+      dallasChargingMarkers.forEach(marker => marker.remove());
+      dallasChargingMarkers = [];
+      if (cityOf() !== 'dallas') return;
+      (opts.dallasChargingLocations || []).forEach(c => {
+        dallasChargingMarkers.push(addPin(c.lat, c.lng, '#D4AF37', `
+         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
+         <div class="font-display font-bold text-sm mb-1">${c.name}</div>
+         <div class="text-xs text-slate-300">${c.note}</div>`,
+          18
+        ));
+      });
+    }
+    refreshChargingLocations();
 
     // ---- Cybercabs spotted by the traffic-camera watch ----
     // One marker per camera with a detection in the last 24 hours (the API
@@ -183,7 +200,7 @@ window.CCCAustinMap = (function () {
 
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
-    return { refreshCameras: refreshCameraMarkers };
+    return { refreshCameras: refreshCameraMarkers, refreshChargingLocations };
   }
   return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
 })();
