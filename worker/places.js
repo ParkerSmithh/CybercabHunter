@@ -21,6 +21,7 @@
 // city only, never the house number.
 
 import { serviceAreaFor, isInServiceArea, bboxParam } from './service-areas.js';
+import { sha256Hex } from './account.js';
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 const US_BBOX = '-125.0,24.0,-66.5,49.5';            // contiguous United States
@@ -106,6 +107,57 @@ export async function apiSearchPlaces(request, env) {
   } catch (e) {
     return Response.json({ success: false, error: 'places_unavailable' }, { status: 502 });
   }
+}
+
+// GET /api/places/map?q=  — the Zones map's search box (public/js/map-search.js).
+// Public (the Zones map is), Austin only (the only area with a map), and the
+// one place search that returns coordinates: the map needs them to fly to a
+// place. That is safe here because these are searched public places, never a
+// sighting's location (/api/places above still never returns coordinates).
+// Same Photon search and the same in-area re-check as /api/places. Rate
+// limited per visitor (SEARCH_LIMITER, keyed by a hash of the IP; fails open)
+// and cached publicly, since the answer is the same for everyone.
+//   -> { places: [{ id, label, lat, lng }] }
+const MAP_SEARCH_CACHE_SECONDS = 86400;
+export async function apiSearchMapPlaces(request, env, ctx) {
+  const params = new URL(request.url).searchParams;
+  const area = serviceAreaFor(params.get('area') || 'austin');
+  if (!area || area.key !== 'austin') return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
+  const q = (params.get('q') || '').trim().replace(/\s+/g, ' ');
+  if (q.length < MIN_QUERY) return Response.json({ places: [] });
+  if (q.length > MAX_QUERY) return Response.json({ success: false, error: 'query_too_long' }, { status: 400 });
+
+  // One cache entry per normalized query, shared by every visitor.
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?q=${encodeURIComponent(q.toLowerCase())}`);
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
+  if (env.SEARCH_LIMITER) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    let allowed = true;
+    try { allowed = (await env.SEARCH_LIMITER.limit({ key: `map-search:${await sha256Hex(ip)}` })).success !== false; } catch (e) { /* fail open */ }
+    if (!allowed) return Response.json({ success: false, error: 'rate_limited' }, { status: 429, headers: { 'Retry-After': '60' } });
+  }
+  let places;
+  try {
+    places = (await photonSearch(q, MAX_RESULTS, bboxParam(area)))
+      .filter(p => placeInArea(p, area))
+      // One suggestion per label: OpenStreetMap splits long streets into
+      // same-named segments ("East 6th Street, Austin, TX" twice); the first
+      // (Photon's best match) stands for the street.
+      .filter((p, i, all) => all.findIndex(x => x.label === p.label) === i)
+      .map(({ id, label, lon, lat }) => ({ id, label, lat, lng: lon }));
+  } catch (e) {
+    return Response.json({ success: false, error: 'places_unavailable' }, { status: 502 });
+  }
+  const response = Response.json({ places }, { headers: { 'Cache-Control': `public, max-age=${MAP_SEARCH_CACHE_SECONDS}` } });
+  if (cache) {
+    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  }
+  return response;
 }
 
 // Confirms that `id` is a real place INSIDE `area`: re-runs a Photon search

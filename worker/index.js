@@ -9,7 +9,7 @@ import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
 import { apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto, apiListApprovedPhotoSightings, apiAddSightingToMap } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
-import { apiSearchPlaces } from './places.js';
+import { apiSearchPlaces, apiSearchMapPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
@@ -142,6 +142,11 @@ export default {
     // pages build their City dropdown and city filters from it.
     if (url.pathname === '/api/service-areas' && request.method === 'GET') {
       return withCors(apiListServiceAreas(), request);
+    }
+
+    // Place search for the Zones map's search box (worker/places.js). Public, Austin only.
+    if (url.pathname === '/api/places/map' && request.method === 'GET') {
+      return withCors(await apiSearchMapPlaces(request, env, ctx), request);
     }
 
     // Location search for the sighting form (worker/places.js). Signed in only.
