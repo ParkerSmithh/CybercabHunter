@@ -47,7 +47,7 @@ export const EDGE_IN_DALLAS = fixture('N:9000003', 'edgeindallas', { name: 'Edge
 export const EDGE_OUT_DALLAS = fixture('N:9000004', 'edgeoutdallas', { name: 'Edge Out Dallas', city: 'Terrell', state: 'Texas' }, -96.4499, 32.8000, 'Edge Out Dallas, Terrell, TX');
 const FIXTURES = [HANOVER, LEVITTOWN, CONGRESS, SEGMENT, EDGE_IN_AUSTIN, EDGE_OUT_AUSTIN, EDGE_IN_DALLAS, EDGE_OUT_DALLAS];
 
-export const photon = { calls: [], failing: false, ignoreBbox: false };
+export const photon = { calls: [], failing: false, ignoreBbox: false, noFallback: false };   // noFallback: only the fixtures
 
 const feature = (properties, lon, lat) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties });
 
@@ -64,7 +64,7 @@ export function installPhotonStub() {
     for (const f of FIXTURES) {
       if (q.toLowerCase().replace(/\s+/g, '').includes(f.keyword) && inBox(f.lon, f.lat)) features.push(feature(f.properties, f.lon, f.lat));
     }
-    features.push(feature({ osm_type: 'W', osm_id: hash(q), name: q }, (minLon + maxLon) / 2, (minLat + maxLat) / 2));
+    if (!photon.noFallback) features.push(feature({ osm_type: 'W', osm_id: hash(q), name: q }, (minLon + maxLon) / 2, (minLat + maxLat) / 2));
     return Response.json({ type: 'FeatureCollection', features });
   };
 }

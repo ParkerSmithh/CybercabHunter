@@ -73,8 +73,17 @@ export function placeInArea(place, area) {
   return !!place && isInServiceArea(area, place.lon, place.lat) && (!place.state || place.state === area.state);
 }
 
-async function photonSearch(query, limit, bbox = US_BBOX) {
+// bias: optional { lat, lon } — Photon ranks places near it higher (the map
+// search biases to the city center, so a half-typed word finds the city's
+// places before the suburbs').
+async function photonSearch(query, limit, bbox = US_BBOX, bias = null) {
   const params = new URLSearchParams({ q: query, limit: String(limit), lang: 'en', bbox });
+  if (bias) {
+    params.set('lat', String(bias.lat));
+    params.set('lon', String(bias.lon));
+    params.set('zoom', '12');
+    params.set('location_bias_scale', '0.5');
+  }
   const resp = await fetch(`${PHOTON_URL}?${params}`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: AbortSignal.timeout(TIMEOUT_MS)
@@ -121,6 +130,21 @@ export async function apiSearchPlaces(request, env) {
 //   -> { places: [{ id, label, lat, lng }] }
 const MAP_SEARCH_CACHE_SECONDS = 86400;
 const MAP_SEARCH_AREAS = ['austin', 'dallas'];   // the cities with a Zones map
+const MAP_SEARCH_CANDIDATES = 20;                 // fetched, then narrowed to the city
+// The city the map shows: Photon is biased to its center, and a suggestion
+// must be in the city itself (Photon's city) or inside the service zone's box
+// (the enclaves in it, e.g. Highland Park, West Lake Hills). The metro box
+// alone let half-typed words fill the list with suburbs (Allen, Rockwall).
+const MAP_SEARCH_CITY = {
+  austin: { name: 'Austin', center: { lat: 30.27, lon: -97.74 }, zone: { minLon: -97.87, minLat: 30.14, maxLon: -97.55, maxLat: 30.46 } },
+  dallas: { name: 'Dallas', center: { lat: 32.80, lon: -96.80 }, zone: { minLon: -96.93, minLat: 32.73, maxLon: -96.72, maxLat: 32.88 } }
+};
+export function placeInMapCity(place, cityKey) {
+  const c = MAP_SEARCH_CITY[cityKey];
+  if (!c || !place) return false;
+  const z = c.zone;
+  return place.city === c.name || (place.lon >= z.minLon && place.lon <= z.maxLon && place.lat >= z.minLat && place.lat <= z.maxLat);
+}
 export async function apiSearchMapPlaces(request, env, ctx) {
   const params = new URL(request.url).searchParams;
   const area = serviceAreaFor(params.get('area') || 'austin');
@@ -131,7 +155,8 @@ export async function apiSearchMapPlaces(request, env, ctx) {
 
   // One cache entry per normalized query, shared by every visitor.
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?area=${area.key}&q=${encodeURIComponent(q.toLowerCase())}`);
+  // v2: city-biased results (older entries, some empty from a Photon outage, are skipped).
+  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?v=2&area=${area.key}&q=${encodeURIComponent(q.toLowerCase())}`);
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
@@ -144,16 +169,19 @@ export async function apiSearchMapPlaces(request, env, ctx) {
   }
   let places;
   try {
-    places = (await photonSearch(q, MAX_RESULTS, bboxParam(area)))
-      .filter(p => placeInArea(p, area))
+    places = (await photonSearch(q, MAP_SEARCH_CANDIDATES, bboxParam(area), MAP_SEARCH_CITY[area.key].center))
+      .filter(p => placeInArea(p, area) && placeInMapCity(p, area.key))
       // One suggestion per label: OpenStreetMap splits long streets into
       // same-named segments ("East 6th Street, Austin, TX" twice); the first
       // (Photon's best match) stands for the street.
       .filter((p, i, all) => all.findIndex(x => x.label === p.label) === i)
+      .slice(0, MAX_RESULTS)
       .map(({ id, label, lon, lat }) => ({ id, label, lat, lng: lon }));
   } catch (e) {
     return Response.json({ success: false, error: 'places_unavailable' }, { status: 502 });
   }
+  // An empty answer is never cached: it may be a passing Photon hiccup.
+  if (!places.length) return Response.json({ places }, { headers: { 'Cache-Control': 'no-store' } });
   const response = Response.json({ places }, { headers: { 'Cache-Control': `public, max-age=${MAP_SEARCH_CACHE_SECONDS}` } });
   if (cache) {
     const stored = cache.put(cacheKey, response.clone()).catch(() => {});

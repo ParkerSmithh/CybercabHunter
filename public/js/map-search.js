@@ -1,6 +1,6 @@
 /* Zones map place search (infrastructure.html #mapSearch).
-   Type 3+ letters and Austin places are suggested (GET /api/places/map,
-   worker/places.js: public, Austin only, Photon/OpenStreetMap data). Picking
+   Type 3+ letters and places in the selected city are suggested (GET
+   /api/places/map, worker/places.js: public, Photon/OpenStreetMap data). Picking
    one flies the map there and drops a single gold pin; the next pick moves
    it, and the clear button removes it. Keyboard: Up/Down to move through the
    suggestions, Enter to pick (the first one if none is highlighted), Escape
@@ -81,7 +81,7 @@ window.CCCMapSearch = (function () {
         say(`${places.length} place${places.length === 1 ? '' : 's'} found.`);
       } else {
         close();
-        say(input.value.trim().length >= MIN_QUERY ? 'No Austin places match.' : '');
+        say(input.value.trim().length >= MIN_QUERY ? `No ${areaOf() === 'dallas' ? 'Dallas' : 'Austin'} places match.` : '');
       }
       active = -1;
     }
@@ -106,7 +106,8 @@ window.CCCMapSearch = (function () {
       let resp;
       try {
         const area = areaOf();
-        resp = await fetch(`/api/places/map?q=${encodeURIComponent(q)}${area === 'austin' ? '' : `&area=${encodeURIComponent(area)}`}`);
+        // v=2: city-biased results; skips answers browsers cached before.
+        resp = await fetch(`/api/places/map?v=2&q=${encodeURIComponent(q)}${area === 'austin' ? '' : `&area=${encodeURIComponent(area)}`}`);
       } catch (e) { resp = null; }
       if (mine !== seq) return;               // a newer search is under way
       if (!resp || !resp.ok) {

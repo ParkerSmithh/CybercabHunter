@@ -385,10 +385,28 @@ window.CCCReplay = (function () {
       seek(state.start);
       if (dots.length) play();
     }
+    // City switch (#replayCityNav): links to each city's replay at the current
+    // range; the selected city is highlighted like the Zones switch.
+    function syncCityNav() {
+      const range = new URLSearchParams(location.search).get('range') || 'month';
+      document.querySelectorAll('#replayCityNav [data-city]').forEach(a => {
+        const on = a.dataset.city === CITY;
+        const q = new URLSearchParams({ range });
+        if (a.dataset.city === 'dallas') q.set('city', 'dallas');
+        a.setAttribute('href', `/replay?${q}`);
+        a.classList.toggle('bg-white/[0.08]', on);
+        a.classList.toggle('text-white', on);
+        a.classList.toggle('text-slate-400', !on);
+        a.classList.toggle('hover:text-slate-200', !on);
+        if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+    }
+    syncCityNav();
     document.querySelectorAll('#replayRange [data-range]').forEach(b => b.addEventListener('click', () => {
       const q = new URLSearchParams(location.search);
       q.set('range', b.dataset.range);
       history.replaceState(null, '', `${location.pathname}?${q}`);
+      syncCityNav();
       load(location.search);
     }));
     $('replayShare').addEventListener('click', async () => {

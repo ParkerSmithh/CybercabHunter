@@ -91,6 +91,12 @@
         <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Replay controls</span>
         <button type="button" data-map-drawer-close aria-label="Close replay controls" class="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-2xl leading-none text-slate-300 hover:bg-white/10">&times;</button>
       </div>
+      <!-- City: the Zones page's city switch. Each opens that city's replay at
+           the same range (js/replay.js keeps the hrefs current). -->
+      <nav id="replayCityNav" aria-label="City" class="flex p-1 mb-3 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+        <a data-city="austin" href="/replay?range=month" class="flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide text-center transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center max-sm:justify-center bg-white/[0.08] text-white" aria-current="page">Austin</a>
+        <a data-city="dallas" href="/replay?range=month&amp;city=dallas" class="flex-1 py-2 rounded-lg text-xs font-semibold tracking-wide text-center transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center max-sm:justify-center text-slate-400 hover:text-slate-200">Dallas</a>
+      </nav>
       <!-- Range: a segmented control, like the Zones city switch. This Month leads. -->
       <div id="replayRange" role="group" aria-label="Time range" class="flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
         <button type="button" data-range="month" class="replay-range flex-1 py-2 rounded-lg text-xs font-bold tracking-wide max-sm:min-h-[40px]">This Month</button>
@@ -163,9 +169,6 @@
         <div id="replayMap" class="absolute inset-0"></div>
         <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>
         <canvas id="replayCanvas" class="absolute inset-0 w-full h-full pointer-events-none" data-dots="0"></canvas>
-        <div class="absolute top-3 right-3 lg:top-4 lg:right-4 flex items-center gap-1.5 replay-glass rounded-xl px-2.5 py-1.5 pointer-events-none">
-          <img src="images/Cybercab2.png" alt="" class="w-6 h-6 object-contain"><span class="font-display font-bold text-xs tracking-wide text-[#1a1406]">cybercabhunter.com</span>
-        </div>
         <div id="replayLoading" class="absolute inset-0 flex items-center justify-center pointer-events-none lg:pl-80"><div class="replay-glass rounded-xl px-4 py-2 text-xs text-[#4a3d1a]">Loading sightings…</div></div>
       </div>
     </div>
@@ -301,6 +304,6 @@
 </script>
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/austin-map.js?v=7"></script>
-<script src="js/replay.js?v=7"></script>
+<script src="js/replay.js?v=8"></script>
 </body>
 </html>

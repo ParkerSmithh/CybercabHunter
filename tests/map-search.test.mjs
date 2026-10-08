@@ -133,6 +133,24 @@ async function run() {
     s.w.close();
   }
 
+  console.log('3b. City first: biased to the city center, suburbs left out, empties not cached');
+  {
+    const ctx = await makeEnv();
+    photon.calls.length = 0;
+    await search(ctx, 'hanover', '&area=dallas');
+    const u = new URL(photon.calls.at(-1));
+    check('Photon is biased to the city center (Dallas)', u.searchParams.get('lat') === '32.8' && u.searchParams.get('lon') === '-96.8' && u.searchParams.get('location_bias_scale') === '0.5' && u.searchParams.get('limit') === '20');
+    photon.noFallback = true;
+    const sub = await search(ctx, 'edgeindallas', '&area=dallas');
+    photon.noFallback = false;
+    check('a metro suburb (McKinney) is not suggested on the Dallas map', sub.status === 200 && !sub.json.places.some(p => /McKinney/.test(p.label)));
+    check('...and that empty answer is not cached', sub.headers.get('cache-control') === 'no-store');
+    const city = await search(ctx, 'hanover', '&area=dallas');
+    check('a place in the city is suggested, cached as before', city.json.places.some(p => /Hanover Street, Dallas/.test(p.label)) && /max-age=86400/.test(city.headers.get('cache-control')));
+    const js = read('public/js/map-search.js');
+    check('the box asks for v=2 (skips answers browsers cached before) and names the city when nothing matches', /\/api\/places\/map\?v=2&q=/.test(js) && /No \$\{areaOf\(\) === 'dallas' \? 'Dallas' : 'Austin'\} places match\./.test(js));
+  }
+
   console.log('4. The Zones page wires it up');
   {
     const html = read('public/infrastructure.html');
