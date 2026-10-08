@@ -152,6 +152,25 @@ async function run() {
     check('the stats script never adds a live region either', !/aria-live|setAttribute\(\s*['"]role|aria-atomic|\.role\s*=/i.test(statsCode));
   }
 
+  console.log('4b. Sightings tile: every city, kept live');
+  {
+    check('a third tile, "Sightings", starts as an em dash', /<dl class="grid grid-cols-3[\s\S]*?Total Rides[\s\S]*?<dt[^>]*>Sightings<\/dt>[\s\S]*?id="statSightings"[^>]*>—</.test(HTML));
+    const ctx = await makeApp();
+    let seen = 117, failing = false;
+    const p = await home(ctx, { intercept: async path => path.startsWith('/api/sightings') ? (failing ? new Response('x', { status: 503 }) : Response.json({ seen, sightings: [] })) : null });
+    const el = () => p.d.getElementById('statSightings');
+    check('shows every city\'s approved sightings (the API\'s all-city "seen")', el().textContent === '117' && el().dataset.value === '117');
+    seen = 118;
+    p.d.dispatchEvent(new p.w.Event('visibilitychange'));
+    await new Promise(r => setTimeout(r, 60));
+    check('updates when a new sighting comes in (re-read on return to the tab, and every 30s)', el().textContent === '118' && /SIGHTINGS_POLL_MS = 30 \* 1000/.test(STATS) && /setInterval\(loadSightings, SIGHTINGS_POLL_MS\)/.test(STATS));
+    failing = true;
+    p.d.dispatchEvent(new p.w.Event('visibilitychange'));
+    await new Promise(r => setTimeout(r, 60));
+    check('a failed read keeps the last good number', el().textContent === '118');
+    p.w.close();
+  }
+
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
   async function home(ctx, { intercept, reducedMotion = true, observer = 'immediate' } = {}) {
     const dom = new JSDOM(HTML.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
@@ -165,6 +184,7 @@ async function run() {
       if (intercept) { const x = await intercept(path); if (x) return x; }
       return worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com' } }), ctx.env, {});
     };
+    w.setInterval = () => 0;   // the Sightings tile's 30s poll: not run here (it would keep the test alive)
     w.eval(`${CALC}\n${MAIN}\n${STATS}`);
     await new Promise(r => setTimeout(r, 120));
     const d = w.document;
@@ -176,7 +196,7 @@ async function run() {
     vehicle(ctx, 3, 'PRIV333', 'private'); ride(ctx, uuid(3));
     const p = await home(ctx);
     check('the tiles show the real numbers: 2 vehicles, 3 rides', p.v() === '2' && p.r() === '3', `${p.v()} / ${p.r()}`);
-    check('exactly one request, to the public stats endpoint, with no Authorization header', p.requests.length === 1 && p.requests[0].path === '/api/registry/stats' && !('Authorization' in p.requests[0].headers));
+    check('two requests, to the public stats and sightings endpoints, with no Authorization header', p.requests.length === 2 && p.requests[0].path === '/api/registry/stats' && p.requests[1].path === '/api/sightings?city=all&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
     check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '2' && p.d.getElementById('statRides').dataset.value === '3');
     const big = await home(ctx, { intercept: async path => (path === '/api/registry/stats' ? Response.json({ public_vehicles: 1234, recorded_rides: 56789 }) : null) });
     check('large numbers are formatted with separators', big.v() === '1,234' && big.r() === '56,789');

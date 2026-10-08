@@ -125,17 +125,22 @@
 
 <section class="relative pt-8">
   <!-- ===== Stats bar =====
-       Live counts (GET /api/registry/stats, js/home-stats.js). Each starts
-       as an em dash and only becomes the server's number. -->
+       Live counts (GET /api/registry/stats and, for Sightings, the approved
+       sightings in every city from GET /api/sightings; js/home-stats.js).
+       Each starts as an em dash and only becomes the server's number. -->
   <div class="max-w-7xl mx-auto px-6 lg:px-10 pb-4">
-    <dl class="grid grid-cols-2 border-y border-white/[0.07] divide-x divide-white/[0.07]">
+    <dl class="grid grid-cols-3 border-y border-white/[0.07] divide-x divide-white/[0.07]">
       <div class="py-6 pr-6 max-sm:py-4 max-sm:pr-4">
-        <dt class="text-xs text-slate-500">Cybercabs Spotted</dt>
+        <dt class="text-xs text-slate-500 max-sm:min-h-8">Cybercabs Spotted</dt>
         <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statVehicles">—</span></dd>
       </div>
-      <div class="py-6 pl-6 sm:pl-10 max-sm:py-4 max-sm:pl-4">
-        <dt class="text-xs text-slate-500">Total Rides</dt>
+      <div class="py-6 px-6 sm:px-10 max-sm:py-4 max-sm:px-4">
+        <dt class="text-xs text-slate-500 max-sm:min-h-8">Total Rides</dt>
         <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statRides">—</span></dd>
+      </div>
+      <div class="py-6 pl-6 sm:pl-10 max-sm:py-4 max-sm:pl-4">
+        <dt class="text-xs text-slate-500 max-sm:min-h-8">Sightings</dt>
+        <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statSightings">—</span></dd>
       </div>
     </dl>
   </div>
@@ -383,7 +388,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=7"></script>
 <script src="js/main.js?v=24"></script>
-<script src="js/home-stats.js?v=3"></script>
+<script src="js/home-stats.js?v=4"></script>
 <script src="js/austin-map.js?v=7"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>

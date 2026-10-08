@@ -1,7 +1,8 @@
-/* Homepage statistics (index.html "Stats bar"). The two numbers come from ONE
-   public endpoint, GET /api/registry/stats (worker/vehicles.js): how many
-   vehicles are in the public registry and how many recorded rides belong to
-   exactly those vehicles. Nothing on this bar is hard-coded.
+/* Homepage statistics (index.html "Stats bar"). Vehicles and rides come from
+   GET /api/registry/stats (worker/vehicles.js): how many vehicles are in the
+   public registry and how many recorded rides belong to exactly those
+   vehicles. Sightings is every city's approved sightings (GET /api/sightings),
+   kept live (below). Nothing on this bar is hard-coded.
    A tile starts as an em dash and only ever becomes a number the server sent.
    If the request fails, or the value is not a whole number >= 0, it STAYS an
    em dash: "could not load" is not the same as zero, and a real zero (an empty
@@ -31,4 +32,31 @@
       }
     })
     .catch(() => { /* leave the dashes */ });
+
+  // Sightings: approved sightings in every city (GET /api/sightings?city=all,
+  // worker/sightings-public.js — its `seen`, the Sightings page's own count).
+  // Kept current: re-read every 30s while the tab is visible (the answer is
+  // edge-cached for 30s), and at once when the tab comes back. A failed read
+  // keeps the last good number (or the dash).
+  const SIGHTINGS_POLL_MS = 30 * 1000;
+  let sightingsTimer = null;
+  function loadSightings() {
+    fetch(WORKER + '/api/sightings?city=all&limit=1')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
+      .then(body => {
+        const el = document.getElementById('statSightings');
+        if (el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
+      })
+      .catch(() => { /* keep what is shown */ });
+  }
+  function startSightings() {
+    if (sightingsTimer) clearInterval(sightingsTimer);
+    sightingsTimer = document.hidden ? null : setInterval(loadSightings, SIGHTINGS_POLL_MS);
+  }
+  loadSightings();
+  startSightings();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadSightings();
+    startSightings();
+  });
 })();
