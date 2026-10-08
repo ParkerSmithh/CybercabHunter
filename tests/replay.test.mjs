@@ -200,6 +200,9 @@ async function run() {
     const empty = await makeApp();
     const none = await page(empty, '?range=7d', { reduceMotion: true });
     check('a window with no sightings: no empty-state box (removed on owner request), counter 0, nothing faked', !none.d.getElementById('replayEmpty') && Number(none.d.getElementById('replayCounter').dataset.value) === 0 && none.R.state.dots.length === 0);
+    const dalEmpty = await page(empty, '?range=7d&city=dallas');
+    check('a window with no sightings still starts playing on its own (Dallas, before its first sighting)', dalEmpty.R.state.dots.length === 0 && dalEmpty.R.state.playing === true);
+    dalEmpty.w.close();
     none.w.close();
   }
 

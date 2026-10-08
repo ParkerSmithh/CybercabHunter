@@ -383,7 +383,7 @@ window.CCCReplay = (function () {
       $('replayLoading').classList.add('hidden');
       if (reduceMotion) { seek(state.end); return; }   // no animation: straight to the full picture
       seek(state.start);
-      if (dots.length) play();
+      play();   // always: a window with no sightings still plays its clock and sky
     }
     // City switch (#replayCityNav): links to each city's replay at the current
     // range; the selected city is highlighted like the Zones switch.
