@@ -207,7 +207,8 @@ export async function apiDmvVins(request, env) {
   const params = new URL(request.url).searchParams;
   const limit = Math.min(Math.max(Number(params.get('limit')) || 100, 1), 200);
   const offset = Math.max(Number(params.get('offset')) || 0, 0);
-  const q = String(params.get('q') || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17);
+  // A VIN fragment: letters and digits only (VINs have no other characters).
+  const q = [...String(params.get('q') || '').toUpperCase()].filter(c => /[0-9A-Z]/.test(c)).join('').slice(0, 17);
   const model = params.get('model');
   const where = ['d.last_seen_date = (SELECT MAX(snapshot_date) FROM dmv_snapshots)'];
   const binds = [];

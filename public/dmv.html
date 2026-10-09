@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="The public registry of Tesla Cybercabs reported by riders and spotters, in Austin and Dallas, searchable by plate or VIN.">
+<meta name="description" content="Every automated vehicle Tesla Robotaxi lists with the Texas DMV under its SB 2807 authorization: VIN, make, model and model year, from TxDMV's public roster, updated daily.">
 <meta name="theme-color" content="#090B0F">
 <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="64x64" href="images/icons/favicon-64.png">
 <link rel="apple-touch-icon" sizes="180x180" href="images/icons/apple-touch-icon.png">
-<title>Cybercab Hunter | Vehicle Registry</title>
+<title>Cybercab Hunter | Texas DMV AV Roster</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -78,84 +78,37 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<section class="py-16">
+<!-- Every VIN on TxDMV's public automated-vehicle roster for Tesla Robotaxi,
+     LLC (js/dmv-vins.js, GET /api/dmv-registrations/vins): exactly the fields
+     the source publishes — VIN, make, model, model year. Nothing else. -->
+<section class="py-16 max-sm:py-10">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-
-    <div class="reveal-on-scroll mb-8 max-sm:mb-5">
-      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Vehicles</p>
-      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight mb-3 max-sm:text-2xl max-sm:mb-1.5">CYBERCABS</h1>
-      <p class="text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug">Every Cybercab riders and spotters have reported, with the rides and sightings recorded for each.</p>
+    <div class="mb-6 max-sm:mb-4">
+      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2"><a href="/vehicles" class="hover:underline">Vehicles</a> · Texas DMV</p>
+      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight mb-3 max-sm:text-2xl max-sm:mb-1.5">EVERY VIN</h1>
+      <p class="text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug">Every automated vehicle Tesla Robotaxi, LLC lists with the Texas DMV under its SB 2807 authorization AV8313426653583, from TxDMV's public roster as of the latest daily snapshot.</p>
     </div>
-
-    <!-- City: Austin or Dallas Cybercabs (GET /api/robotaxi-vehicles?city=..., kept in the URL) -->
-    <div id="regCity" role="group" aria-label="Show Cybercabs in" class="flex flex-wrap gap-2 mb-4 max-sm:mb-3">
-      <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
-      <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Dallas</button>
-    </div>
-
-    <!-- Search: plate or VIN only (server-side, across the chosen city's public vehicles) -->
-    <!-- Search on the left, sort on the right (lined up with the grid's right edge) -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8 max-sm:flex-row max-sm:items-center max-sm:gap-2 max-sm:mb-5">
-    <form id="regSearchForm" role="search" class="relative w-full sm:max-w-md max-sm:flex-1 max-sm:min-w-0" onsubmit="return false">
-      <label for="regSearch" class="sr-only">Search vehicles</label>
-      <span id="regSearchHint" class="sr-only">Search by plate or VIN</span>
-      <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
-      <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Plate or VIN" aria-describedby="regSearchHint" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
-    </form>
-    <!-- Order of the list (GET /api/robotaxi-vehicles?sort=...) -->
-    <label for="regSort" class="sr-only">Sort vehicles</label>
-    <select id="regSort" class="sm:w-56 max-sm:w-[8.75rem] max-sm:shrink-0 max-sm:px-2 bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-3 text-sm [color-scheme:dark]">
-      <option value="recent">Recently Used</option>
-      <option value="least_recent">Used Least Recently</option>
-      <option value="most_miles">Most Miles</option>
-      <option value="most_rides">Most Rides</option>
-    </select>
-    </div>
-
-    <!-- Loading -->
-    <div id="regLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:grid-cols-2 max-sm:gap-3" aria-busy="true" aria-live="polite">
-      <span class="sr-only">Loading vehicles…</span>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse hidden sm:block"></div>
-    </div>
-
-    <!-- Empty: nothing is public yet -->
-    <div id="regEmpty" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">No vehicles found</h2>
-      <p class="text-slate-400 text-sm leading-relaxed">Vehicles appear here once a moderator approves them. Check back soon.</p>
-    </div>
-
-    <!-- Search found nothing (the registry itself is not empty) -->
-    <div id="regNoMatch" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">No matches</h2>
-      <p class="text-slate-400 text-sm leading-relaxed">No vehicle matches <span id="regNoMatchQuery" class="text-slate-200 font-semibold [overflow-wrap:anywhere]"></span>. Try part of a plate or VIN.</p>
-    </div>
-
-    <!-- Network/server failure — NOT the same as empty -->
-    <div id="regError" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">We couldn't load the registry</h2>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
-      <button id="regRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
-    </div>
-
-    <!-- Loaded -->
-    <div id="regLoaded" class="hidden">
-      <p id="regCount" class="text-xs text-slate-500 uppercase tracking-wider mb-4"></p>
-      <ul id="regList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:grid-cols-2 max-sm:gap-3"></ul>
-      <div class="mt-8 text-center">
-        <button id="regMore" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Show more</button>
-        <p id="regMoreError" class="hidden text-sm text-slate-400 mt-3">Couldn't load more right now. <button id="regMoreRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
+    <div class="flex flex-wrap items-center gap-2 mb-4 max-sm:mb-3">
+      <div id="vinModel" role="group" aria-label="Model" class="flex gap-2">
+        <button type="button" data-model="" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">All</button>
+        <button type="button" data-model="cybercab" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Cybercab</button>
+        <button type="button" data-model="model_y" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Model Y</button>
       </div>
+      <label class="sr-only" for="vinSearch">Search by VIN</label>
+      <input id="vinSearch" type="search" inputmode="search" autocomplete="off" maxlength="17" placeholder="Search VIN" class="flex-1 min-w-[10rem] min-h-[44px] bg-panel border border-white/[0.1] rounded-xl px-4 text-sm font-mono uppercase placeholder:normal-case placeholder:font-sans placeholder:text-slate-600">
     </div>
-
-  </div>
-</section>
-<!-- ===== Texas DMV registrations (js/dmv-panel.js, GET /api/dmv-registrations):
-     Tesla's automated-vehicle roster from TxDMV, snapshotted daily. ===== -->
-<section class="pb-16 max-sm:pb-10" aria-label="Texas DMV registrations">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-dmv-panel class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+    <p id="vinCount" class="text-xs text-slate-500 mb-2" aria-live="polite"></p>
+    <div class="glass rounded-2xl overflow-hidden">
+      <table class="w-full text-sm max-sm:text-xs">
+        <thead><tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-white/[0.07]">
+          <th scope="col" class="px-4 py-3 font-semibold max-sm:px-3">VIN</th><th scope="col" class="px-4 py-3 font-semibold max-sm:hidden">Make</th>
+          <th scope="col" class="px-4 py-3 font-semibold max-sm:px-2">Model</th><th scope="col" class="px-4 py-3 font-semibold text-right max-sm:px-3">Year</th>
+        </tr></thead>
+        <tbody id="vinRows"></tbody>
+      </table>
+    </div>
+    <button id="vinMore" type="button" class="hidden mt-4 w-full min-h-[44px] rounded-xl text-sm font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more</button>
+    <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Source: TxDMV Motor Carrier Credentialing System (TxMCCS), Tesla Robotaxi, LLC's automated motor vehicles, polled once a day. TxDMV publishes the VIN, make, model and model year; this page shows those and nothing else.</p>
   </div>
 </section>
 </main>
@@ -297,7 +250,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicles.js?v=12"></script>
-<script src="js/dmv-panel.js?v=2"></script>
+<script src="js/dmv-vins.js?v=1"></script>
 </body>
 </html>
