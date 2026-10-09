@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/style.css?v=51">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -342,130 +342,29 @@
   </div>
 </div>
 
+<!-- ===== Cybercab vs Model Y (js/dmv-panel.js, the "compare" layout of the
+     Texas DMV panel): both models' Texas DMV registrations over time. ===== -->
+<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-label="Cybercab vs Model Y">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div data-dmv-panel="compare" class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+  </div>
+</section>
 <div id="austinContent">
-<!-- ===== Fares ===== -->
-<section class="pt-12 lg:pt-16 max-sm:pt-6" aria-labelledby="faresHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="flex flex-wrap items-end justify-between gap-3 mb-6 max-sm:mb-4">
-      <h2 id="faresHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl">Fares</h2>
-      <p class="flex items-center gap-2 text-xs text-slate-500"><span id="faresAge">Fare model loading</span><span id="faresStale" class="hidden stale-badge">Stale</span></p>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-2 max-sm:gap-4">
-      <!-- Cybercab: measured on the site's own rides, beside the reported rate -->
-      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="font-display font-semibold text-lg text-white">Cybercab</h3>
-          <span id="faresSampleTag" class="tag">Measured</span>
-        </div>
-        <dl class="mt-5 grid grid-cols-3 gap-4 max-sm:mt-4 max-sm:gap-2">
-          <div>
-            <dt class="text-xs text-slate-400">Median fare</dt>
-            <dd class="mt-1.5"><span id="medianFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd>
-            <dd id="medianFareN" class="text-xs text-slate-500 mt-1"></dd>
-          </div>
-          <div>
-            <dt class="text-xs text-slate-400">Average fare</dt>
-            <dd class="mt-1.5"><span id="avgFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd>
-            <dd id="avgFareN" class="text-xs text-slate-500 mt-1"></dd>
-          </div>
-          <div>
-            <dt class="text-xs text-slate-400">Per mile</dt>
-            <dd class="mt-1.5"><span id="perMile" class="stat-value font-semibold text-2xl text-gold max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd>
-            <dd id="perMileN" class="text-xs text-slate-500 mt-1"></dd>
-          </div>
-        </dl>
-        <div class="mt-6 pt-5 border-t border-white/[0.07] flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2 sm:gap-4 max-sm:mt-4 max-sm:pt-3 max-sm:flex-row max-sm:items-baseline max-sm:justify-between max-sm:gap-3">
-          <div>
-            <p class="text-sm text-slate-300 max-sm:text-xs">Tesla's Austin rate, as reported</p>
-            <p class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">App pricing reported in Mar 2026, not measured here. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://www.notateslaapp.com/news/3757/tesla-increases-robotaxi-base-fare-drastically-increasing-short" target="_blank" rel="noopener">Source</a></p>
-          </div>
-          <p class="stat-value font-semibold text-lg text-white whitespace-nowrap max-sm:text-sm"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span>/mi</p>
-        </div>
-      </article>
-
-      <!-- Model Y: no measured fares on this site; the reported rate only -->
-      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="font-display font-semibold text-lg text-white">Model Y</h3>
-          <span class="tag">Reported rate</span>
-        </div>
-        <p class="mt-5 stat-value font-semibold text-3xl text-white max-sm:mt-3 max-sm:text-2xl"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span><span class="text-lg text-slate-400 font-medium">/mi</span></p>
-        <p class="mt-3 text-sm text-slate-400 leading-relaxed max-w-md max-sm:mt-2 max-sm:text-xs max-sm:leading-snug">Tesla's Austin robotaxi rate as reported from the app in Mar 2026. Cybercab Hunter has no measured Model Y fares, so this is the rate card, not what riders paid. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://robotaxiprice.com/tesla-robotaxi-price/" target="_blank" rel="noopener">Source</a></p>
-      </article>
-    </div>
-
-    <!-- Fare by distance -->
-    <div class="glass rounded-2xl p-6 lg:p-7 mt-6 max-sm:p-4 max-sm:mt-4">
-      <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-center max-sm:gap-4">
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
-            <div class="flex items-center gap-1">
-              <input type="number" id="tripMilesLabel" min="0.5" max="20" step="0.5" value="5" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
-              <span class="text-slate-400 text-sm font-semibold">mi</span>
-            </div>
-          </div>
-          <input type="range" id="tripMiles" data-elastic min="0.5" max="20" step="0.5" value="5">
-        </div>
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-sm:grid-cols-2 max-sm:gap-3">
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400 max-sm:text-[11px] max-sm:leading-tight">Cybercab, measured rate</dt>
-            <dd class="mt-1.5 stat-value font-semibold text-3xl text-gold max-sm:text-2xl"><span id="fareMeasured"><span class="skeleton-line w-20"></span></span></dd>
-            <dd id="fareMeasuredNote" class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:leading-snug"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400 max-sm:text-[11px] max-sm:leading-tight">Cybercab and Model Y, reported rate</dt>
-            <dd class="mt-1.5 stat-value font-semibold text-3xl text-white max-sm:text-2xl"><span id="fareReported">$10.00</span></dd>
-            <dd class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:leading-snug">$3.00 base plus $1.40 a mile</dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== Operating hours ===== -->
-<section class="pt-14 lg:pt-20 max-sm:pt-7" aria-labelledby="hoursHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <h2 id="hoursHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Operating hours</h2>
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-      <div class="divide-y divide-white/[0.07]">
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-5 max-sm:flex-nowrap max-sm:pb-4">
-          <div>
-            <p class="font-display font-semibold text-lg text-white max-sm:text-base">Cybercab</p>
-            <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span data-hours class="max-sm:whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
-          </div>
-          <span class="service-status max-sm:shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
-        </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-5 max-sm:flex-nowrap max-sm:pt-4">
-          <div>
-            <p class="font-display font-semibold text-lg text-white max-sm:text-base">Model Y</p>
-            <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span data-hours class="max-sm:whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
-          </div>
-          <span class="service-status max-sm:shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
-        </div>
-      </div>
-      <!-- The service day on a 24-hour clock (Central time), with the time now. -->
-      <div class="mt-7 max-sm:mt-5" aria-hidden="true">
-        <div class="hours-track relative h-2 rounded-full">
-          <div id="hoursWindow" class="absolute inset-y-0 rounded-full bg-gold/70"></div>
-          <div id="hoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
-        </div>
-        <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
-      </div>
-      <p id="hoursNowText" class="text-xs text-slate-500 mt-3 max-sm:mt-2"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ===== Pickup wait estimate ===== -->
-<section class="pt-14 lg:pt-20 pb-16 max-sm:pt-7 max-sm:pb-8" aria-labelledby="etaHeading">
+<!-- ===== Ride, hours & wait (Fares, Operating hours and the pickup-wait
+     estimate in one section): a card per model, glowing in its color (gold
+     Cybercab, red Model Y) with its fare, hours and wait; then the trip-fare
+     slider and the service day on one strip. Every id js/fleet-compare.js
+     fills is kept. ===== -->
+<section class="pt-12 lg:pt-16 pb-16 max-sm:pt-6 max-sm:pb-8" aria-labelledby="rhwHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
-      <h2 id="etaHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl">Pickup wait estimate</h2>
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
+        <h2 id="rhwHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
+        <p class="flex items-center gap-2 text-xs text-slate-500 mt-1.5"><span id="faresAge">Fare model loading</span><span id="faresStale" class="hidden stale-badge">Stale</span></p>
+      </div>
       <div class="flex items-center gap-3">
-        <span id="scenarioLabel" class="text-sm text-slate-400">Scenario</span>
+        <span id="scenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Wait scenario</span>
         <div class="flex items-center gap-2" role="group" aria-labelledby="scenarioLabel">
           <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
           <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
@@ -474,23 +373,104 @@
       </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2 max-sm:grid-cols-2 max-sm:gap-2.5">
-      <article class="glass rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-3">
-        <div class="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
-          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Cybercab</h3>
-          <span class="tag">Live fleet</span>
+    <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
+      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <span id="faresSampleTag" class="tag mt-2 inline-block">Measured</span>
+          </div>
+          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
         </div>
-        <div id="etaCybercab" class="mt-5 max-sm:mt-3" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-        <p id="etaCybercabBasis" class="text-sm text-slate-400 mt-4 max-sm:mt-2 max-sm:text-[11px] max-sm:leading-snug"></p>
-      </article>
-      <article class="glass rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-3">
-        <div class="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
-          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Model Y</h3>
-          <span class="tag">Illustrative</span>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Fare</p>
+            <dl class="grid grid-cols-3 gap-4 max-sm:gap-2">
+              <div><dt class="text-xs text-slate-400">Median fare</dt><dd class="mt-1"><span id="medianFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd><dd id="medianFareN" class="text-xs text-slate-500 mt-1"></dd></div>
+              <div><dt class="text-xs text-slate-400">Average fare</dt><dd class="mt-1"><span id="avgFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd><dd id="avgFareN" class="text-xs text-slate-500 mt-1"></dd></div>
+              <div><dt class="text-xs text-slate-400">Per mile</dt><dd class="mt-1"><span id="perMile" class="stat-value font-semibold text-2xl text-gold max-sm:text-lg"><span class="skeleton-line w-14"></span></span></dd><dd id="perMileN" class="text-xs text-slate-500 mt-1"></dd></div>
+            </dl>
+            <div class="mt-3 flex items-baseline justify-between gap-3 text-xs text-slate-500"><span>Tesla's Austin rate, as reported (Mar 2026). <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://www.notateslaapp.com/news/3757/tesla-increases-robotaxi-base-fare-drastically-increasing-short" target="_blank" rel="noopener">Source</a></span><span class="stat-value text-sm text-slate-200 whitespace-nowrap"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span>/mi</span></div>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <div class="flex items-center justify-between gap-3">
+              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
+            </div>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pickup wait</p>
+            <div id="etaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <p id="etaCybercabBasis" class="text-xs text-slate-400 mt-2"></p>
+          </div>
         </div>
-        <div id="etaModelY" class="mt-5 max-sm:mt-3" aria-live="polite"></div>
-        <p class="text-sm text-slate-400 mt-4 max-sm:mt-2 max-sm:text-[11px] max-sm:leading-snug">Illustrative: <span data-modely-fleet>114</span> Model Ys (static assumption). Cybercab Hunter has no live Model Y count.</p>
       </article>
+      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <span class="tag mt-2 inline-block">Reported rate</span>
+          </div>
+          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Fare</p>
+            <p class="stat-value font-semibold text-3xl text-white max-sm:text-2xl"><span data-rate-base>$3.00</span> + <span data-rate-mile>$1.40</span><span class="text-lg text-slate-400 font-medium">/mi</span></p>
+            <p class="mt-2 text-xs text-slate-500 leading-relaxed">Tesla's Austin robotaxi rate as reported from the app in Mar 2026. Cybercab Hunter has no measured Model Y fares, so this is the rate card, not what riders paid. <a class="underline decoration-white/20 underline-offset-2 hover:text-slate-300" href="https://robotaxiprice.com/tesla-robotaxi-price/" target="_blank" rel="noopener">Source</a></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <div class="flex items-center justify-between gap-3">
+              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
+            </div>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pickup wait</p>
+            <div id="etaModelY" aria-live="polite"></div>
+            <p class="text-xs text-slate-400 mt-2">Illustrative: <span data-modely-fleet>114</span> Model Ys (static assumption). Cybercab Hunter has no live Model Y count.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Trip fare by distance, and the service day on a 24-hour clock (Central). -->
+    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6">
+      <div class="min-w-0">
+        <div class="flex items-center justify-between mb-3">
+          <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
+          <div class="flex items-center gap-1">
+            <input type="number" id="tripMilesLabel" min="0.5" max="20" step="0.5" value="5" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
+            <span class="text-slate-400 text-sm font-semibold">mi</span>
+          </div>
+        </div>
+        <input type="range" id="tripMiles" data-elastic min="0.5" max="20" step="0.5" value="5">
+        <dl class="mt-5 grid grid-cols-2 gap-4 max-sm:gap-3">
+          <div class="min-w-0">
+            <dt class="text-xs text-slate-400 max-sm:text-[11px] max-sm:leading-tight">Cybercab, measured rate</dt>
+            <dd class="mt-1 stat-value font-semibold text-3xl text-gold max-sm:text-2xl"><span id="fareMeasured"><span class="skeleton-line w-20"></span></span></dd>
+            <dd id="fareMeasuredNote" class="text-xs text-slate-500 mt-1 max-sm:text-[11px] max-sm:leading-snug"></dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs text-slate-400 max-sm:text-[11px] max-sm:leading-tight">Cybercab and Model Y, reported rate</dt>
+            <dd class="mt-1 stat-value font-semibold text-3xl text-white max-sm:text-2xl"><span id="fareReported">$10.00</span></dd>
+            <dd class="text-xs text-slate-500 mt-1 max-sm:text-[11px] max-sm:leading-snug">$3.00 base plus $1.40 a mile</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-slate-300">Service day</p>
+        <div class="mt-5" aria-hidden="true">
+          <div class="hours-track relative h-2 rounded-full">
+            <div id="hoursWindow" class="absolute inset-y-0 rounded-full bg-gold/70"></div>
+            <div id="hoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
+          </div>
+          <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+        </div>
+        <p id="hoursNowText" class="text-xs text-slate-500 mt-3"></p>
+      </div>
     </div>
 
     <p class="mt-5 flex items-start gap-2 text-sm text-slate-400 max-sm:mt-4 max-sm:text-xs">
@@ -525,65 +505,18 @@
 <!-- ===== Dallas (launched Apr 18, 2026) =====
      Filled by js/fleet-compare.js from GET /api/fleet-stats?city=dallas and
      the Dallas constants in js/calc.js (hours, reported rate, the owner's
-     fixed Model Y count, the 81 mi² zone for the pickup-wait estimate). -->
+     fixed Model Y count, the 81 mi² zone for the pickup-wait estimate).
+     The same one-section layout as Austin's. -->
 <div id="dallasContent" class="hidden">
-<section class="pt-12 lg:pt-16 max-sm:pt-6" aria-labelledby="dalFaresHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <h2 id="dalFaresHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Fares</h2>
-    <div class="grid gap-6 lg:grid-cols-2 max-sm:gap-4">
-      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="font-display font-semibold text-lg text-white">Measured</h3>
-          <span id="dalFaresTag" class="tag">From logged rides</span>
-        </div>
-        <dl class="mt-5 grid grid-cols-3 gap-4 max-sm:mt-4 max-sm:gap-2">
-          <div><dt class="text-xs text-slate-400">Median fare</dt><dd class="mt-1.5"><span id="dalMedianFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
-          <div><dt class="text-xs text-slate-400">Average fare</dt><dd class="mt-1.5"><span id="dalAvgFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
-          <div><dt class="text-xs text-slate-400">Per mile</dt><dd class="mt-1.5"><span id="dalPerMile" class="stat-value font-semibold text-2xl text-gold max-sm:text-lg">—</span></dd></div>
-        </dl>
-        <p id="dalFaresBasis" class="text-xs text-slate-500 mt-3"></p>
-      </article>
-      <article class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h3 class="font-display font-semibold text-lg text-white">Reported rate</h3>
-          <span class="tag tag-assumed">Reported</span>
-        </div>
-        <p class="mt-4 stat-value font-semibold text-2xl text-white max-sm:text-lg">$3.25 + $1.00/mi</p>
-        <p class="mt-2 text-sm text-slate-400 leading-relaxed max-sm:text-xs max-sm:leading-snug">Dallas's introductory rate as reported at launch (<a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-200">FOX 4</a>, Apr 2026); not a published rate card. A 5-mile trip: <span id="dalFare5" class="stat-value text-slate-200">$8.25</span>.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="pt-14 lg:pt-20 max-sm:pt-7" aria-labelledby="dalHoursHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <h2 id="dalHoursHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl mb-6 max-sm:mb-4">Operating hours</h2>
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
-      <div class="flex flex-wrap items-center justify-between gap-3 max-sm:flex-nowrap">
-        <div>
-          <p class="font-display font-semibold text-lg text-white max-sm:text-base">Dallas robotaxi</p>
-          <p class="stat-value text-slate-300 mt-0.5 max-sm:text-sm"><span class="max-sm:whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
-        </div>
-        <span id="dalServiceStatus" class="service-status max-sm:shrink-0 max-sm:text-[11px] max-sm:px-2.5">Checking</span>
-      </div>
-      <!-- The service day on a 24-hour clock: open 6 AM to 11 PM. -->
-      <div class="mt-7 max-sm:mt-5" aria-hidden="true">
-        <div class="hours-track relative h-2 rounded-full">
-          <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:25%;width:70.833%"></div>
-          <div id="dalHoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
-        </div>
-        <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="pt-14 lg:pt-20 pb-16 max-sm:pt-7 max-sm:pb-8" aria-labelledby="dalEtaHeading">
+<section class="pt-12 lg:pt-16 pb-16 max-sm:pt-6 max-sm:pb-8" aria-labelledby="dalRhwHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
-      <h2 id="dalEtaHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-xl">Pickup wait estimate</h2>
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
+        <h2 id="dalRhwHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
+      </div>
       <div class="flex items-center gap-3">
-        <span id="dalScenarioLabel" class="text-sm text-slate-400">Scenario</span>
+        <span id="dalScenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Wait scenario</span>
         <div class="flex items-center gap-2" role="group" aria-labelledby="dalScenarioLabel">
           <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
           <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
@@ -592,23 +525,76 @@
       </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2 max-sm:grid-cols-2 max-sm:gap-2.5">
-      <article class="glass rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-3">
-        <div class="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
-          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Cybercab</h3>
-          <span class="tag">Live fleet</span>
+    <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
+      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <span id="dalFaresTag" class="tag mt-2 inline-block">From logged rides</span>
+          </div>
+          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
         </div>
-        <div id="dalEtaCybercab" class="mt-5 max-sm:mt-3" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-        <p id="dalEtaCybercabBasis" class="text-sm text-slate-400 mt-4 max-sm:mt-2 max-sm:text-[11px] max-sm:leading-snug"></p>
-      </article>
-      <article class="glass rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-3">
-        <div class="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1.5">
-          <h3 class="font-display font-semibold text-lg text-white max-sm:text-base">Model Y</h3>
-          <span class="tag">Fixed</span>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Fare</p>
+            <dl class="grid grid-cols-3 gap-4 max-sm:gap-2">
+              <div><dt class="text-xs text-slate-400">Median fare</dt><dd class="mt-1"><span id="dalMedianFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
+              <div><dt class="text-xs text-slate-400">Average fare</dt><dd class="mt-1"><span id="dalAvgFare" class="stat-value font-semibold text-2xl text-white max-sm:text-lg">—</span></dd></div>
+              <div><dt class="text-xs text-slate-400">Per mile</dt><dd class="mt-1"><span id="dalPerMile" class="stat-value font-semibold text-2xl text-gold max-sm:text-lg">—</span></dd></div>
+            </dl>
+            <p id="dalFaresBasis" class="text-xs text-slate-500 mt-2"></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <p class="stat-value text-white text-lg max-sm:text-base"><span class="whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pickup wait</p>
+            <div id="dalEtaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <p id="dalEtaCybercabBasis" class="text-xs text-slate-400 mt-2"></p>
+          </div>
         </div>
-        <div id="dalEtaModelY" class="mt-5 max-sm:mt-3" aria-live="polite"></div>
-        <p class="text-sm text-slate-400 mt-4 max-sm:mt-2 max-sm:text-[11px] max-sm:leading-snug">From <span data-dal-modely-fleet>65</span> Model Ys (a fixed figure). Cybercab Hunter has no live Model Y count.</p>
       </article>
+      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <span class="tag tag-assumed mt-2 inline-block">Reported</span>
+          </div>
+          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Fare</p>
+            <p class="stat-value font-semibold text-3xl text-white max-sm:text-2xl">$3.25 + $1.00<span class="text-lg text-slate-400 font-medium">/mi</span></p>
+            <p class="mt-2 text-xs text-slate-500 leading-relaxed">Dallas's introductory rate as reported at launch (<a href="https://www.fox4news.com/news/tesla-launches-driverless-robotaxi-dallas" target="_blank" rel="noopener" class="underline decoration-white/20 hover:text-slate-200">FOX 4</a>, Apr 2026), for both models; not a published rate card. A 5-mile trip: <span id="dalFare5" class="stat-value text-slate-200">$8.25</span>.</p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <p class="stat-value text-white text-lg max-sm:text-base"><span class="whitespace-nowrap">6:00 AM - 11:00 PM</span> <span class="text-slate-500 text-sm">Central, daily</span></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pickup wait</p>
+            <div id="dalEtaModelY" aria-live="polite"></div>
+            <p class="text-xs text-slate-400 mt-2">From <span data-dal-modely-fleet>65</span> Model Ys (a fixed figure). Cybercab Hunter has no live Model Y count.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- The Dallas service day on a 24-hour clock: open 6 AM to 11 PM. -->
+    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 max-sm:p-4 max-sm:mt-4">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm font-medium text-slate-300">Service day · both models</p>
+        <span id="dalServiceStatus" class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5">Checking</span>
+      </div>
+      <div class="mt-5" aria-hidden="true">
+          <div class="hours-track relative h-2 rounded-full">
+            <div class="absolute inset-y-0 rounded-full bg-gold/70" style="left:25%;width:70.833%"></div>
+            <div id="dalHoursNow" class="absolute -top-1.5 h-5 w-0.5 rounded-full bg-[rgb(var(--ink))]"></div>
+          </div>
+          <div class="flex justify-between mt-2 text-xs text-slate-500 stat-value"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+        </div>
     </div>
 
     <p class="mt-5 flex items-start gap-2 text-sm text-slate-400 max-sm:mt-4 max-sm:text-xs">
@@ -1018,6 +1004,7 @@
   })();
 </script>
 <script src="js/fleet-compare.js?v=4"></script>
+<script src="js/dmv-panel.js?v=8"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 </body>
 </html>
