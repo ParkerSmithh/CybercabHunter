@@ -31,6 +31,7 @@
 // "Matched to tracked plates": roster VINs equal (exact, upper-case, trimmed)
 // to the VIN of a publicly eligible vehicle in our own registry.
 
+import { DMV_HISTORY, DMV_HISTORY_SOURCE } from './txdmv-history.js';
 import { publicVehicleEligibleSql } from './ride-status.js';
 import { usLocalParts } from './timezones.js';
 
@@ -184,12 +185,30 @@ export async function apiDmvRegistrations(request, env, ctx) {
           WHERE ${publicVehicleEligibleSql('v')}`).bind(latest.date)
       ]);
       const f = (fresh.results || [])[0] || {}, m = (matched.results || [])[0] || {};
+      const trackingSince = series[0].date;
+      // Before our first snapshot: the imported, approximate history (never after it).
+      // (env.DMV_HISTORY_OVERRIDE: tests only; no such binding in production.)
+      const imported = Array.isArray(env.DMV_HISTORY_OVERRIDE) ? env.DMV_HISTORY_OVERRIDE : DMV_HISTORY;
+      const history = imported.filter(p => p.date < trackingSince).map(p => ({ ...p, approx: true }));
+      const full = [...history, ...series.map(r => ({ date: r.date, total: r.total, cybercab: r.cybercab, model_y: r.model_y }))];
+      // A window that starts before tracking began can't be counted by VIN; it's
+      // the change in the counts over the window instead (approximate).
+      const at = date => { let v = null; for (const p of full) { if (p.date <= date) v = p; else break; } return v || { total: 0, cybercab: 0, model_y: 0 }; };
+      const delta = (from, key) => latest[key] - at(from)[key];
+      const byCount30 = !!history.length && d30 < trackingSince, byCount7 = !!history.length && d7 < trackingSince;
       body = {
         ...body,
         snapshot: { date: latest.date, polled_at: latest.polled_at, total: latest.total, cybercab: latest.cybercab, model_y: latest.model_y, other: latest.other },
-        tracking_since: series[0].date,
-        series: series.map(r => ({ date: r.date, total: r.total, cybercab: r.cybercab, model_y: r.model_y })),
-        new: { d30: Number(f.d30) || 0, d7: Number(f.d7) || 0, cybercab_30d: Number(f.cybercab_30d) || 0, model_y_30d: Number(f.model_y_30d) || 0 },
+        tracking_since: trackingSince,
+        history_source: history.length ? { ...DMV_HISTORY_SOURCE, from: history[0].date, until: trackingSince } : null,
+        series: full,
+        new: {
+          d30: byCount30 ? delta(d30, 'total') : Number(f.d30) || 0,
+          d7: byCount7 ? delta(d7, 'total') : Number(f.d7) || 0,
+          cybercab_30d: byCount30 ? delta(d30, 'cybercab') : Number(f.cybercab_30d) || 0,
+          model_y_30d: byCount30 ? delta(d30, 'model_y') : Number(f.model_y_30d) || 0,
+          approx: byCount30
+        },
         matched: { count: Number(m.n) || 0, spotted_30d: Number(m.spotted) || 0 }
       };
     }

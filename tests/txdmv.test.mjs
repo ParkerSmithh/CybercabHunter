@@ -45,6 +45,7 @@ async function run() {
   check('snapshot dates are Central dates', centralDate(Date.parse('2026-10-09T04:30:00Z')) === '2026-10-08' && centralDate(Date.parse('2026-10-09T06:00:00Z')) === '2026-10-09');
 
   const ctx = await makeEnv();
+  ctx.env.DMV_HISTORY_OVERRIDE = [];   // sections 2-7: our own snapshots only (section 8 imports a history)
   // Day 1: 3 Cybercabs + 2 Model Ys, served 2 per page (pagination).
   let roster = [cyber(1), cyber(2), cyber(3), modelY(1), modelY(2)];
   console.log('2. The first poll: the baseline');
@@ -115,6 +116,28 @@ async function run() {
     const cy = await api(ctx, '/api/dmv-registrations/vins?model=cybercab');
     const found = await api(ctx, `/api/dmv-registrations/vins?q=${cyber(4).vin.slice(-6)}`);
     check('filter by model and search by VIN', cy.total === 5 && found.total === 1 && found.vehicles[0].vin === cyber(4).vin);
+  }
+
+  console.log('8. The imported history (before our first snapshot only, approximate)');
+  {
+    // Ours start 2026-10-01 (5) and reach 7 on 10-09; the imported history runs
+    // 08-01 -> 09-20 and has a stray point on/after our first day (never used).
+    ctx.env.DMV_HISTORY_OVERRIDE = [
+      { date: '2026-08-01', cybercab: 0, model_y: 1, total: 1 },
+      { date: '2026-09-05', cybercab: 1, model_y: 1, total: 2 },
+      { date: '2026-09-20', cybercab: 2, model_y: 2, total: 4 },
+      { date: '2026-10-01', cybercab: 99, model_y: 99, total: 198 }
+    ];
+    const a = await api(ctx, '/api/dmv-registrations');
+    const imported = a.series.filter(p => p.approx), own = a.series.filter(p => !p.approx);
+    check('imported points come first, flagged approx, and stop before our first snapshot', imported.map(p => p.date).join() === '2026-08-01,2026-09-05,2026-09-20' && a.series.slice(0, 3).every(p => p.approx) && !a.series.some(p => p.total === 198));
+    check('our own points are exactly the snapshot rows, untouched', JSON.stringify(own) === JSON.stringify(q(ctx, 'SELECT snapshot_date AS date, total, cybercab_count AS cybercab, model_y_count AS model_y FROM dmv_snapshots ORDER BY snapshot_date')));
+    check('the source is named and credited, up to the day polling began', a.history_source && a.history_source.name === 'Robotaxi Tracker' && /robotaxitracker\.com/.test(a.history_source.url) && a.history_source.from === '2026-08-01' && a.history_source.until === '2026-10-01');
+    // 30 days back from 10-09 is 09-09 (inside the imported stretch: 2 then).
+    check('a 30-day window reaching into it counts the change: 7 - 2 = +5 (+4 Cybercab, +1 Model Y), approx', a.new.d30 === 5 && a.new.cybercab_30d === 4 && a.new.model_y_30d === 1 && a.new.approx === true, JSON.stringify(a.new));
+    check('a 7-day window inside our own polling still counts by VIN (3), as before', a.new.d7 === 3);
+    check('the snapshot itself is always our own latest pull', a.snapshot.total === 7 && a.snapshot.date === '2026-10-09');
+    check('the shipped history ends before our first real snapshot (2026-10-09) and never decreases', (await import('../worker/txdmv-history.js')).DMV_HISTORY.every((p, i, all) => p.date < '2026-10-09' && p.total === p.cybercab + p.model_y && (!i || (p.cybercab >= all[i - 1].cybercab && p.model_y >= all[i - 1].model_y))));
   }
 
   t.finish();
