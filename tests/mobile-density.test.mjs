@@ -30,8 +30,8 @@ const vehicles = read('vehicles.html');
 const list = classOf(vehicles, /<ul id="regList" class="([^"]*)"/);
 check('Vehicles: two cards per row on phones; 1 / 2 / 3 from sm up as before', has(list, 'max-sm:grid-cols-2', 'grid-cols-1', 'sm:grid-cols-2', 'xl:grid-cols-3', 'gap-6'));
 const vjs = fs.readFileSync(`${ROOT}public/js/vehicles.js`, 'utf8');
-check('the phone card is compact (smaller padding and image), the sm+ card unchanged', /'group block glass rounded-2xl p-6 max-sm:p-3 h-full/.test(vjs) && /'w-full h-32 object-contain mb-4 max-sm:h-16 max-sm:mb-2'/.test(vjs));
-check('the long "Recorded distance" label has a phone-only short form', /stat\('Recorded distance', fmtMiles\(v\.total_distance\), 'Distance'\)/.test(vjs));
+check('the phone card is compact (smaller padding and image)', /rounded-2xl border p-5 max-sm:p-3 /.test(vjs) && /max-sm:top-2 max-sm:w-\[58%\]'/.test(vjs));
+check('the distance stat has a short label that fits three across (no phone-only form needed)', /stat\('Distance', fmtMiles\(v\.total_distance\), null, 'distance'\)/.test(vjs));
 
 const index = read('index.html');
 check('Homepage hero headline is smaller on phones only', /text-5xl lg:text-6xl leading-\[1\.05\][^"]*max-sm:text-\[2\.375rem\]/.test(index));

@@ -251,13 +251,13 @@ async function run() {
     const cybercabCard = p.cards().find(a => /CYB0010/.test(a.textContent));
     const ordinaryCard = p.cards().find(a => /ORD0011/.test(a.textContent));
     const manualCard = p.cards().find(a => /MAN0014/.test(a.textContent));
-    check('the Cybercab\'s card includes an <img src="images/Cybercab2.png">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="images/Cybercab2.png"]'));
-    check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/Cybercab2.png"]').getAttribute('alt') || '').length > 0);
-    check('the ordinary (no-vin) vehicle\'s card has no Cybercab2.png image at all', !ordinaryCard.querySelector('img'));
-    check('a Cybercab approved without a VIN looks like a normal Cybercab card: the image and the Cybercab pill', !!manualCard.querySelector('img[src="images/Cybercab2.png"]') && [...manualCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab'));
+    check('the Cybercab\'s card includes an <img src="images/dmv-cybercab.webp">, built via the DOM (not innerHTML)', !!cybercabCard.querySelector('img[src="images/dmv-cybercab.webp"]'));
+    check('the image has a non-empty, non-misleading alt text (it is a generic illustration, not this vehicle\'s own photo)', (cybercabCard.querySelector('img[src="images/dmv-cybercab.webp"]').getAttribute('alt') || '').length > 0);
+    check('the ordinary (no-vin) vehicle\'s card has no Cybercab image at all', !ordinaryCard.querySelector('img'));
+    check('a Cybercab approved without a VIN looks like a normal Cybercab card: the image and the Cybercab pill', !!manualCard.querySelector('img[src="images/dmv-cybercab.webp"]') && [...manualCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab'));
     check('no card on the all-cars page says "VIN verified" (that badge is only on the vehicle\'s own page)', !/VIN verified/.test(p.d.getElementById('regList').textContent));
     const imgSrcs = new Set([...p.d.querySelectorAll('#regList img')].map(img => img.getAttribute('src')));
-    check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/Cybercab2.png'));
+    check('every image on the page is the SAME shared file — no per-vehicle image was created', imgSrcs.size === 1 && imgSrcs.has('images/dmv-cybercab.webp'));
 
     // A confirmed Cybercab's card shows a compact gold/yellow BADGE, never
     // plain text — reusing the exact detail-page styling (vCybercabBadge in
@@ -266,7 +266,7 @@ async function run() {
     const badge = cybercabCard.querySelector('span');
     check('the Cybercab card shows a "Cybercab" badge (a <span>, not a plain <p> model line)', !!badge && badge.textContent.trim() === 'Cybercab');
     // Phone-only (max-sm:) classes compact the two-column phone grid; every other class must stay the detail page's.
-    check('the badge reuses the exact detail-page vCybercabBadge classes (border, rounded-full, gold-tinted border, uppercase)', badge.className.split(' ').filter(c => !c.startsWith('max-sm:')).join(' ') === 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide');
+    check('the badge reuses the detail page\'s vCybercabBadge style (.vcard-pill)', badge.className === 'vcard-pill' && /id="vCybercabBadge" class="hidden vcard-pill /.test(read('vehicle.html')));
     check('the Cybercab card does NOT also render a plain-text model paragraph', !cybercabCard.querySelector('p') || !/^Cybercab$/.test((cybercabCard.querySelector('p') || {}).textContent || ''));
     check('the ordinary vehicle\'s card keeps its existing plain-text model line, not a badge', ![...ordinaryCard.querySelectorAll('span')].some(x => x.textContent.trim() === 'Cybercab') && /Model not confirmed/.test(ordinaryCard.textContent));
     check('the underlying data/classification logic is unchanged — this is presentation only (the API still reports the same vin/model as before)', c.vin === VIN && r.body.vehicles.find(v => v.id === ordinary).vin === null);

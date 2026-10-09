@@ -257,7 +257,7 @@ async function run() {
     const manualPage = await openPage({ cybercabhunter_db: d1 }, manualId);
     check('a manual Cybercab: the Cybercab badge, image and its VIN show like any Cybercab, ', manualPage.visible('vehicleLoaded') && manualPage.text('vSummaryLine') === `Rides in Dallas · VIN ${VIN}` && manualPage.visible('vCybercabBadge') && manualPage.visible('vCybercabImage'));
     const img = page.d.getElementById('vCybercabImage');
-    check('the image points at the one shared, existing Cybercab2.png file — never a per-vehicle image', img.getAttribute('src') === 'images/Cybercab2.png');
+    check('the image points at the one shared, existing Cybercab file — never a per-vehicle image', img.getAttribute('src') === 'images/dmv-cybercab.webp');
     check('the alt text does not claim to be a photo of this specific vehicle', !new RegExp(VIN).test(img.getAttribute('alt') || '') && (img.getAttribute('alt') || '').length > 0);
     check('the plate still renders normally alongside the VIN', page.text('vLicensePlate') === 'CYB0010');
     check('still no session/token material leaks, even with a vin present', !/access_token|refresh_token|\bsession\b/i.test(page.d.body.innerHTML));

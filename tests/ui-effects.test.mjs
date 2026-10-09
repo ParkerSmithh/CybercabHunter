@@ -64,8 +64,10 @@ async function run() {
       check('Fleet ROI: the three result tiles only (not the inputs or the graph)', n(roi) === 3);
       check('Fleet ETA: the eight model cards only, red on Model Y', n(eta) === 8 && (eta.match(/data-glow="red"/g) || []).length === 4 && [...eta.matchAll(/data-glow(?:="red")? class="([^"]*)"/g)].every(m => /\bdmv-card\b/.test(m[1])));
     }
-    check('the vehicle cards and the sighting cards are marked by their scripts', /a\.dataset\.glow = ''/.test(read('public/js/vehicles.js')) && /article\.dataset\.glow = ''/.test(read('public/js/sightings.js')));
-    const none = ['index.html', 'infrastructure.html', 'replay.html', 'rider-data.html', 'rider.html', 'vehicle.html', 'moderation.html', 'profile.html', 'link-gmail.html', 'vehicles.html'];
+    check('the vehicle cards and the sighting cards are marked by their scripts', /a\.dataset\.glow = kind\.glow/.test(read('public/js/vehicles.js')) && /article\.dataset\.glow = ''/.test(read('public/js/sightings.js')));
+    // vehicle.html: only its hero card (the Fleet ETA model-card redesign, owner request 2026-10-09).
+    check('Vehicle page: the hero card only', count('vehicle.html') === 1 && /id="vHero" data-glow /.test(read('public/vehicle.html')));
+    const none = ['index.html', 'infrastructure.html', 'replay.html', 'rider-data.html', 'rider.html', 'moderation.html', 'profile.html', 'link-gmail.html', 'vehicles.html'];
     check('no glow anywhere else (Zones, Replay, Rider Data, profiles, Moderation, Profile settings, ...)', none.every(f => count(f) === 0), none.filter(f => count(f)).join());
   }
 

@@ -19,7 +19,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -119,27 +119,33 @@
 
     <!-- Loaded vehicle -->
     <div id="vehicleLoaded" class="hidden">
-      <div class="reveal-on-scroll mb-8 glass rounded-2xl p-5 lg:p-6 flex flex-col lg:flex-row lg:items-center gap-4 max-sm:mb-4 max-sm:p-4 max-sm:flex-row max-sm:items-center max-sm:gap-3">
-        <div class="flex-1 min-w-0">
-          <div class="flex flex-wrap items-center gap-3 mb-3 max-sm:gap-2 max-sm:mb-2">
-            <h1 id="vLicensePlate" class="font-display font-bold text-2xl sm:text-3xl tracking-[0.18em] px-4 py-2 max-sm:text-lg max-sm:px-2.5 max-sm:py-1 rounded-lg bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]"></h1>
-            <span id="vCybercabBadge" class="hidden text-xs font-bold px-3 py-1.5 max-sm:text-[10px] max-sm:px-2 max-sm:py-1 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide">Cybercab</span>
-          </div>
-          <p id="vSummaryLine" class="hidden text-sm text-slate-400 [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-snug"></p>
+      <!-- The vehicle, in the Fleet ETA model-card style (js/vehicle.js sets its
+           colour: gold Cybercab, red Model Y, slate otherwise; React Bits glow). -->
+      <div id="vHero" data-glow class="dmv-card reveal-on-scroll relative mb-6 rounded-2xl border p-6 lg:p-8 min-h-[220px] max-sm:mb-4 max-sm:p-4 max-sm:min-h-[150px]" style="--c:148 163 184;border-color:#94a3b859;background:linear-gradient(135deg, #94a3b81c, transparent 62%)">
+        <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
+          <img id="vCybercabImage" src="images/dmv-cybercab.webp" alt="Cybercab (generic vehicle-type image, not a photo of this specific vehicle)" class="hidden absolute right-[-4%] bottom-[-6%] w-[46%] max-w-[440px] opacity-95 max-sm:w-[52%] max-sm:bottom-[-2%]">
         </div>
-        <img id="vCybercabImage" src="images/Cybercab2.png" alt="Cybercab (generic vehicle-type image, not a photo of this specific vehicle)" class="hidden w-full max-w-[140px] sm:max-w-[160px] lg:w-40 lg:max-w-none shrink-0 object-contain mx-auto lg:mx-0 max-sm:w-24 max-sm:mx-0">
+        <div class="relative max-w-[60%] max-sm:max-w-[56%]">
+          <p id="vEyebrow" class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300 max-sm:text-[10px]"><span class="w-2 h-2 rounded-full bg-current"></span><span id="vEyebrowText">Vehicle</span></p>
+          <div class="flex flex-wrap items-center gap-3 max-sm:gap-2">
+            <h1 id="vLicensePlate" class="mt-3 font-display font-bold text-2xl sm:text-3xl tracking-[0.18em] px-4 py-2 max-sm:text-lg max-sm:px-2.5 max-sm:py-1 rounded-lg bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]"></h1>
+            <span id="vCybercabBadge" class="hidden vcard-pill mt-3">Cybercab</span>
+          </div>
+          <p id="vSummaryLine" class="hidden mt-3 text-sm text-slate-300 [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-snug"></p>
+        </div>
       </div>
 
-      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8 max-sm:p-4 max-sm:mb-4">
-        <h2 data-split class="font-display font-bold text-xl tracking-tight text-white mb-1 max-sm:text-lg">Recorded ride history</h2>
-        <p class="text-xs text-slate-500 mb-5 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-4">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
+      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8 max-sm:p-4 max-sm:mb-4" style="--c:212 175 55">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Rides · Distance · Dates</p>
+        <h2 data-split class="font-display font-bold text-2xl tracking-[-0.02em] text-white uppercase mt-1 mb-1 max-sm:text-lg">Recorded ride history</h2>
+        <p class="text-xs text-slate-500 mb-6 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-4">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm max-sm:grid-cols-4 max-sm:gap-2">
-          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Rides Recorded</span><span class="sm:hidden">Rides</span></div><div id="vTripCount" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
-          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Recorded Distance</span><span class="sm:hidden">Distance</span></div><div id="vTotalDistance" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
-          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">First Recorded Ride</span><span class="sm:hidden">First ride</span></div><div id="vFirstRide" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
-          <div class="min-w-0"><div class="text-slate-500 text-xs mb-1 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Latest Recorded Ride</span><span class="sm:hidden">Latest ride</span></div><div id="vLastRide" class="stat-value text-xl font-semibold text-white max-sm:text-sm max-sm:leading-tight"></div></div>
+          <div class="min-w-0"><div class="vcard-label max-sm:truncate"><svg class="max-sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17M8 12l1-3h6l1 3M7 20v-3M17 20v-3"/></svg><span class="max-sm:hidden">Rides Recorded</span><span class="sm:hidden">Rides</span></div><div id="vTripCount" class="dmv-card-num stat-value text-2xl font-semibold text-white mt-1 [overflow-wrap:anywhere] max-sm:text-sm max-sm:leading-tight">—</div></div>
+          <div class="min-w-0"><div class="vcard-label max-sm:truncate"><svg class="max-sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h4l3-14h2l3 14h4M12 9v2M12 14v2"/></svg><span class="max-sm:hidden">Recorded Distance</span><span class="sm:hidden">Distance</span></div><div id="vTotalDistance" class="dmv-card-num stat-value text-2xl font-semibold text-white mt-1 [overflow-wrap:anywhere] max-sm:text-sm max-sm:leading-tight">—</div></div>
+          <div class="min-w-0"><div class="vcard-label max-sm:truncate"><svg class="max-sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="max-sm:hidden">First Recorded Ride</span><span class="sm:hidden">First ride</span></div><div id="vFirstRide" class="dmv-card-num stat-value text-2xl font-semibold text-white mt-1 [overflow-wrap:anywhere] max-sm:text-sm max-sm:leading-tight">—</div></div>
+          <div class="min-w-0"><div class="vcard-label max-sm:truncate"><svg class="max-sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg><span class="max-sm:hidden">Latest Recorded Ride</span><span class="sm:hidden">Latest ride</span></div><div id="vLastRide" class="dmv-card-num stat-value text-2xl font-semibold text-white mt-1 [overflow-wrap:anywhere] max-sm:text-sm max-sm:leading-tight">—</div></div>
         </div>
-        <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-5 leading-relaxed max-sm:mt-4"></p>
+        <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-6 pt-4 border-t border-white/[0.07] leading-relaxed max-sm:mt-4"></p>
       </div>
     </div>
 
@@ -284,6 +290,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicle.js?v=9"></script>
+<script src="js/vehicle.js?v=12"></script>
 </body>
 </html>

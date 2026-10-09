@@ -57,6 +57,20 @@
     show('vCybercabBadge', approvedCybercab);
     show('vCybercabImage', approvedCybercab);
 
+    // The hero card's colour (the Fleet ETA model cards): gold for an approved
+    // Cybercab, neutral slate otherwise. Never coloured by the model field:
+    // this page shows no model text, and the Cybercab badge is its only type
+    // signal. The eyebrow is the vehicle's city (text only, from the record).
+    const kind = approvedCybercab ? ['212 175 55', '#D4AF37', 'text-gold', ''] : ['148 163 184', '#94a3b8', 'text-slate-300', ''];
+    const hero = $('vHero');
+    if (hero) {
+      hero.style.setProperty('--c', kind[0]);
+      hero.style.borderColor = kind[1] + '59';
+      hero.style.background = `linear-gradient(135deg, ${kind[1]}1c, transparent 62%)`;
+      hero.dataset.glow = kind[3];
+      $('vEyebrow').className = `flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${kind[2]} max-sm:text-[10px]`;
+    }
+
     // One plain-text summary line built only from the facts actually on
     // record, joined with " · " — never a fixed template with "Not
     // recorded" filler for whatever is missing.
@@ -69,6 +83,8 @@
     if (v.color) clauses.push(`${v.color} exterior`);
     if (v.vin) clauses.push(`VIN ${v.vin}`);
     $('vSummaryLine').textContent = clauses.join(' · ');
+    const heroCity = v.service_area || rideCities[0] || '';
+    if ($('vEyebrowText')) $('vEyebrowText').textContent = heroCity || 'Vehicle';
     show('vSummaryLine', clauses.length > 0);
 
     $('vTripCount').textContent = fmtInt(h.trip_count);

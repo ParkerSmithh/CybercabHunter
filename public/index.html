@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -397,7 +397,7 @@
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=6"></script>
 <script src="js/home-rows.js?v=8"></script>
-<script src="js/dmv-panel.js?v=10"></script>
+<script src="js/dmv-panel.js?v=11"></script>
 <script src="js/austin-map.js?v=8"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>
@@ -455,10 +455,13 @@
         zoneMap.fitBounds(viewBounds, { padding: 28, animate: false });
       }
 
-      const labelEl = document.createElement('div');
-      labelEl.style.cssText = 'display:flex;align-items:center;gap:7px;white-space:nowrap;';
-      labelEl.innerHTML = `<span style="width:11px;height:11px;border-radius:50%;background:rgb(var(--gold));box-shadow:0 0 0 3px rgb(var(--gold) / 0.25);display:block;"></span><span style="color:rgb(var(--ink));font-weight:600;font-size:15px;font-family:'Inter',sans-serif;letter-spacing:-0.01em;text-shadow:0 0 6px rgb(var(--bg)),0 0 2px rgb(var(--bg));">${cityName}</span>`;
-      new maplibregl.Marker({ element: labelEl, anchor: 'left' }).setLngLat(cityCenter).addTo(zoneMap);
+      // The city centre as a gold dot only: the Dark Matter basemap already
+      // prints the city's name there, so a label of our own said it twice.
+      const dotEl = document.createElement('div');
+      dotEl.setAttribute('role', 'img');
+      dotEl.setAttribute('aria-label', `${cityName} city centre`);
+      dotEl.style.cssText = 'width:11px;height:11px;border-radius:50%;background:rgb(var(--gold));box-shadow:0 0 0 3px rgb(var(--gold) / 0.25);';
+      new maplibregl.Marker({ element: dotEl, anchor: 'center' }).setLngLat(cityCenter).addTo(zoneMap);
     });
   }
   // Add one more initZoneMap(...) call per new city card, passing that city's own center + zone polygon.

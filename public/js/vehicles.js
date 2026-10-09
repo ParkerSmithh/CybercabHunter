@@ -64,16 +64,46 @@
     return e;
   }
 
+  // The card's colour (the Fleet ETA model cards, js/dmv-panel.js): gold for a
+  // Cybercab, red for a Model Y, slate for anything else; `glow` is the React
+  // Bits BorderGlow colour ([data-glow], js/main.js; "" = gold).
+  const KINDS = {
+    cybercab: { rgb: '212 175 55', hex: '#D4AF37', text: 'text-gold', glow: '' },
+    modely: { rgb: '239 68 68', hex: '#ef4444', text: 'text-red-400', glow: 'red' },
+    other: { rgb: '148 163 184', hex: '#94a3b8', text: 'text-slate-300', glow: '' }
+  };
+  const kindOf = v => (approvedCybercab(v) ? 'cybercab' : /model\s*y/i.test(String(v.model || '')) ? 'modely' : 'other');
+
+  // A small line icon (static path data only; never API values), built with
+  // the DOM like everything else here.
+  const ICONS = {
+    distance: 'M4 19h4l3-14h2l3 14h4M12 9v2M12 14v2',
+    first: 'M5 21V4M5 4h11l-2 4 2 4H5',
+    last: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2'
+  };
+  function icon(name) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.75'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', ICONS[name]);
+    svg.appendChild(path);
+    return svg;
+  }
+
   // phoneLabel: an optional shorter label shown only on phones (max-sm:),
   // where the cards are two to a row; sm and up always show `label`.
-  function stat(label, value, phoneLabel) {
+  function stat(label, value, phoneLabel, iconName) {
     const box = el('div', 'min-w-0');
-    const lbl = el('div', 'text-xs text-slate-500 mb-0.5 max-sm:text-[10px] max-sm:leading-tight max-sm:truncate');
+    const lbl = el('div', 'vcard-label');
+    if (iconName) lbl.appendChild(icon(iconName));
     if (phoneLabel) {
       lbl.appendChild(el('span', 'max-sm:hidden', label));
       lbl.appendChild(el('span', 'sm:hidden', phoneLabel));
     } else {
-      lbl.textContent = label;
+      lbl.appendChild(el('span', null, label));
     }
     box.appendChild(lbl);
     box.appendChild(el('div', 'stat-value text-[15px] font-semibold text-white [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-tight max-sm:[overflow-wrap:normal]', value));
@@ -90,52 +120,74 @@
   // passed publicVehicleEligibleSql). It is the SAME
   // file for every vehicle, never a photo of that specific VIN. Built via
   // createElement/attribute assignment, never innerHTML, matching every
-  // other element on this page.
+  // other element on this page. It sits in its own clipped layer (top right)
+  // so the card's glow can spill past the card's edge.
   function cybercabImage() {
+    const layer = el('div', 'absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none');
     const img = document.createElement('img');
-    img.src = 'images/Cybercab2.png';
+    img.src = 'images/dmv-cybercab.webp';
     img.alt = 'Cybercab (generic vehicle-type image, not a photo of this specific vehicle)';
-    img.className = 'w-full h-32 object-contain mb-4 max-sm:h-16 max-sm:mb-2';
-    return img;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.className = 'absolute right-[-10%] top-3 w-[62%] max-w-[260px] opacity-95 max-sm:top-2 max-sm:w-[58%]';
+    layer.appendChild(img);
+    return layer;
   }
 
   function card(v) {
     const li = el('li');
-    // Phones (max-sm:) get a compact two-column card; sm and up are unchanged.
-    const a = el('a', 'group block glass rounded-2xl p-6 max-sm:p-3 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
-    a.dataset.glow = '';   // BorderGlow (js/main.js): the vehicle cards glow
+    const kind = KINDS[kindOf(v)];
+    // Phones (max-sm:) get a compact two-column card.
+    const a = el('a', 'vcard dmv-card group relative flex flex-col h-full min-w-0 rounded-2xl border p-5 max-sm:p-3 hover:-translate-y-0.5 transition-transform duration-300 ease-out');
+    a.dataset.glow = kind.glow;   // BorderGlow (js/main.js), in the card's colour
+    a.style.setProperty('--c', kind.rgb);
+    a.style.borderColor = kind.hex + '59';
+    a.style.background = `linear-gradient(135deg, ${kind.hex}1c, transparent 62%)`;
     a.href = '/vehicle/' + encodeURIComponent(v.id);
     if (approvedCybercab(v)) a.appendChild(cybercabImage());
-    // The plate, styled like one (the same treatment as the Sightings cards).
-    a.appendChild(el('h2', v.license_plate
-      // leading-none + tight padding hug the characters; the right padding is
-      // reduced by the letter-spacing so the trailing space after the last
-      // character doesn't make the right side wider than the left.
-      ? 'inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
-      : 'font-display font-bold text-lg text-slate-400', v.license_plate || 'Plate not recorded'));
-    // An approved Cybercab gets the same compact gold/yellow badge used on
-    // the vehicle detail page (vCybercabBadge). Any other vehicle keeps the
-    // plain-text model line, and no badge.
+
+    const top = el('div', 'relative');
+    // Eyebrow: the model in its colour. An approved Cybercab gets the
+    // "Cybercab" pill; any other vehicle its model line (or "not confirmed").
+    const eyebrow = el('div', 'flex flex-wrap items-center gap-x-2 gap-y-1');
     if (approvedCybercab(v)) {
-      a.appendChild(el('span', 'inline-block mt-1 text-xs font-bold px-3 py-1.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide max-sm:block max-sm:w-fit max-sm:mt-1.5 max-sm:text-[9px] max-sm:px-2 max-sm:py-0.5', 'Cybercab'));
+      eyebrow.appendChild(el('span', 'vcard-pill', 'Cybercab'));
     } else {
-      a.appendChild(el('p', 'text-slate-400 text-sm mt-1 [overflow-wrap:anywhere] max-sm:text-xs', v.model || 'Model not confirmed'));
+      const m = el('p', `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide ${kind.text} [overflow-wrap:anywhere] max-sm:text-[10px]`);
+      m.appendChild(el('span', 'w-1.5 h-1.5 rounded-full bg-current shrink-0'));
+      m.appendChild(el('span', null, v.model || 'Model not confirmed'));
+      eyebrow.appendChild(m);
     }
+    // Dallas cars carry a Dallas tag (the Dallas launch) in place of the plain
+    // city line (it would say Dallas twice).
+    if (isDallas(v)) eyebrow.appendChild(el('span', 'vcard-city', 'Dallas'));
+    top.appendChild(eyebrow);
+    // The plate, styled like one (the same treatment as the Sightings cards).
+    top.appendChild(el('h2', v.license_plate
+      ? 'mt-3 inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:mt-2 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
+      : 'mt-3 font-display font-bold text-lg text-slate-400 max-sm:mt-2 max-sm:text-sm', v.license_plate || 'Plate not recorded'));
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
-    // Dallas cars carry a Dallas tag (the Dallas launch) in place of the plain
-    // city line (it would say Dallas twice); Austin cards are unchanged.
-    if (!isDallas(v)) a.appendChild(el('p', 'text-slate-500 text-xs mt-1 [overflow-wrap:anywhere] max-sm:text-[10px]', area || 'Service area not recorded'));
-    if (isDallas(v)) a.appendChild(el('span', 'inline-block mt-2 text-[11px] font-bold px-2.5 py-1 rounded-full border border-cyan/40 text-cyan uppercase tracking-wide max-sm:text-[9px] max-sm:px-2 max-sm:py-0.5 max-sm:mt-1.5', 'Dallas'));
-    const stats = el('div', 'grid grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-white/[0.07] max-sm:gap-x-2 max-sm:gap-y-2 max-sm:mt-3 max-sm:pt-2.5');
-    stats.appendChild(stat('Rides', fmtInt(v.trip_count)));
-    stats.appendChild(stat('Recorded distance', fmtMiles(v.total_distance), 'Distance'));
+    if (!isDallas(v)) top.appendChild(el('p', 'text-slate-500 text-xs mt-2 [overflow-wrap:anywhere] max-sm:text-[10px] max-sm:mt-1.5', area || 'Service area not recorded'));
+    a.appendChild(top);
+
+    // The ride count, large, in the card's light.
+    const rides = el('div', 'relative mt-auto pt-6 max-sm:pt-3');
+    const rl = el('div', 'flex items-baseline gap-2');
+    rl.appendChild(el('span', 'dmv-card-num stat-value font-semibold text-4xl text-white leading-none max-sm:text-2xl', fmtInt(v.trip_count)));
+    rl.appendChild(el('span', 'text-xs text-slate-400 max-sm:text-[10px]', v.trip_count === 1 ? 'ride' : 'rides'));
+    rides.appendChild(el('div', 'vcard-label', 'Rides'));
+    rides.appendChild(rl);
+    a.appendChild(rides);
+
     // First/Last seen reflect the RIDE dates a receipt reported (v.first_ride_date/last_ride_date),
     // not when the registry row was created or last touched — those are ingestion timestamps
     // (v.first_seen_at/last_seen_at) that can be much later than the ride itself if a receipt was
     // imported well after the fact, and would otherwise show the wrong date here.
-    stats.appendChild(stat('First seen', fmtDate(v.first_ride_date)));
-    stats.appendChild(stat('Last seen', fmtDate(v.last_ride_date)));
+    const stats = el('div', 'relative grid grid-cols-3 gap-x-3 mt-4 pt-4 border-t border-white/[0.07] max-sm:grid-cols-1 max-sm:gap-y-2 max-sm:mt-3 max-sm:pt-2.5');
+    stats.appendChild(stat('Distance', fmtMiles(v.total_distance), null, 'distance'));
+    stats.appendChild(stat('First seen', fmtDate(v.first_ride_date), null, 'first'));
+    stats.appendChild(stat('Last seen', fmtDate(v.last_ride_date), null, 'last'));
     a.appendChild(stats);
     li.appendChild(a);
     return li;
