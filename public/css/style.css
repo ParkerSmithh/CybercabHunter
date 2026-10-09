@@ -587,6 +587,16 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .review-sort[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
 .review-like[aria-pressed="true"]:not(.pulse-heart){color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
+/* ---------- Homepage service-status banner (js/service-banner.js) ----------
+   A slim strip: live = dark with a gold edge; parked = dimmed, cooler. */
+.service-banner{background:rgb(var(--glass) / var(--glass-a)); border-color:rgb(var(--gold) / 0.28);}
+.service-banner[data-state="parked"]{background:rgb(15 23 42 / 0.45); border-color:rgb(148 163 184 / 0.18);}
+:root[data-theme="light"] .service-banner[data-state="parked"]{background:rgb(226 232 240 / 0.6);}
+.service-banner .sb-meta{margin-left:auto;}
+@media (max-width:639px){ .service-banner .sb-meta{margin-left:0; font-size:12px;} }
+@media (max-width:369px){ .service-banner .sb-all{display:none;} }
+@media (max-width:359px){ .service-banner .sb-line{white-space:normal;} }
+
 /* ---------- Homepage Fleet Growth chart (index.html) ----------
    The current-count dot breathes softly (still under reduced motion). */
 .fleet-end-glow{transform-box:fill-box; transform-origin:center; animation:fleet-glow 2.4s ease-in-out infinite;}
