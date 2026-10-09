@@ -159,6 +159,21 @@ async function run() {
     const tilesAll = [...d.querySelectorAll('#cityRows .glass.rounded-xl')];
     check('every small stat tile carries the border glow; the larger cards do not', tilesAll.length >= 10 && tilesAll.every(el => el.hasAttribute('data-glow')) && [...d.querySelectorAll('#cityRows .glass.rounded-2xl')].every(el => !el.hasAttribute('data-glow')));
     check('the hero shows Austin, with the all-cities line', d.getElementById('statVehicles').textContent === '3' && d.getElementById('statVehiclesAll').textContent === '3');
+    // The Tracker-style detail (owner's section 5)
+    const tilesEls = [...d.querySelectorAll('#cityRows [data-glow]')];
+    check('every stat tile has a sub-metric line, never a bare number', tilesEls.length === 17 && tilesEls.every(el => el.children[2] && el.children[2].textContent.trim().length > 0), tilesEls.filter(el => !(el.children[2] && el.children[2].textContent.trim())).map(el => el.children[0].textContent).join());
+    check('sub-metrics from the data: rides in 30 days, median fare, week-over-week sightings', /4 in the last 30 days/.test(text('rowRides')) && /Median \$12\.50 · 4 rides/.test(text('rowRides')) && /Up from 0 previous 24 h|vs previous 24 h/.test(text('rowSightings')));
+    const charts = [...d.querySelectorAll('#cityRows [data-chart-body]')].map(el => el.dataset.chartBody);
+    check('three charts, each with time-range buttons (fares 90D / 6M / 1Y / All, default 90D)', charts.join() === 'fares,sightings,detections' && [...d.querySelectorAll('[data-chart="fares"]')].map(b => b.dataset.range).join() === '90D,6M,1Y,All' && d.querySelector('[data-chart="fares"][aria-pressed="true"]').dataset.range === '90D');
+    d.querySelector('[data-chart="sightings"][data-range="7D"]').click();
+    check('a range button redraws its chart (sightings: 7 daily bars) and moves the selection', d.querySelectorAll('[data-chart-body="sightings"] .hr-bars > span').length === 7 && d.querySelector('[data-chart="sightings"][aria-pressed="true"]').dataset.range === '7D');
+    d.querySelector('[data-chart="sightings"][data-range="24H"]').click();
+    check('LIVE badges on Sightings and Camera watch, with "updated … ago"; Experimental on cameras', d.querySelectorAll('#rowSightings .hr-live').length === 2 && /Live · updated/.test(text('rowSightings')) && /Experimental/.test(text('rowSightings')));
+    check('footnotes name each source', /Zone facts as published/.test(text('rowArea')) && /From contributed ride receipts\./.test(text('rowRides')) && /From approved sightings\./.test(text('rowSightings')) && /From automated camera detections\./.test(text('rowSightings')));
+    check('every row has an "About these numbers" note (Sightings + Camera watch: one each)', d.querySelectorAll('#rowArea details.hr-about').length === 1 && d.querySelectorAll('#rowRides details.hr-about').length === 1 && d.querySelectorAll('#rowSightings details.hr-about').length === 2);
+    check('header "See all" links to Zones, Fleet ETA, Sightings and Replay', ['#rowArea a[href="/infrastructure"]', '#rowRides a[href="/simulation?view=eta"]', '#rowSightings a[href="/sightings"]', '#rowSightings a[href="/replay?range=month"]'].every(sel => d.querySelector(sel)));
+    check('latest sightings as a list: thumbnail, "Cybercab seen at …", time ago, linked', /Cybercab seen at Congress Ave, Austin/.test(text('rowSightings')) && d.querySelector('#rowSightings ol a img') && /\dh ago/.test(text('rowSightings')));
+    check('the service area has a map thumbnail of the zone that opens the full map', !!d.querySelector('#rowArea a.hr-map[href="/infrastructure"] svg polygon') || !!d.querySelector('#rowArea a.hr-map[href="/infrastructure"]'));
     w.setHomeRowsCity('dallas'); w.setHomeStatsCity('dallas');
     await settle();
     check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No approved sightings in Dallas yet/.test(text('rowSightings')) && /81/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '0');

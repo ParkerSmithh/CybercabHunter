@@ -588,6 +588,9 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .review-like[aria-pressed="true"]:not(.pulse-heart){color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
 /* ---------- Homepage city rows (js/home-rows.js) ---------- */
+.hr-about > summary{list-style:none;}
+.hr-about > summary::-webkit-details-marker{display:none;}
+.hr-about[open] > summary svg{transform:rotate(180deg);}
 .hr-bars{display:flex; align-items:flex-end; gap:3px; height:96px;}
 .hr-bars > span{flex:1; min-width:0; border-radius:3px 3px 0 0; background:rgb(var(--gold) / 0.75);}
 .hr-bars > span.is-empty{background:rgb(var(--ink) / 0.08); height:2px !important;}
