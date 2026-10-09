@@ -1352,7 +1352,9 @@ const CCC = (() => {
 
   /* ---------------- Init ---------------- */
   /* BorderGlow (css/style.css .bg-glow): a port of React Bits BorderGlow onto
-     every .glass card except the header and the phone bottom bar. One
+     the cards marked [data-glow] (owner's choice, Oct 2026: the vehicle
+     cards on Cars; on Sightings everything but the city/sort bar; the
+     Community stat tiles; the Fleet ROI result tiles — nothing else). One
      delegated listener sets the component's two values on the card under a
      mouse or pen pointer: --edge-proximity (0 at the center .. 100 on the
      edge, the nearer axis) and --cursor-angle (0deg = up). The card gets two
@@ -1364,7 +1366,6 @@ const CCC = (() => {
     if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     let current = null, raf = 0, last = null;
     const usable = el => {
-      if (el.dataset.glow === 'off' || el.matches('header, #mobileBottomNav')) return false;
       if (el.dataset.glowReady) return el.dataset.glowReady === '1';
       let ok = true;
       if (getComputedStyle(el).position === 'static') {
@@ -1400,7 +1401,7 @@ const CCC = (() => {
     }
     document.addEventListener('pointermove', e => {
       if (e.pointerType === 'touch') return;
-      const card = e.target.closest && e.target.closest('.glass');
+      const card = e.target.closest && e.target.closest('[data-glow]');
       const next = card && usable(card) ? card : null;
       if (next !== current) { off(current); current = next; }
       if (current) ensureLayers(current);
@@ -1434,18 +1435,24 @@ const CCC = (() => {
     const items = [...track.children].filter(el => el.matches('button, a'));
     if (items.length < 2) return;
     track.classList.add('rs-track');
-    items.forEach(el => el.classList.add('rs-item'));
     const thumb = document.createElement('div');
     thumb.className = 'rs-thumb';
     thumb.setAttribute('aria-hidden', 'true');
+    // The label copies take only the button's type (font, spacing, case),
+    // never its classes: page scripts find their buttons by class (the Zones
+    // page restyles every .city-btn), and a copy must never be one of them.
     const copies = items.map(el => {
       const c = document.createElement('span');
-      c.className = `${el.className} rs-copy`.replace(/\brs-item\b|\brs-active\b/g, '');
+      c.className = 'rs-copy';
       c.innerHTML = el.innerHTML;
       c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
       thumb.appendChild(c);
       return c;
     });
+    const copyType = (el, c) => {
+      const cs = getComputedStyle(el);
+      Object.assign(c.style, { fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform, lineHeight: cs.lineHeight, gap: cs.gap });
+    };
     track.appendChild(thumb);
 
     const DILATE = 190, HANDOFF = 150, SQUASH = 3, FLICK = 110, MAX_V = 2000, DEADZONE = 4, RUBBER = 0.55, GLIDE = 75;
@@ -1461,6 +1468,7 @@ const CCC = (() => {
         const r = el.getBoundingClientRect();
         const s = { l: r.left - tr.left, r: r.right - tr.left };
         Object.assign(copies[i].style, { left: `${s.l}px`, top: `${r.top - tr.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+        copyType(el, copies[i]);
         return s;
       });
       radius = parseFloat(getComputedStyle(items[0]).borderTopLeftRadius) || 8;
@@ -1469,7 +1477,6 @@ const CCC = (() => {
     function jump(i) {
       gen += 1; clearTimeout(handoff);
       committed = i;
-      items.forEach((el, n) => el.classList.toggle('rs-active', n === i));
       thumb.classList.toggle('is-on', i >= 0);
       if (i < 0 || !slots[i]) return;
       L = slots[i].l; R = slots[i].r; paint();
@@ -1512,7 +1519,6 @@ const CCC = (() => {
     // The page changed the selection: animate to it (a drag release lands instead).
     new MutationObserver(() => {
       const i = activeIndex();
-      items.forEach((el, n) => el.classList.toggle('rs-active', n === i));
       thumb.classList.toggle('is-on', i >= 0);
       if (i === committed || i < 0) return;
       const from = committed;
@@ -1531,7 +1537,7 @@ const CCC = (() => {
     track.addEventListener('pointerdown', e => {
       if (e.button !== 0 || committed < 0 || !slots[committed]) return;
       const tr = track.getBoundingClientRect(), x = e.clientX - tr.left;
-      const item = e.target.closest('.rs-item');
+      const item = e.target.closest('.rs-track > button, .rs-track > a');
       if (x < L || x > R) { if (item && !reduce()) item.dataset.pressed = ''; return; }
       drag = { id: e.pointerId, x0: x, live: false, offset: 0, w: 0, hist: [[e.timeStamp, x]], left: tr.left };
       gen += 1; clearTimeout(handoff);

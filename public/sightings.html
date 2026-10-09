@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -98,32 +98,32 @@
     <!-- Stats for the selected city, from sighting timestamps in Austin time (GET /api/sightings?stats=1).
          Each value starts as an em dash and only becomes a number the server sent. -->
     <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 max-sm:grid-cols-3 max-sm:gap-2 max-sm:mb-5">
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5 border-[rgba(212,175,55,0.35)] bg-gradient-to-br from-[rgba(212,175,55,0.1)] to-transparent">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5 border-[rgba(212,175,55,0.35)] bg-gradient-to-br from-[rgba(212,175,55,0.1)] to-transparent">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">All time</div>
         <div id="statTotal" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
         <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Approved sightings</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Last 7 days</div>
         <div id="statWeek" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Seen in the last 7 days</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Today</div>
         <div id="statToday" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div id="statTodayLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Cybercabs spotted today</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">This month</div>
         <div id="statMonth" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div id="statMonthLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Sightings this month</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Peak hour</div>
         <div id="statPeakHour" class="mt-1.5 max-sm:mt-0.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(9px,2.7vw,11px)] max-sm:whitespace-normal max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
         <div id="statPeakCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">All-time best day</span><span class="sm:hidden">Best day</span></div>
         <div id="statBestDay" class="mt-1.5 max-sm:mt-0.5 max-sm:text-[clamp(10px,3vw,13px)] max-sm:whitespace-nowrap font-display font-bold text-base text-white leading-snug tabular-nums">—</div>
         <div id="statBestCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
@@ -152,12 +152,12 @@
       <div class="glass rounded-2xl overflow-hidden animate-pulse hidden sm:block"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
     </div>
 
-    <div id="sightingsEmpty" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+    <div id="sightingsEmpty" data-glow class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
       <h2 data-split class="font-display font-bold text-2xl mb-2">No sightings yet</h2>
       <p id="sightingsEmptyText" class="text-sm text-slate-400 leading-relaxed"></p>
     </div>
 
-    <div id="sightingsError" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+    <div id="sightingsError" data-glow class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
       <h2 data-split class="font-display font-bold text-2xl mb-2">We couldn't load sightings</h2>
       <p class="text-sm text-slate-400 leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="sightingsRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
@@ -314,10 +314,10 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/main.js?v=27"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=25"></script>
+<script src="js/sightings.js?v=26"></script>
 </body>
 </html>

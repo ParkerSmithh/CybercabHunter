@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -107,22 +107,22 @@
          GET /api/registry/stats, js/community.js). Each starts as an em dash
          and stays one if it can't be loaded — never a made-up 0. -->
     <div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-sm:mt-3 max-sm:grid-cols-4 max-sm:gap-1.5">
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statReviews">—</span></div>
         <div class="text-xs text-slate-500 max-sm:hidden">Posted by signed-in riders</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statRating">—</span><span class="text-sm text-slate-500 max-sm:text-[10px]"> / 5</span></div>
         <div class="text-xs text-slate-500 max-sm:hidden">Across all reviews</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Spotters</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statSpotters">—</span></div>
         <div class="text-xs text-slate-500 max-sm:hidden">Credited with a discovery</div>
       </div>
-      <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
+      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2 max-sm:py-2.5">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Public Cybercabs</span><span class="sm:hidden">Cybercabs</span></div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statVehicles">—</span></div>
         <div class="text-xs text-slate-500 max-sm:hidden">In the public registry</div>
@@ -409,7 +409,7 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/main.js?v=27"></script>
 <script>
   CCC.init();
 </script>

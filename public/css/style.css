@@ -221,8 +221,8 @@ html .glass[data-tilt].is-tilting{
 }
 .glass[data-tilt].is-tilting::after{opacity:1;}
 /* BorderGlow (js/main.js initBorderGlow) — a port of React Bits BorderGlow
-   (its CSS, with the site's golds). On a mouse or pen, every .glass card
-   (not the header or the phone bottom bar) lights up toward the pointer:
+   (its CSS, with the site's golds). On a mouse or pen, a card marked
+   [data-glow] lights up toward the pointer:
      .bg-glow-under (behind the content): ::before the mesh-gradient border,
        ::after the soft-light mesh fill near the edges;
      .bg-glow-edge (over it): the outer glow — stacked inner and outer light
@@ -230,8 +230,8 @@ html .glass[data-tilt].is-tilting{
    --edge-proximity: 0 at the center .. 100 on the edge; --cursor-angle: the
    pointer's direction from the center (0deg = up). Both layers are empty,
    aria-hidden and out of the layout. Touch screens get nothing. */
-.glass.bg-glow-pos{position:relative;}
-.glass.bg-glow{
+.bg-glow-pos{position:relative;}
+.bg-glow{
   isolation:isolate;
   --edge-proximity:0; --cursor-angle:45deg; --edge-sensitivity:30; --color-sensitivity:calc(var(--edge-sensitivity) + 20);
   --glow-padding:40px; --cone-spread:25; --fill-opacity:0.5;
@@ -287,7 +287,7 @@ html .glass[data-tilt].is-tilting{
     0 0 15px 0 var(--glow-color-30), 0 0 25px 2px var(--glow-color-20), 0 0 50px 2px var(--glow-color-10);
 }
 /* On the light theme there is nothing to add light to: plain blending, a deeper gold. */
-:root[data-theme="light"] .glass.bg-glow{
+:root[data-theme="light"] .bg-glow{
   --glow-color:hsl(43deg 75% 45% / 100%); --glow-color-60:hsl(43deg 75% 45% / 60%); --glow-color-50:hsl(43deg 75% 45% / 50%);
   --glow-color-40:hsl(43deg 75% 45% / 40%); --glow-color-30:hsl(43deg 75% 45% / 30%); --glow-color-20:hsl(43deg 75% 45% / 20%); --glow-color-10:hsl(43deg 75% 45% / 10%);
 }
@@ -596,17 +596,18 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
    it can be dragged and flicked. The buttons keep their own logic: their
    active background goes (the thumb is the highlight). */
 .rs-track{position:relative; isolation:isolate; touch-action:pan-y; -webkit-tap-highlight-color:transparent;}
-.rs-track > .rs-item{position:relative; z-index:1; background:transparent !important;}
-.rs-track[data-held], .rs-track[data-held] > .rs-item{cursor:grabbing;}
-.rs-track > .rs-item.rs-active{cursor:grab;}
-.rs-item[data-pressed]{transform:scale(0.96); transition:transform 160ms cubic-bezier(0.23, 1, 0.32, 1);}
+/* Keyed on structure, not on classes: pages rewrite their buttons' classes. */
+.rs-track > :is(button, a){position:relative; z-index:1; background:transparent !important;}
+.rs-track[data-held], .rs-track[data-held] > :is(button, a){cursor:grabbing;}
+.rs-track > :is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"], [aria-current="page"]){cursor:grab;}
+.rs-track > [data-pressed]{transform:scale(0.96); transition:transform 160ms cubic-bezier(0.23, 1, 0.32, 1);}
 .rs-thumb{
   position:absolute; inset:0; z-index:2; pointer-events:none;
   background:rgb(var(--ink)); color:rgb(var(--bg));
   clip-path:inset(0 100% 0 0 round 8px); opacity:0;
 }
 .rs-thumb.is-on{opacity:1;}
-.rs-copy{position:absolute; display:flex; align-items:center; justify-content:center; color:inherit !important; background:none !important; opacity:1 !important; white-space:nowrap;}
+.rs-copy{position:absolute; display:flex; align-items:center; justify-content:center; color:inherit; white-space:nowrap;}
 .rs-copy *{color:inherit !important;}
 
 /* ---------- SquishSwitch (js/main.js initSquishSwitches) ----------

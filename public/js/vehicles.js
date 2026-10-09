@@ -103,6 +103,7 @@
     const li = el('li');
     // Phones (max-sm:) get a compact two-column card; sm and up are unchanged.
     const a = el('a', 'group block glass rounded-2xl p-6 max-sm:p-3 h-full min-w-0 hover:border-[rgba(212,175,55,0.45)] hover:-translate-y-0.5 transition-[transform,border-color] duration-300 ease-out');
+    a.dataset.glow = '';   // BorderGlow (js/main.js): the vehicle cards glow
     a.href = '/vehicle/' + encodeURIComponent(v.id);
     if (approvedCybercab(v)) a.appendChild(cybercabImage());
     // The plate, styled like one (the same treatment as the Sightings cards).

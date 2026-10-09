@@ -75,6 +75,7 @@
   function card(s) {
     const article = el('article', 'group glass rounded-2xl max-sm:rounded-xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] transition-[border-color] duration-200 ease-out');
     article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
+    article.dataset.glow = '';   // BorderGlow (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
     const open = el('button', 'block w-full aspect-[4/3] bg-panel overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-gold');
     open.type = 'button';
