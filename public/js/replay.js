@@ -166,11 +166,11 @@ window.CCCReplay = (function () {
     };
     const fitPadding = () => { const l = sideInset(); return l ? { top: 40, bottom: 40, left: l + 16, right: 40 } : 16; };
 
-    // Map: light basemap; pannable and zoomable (cooperative gestures on a page that scrolls).
+    // Map: the site's Dark Matter basemap; pannable and zoomable (cooperative gestures on a page that scrolls).
     if (window.maplibregl) {
       try {
         state.map = new maplibregl.Map({
-          container: 'replayMap', style: 'https://tiles.openfreemap.org/styles/positron',
+          container: 'replayMap', style: window.CCCAustinMap ? CCCAustinMap.styleUrl() : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
           bounds: zoneBounds(), fitBoundsOptions: { padding: fitPadding() }, cooperativeGestures: true, dragRotate: false, pitchWithRotate: false,
           attributionControl: { compact: true }
         });
