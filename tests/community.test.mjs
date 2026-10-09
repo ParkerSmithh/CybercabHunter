@@ -281,12 +281,12 @@ async function run() {
     await patch({ display_name: 'Alice', handle: 'alice', bio: '', profile_visibility: 'private', leaderboard_opt_in: 'no' });
     check('...and a non-boolean value keeps it too (still on)', (await me()).leaderboard_opt_in === true);
     const html = read('public/profile.html');
-    check('the switch says it is on by default and how to turn it off', /Show my name, photo and ride counts on the Community leaderboard and a public profile\. On by default\. Turn it off to appear as “Private spotter”\./.test(html));
+    check('the switch says it is on by default and how to turn it off', /Show my name, photo and ride counts on the Community leaderboard and a public profile\. On by default\. Turn it off to be left off the leaderboard\./.test(html));
     check('the page sends leaderboard_opt_in from the switch, and keeps profile_visibility as it was', /leaderboard_opt_in: isPublic/.test(html) && /profile_visibility: currentUser\.profile_visibility === 'public'/.test(html));
     check('opted in without a username: a prompt to set one', /id="communityHandleHint"[^>]*>Set a username to get a public profile page\./.test(html));
     const privacy = read('public/privacy.html');
     check('the privacy page states what is public by default, and how to turn it off',
-      /unless you turn it off, your display name, username, profile picture/.test(privacy) && /on by default for every account/.test(privacy) && /Private spotter/.test(privacy) &&
+      /unless you turn it off, your display name, username, profile picture/.test(privacy) && /on by default for every account/.test(privacy) && /to be left off the Community leaderboard entirely \(you are not listed or ranked\)/.test(privacy) && /the total miles of those rides/.test(privacy) &&
       !/Your name, email, receipt contents, fares and addresses are not shown publicly/.test(privacy) && /Your email, receipt contents, fares, ride dates and times, and addresses are never shown publicly/.test(privacy));
   }
 
@@ -355,16 +355,21 @@ async function run() {
     const api = u => (u.startsWith('/api/') ? worker.fetch(new Request(`https://x${u}`), ctx.env, {}) : new Response('{}', { status: 404 }));
     const { w, d } = await open('/community', 'community.html', 'community.js', api);
     const rows = [...d.querySelectorAll('#boardList > li')];
-    check('the board shows its rows', rows.length === 3 && !d.getElementById('boardList').classList.contains('hidden'));
-    check('no tab buttons with one board', d.getElementById('boardTabs').classList.contains('hidden') && !d.querySelector('#boardTabs button'));
-    check('the title is the board label', d.getElementById('boardTitle').textContent === 'MOST VEHICLES DISCOVERED');
+    check('the board shows its rows (Bob, not opted in, is not one of them)', rows.length === 2 && !d.getElementById('boardList').classList.contains('hidden') && !/Private spotter/.test(d.getElementById('boardList').textContent));
+    const tabs = [...d.querySelectorAll('#boardTabs button')];
+    check('five tabs in one row, in order, Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
+    check('the title is the board label, and Top Overall shows its formula', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && /Score = 10 × vehicles discovered/.test(d.getElementById('boardHelp').textContent));
     const first = rows[0].querySelector('a');
     check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(212,175,55,0\.45\)\]/.test(first.className) && first.querySelector('img'));
-    check('rows show rank, name and count', /Alice/.test(rows[0].textContent) && /2\s*vehicles/.test(rows[0].textContent.replace(/\s+/g, ' ')));
-    const priv = rows.find(r => /Private spotter/.test(r.textContent));
-    check('a private spotter is a button, not a link, with no photo', priv && !priv.querySelector('a') && !priv.querySelector('img'));
-    priv.querySelector('button').click();
-    check('tapping it shows "This spotter\'s profile is private."', !priv.querySelector('p').classList.contains('hidden') && /profile is private/.test(priv.querySelector('p').textContent));
+    // Alice: 2 discovered, 2 rides of 2.8 mi (the seed's default) in 2 cars, 1 city:
+    // 20 + 6 + 4 + 5 + round(5.6 / 10) = 36.
+    check('rows show rank, name, score in pts and the breakdown', /Alice/.test(rows[0].textContent) && /36\s*pts/.test(rows[0].textContent.replace(/\s+/g, ' ')) && /2 found · 2 rides · 2 cars · 1 city · 5\.6 mi/.test(rows[0].textContent));
+    tabs[3].click();
+    await new Promise(r => setTimeout(r, 60));
+    const rideRows = [...d.querySelectorAll('#boardList > li')];
+    check('switching tabs swaps the list without a reload: Most Rides, in rides', d.getElementById('boardTitle').textContent === 'MOST RIDES' && tabs[3].getAttribute('aria-selected') === 'true' && tabs[0].getAttribute('aria-selected') === 'false' && /2\s*rides/.test(rideRows[0].textContent.replace(/\s+/g, ' ')) && w.location.pathname === '/community');
+    tabs[1].click();
+    await new Promise(r => setTimeout(r, 60));
     const carol = rows.find(r => /Carol/.test(r.textContent));
     const avatarSlot = row => row.querySelector('span.w-10');
     check('opted in without a username: initials, no link', carol && !carol.querySelector('a') && !carol.querySelector('img') && avatarSlot(carol).textContent.trim() === 'C');

@@ -297,7 +297,10 @@ async function run() {
     const bar = n => p.d.querySelector(`#reviewBreakdown [data-stars="${n}"]`);
     check('the breakdown: 5★ and 3★ at 50% each, counts beside them, the rest empty', bar(5).querySelector('[data-bar]').style.width === '50%' && bar(3).querySelector('[data-bar]').style.width === '50%' && bar(5).querySelector('[data-n]').textContent === '1' && bar(4).querySelector('[data-bar]').style.width === '0%' && bar(1).querySelector('[data-n]').textContent === '0');
     check('the at-a-glance tiles: 2 reviews, 4.0 average, 1 spotter, 2 public Cybercabs', p.text('statReviews') === '2' && p.text('statRating') === '4.0' && p.text('statSpotters') === '1' && p.text('statVehicles') === '2');
-    check('the leaderboard footer totals every credited spotter', p.text('boardTotals') === '1 spotter credited · 2 vehicles discovered in all' && !p.d.getElementById('boardTotals').classList.contains('hidden'));
+    check('the discovery totals line is not shown under Top Overall (the default board)', p.d.getElementById('boardTotals').classList.contains('hidden'));
+    p.d.querySelector('#boardTabs [data-board="discovered"]').click();
+    await new Promise(r => setTimeout(r, 80));
+    check('the leaderboard footer totals every credited spotter (Discovered tab)', p.text('boardTotals') === '1 spotter credited · 2 vehicles discovered in all' && !p.d.getElementById('boardTotals').classList.contains('hidden'));
     check('a public author gets the shared avatar (initials when there is no photo)', cards[1].querySelector('[data-avatar-name]').textContent.trim() === 'AA');
     check('review text is shown as text, never as HTML', cards[1].querySelector('[data-body]').textContent === 'Great <b>ride</b>' && !cards[1].querySelector('[data-body] b'));
     check('photos are a thumbnail grid that opens the viewer', cards[1].querySelectorAll('[data-photo] img').length === 1 && (cards[1].querySelector('[data-photo]').click(), !p.d.getElementById('sightingViewer').classList.contains('hidden')));

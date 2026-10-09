@@ -191,7 +191,7 @@ async function run() {
     ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, visibility, origin, vin) VALUES ('car2', 'CAR2', 'public', 'sighting', 'VIN2')`)._exec();
     ctx.d1.exec(`INSERT INTO submissions (id, user_id, submission_type, status) VALUES ('v-sig', 'victim', 'vehicle_sighting', 'approved')`);
     ctx.d1.exec(`INSERT INTO vehicle_observations (id, robotaxi_vehicle_id, user_id, submission_id, verification_status) VALUES ('v-obs', 'car2', 'victim', 'v-sig', 'verified')`);
-    const board = async () => (await (await call(ctx, 'GET', '/api/community/leaderboard')).json()).entries.map(e => `${e.name}:${e.count}`).join(',');
+    const board = async () => (await (await call(ctx, 'GET', '/api/community/leaderboard?board=discovered')).json()).entries.map(e => `${e.name}:${e.count}`).join(',');
     check('before: the victim discovered both vehicles', await board() === 'Victim:2');
     await del(ctx, 'session-victim');
     check('after: the car they rode first is credited to the next rider; the one their sighting created has no discoverer', await board() === 'Other:1');

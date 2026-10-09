@@ -435,6 +435,13 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .city-filter[aria-pressed="true"], .city-filter[aria-selected="true"]{
   background:rgb(var(--ink)); color:rgb(var(--bg)); border-color:transparent;
 }
+/* Community leaderboard tabs (community.html #boardTabs): one row that
+   scrolls sideways on narrow screens (snaps to each pill, no scrollbar), the
+   active tab in gold. */
+.board-tabs{scroll-snap-type:x proximity; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+.board-tabs::-webkit-scrollbar{display:none;}
+.board-tabs > button{scroll-snap-align:start;}
+.city-filter.board-tab[aria-selected="true"]{background:rgb(var(--gold)); color:#1a1204; border-color:transparent;}
 
 /* ---------- Moderator photo delete (sightings.html, moderation.html) ----------
    Moderators only. Hover or focus darkens the photo and shows Delete; on

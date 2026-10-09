@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -222,9 +222,9 @@
     </div>
 
     <div id="leaderboardColumn" class="min-w-0">
-    <!-- Leaderboards (js/community.js). The boards come from the server; the tab
-         buttons appear only once there is more than one board. -->
-    <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="hidden mb-4 flex flex-wrap gap-2"></div>
+    <!-- Leaderboards (js/community.js): five boards from the server, one tab
+         each, in a single row that scrolls sideways on phones. -->
+    <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="board-tabs hidden mb-4 flex flex-nowrap gap-2 overflow-x-auto max-sm:mb-3 max-sm:-mx-4 max-sm:px-4"></div>
 
     <div class="glass rounded-2xl p-4 sm:p-6 max-sm:p-3.5">
       <div class="flex items-start gap-3 max-sm:gap-2.5">
@@ -234,7 +234,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline justify-between gap-3">
             <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight max-sm:text-base">MOST VEHICLES DISCOVERED</h2>
-            <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 6</span>
+            <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 10</span>
           </div>
           <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed max-sm:text-[11px] max-sm:leading-snug">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
         </div>
@@ -248,18 +248,18 @@
       </div>
       <ol id="boardList" class="hidden mt-4 space-y-2 max-sm:mt-3 max-sm:space-y-1.5"></ol>
       <div id="boardEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold text-gold tracking-wide">No discoveries yet</div>
-        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">Be the first: ride in a Cybercab and add your receipt, or submit a sighting of one that isn't in the registry yet.</p>
+        <div id="boardEmptyTitle" class="font-display font-bold text-gold tracking-wide">No discoveries yet</div>
+        <p id="boardEmptyText" class="text-xs text-slate-400 mt-1.5 leading-relaxed">Be the first: ride in a Cybercab and add your receipt, or submit a sighting of one that isn't in the registry yet.</p>
       </div>
       <div id="boardError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
         <div class="font-display font-bold tracking-wide">We couldn't load the leaderboard</div>
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
-      <!-- Totals over every credited spotter, not just the top 6 (js/community.js). -->
+      <!-- Discovered board: totals over every credited spotter (js/community.js). -->
       <p id="boardTotals" class="hidden mt-4 pt-3 border-t border-white/[0.06] text-xs text-slate-500 max-sm:mt-3 max-sm:text-[11px]"></p>
     </div>
 
-    <p class="text-xs text-slate-500 mt-4 leading-relaxed max-sm:mt-3 max-sm:text-[11px] max-sm:leading-snug">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to appear as “Private spotter”.</p>
+    <p class="text-xs text-slate-500 mt-4 leading-relaxed max-sm:mt-3 max-sm:text-[11px] max-sm:leading-snug">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to be left off the leaderboard.</p>
     </div>
     </div>
   </div>
@@ -413,7 +413,7 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=8"></script>
+<script src="js/community.js?v=9"></script>
 <script src="js/peek-rating.js?v=1"></script>
 <script src="js/reviews.js?v=6"></script>
 <script src="js/rider-search.js?v=2"></script>
