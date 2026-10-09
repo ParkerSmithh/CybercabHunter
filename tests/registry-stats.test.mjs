@@ -23,7 +23,7 @@ function vehicle(ctx, n, plate, visibility = 'private') {
   ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, visibility, first_seen_at, last_seen_at) VALUES (?, ?, ?, '2026-08-01 00:00:00', '2026-09-01 00:00:00')`).bind(uuid(n), plate, visibility)._exec();
   return uuid(n);
 }
-const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', ...o });
+const ride = (ctx, vid, o = {}) => seedRide(ctx.d1, { userId: 'rider', vehicleId: vid, status: 'pending', serviceArea: 'Austin', ...o });   // Austin rides: the homepage bar opens on Austin
 // A sighting: a submission + its observation, in any status / verification state.
 let sn = 0;
 function sighting(ctx, vid, status, verification) {
@@ -172,6 +172,10 @@ async function run() {
   }
 
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
+  // The stats bar now reads GET /api/homepage-stats?city= (hero.city / hero.all);
+  // a mocked body for it, in the old tests' terms: `hp(vehicles, rides)`.
+  const hp = (v, r) => Response.json({ hero: { city: { vehicles: v, rides: r }, all: { vehicles: v, rides: r } } });
+  const isHome = path => path.startsWith('/api/homepage-stats');
   async function home(ctx, { intercept, reducedMotion = true, observer = 'immediate' } = {}) {
     const dom = new JSDOM(HTML.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
     const w = dom.window;
@@ -196,9 +200,11 @@ async function run() {
     vehicle(ctx, 3, 'PRIV333', 'private'); ride(ctx, uuid(3));
     const p = await home(ctx);
     check('the tiles show the real numbers: 2 vehicles, 3 rides', p.v() === '2' && p.r() === '3', `${p.v()} / ${p.r()}`);
-    check('two requests, to the public stats and sightings endpoints, with no Authorization header', p.requests.length === 2 && p.requests[0].path === '/api/registry/stats' && p.requests[1].path === '/api/sightings?city=all&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
+    check('three same-origin requests (the city\'s numbers, its live sightings, all cities\' sightings), no Authorization header',
+      p.requests.map(r => r.path).join() === '/api/homepage-stats?city=austin,/api/sightings?city=austin&limit=1,/api/sightings?city=all&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
+    check('the all-cities line beneath each tile', p.d.getElementById('statVehiclesAll').textContent === '2' && p.d.getElementById('statRidesAll').textContent === '3');
     check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '2' && p.d.getElementById('statRides').dataset.value === '3');
-    const big = await home(ctx, { intercept: async path => (path === '/api/registry/stats' ? Response.json({ public_vehicles: 1234, recorded_rides: 56789 }) : null) });
+    const big = await home(ctx, { intercept: async path => (isHome(path) ? hp(1234, 56789) : null) });
     check('large numbers are formatted with separators', big.v() === '1,234' && big.r() === '56,789');
   }
   {
@@ -216,10 +222,10 @@ async function run() {
     const unavailable = await home(ctx, { intercept: async () => Response.json({ success: false, error: 'stats_unavailable' }, { status: 503 }) });
     check('the 503 the API sends when the database is down also leaves dashes', unavailable.v() === '—' && unavailable.r() === '—');
     for (const [label, body] of [['strings', { public_vehicles: '2', recorded_rides: '3' }], ['negative', { public_vehicles: -1, recorded_rides: -5 }], ['fractions', { public_vehicles: 1.5, recorded_rides: 2.5 }], ['null / missing', { public_vehicles: null }], ['not an object', 'oops'], ['NaN-like', { public_vehicles: 'NaN', recorded_rides: {} }]]) {
-      const x = await home(ctx, { intercept: async () => Response.json(body) });
+      const x = await home(ctx, { intercept: async path => (isHome(path) ? Response.json(typeof body === 'object' && body ? { hero: { city: { vehicles: body.public_vehicles, rides: body.recorded_rides } } } : body) : null) });
       check(`a malformed body (${label}) is never shown as a number`, x.v() === '—' && x.r() === '—');
     }
-    const partial = await home(ctx, { intercept: async () => Response.json({ public_vehicles: 7, recorded_rides: 'bad' }) });
+    const partial = await home(ctx, { intercept: async path => (isHome(path) ? hp(7, 'bad') : null) });
     check('one valid and one invalid value: only the valid one is shown', partial.v() === '7' && partial.r() === '—');
     const notJson = await home(ctx, { intercept: async () => new Response('<html>', { status: 200 }) });
     check('a non-JSON reply leaves dashes', notJson.v() === '—' && notJson.r() === '—');
