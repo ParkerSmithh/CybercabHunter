@@ -237,6 +237,14 @@
   </div>
 </section>
 
+<!-- ===== Texas DMV registrations (js/dmv-panel.js, GET /api/dmv-registrations):
+     Tesla's automated-vehicle roster from TxDMV, snapshotted daily. ===== -->
+<section class="pb-14 max-sm:pb-9" aria-label="Texas DMV registrations">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div data-dmv-panel class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+  </div>
+</section>
+
 <!-- ===== City rows (js/home-rows.js) =====
      Rows that follow the city tabs above, all from one request
      (GET /api/homepage-stats?city=, worker/homepage-stats.js): live from the
@@ -389,6 +397,7 @@
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=6"></script>
 <script src="js/home-rows.js?v=7"></script>
+<script src="js/dmv-panel.js?v=2"></script>
 <script src="js/austin-map.js?v=8"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>

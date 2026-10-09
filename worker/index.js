@@ -19,6 +19,7 @@ import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiS
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiHomepageStats } from './homepage-stats.js';
+import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -366,6 +367,14 @@ export default {
     if (url.pathname === '/api/fleet-stats' && request.method === 'GET') {
       return withCors(await apiFleetStats(request, env, ctx), request);
     }
+    // Texas DMV automated-vehicle registrations (worker/txdmv.js): read from the
+    // daily D1 snapshots only, never TxDMV itself. Public, edge-cached.
+    if (url.pathname === '/api/dmv-registrations' && request.method === 'GET') {
+      return withCors(await apiDmvRegistrations(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/dmv-registrations/vins' && request.method === 'GET') {
+      return withCors(await apiDmvVins(request, env), request);
+    }
     // The homepage's city rows and hero numbers (worker/homepage-stats.js): public, edge-cached.
     if (url.pathname === '/api/homepage-stats' && request.method === 'GET') {
       return withCors(await apiHomepageStats(request, env, ctx), request);
@@ -581,6 +590,11 @@ export default {
     // Daily: recompute the stored Fleet & Fares model (worker/fleet-stats.js).
     if (controller && controller.cron === FLEET_STATS_CRON) {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}));
+      return;
+    }
+    // Daily: the TxDMV automated-vehicle roster snapshot (worker/txdmv.js).
+    if (controller && controller.cron === TXDMV_CRON) {
+      ctx.waitUntil(runTxdmvPoll(env).catch(() => {}));
       return;
     }
     ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));
