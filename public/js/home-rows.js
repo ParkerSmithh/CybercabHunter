@@ -50,7 +50,7 @@
   const liveBadge = iso => `<span class="hr-live inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(52,211,153,0.35)] bg-[rgba(52,211,153,0.08)] text-[10px] font-semibold uppercase tracking-wide text-emerald-300"><span class="relative flex w-1.5 h-1.5"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-1.5 h-1.5 rounded-full bg-emerald-400"></span></span>Live · <span data-updated="${esc(iso || '')}">updated ${esc(iso ? ago(iso) : '—')}</span></span>`;
   const head = (city, title, badges, link) => `
     <div class="home-data-heading">
-      <div class="min-w-0"><h2 class="font-display font-bold">${esc(title)} <span>· ${esc(city)}</span></h2>${badges ? `<div class="home-data-status">${badges}</div>` : ''}</div>
+      <div class="min-w-0"><p class="home-data-city">${esc(city)}</p><div class="home-data-title-row"><h2 class="font-display font-bold">${esc(title)}</h2>${badges || ''}</div></div>
       ${link || ''}
     </div>`;
   const metric = (label, value, sub) => `<dl class="home-data-metric"><dt>${esc(label)}</dt>
