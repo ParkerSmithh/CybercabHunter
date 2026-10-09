@@ -587,6 +587,12 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .review-sort[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
 .review-like[aria-pressed="true"]:not(.pulse-heart){color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
+/* ---------- Homepage Fleet Growth chart (index.html) ----------
+   The current-count dot breathes softly (still under reduced motion). */
+.fleet-end-glow{transform-box:fill-box; transform-origin:center; animation:fleet-glow 2.4s ease-in-out infinite;}
+@keyframes fleet-glow{0%,100%{opacity:.25; transform:scale(.8);} 50%{opacity:.6; transform:scale(1.25);}}
+@media (prefers-reduced-motion: reduce){ .fleet-end-glow{animation:none;} }
+
 /* ---------- Homepage city rows (js/home-rows.js) ---------- */
 .hr-about > summary{list-style:none;}
 .hr-about > summary::-webkit-details-marker{display:none;}

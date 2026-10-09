@@ -90,7 +90,8 @@ async function run() {
     check('frame 0 draws (almost) nothing yet', p.lineEndX() <= 31, p.lineEndX());
     p.advance(RANGE_MS['90d'] / 2);
     const midX = p.lineEndX();
-    check('halfway through 90D (eased 0.5) the line has reached the middle of the plot', Math.abs(midX - 310) < 12, midX);
+    // The plot runs from x=30 to x=566 of the 600-wide box (34px on the right for the current-count label).
+    check('halfway through 90D (eased 0.5) the line has reached the middle of the plot', Math.abs(midX - 298) < 12, midX);
     const mid = RANGE_START['90d'] + 0.5 * (NOW - RANGE_START['90d']);
     const m = /^(\d+) Cybercabs · (.+)$/.exec(p.readout().textContent);
     check('the readout date is the playhead\'s day, and the count is the real cumulative count then', m && Math.abs(Date.parse(m[2] + ' UTC') - Date.parse(fmt(mid) + ' UTC')) <= DAY && Math.abs(Number(m[1]) - countAt(mid)) <= 1, p.readout().textContent);
