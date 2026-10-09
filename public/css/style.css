@@ -478,6 +478,27 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
    Desktop: dark on the left where the headline sits, clear over the car.
    Phones: the headline sits low across the whole width, so the photo darkens
    from the bottom up instead (the car stays visible above the text). */
+/* Homepage hero layout (index.html, js/hero-video.js).
+   #heroStick holds the hero. Normally it is layout-transparent and #hero
+   itself is the pinned block. On tall wide screens it is the pinned block,
+   with the stats bar and service banner moved into it (placeBelow), so the
+   first screen shows them. */
+#heroStick{display:contents;}
+@media (min-width:1024px) and (min-height:1000px){
+  #heroStick{display:block; position:sticky; top:4rem;}
+  #heroStick > #hero{position:relative; top:auto;}
+}
+/* Past 1920px wide the hero keeps its 1920px composition: the film stays the
+   size it is at 1080p (60% of 1920 = 1152px wide), its right edge sits where
+   it would on a 1920px screen relative to the centred content, and it fades
+   out on both sides instead of meeting a hard edge mid-page. */
+@media (min-width:1921px){
+  #heroVideo, #heroFrames{
+    right:calc((100% - 1920px) / 2); min-width:1152px;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 30%, #000 78%, transparent);
+    mask-image:linear-gradient(to right, transparent, #000 30%, #000 78%, transparent);
+  }
+}
 .hero-scrim{
   background:
     linear-gradient(90deg, rgba(8,9,10,0.96) 0%, rgba(8,9,10,0.82) 34%, rgba(8,9,10,0.2) 64%, rgba(8,9,10,0.05) 100%),

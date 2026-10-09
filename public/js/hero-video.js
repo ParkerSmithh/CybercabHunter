@@ -22,6 +22,24 @@
   var spacer = document.getElementById('heroPinSpacer');
   if (!video || !canvas || !pin || !spacer) return;
 
+  // Tall wide screens: the stats bar and service banner ride in the pinned
+  // block under the hero (css #heroStick), so the first screen shows them
+  // instead of a viewport of empty pin space; elsewhere they follow the pin.
+  var stick = document.getElementById('heroStick');
+  var below = [document.getElementById('heroStats'), document.getElementById('heroBanner')];
+  var tall = window.matchMedia && window.matchMedia('(min-width: 1024px) and (min-height: 1000px)');
+  function placeBelow() {
+    if (!stick || below.some(function (el) { return !el; })) return;
+    var inStick = !!(tall && tall.matches);
+    var anchor = inStick ? null : pin;
+    below.forEach(function (el) {
+      if (inStick) stick.appendChild(el);
+      else { anchor.after(el); anchor = el; }
+    });
+  }
+  placeBelow();
+  if (tall && tall.addEventListener) tall.addEventListener('change', placeBelow);
+
   var FRAME_COUNT = 73;
   var EASE_MS = 45;      // time constant of the ease toward the scroll position
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
