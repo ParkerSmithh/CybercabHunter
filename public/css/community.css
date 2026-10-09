@@ -1,4 +1,4 @@
-/* Community uses the Fleet ETA hero, summary strip, and gold model panels. */
+/* Community uses a summary strip and neutral review and leaderboard panels. */
 .community-section{padding:48px 0 64px;}
 .community-hero{display:grid;grid-template-columns:minmax(0,1fr);}
 .community-intro{margin-top:16px;max-width:36rem;font-size:16px;line-height:1.65;color:rgb(var(--n-300));}
@@ -13,7 +13,7 @@
 .community-stat + .community-stat{border-left:1px solid rgb(var(--ink) / .08);}
 .community-stat > div:nth-child(2){font-size:32px;line-height:1.25;margin:8px 0 4px;font-variant-numeric:tabular-nums;}
 .community-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px;margin-top:40px;}
-.community-panel{min-width:0;padding:28px;border:1px solid rgb(var(--gold) / .35);border-radius:16px;background:linear-gradient(120deg,rgb(var(--gold) / .09),transparent 65%),rgb(var(--surface));}
+.community-panel{min-width:0;padding:28px;border:1px solid rgb(var(--ink) / .1);border-radius:16px;background:linear-gradient(120deg,rgb(var(--gold) / .06),transparent 60%),rgb(var(--surface));}
 .community-panel-title,.community-page #boardTitle{font-size:24px;line-height:1.2;letter-spacing:-.02em;}
 .community-panel > div:first-child{padding-bottom:20px;border-bottom:1px solid rgb(var(--ink) / .08);}
 .community-panel > div:first-child > span,.community-panel > div:first-child > div:first-child > span{width:28px;height:28px;border:0;background:none;}

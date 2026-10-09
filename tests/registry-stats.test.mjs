@@ -172,10 +172,9 @@ async function run() {
   }
 
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
-  // The stats bar now reads GET /api/homepage-stats?city= (hero.city / hero.all);
-  // a mocked body for it, in the old tests' terms: `hp(vehicles, rides)`.
-  const hp = (v, r) => Response.json({ hero: { city: { vehicles: v, rides: r } } });
-  const isHome = path => path.startsWith('/api/homepage-stats');
+  // Headline totals use the global public registry endpoint.
+  const hp = (v, r) => Response.json({ public_vehicles: v, recorded_rides: r });
+  const isHome = path => path === '/api/registry/stats';
   async function home(ctx, { intercept, reducedMotion = true, observer = 'immediate' } = {}) {
     const dom = new JSDOM(HTML.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
     const w = dom.window;
@@ -198,12 +197,14 @@ async function run() {
     const ctx = await makeApp();
     const A = vehicle(ctx, 1, 'AAA1111', 'public'), B = vehicle(ctx, 2, 'BBB2222', 'public'); ride(ctx, A); ride(ctx, A, { rideKey: 'a2' }); ride(ctx, B);
     vehicle(ctx, 3, 'PRIV333', 'private'); ride(ctx, uuid(3));
+    const D = vehicle(ctx, 4, 'DAL4444', 'public'); ride(ctx, D);
+    ctx.d1.prepare('UPDATE robotaxi_vehicles SET service_area = ? WHERE id = ?').bind('Dallas', D)._exec();
     const p = await home(ctx);
-    check('the tiles show the real numbers: 2 vehicles, 3 rides', p.v() === '2' && p.r() === '3', `${p.v()} / ${p.r()}`);
-    check('two same-origin requests (the city\'s numbers and its live sightings), no Authorization header',
-      p.requests.map(r => r.path).join() === '/api/homepage-stats?city=austin,/api/sightings?city=austin&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
+    check('the tiles total Austin and Dallas: 3 public vehicles, 4 rides', p.v() === '3' && p.r() === '4', `${p.v()} / ${p.r()}`);
+    check('two same-origin requests for global registry and sighting totals, no Authorization header',
+      p.requests.map(r => r.path).join() === '/api/registry/stats,/api/sightings?limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
     check('no all-cities line beneath the tiles (removed on owner request)', !/All cities/.test(p.d.querySelector('section dl').textContent) && !p.d.getElementById('statVehiclesAll'));
-    check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '2' && p.d.getElementById('statRides').dataset.value === '3');
+    check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '3' && p.d.getElementById('statRides').dataset.value === '4');
     const big = await home(ctx, { intercept: async path => (isHome(path) ? hp(1234, 56789) : null) });
     check('large numbers are formatted with separators', big.v() === '1,234' && big.r() === '56,789');
   }
@@ -222,7 +223,7 @@ async function run() {
     const unavailable = await home(ctx, { intercept: async () => Response.json({ success: false, error: 'stats_unavailable' }, { status: 503 }) });
     check('the 503 the API sends when the database is down also leaves dashes', unavailable.v() === '—' && unavailable.r() === '—');
     for (const [label, body] of [['strings', { public_vehicles: '2', recorded_rides: '3' }], ['negative', { public_vehicles: -1, recorded_rides: -5 }], ['fractions', { public_vehicles: 1.5, recorded_rides: 2.5 }], ['null / missing', { public_vehicles: null }], ['not an object', 'oops'], ['NaN-like', { public_vehicles: 'NaN', recorded_rides: {} }]]) {
-      const x = await home(ctx, { intercept: async path => (isHome(path) ? Response.json(typeof body === 'object' && body ? { hero: { city: { vehicles: body.public_vehicles, rides: body.recorded_rides } } } : body) : null) });
+      const x = await home(ctx, { intercept: async path => (isHome(path) ? Response.json(body) : null) });
       check(`a malformed body (${label}) is never shown as a number`, x.v() === '—' && x.r() === '—');
     }
     const partial = await home(ctx, { intercept: async path => (isHome(path) ? hp(7, 'bad') : null) });

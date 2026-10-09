@@ -1,16 +1,6 @@
-/* Homepage statistics (index.html "Stats bar") and the shared loader for the
-   homepage's city rows (js/home-rows.js).
-   The bar follows the page's Austin / Dallas tabs: each tile shows the selected
-   city.
-     Cybercabs Spotted / Total Rides: GET /api/homepage-stats?city= (worker/
-       homepage-stats.js) — `hero.city` (the registry rules).
-     Sightings: approved sightings, kept live — re-read every 30s while the tab
-       is visible and at once on return (GET /api/sightings?city=<city>, its
-       `seen`, the Sightings page's own count).
-   Nothing on this bar is hard-coded. A tile starts as an em dash and only ever
-   becomes a number the server sent; a failed read keeps the dash (or the last
-   good number): "could not load" is not the same as zero, and a real zero is
-   shown as 0. Same origin; no session, no Authorization header. */
+/* Homepage headline counts cover the entire public registry and all approved
+   sightings. City-specific detail rows continue using the shared city loader.
+   Failed refreshes retain the last good value; initial failures keep a dash. */
 (function () {
   const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
   const SIGHTINGS_POLL_MS = 30 * 1000;
@@ -37,47 +27,40 @@
     el.dataset.value = String(n);
     el.textContent = n.toLocaleString();
   }
-  function dash(el) { if (el) { delete el.dataset.value; el.textContent = '—'; } }
   const $ = id => document.getElementById(id);
 
-  let city = 'austin', seq = 0;
-  function setCity(next) {
-    city = next === 'dallas' ? 'dallas' : 'austin';
-    const mine = ++seq;
-    const label = $('statCityLabel');
-    if (label) label.textContent = city === 'dallas' ? 'Dallas' : 'Austin';
-    // Until this city's numbers arrive, its tiles show a dash, never the other city's.
-    ['statVehicles', 'statRides', 'statSightings'].forEach(id => dash($(id)));
-    getCity(city).then(body => {
-      if (mine !== seq || !body || !body.hero) return;
-      const c = body.hero.city || {};
-      if (isCount(c.vehicles)) reveal($('statVehicles'), c.vehicles);
-      if (isCount(c.rides)) reveal($('statRides'), c.rides);
-    }).catch(() => { /* leave the dashes */ });
-    loadSightings();
+  function loadRegistry() {
+    fetch('/api/registry/stats')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
+      .then(body => {
+        if (!body) return;
+        for (const [id, n] of [['statVehicles', body.public_vehicles], ['statRides', body.recorded_rides]]) {
+          const el = $(id);
+          if (el && isCount(n) && el.dataset.value !== String(n)) reveal(el, n);
+        }
+      }).catch(() => { /* retain the last good totals */ });
   }
 
-  // ---- Sightings: live for the selected city ----
   let sightingsTimer = null;
   function loadSightings() {
-    const want = city;
-    const read = q => fetch(`/api/sightings?city=${q}&limit=1`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))));
-    read(want).then(body => {
-      const el = $('statSightings');
-      if (want === city && el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
-    }).catch(() => { /* keep what is shown */ });
+    fetch('/api/sightings?limit=1')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
+      .then(body => {
+        const el = $('statSightings');
+        if (el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
+      }).catch(() => { /* retain the last good total */ });
   }
   function startSightings() {
     if (sightingsTimer) clearInterval(sightingsTimer);
     sightingsTimer = document.hidden ? null : setInterval(loadSightings, SIGHTINGS_POLL_MS);
   }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) loadSightings();
+    if (!document.hidden) { loadRegistry(); loadSightings(); }
     startSightings();
   });
 
-  window.setHomeStatsCity = setCity;
-  setCity('austin');
+  loadRegistry();
+  loadSightings();
+  setInterval(() => { if (!document.hidden) loadRegistry(); }, DATA_TTL_MS);
   startSightings();
 })();

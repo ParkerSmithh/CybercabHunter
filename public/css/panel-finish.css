@@ -1,0 +1,2 @@
+/* Shared low-intensity panel wash, with a neutral edge and no hover halo. */
+html .soft-panel{border:1px solid rgb(var(--ink) / .1);background:linear-gradient(120deg,rgb(var(--c, var(--gold)) / .06),transparent 60%),rgb(var(--surface));}

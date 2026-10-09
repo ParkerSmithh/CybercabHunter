@@ -18,6 +18,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/home-overview.css?v=6">
 <link rel="stylesheet" href="css/hero-typewriter.css?v=1">
 <link rel="stylesheet" href="css/home-data.css?v=3">
@@ -132,12 +133,12 @@
 
 <section class="relative pt-8">
   <!-- ===== Stats bar =====
-       Follows the city tabs below (js/home-stats.js): each tile is the selected
-       city. Cybercabs and rides from
-       GET /api/homepage-stats; Sightings kept live from GET /api/sightings.
+       All-city totals (js/home-stats.js): Cybercabs and rides from
+       GET /api/registry/stats; approved sightings from GET /api/sightings.
+       The city tabs only change the maps and detail rows.
        Each starts as an em dash and only becomes the server's number. -->
   <div class="max-w-7xl mx-auto px-6 lg:px-10 pb-4">
-    <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 max-sm:mb-1.5 max-sm:text-[10px]"><span id="statCityLabel" class="text-gold">Austin</span> · live</p>
+    <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 max-sm:mb-1.5 max-sm:text-[10px]"><span id="statCityLabel" class="text-gold">All cities</span> · live</p>
     <dl class="grid grid-cols-3 border-y border-white/[0.07] divide-x divide-white/[0.07]">
       <div class="py-6 pr-6 max-sm:py-4 max-sm:pr-4">
         <dt class="text-xs text-slate-500 max-sm:min-h-8">Cybercabs Spotted</dt>
@@ -414,8 +415,8 @@
 <script src="js/calc.js?v=7"></script>
 <script src="js/service-banner.js?v=10"></script>
 <script src="js/main.js?v=27"></script>
-<script src="js/home-stats.js?v=6"></script>
-<script src="js/home-rows.js?v=11"></script>
+<script src="js/home-stats.js?v=7"></script>
+<script src="js/home-rows.js?v=12"></script>
 <script src="js/dmv-panel.js?v=12"></script>
 <script src="js/austin-map.js?v=8"></script>
 <script src="js/hero-typewriter.js?v=1" defer></script>
@@ -516,7 +517,6 @@
           initZoneMap('zoneMap-dallas', 'Dallas', [-96.797, 32.7767], CCCAustinMap.DALLAS_SERVICE_ZONE);
         }
         if (window.setFleetChartCity) window.setFleetChartCity(city === 'dallas' ? 'Dallas' : 'Austin');
-        if (window.setHomeStatsCity) window.setHomeStatsCity(city);
         if (window.setHomeRowsCity) window.setHomeRowsCity(city);
       });
     });

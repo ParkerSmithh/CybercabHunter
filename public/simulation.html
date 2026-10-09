@@ -17,6 +17,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/panel-finish.css?v=1">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -371,7 +372,7 @@
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
 <section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="austinMixHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Austin</p>
@@ -385,7 +386,7 @@
         <div class="flex justify-between mt-2 text-xs font-semibold stat-value"><span class="text-gold"><span id="austinMixCyPctBar">—</span> Cybercab</span><span class="text-red-400"><span id="austinMixMyPctBar">—</span> Model Y</span></div>
       </div>
       <div class="mt-5 grid grid-cols-2 gap-4 max-sm:grid-cols-1 max-sm:gap-3">
-        <div data-glow class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:212 175 55;border-color:#D4AF3759;background:linear-gradient(120deg, #D4AF371f, transparent 70%)">
+        <div class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px] soft-panel" style="--c:212 175 55;">
           <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
           <div class="relative max-w-[52%]">
             <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -394,7 +395,7 @@
             <p id="austinMixCyNote" class="text-[11px] text-slate-500 mt-1.5">Live count loading</p>
           </div>
         </div>
-        <div data-glow="red" class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:239 68 68;border-color:#ef444459;background:linear-gradient(120deg, #ef44441f, transparent 70%)">
+        <div class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px] soft-panel" style="--c:239 68 68;">
           <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-model-y.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
           <div class="relative max-w-[52%]">
             <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -431,7 +432,7 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article data-glow class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:212 175 55">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -463,7 +464,7 @@
           </div>
         </div>
       </article>
-      <article data-glow="red" class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -494,7 +495,7 @@
     </div>
 
     <!-- Trip fare by distance, and the service day on a 24-hour clock (Central). -->
-    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6">
+    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
       <div class="min-w-0">
         <div class="flex items-center justify-between mb-3">
           <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
@@ -535,7 +536,7 @@
       Not yet calibrated: estimate only. No measured wait times exist yet to check it against.
     </p>
 
-    <details class="estimate-details glass rounded-2xl mt-6 max-sm:mt-4">
+    <details class="estimate-details glass rounded-2xl mt-6 max-sm:mt-4 soft-panel">
       <summary class="flex items-center justify-between gap-3 px-6 py-4 max-sm:px-4 cursor-pointer select-none text-sm font-semibold text-slate-200">
         How this is estimated
         <svg class="details-chevron w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg>
@@ -570,7 +571,7 @@
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
 <section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="dalMixHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Dallas</p>
@@ -584,7 +585,7 @@
         <div class="flex justify-between mt-2 text-xs font-semibold stat-value"><span class="text-gold"><span id="dalMixCyPctBar">—</span> Cybercab</span><span class="text-red-400"><span id="dalMixMyPctBar">—</span> Model Y</span></div>
       </div>
       <div class="mt-5 grid grid-cols-2 gap-4 max-sm:grid-cols-1 max-sm:gap-3">
-        <div data-glow class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:212 175 55;border-color:#D4AF3759;background:linear-gradient(120deg, #D4AF371f, transparent 70%)">
+        <div class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px] soft-panel" style="--c:212 175 55;">
           <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
           <div class="relative max-w-[52%]">
             <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -593,7 +594,7 @@
             <p id="dalMixCyNote" class="text-[11px] text-slate-500 mt-1.5">Live count loading</p>
           </div>
         </div>
-        <div data-glow="red" class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:239 68 68;border-color:#ef444459;background:linear-gradient(120deg, #ef44441f, transparent 70%)">
+        <div class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px] soft-panel" style="--c:239 68 68;">
           <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-model-y.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
           <div class="relative max-w-[52%]">
             <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -624,7 +625,7 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article data-glow class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:212 175 55">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -653,7 +654,7 @@
           </div>
         </div>
       </article>
-      <article data-glow="red" class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -681,7 +682,7 @@
     </div>
 
     <!-- The Dallas service day on a 24-hour clock: open 6 AM to 11 PM. -->
-    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 max-sm:p-4 max-sm:mt-4">
+    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 max-sm:p-4 max-sm:mt-4 soft-panel">
       <div class="flex items-center justify-between gap-3">
         <p class="text-sm font-medium text-slate-300">Service day · both models</p>
         <span id="dalServiceStatus" class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5">Checking</span>

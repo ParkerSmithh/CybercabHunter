@@ -57,7 +57,7 @@
 <dd class="home-data-value stat-value">${value}</dd>
 <dd class="home-data-note">${sub || '&nbsp;'}</dd></dl>`;
   const tile = (label, value, sub) => `
-    <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+    <div class="glass soft-panel rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
       <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 truncate max-sm:whitespace-normal max-sm:leading-tight max-sm:min-h-[2.5em] max-sm:text-[9px] max-sm:tracking-normal">${esc(label)}</div>
       <div class="stat-value font-semibold text-2xl text-white mt-1.5 truncate max-sm:text-base max-sm:mt-0.5">${value}</div>
       <div class="text-[11px] text-slate-500 mt-1 truncate max-sm:whitespace-normal max-sm:leading-tight max-sm:text-[9px] max-sm:mt-0.5">${sub || '&nbsp;'}</div>

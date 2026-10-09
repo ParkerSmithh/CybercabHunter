@@ -17,7 +17,8 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=59">
-<link rel="stylesheet" href="css/community.css?v=2">
+<link rel="stylesheet" href="css/panel-finish.css?v=1">
+<link rel="stylesheet" href="css/community.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -106,7 +107,7 @@
          js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
          GET /api/registry/stats, js/community.js). Each starts as an em dash
          and stays one if it can't be loaded — never a made-up 0. -->
-    <div id="communityStats" class="community-stats glass">
+    <div id="communityStats" class="community-stats glass soft-panel">
       <div class="community-stat-grid">
       <div class="community-stat">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
@@ -136,7 +137,7 @@
     <div class="community-columns grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
     <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
          and breakdown are computed live by the server over the reviews shown. -->
-    <div id="reviews" data-glow class="community-panel dmv-card" style="--c:212 175 55">
+    <div id="reviews" class="community-panel">
       <div class="flex items-start justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-2">
         <div class="flex items-start gap-3 min-w-0 max-sm:gap-2.5">
           <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
@@ -228,7 +229,7 @@
          each, in a single row that scrolls sideways on phones. -->
 
 
-    <div data-glow class="community-panel dmv-card" style="--c:212 175 55">
+    <div class="community-panel">
       <div class="flex items-start gap-3 max-sm:gap-2.5">
         <span class="w-10 h-10 max-sm:w-8 max-sm:h-8 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21l8 0"/> <path d="M12 17l0 4"/> <path d="M7 4l10 0"/> <path d="M17 4v8a5 5 0 0 1 -10 0v-8"/> <path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
