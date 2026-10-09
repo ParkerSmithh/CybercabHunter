@@ -20,7 +20,8 @@
 	"triggers": {
 		// Every 10 min: Gmail sync + photo expiry. Daily 11:00 UTC: Fleet & Fares
 		// recompute (worker/fleet-stats.js FLEET_STATS_CRON — keep the two equal).
-		"crons": ["*/10 * * * *", "0 11 * * *"]
+		// Daily 11:30 UTC: the TxDMV AV roster snapshot (worker/txdmv.js TXDMV_CRON).
+		"crons": ["*/10 * * * *", "0 11 * * *", "30 11 * * *"]
 	},
 	"kv_namespaces": [
 		{
