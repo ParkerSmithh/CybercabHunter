@@ -1351,6 +1351,66 @@ const CCC = (() => {
   }
 
   /* ---------------- Init ---------------- */
+  /* BorderGlow: a gold light along a glass card's border that follows a mouse
+     or pen pointer and brightens near the edge (css/style.css .bg-glow-edge; the
+     math of the React Bits BorderGlow: edge sensitivity 30, cursor angle with
+     0deg up). One delegated listener for every .glass card on the page, except
+     the header and the phone bottom bar. Touch screens get nothing. Each card
+     gets one empty decorative span (.bg-glow-edge), added the first time a
+     pointer reaches it (and again if the card's content is re-rendered). A
+     static card is made position:relative for it only when that can't move
+     anything inside it (no absolutely positioned descendants). */
+  function initBorderGlow() {
+    if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const EDGE_SENSITIVITY = 30;            // percent of the way from center to edge where the glow starts
+    const START = 1 - EDGE_SENSITIVITY / 100;
+    let current = null, raf = 0, last = null;
+    const usable = el => {
+      if (el.dataset.glow === 'off' || el.matches('header, #mobileBottomNav')) return false;
+      if (el.dataset.glowReady) return el.dataset.glowReady === '1';
+      let ok = true;
+      if (getComputedStyle(el).position === 'static') {
+        ok = ![...el.querySelectorAll('[class*="absolute"], [style*="absolute"]')].some(d => getComputedStyle(d).position === 'absolute');
+        if (ok) el.classList.add('bg-glow-pos');
+      }
+      el.dataset.glowReady = ok ? '1' : '0';
+      return ok;
+    };
+    const ensureLayer = el => {
+      if (el.querySelector(':scope > .bg-glow-edge')) return;
+      const layer = document.createElement('span');
+      layer.className = 'bg-glow-edge';
+      layer.setAttribute('aria-hidden', 'true');
+      el.appendChild(layer);
+    };
+    const off = el => { if (el) el.style.setProperty('--glow-o', '0'); };
+    function paint() {
+      raf = 0;
+      if (!current || !last) return;
+      const r = current.getBoundingClientRect();
+      const cx = r.width / 2, cy = r.height / 2;
+      const dx = last.x - r.left - cx, dy = last.y - r.top - cy;
+      // Edge proximity: 0 at the center, 1 on the border (the nearer of the two axes).
+      const kx = dx ? cx / Math.abs(dx) : Infinity, ky = dy ? cy / Math.abs(dy) : Infinity;
+      const edge = Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      if (angle < 0) angle += 360;
+      current.style.setProperty('--glow-angle', `${angle.toFixed(1)}deg`);
+      current.style.setProperty('--glow-o', Math.max(0, (edge - START) / (1 - START)).toFixed(3));
+    }
+    document.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch') return;
+      const card = e.target.closest && e.target.closest('.glass');
+      const next = card && usable(card) ? card : null;
+      if (next !== current) { off(current); current = next; }
+      if (current) ensureLayer(current);
+      last = { x: e.clientX, y: e.clientY };
+      if (current && !raf) raf = requestAnimationFrame(paint);
+    }, { passive: true });
+    document.addEventListener('pointerleave', () => { off(current); current = null; });
+    window.addEventListener('blur', () => { off(current); current = null; });
+  }
+
   function init() {
     initNav();
     initReveal();
@@ -1365,6 +1425,7 @@ const CCC = (() => {
     initTeslaLink();
     initAccountMenu();
     initMapDrawer();
+    initBorderGlow();
   }
 
   return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };

@@ -220,6 +220,29 @@ html .glass[data-tilt].is-tilting{
   opacity:0; transition:opacity var(--t) var(--ease);
 }
 .glass[data-tilt].is-tilting::after{opacity:1;}
+/* BorderGlow (js/main.js initBorderGlow): on a mouse or pen, a gold light
+   runs along a glass card's border toward the pointer, brighter the nearer
+   the pointer is to the edge. The card gets one empty decorative layer,
+   .bg-glow-edge (aria-hidden, no pointer events, out of the layout):
+   its ::before is a cone of the border ring centered on --glow-angle (the
+   pointer's direction from the card's center; 0deg = up, clockwise), and the
+   layer's drop-shadows blur that same cone into a soft glow. --glow-o (0..1,
+   how near the edge) fades it. Touch screens never get the layer. */
+.glass.bg-glow-pos{position:relative;}
+.bg-glow-edge{
+  position:absolute; inset:-1px; border-radius:inherit; pointer-events:none; z-index:3;
+  opacity:var(--glow-o, 0); transition:opacity 180ms ease-out;
+  filter:drop-shadow(0 0 3px rgb(var(--gold) / 0.9)) drop-shadow(0 0 14px rgb(var(--gold) / 0.55));
+}
+.bg-glow-edge::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
+  background:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), rgb(var(--gold-soft)), rgb(var(--gold)) 30deg, #FFD23F 50deg, rgb(var(--gold-soft)) 80deg, rgb(var(--gold)));
+  -webkit-mask:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), transparent 0deg, #000 25deg, #000 55deg, transparent 80deg), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:source-in, xor;
+  mask:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), transparent 0deg, #000 25deg, #000 55deg, transparent 80deg), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite:intersect, exclude;
+}
+:root[data-theme="light"] .bg-glow-edge{filter:drop-shadow(0 0 2px rgb(var(--gold) / 0.8)) drop-shadow(0 0 10px rgb(var(--gold) / 0.35));}
 /* Stepper (batch three): profile.html's delete-account steps. A line under
    the three dots fills to the current step; the current dot is gold. */
 .delete-steps{position:relative; display:flex; justify-content:space-between; gap:8px; margin-bottom:20px; padding:0; list-style:none; --progress:0;}
