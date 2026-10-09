@@ -363,7 +363,7 @@ async function run() {
     check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(212,175,55,0\.45\)\]/.test(first.className) && first.querySelector('img'));
     // Alice: 2 discovered, 2 rides of 2.8 mi (the seed's default) in 2 cars, 1 city:
     // 20 + 6 + 4 + 5 + round(5.6 / 10) = 36.
-    check('rows show rank, name, score in pts and the breakdown', /Alice/.test(rows[0].textContent) && /36\s*pts/.test(rows[0].textContent.replace(/\s+/g, ' ')) && /2 found · 2 rides · 2 cars · 1 city · 5\.6 mi/.test(rows[0].textContent));
+    check('rows show rank, name, score in pts and the breakdown', /Alice/.test(rows[0].textContent) && /36\s*pts/.test(rows[0].textContent.replace(/\s+/g, ' ')) && /2 found · 2 rides · 2 cars · 1 city · 5\.6 mi/.test(rows[0].textContent.replace(/\u00a0/g, ' ')));
     tabs[3].click();
     await new Promise(r => setTimeout(r, 60));
     const rideRows = [...d.querySelectorAll('#boardList > li')];

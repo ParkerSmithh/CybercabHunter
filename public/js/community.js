@@ -15,10 +15,11 @@
   }
   let unit = ['vehicle', 'vehicles'];
   const fmtNum = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 1 });
-  const plural = (n, one, many) => `${fmtNum(n)} ${n === 1 ? one : many}`;
+  // A no-break space keeps each number with its unit when the line wraps.
+  const plural = (n, one, many) => `${fmtNum(n)}\u00a0${n === 1 ? one : many}`;
   // Top Overall: what the score is made of, in one short line.
   const breakdown = e => [plural(e.discovered, 'found', 'found'), plural(e.rides, 'ride', 'rides'), plural(e.unique_vehicles, 'car', 'cars'),
-    plural(e.cities, 'city', 'cities'), `${fmtNum(e.miles)} mi`].join(' · ');
+    plural(e.cities, 'city', 'cities'), `${fmtNum(e.miles)}\u00a0mi`].join(' · ');
 
   function rowHtml(e, i) {
     const first = e.rank === 1;
@@ -27,7 +28,7 @@
       : `<span class="w-8 h-8 shrink-0 flex items-center justify-center font-display font-bold text-sm text-slate-400" aria-label="Rank ${e.rank}">${e.rank}</span>`;
     const sub = e.handle ? `@${esc(e.handle)}` : 'No public profile yet';
     const detail = activeBoard === 'overall' && Number.isFinite(e.rides)
-      ? `<span class="block text-[11px] text-slate-500 truncate mt-0.5 max-sm:text-[10px]">${esc(breakdown(e))}</span>` : '';
+      ? `<span class="block text-[11px] text-slate-500 truncate mt-0.5 max-sm:text-[10px] max-sm:whitespace-normal max-sm:leading-snug">${esc(breakdown(e))}</span>` : '';
     const inner = `
       ${rankBadge}
       <span class="w-10 h-10 max-sm:w-9 max-sm:h-9 shrink-0 rounded-xl overflow-hidden">${avatarHtml(e)}</span>
