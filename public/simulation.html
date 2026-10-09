@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=51">
+<link rel="stylesheet" href="css/style.css?v=55">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#D4AF37); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
@@ -342,14 +342,48 @@
   </div>
 </div>
 
-<!-- ===== Cybercab vs Model Y (js/dmv-panel.js, the "compare" layout of the
-     Texas DMV panel): both models' Texas DMV registrations over time. ===== -->
-<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-label="Cybercab vs Model Y">
+<div id="austinContent">
+<!-- ===== Cybercab vs Model Y (Austin): the fleet mix. Cybercabs = the site's
+     live public count (GET /api/fleet-stats); Model Ys = a fixed figure (no live
+     Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
+<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="austinMixHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-dmv-panel="compare" class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+      <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Austin</p>
+          <h2 id="austinMixHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Cybercab vs Model Y</h2>
+        </div>
+        <p class="text-sm text-slate-400"><span id="austinMixTotal" class="stat-value text-white font-semibold">—</span> robotaxis in all</p>
+      </div>
+      <!-- The fleet share: gold Cybercab, red Model Y. -->
+      <div class="mt-5" aria-hidden="true">
+        <div class="mix-bar"><span id="austinMixBar" class="mix-bar-cy" style="width:0%"></span></div>
+        <div class="flex justify-between mt-2 text-xs font-semibold stat-value"><span class="text-gold"><span id="austinMixCyPctBar">—</span> Cybercab</span><span class="text-red-400"><span id="austinMixMyPctBar">—</span> Model Y</span></div>
+      </div>
+      <div class="mt-5 grid grid-cols-2 gap-4 max-sm:grid-cols-1 max-sm:gap-3">
+        <div data-glow class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:212 175 55;border-color:#D4AF3759;background:linear-gradient(120deg, #D4AF371f, transparent 70%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
+          <div class="relative max-w-[52%]">
+            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <p id="austinMixCy" class="dmv-card-num stat-value font-semibold text-4xl text-white leading-tight mt-1 max-sm:text-3xl">—</p>
+            <p class="text-xs text-slate-400"><span id="austinMixCyPct">—</span> of the fleet</p>
+            <p id="austinMixCyNote" class="text-[11px] text-slate-500 mt-1.5">Live count loading</p>
+          </div>
+        </div>
+        <div data-glow="red" class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:239 68 68;border-color:#ef444459;background:linear-gradient(120deg, #ef44441f, transparent 70%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-model-y.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
+          <div class="relative max-w-[52%]">
+            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <p id="austinMixMy" class="dmv-card-num stat-value font-semibold text-4xl text-white leading-tight mt-1 max-sm:text-3xl">114</p>
+            <p class="text-xs text-slate-400"><span id="austinMixMyPct">—</span> of the fleet</p>
+            <p class="text-[11px] text-slate-500 mt-1.5">A fixed figure: Cybercab Hunter has no live Model Y count.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
-<div id="austinContent">
 <!-- ===== Ride, hours & wait (Fares, Operating hours and the pickup-wait
      estimate in one section): a card per model, glowing in its color (gold
      Cybercab, red Model Y) with its fare, hours and wait; then the trip-fare
@@ -374,7 +408,7 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+      <article data-glow class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -406,7 +440,7 @@
           </div>
         </div>
       </article>
-      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+      <article data-glow="red" class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -508,6 +542,47 @@
      fixed Model Y count, the 81 mi² zone for the pickup-wait estimate).
      The same one-section layout as Austin's. -->
 <div id="dallasContent" class="hidden">
+<!-- ===== Cybercab vs Model Y (Dallas): the fleet mix. Cybercabs = the site's
+     live public count (GET /api/fleet-stats); Model Ys = a fixed figure (no live
+     Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
+<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="dalMixHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4">
+      <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Dallas</p>
+          <h2 id="dalMixHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Cybercab vs Model Y</h2>
+        </div>
+        <p class="text-sm text-slate-400"><span id="dalMixTotal" class="stat-value text-white font-semibold">—</span> robotaxis in all</p>
+      </div>
+      <!-- The fleet share: gold Cybercab, red Model Y. -->
+      <div class="mt-5" aria-hidden="true">
+        <div class="mix-bar"><span id="dalMixBar" class="mix-bar-cy" style="width:0%"></span></div>
+        <div class="flex justify-between mt-2 text-xs font-semibold stat-value"><span class="text-gold"><span id="dalMixCyPctBar">—</span> Cybercab</span><span class="text-red-400"><span id="dalMixMyPctBar">—</span> Model Y</span></div>
+      </div>
+      <div class="mt-5 grid grid-cols-2 gap-4 max-sm:grid-cols-1 max-sm:gap-3">
+        <div data-glow class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:212 175 55;border-color:#D4AF3759;background:linear-gradient(120deg, #D4AF371f, transparent 70%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
+          <div class="relative max-w-[52%]">
+            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <p id="dalMixCy" class="dmv-card-num stat-value font-semibold text-4xl text-white leading-tight mt-1 max-sm:text-3xl">—</p>
+            <p class="text-xs text-slate-400"><span id="dalMixCyPct">—</span> of the fleet</p>
+            <p id="dalMixCyNote" class="text-[11px] text-slate-500 mt-1.5">Live count loading</p>
+          </div>
+        </div>
+        <div data-glow="red" class="dmv-card relative rounded-xl border px-5 py-4 min-h-[128px] max-sm:px-4 max-sm:min-h-[112px]" style="--c:239 68 68;border-color:#ef444459;background:linear-gradient(120deg, #ef44441f, transparent 70%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-model-y.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[56%] max-w-[250px] opacity-90"></div>
+          <div class="relative max-w-[52%]">
+            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <p id="dalMixMy" class="dmv-card-num stat-value font-semibold text-4xl text-white leading-tight mt-1 max-sm:text-3xl">65</p>
+            <p class="text-xs text-slate-400"><span id="dalMixMyPct">—</span> of the fleet</p>
+            <p class="text-[11px] text-slate-500 mt-1.5">A fixed figure: Cybercab Hunter has no live Model Y count.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 <section class="pt-12 lg:pt-16 pb-16 max-sm:pt-6 max-sm:pb-8" aria-labelledby="dalRhwHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
@@ -526,7 +601,7 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
+      <article data-glow class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:212 175 55">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
@@ -555,7 +630,7 @@
           </div>
         </div>
       </article>
-      <article class="dmv-card rhw-card glass relative overflow-hidden rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
+      <article data-glow="red" class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4" style="--c:239 68 68">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
@@ -1003,8 +1078,7 @@
       });
   })();
 </script>
-<script src="js/fleet-compare.js?v=4"></script>
-<script src="js/dmv-panel.js?v=8"></script>
+<script src="js/fleet-compare.js?v=5"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 </body>
 </html>

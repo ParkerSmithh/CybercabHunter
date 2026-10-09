@@ -66,6 +66,20 @@
       : 'Live data unavailable. The fleet count and measured fares can\'t be loaded right now, so they aren\'t shown.');
   }
 
+  // ---- Cybercab vs Model Y: the fleet mix. `cy` is the live public count
+  // (null = unavailable: no number, no share); `my` the fixed Model Y figure.
+  function renderMix(pre, cy, my, note) {
+    const ok = typeof cy === 'number' && cy >= 0, total = ok ? cy + my : null;
+    const share = ok && total ? Math.round((cy / total) * 100) : null;
+    setText($(pre + 'MixCy'), ok ? String(cy) : '—');
+    setText($(pre + 'MixMy'), String(my));
+    setText($(pre + 'MixTotal'), ok ? String(total) : '—');
+    for (const [id, v] of [['MixCyPct', share], ['MixCyPctBar', share], ['MixMyPct', share === null ? null : 100 - share], ['MixMyPctBar', share === null ? null : 100 - share]]) setText($(pre + id), v === null ? '—' : `${v}%`);
+    const bar = $(pre + 'MixBar');
+    if (bar) bar.style.width = share === null ? '0%' : `${share}%`;
+    setText($(pre + 'MixCyNote'), note);
+  }
+
   // ---- fares
   function renderFares() {
     const f = data && data.fares;
@@ -219,6 +233,7 @@
   }
   async function loadDallas() {
     document.querySelectorAll('[data-dal-modely-fleet]').forEach(el => { el.textContent = String(C.DALLAS_MODEL_Y_FLEET); });
+    renderMix('dal', null, C.DALLAS_MODEL_Y_FLEET, 'Live count loading');
     setText($('dalFare5'), money(C.reportedFare(5, C.DALLAS_REPORTED_RATE)));
     renderDallasHours();
     renderDallasEta();
@@ -229,6 +244,9 @@
     } catch (e) { d = null; }
     dallas = d && typeof d.cybercabs === 'number' ? d : false;
     renderDallasEta();
+    renderMix('dal', dallas ? dallas.cybercabs : null, C.DALLAS_MODEL_Y_FLEET, dallas
+      ? `Live: public Cybercabs tracked in Dallas, as of ${ago(dallas.count_as_of) || 'an unknown time'}`
+      : 'Live count unavailable');
     if (dallas) {
       const f = d.fares || {};
       const has = typeof f.median_fare === 'number';
@@ -257,7 +275,12 @@
     });
   });
 
-  function renderAll() { renderLive(); renderFares(); renderEta(); }
+  function renderAll() {
+    renderLive(); renderFares(); renderEta();
+    renderMix('austin', data ? data.cybercabs : null, MODEL_Y_FLEET, data
+      ? `Live: public Cybercabs tracked by Cybercab Hunter, as of ${ago(data.count_as_of) || 'an unknown time'}`
+      : (failed ? 'Live count unavailable' : 'Live count loading'));
+  }
 
   // ---- load and refresh
   let inFlight = false;

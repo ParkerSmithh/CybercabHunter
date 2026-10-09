@@ -171,10 +171,9 @@
   function render() {
     els.forEach(el => {
       const d = data;
-      const compare = el.dataset.dmvPanel === 'compare';   // Fleet ETA: Cybercab vs Model Y
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">${compare ? 'Cybercab vs Model Y' : 'Texas DMV registrations · Tesla'}</h2>
-          <p class="text-xs text-slate-500 mt-0.5">${compare ? 'Tesla\'s robotaxis registered with the Texas DMV, by model' : 'Every automated vehicle Tesla lists with the state'}</p></div>
+          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">Texas DMV registrations · Tesla</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
           <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
         </div>`;
       if (!d) { el.innerHTML = head + `<div class="mt-4 h-40 rounded-xl bg-white/[0.03] animate-pulse"></div>`; return; }
@@ -187,8 +186,11 @@
       const partial = !hist && d.tracking_since > windowStart;   // under 30 days of history and nothing imported
       const stat = (label, value, sub, color = 'text-white') => `<div class="min-w-0"><div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">${esc(label)}</div>
         <div class="stat-value font-semibold text-3xl leading-tight mt-1 ${color} max-sm:text-2xl">${value}</div><div class="text-[11px] text-slate-500 mt-0.5 max-sm:text-[10px]">${sub}</div></div>`;
-      const card = (color, rgb, name, img, count, newN) => `<div class="dmv-card relative overflow-hidden rounded-xl border px-4 py-3.5 min-h-[112px] max-sm:px-3 max-sm:py-3 max-sm:min-h-[96px]" style="--c:${rgb};border-color:${color}59;background:linear-gradient(120deg, ${color}1f, transparent 70%)">
-          <img src="${img}" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none absolute right-[-6%] bottom-[-4%] w-[58%] max-w-[230px] opacity-90 max-sm:w-[54%]">
+      // The React Bits BorderGlow (js/main.js initBorderGlow, [data-glow]): gold
+      // for Cybercab, red for Model Y; the picture is clipped in its own layer
+      // so the glow can spill past the card's edge.
+      const card = (color, rgb, name, img, count, newN, glow) => `<div data-glow${glow ? `="${glow}"` : ''} class="dmv-card relative rounded-xl border px-4 py-3.5 min-h-[112px] max-sm:px-3 max-sm:py-3 max-sm:min-h-[96px]" style="--c:${rgb};border-color:${color}59;background:linear-gradient(120deg, ${color}1f, transparent 70%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="${img}" alt="" loading="lazy" decoding="async" class="absolute right-[-6%] bottom-[-4%] w-[58%] max-w-[230px] opacity-90 max-sm:w-[54%]"></div>
           <div class="relative max-w-[52%]">
             <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide max-sm:text-[10px]" style="color:${color}"><span class="w-2 h-2 rounded-full" style="background:${color}"></span>${esc(name)}</div>
             <div class="dmv-card-num stat-value font-semibold text-3xl text-white leading-tight mt-1 max-sm:text-2xl">${int(count)}</div>
@@ -201,12 +203,9 @@
       el.innerHTML = head + `
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] max-sm:mt-3 max-sm:gap-4">
           <div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-5 lg:content-start max-sm:gap-2">
-            ${compare ? stat('Cybercab share', `${pct(s.cybercab, s.total)}%`, `${int(s.cybercab)} of ${int(s.total)} registered`, 'text-gold')
-              + stat('Model Y share', `${pct(s.model_y, s.total)}%`, `${int(s.model_y)} of ${int(s.total)} registered`, 'text-red-400')
-              + stat(partial ? 'Added since tracking' : 'Added in 30 days', `<span class="text-gold">+${int(n.cybercab_30d)}</span><span class="text-slate-500 text-lg mx-1.5 max-sm:hidden">vs</span><span class="text-red-400 max-sm:block">+${int(n.model_y_30d)}</span>`, `Cybercab vs Model Y${n.approx ? ' · approx.' : ''}`)
-            : `${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
+            ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
             ${stat(partial ? 'Since tracking began' : 'Last 30 days', `+${int(n.d30)}`, partial ? `Tracking since ${esc(shortDate(d.tracking_since))}` : `+${int(n.d7)} in the last 7 days${n.approx ? ' · approx.' : ''}`, 'text-emerald-400')}
-            ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}`}
+            ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}
           </div>
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px] text-slate-400">
@@ -220,7 +219,7 @@
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3 max-sm:grid-cols-1 max-sm:mt-4 max-sm:gap-2">
           ${card(GOLD, '212 175 55', 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
-          ${card(RED, '239 68 68', 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d)}
+          ${card(RED, '239 68 68', 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d, 'red')}
         </div>
         <div class="mt-5 flex items-center gap-6 max-sm:mt-4 max-sm:flex-col-reverse max-sm:items-stretch max-sm:gap-3">
         <p class="flex-1 min-w-0 text-[11px] text-slate-500 leading-relaxed max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist

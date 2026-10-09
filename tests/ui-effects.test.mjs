@@ -56,7 +56,14 @@ async function run() {
     const count = f => (read(`public/${f}`).match(/\bdata-glow\b/g) || []).length;
     check('Sightings: the six stat tiles and the empty / error messages; not the city / sort bar', count('sightings.html') === 8 && !/data-glow class="glass rounded-2xl p-3 mb-6/.test(read('public/sightings.html')));
     check('Community: the four stat tiles only (not Reviews, not the leaderboard)', count('community.html') === 4 && !/id="reviews" data-glow|data-glow[^>]*id="reviews"/.test(read('public/community.html')));
-    check('Fleet ROI: the three result tiles only (not the inputs or the graph)', count('simulation.html') === 3);
+    {
+      // simulation.html: Fleet ROI's three result tiles, and on Fleet ETA only the
+      // model cards (Cybercab gold, Model Y red), Austin and Dallas: fleet mix + ride/hours/wait.
+      const sim = read('public/simulation.html'), roi = sim.slice(sim.indexOf('id="simPanelRoi"'), sim.indexOf('id="simPanelEta"')), eta = sim.slice(sim.indexOf('id="simPanelEta"'));
+      const n = t => (t.match(/\bdata-glow\b/g) || []).length;
+      check('Fleet ROI: the three result tiles only (not the inputs or the graph)', n(roi) === 3);
+      check('Fleet ETA: the eight model cards only, red on Model Y', n(eta) === 8 && (eta.match(/data-glow="red"/g) || []).length === 4 && [...eta.matchAll(/data-glow(?:="red")? class="([^"]*)"/g)].every(m => /\bdmv-card\b/.test(m[1])));
+    }
     check('the vehicle cards and the sighting cards are marked by their scripts', /a\.dataset\.glow = ''/.test(read('public/js/vehicles.js')) && /article\.dataset\.glow = ''/.test(read('public/js/sightings.js')));
     const none = ['index.html', 'infrastructure.html', 'replay.html', 'rider-data.html', 'rider.html', 'vehicle.html', 'moderation.html', 'profile.html', 'link-gmail.html', 'vehicles.html'];
     check('no glow anywhere else (Zones, Replay, Rider Data, profiles, Moderation, Profile settings, ...)', none.every(f => count(f) === 0), none.filter(f => count(f)).join());
