@@ -52,8 +52,8 @@
     $('riderCities').innerHTML = cities.map(c => {
       const pct = total ? Math.round((c.rides / total) * 100) : 0;
       return `<li>
-        <div class="flex items-baseline justify-between gap-3 text-sm"><span class="font-semibold text-slate-100">${esc(c.name)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(c.rides)} ${c.rides === 1 ? 'ride' : 'rides'} · ${pct}%</span></div>
-        <div class="mt-1.5 h-1.5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:${pct}%"></div></div>
+        <div class="flex items-baseline justify-between gap-3 text-sm"><span class="text-slate-100">${esc(c.name)}</span><span class="text-xs text-slate-400 tabular-nums">${esc(c.rides)} ${c.rides === 1 ? 'ride' : 'rides'} · ${pct}%</span></div>
+        <div class="mt-1.5 h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gold/80" style="width:${pct}%"></div></div>
       </li>`;
     }).join('');
     $('riderNoCities').classList.toggle('hidden', cities.length > 0);
@@ -61,12 +61,12 @@
     // Their most recent reviews (text via textContent below).
     const recent = Array.isArray(reviews.recent) ? reviews.recent : [];
     $('riderReviews').innerHTML = recent.map(rv => `
-      <article class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <article class="py-4 first:pt-0 last:pb-0">
         <div class="flex items-center justify-between gap-3">
-          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="text-xs font-display font-bold tracking-wide text-gold hover:underline">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
-          <span class="text-gold tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</span>
+          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="profile-plate hover:brightness-110">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
+          <span class="text-gold text-sm tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}<span class="text-slate-600">${'★'.repeat(5 - rv.rating)}</span></span>
         </div>
-        <p class="mt-2 text-sm text-slate-300 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>
+        <p class="mt-2.5 text-sm text-slate-200 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>
         <div class="mt-2 text-xs text-slate-500">${esc(fmtDay(rv.created_at))} · ${rv.like_count} ${rv.like_count === 1 ? 'like' : 'likes'} · ${rv.comment_count} ${rv.comment_count === 1 ? 'comment' : 'comments'}</div>
       </article>`).join('');
     $('riderReviews').querySelectorAll('[data-body]').forEach((el, i) => { el.textContent = recent[i].body; });
@@ -76,10 +76,10 @@
     $('riderCount').textContent = String(vehicles.length);
     $('riderVehicles').innerHTML = vehicles.map(v => {
       const detail = [v.model, v.color, v.service_area].filter(Boolean).map(esc).join(' · ');
-      return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 p-3 max-sm:gap-1.5 max-sm:px-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-[rgba(212,175,55,0.5)] transition-colors">
+      return `<li><a href="vehicle/${encodeURIComponent(v.id)}" class="flex items-center justify-between gap-3 px-3 py-2.5 max-sm:gap-1.5 max-sm:px-2.5 rounded-lg border border-white/[0.06] hover:border-white/[0.16] hover:bg-white/[0.02] transition-colors">
         <span class="min-w-0">
-          <span class="block font-display font-bold text-sm tracking-wide truncate">${esc(v.license_plate || 'Plate not listed')}</span>
-          ${detail ? `<span class="block text-xs text-slate-500 truncate max-sm:text-[10px]">${detail}</span>` : ''}
+          <span class="profile-plate">${esc(v.license_plate || 'Plate not listed')}</span>
+          ${detail ? `<span class="block mt-1 text-xs text-slate-500 truncate max-sm:text-[10px]">${detail}</span>` : ''}
         </span>
         <span class="shrink-0 text-slate-500" aria-hidden="true">&rsaquo;</span>
       </a></li>`;

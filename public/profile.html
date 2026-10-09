@@ -16,27 +16,25 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=57">
+<link rel="stylesheet" href="css/style.css?v=58">
 <style>
-  /* Locked = looks like plain text (no box); unlocked = looks like a normal
-     input, toggled by swapping these two classes in js when Edit Profile
-     is clicked. Font/color/size come from the Tailwind classes already on
-     each element — only the box chrome changes here. */
+  /* Locked = a quiet read-only field; unlocked = a normal input. The same
+     box either way (no layout jump), toggled by swapping these two classes
+     in js when Edit Profile is clicked. */
   .field-locked, .field-unlocked {
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0;
     display: block;
-    transition: background-color 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgb(var(--ink) / 0.07);
+    background: rgb(var(--ink) / 0.02);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
-  .field-locked { cursor: default; }
+  .field-locked { cursor: default; color: rgb(var(--n-300)); }
   .field-unlocked {
-    background: #0F141C;
-    border-color: rgba(212,175,55,0.2);
-    padding: 0.5rem 0.75rem;
+    background: rgb(var(--surface));
+    border-color: rgb(var(--ink) / 0.16);
     cursor: text;
   }
-  .field-unlocked:focus { outline: none; border-color: #D4AF37; }
+  .field-unlocked:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 3px rgb(212 175 55 / 0.15); }
 </style>
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -115,106 +113,155 @@
          Clicking Edit Profile removes readonly/disabled and turns the
          button into Save (disabled until something actually changes).
          Rider ride data/stats live entirely on rider-data.html, not here. -->
-    <div id="profileSignedIn" class="hidden max-w-2xl mx-auto">
-      <div class="reveal-on-scroll glass rounded-2xl p-8 max-sm:p-5">
-        <div class="flex items-start justify-between gap-5 flex-wrap mb-6 max-sm:flex-nowrap max-sm:gap-2 max-sm:mb-4">
-          <div class="flex items-center gap-5 flex-1 min-w-0 max-sm:gap-3">
-            <!-- Profile picture (worker/avatars.js): the shared avatar, with
-                 Change photo (-> the editor below) and Remove photo. -->
-            <div class="shrink-0 flex flex-col items-center gap-1.5">
-              <div id="profileAvatar" class="w-16 h-16 rounded-2xl overflow-hidden max-sm:w-12 max-sm:h-12"></div>
-              <label for="avatarFile" id="avatarChange" class="text-xs max-sm:text-[10px] font-semibold text-gold cursor-pointer hover:underline whitespace-nowrap">Change photo</label>
-              <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
-              <button id="avatarRemove" type="button" class="hidden text-xs text-slate-400 hover:text-slate-200 whitespace-nowrap">Remove photo</button>
-            </div>
-            <div class="flex-1 min-w-0">
-              <input id="fieldDisplayName" readonly maxlength="60" placeholder="Cybercab Hunter Rider" class="field-locked font-display font-bold text-3xl max-sm:text-base tracking-tight w-full rounded-lg placeholder:text-slate-500">
-              <div class="flex items-center mt-0.5">
-                <span class="text-sm text-gold">@</span>
-                <input id="fieldHandle" readonly maxlength="20" placeholder="No username set" class="field-locked text-sm text-gold w-full rounded-lg placeholder:text-slate-500">
-              </div>
-            </div>
-          </div>
-          <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2.5 max-sm:min-h-[40px] max-sm:px-2.5 max-sm:text-xs rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Edit Profile</button>
-        </div>
-
-        <p id="avatarError" class="hidden text-xs text-crimson mb-4" role="alert"></p>
-        <!-- Photo editor: crop (always square), zoom and reposition before
-             saving. Only the square shown here is ever uploaded — as two
-             re-encoded sizes, 512 and 128 px, with no metadata. -->
-        <div id="avatarEditor" class="hidden mb-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <div class="text-sm font-semibold mb-3">Adjust your photo</div>
-          <div class="flex flex-col sm:flex-row gap-5 items-center">
-            <div id="avatarCropBox" tabindex="0" aria-label="Photo crop area: drag or use the arrow keys to reposition" class="relative w-56 h-56 shrink-0 rounded-2xl overflow-hidden bg-black touch-none cursor-grab select-none outline-none focus-visible:ring-2 focus-visible:ring-gold">
-              <img id="avatarCropImg" alt="" draggable="false" class="absolute max-w-none pointer-events-none">
-            </div>
-            <div class="flex-1 w-full">
-              <label for="avatarZoom" class="text-[13px] font-medium text-slate-300">Zoom</label>
-              <input id="avatarZoom" type="range" min="1" max="4" step="0.01" value="1" class="w-full mt-2">
-              <p class="text-xs text-slate-500 mt-2 leading-relaxed">Drag the photo to reposition it. The square is exactly what your profile picture will show.</p>
-              <div class="flex items-center gap-2 mt-4">
-                <button id="avatarSave" type="button" class="btn-magnetic text-xs font-bold px-4 py-2.5 rounded-lg bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Save photo</button>
-                <button id="avatarCancel" type="button" class="text-xs px-4 py-2.5 rounded-lg border border-white/10 text-slate-400 hover:text-slate-200">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mb-6">
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</div>
-          <textarea id="fieldBio" readonly rows="2" maxlength="280" placeholder="No bio yet." class="field-locked text-sm text-slate-300 w-full rounded-lg resize-none placeholder:text-slate-500"></textarea>
-        </div>
-
-        <div class="flex items-center justify-between gap-4 pt-6 border-t border-[rgba(212,175,55,0.12)] max-sm:pt-4 max-sm:gap-3">
-          <div>
-            <div id="visibilityLabel" class="text-sm font-semibold">Community leaderboard &amp; public profile</div>
-            <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default. Turn it off to be left off the leaderboard.</p>
-            <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
-          </div>
-          <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 max-sm:after:absolute max-sm:after:-inset-2 max-sm:after:content-[''] rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
-            <span id="visibilityToggleKnob" data-switch-knob class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-4 flex-wrap mt-6">
-          <p id="profileJoined" class="text-xs text-slate-500"></p>
-          <p id="editProfileError" class="text-xs text-crimson"></p>
-        </div>
+    <!-- Signed-in: Settings. A side menu (desktop) and three cards: Profile
+         (photo, name, username, bio; Edit Profile unlocks the fields in place
+         and turns into Save, disabled until something changes), Privacy (the
+         Community switch) and Account (joined, delete account). Rider ride
+         data/stats live on rider-data.html, not here. -->
+    <div id="profileSignedIn" class="hidden max-w-5xl mx-auto">
+      <div class="mb-8 max-sm:mb-5">
+        <h1 class="text-3xl font-semibold text-white tracking-tight max-sm:text-2xl">Settings</h1>
+        <p class="mt-1 text-sm text-slate-400">Manage your public profile, privacy and account.</p>
       </div>
+      <div class="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] max-sm:gap-4">
+        <nav aria-label="Settings sections" class="settings-nav max-lg:hidden">
+          <a href="#settingsProfile">Profile</a>
+          <a href="#settingsPrivacy">Privacy</a>
+          <a href="#settingsAccount">Account</a>
+        </nav>
+        <div class="space-y-6 min-w-0 max-sm:space-y-4">
+        <section id="settingsProfile" class="settings-card" aria-labelledby="settingsProfileTitle">
+          <header class="settings-card-head">
+            <div class="min-w-0">
+              <h2 id="settingsProfileTitle" class="settings-title">Profile</h2>
+              <p class="settings-desc">How other riders see you on the Community leaderboard and your public profile.</p>
+            </div>
+            <button id="editProfileBtn" type="button" class="btn-magnetic shrink-0 inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">Edit Profile</button>
+          </header>
 
-      <!-- Delete account: permanently delete this account (DELETE /api/account,
-           worker/account.js). Two steps: the button opens the explanation,
-           and the delete only runs once DELETE has been typed. -->
-      <div id="dangerZone" class="mt-6 px-2 max-sm:mt-4 max-sm:px-1">
-        <div class="flex items-center justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-3">
-          <p class="text-sm text-slate-300 max-sm:text-xs max-sm:leading-snug">Permanently delete your account and all of your data.</p>
-          <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2.5 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110">Delete account</button>
-        </div>
-        <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-white/[0.08]">
-          <!-- Stepper (css/style.css .delete-steps): where you are in the deletion, for
-               guidance only. It reads the flow's state; it never changes it. -->
-          <ol id="deleteSteps" class="delete-steps" aria-label="Account deletion steps">
-            <li data-step="1"><span class="delete-step-dot" aria-hidden="true">1</span><span>Review what happens</span></li>
-            <li data-step="2"><span class="delete-step-dot" aria-hidden="true">2</span><span>Confirm</span></li>
-            <li data-step="3"><span class="delete-step-dot" aria-hidden="true">3</span><span>Done</span></li>
-          </ol>
-          <p id="deleteStepStatus" class="sr-only" role="status"></p>
-          <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
-          <p class="text-xs text-slate-400 mt-2">Deleting your account removes:</p>
-          <ul class="text-xs text-slate-400 mt-1.5 space-y-1 list-disc pl-5">
-            <li>your account, profile, username and Community listing</li>
-            <li>your Google, Tesla and Gmail connections (Gmail access is revoked)</li>
-            <li>your ride history, receipts and receipt forwarding address</li>
-            <li>your submissions and sightings, including their photos</li>
-          </ul>
-          <p class="text-xs text-slate-500 mt-2">Vehicles in the public registry stay listed; your name is removed from them.</p>
-          <label for="deleteAccountConfirm" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Type DELETE to confirm</label>
-          <input id="deleteAccountConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" class="mt-2 w-full max-w-xs bg-panel border border-crimson/40 rounded-lg px-3 py-2.5 text-sm">
-          <div class="flex items-center gap-2 mt-4 flex-wrap">
-            <button id="deleteAccountSubmit" type="button" disabled class="px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Permanently delete my account</button>
-            <button id="deleteAccountCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm text-slate-400 border border-white/10 hover:text-slate-200">Cancel</button>
+          <!-- Profile picture (worker/avatars.js): the shared avatar, with
+               Change photo (-> the editor below) and Remove photo. -->
+          <div class="settings-row">
+            <div class="settings-label">Photo</div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-4">
+                <div id="profileAvatar" class="w-16 h-16 rounded-full overflow-hidden shrink-0"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <label for="avatarFile" id="avatarChange" class="settings-btn cursor-pointer">Change photo</label>
+                  <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                  <button id="avatarRemove" type="button" class="hidden settings-btn settings-btn-quiet">Remove photo</button>
+                </div>
+              </div>
+              <p class="settings-help">JPEG, PNG or WebP. You'll crop it to a square before it's saved.</p>
+              <p id="avatarError" class="hidden text-xs text-crimson mt-2" role="alert"></p>
+            </div>
           </div>
-          <p id="deleteAccountError" class="text-xs text-crimson mt-3" role="alert"></p>
+          <div id="avatarEditor" class="hidden mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div class="text-sm font-semibold mb-3">Adjust your photo</div>
+            <div class="flex flex-col sm:flex-row gap-5 items-center">
+              <div id="avatarCropBox" tabindex="0" aria-label="Photo crop area: drag or use the arrow keys to reposition" class="relative w-56 h-56 shrink-0 rounded-2xl overflow-hidden bg-black touch-none cursor-grab select-none outline-none focus-visible:ring-2 focus-visible:ring-gold">
+                <img id="avatarCropImg" alt="" draggable="false" class="absolute max-w-none pointer-events-none">
+              </div>
+              <div class="flex-1 w-full">
+                <label for="avatarZoom" class="text-[13px] font-medium text-slate-300">Zoom</label>
+                <input id="avatarZoom" type="range" min="1" max="4" step="0.01" value="1" class="w-full mt-2">
+                <p class="text-xs text-slate-500 mt-2 leading-relaxed">Drag the photo to reposition it. The square is exactly what your profile picture will show.</p>
+                <div class="flex items-center gap-2 mt-4">
+                  <button id="avatarSave" type="button" class="btn-magnetic text-xs font-bold px-4 py-2.5 rounded-lg bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Save photo</button>
+                  <button id="avatarCancel" type="button" class="text-xs px-4 py-2.5 rounded-lg border border-white/10 text-slate-400 hover:text-slate-200">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label for="fieldDisplayName" class="settings-label">Display name</label>
+            <div class="min-w-0">
+              <input id="fieldDisplayName" readonly maxlength="60" placeholder="Cybercab Hunter Rider" class="field-locked w-full rounded-lg text-sm text-slate-100 placeholder:text-slate-500">
+            </div>
+          </div>
+          <div class="settings-row">
+            <label for="fieldHandle" class="settings-label">Username</label>
+            <div class="min-w-0">
+              <div class="settings-prefix"><span aria-hidden="true">@</span><input id="fieldHandle" readonly maxlength="20" placeholder="No username set" class="field-locked w-full rounded-lg text-sm text-slate-100 placeholder:text-slate-500"></div>
+              <p class="settings-help">Your public profile is at cybercabhunter.com/rider/<span class="text-slate-300">username</span>. Letters, numbers and underscores.</p>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label for="fieldBio" class="settings-label">Bio</label>
+            <div class="min-w-0">
+              <textarea id="fieldBio" readonly rows="3" maxlength="280" placeholder="No bio yet." class="field-locked w-full rounded-lg resize-none text-sm text-slate-100 placeholder:text-slate-500"></textarea>
+              <p class="settings-help">Up to 280 characters.</p>
+            </div>
+          </div>
+          <p id="editProfileError" class="text-xs text-crimson empty:hidden mt-1" role="alert"></p>
+        </section>
+
+        <section id="settingsPrivacy" class="settings-card" aria-labelledby="settingsPrivacyTitle">
+          <header class="settings-card-head">
+            <div class="min-w-0">
+              <h2 id="settingsPrivacyTitle" class="settings-title">Privacy</h2>
+              <p class="settings-desc">Choose whether you appear in the Community.</p>
+            </div>
+          </header>
+          <div class="flex items-center justify-between gap-6 pt-5 max-sm:gap-3">
+            <div class="min-w-0">
+              <div id="visibilityLabel" class="text-sm font-medium text-slate-100">Community leaderboard &amp; public profile</div>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default. Turn it off to be left off the leaderboard.</p>
+              <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
+            </div>
+            <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 max-sm:after:absolute max-sm:after:-inset-2 max-sm:after:content-[''] rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
+              <span id="visibilityToggleKnob" data-switch-knob class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
+            </button>
+          </div>
+        </section>
+
+        <section id="settingsAccount" class="settings-card" aria-labelledby="settingsAccountTitle">
+          <header class="settings-card-head">
+            <div class="min-w-0">
+              <h2 id="settingsAccountTitle" class="settings-title">Account</h2>
+              <p id="profileJoined" class="settings-desc"></p>
+            </div>
+          </header>
+          <!-- Delete account (DELETE /api/account, worker/account.js). Two steps:
+               the button opens the explanation, and the delete only runs once
+               DELETE has been typed. -->
+          <div id="dangerZone" class="mt-5 rounded-xl border border-crimson/30 bg-crimson/[0.04] p-5 max-sm:p-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-3">
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-slate-100">Delete account</div>
+                <p class="text-xs text-slate-400 mt-1 max-sm:leading-snug">Permanently delete your account and all of your data.</p>
+              </div>
+              <button id="deleteAccountBtn" type="button" aria-expanded="false" aria-controls="deleteAccountPanel" class="shrink-0 px-4 py-2 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs rounded-lg text-sm font-semibold bg-crimson text-paper hover:brightness-110">Delete account</button>
+            </div>
+      <div id="deleteAccountPanel" class="hidden mt-5 pt-5 border-t border-white/[0.08]">
+        <!-- Stepper (css/style.css .delete-steps): where you are in the deletion, for
+             guidance only. It reads the flow's state; it never changes it. -->
+        <ol id="deleteSteps" class="delete-steps" aria-label="Account deletion steps">
+          <li data-step="1"><span class="delete-step-dot" aria-hidden="true">1</span><span>Review what happens</span></li>
+          <li data-step="2"><span class="delete-step-dot" aria-hidden="true">2</span><span>Confirm</span></li>
+          <li data-step="3"><span class="delete-step-dot" aria-hidden="true">3</span><span>Done</span></li>
+        </ol>
+        <p id="deleteStepStatus" class="sr-only" role="status"></p>
+        <p class="text-sm font-semibold text-slate-100">This is permanent and can't be undone.</p>
+        <p class="text-xs text-slate-400 mt-2">Deleting your account removes:</p>
+        <ul class="text-xs text-slate-400 mt-1.5 space-y-1 list-disc pl-5">
+          <li>your account, profile, username and Community listing</li>
+          <li>your Google, Tesla and Gmail connections (Gmail access is revoked)</li>
+          <li>your ride history, receipts and receipt forwarding address</li>
+          <li>your submissions and sightings, including their photos</li>
+        </ul>
+        <p class="text-xs text-slate-500 mt-2">Vehicles in the public registry stay listed; your name is removed from them.</p>
+        <label for="deleteAccountConfirm" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Type DELETE to confirm</label>
+        <input id="deleteAccountConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" class="mt-2 w-full max-w-xs bg-panel border border-crimson/40 rounded-lg px-3 py-2.5 text-sm">
+        <div class="flex items-center gap-2 mt-4 flex-wrap">
+          <button id="deleteAccountSubmit" type="button" disabled class="px-4 py-2.5 rounded-lg text-sm font-bold bg-crimson text-paper hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Permanently delete my account</button>
+          <button id="deleteAccountCancel" type="button" class="px-4 py-2.5 rounded-lg text-sm text-slate-400 border border-white/10 hover:text-slate-200">Cancel</button>
+        </div>
+        <p id="deleteAccountError" class="text-xs text-crimson mt-3" role="alert"></p>
+      </div>
+          </div>
+        </section>
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=57">
+<link rel="stylesheet" href="css/style.css?v=58">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -80,95 +80,97 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<section class="py-16">
-  <div class="max-w-2xl mx-auto px-4 sm:px-6">
-    <a href="/community" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors">&larr; Community</a>
+<section class="py-12 max-sm:py-6">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <a href="/community" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors">&larr; Community</a>
 
-    <div id="riderLoading" class="mt-6 glass rounded-2xl p-6 h-40 animate-pulse" aria-busy="true"><span class="sr-only">Loading…</span></div>
+    <div id="riderLoading" class="mt-6 glass rounded-2xl h-64 animate-pulse" aria-busy="true"><span class="sr-only">Loading…</span></div>
 
     <!-- Not public (not opted in, no username) or unknown — the same state, so
          whether an account exists is never revealed. -->
-    <div id="riderPrivate" class="hidden mt-6 glass rounded-2xl p-8 text-center">
-      <div class="font-display font-bold text-xl text-gold tracking-wide">Private profile</div>
-      <p class="text-sm text-slate-400 mt-2">This spotter's profile is private.</p>
+    <div id="riderPrivate" class="hidden mt-6 glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+      <div class="mx-auto w-12 h-12 rounded-full bg-white/[0.04] border border-white/[0.08] grid place-items-center text-slate-400" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+      <div class="mt-4 text-lg font-semibold text-white">This profile is private</div>
+      <p class="text-sm text-slate-400 mt-1.5">This spotter hasn't made their profile public.</p>
     </div>
-    <div id="riderError" class="hidden mt-6 glass rounded-2xl p-8 text-center">
-      <div class="font-display font-bold text-xl tracking-wide">We couldn't load this profile</div>
-      <p class="text-sm text-slate-400 mt-2">Please try again in a moment.</p>
+    <div id="riderError" class="hidden mt-6 glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+      <div class="text-lg font-semibold text-white">We couldn't load this profile</div>
+      <p class="text-sm text-slate-400 mt-1.5">Please try again in a moment.</p>
     </div>
 
-    <!-- The same card as the rider's own Profile page (profile.html), read-only,
-         then their public counts: rides (counts and city names only — never
-         fares, dates, times, places or plates ridden), vehicles discovered and
-         reviews. All from GET /api/riders/:handle. -->
+    <!-- A public rider profile (GET /api/riders/:handle): the header (cover,
+         photo, name, @handle, bio, joined), a strip of public counts (rides:
+         counts and city names only — never fares, dates, times, places or
+         plates ridden), then their reviews beside their cities and the
+         vehicles they discovered. -->
     <div id="riderProfile" class="hidden mt-6 space-y-6 max-sm:mt-4 max-sm:space-y-4">
-      <div class="glass rounded-2xl p-8 max-sm:p-5">
-        <div class="flex items-center gap-5 mb-6 max-sm:gap-3.5 max-sm:mb-4">
-          <div id="riderAvatar" class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 max-sm:w-12 max-sm:h-12"></div>
-          <div class="min-w-0">
-            <h1 id="riderName" class="font-display font-bold text-3xl tracking-tight truncate max-sm:text-2xl"></h1>
-            <div id="riderHandle" class="text-sm text-gold truncate"></div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="profile-cover h-28 max-sm:h-20" aria-hidden="true"></div>
+        <div class="px-8 pb-6 max-sm:px-5 max-sm:pb-5">
+          <div class="flex items-end justify-between gap-4 -mt-12 max-sm:-mt-9">
+            <div id="riderAvatar" class="profile-avatar w-24 h-24 rounded-full overflow-hidden shrink-0 max-sm:w-[72px] max-sm:h-[72px]"></div>
+            <span class="mb-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 text-xs text-slate-300"><svg class="w-3.5 h-3.5 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Public profile</span>
+          </div>
+          <h1 id="riderName" class="mt-4 text-2xl font-semibold text-white tracking-tight truncate max-sm:text-xl max-sm:mt-3"></h1>
+          <div id="riderHandle" class="text-sm text-slate-400 truncate"></div>
+          <p id="riderBio" class="mt-3 max-w-2xl text-[15px] text-slate-200 leading-relaxed [overflow-wrap:anywhere] max-sm:text-sm"></p>
+          <p class="mt-3 flex items-center gap-1.5 text-sm text-slate-400"><svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span id="riderJoined"></span></p>
+        </div>
+        <!-- Public counts (each an em dash until the server sends it). -->
+        <div id="riderStats" class="profile-stats grid grid-cols-3 lg:grid-cols-6 border-t border-white/[0.07]">
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderRides" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate">Rides</div>
+        </div>
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderVehiclesRidden" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Cybercabs ridden</span><span class="sm:hidden">Cybercabs</span></div>
+        </div>
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderCitiesCount" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate">Cities</div>
+        </div>
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderDiscovered" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Vehicles discovered</span><span class="sm:hidden">Discovered</span></div>
+        </div>
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderReviewCount" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate">Reviews</div>
+        </div>
+        <div class="min-w-0 px-4 py-3 max-sm:px-2 max-sm:py-2.5">
+          <div id="riderReviewAvg" class="text-xl font-semibold text-white tabular-nums max-sm:text-base">—</div>
+          <div class="text-xs text-slate-500 mt-0.5 max-sm:text-[10px] max-sm:truncate"><span class="max-sm:hidden">Avg rating given</span><span class="sm:hidden">Avg rating</span></div>
+        </div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] max-sm:gap-4">
+        <div class="glass rounded-2xl p-6 min-w-0 max-sm:p-4">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 data-split class="text-base font-semibold text-white">Reviews</h2>
+            <a href="/community" class="text-sm text-gold hover:underline">All reviews</a>
+          </div>
+          <div id="riderReviews" class="mt-4 divide-y divide-white/[0.06]"></div>
+          <p id="riderNoReviews" class="hidden mt-3 text-sm text-slate-500">No reviews yet.</p>
+        </div>
+
+        <div class="space-y-6 min-w-0 max-sm:space-y-4">
+          <div class="glass rounded-2xl p-6 max-sm:p-4">
+            <h2 data-split class="text-base font-semibold text-white">Cities</h2>
+            <ul id="riderCities" class="mt-4 space-y-3"></ul>
+            <p id="riderNoCities" class="hidden mt-3 text-sm text-slate-500">No rides with a city recorded yet.</p>
+          </div>
+
+          <div class="glass rounded-2xl p-6 max-sm:p-4">
+            <div class="flex items-baseline justify-between gap-3">
+              <h2 data-split class="text-base font-semibold text-white">Vehicles discovered</h2>
+              <div id="riderCount" class="text-sm text-slate-400 tabular-nums"></div>
+            </div>
+            <ul id="riderVehicles" class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 max-sm:grid-cols-2 max-sm:mt-3"></ul>
+            <p id="riderNoVehicles" class="hidden mt-3 text-sm text-slate-500">No public vehicles discovered yet.</p>
           </div>
         </div>
-        <div>
-          <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bio</div>
-          <p id="riderBio" class="text-sm text-slate-300 leading-relaxed [overflow-wrap:anywhere]"></p>
-        </div>
-        <div class="flex items-center justify-between gap-4 flex-wrap pt-6 mt-6 border-t border-[rgba(212,175,55,0.12)] max-sm:pt-4 max-sm:mt-4">
-          <p id="riderJoined" class="text-xs text-slate-500"></p>
-          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.06)] text-[11px] font-semibold uppercase tracking-wide text-gold">Public profile</span>
-        </div>
-      </div>
-
-      <div id="riderStats" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3 max-sm:gap-2">
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Rides</div>
-          <div id="riderRides" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Cybercabs ridden</span><span class="sm:hidden">Cybercabs</span></div>
-          <div id="riderVehiclesRidden" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Cities</div>
-          <div id="riderCitiesCount" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Vehicles discovered</span><span class="sm:hidden">Discovered</span></div>
-          <div id="riderDiscovered" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
-          <div id="riderReviewCount" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-        <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-          <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Avg rating given</span><span class="sm:hidden">Avg rating</span></div>
-          <div id="riderReviewAvg" class="mt-1.5 font-display font-bold text-2xl text-gold tabular-nums max-sm:mt-0.5 max-sm:text-lg">—</div>
-        </div>
-      </div>
-
-      <div class="glass rounded-2xl p-6 max-sm:p-4">
-        <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cities</h2>
-        <ul id="riderCities" class="mt-4 space-y-3"></ul>
-        <p id="riderNoCities" class="hidden mt-3 text-xs text-slate-500">No rides with a city recorded yet.</p>
-      </div>
-
-      <div class="glass rounded-2xl p-6 max-sm:p-4">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles Discovered</h2>
-          <div id="riderCount" class="font-display font-bold text-2xl text-gold tabular-nums max-sm:text-xl"></div>
-        </div>
-        <ul id="riderVehicles" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 max-sm:grid-cols-2 max-sm:mt-3"></ul>
-        <p id="riderNoVehicles" class="hidden mt-3 text-xs text-slate-500">No public vehicles discovered yet.</p>
-      </div>
-
-      <div class="glass rounded-2xl p-6 max-sm:p-4">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 data-split class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Reviews</h2>
-          <a href="/community" class="text-xs text-gold hover:underline">All reviews</a>
-        </div>
-        <div id="riderReviews" class="mt-4 space-y-3"></div>
-        <p id="riderNoReviews" class="hidden mt-3 text-xs text-slate-500">No reviews yet.</p>
       </div>
 
       <p class="text-xs text-slate-500 leading-relaxed px-1">Ride figures are counts only. Fares, dates, times and places are never shown.</p>
@@ -324,6 +326,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/rider.js?v=4"></script>
+<script src="js/rider.js?v=5"></script>
 </body>
 </html>

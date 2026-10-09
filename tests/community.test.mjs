@@ -395,7 +395,7 @@ async function run() {
     const ptext = id => prof.d.getElementById(id).textContent.replace(/\s+/g, ' ').trim();
     check('rider page: the public counts (2 rides, 2 Cybercabs, 1 city, 2 discovered, no reviews)', ptext('riderRides') === '2' && ptext('riderVehiclesRidden') === '2' && ptext('riderCitiesCount') === '1' && ptext('riderDiscovered') === '2' && ptext('riderReviewCount') === '0' && ptext('riderReviewAvg') === '—');
     check('rider page: cities with their share of rides', /Dallas/.test(ptext('riderCities')) && /2 rides · 100%/.test(ptext('riderCities')));
-    check('rider page: laid out like the Profile page (Bio, with its "No bio yet." placeholder)', ptext('riderBio') === 'No bio yet.' && /Bio<\/div>/.test(read('public/rider.html')) && /max-w-2xl/.test(read('public/rider.html')));
+    check('rider page: a profile header (cover, photo, name, @handle, bio with its "No bio yet." placeholder)', ptext('riderBio') === 'No bio yet.' && /class="profile-cover /.test(read('public/rider.html')) && /id="riderAvatar" class="profile-avatar /.test(read('public/rider.html')));
     prof.w.close();
     const hidden = await open('/rider/bob', 'rider.html', 'rider.js', api);
     check('a private or unknown rider: "This spotter\'s profile is private."', !hidden.d.getElementById('riderPrivate').classList.contains('hidden') && hidden.d.getElementById('riderProfile').classList.contains('hidden'));

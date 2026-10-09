@@ -61,7 +61,7 @@ check('Fleet ROI / ETA headers: the Cybercab sits beside the text on phones too 
 check('the ROI sliders get a 40px touch strip on phones, the 4px track unchanged', /@media \(max-width:639px\)\{\s*input\[type=range\]\{height:40px; background:transparent;\}/.test(sim));
 check('Vehicle page: the four ride stats in one row on phones', /<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm max-sm:grid-cols-4 max-sm:gap-2">/.test(read('vehicle.html')));
 const rider = read('rider.html');
-check('Rider profile: stats 3 across and discovered vehicles 2 across on phones', /<div id="riderStats" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3/.test(rider) && /<ul id="riderVehicles" class="[^"]*max-sm:grid-cols-2/.test(rider));
+check('Rider profile: the stat strip 3 across on phones (6 from lg), discovered vehicles 2 across on phones', /<div id="riderStats" class="profile-stats grid grid-cols-3 lg:grid-cols-6 /.test(rider) && /<ul id="riderVehicles" class="[^"]*max-sm:grid-cols-2/.test(rider));
 const rd = read('rider-data.html');
 check('Rider Data: the rides table scroll box contains its sr-only label (it used to widen the page to 546px on phones)', /<div id="ridesTableWrap" class="hidden overflow-x-auto relative">/.test(rd));
 check('Rider Data: overview 3 across and ride history 4 across on phones', /grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:grid-cols-3/.test(rd) && /grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm max-sm:grid-cols-4/.test(rd));
