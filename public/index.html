@@ -18,7 +18,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=59">
-<link rel="stylesheet" href="css/home-overview.css?v=2">
+<link rel="stylesheet" href="css/home-overview.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -224,7 +224,6 @@
             <h3 class="font-display font-bold">FLEET GROWTH <span>· CYBERCAB</span></h3>
             <p id="fleetChartCaption" class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
           </div>
-          <img class="home-growth-car" src="images/CybercabFlipped.png" width="600" height="416" alt="" aria-hidden="true" loading="lazy" decoding="async">
           </div>
           <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
             <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
@@ -550,14 +549,15 @@
       const pct = start > 0 ? Math.round((change / start) * 100) : null;
       const week = has ? total - countAt(now - 7 * DAY_MS) : 0;
       const latest = has ? series[series.length - 1].date.getTime() : null;
-      const tile = (label, value, sub) => `
-        <div class="home-growth-stat">
+      const tile = (label, value, sub, featured = false) => `
+        <div class="home-growth-stat ${featured ? 'home-growth-featured' : ''}">
           <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 truncate">${label}</div>
           <div class="stat-value font-semibold text-lg text-white leading-tight mt-0.5 truncate max-sm:text-base">${value}</div>
           <div class="text-[10px] text-slate-500 truncate">${sub}</div>
+          ${featured ? '<img class="home-growth-car" src="images/CybercabFlipped.png" width="600" height="416" alt="" aria-hidden="true" decoding="async">' : ''}
         </div>`;
       el.innerHTML =
-        tile('In the registry', String(total), `${CHART_CITY} Cybercabs`) +
+        tile('In the registry', String(total), `${CHART_CITY} Cybercabs`, true) +
         tile(RANGE_LABEL[activeRange], has ? `${change >= 0 ? '+' : '−'}${Math.abs(change)}` : '—', has ? (pct != null ? `${pct >= 0 ? '+' : '−'}${Math.abs(pct)}% from ${start}` : (change ? `Up from 0` : 'No change')) : 'No vehicles yet') +
         tile('Last 7 days', has ? (week ? `+${week}` : '0') : '—', has ? `${week === 1 ? 'vehicle' : 'vehicles'} added` : 'No vehicles yet') +
         tile('Latest addition', latest ? agoText(latest) : '—', latest ? new Date(latest).toLocaleDateString('en-US', SHORT_DATE) : 'None yet');
