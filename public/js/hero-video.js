@@ -14,7 +14,9 @@
       doors, scrolling back up closes them. Frame 0 is the film's opening
       pose, which is also its closing pose, so the hand-off is seamless.
    With reduced motion or Save-Data nothing moves: the poster stays and the
-   pin spacer is removed (CSS motion-reduce hides it for reduced motion). */
+   pin spacer is removed (CSS motion-reduce hides it for reduced motion).
+   Tall wide screens: no pin (the spacer is hidden in CSS); the doors follow
+   the hero scrolling out instead. */
 (function () {
   var video = document.getElementById('heroVideo');
   var canvas = document.getElementById('heroFrames');
@@ -22,23 +24,11 @@
   var spacer = document.getElementById('heroPinSpacer');
   if (!video || !canvas || !pin || !spacer) return;
 
-  // Tall wide screens: the stats bar and service banner ride in the pinned
-  // block under the hero (css #heroStick), so the first screen shows them
-  // instead of a viewport of empty pin space; elsewhere they follow the pin.
-  var stick = document.getElementById('heroStick');
-  var below = [document.getElementById('heroStats'), document.getElementById('heroBanner')];
-  var tall = window.matchMedia && window.matchMedia('(min-width: 1024px) and (min-height: 1000px)');
-  function placeBelow() {
-    if (!stick || below.some(function (el) { return !el; })) return;
-    var inStick = !!(tall && tall.matches);
-    var anchor = inStick ? null : pin;
-    below.forEach(function (el) {
-      if (inStick) stick.appendChild(el);
-      else { anchor.after(el); anchor = el; }
-    });
-  }
-  placeBelow();
-  if (tall && tall.addEventListener) tall.addEventListener('change', placeBelow);
+  // Tall wide screens have no pin (css: #heroPinSpacer is hidden there, so
+  // nothing below waits behind empty space): the doors open as the hero
+  // scrolls out, over 75% of its height.
+  var flow = window.matchMedia && window.matchMedia('(min-width: 1024px) and (min-height: 1000px)');
+  var hero = document.getElementById('hero');
 
   var FRAME_COUNT = 73;
   var EASE_MS = 45;      // time constant of the ease toward the scroll position
@@ -98,7 +88,11 @@
 
   function target() {
     var range = spacer.offsetHeight;
-    if (!range) return 0;
+    if (!range) {
+      if (!(flow && flow.matches && hero)) return 0;
+      var scrolled = (window.scrollY || window.pageYOffset || 0);
+      return Math.max(0, Math.min(1, scrolled / (hero.offsetHeight * 0.75))) * (FRAME_COUNT - 1);
+    }
     var header = document.querySelector('header');
     var top = header ? header.offsetHeight : 0;
     var passed = top - pin.getBoundingClientRect().top;      // px scrolled into the pin

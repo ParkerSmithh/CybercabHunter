@@ -478,15 +478,13 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
    Desktop: dark on the left where the headline sits, clear over the car.
    Phones: the headline sits low across the whole width, so the photo darkens
    from the bottom up instead (the car stays visible above the text). */
-/* Homepage hero layout (index.html, js/hero-video.js).
-   #heroStick holds the hero. Normally it is layout-transparent and #hero
-   itself is the pinned block. On tall wide screens it is the pinned block,
-   with the stats bar and service banner moved into it (placeBelow), so the
-   first screen shows them. */
-#heroStick{display:contents;}
+/* Homepage hero on tall wide screens (index.html, js/hero-video.js): no
+   pin and no pin spacer, so the stats, the service banner and the sections
+   below follow the hero straight away instead of after a viewport of empty
+   pin space; the doors open as the hero scrolls out. */
 @media (min-width:1024px) and (min-height:1000px){
-  #heroStick{display:block; position:sticky; top:4rem;}
-  #heroStick > #hero{position:relative; top:auto;}
+  #hero{position:relative; top:auto;}
+  #heroPinSpacer{display:none;}
 }
 /* Past 1920px wide the hero keeps its 1920px composition: the film stays the
    size it is at 1080p (60% of 1920 = 1152px wide), its right edge sits where
