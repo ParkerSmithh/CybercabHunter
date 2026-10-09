@@ -174,10 +174,7 @@
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">Texas DMV registrations · Tesla</h2>
           <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
-          <div class="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
-            <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
-            <a href="/dmv" class="inline-flex items-center gap-1 min-h-[44px] text-sm font-semibold text-gold hover:underline max-sm:text-xs">Every VIN<span aria-hidden="true">→</span></a>
-          </div>
+          <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
         </div>`;
       if (!d) { el.innerHTML = head + `<div class="mt-4 h-40 rounded-xl bg-white/[0.03] animate-pulse"></div>`; return; }
       if (!d.snapshot) {
@@ -189,11 +186,11 @@
       const partial = !hist && d.tracking_since > windowStart;   // under 30 days of history and nothing imported
       const stat = (label, value, sub, color = 'text-white') => `<div class="min-w-0"><div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">${esc(label)}</div>
         <div class="stat-value font-semibold text-3xl leading-tight mt-1 ${color} max-sm:text-2xl">${value}</div><div class="text-[11px] text-slate-500 mt-0.5 max-sm:text-[10px]">${sub}</div></div>`;
-      const card = (color, name, img, count, newN) => `<div class="relative overflow-hidden rounded-xl border px-4 py-3.5 min-h-[112px] max-sm:px-3 max-sm:py-3 max-sm:min-h-[96px]" style="border-color:${color}33;background:linear-gradient(120deg, ${color}14, transparent 70%)">
+      const card = (color, rgb, name, img, count, newN) => `<div class="dmv-card relative overflow-hidden rounded-xl border px-4 py-3.5 min-h-[112px] max-sm:px-3 max-sm:py-3 max-sm:min-h-[96px]" style="--c:${rgb};border-color:${color}59;background:linear-gradient(120deg, ${color}1f, transparent 70%)">
           <img src="${img}" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none absolute right-[-6%] bottom-[-4%] w-[58%] max-w-[230px] opacity-90 max-sm:w-[54%]">
           <div class="relative max-w-[52%]">
             <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide max-sm:text-[10px]" style="color:${color}"><span class="w-2 h-2 rounded-full" style="background:${color}"></span>${esc(name)}</div>
-            <div class="stat-value font-semibold text-3xl text-white leading-tight mt-1 max-sm:text-2xl">${int(count)}</div>
+            <div class="dmv-card-num stat-value font-semibold text-3xl text-white leading-tight mt-1 max-sm:text-2xl">${int(count)}</div>
             <div class="text-[11px] text-slate-400 max-sm:text-[10px]">${pct(count, s.total)}% of the fleet</div>
             <div class="mt-1.5 h-1 rounded-full bg-white/[0.08] overflow-hidden"><div class="h-full rounded-full" style="width:${pct(count, s.total)}%;background:${color}"></div></div>
             <div class="stat-value text-[11px] text-emerald-400 mt-1.5 max-sm:text-[10px]">+${int(newN)} ${partial ? 'since tracking' : 'in 30 days'}${n.approx ? ' <span class="text-slate-500">(approx.)</span>' : ''}</div>
@@ -218,12 +215,21 @@
           </div>
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3 max-sm:grid-cols-1 max-sm:mt-4 max-sm:gap-2">
-          ${card(GOLD, 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
-          ${card(RED, 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d)}
+          ${card(GOLD, '212 175 55', 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
+          ${card(RED, '239 68 68', 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d)}
         </div>
-        <p class="mt-4 text-[11px] text-slate-500 leading-relaxed max-sm:mt-3 max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
+        <div class="mt-5 flex items-center gap-6 max-sm:mt-4 max-sm:flex-col-reverse max-sm:items-stretch max-sm:gap-3">
+        <p class="flex-1 min-w-0 text-[11px] text-slate-500 leading-relaxed max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
           ? ` Before ${esc(longDate(hist.until))}, counts are approximate, read from <a href="${esc(hist.url)}" target="_blank" rel="noopener" class="underline hover:text-slate-300">${esc(hist.name)}</a>'s public chart; every day since comes straight from TxDMV.`
-          : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>`;
+          : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>
+        <a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(212,175,55,0.75)] max-sm:justify-between">
+          <span class="flex items-center gap-3">
+            <span class="grid place-items-center w-10 h-10 rounded-lg bg-black/[0.12]" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+            <span class="text-left leading-tight"><span class="block text-base font-bold tracking-tight">View Registry</span><span class="block text-xs font-semibold opacity-70 stat-value">${int(s.total)} VINs · <span class="max-sm:hidden">straight </span>from TxDMV</span></span>
+          </span>
+          <span class="grid place-items-center w-8 h-8 rounded-full bg-black/[0.14] transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </a>
+        </div>`;
       draw(el);
     });
   }
