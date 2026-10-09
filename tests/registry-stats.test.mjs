@@ -174,7 +174,7 @@ async function run() {
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
   // The stats bar now reads GET /api/homepage-stats?city= (hero.city / hero.all);
   // a mocked body for it, in the old tests' terms: `hp(vehicles, rides)`.
-  const hp = (v, r) => Response.json({ hero: { city: { vehicles: v, rides: r }, all: { vehicles: v, rides: r } } });
+  const hp = (v, r) => Response.json({ hero: { city: { vehicles: v, rides: r } } });
   const isHome = path => path.startsWith('/api/homepage-stats');
   async function home(ctx, { intercept, reducedMotion = true, observer = 'immediate' } = {}) {
     const dom = new JSDOM(HTML.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
@@ -200,9 +200,9 @@ async function run() {
     vehicle(ctx, 3, 'PRIV333', 'private'); ride(ctx, uuid(3));
     const p = await home(ctx);
     check('the tiles show the real numbers: 2 vehicles, 3 rides', p.v() === '2' && p.r() === '3', `${p.v()} / ${p.r()}`);
-    check('three same-origin requests (the city\'s numbers, its live sightings, all cities\' sightings), no Authorization header',
-      p.requests.map(r => r.path).join() === '/api/homepage-stats?city=austin,/api/sightings?city=austin&limit=1,/api/sightings?city=all&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
-    check('the all-cities line beneath each tile', p.d.getElementById('statVehiclesAll').textContent === '2' && p.d.getElementById('statRidesAll').textContent === '3');
+    check('two same-origin requests (the city\'s numbers and its live sightings), no Authorization header',
+      p.requests.map(r => r.path).join() === '/api/homepage-stats?city=austin,/api/sightings?city=austin&limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
+    check('no all-cities line beneath the tiles (removed on owner request)', !/All cities/.test(p.d.querySelector('section dl').textContent) && !p.d.getElementById('statVehiclesAll'));
     check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '2' && p.d.getElementById('statRides').dataset.value === '3');
     const big = await home(ctx, { intercept: async path => (isHome(path) ? hp(1234, 56789) : null) });
     check('large numbers are formatted with separators', big.v() === '1,234' && big.r() === '56,789');

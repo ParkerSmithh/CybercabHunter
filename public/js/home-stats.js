@@ -1,12 +1,12 @@
 /* Homepage statistics (index.html "Stats bar") and the shared loader for the
    homepage's city rows (js/home-rows.js).
    The bar follows the page's Austin / Dallas tabs: each tile shows the selected
-   city, with the all-cities total on a line beneath it.
+   city.
      Cybercabs Spotted / Total Rides: GET /api/homepage-stats?city= (worker/
-       homepage-stats.js) — `hero.city` and `hero.all` (the registry rules).
+       homepage-stats.js) — `hero.city` (the registry rules).
      Sightings: approved sightings, kept live — re-read every 30s while the tab
-       is visible and at once on return (GET /api/sightings?city=<city>|all,
-       its `seen`, the Sightings page's own count).
+       is visible and at once on return (GET /api/sightings?city=<city>, its
+       `seen`, the Sightings page's own count).
    Nothing on this bar is hard-coded. A tile starts as an em dash and only ever
    becomes a number the server sent; a failed read keeps the dash (or the last
    good number): "could not load" is not the same as zero, and a real zero is
@@ -50,16 +50,14 @@
     ['statVehicles', 'statRides', 'statSightings'].forEach(id => dash($(id)));
     getCity(city).then(body => {
       if (mine !== seq || !body || !body.hero) return;
-      const c = body.hero.city || {}, a = body.hero.all || {};
+      const c = body.hero.city || {};
       if (isCount(c.vehicles)) reveal($('statVehicles'), c.vehicles);
       if (isCount(c.rides)) reveal($('statRides'), c.rides);
-      if (isCount(a.vehicles)) reveal($('statVehiclesAll'), a.vehicles);
-      if (isCount(a.rides)) reveal($('statRidesAll'), a.rides);
     }).catch(() => { /* leave the dashes */ });
     loadSightings();
   }
 
-  // ---- Sightings: live for the selected city and for all cities ----
+  // ---- Sightings: live for the selected city ----
   let sightingsTimer = null;
   function loadSightings() {
     const want = city;
@@ -68,10 +66,6 @@
     read(want).then(body => {
       const el = $('statSightings');
       if (want === city && el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
-    }).catch(() => { /* keep what is shown */ });
-    read('all').then(body => {
-      const el = $('statSightingsAll');
-      if (el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
     }).catch(() => { /* keep what is shown */ });
   }
   function startSightings() {

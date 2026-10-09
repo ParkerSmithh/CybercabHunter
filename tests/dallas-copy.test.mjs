@@ -44,17 +44,20 @@ function run() {
   }
 
   // Homepage (Dallas launch): the "not available" note is replaced by Dallas's
-  // own facts strip, minimap and the fleet chart; its hours are Dallas's own.
+  // own service-area facts (now the tiles at the top of SERVICE ZONES, drawn by
+  // js/home-rows.js from the zone facts in worker/service-areas.js), minimap
+  // and fleet chart; its hours are Dallas's own.
   {
     const html = read('index.html');
     check('index.html: the Dallas "not available" placeholder is gone', !/homeZoneDallasNote/.test(html) && !/isn'?t (available|built) in Cybercab Hunter/i.test(html));
-    const start = html.indexOf('id="homeZoneDallasInfo"');
-    check('index.html: a Dallas facts strip exists', start !== -1);
-    const strip = html.slice(start, html.indexOf('<!-- Austin mini map -->', start));
-    check('index.html: the Dallas strip has Dallas hours (6AM - 11PM)', /6AM - 11PM/.test(strip) && !/2AM/.test(strip));
+    const zones = html.slice(html.indexOf('id="map"'), html.indexOf('<!-- Austin mini map -->'));
+    check('index.html: the service-area facts sit at the top of SERVICE ZONES (one block for both cities)', /<div id="rowArea" data-row="area"/.test(zones) && !/homeZone(Austin|Dallas)Info/.test(html));
+    const areas = fs.readFileSync(new URL('../worker/service-areas.js', import.meta.url), 'utf8');
+    const strip = areas.slice(areas.indexOf('dallas: {'), areas.indexOf('};', areas.indexOf('dallas: {')));
+    check('the Dallas facts: hours 6AM - 11PM (06:00-23:00), 81 mi², launched 2026-04-18', /open: '06:00', close: '23:00'/.test(strip) && /square_miles: 81/.test(strip) && /in_service_since: '2026-04-18'/.test(strip));
     check('index.html: the Dallas minimap draws the Dallas service zone', /initZoneMap\('zoneMap-dallas', 'Dallas', \[[^\]]+\], CCCAustinMap\.DALLAS_SERVICE_ZONE\)/.test(html));
     for (const claim of LAUNCH_CLAIMS) {
-      check(`index.html: the Dallas strip makes no unsourced launch claim (${claim})`, !claim.test(strip));
+      check(`the Dallas facts make no unsourced launch claim (${claim})`, !claim.test(strip));
     }
     check('index.html: a Dallas minimap card links to the Dallas Zones map', /id="homeZoneDallas"[\s\S]*?href="infrastructure\.html\?city=dallas"/.test(html));
   }

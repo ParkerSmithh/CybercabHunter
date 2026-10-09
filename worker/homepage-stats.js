@@ -2,7 +2,7 @@
 //
 //   GET /api/homepage-stats?city=austin|dallas   public, edge-cached 5 min
 //   -> { city, name, generated_at,
-//        hero:      { city: { vehicles, rides, sightings }, all: { vehicles, rides, sightings } },
+//        hero:      { city: { vehicles, rides, sightings } },
 //        area:      { square_miles, in_service_since, hours: { open, close }, description,
 //                     vehicles, vehicles_added_7d, vehicles_added_prev_7d },
 //        rides:     { rides, rides_30d, miles, average_fare, median_fare, per_mile, fare_rides,
@@ -17,9 +17,8 @@
 // EVERY figure is live from D1 and reuses the rule that already defines it —
 // nothing is counted a second way:
 //   vehicles        the Cars page's registry city rule (db.registryCitySql) over
-//                   publicly eligible vehicles; `all` = the registry stats
-//   rides (hero)    physical rides (physicalRidesFrom) on those vehicles;
-//                   `all` = the registry stats' recorded_rides
+//                   publicly eligible vehicles
+//   rides (hero)    physical rides (physicalRidesFrom) on those vehicles
 //   rides (row)     the city ride sample behind the Fleet fares
 //                   (fleet-stats CITY_RIDES_FROM: COUNTED_RIDES_WHERE, publicly
 //                   eligible vehicles only), one row per physical ride; the
@@ -68,7 +67,7 @@ function weekOf(dateStr) {
 }
 
 // The city's public registry vehicles and their physical rides (the Cars page
-// city rule), and the same over every city (the registry stats).
+// city rule), and how many were added this week and the week before.
 // Counts per UTC hour ({ hour: 'YYYY-MM-DDTHH', n }) -> counts per local date
 // [{ date, count }], oldest first: the trailing `days` days with every day
 // present (zeros included), or (days null) every day that has a count.
@@ -95,13 +94,11 @@ async function heroCounts(sql, area) {
   const counts = `SELECT COUNT(*) AS vehicles, COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0) AS rides,
     COALESCE(SUM(v.created_at > datetime('now', '-7 days')), 0) AS added_7d,
     COALESCE(SUM(v.created_at > datetime('now', '-14 days') AND v.created_at <= datetime('now', '-7 days')), 0) AS added_prev_7d ${eligible}`;
-  const [cityRow, all] = await sql.batch([sql.prepare(counts + rule.sql).bind(...rule.binds), sql.prepare(counts)]);
-  const c = (cityRow.results || [])[0] || {}, a = (all.results || [])[0] || {};
+  const c = (await sql.prepare(counts + rule.sql).bind(...rule.binds).first()) || {};
   return {
     added_7d: Number(c.added_7d) || 0,
     added_prev_7d: Number(c.added_prev_7d) || 0,
-    city: { vehicles: Number(c.vehicles) || 0, rides: Number(c.rides) || 0 },
-    all: { vehicles: Number(a.vehicles) || 0, rides: Number(a.rides) || 0 }
+    city: { vehicles: Number(c.vehicles) || 0, rides: Number(c.rides) || 0 }
   };
 }
 
@@ -243,9 +240,8 @@ export async function apiHomepageStats(request, env, ctx) {
   const sql = env.cybercabhunter_db;
   const nowMs = Date.now();
   try {
-    const [hero, rides, sightings, cameras, allSightings] = await Promise.all([
-      heroCounts(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs),
-      db.countPublicPhotoSightings(sql, {})
+    const [hero, rides, sightings, cameras] = await Promise.all([
+      heroCounts(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs)
     ]);
     const z = area.zone || {};
     const response = Response.json({
@@ -253,8 +249,7 @@ export async function apiHomepageStats(request, env, ctx) {
       name: area.name,
       generated_at: new Date(nowMs).toISOString(),
       hero: {
-        city: { ...hero.city, sightings: sightings.total },
-        all: { ...hero.all, sightings: Number(allSightings) || 0 }
+        city: { ...hero.city, sightings: sightings.total }
       },
       area: {
         square_miles: z.square_miles ?? null, in_service_since: z.in_service_since || null,

@@ -1,5 +1,6 @@
-/* Homepage city rows (index.html #cityRows): SERVICE AREA, RIDE STATS and
-   SIGHTINGS ACTIVITY with the Camera watch beneath it. They follow the page's
+/* Homepage city rows: the service-area facts inside SERVICE ZONES
+   (#rowArea), then RIDE STATS and SIGHTINGS ACTIVITY (which includes the
+   automated Camera watch) in #cityRows. They follow the page's
    Austin / Dallas tabs (window.setHomeRowsCity, called by the tab code) and are
    drawn from one response, GET /api/homepage-stats?city= (worker/
    homepage-stats.js), shared with the stats bar through window.CCHHomeData
@@ -136,26 +137,10 @@
   }
   const CHARTS = { fares: faresChart, sightings: sightingsChart, detections: detectionsChart };
 
-  // The zone outline (js/austin-map.js) as a small map thumbnail.
-  function zoneThumb(d) {
-    const ring = window.CCCAustinMap && (d.city === 'dallas' ? CCCAustinMap.DALLAS_SERVICE_ZONE : CCCAustinMap.SERVICE_ZONE);
-    const href = `/infrastructure${d.city === 'dallas' ? '?city=dallas' : ''}`;
-    let svg = '';
-    if (ring && ring.length) {
-      const k = Math.cos((ring[0][1] * Math.PI) / 180);
-      const xs = ring.map(p => p[0] * k), ys = ring.map(p => -p[1]);
-      const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
-      const H = (100 * h) / w;
-      const pts = ring.map((p, i) => `${(((xs[i] - x0) / w) * 100).toFixed(2)},${(((ys[i] - y0) / h) * H).toFixed(2)}`).join(' ');
-      svg = `<svg viewBox="-6 -6 112 ${(H + 12).toFixed(2)}" class="w-full h-full" aria-hidden="true"><polygon points="${pts}" fill="rgb(255 199 44 / 0.13)" stroke="#FFD23F" stroke-width="1.2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
-    }
-    return `<a href="${href}" class="hr-map relative block h-full min-h-[150px] rounded-2xl overflow-hidden border border-white/[0.08] bg-[#080a10] hover:border-[rgba(212,175,55,0.45)] max-sm:min-h-[120px]" aria-label="Open the full ${esc(d.name)} zone map">
-      <span class="absolute inset-3 bottom-12 flex items-center justify-center">${svg}</span>
-      <span class="absolute left-3 bottom-3 inline-flex items-center gap-1.5 min-h-[32px] px-2.5 rounded-lg glass-strong text-xs font-semibold text-white">Open full map<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></span>
-    </a>`;
-  }
-
   // ---- the rows ----
+  // Part of the SERVICE ZONES section (above the minimap and the fleet chart),
+  // so it has no heading of its own and no map thumbnail; the minimap's "See
+  // Map" opens the full map.
   function rowArea(d) {
     const a = d.area || {};
     const hours = a.hours ? `${clock(a.hours.open)} – ${clock(a.hours.close)}` : '—';
@@ -163,15 +148,12 @@
     const days = a.in_service_since ? Math.max(0, Math.floor((Date.now() - Date.parse(`${a.in_service_since}T06:00:00Z`)) / 864e5)) : null;
     const density = a.vehicles && a.square_miles ? `≈ ${one(Math.round((a.vehicles / a.square_miles) * 100) / 10)} vehicles per 10 mi²` : 'No vehicles documented yet';
     const added = a.vehicles ? `+${int(a.vehicles_added_7d || 0)} this week · ${int(a.vehicles_added_prev_7d || 0)} the week before` : 'None in the registry yet';
-    return head(d.name.toUpperCase(), 'SERVICE AREA', '', seeAll(`/infrastructure${d.city === 'dallas' ? '?city=dallas' : ''}`, 'See all', `See the ${d.name} zone map`)) +
-      `<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] max-sm:gap-1.5">
-        ${zoneThumb(d)}
-        ${tiles('grid-cols-2',
-          tile('Coverage', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—', esc(density)) +
-          tile('In service since', esc(date(a.in_service_since)), days != null ? `${int(days)} days of service` : '') +
-          tile('Vehicles documented', int(a.vehicles), esc(added)) +
-          tile('Service hours', esc(hours), span ? `${span} hours a day · Central` : ''))}
-      </div>` +
+    return `<p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 max-sm:text-[10px]">Service area · <span class="text-gold">${esc(d.name.toUpperCase())}</span></p>` +
+      tiles('grid-cols-4 max-sm:grid-cols-2',
+        tile('Coverage', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—', esc(density)) +
+        tile('In service since', esc(date(a.in_service_since)), days != null ? `${int(days)} days of service` : '') +
+        tile('Vehicles documented', int(a.vehicles), esc(added)) +
+        tile('Service hours', esc(hours), span ? `${span} hours a day · Central` : '')) +
       (a.description ? `<p class="mt-3 text-sm text-slate-400 leading-relaxed max-sm:mt-2 max-sm:text-xs max-sm:leading-snug">${esc(a.description)}</p>` : '') +
       footnote('Zone facts as published for the service area; vehicles from the public registry.') +
       about('Coverage, launch date and hours are the published figures for the zone (the Zones page shows the same). Vehicles documented counts the public registry\'s Cybercabs in this city: its own city, or, with none set, where its counted rides were.');
@@ -194,8 +176,11 @@
       about('Counted rides only: accepted receipts (pending or approved), never ones under review or rejected, and a ride two riders shared counts once. Rides on a private vehicle are left out. The average fare is the mean per ride; per mile is all fares divided by all miles, so one short ride can\'t skew it.');
   }
 
+  // One section: human sightings, then the automated camera watch (labelled
+  // Experimental, kept apart in its own tiles and chart, never added to the
+  // sightings), under one heading, one LIVE badge and one note.
   function rowSightings(d) {
-    const s = d.sightings || {};
+    const s = d.sightings || {}, c = d.cameras || {};
     const has = s.total > 0;
     const city = d.city === 'dallas' ? '?city=dallas' : '';
     const spots = (s.top_spots || []).length
@@ -208,42 +193,35 @@
           <span class="shrink-0 text-xs text-slate-400 stat-value">${esc(ago(x.spotted_at))}</span>
         </a></li>`).join('')}</ol>`
       : `<div class="mt-2">${empty(`No approved sightings in ${d.name} yet.`)}</div>`;
+    const sub = (label, extra) => `<div class="mt-6 mb-2 flex flex-wrap items-center gap-2 max-sm:mt-4">${cardTitle(label)}${extra || ''}</div>`;
     return head(d.name.toUpperCase(), 'SIGHTINGS ACTIVITY', liveBadge(d.generated_at), seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)) +
+      sub('Sightings') +
       tiles('grid-cols-4 max-sm:grid-cols-4',
         tile('Last 24 hours', has ? int(s.last_24h) : '—', has ? esc(delta(s.last_24h, s.prev_24h, 'previous 24 h')) : 'No sightings yet') +
         tile('Last 7 days', has ? int(s.last_7_days) : '—', has ? esc(delta(s.last_7_days, s.prev_7_days, 'prior 7 days', true)) : '') +
         tile('Busiest hour', s.peak_hour ? esc(hourLabel(s.peak_hour.hour)) : '—', s.peak_hour ? `${plural(s.peak_hour.count, 'sighting', 'sightings')} at that hour` : (has ? 'Not enough data yet' : '')) +
         tile('All approved', has ? int(s.total) : '—', s.first_day ? `Since ${esc(shortDate(s.first_day))}` : '')) +
       footnote('From approved sightings.') +
-      `<div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] max-sm:mt-2 max-sm:gap-2">
-        ${chartCard('sightings', 'Sightings', ['24H', '7D', '30D', '90D'], sightingsChart(d), 'From approved sightings.')}
-        ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
-      </div>
-      <div class="mt-3 max-sm:mt-2">${card(`<div class="flex items-center justify-between gap-3">${cardTitle('Latest sightings')}${seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)}</div>${latest}${footnote('From approved sightings.')}`)}</div>` +
-      about('Approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count. The busiest hour needs a clear peak: at least two sightings in that hour, and no other hour tied with it.') +
-      rowCameras(d);
-  }
-
-  function rowCameras(d) {
-    const c = d.cameras || {};
-    const city = d.city === 'dallas' ? '&city=dallas' : '';
-    return `<div class="mt-8 mb-3 flex items-end justify-between gap-3 max-sm:mt-5 max-sm:mb-2">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1"><h3 class="font-display font-bold text-lg text-white tracking-wide max-sm:text-base">CAMERA WATCH</h3>${liveBadge(d.generated_at)}${experimental}</div>
-        ${seeAll(`/replay?range=month${city}`, 'See all', `Replay ${d.name} camera detections`)}
-      </div>
-      <p class="mb-3 text-xs text-slate-400 max-sm:mb-2 max-sm:text-[11px]">Automated traffic-camera detections — separate from the human sightings above.</p>` +
+      sub('Camera watch', experimental) +
       tiles('grid-cols-3 max-sm:grid-cols-3',
         tile('Cameras monitored', int(c.monitored), typeof c.reporting_24h === 'number' ? `${int(c.reporting_24h)} reported in the last 24 h` : '') +
         tile('Detections · 24 h', typeof c.detections_24h === 'number' ? int(c.detections_24h) : '—', esc(delta(c.detections_24h, c.prev_24h, 'previous 24 h'))) +
         tile('Last detection', c.last_detection_at ? esc(ago(c.last_detection_at)) : '—', c.last_detection_at ? esc([c.last_camera, when(c.last_detection_at)].filter(Boolean).join(' · ')) : 'None yet')) +
-      footnote('From automated camera detections.') +
-      `<div class="mt-3 max-sm:mt-2">${chartCard('detections', 'Detections', ['24H', '30D', '90D', 'All'], detectionsChart(d), 'From automated camera detections.')}</div>` +
-      about('A camera watch checks public traffic-camera images and records a detection when it spots a Cybercab. It is automated and experimental: it can miss a car or misread one, and it is counted apart from the human sightings above.');
+      footnote('From automated camera detections — separate from the human sightings above.') +
+      `<div class="mt-4 grid gap-3 lg:grid-cols-2 max-sm:mt-3 max-sm:gap-2">
+        ${chartCard('sightings', 'Sightings', ['24H', '7D', '30D', '90D'], sightingsChart(d), 'From approved sightings.')}
+        ${chartCard('detections', 'Camera detections', ['24H', '30D', '90D', 'All'], detectionsChart(d), 'From automated camera detections.')}
+      </div>
+      <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-2 max-sm:gap-2">
+        ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
+        ${card(`<div class="flex items-center justify-between gap-3">${cardTitle('Latest sightings')}${seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)}</div>${latest}${footnote('From approved sightings.')}`)}
+      </div>` +
+      about('Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera watch is automated and experimental: it checks public traffic-camera images and records a detection when it spots a Cybercab, can miss a car or misread one, and is never added to the sightings.');
   }
 
   const ROWS = { area: rowArea, rides: rowRides, sightings: rowSightings };
   const skeleton = `<div class="h-6 w-40 rounded bg-white/[0.05] animate-pulse mb-4"></div><div class="h-24 rounded-2xl bg-white/[0.03] animate-pulse"></div>`;
-  const rowEls = () => [...document.querySelectorAll('#cityRows [data-row]')];
+  const rowEls = () => [...document.querySelectorAll('[data-row]')];
 
   let seq = 0, current = null, city = 'austin';
   function draw(d) {

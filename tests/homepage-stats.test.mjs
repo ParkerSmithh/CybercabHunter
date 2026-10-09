@@ -101,8 +101,8 @@ async function run() {
   console.log('3. Hero (the Cars page city rule; public vehicles only)');
   {
     check('Austin hero: 3 vehicles (the private one left out), 4 physical rides', A.hero.city.vehicles === 3 && A.hero.city.rides === 4, JSON.stringify(A.hero));
-    check('all cities: the same here (no Dallas data)', A.hero.all.vehicles === 3 && A.hero.all.rides === 4);
-    check('Dallas hero: 0 / 0, with the all-cities totals beside it', D.hero.city.vehicles === 0 && D.hero.city.rides === 0 && D.hero.all.vehicles === 3);
+    check('no all-cities totals in the response (the page no longer shows them)', !('all' in A.hero));
+    check('Dallas hero: 0 / 0', D.hero.city.vehicles === 0 && D.hero.city.rides === 0);
     check('the private vehicle is nowhere in the response', !/PRIV004/.test(JSON.stringify(A)));
     check('area: published zone facts and the documented vehicle count', A.area.square_miles === 264 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 81);
   }
@@ -138,7 +138,8 @@ async function run() {
   {
     const html = read('public/index.html');
     const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-    check('three rows after the map + chart, inside <main>; no Fleet, Top spotters or own Camera row', main.indexOf('id="map"') < main.indexOf('id="cityRows"') && ['rowArea', 'rowRides', 'rowSightings'].every(id => main.includes(`id="${id}"`)) && !/rowFleet|rowSpotters|rowCameras/.test(html));
+    const zonesSection = main.slice(main.indexOf('id="map"'), main.indexOf('id="cityRows"'));
+    check('the service-area facts are part of SERVICE ZONES (above the minimap and chart); Ride stats and Sightings follow; no Fleet, Top spotters or Camera row', /id="rowArea"/.test(zonesSection) && zonesSection.indexOf('id="rowArea"') < zonesSection.indexOf('id="homeZoneAustin"') && ['rowRides', 'rowSightings'].every(id => main.includes(`id="${id}"`)) && !/rowFleet|rowSpotters|rowCameras/.test(html));
     check('the city tabs tell the stats bar and the rows', /window\.setHomeStatsCity\(city\)/.test(html) && /window\.setHomeRowsCity\(city\)/.test(html));
     check('no Cybercab showcase band on the homepage (removed on owner request)', !/data-cc-doors|cybercab-doors\.js|home-cc/.test(html));
     check('Fleet ROI\'s door component is as it was (no autoplay code)', !/data-cc-autoplay/.test(read('public/js/cybercab-doors.js')));
@@ -154,13 +155,13 @@ async function run() {
     await settle();
     const text = id => d.getElementById(id).textContent.replace(/\s+/g, ' ');
     check('Austin rows render the database figures', /Rides 4/i.test(text('rowRides')) && /\$13\.25/.test(text('rowRides')) && /All approved 2/i.test(text('rowSightings')));
-    check('headings in capitals: SERVICE AREA, RIDE STATS, SIGHTINGS ACTIVITY', ['rowArea', 'rowRides', 'rowSightings'].map(id => d.querySelector(`#${id} h2`).textContent).join() === 'SERVICE AREA,RIDE STATS,SIGHTINGS ACTIVITY');
-    check('Camera watch is part of the Sightings section, after the sightings', /CAMERA WATCH/.test(text('rowSightings')) && text('rowSightings').indexOf('Latest sightings') < text('rowSightings').indexOf('CAMERA WATCH') && /Cameras monitored/i.test(text('rowSightings')));
-    const tilesAll = [...d.querySelectorAll('#cityRows .glass.rounded-xl')];
+    check('headings: RIDE STATS and SIGHTINGS ACTIVITY (the facts sit under SERVICE ZONES, no heading of their own)', ['rowRides', 'rowSightings'].map(id => d.querySelector(`#${id} h2`).textContent).join() === 'RIDE STATS,SIGHTINGS ACTIVITY' && !d.querySelector('#rowArea h2') && /Service area · AUSTIN/i.test(text('rowArea')));
+    check('Sightings and Camera watch are ONE section: one heading, one LIVE badge, one note; the camera tiles labelled Experimental', d.querySelectorAll('#rowSightings h2, #rowSightings h3').length === 1 && d.querySelectorAll('#rowSightings .hr-live').length === 1 && d.querySelectorAll('#rowSightings details.hr-about').length === 1 && /Camera watch\s*Experimental/i.test(text('rowSightings')) && /Cameras monitored/i.test(text('rowSightings')));
+    const tilesAll = [...d.querySelectorAll('[data-row] .glass.rounded-xl')];
     check('every small stat tile carries the border glow; the larger cards do not', tilesAll.length >= 10 && tilesAll.every(el => el.hasAttribute('data-glow')) && [...d.querySelectorAll('#cityRows .glass.rounded-2xl')].every(el => !el.hasAttribute('data-glow')));
-    check('the hero shows Austin, with the all-cities line', d.getElementById('statVehicles').textContent === '3' && d.getElementById('statVehiclesAll').textContent === '3');
+    check('the hero shows Austin, with no all-cities line', d.getElementById('statVehicles').textContent === '3' && !d.getElementById('statVehiclesAll') && !/All cities/.test(html));
     // The Tracker-style detail (owner's section 5)
-    const tilesEls = [...d.querySelectorAll('#cityRows [data-glow]')];
+    const tilesEls = [...d.querySelectorAll('[data-row] [data-glow]')];
     check('every stat tile has a sub-metric line, never a bare number', tilesEls.length === 17 && tilesEls.every(el => el.children[2] && el.children[2].textContent.trim().length > 0), tilesEls.filter(el => !(el.children[2] && el.children[2].textContent.trim())).map(el => el.children[0].textContent).join());
     check('sub-metrics from the data: rides in 30 days, median fare, week-over-week sightings', /4 in the last 30 days/.test(text('rowRides')) && /Median \$12\.50 · 4 rides/.test(text('rowRides')) && /Up from 0 previous 24 h|vs previous 24 h/.test(text('rowSightings')));
     const charts = [...d.querySelectorAll('#cityRows [data-chart-body]')].map(el => el.dataset.chartBody);
@@ -168,12 +169,12 @@ async function run() {
     d.querySelector('[data-chart="sightings"][data-range="7D"]').click();
     check('a range button redraws its chart (sightings: 7 daily bars) and moves the selection', d.querySelectorAll('[data-chart-body="sightings"] .hr-bars > span').length === 7 && d.querySelector('[data-chart="sightings"][aria-pressed="true"]').dataset.range === '7D');
     d.querySelector('[data-chart="sightings"][data-range="24H"]').click();
-    check('LIVE badges on Sightings and Camera watch, with "updated … ago"; Experimental on cameras', d.querySelectorAll('#rowSightings .hr-live').length === 2 && /Live · updated/.test(text('rowSightings')) && /Experimental/.test(text('rowSightings')));
+    check('a LIVE badge on Sightings Activity, with "updated … ago"; Experimental on the camera part', d.querySelectorAll('#rowSightings .hr-live').length === 1 && /Live · updated/.test(text('rowSightings')) && /Experimental/.test(text('rowSightings')));
     check('footnotes name each source', /Zone facts as published/.test(text('rowArea')) && /From contributed ride receipts\./.test(text('rowRides')) && /From approved sightings\./.test(text('rowSightings')) && /From automated camera detections\./.test(text('rowSightings')));
-    check('every row has an "About these numbers" note (Sightings + Camera watch: one each)', d.querySelectorAll('#rowArea details.hr-about').length === 1 && d.querySelectorAll('#rowRides details.hr-about').length === 1 && d.querySelectorAll('#rowSightings details.hr-about').length === 2);
-    check('header "See all" links to Zones, Fleet ETA, Sightings and Replay', ['#rowArea a[href="/infrastructure"]', '#rowRides a[href="/simulation?view=eta"]', '#rowSightings a[href="/sightings"]', '#rowSightings a[href="/replay?range=month"]'].every(sel => d.querySelector(sel)));
+    check('every block has an "About these numbers" note', ['#rowArea', '#rowRides', '#rowSightings'].every(id => d.querySelectorAll(`${id} details.hr-about`).length === 1));
+    check('header "See all" links to Fleet ETA and Sightings', ['#rowRides a[href="/simulation?view=eta"]', '#rowSightings a[href="/sightings"]'].every(sel => d.querySelector(sel)));
     check('latest sightings as a list: thumbnail, "Cybercab seen at …", time ago, linked', /Cybercab seen at Congress Ave, Austin/.test(text('rowSightings')) && d.querySelector('#rowSightings ol a img') && /\dh ago/.test(text('rowSightings')));
-    check('the service area has a map thumbnail of the zone that opens the full map', !!d.querySelector('#rowArea a.hr-map[href="/infrastructure"] svg polygon') || !!d.querySelector('#rowArea a.hr-map[href="/infrastructure"]'));
+    check('no extra map thumbnail (the minimap beside the facts opens the full map)', !d.querySelector('.hr-map'));
     w.setHomeRowsCity('dallas'); w.setHomeStatsCity('dallas');
     await settle();
     check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No approved sightings in Dallas yet/.test(text('rowSightings')) && /81/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '0');
