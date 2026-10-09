@@ -74,7 +74,7 @@
     els.forEach(el => {
       const d = data;
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white tracking-tight max-sm:text-lg">Texas DMV registrations · Tesla</h2>
+          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-lg">Texas DMV registrations · Tesla</h2>
           <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
           <div class="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
             <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
@@ -100,7 +100,7 @@
         <div class="mt-4 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-3 max-sm:gap-3">
           <div class="min-w-0">
             <div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-4 max-sm:gap-2">
-              ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-sky-400')}
+              ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
               ${stat(partial ? 'Since tracking began' : 'Last 30 days', `+${int(n.d30)}`, partial ? `Tracking since ${esc(shortDate(d.tracking_since))}` : `+${int(n.d7)} in the last 7 days`, 'text-emerald-400')}
               ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}
             </div>
