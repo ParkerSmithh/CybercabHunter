@@ -1,13 +1,13 @@
-/* Homepage city rows (index.html #cityRows): Service area, Ride stats,
-   Sightings activity, Camera watch, Fleet composition + newest additions,
-   Top spotters. They follow the page's Austin / Dallas tabs
+/* Homepage city rows (index.html #cityRows): Service area, Ride stats, and
+   Sightings activity with the Camera watch beneath it. They follow the page's Austin / Dallas tabs
    (window.setHomeRowsCity, called by the tab code) and are drawn from one
    response, GET /api/homepage-stats?city= (worker/homepage-stats.js), shared
    with the stats bar through window.CCHHomeData (js/home-stats.js; kept five
    minutes, so switching back and forth doesn't refetch).
    Rules: a number is only ever one the server sent; where the server has no
    data the row says so ("—" or a short line), never a made-up 0. Every list
-   item that has a page links to it. */
+   item that has a page links to it. The small stat tiles carry the border
+   glow ([data-glow], js/main.js). */
 (function () {
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,7 +42,7 @@
       ${link ? `<a href="${esc(link.href)}" class="shrink-0 inline-flex items-center gap-1 min-h-[44px] text-sm font-semibold text-gold hover:underline max-sm:text-xs">${esc(link.label)}<span aria-hidden="true">→</span></a>` : ''}
     </div>`;
   const tile = (label, value, sub = '') => `
-    <div class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
+    <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
       <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 truncate max-sm:whitespace-normal max-sm:leading-tight max-sm:min-h-[2.5em] max-sm:text-[9px] max-sm:tracking-normal">${esc(label)}</div>
       <div class="stat-value font-semibold text-2xl text-white mt-1.5 truncate max-sm:text-base max-sm:mt-0.5">${value}</div>
       ${sub ? `<div class="text-[11px] text-slate-500 mt-1 truncate max-sm:whitespace-normal max-sm:leading-tight max-sm:text-[9px] max-sm:mt-0.5">${sub}</div>` : ''}
@@ -64,7 +64,7 @@
   function rowArea(d) {
     const a = d.area || {};
     const hours = a.hours ? `${clock(a.hours.open)} – ${clock(a.hours.close)}` : '—';
-    return head(d.name.toUpperCase(), 'Service area', { href: `/infrastructure${d.city === 'dallas' ? '?city=dallas' : ''}`, label: 'Zone map' }) +
+    return head(d.name.toUpperCase(), 'SERVICE AREA', { href: `/infrastructure${d.city === 'dallas' ? '?city=dallas' : ''}`, label: 'Zone map' }) +
       tiles('grid-cols-4 max-sm:grid-cols-2',
         tile('Coverage', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—') +
         tile('In service since', esc(date(a.in_service_since))) +
@@ -92,7 +92,7 @@
       ? bars(weeks.map(w => (byWeek.get(w) || {}).average_fare), weeks.map(w => { const x = byWeek.get(w); return `Week of ${date(w)}: ${x ? `${money(x.average_fare)} avg, ${plural(x.rides, 'ride', 'rides')}` : 'no rides'}`; })) +
         `<div class="flex justify-between mt-1.5 text-[10px] text-slate-500 stat-value"><span>${esc(date(weeks[0]).replace(/, \d{4}$/, ''))}</span><span>This week</span></div>`
       : empty(`No fares from ${d.name} ride receipts in the last 90 days.`);
-    return head(d.name.toUpperCase(), 'Ride stats') +
+    return head(d.name.toUpperCase(), 'RIDE STATS') +
       (has ? '' : `<p class="mb-3 text-sm text-slate-400 max-sm:text-xs">No contributed ride receipts in ${esc(d.name)} yet.</p>`) + t +
       `<div class="mt-3 max-sm:mt-2">${card(`<div class="flex items-baseline justify-between gap-3 mb-3">${cardTitle('Weekly average fare · last 90 days')}</div>${chart}
         <p class="text-[11px] text-slate-500 mt-2.5 max-sm:text-[10px]">From contributed ride receipts.</p>`)}</div>`;
@@ -111,7 +111,7 @@
           <span class="block px-2 py-1.5"><span class="block text-xs text-slate-200 truncate">${esc(x.location || x.city || 'Location not given')}</span><span class="block text-[10px] text-slate-500 truncate">${esc(when(x.spotted_at, x.time_zone))}</span></span>
         </a>`).join('')}</div>`
       : `<div class="mt-2">${empty(`No approved sightings in ${d.name} yet.`)}</div>`;
-    return head(d.name.toUpperCase(), 'Sightings activity', { href: `/sightings${d.city === 'dallas' ? '?city=dallas' : ''}`, label: 'All sightings' }) +
+    return head(d.name.toUpperCase(), 'SIGHTINGS ACTIVITY', { href: `/sightings${d.city === 'dallas' ? '?city=dallas' : ''}`, label: 'All sightings' }) +
       tiles('grid-cols-4 max-sm:grid-cols-4',
         tile('Last 24 hours', has ? int(s.last_24h) : '—') +
         tile('Last 7 days', has ? int(s.last_7_days) : '—') +
@@ -120,7 +120,7 @@
       `<div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] max-sm:mt-2 max-sm:gap-2">
         ${card(cardTitle('Top spots') + spots)}
         ${card(cardTitle('Latest sightings') + latest)}
-      </div>`;
+      </div>` + rowCameras(d);
   }
 
   function rowCameras(d) {
@@ -130,7 +130,7 @@
       ? bars(hourly.map(h => h.count), hourly.map(h => `${hourLabel(localHour(h.hour))}: ${plural(h.count, 'detection', 'detections')}`)) +
         `<div class="flex justify-between mt-1.5 text-[10px] text-slate-500 stat-value"><span>${esc(hourLabel(localHour(hourly[0].hour)))}</span><span>${esc(hourLabel(localHour(hourly[12].hour)))}</span><span>Now</span></div>`
       : '';
-    return head(d.name.toUpperCase(), 'Camera watch') +
+    return `<h3 class="mt-8 mb-3 font-display font-bold text-lg text-white tracking-wide max-sm:mt-5 max-sm:mb-2 max-sm:text-base">CAMERA WATCH</h3>` +
       `<p class="mb-3 text-xs text-slate-400 max-sm:mb-2 max-sm:text-[11px]"><span class="inline-flex items-center mr-1.5 px-2 py-0.5 rounded-full border border-dashed border-white/20 text-[10px] font-semibold uppercase tracking-wide text-slate-300">Experimental</span>Automated traffic-camera detections — separate from the human sightings above.</p>` +
       tiles('grid-cols-3 max-sm:grid-cols-3',
         tile('Cameras monitored', int(c.monitored)) +
@@ -139,47 +139,7 @@
       `<div class="mt-3 max-sm:mt-2">${card(`<div class="mb-3">${cardTitle('Detections per hour · last 24 hours')}</div>${chart}${c.detections_24h ? '' : `<p class="text-[11px] text-slate-500 mt-2.5">No detections in the last 24 hours.</p>`}`)}</div>`;
   }
 
-  function rowFleet(d) {
-    const f = d.fleet || {};
-    if (!f.vehicles) {
-      return head(d.name.toUpperCase(), 'Fleet') + card(`<div class="py-4 text-center max-sm:py-2">
-        <div class="font-display font-bold text-gold tracking-wide">No ${esc(d.name)} Cybercabs in the registry yet</div>
-        <p class="text-xs text-slate-400 mt-1.5">Ride one and add your receipt, or submit a sighting, to put the first one on the map.</p></div>`);
-    }
-    const breakdown = (title, list) => card(cardTitle(title) + `<ul class="mt-2 space-y-2">${list.slice(0, 5).map(x => `
-      <li class="text-sm max-sm:text-xs"><div class="flex justify-between gap-2"><span class="truncate text-slate-200">${esc(x.label)}</span><span class="stat-value text-slate-400">${int(x.count)}</span></div>
-      <div class="h-1.5 mt-1 rounded-full bg-white/[0.06] overflow-hidden"><div class="h-full rounded-full bg-gold/70" style="width:${Math.round((x.count / f.vehicles) * 100)}%"></div></div></li>`).join('')}</ul>`);
-    const newest = card(cardTitle('Newest additions') + `<ol class="mt-1">${(f.newest || []).map(v => `
-      <li><a href="/vehicle/${encodeURIComponent(v.id)}" class="flex items-center gap-3 min-h-[44px] -mx-2 px-2 rounded-lg hover:bg-white/[0.03]">
-        <span class="font-display font-bold tracking-[0.12em] text-sm text-white max-sm:text-xs">${esc(v.license_plate || 'No plate')}</span>
-        <span class="flex-1 min-w-0 truncate text-xs text-slate-400">${esc([v.model, v.color].filter(Boolean).join(' · '))}</span>
-        <span class="shrink-0 text-xs text-slate-500 stat-value">${esc(date(v.added_at))}</span>
-      </a></li>`).join('')}</ol>`);
-    return head(d.name.toUpperCase(), 'Fleet', { href: `/vehicles${d.city === 'dallas' ? '?city=dallas' : ''}`, label: 'All vehicles' }) +
-      `<div class="grid gap-3 grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)] max-sm:gap-2">
-        ${breakdown('By model', f.models || [])}${breakdown('By color', f.colors || [])}
-        <div class="col-span-2 lg:col-span-1 min-w-0">${newest}</div>
-      </div>`;
-  }
-
-  function rowSpotters(d) {
-    const list = d.spotters || [];
-    const body = list.length
-      ? `<ol class="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-1">${list.map(e => {
-          const inner = `<span class="w-6 text-center stat-value font-semibold ${e.rank === 1 ? 'text-gold' : 'text-slate-400'}">${e.rank}</span>
-            <span class="w-9 h-9 shrink-0 rounded-lg overflow-hidden"><span class="block w-full h-full" data-avatar-url="${esc(e.avatar_url || '')}" data-avatar-name="${esc(e.name)}"></span></span>
-            <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-slate-100 truncate">${esc(e.name)}</span><span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${e.handle ? `@${esc(e.handle)}` : 'No public profile yet'}</span></span>
-            <span class="shrink-0 text-right"><span class="block stat-value font-semibold text-white">${int(e.count)}</span><span class="block text-[10px] uppercase tracking-wide text-slate-500">${e.count === 1 ? 'vehicle' : 'vehicles'}</span></span>`;
-          return `<li>${e.profile && e.handle
-            ? `<a href="/rider/${encodeURIComponent(e.handle)}" class="flex items-center gap-3 min-h-[52px] -mx-2 px-2 rounded-xl hover:bg-white/[0.03]">${inner}</a>`
-            : `<div class="flex items-center gap-3 min-h-[52px] -mx-2 px-2">${inner}</div>`}</li>`;
-        }).join('')}</ol>`
-      : empty(`No one has discovered a ${d.name} Cybercab yet.`);
-    return head(d.name.toUpperCase(), 'Top spotters', { href: '/community', label: 'View all leaderboards' }) +
-      card(`<p class="text-xs text-slate-500 mb-2">Most vehicles discovered in ${esc(d.name)}: the first to ride in one, or to spot it with an approved sighting.</p>${body}`);
-  }
-
-  const ROWS = { area: rowArea, rides: rowRides, sightings: rowSightings, cameras: rowCameras, fleet: rowFleet, spotters: rowSpotters };
+  const ROWS = { area: rowArea, rides: rowRides, sightings: rowSightings };
   const skeleton = `<div class="h-6 w-40 rounded bg-white/[0.05] animate-pulse mb-4"></div><div class="h-24 rounded-2xl bg-white/[0.03] animate-pulse"></div>`;
   const rowEls = () => [...document.querySelectorAll('#cityRows [data-row]')];
 
@@ -194,9 +154,6 @@
       els.forEach(el => {
         el.removeAttribute('aria-busy');
         try { el.innerHTML = ROWS[el.dataset.row](d); } catch (e) { el.innerHTML = ''; }
-      });
-      document.querySelectorAll('#rowSpotters [data-avatar-name]').forEach(el => {
-        if (window.CCC && CCC.renderAvatar) CCC.renderAvatar(el, { url: el.dataset.avatarUrl || null, name: el.dataset.avatarName, size: 128 });
       });
     }).catch(() => {
       if (mine !== seq) return;

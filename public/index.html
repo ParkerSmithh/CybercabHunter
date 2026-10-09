@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -151,32 +151,6 @@
   </div>
 </section>
 
-<!-- ===== Cybercab showcase =====
-     The interactive Cybercab from Fleet ROI (js/cybercab-doors.js, the same
-     frames): here it also opens and closes on its own (data-cc-autoplay), only
-     while on screen, its frames loaded when it first comes into view; reduced
-     motion keeps it still. The first frame is a sized <img>, so the band's
-     height is reserved before anything loads (no layout shift). -->
-<section class="pt-12 max-sm:pt-8" aria-labelledby="showcaseHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,520px)] max-sm:grid-cols-[minmax(0,1fr)_minmax(0,46%)] max-sm:gap-3">
-    <div class="min-w-0">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold max-sm:text-[10px]">The vehicle</p>
-      <h2 id="showcaseHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white mt-1 max-sm:text-lg">Tesla Cybercab</h2>
-      <p class="text-sm text-slate-400 mt-2 leading-relaxed max-w-md max-sm:text-xs max-sm:leading-snug">Tap the car to open or close its doors.</p>
-    </div>
-    <div class="cc-doors home-cc" data-cc-doors data-cc-autoplay>
-      <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <img src="images/cybercab-doors/m/000.webp?v=4" srcset="images/cybercab-doors/m/000.webp?v=4 480w, images/cybercab-doors/d/000.webp?v=4 800w" sizes="(min-width:768px) 520px, 46vw" width="800" height="446" alt="A gold Tesla Cybercab" decoding="async" loading="lazy">
-        <canvas aria-hidden="true"></canvas>
-      </div>
-      <button type="button" class="cc-doors-btn" data-cc-button aria-expanded="false" aria-label="Open the Cybercab's doors">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5-5 5 5"/></svg>
-        <span data-cc-label>Open doors</span>
-      </button>
-    </div>
-  </div>
-</section>
-
 <!-- ===== Live map ===== -->
 <section class="pt-14 pb-20 lg:pt-20 max-sm:pt-10 max-sm:pb-14" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
@@ -282,7 +256,7 @@
 </section>
 
 <!-- ===== City rows (js/home-rows.js) =====
-     Six rows that follow the city tabs above, all from one request
+     Three rows that follow the city tabs above, all from one request
      (GET /api/homepage-stats?city=, worker/homepage-stats.js): live from the
      database, "—" where there is no data yet. Each starts with a skeleton. -->
 <section id="cityRows" class="pb-20 max-sm:pb-14" aria-label="City details">
@@ -290,9 +264,6 @@
     <div id="rowArea" data-row="area"></div>
     <div id="rowRides" data-row="rides"></div>
     <div id="rowSightings" data-row="sightings"></div>
-    <div id="rowCameras" data-row="cameras"></div>
-    <div id="rowFleet" data-row="fleet"></div>
-    <div id="rowSpotters" data-row="spotters"></div>
   </div>
 </section>
 </main>
@@ -435,8 +406,7 @@
 <script src="js/calc.js?v=7"></script>
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=5"></script>
-<script src="js/home-rows.js?v=3"></script>
-<script src="js/cybercab-doors.js?v=5"></script>
+<script src="js/home-rows.js?v=4"></script>
 <script src="js/austin-map.js?v=7"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>

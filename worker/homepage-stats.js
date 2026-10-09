@@ -7,9 +7,7 @@
 //        rides:     { rides, miles, average_fare, per_mile, fare_rides, average_miles, average_minutes,
 //                     weekly_fares: [{ week, average_fare, rides }] },
 //        sightings: { total, last_24h, last_7_days, peak_hour, top_spots: [{ location, count }], latest: [...] },
-//        cameras:   { monitored, detections_24h, last_detection_at, hourly: [{ hour, count }] },
-//        fleet:     { vehicles, models: [{ label, count }], colors: [{ label, count }], newest: [...] },
-//        spotters:  [{ rank, count, name, handle, avatar_url, profile }] }
+//        cameras:   { monitored, detections_24h, last_detection_at, hourly: [{ hour, count }] } }
 //
 // EVERY figure is live from D1 and reuses the rule that already defines it —
 // nothing is counted a second way:
@@ -28,15 +26,13 @@
 //   cameras         camera_detections for the city (every row is a camera-watch
 //                   detection; the table has no other status), and the cameras
 //                   listed for the city in public/data/traffic-cameras.json
-//   spotters        community.topDiscoverersInCity: the leaderboard's credit
-//                   rule, opted-in riders only, over the city's vehicles
 // "No data" is null (shown as "—"), never a made-up 0: averages with no rides,
 // a peak hour the data doesn't clearly show, a last detection that never was.
 // Area facts (square miles, launch date, hours, description) are the published
 // zone facts in worker/service-areas.js, the same the Zones page shows.
 //
-// PRIVACY: no rider is named except opted-in riders on Top Spotters (the
-// Community page's rule); no ride is listed (aggregates only); sightings are
+// PRIVACY: no rider is named or counted individually; no ride is listed
+// (aggregates only); sightings are
 // the already-public ones with their public fields; no moderation state,
 // pending count or queue figure is selected anywhere.
 
@@ -44,7 +40,6 @@ import { db, registryCitySql } from './db.js';
 import { physicalRidesFrom, publicVehicleEligibleSql } from './ride-status.js';
 import { CITY_RIDES_FROM, MILES_SQL, computeFareStats, FLEET_CITIES } from './fleet-stats.js';
 import { buildSightingStats, publicSightingJson } from './sightings-public.js';
-import { topDiscoverersInCity } from './community.js';
 import { publicLocation } from './places.js';
 import { TRAFFIC_CAMERAS, cameraCity } from './traffic-cameras.js';
 import { serviceAreaFor } from './service-areas.js';
@@ -53,8 +48,6 @@ const CACHE_SECONDS = 300;
 const FARE_WEEKS = 13;            // ~90 days of weekly average fares
 const LATEST_SIGHTINGS = 5;
 const TOP_SPOTS = 3;
-const NEWEST_VEHICLES = 5;
-const TOP_SPOTTERS = 5;
 
 const round = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 const num = v => (v == null ? null : Number(v));
@@ -68,30 +61,17 @@ function weekOf(dateStr) {
   return d.toISOString().slice(0, 10);
 }
 
-async function heroAndFleet(sql, area) {
+// The city's public registry vehicles and their physical rides (the Cars page
+// city rule), and the same over every city (the registry stats).
+async function heroCounts(sql, area) {
   const rule = registryCitySql('v', area.key);
   const eligible = `FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}`;
-  const [cityRow, models, colors, newest, all] = await sql.batch([
-    sql.prepare(`SELECT COUNT(*) AS vehicles, COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0) AS rides ${eligible}${rule.sql}`).bind(...rule.binds),
-    sql.prepare(`SELECT COALESCE(NULLIF(trim(v.model), ''), 'Unknown') AS label, COUNT(*) AS n ${eligible}${rule.sql} GROUP BY label ORDER BY n DESC, label`).bind(...rule.binds),
-    sql.prepare(`SELECT COALESCE(NULLIF(trim(v.color), ''), 'Unknown') AS label, COUNT(*) AS n ${eligible}${rule.sql} GROUP BY label ORDER BY n DESC, label`).bind(...rule.binds),
-    sql.prepare(`SELECT v.id, v.license_plate, v.model, v.color, v.created_at ${eligible}${rule.sql} ORDER BY v.created_at DESC, v.id LIMIT ${NEWEST_VEHICLES}`).bind(...rule.binds),
-    sql.prepare(`SELECT COUNT(*) AS vehicles, COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0) AS rides ${eligible}`)
-  ]);
+  const counts = `SELECT COUNT(*) AS vehicles, COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0) AS rides ${eligible}`;
+  const [cityRow, all] = await sql.batch([sql.prepare(counts + rule.sql).bind(...rule.binds), sql.prepare(counts)]);
   const c = (cityRow.results || [])[0] || {}, a = (all.results || [])[0] || {};
-  const list = rows => (rows.results || []).map(r => ({ label: r.label, count: Number(r.n) }));
   return {
     city: { vehicles: Number(c.vehicles) || 0, rides: Number(c.rides) || 0 },
-    all: { vehicles: Number(a.vehicles) || 0, rides: Number(a.rides) || 0 },
-    fleet: {
-      vehicles: Number(c.vehicles) || 0,
-      models: list(models),
-      colors: list(colors),
-      newest: (newest.results || []).map(v => ({
-        id: v.id, license_plate: v.license_plate || null, model: v.model || null, color: v.color || null,
-        added_at: v.created_at ? `${String(v.created_at).replace(' ', 'T').slice(0, 19)}Z` : null
-      }))
-    }
+    all: { vehicles: Number(a.vehicles) || 0, rides: Number(a.rides) || 0 }
   };
 }
 
@@ -200,9 +180,9 @@ export async function apiHomepageStats(request, env, ctx) {
   const sql = env.cybercabhunter_db;
   const nowMs = Date.now();
   try {
-    const [hf, rides, sightings, cameras, spotters, allSightings] = await Promise.all([
-      heroAndFleet(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs),
-      topDiscoverersInCity(sql, env, area.key, TOP_SPOTTERS), db.countPublicPhotoSightings(sql, {})
+    const [hero, rides, sightings, cameras, allSightings] = await Promise.all([
+      heroCounts(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs),
+      db.countPublicPhotoSightings(sql, {})
     ]);
     const z = area.zone || {};
     const response = Response.json({
@@ -210,18 +190,16 @@ export async function apiHomepageStats(request, env, ctx) {
       name: area.name,
       generated_at: new Date(nowMs).toISOString(),
       hero: {
-        city: { ...hf.city, sightings: sightings.total },
-        all: { ...hf.all, sightings: Number(allSightings) || 0 }
+        city: { ...hero.city, sightings: sightings.total },
+        all: { ...hero.all, sightings: Number(allSightings) || 0 }
       },
       area: {
         square_miles: z.square_miles ?? null, in_service_since: z.in_service_since || null,
-        hours: z.hours || null, description: z.description || null, vehicles: hf.fleet.vehicles
+        hours: z.hours || null, description: z.description || null, vehicles: hero.city.vehicles
       },
       rides,
       sightings,
-      cameras,
-      fleet: hf.fleet,
-      spotters
+      cameras
     }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
     if (cache) {
       const stored = cache.put(cacheKey, response.clone()).catch(() => {});

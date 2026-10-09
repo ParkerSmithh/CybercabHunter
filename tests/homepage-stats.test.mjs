@@ -79,7 +79,7 @@ async function run() {
     check('200, edge-cached for 5 minutes', r.status === 200 && /public, max-age=300/.test(r.cache));
     check('an unknown city is refused (400)', (await get(ctx, 'houston')).status === 400);
     check('no city asked for: Austin', (await get(ctx, '')).json.city === 'austin');
-    check('the response carries all six rows and the hero', ['hero', 'area', 'rides', 'sightings', 'cameras', 'fleet', 'spotters'].every(k => k in r.json));
+    check('the response carries the rows and the hero, and no fleet / spotter data (those rows were removed)', ['hero', 'area', 'rides', 'sightings', 'cameras'].every(k => k in r.json) && !('fleet' in r.json) && !('spotters' in r.json));
   }
 
   const A = (await get(ctx, 'austin')).json, D = (await get(ctx, 'dallas')).json;
@@ -98,14 +98,12 @@ async function run() {
     check('Dallas: no rides is 0 rides and NULL figures (shown "—"), not zeros', D.rides.rides === 0 && D.rides.miles === null && D.rides.average_fare === null && D.rides.per_mile === null && D.rides.average_miles === null && D.rides.average_minutes === null && D.rides.weekly_fares.length === 0);
   }
 
-  console.log('3. Hero and fleet (the Cars page city rule; public vehicles only)');
+  console.log('3. Hero (the Cars page city rule; public vehicles only)');
   {
     check('Austin hero: 3 vehicles (the private one left out), 4 physical rides', A.hero.city.vehicles === 3 && A.hero.city.rides === 4, JSON.stringify(A.hero));
     check('all cities: the same here (no Dallas data)', A.hero.all.vehicles === 3 && A.hero.all.rides === 4);
     check('Dallas hero: 0 / 0, with the all-cities totals beside it', D.hero.city.vehicles === 0 && D.hero.city.rides === 0 && D.hero.all.vehicles === 3);
-    check('fleet by model and colour', JSON.stringify(A.fleet.models) === '[{"label":"Cybercab","count":3}]' && JSON.stringify(A.fleet.colors) === '[{"label":"Gold","count":2},{"label":"Silver","count":1}]');
-    check('newest additions: newest first, public only', A.fleet.newest.map(v => v.license_plate).join() === 'AUS0003,AUS0002,AUS0001' && !/PRIV004/.test(JSON.stringify(A)));
-    check('Dallas fleet: empty (the page shows an empty state)', D.fleet.vehicles === 0 && D.fleet.newest.length === 0);
+    check('the private vehicle is nowhere in the response', !/PRIV004/.test(JSON.stringify(A)));
     check('area: published zone facts and the documented vehicle count', A.area.square_miles === 264 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 81);
   }
 
@@ -129,25 +127,21 @@ async function run() {
     check('Dallas: no detections, no last detection (null, not a time)', D.cameras.detections_24h === 0 && D.cameras.last_detection_at === null);
   }
 
-  console.log('6. Top spotters (the leaderboard\'s credit rule, opted-in riders only)');
+  console.log('6. Privacy');
   {
-    check('Alice first, 2 vehicles discovered (A1, A2)', A.spotters.length === 1 && A.spotters[0].name === 'Alice' && A.spotters[0].count === 2 && A.spotters[0].rank === 1);
-    check('Bob (opted out, discovered A3) appears in NO row', !/Bob Secret|"bob"/.test((await get(ctx, 'austin')).raw));
-    check('no user ids or emails anywhere in the response', !/"(alice|bob|carol)"|@example\.com|user_id|"uid"/.test((await get(ctx, 'austin')).raw.replace(/"handle":"alice"/, '')));
-    check('Dallas: nobody yet', D.spotters.length === 0);
+    const raw = (await get(ctx, 'austin')).raw;
+    check('no rider is named (the opted-out Bob nor anyone else)', !/Bob Secret|Alice|"bob"|"alice"/.test(raw));
+    check('no user ids or emails anywhere in the response', !/"(alice|bob|carol)"|@example\.com|user_id|"uid"/.test(raw));
   }
 
   console.log('7. The homepage');
   {
     const html = read('public/index.html');
     const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-    check('the six rows sit after the map + chart, inside <main>', main.indexOf('id="map"') < main.indexOf('id="cityRows"') && ['rowArea', 'rowRides', 'rowSightings', 'rowCameras', 'rowFleet', 'rowSpotters'].every(id => main.includes(`id="${id}"`)));
+    check('three rows after the map + chart, inside <main>; no Fleet, Top spotters or own Camera row', main.indexOf('id="map"') < main.indexOf('id="cityRows"') && ['rowArea', 'rowRides', 'rowSightings'].every(id => main.includes(`id="${id}"`)) && !/rowFleet|rowSpotters|rowCameras/.test(html));
     check('the city tabs tell the stats bar and the rows', /window\.setHomeStatsCity\(city\)/.test(html) && /window\.setHomeRowsCity\(city\)/.test(html));
-    check('the Cybercab showcase: the Fleet ROI frames, autoplay, between the stats bar and Service Zones', /<div class="cc-doors home-cc" data-cc-doors data-cc-autoplay>/.test(html) && html.indexOf('data-cc-autoplay') < html.indexOf('id="map"') && /images\/cybercab-doors\/m\/000\.webp\?v=4"[^>]*width="800" height="446"/.test(html));
-    const doors = read('public/js/cybercab-doors.js');
-    check('autoplay only with the attribute, paused off screen, never with reduced motion', /root\.hasAttribute\('data-cc-autoplay'\) && 'IntersectionObserver' in window/.test(doors) && /if \(!visible \|\| manual \|\| reduce\.matches\) return;/.test(doors));
-    check('Fleet ROI is unchanged (no autoplay attribute there)', !/data-cc-autoplay/.test(read('public/simulation.html')));
-
+    check('no Cybercab showcase band on the homepage (removed on owner request)', !/data-cc-doors|cybercab-doors\.js|home-cc/.test(html));
+    check('Fleet ROI\'s door component is as it was (no autoplay code)', !/data-cc-autoplay/.test(read('public/js/cybercab-doors.js')));
     // The rows, rendered from this database, switching Austin -> Dallas -> Austin.
     const dom = new JSDOM(html.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
     const w = dom.window, d = w.document;
@@ -159,14 +153,18 @@ async function run() {
     const settle = () => new Promise(r => setTimeout(r, 150));
     await settle();
     const text = id => d.getElementById(id).textContent.replace(/\s+/g, ' ');
-    check('Austin rows render the database figures', /Rides 4/i.test(text('rowRides')) && /\$13\.25/.test(text('rowRides')) && /Alice/.test(text('rowSpotters')) && /AUS0003/.test(text('rowFleet')));
+    check('Austin rows render the database figures', /Rides 4/i.test(text('rowRides')) && /\$13\.25/.test(text('rowRides')) && /All approved 2/i.test(text('rowSightings')));
+    check('headings in capitals: SERVICE AREA, RIDE STATS, SIGHTINGS ACTIVITY', ['rowArea', 'rowRides', 'rowSightings'].map(id => d.querySelector(`#${id} h2`).textContent).join() === 'SERVICE AREA,RIDE STATS,SIGHTINGS ACTIVITY');
+    check('Camera watch is part of the Sightings section, after the sightings', /CAMERA WATCH/.test(text('rowSightings')) && text('rowSightings').indexOf('Latest sightings') < text('rowSightings').indexOf('CAMERA WATCH') && /Cameras monitored/i.test(text('rowSightings')));
+    const tilesAll = [...d.querySelectorAll('#cityRows .glass.rounded-xl')];
+    check('every small stat tile carries the border glow; the larger cards do not', tilesAll.length >= 10 && tilesAll.every(el => el.hasAttribute('data-glow')) && [...d.querySelectorAll('#cityRows .glass.rounded-2xl')].every(el => !el.hasAttribute('data-glow')));
     check('the hero shows Austin, with the all-cities line', d.getElementById('statVehicles').textContent === '3' && d.getElementById('statVehiclesAll').textContent === '3');
     w.setHomeRowsCity('dallas'); w.setHomeStatsCity('dallas');
     await settle();
-    check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No Dallas Cybercabs in the registry yet/.test(text('rowFleet')) && /No one has discovered a Dallas Cybercab yet/.test(text('rowSpotters')) && /81/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '0');
+    check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No approved sightings in Dallas yet/.test(text('rowSightings')) && /81/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '0');
     w.setHomeRowsCity('austin'); w.setHomeStatsCity('austin');
     await settle();
-    check('back to Austin: the Austin figures again', /\$13\.25/.test(text('rowRides')) && /Alice/.test(text('rowSpotters')) && d.getElementById('statVehicles').textContent === '3');
+    check('back to Austin: the Austin figures again', /\$13\.25/.test(text('rowRides')) && /All approved 2/i.test(text('rowSightings')) && d.getElementById('statVehicles').textContent === '3');
     w.close();
   }
 
