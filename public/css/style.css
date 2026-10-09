@@ -587,6 +587,32 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .review-sort[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
 .review-like[aria-pressed="true"]:not(.pulse-heart){color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
 
+/* ---------- Homepage Cybercab showcase (index.html, js/cybercab-doors.js) ----------
+   The Fleet ROI door component's styles (simulation.html keeps its own copy),
+   scoped to the homepage band. The stage keeps the frames' 800:446 ratio, so
+   the box is reserved before anything loads. */
+.home-cc{display:flex; flex-direction:column; align-items:center; gap:.6rem; width:100%;}
+.home-cc .cc-doors-stage{position:relative; width:100%; aspect-ratio:800/446; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; border-radius:16px;}
+.home-cc .cc-doors-stage:focus-visible{box-shadow:0 0 0 2px rgb(var(--gold));}
+:root[data-theme="light"] .home-cc .cc-doors-stage{background:rgb(8 9 10); overflow:hidden;}
+.home-cc .cc-doors-stage img, .home-cc .cc-doors-stage canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.home-cc .cc-doors-stage canvas{opacity:0;}
+.home-cc.is-live .cc-doors-stage canvas{opacity:1;}
+.home-cc.is-live .cc-doors-stage img{visibility:hidden;}
+.home-cc .cc-doors-btn{display:inline-flex; align-items:center; gap:.4rem; min-height:36px; padding:0 .9rem; border-radius:999px; border:1px solid rgb(var(--gold) / 0.35); font-size:.75rem; font-weight:600; letter-spacing:.02em; color:rgb(var(--gold-ink, var(--gold))); background:transparent;}
+.home-cc .cc-doors-btn:hover{background:rgb(var(--gold) / 0.08);}
+.home-cc .cc-doors-btn svg{transition:transform var(--t, .2s) var(--ease, ease);}
+.home-cc.is-open .cc-doors-btn svg{transform:rotate(180deg);}
+@media (max-width:639px){ .home-cc .cc-doors-btn{min-height:44px;} }
+
+/* ---------- Homepage city rows (js/home-rows.js) ---------- */
+.hr-bars{display:flex; align-items:flex-end; gap:3px; height:96px;}
+.hr-bars > span{flex:1; min-width:0; border-radius:3px 3px 0 0; background:rgb(var(--gold) / 0.75);}
+.hr-bars > span.is-empty{background:rgb(var(--ink) / 0.08); height:2px !important;}
+.hr-scroll{display:flex; gap:.75rem; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none;}
+.hr-scroll::-webkit-scrollbar{display:none;}
+.hr-scroll > *{scroll-snap-align:start; flex:none;}
+
 /* ---------- RubberSegment (js/main.js initRubberSegments) ----------
    The site's segmented controls (Zones city, replay range / speed / city,
    review sort, Appearance) get a rubber thumb: a solid ink thumb (React Bits

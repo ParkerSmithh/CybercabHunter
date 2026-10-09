@@ -25,7 +25,13 @@
    Weight: nothing loads until someone shows intent (hover, focus, touch or
    press); the first frame is a normal <img>, so the page renders the car
    without the sequence. Reduced motion: the doors jump straight to open or
-   closed. */
+   closed.
+
+   Autoplay ([data-cc-autoplay], the homepage showcase only): while at least
+   40% on screen the doors open, hold, close and hold, on a loop; off screen
+   the loop stops (an IntersectionObserver), and the frames load the first
+   time it comes into view. Reduced motion: no loop. A tap or a key takes over
+   (the loop stops for good). Without the attribute nothing changes. */
 (function () {
   const FRAMES = 108;
   const DURATION_MS = 1500;
@@ -142,12 +148,35 @@
     const intent = () => prepare();
     for (const ev of ['pointerenter', 'focusin', 'touchstart', 'pointerdown']) root.addEventListener(ev, intent, { once: true, passive: true });
 
-    stage.addEventListener('click', toggle);
+    // A person's tap or key: stops the autoplay loop, then toggles.
+    let manual = false;
+    const userToggle = () => { manual = true; toggle(); };
+    stage.addEventListener('click', userToggle);
     stage.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); userToggle(); }
     });
-    if (button) button.addEventListener('click', toggle);
+    if (button) button.addEventListener('click', userToggle);
     setUi();
+
+    if (root.hasAttribute('data-cc-autoplay') && 'IntersectionObserver' in window) {
+      const HOLD_MS = 1800;
+      let visible = false, timer = 0;
+      const schedule = () => {
+        clearTimeout(timer);
+        if (!visible || manual || reduce.matches) return;
+        timer = setTimeout(async () => {
+          if (!visible || manual || reduce.matches) return;
+          await prepare().ready;
+          if (!visible || manual) return;
+          await toggle();
+          timer = setTimeout(schedule, DURATION_MS);   // hold after the swing ends
+        }, HOLD_MS);
+      };
+      new IntersectionObserver(entries => {
+        visible = entries.some(e => e.isIntersecting && e.intersectionRatio >= 0.4);
+        if (visible) { prepare(); schedule(); } else clearTimeout(timer);
+      }, { threshold: [0, 0.4] }).observe(stage);
+    }
   }
 
   document.querySelectorAll('[data-cc-doors]').forEach(attach);
