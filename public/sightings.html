@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=56">
+<link rel="stylesheet" href="css/style.css?v=57">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -98,38 +98,43 @@
     <!-- Stats for the selected city, from sighting timestamps in Austin time (GET /api/sightings?stats=1).
          Each value starts as an em dash and only becomes a number the server sent. -->
     <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 max-sm:grid-cols-3 max-sm:gap-2 max-sm:mb-5">
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5 border-[rgba(212,175,55,0.35)] bg-gradient-to-br from-[rgba(212,175,55,0.1)] to-transparent">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">All time</div>
-        <div id="statTotal" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3773;background:linear-gradient(135deg, #D4AF3724, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>All time</div>
+        <div id="statTotal" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
         <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Approved sightings</div>
       </div>
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Last 7 days</div>
-        <div id="statWeek" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3738;background:linear-gradient(135deg, #D4AF3712, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M9 3v4M15 3v4"/></svg>Last 7 days</div>
+        <div id="statWeek" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Seen in the last 7 days</div>
       </div>
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Today</div>
-        <div id="statToday" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3738;background:linear-gradient(135deg, #D4AF3712, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>Today</div>
+        <div id="statToday" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div id="statTodayLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Cybercabs spotted today</div>
       </div>
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">This month</div>
-        <div id="statMonth" class="mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3738;background:linear-gradient(135deg, #D4AF3712, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 14h2M12 14h2M16 14h2"/></svg>This month</div>
+        <div id="statMonth" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-white leading-snug tabular-nums">—</div>
         <div id="statMonthLabel" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight">Sightings this month</div>
       </div>
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Peak hour</div>
-        <div id="statPeakHour" class="mt-1.5 max-sm:mt-0.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(9px,2.7vw,11px)] max-sm:whitespace-normal max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3738;background:linear-gradient(135deg, #D4AF3712, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg>Peak hour</div>
+        <div id="statPeakHour" class="dmv-card-num mt-1.5 max-sm:mt-0.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(9px,2.7vw,11px)] max-sm:whitespace-normal max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
         <div id="statPeakCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
-      <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">All-time best day</span><span class="sm:hidden">Best day</span></div>
-        <div id="statBestDay" class="mt-1.5 max-sm:mt-0.5 max-sm:text-[clamp(10px,3vw,13px)] max-sm:whitespace-nowrap font-display font-bold text-base text-white leading-snug tabular-nums">—</div>
+      <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:212 175 55;border-color:#D4AF3738;background:linear-gradient(135deg, #D4AF3712, transparent 70%)">
+        <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg><span class="max-sm:hidden">All-time best day</span><span class="sm:hidden">Best day</span></div>
+        <div id="statBestDay" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-[clamp(10px,3vw,13px)] max-sm:whitespace-nowrap font-display font-bold text-base text-white leading-snug tabular-nums">—</div>
         <div id="statBestCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
     </div>
 
+    <!-- The photos, under a Fleet ETA-style section header. -->
+    <div class="mb-4 max-sm:mb-3">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Photos · Approved by moderators</p>
+      <h2 class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Latest sightings</h2>
+    </div>
     <!-- Toolbar: city filter, how many sightings it holds, and the sort. -->
     <div class="glass rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-3 min-w-0">
@@ -318,6 +323,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/sightings.js?v=26"></script>
+<script src="js/sightings.js?v=27"></script>
 </body>
 </html>

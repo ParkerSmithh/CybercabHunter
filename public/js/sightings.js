@@ -59,8 +59,8 @@
     if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
     return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>';
-  const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>';
+  const PIN = '<svg class="w-3.5 h-3.5 shrink-0 mt-px text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>';
+  const CLOCK = '<svg class="w-3.5 h-3.5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 7v5l3 3"/></svg>';
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -73,7 +73,11 @@
   // over it, then the plate, the place and the exact time. Fields that weren't
   // provided are simply left out.
   function card(s) {
-    const article = el('article', 'group glass rounded-2xl max-sm:rounded-xl overflow-hidden flex flex-col hover:border-[rgba(212,175,55,0.45)] transition-[border-color] duration-200 ease-out');
+    // The Fleet ETA model-card look: gold border and tint (.dmv-card, --c).
+    const article = el('article', 'group dmv-card glass rounded-2xl max-sm:rounded-xl overflow-hidden flex flex-col border transition-[border-color] duration-200 ease-out');
+    article.style.setProperty('--c', '212 175 55');
+    article.style.borderColor = 'rgb(212 175 55 / 0.3)';
+    article.style.background = 'linear-gradient(160deg, rgb(212 175 55 / 0.08), transparent 55%)';
     article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
     article.dataset.glow = '';   // BorderGlow (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
@@ -112,8 +116,8 @@
     const since = ago(s.spotted_at);
     const meta = el('div', 'flex items-center gap-2 flex-wrap max-sm:gap-1.5');
     const filtered = (CITY_NAMES[city] || '').toLowerCase();
-    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-gold uppercase tracking-wide max-sm:text-[9px] max-sm:px-1.5', s.city));
-    if (s.cybercab) meta.appendChild(el('span', 'text-[11px] font-bold px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.35)] text-slate-200 uppercase tracking-wide max-sm:text-[9px] max-sm:px-1.5', 'Cybercab'));
+    if (s.city && s.city.toLowerCase() !== filtered) meta.appendChild(el('span', 'vcard-city', s.city));
+    if (s.cybercab) meta.appendChild(el('span', 'vcard-pill', 'Cybercab'));
     if (since) {
       const badge = el('span', 'ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400 max-sm:text-[11px] max-sm:gap-0.5');
       badge.innerHTML = CLOCK;
