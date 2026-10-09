@@ -718,9 +718,22 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .hr-about > summary{list-style:none;}
 .hr-about > summary::-webkit-details-marker{display:none;}
 .hr-about[open] > summary svg{transform:rotate(180deg);}
-.hr-bars{display:flex; align-items:flex-end; gap:3px; height:96px;}
-.hr-bars > span{flex:1; min-width:0; border-radius:3px 3px 0 0; background:rgb(var(--gold) / 0.75);}
-.hr-bars > span.is-empty{background:rgb(var(--ink) / 0.08); height:2px !important;}
+/* Stem charts share a quiet baseline and a solid dot with a soft pulse. */
+.hr-bars{display:flex; align-items:flex-end; gap:3px; height:112px; padding:12px 0 0; border-bottom:1px solid rgb(var(--ink) / 0.16);}
+.hr-bars > span{position:relative; flex:1; min-width:0; color:rgb(var(--gold));}
+.hr-bars > span:not(.is-empty)::before{content:''; position:absolute; width:2px; left:50%; top:0; bottom:0; transform:translateX(-50%); background:currentColor;}
+.hr-bars > span::after{content:''; position:absolute; width:7px; height:7px; left:50%; top:0; border-radius:50%; background:currentColor; transform:translate(-50%,-50%); animation:chart-dot-pulse 2.4s ease-out infinite; animation-delay:var(--pulse-delay,0s);}
+.hr-bars > span.is-empty{height:0 !important; color:rgb(var(--ink) / 0.3);}
+.hr-bars > span.is-empty::after{width:3px; height:3px; animation:none;}
+.hr-range{position:relative; color:rgb(var(--n-500)); transition:color 160ms ease;}
+.hr-range:hover,.hr-range[aria-pressed="true"]{color:rgb(var(--ink));}
+.hr-range[aria-pressed="true"]::after{content:''; position:absolute; bottom:0; left:6px; right:6px; height:2px; background:rgb(var(--gold));}
+.chart-dot{transform-box:fill-box; transform-origin:center; animation:chart-svg-pulse 2.4s ease-in-out infinite;}
+.monthly-stems{border-bottom:1px solid rgb(var(--ink) / 0.16);}
+.monthly-stems .hr-bars{width:100%; height:85%; padding:8px 0 0; border:0;}
+@keyframes chart-dot-pulse{0%,100%{box-shadow:0 0 0 0 rgb(var(--gold) / 0);}15%{box-shadow:0 0 0 0 rgb(var(--gold) / 0.3);}65%{box-shadow:0 0 0 6px rgb(var(--gold) / 0);}}
+@keyframes chart-svg-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.65;transform:scale(1.2);}}
+@media(prefers-reduced-motion:reduce){.hr-bars > span::after,.chart-dot{animation:none;}}
 .hr-scroll{display:flex; gap:.75rem; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none;}
 .hr-scroll::-webkit-scrollbar{display:none;}
 .hr-scroll > *{scroll-snap-align:start; flex:none;}

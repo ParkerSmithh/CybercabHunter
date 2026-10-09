@@ -68,12 +68,12 @@
   const empty = text => `<p class="text-sm text-slate-400 max-sm:text-xs">${esc(text)}</p>`;
   const footnote = text => `<p class="mt-2.5 text-[11px] text-slate-500 max-sm:mt-2 max-sm:text-[10px]">${esc(text)}</p>`;
   const about = text => `<details class="hr-about mt-2 text-xs text-slate-400 max-sm:text-[11px]"><summary class="inline-flex items-center gap-1.5 min-h-[44px] cursor-pointer select-none font-semibold text-slate-300 hover:text-white">About these numbers<svg class="w-3.5 h-3.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p class="max-w-3xl pb-1 leading-relaxed">${esc(text)}</p></details>`;
-  // Bars scaled to the largest value; a zero is a flat line, not a bar.
+  // Thin stems scaled to the largest value; zero values stay on the baseline.
   function bars(values, titles) {
     const max = Math.max(0, ...values.filter(v => typeof v === 'number'));
     return `<div class="hr-bars" role="img" aria-label="${esc(titles.filter((_, i) => values[i]).join('; ') || 'No data in this window')}">${values.map((v, i) =>
       typeof v === 'number' && v > 0 && max > 0
-        ? `<span style="height:${Math.max(4, Math.round((v / max) * 100))}%" title="${esc(titles[i])}"></span>`
+        ? `<span style="height:${Math.max(4, Math.round((v / max) * 100))}%;--pulse-delay:${(i % 7) * -0.24}s" title="${esc(titles[i])}"></span>`
         : `<span class="is-empty" title="${esc(titles[i])}"></span>`).join('')}</div>`;
   }
   // Which window each chart shows (kept across city switches).
@@ -81,7 +81,7 @@
   const DAYS = { '7D': 7, '30D': 30, '90D': 90, '6M': 182, '1Y': 365 };
   // Range buttons for one chart (the Fleet Growth chart's look; 44px on phones).
   const rangeBtns = (chart, ranges) => `<div class="flex items-center gap-1 shrink-0" role="group" aria-label="Time range">${ranges.map(r =>
-    `<button type="button" data-chart="${chart}" data-range="${r}" aria-pressed="${state[chart] === r}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${state[chart] === r ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>`;
+    `<button type="button" data-chart="${chart}" data-range="${r}" aria-pressed="${state[chart] === r}" class="hr-range text-xs font-semibold px-2 py-1 max-sm:min-h-[44px] max-sm:min-w-[40px]">${r}</button>`).join('')}</div>`;
   const chartCard = (chart, title, ranges, body, note) => card(`
     <div class="flex items-center justify-between gap-3 mb-3 max-sm:mb-2">${cardTitle(title)}${rangeBtns(chart, ranges)}</div>
     <div data-chart-body="${chart}">${body}</div>${note ? footnote(note) : ''}`);
@@ -252,8 +252,6 @@
     b.parentElement.querySelectorAll('[data-range]').forEach(x => {
       const on = x.dataset.range === state[b.dataset.chart];
       x.setAttribute('aria-pressed', String(on));
-      x.classList.toggle('text-white', on); x.classList.toggle('bg-white/[0.08]', on);
-      x.classList.toggle('text-slate-400', !on); x.classList.toggle('hover:text-slate-200', !on);
     });
   });
   // "updated Xm ago" keeps counting; the data itself is re-read every 5 minutes while visible.

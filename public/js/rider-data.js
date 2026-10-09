@@ -159,6 +159,7 @@
       show('monthlyEmpty', true); show('monthlyChart', false);
     } else {
       show('monthlyEmpty', false); show('monthlyChart', true);
+      $('monthlyBars').classList.add('monthly-stems');
       $('monthlyBars').innerHTML = months.map((m, i) => {
         const row = inWindow[i];
         const n = row ? row.ride_count : 0;
@@ -166,7 +167,7 @@
         const dist = row && row.rides_with_distance > 0 ? ` · ${Number(row.total_distance).toFixed(1)} mi` : '';
         return `<div class="flex-1 flex flex-col items-center justify-end h-full" title="${esc(m.label)}: ${plural(n, 'ride')}${esc(dist)}">
           <span class="text-xs text-slate-400 mb-1 h-4 max-sm:text-[10px] max-sm:h-3.5">${n || ''}</span>
-          <div class="w-full rounded-t-md ${n ? 'bg-gradient-to-t from-gold to-goldsoft' : 'bg-white/5'}" style="height:${n ? pct * 0.85 : 3}%"></div>
+          <div class="hr-bars"><span class="${n ? '' : 'is-empty'}" style="height:${n ? pct : 0}%;--pulse-delay:${(i % 7) * -0.24}s"></span></div>
         </div>`;
       }).join('');
       // Phones show the month's initial (twelve full labels don't fit at 320px).

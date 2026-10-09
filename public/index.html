@@ -17,7 +17,8 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/home-overview.css?v=2">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -169,7 +170,7 @@
         <button type="button" data-city="dallas" aria-pressed="false" class="city-btn city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border max-sm:px-3.5 max-sm:text-xs">Dallas</button>
       </div>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:gap-3">
+    <div class="home-overview-grid">
 
       <!-- Service-area facts for the selected city (js/home-rows.js, from
            GET /api/homepage-stats): coverage, in service since, vehicles
@@ -178,23 +179,33 @@
       <div id="rowArea" data-row="area" class="sm:col-span-2 xl:col-span-3 min-w-0"></div>
 
       <!-- Austin mini map -->
-      <div id="homeZoneAustin" class="service-zone-card">
+      <div id="homeZoneAustin" class="service-zone-card home-zone-panel">
+        <div class="home-zone-heading"><h3>AUSTIN MINIMAP</h3><p>Published service zone</p></div>
+        <div class="home-zone-viewport">
         <div id="zoneMap-austin" class="service-zone-map"></div>
-        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
-          See Map
+        </div>
+        <div class="home-zone-footer"><p>Tesla’s published Austin geofence</p>
+        <a href="infrastructure.html" aria-label="See the full Austin map on the Zones page" class="home-zone-link">
+          Explore map
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
+        </div>
       </div>
 
       <!-- Dallas mini map: the same interactive minimap, centered on central
            Dallas. No zone outline: Tesla has published no Dallas geofence. Its
            map is created the first time Dallas is selected (a hidden box has no size). -->
-      <div id="homeZoneDallas" class="service-zone-card hidden">
+      <div id="homeZoneDallas" class="service-zone-card home-zone-panel hidden">
+        <div class="home-zone-heading"><h3>DALLAS MINIMAP</h3><p>Service area</p></div>
+        <div class="home-zone-viewport">
         <div id="zoneMap-dallas" class="service-zone-map"></div>
-        <a href="infrastructure.html?city=dallas" aria-label="See the full Dallas map on the Zones page" class="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-2 max-sm:min-h-[40px] rounded-lg glass text-xs font-semibold text-white hover:border-[rgba(212,175,55,0.45)] transition-colors">
-          See Map
+        </div>
+        <div class="home-zone-footer"><p>Dallas · no published geofence</p>
+        <a href="infrastructure.html?city=dallas" aria-label="See the full Dallas map on the Zones page" class="home-zone-link">
+          Explore map
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
         </a>
+        </div>
       </div>
 
       <!-- Austin fleet growth chart: cumulative count of Austin Cybercabs in
@@ -204,15 +215,16 @@
            the Cars page count). This is registry coverage, not Tesla's real
            fleet size, so it's labeled that way rather than as an authoritative
            fleet count. Nothing here is hard-coded; see initFleetGrowthChart(). -->
-      <!-- The same height as the map card beside it, top and bottom level: the
-           map card's shape sets the grid row's height and this card stretches
-           to fill it (the chart redraws to the box's real size). On phones,
-           where the two stack, the chart keeps its own minimum height. -->
-      <div id="homeFleetChart" class="glass rounded-2xl p-5 flex flex-col xl:col-span-2 max-sm:p-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 max-sm:flex-row max-sm:items-start max-sm:justify-between max-sm:gap-2">
+      <!-- A Cybercab-only registry panel: summary rail beside the chart on
+           wide screens, summary strip above it on smaller screens. -->
+      <div id="homeFleetChart" class="home-growth-panel">
+        <div class="home-growth-heading">
+          <div class="home-growth-identity">
           <div class="min-w-0">
-            <h3 class="font-display font-bold text-lg tracking-tight text-white max-sm:text-base max-sm:whitespace-nowrap">FLEET GROWTH</h3>
+            <h3 class="font-display font-bold">FLEET GROWTH <span>· CYBERCAB</span></h3>
             <p id="fleetChartCaption" class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
+          </div>
+          <img class="home-growth-car" src="images/CybercabFlipped.png" width="600" height="416" alt="" aria-hidden="true" loading="lazy" decoding="async">
           </div>
           <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
             <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
@@ -223,10 +235,12 @@
         </div>
         <!-- Summary for the selected city and range (drawn with the chart, from
              the same registry data): total, change in range, last 7 days, latest. -->
-        <div id="fleetChartStats" class="grid grid-cols-4 gap-2 mt-3 max-sm:grid-cols-2 max-sm:gap-1.5" aria-live="off"></div>
-        <!-- min-h only matters on phones (cards stacked); from sm up the card
-             takes the map card's height, so no minimum may push it taller. -->
-        <div id="fleetChartMount" class="relative flex-1 min-h-[240px] sm:min-h-0 mt-2"></div>
+        <div class="home-growth-body">
+        <div id="fleetChartStats" class="home-growth-stats" aria-live="off"></div>
+        <!-- Chart draws at the plot's actual size, keeping circles and labels crisp. -->
+        <div id="fleetChartMount" class="home-growth-plot relative"></div>
+        </div>
+        <div class="home-growth-footer"><p>First documented Cybercabs · public registry coverage</p><a href="/vehicles">View Cybercabs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
       </div>
 
       <!-- Add more city cards here as Cybercab expands: copy the Austin map
@@ -396,8 +410,8 @@
 <script src="js/service-banner.js?v=10"></script>
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=6"></script>
-<script src="js/home-rows.js?v=8"></script>
-<script src="js/dmv-panel.js?v=11"></script>
+<script src="js/home-rows.js?v=9"></script>
+<script src="js/dmv-panel.js?v=12"></script>
 <script src="js/austin-map.js?v=8"></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>
@@ -537,7 +551,7 @@
       const week = has ? total - countAt(now - 7 * DAY_MS) : 0;
       const latest = has ? series[series.length - 1].date.getTime() : null;
       const tile = (label, value, sub) => `
-        <div class="rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2 min-w-0 max-sm:px-2.5 max-sm:py-1.5">
+        <div class="home-growth-stat">
           <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 truncate">${label}</div>
           <div class="stat-value font-semibold text-lg text-white leading-tight mt-0.5 truncate max-sm:text-base">${value}</div>
           <div class="text-[10px] text-slate-500 truncate">${sub}</div>
@@ -706,7 +720,7 @@
         if (!n) return '';
         const bh = Math.max(2, (n / dayMax) * (BAND - 4));
         const t = minX + i * DAY_MS;
-        return `<rect class="fleet-bar" data-t="${t}" x="${(x(t) + 0.5).toFixed(1)}" y="${(baseY - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${GOLD}" fill-opacity="0.38"><title>${new Date(t).toLocaleDateString('en-US', SHORT_DATE)}: +${n} new</title></rect>`;
+        return `<rect class="fleet-bar" data-t="${t}" x="${(x(t) + 0.5).toFixed(1)}" y="${(baseY - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${GOLD}" fill-opacity="0.65"><title>${new Date(t).toLocaleDateString('en-US', SHORT_DATE)}: +${n} new</title></rect>`;
       }).join('');
 
       // Date labels along the bottom: four evenly spaced, the last is today.
@@ -735,8 +749,8 @@
           ${yLabels}
           ${xLabels}
           ${empty ? '' : `<g style="font-family:'Inter',sans-serif" font-size="9">
-            <line x1="${padL + 2}" y1="${padT - 8}" x2="${padL + 14}" y2="${padT - 8}" stroke="${GOLD}" stroke-width="2"/>${label(padL + 18, padT - 5, 'Total', 'start')}
-            <rect x="${padL + 52}" y="${padT - 12}" width="6" height="8" rx="1" fill="${GOLD}" fill-opacity="0.38"/>${label(padL + 62, padT - 5, 'New per day', 'start')}
+            <line x1="${padL + 2}" y1="${padT - 8}" x2="${padL + 14}" y2="${padT - 8}" stroke="${GOLD}" stroke-width="2"/>${label(padL + 18, padT - 5, 'Cybercabs', 'start')}
+            <rect x="${padL + 74}" y="${padT - 12}" width="6" height="8" rx="1" fill="${GOLD}" fill-opacity="0.65"/>${label(padL + 84, padT - 5, 'New per day', 'start')}
           </g>`}
           <line id="fleetCrosshair" x1="0" y1="${padT}" x2="0" y2="${baseY}" style="display:none;stroke:rgb(var(--ink) / 0.25)" stroke-width="1"/>
           <circle id="fleetHoverDot" r="4" fill="${GOLD}" stroke-width="2" style="display:none;stroke:rgb(var(--surface))"/>

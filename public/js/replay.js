@@ -308,12 +308,25 @@ window.CCCReplay = (function () {
       const max = Math.max(1, ...bins);
       const bw = w / bins.length;
       bins.forEach((v, i) => {
-        const bh = v ? Math.max(3, (v / max) * (h - 6)) : 2;
-        ctx.fillStyle = (i + 1) / bins.length <= frac ? GOLD : 'rgba(148,163,184,0.28)';
-        ctx.fillRect(i * bw + 1, h - bh, Math.max(1, bw - 2), bh);
+        const bh = v ? Math.max(4, (v / max) * (h - 10)) : 0;
+        const cx = (i + 0.5) * bw, cy = h - 1 - bh;
+        const color = (i + 1) / bins.length <= frac ? GOLD : 'rgba(148,163,184,0.28)';
+        ctx.fillStyle = color;
+        if (v) ctx.fillRect(cx - 0.75, cy, 1.5, bh);
+        if (v && !reduceMotion) {
+          const pulse = ((performance.now() / 2400 + i / 7) % 1);
+          ctx.globalAlpha = (1 - pulse) * 0.3;
+          ctx.beginPath(); ctx.arc(cx, cy, 2.5 + pulse * 4, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, v ? 2.5 : 1.25, 0, Math.PI * 2); ctx.fill();
       });
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(Math.min(w - 2, Math.max(0, frac * w - 1)), 0, 2, h);
+    }
+
+    if (!reduceMotion) {
+      setInterval(() => { if (!document.hidden && !state.playing && bins.length) drawRibbon(); }, 80);
     }
 
     // ---- Playback ----

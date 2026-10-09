@@ -102,12 +102,11 @@
       if (c + m) adds.push({ date: pts[i].date, c, m });
     }
     const barsTop = padT + mainH + gap, maxAdd = Math.max(1, ...adds.map(a => a.c + a.m));
-    const bw = Math.max(2, Math.min(10, (plotW / Math.max(1, spanDays)) * 0.7));
-    const bh = v => (v / maxAdd) * barsH;
+    const bh = v => (v / maxAdd) * (barsH - 4);
     const bars = adds.map(a => {
-      const bx = x(a.date) - bw / 2, hm = bh(a.m), hc = bh(a.c);
-      return `<rect x="${bx.toFixed(1)}" y="${(barsTop + barsH - hm).toFixed(1)}" width="${bw.toFixed(1)}" height="${hm.toFixed(1)}" rx="1" fill="${RED}" fill-opacity="0.85"/>`
-        + (hc ? `<rect x="${bx.toFixed(1)}" y="${(barsTop + barsH - hm - hc).toFixed(1)}" width="${bw.toFixed(1)}" height="${hc.toFixed(1)}" rx="1" fill="${GOLD}" fill-opacity="0.9"/>` : '');
+      const cx = x(a.date).toFixed(1), base = barsTop + barsH, hm = bh(a.m), hc = bh(a.c);
+      const stem = (bottom, top, color) => `<line x1="${cx}" x2="${cx}" y1="${bottom.toFixed(1)}" y2="${top.toFixed(1)}" stroke="${color}" stroke-width="1.5"/><circle class="chart-dot" cx="${cx}" cy="${top.toFixed(1)}" r="2.5" fill="${color}"/>`;
+      return `<g><title>${esc(longDate(a.date))}: +${a.m} Model Y, +${a.c} Cybercab</title>${hm ? stem(base, base - hm, RED) : ''}${hc ? stem(base - hm, base - hm - hc, GOLD) : ''}</g>`;
     }).join('');
     const barsAxis = `<line x1="${padL}" x2="${xEnd.toFixed(1)}" y1="${(barsTop + barsH).toFixed(1)}" y2="${(barsTop + barsH).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.14)"/>${label(padL - 6, barsTop + 8, `+${int(maxAdd)}`)}${label(xEnd + 8, barsTop + barsH - 2, 'new / day', 'start')}`;
     // End labels, nudged apart so they never overlap.
