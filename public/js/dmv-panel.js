@@ -1,15 +1,19 @@
 /* "Texas DMV registrations · Tesla" panel (any element with [data-dmv-panel]:
    the homepage and the Cars page). Data: GET /api/dmv-registrations
    (worker/txdmv.js) — the daily D1 snapshots of TxDMV's public automated-
-   vehicle roster, never TxDMV itself.
+   vehicle roster, never TxDMV itself. Before our first snapshot the series
+   carries an imported, approximate history (worker/txdmv-history.js, credited
+   to Robotaxi Tracker); those points come flagged `approx` and are drawn and
+   labeled as such.
      Registered AV fleet  the latest snapshot's VIN count, "polled Xm ago"
-     Last 30 days         VINs first listed in the window after the first
-                          snapshot (the source publishes no registration
-                          dates, so the history starts when polling began)
+     Last 30 days         new VINs (or, while the window reaches back before
+                          tracking began, the change in the counts: approx.)
      Matched to tracked plates  roster VINs equal to a public registry VIN
-     Cybercab / Model Y   TxDMV's own model field, share, new in 30 days
-     Chart                cumulative Cybercab + Model Y, stacked, one point
-                          per daily snapshot, All / 90d / 30d / 7d
+     Chart                Cybercab and Model Y as their own step lines (not
+                          stacked), the total dotted, daily additions as bars
+                          below; All / 90d / 30d / 7d; hover for a day's counts
+     Model cards          each model's count, share and 30-day additions, with
+                          its picture (illustration only, never on the chart)
    A number is only ever one the server sent; no snapshot yet -> a short note. */
 (function () {
   const els = [...document.querySelectorAll('[data-dmv-panel]')];
@@ -17,11 +21,13 @@
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const GOLD = '#D4AF37', RED = '#ef4444';
   const RANGES = { All: Infinity, '90d': 90, '30d': 30, '7d': 7 };
+  const DAY = 864e5;
   const int = n => (typeof n === 'number' ? n.toLocaleString('en-US') : '—');
-  const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : '—');
+  const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
   const shortDate = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const longDate = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const centralTime = iso => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
   function ago(iso) {
     const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
     if (!Number.isFinite(m)) return '—';
@@ -31,50 +37,142 @@
   }
   let data = null, range = 'All';
 
-  // Drawn at the box's real width (so the labels stay readable on phones).
-  function chart(series, boxW) {
-    const w = Math.max(280, Math.round(boxW || 640)), h = w < 480 ? 170 : 200, padL = 34, padR = 12, padT = 12, padB = 22;
-    const today = new Date().toISOString().slice(0, 10);
-    const cutoff = RANGES[range] === Infinity ? null : new Date(Date.now() - RANGES[range] * 864e5).toISOString().slice(0, 10);
-    // Points in the window, plus the last snapshot before it (the count held then).
+  // The points in the selected window, plus the count that held at its start.
+  function windowed(series) {
+    const cutoff = RANGES[range] === Infinity ? null : isoDay(Date.now() - RANGES[range] * DAY);
     const before = cutoff ? series.filter(p => p.date < cutoff) : [];
     let pts = series.filter(p => !cutoff || p.date >= cutoff);
     if (before.length) pts = [{ ...before[before.length - 1], date: cutoff, held: true }, ...pts];
-    if (!pts.length) return `<p class="text-xs text-slate-500 py-8 text-center">No snapshots in this window.</p>`;
-    const start = Date.parse(`${pts[0].date}T00:00:00Z`), end = Math.max(Date.parse(`${today}T23:59:59Z`), start + 864e5);
-    const maxY = Math.max(1, ...pts.map(p => p.cybercab + p.model_y));
-    // A snapshot's step starts at the beginning of its day.
-    const x = d => padL + ((Date.parse(`${d}T00:00:00Z`) - start) / (end - start)) * (w - padL - padR);
-    const y = v => padT + (h - padT - padB) * (1 - v / maxY);
-    const xEnd = w - padR, base = y(0);
-    // Step paths: the value holds until the next snapshot, then steps.
-    const step = key => { let d = `M ${x(pts[0].date)} ${y(key(pts[0]))}`; for (let i = 1; i < pts.length; i++) d += ` L ${x(pts[i].date)} ${y(key(pts[i - 1]))} L ${x(pts[i].date)} ${y(key(pts[i]))}`; return d + ` L ${xEnd} ${y(key(pts[pts.length - 1]))}`; };
-    const area = (topKey, bottomKey) => {
-      const top = step(topKey);
-      let back = `L ${xEnd} ${y(bottomKey(pts[pts.length - 1]))}`;
-      for (let i = pts.length - 1; i >= 1; i--) back += ` L ${x(pts[i].date)} ${y(bottomKey(pts[i]))} L ${x(pts[i].date)} ${y(bottomKey(pts[i - 1]))}`;
-      return `${top} ${back} L ${x(pts[0].date)} ${y(bottomKey(pts[0]))} Z`;
-    };
-    const cyb = p => p.cybercab, tot = p => p.cybercab + p.model_y, zero = () => 0;
-    const ticks = [0, Math.round(maxY / 2), maxY];
-    const dots = pts.filter(p => !p.held).map(p => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(tot(p)).toFixed(1)}" r="2.5" fill="${RED}"><title>${esc(longDate(p.date))}: ${int(p.cybercab + p.model_y)} (${int(p.cybercab)} Cybercab, ${int(p.model_y)} Model Y)</title></circle>`).join('');
-    const label = (tx, ty, t, a = 'end') => `<text x="${tx}" y="${ty}" text-anchor="${a}" font-size="10" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${esc(t)}</text>`;
-    return `<svg viewBox="0 0 ${w} ${h}" class="w-full h-auto block" role="img" aria-label="${esc(`Registered Tesla automated vehicles in Texas over time: ${int(tot(pts[pts.length - 1]))} on ${longDate(pts[pts.length - 1].date)}`)}">
-      ${ticks.map(t => `<line x1="${padL}" x2="${xEnd}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.07)" ${t ? 'stroke-dasharray="2 4"' : ''}/>${label(padL - 6, y(t) + 3, int(t))}`).join('')}
-      <path d="${area(tot, cyb)}" fill="${RED}" fill-opacity="0.28"/>
-      <path d="${area(cyb, zero)}" fill="${GOLD}" fill-opacity="0.32"/>
-      <path d="${step(tot)}" fill="none" stroke="${RED}" stroke-width="1.75"/>
-      <path d="${step(cyb)}" fill="none" stroke="${GOLD}" stroke-width="1.75"/>
-      ${dots}
-      ${label(padL, h - 6, shortDate(pts[0].date), 'start')}${label(xEnd, h - 6, 'Today')}
+    return pts;
+  }
+  // A round step for the y axis (0, 250, 500, 750 for a fleet of ~700).
+  function niceMax(v) {
+    const raw = Math.max(4, v) / 3, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(f => f * mag).find(s => s >= raw);
+    return { step, max: step * Math.ceil(v / step || 1) };
+  }
+
+  // Drawn at the box's real width (so the labels stay readable on phones).
+  function chart(series, boxW, trackingSince) {
+    const pts = windowed(series);
+    if (!pts.length) return { svg: `<p class="text-xs text-slate-500 py-8 text-center">No snapshots in this window.</p>` };
+    const w = Math.max(280, Math.round(boxW || 640)), narrow = w < 480;
+    const padL = 34, padR = narrow ? 64 : 92, padT = 14, mainH = narrow ? 168 : 206, gap = 16, barsH = narrow ? 34 : 42, axisH = 20;
+    const h = padT + mainH + gap + barsH + axisH;
+    const today = isoDay(Date.now());
+    const start = Date.parse(`${pts[0].date}T00:00:00Z`), end = Math.max(Date.parse(`${today}T23:59:59Z`), start + DAY);
+    const plotW = w - padL - padR;
+    const x = d => padL + ((Date.parse(`${d}T00:00:00Z`) - start) / (end - start)) * plotW;
+    const xEnd = padL + plotW;
+    const { step: yStep, max: maxY } = niceMax(Math.max(...pts.map(p => p.total)));
+    const y = v => padT + mainH * (1 - v / maxY);
+    const base = y(0);
+    // Step lines: a count holds until the next snapshot changes it.
+    const stepPath = key => { let d = `M ${x(pts[0].date).toFixed(1)} ${y(pts[0][key]).toFixed(1)}`; for (let i = 1; i < pts.length; i++) d += ` H ${x(pts[i].date).toFixed(1)} V ${y(pts[i][key]).toFixed(1)}`; return d + ` H ${xEnd.toFixed(1)}`; };
+    const fillPath = key => `${stepPath(key)} V ${base.toFixed(1)} H ${x(pts[0].date).toFixed(1)} Z`;
+    const label = (tx, ty, t, a = 'end', fill = 'rgb(var(--n-500))', weight = 400) => `<text x="${tx.toFixed ? tx.toFixed(1) : tx}" y="${ty.toFixed ? ty.toFixed(1) : ty}" text-anchor="${a}" font-size="10" font-weight="${weight}" style="fill:${fill};font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${esc(t)}</text>`;
+    // Grid.
+    let grid = '';
+    for (let v = 0; v <= maxY; v += yStep) grid += `<line x1="${padL}" x2="${xEnd.toFixed(1)}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:rgb(var(--ink) / ${v ? 0.06 : 0.14})"/>${label(padL - 6, y(v) + 3, int(v))}`;
+    // Month ticks (or day ticks for a short window).
+    let ticks = '';
+    const spanDays = (end - start) / DAY;
+    if (spanDays > 45) {
+      const s = new Date(start); let m = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 1, 1));
+      while (m.getTime() < end) { const tx = x(isoDay(m.getTime())); if (tx > padL + 14 && tx < xEnd - 34) ticks += `<line x1="${tx.toFixed(1)}" x2="${tx.toFixed(1)}" y1="${padT}" y2="${h - axisH}" style="stroke:rgb(var(--ink) / 0.04)"/>${label(tx, h - 6, m.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }), 'middle')}`; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1)); }
+    } else {
+      ticks += label(padL, h - 6, shortDate(pts[0].date), 'start');
+    }
+    ticks += label(xEnd, h - 6, 'Today');
+    // The imported stretch: hatched, with the start of our own polling marked.
+    let imported = '';
+    const firstOwn = pts.find(p => !p.approx);
+    if (pts.some(p => p.approx)) {
+      const x1 = firstOwn ? x(firstOwn.date) : xEnd;
+      imported = `<rect x="${padL}" y="${padT}" width="${Math.max(0, x1 - padL).toFixed(1)}" height="${mainH}" fill="url(#dmvHatch)"/>`;
+      if (firstOwn) imported += `<line x1="${x1.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${padT - 4}" y2="${(base).toFixed(1)}" stroke="${GOLD}" stroke-opacity="0.55" stroke-dasharray="3 3"/>`;
+      if (!narrow && x1 - padL > 150) imported += label(padL + 8, padT + 12, 'Approx. history · Robotaxi Tracker', 'start', 'rgb(var(--n-500))');
+    }
+    if (firstOwn && x(firstOwn.date) < xEnd - 4) { const mx = x(firstOwn.date), right = mx + 100 < xEnd; imported += label(right ? mx + 5 : mx - 5, padT + 4, narrow ? 'TxDMV daily' : 'Daily TxDMV polls', right ? 'start' : 'end', GOLD, 600); }
+    // Daily additions, as bars under the lines (Model Y below, Cybercab on top).
+    const adds = [];
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].held) continue;
+      const c = Math.max(0, pts[i].cybercab - pts[i - 1].cybercab), m = Math.max(0, pts[i].model_y - pts[i - 1].model_y);
+      if (c + m) adds.push({ date: pts[i].date, c, m });
+    }
+    const barsTop = padT + mainH + gap, maxAdd = Math.max(1, ...adds.map(a => a.c + a.m));
+    const bw = Math.max(2, Math.min(10, (plotW / Math.max(1, spanDays)) * 0.7));
+    const bh = v => (v / maxAdd) * barsH;
+    const bars = adds.map(a => {
+      const bx = x(a.date) - bw / 2, hm = bh(a.m), hc = bh(a.c);
+      return `<rect x="${bx.toFixed(1)}" y="${(barsTop + barsH - hm).toFixed(1)}" width="${bw.toFixed(1)}" height="${hm.toFixed(1)}" rx="1" fill="${RED}" fill-opacity="0.85"/>`
+        + (hc ? `<rect x="${bx.toFixed(1)}" y="${(barsTop + barsH - hm - hc).toFixed(1)}" width="${bw.toFixed(1)}" height="${hc.toFixed(1)}" rx="1" fill="${GOLD}" fill-opacity="0.9"/>` : '');
+    }).join('');
+    const barsAxis = `<line x1="${padL}" x2="${xEnd.toFixed(1)}" y1="${(barsTop + barsH).toFixed(1)}" y2="${(barsTop + barsH).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.14)"/>${label(padL - 6, barsTop + 8, `+${int(maxAdd)}`)}${label(xEnd + 8, barsTop + barsH - 2, 'new / day', 'start')}`;
+    // End labels, nudged apart so they never overlap.
+    const last = pts[pts.length - 1];
+    const ends = [{ v: last.total, t: `${int(last.total)} total`, c: 'rgb(var(--n-300))' }, { v: last.model_y, t: `${int(last.model_y)} Model Y`, c: RED }, { v: last.cybercab, t: `${int(last.cybercab)} Cybercab`, c: GOLD }]
+      .map(e => ({ ...e, y: y(e.v) + 3.5 })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
+    const endLabels = ends.map(e => label(xEnd + 6, e.y, narrow ? int(e.v) : e.t, 'start', e.c, 600)).join('');
+    const svg = `<svg viewBox="0 0 ${w} ${h}" class="w-full h-auto block select-none" role="img" aria-label="${esc(`Registered Tesla automated vehicles in Texas: ${int(last.total)} (${int(last.cybercab)} Cybercab, ${int(last.model_y)} Model Y) on ${longDate(last.date)}`)}">
+      <defs>
+        <pattern id="dmvHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:rgb(var(--ink) / 0.05)" stroke-width="2"/></pattern>
+        <linearGradient id="dmvRed" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${RED}" stop-opacity="0.30"/><stop offset="1" stop-color="${RED}" stop-opacity="0.02"/></linearGradient>
+        <linearGradient id="dmvGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GOLD}" stop-opacity="0.38"/><stop offset="1" stop-color="${GOLD}" stop-opacity="0.04"/></linearGradient>
+      </defs>
+      ${grid}${ticks}${imported}
+      <path d="${fillPath('model_y')}" fill="url(#dmvRed)"/>
+      <path d="${fillPath('cybercab')}" fill="url(#dmvGold)"/>
+      <path d="${stepPath('total')}" fill="none" style="stroke:rgb(var(--n-300))" stroke-opacity="0.7" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"/>
+      <path d="${stepPath('model_y')}" fill="none" stroke="${RED}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="${stepPath('cybercab')}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${xEnd.toFixed(1)}" cy="${y(last.model_y).toFixed(1)}" r="3" fill="${RED}"/><circle cx="${xEnd.toFixed(1)}" cy="${y(last.cybercab).toFixed(1)}" r="3" fill="${GOLD}"/>
+      ${endLabels}${bars}${barsAxis}
+      <line data-dmv-cross x1="0" x2="0" y1="${padT}" y2="${barsTop + barsH}" style="stroke:rgb(var(--ink) / 0.35);display:none"/>
     </svg>`;
+    // For the hover readout: the count that held on a given day.
+    const geo = { w, padL, xEnd, start, end, pts };
+    return { svg, geo };
+  }
+
+  function attachHover(box, geo) {
+    if (!geo) return;
+    const svg = box.querySelector('svg'), cross = box.querySelector('[data-dmv-cross]'), tip = box.querySelector('[data-dmv-tip]');
+    if (!svg || !cross || !tip) return;
+    const hide = () => { cross.style.display = 'none'; tip.classList.add('hidden'); };
+    svg.addEventListener('pointerleave', hide);
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect(), vx = ((e.clientX - r.left) / r.width) * geo.w;
+      if (vx < geo.padL || vx > geo.xEnd) return hide();
+      const day = isoDay(geo.start + ((vx - geo.padL) / (geo.xEnd - geo.padL)) * (geo.end - geo.start));
+      let p = null; for (const q of geo.pts) { if (q.date <= day) p = q; else break; }
+      if (!p) return hide();
+      cross.setAttribute('x1', vx.toFixed(1)); cross.setAttribute('x2', vx.toFixed(1)); cross.style.display = '';
+      tip.innerHTML = `<div class="font-semibold text-slate-100">${esc(longDate(day))}${p.approx ? ' <span class="font-normal text-slate-500">· approx.</span>' : ''}</div>
+        <div class="flex justify-between gap-4"><span style="color:${GOLD}">Cybercab</span><span class="stat-value text-white">${int(p.cybercab)}</span></div>
+        <div class="flex justify-between gap-4"><span style="color:${RED}">Model Y</span><span class="stat-value text-white">${int(p.model_y)}</span></div>
+        <div class="flex justify-between gap-4 border-t border-white/[0.08] mt-1 pt-1"><span class="text-slate-400">Total</span><span class="stat-value text-white">${int(p.total)}</span></div>`;
+      tip.classList.remove('hidden');
+      const px = (vx / geo.w) * r.width, tw = tip.offsetWidth;
+      tip.style.left = `${Math.min(Math.max(0, px + 12 + tw > r.width ? px - tw - 12 : px + 12), r.width - tw)}px`;
+    });
+  }
+
+  function draw(el) {
+    const box = el.querySelector('[data-dmv-chart]');
+    if (!box || !box.clientWidth || !data || !data.snapshot) return;
+    const { svg, geo } = chart(data.series, box.clientWidth, data.tracking_since);
+    box.innerHTML = svg + `<div data-dmv-tip class="hidden pointer-events-none absolute top-2 z-10 min-w-[150px] rounded-lg border border-white/[0.1] bg-[rgb(var(--surface))]/95 px-3 py-2 text-[11px] shadow-xl backdrop-blur"></div>`;
+    attachHover(box, geo);
   }
 
   function render() {
     els.forEach(el => {
       const d = data;
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-lg">Texas DMV registrations · Tesla</h2>
+          <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">Texas DMV registrations · Tesla</h2>
           <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
           <div class="flex items-center gap-3 max-sm:w-full max-sm:justify-between">
             <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
@@ -86,40 +184,56 @@
         el.innerHTML = head + `<p class="mt-4 text-sm text-slate-400">The first daily TxDMV snapshot hasn't been taken yet. It runs each morning (Central).</p>`;
         return;
       }
-      const s = d.snapshot, n = d.new || {}, m = d.matched || {};
-      const windowStart = new Date(Date.parse(`${s.date}T12:00:00Z`) - 30 * 864e5).toISOString().slice(0, 10);
-      const partial = d.tracking_since > windowStart;   // fewer than 30 days of history
+      const s = d.snapshot, n = d.new || {}, m = d.matched || {}, hist = d.history_source;
+      const windowStart = new Date(Date.parse(`${s.date}T12:00:00Z`) - 30 * DAY).toISOString().slice(0, 10);
+      const partial = !hist && d.tracking_since > windowStart;   // under 30 days of history and nothing imported
       const stat = (label, value, sub, color = 'text-white') => `<div class="min-w-0"><div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">${esc(label)}</div>
         <div class="stat-value font-semibold text-3xl leading-tight mt-1 ${color} max-sm:text-2xl">${value}</div><div class="text-[11px] text-slate-500 mt-0.5 max-sm:text-[10px]">${sub}</div></div>`;
-      const row = (color, name, count, newN) => `<div class="flex items-center gap-2.5 text-sm py-1.5 border-t border-white/[0.06] max-sm:text-xs">
-        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></span><span class="font-semibold text-slate-100">${esc(name)}</span>
-        <span class="stat-value text-white ml-auto">${int(count)}</span><span class="stat-value text-slate-400 w-10 text-right">${pct(count, s.total)}</span>
-        <span class="stat-value text-emerald-400 w-28 text-right max-sm:w-24">+${int(newN)} ${partial ? 'since tracking' : 'in 30 days'}</span></div>`;
+      const card = (color, name, img, count, newN) => `<div class="relative overflow-hidden rounded-xl border px-4 py-3.5 min-h-[112px] max-sm:px-3 max-sm:py-3 max-sm:min-h-[96px]" style="border-color:${color}33;background:linear-gradient(120deg, ${color}14, transparent 70%)">
+          <img src="${img}" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none absolute right-[-6%] bottom-[-4%] w-[58%] max-w-[230px] opacity-90 max-sm:w-[54%]">
+          <div class="relative max-w-[52%]">
+            <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide max-sm:text-[10px]" style="color:${color}"><span class="w-2 h-2 rounded-full" style="background:${color}"></span>${esc(name)}</div>
+            <div class="stat-value font-semibold text-3xl text-white leading-tight mt-1 max-sm:text-2xl">${int(count)}</div>
+            <div class="text-[11px] text-slate-400 max-sm:text-[10px]">${pct(count, s.total)}% of the fleet</div>
+            <div class="mt-1.5 h-1 rounded-full bg-white/[0.08] overflow-hidden"><div class="h-full rounded-full" style="width:${pct(count, s.total)}%;background:${color}"></div></div>
+            <div class="stat-value text-[11px] text-emerald-400 mt-1.5 max-sm:text-[10px]">+${int(newN)} ${partial ? 'since tracking' : 'in 30 days'}${n.approx ? ' <span class="text-slate-500">(approx.)</span>' : ''}</div>
+          </div>
+        </div>`;
       const failed = d.last_attempt && !d.last_attempt.ok && Date.parse(d.last_attempt.at) > Date.parse(s.polled_at);
       el.innerHTML = head + `
-        <div class="mt-4 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-3 max-sm:gap-3">
-          <div class="min-w-0">
-            <div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-4 max-sm:gap-2">
-              ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
-              ${stat(partial ? 'Since tracking began' : 'Last 30 days', `+${int(n.d30)}`, partial ? `Tracking since ${esc(shortDate(d.tracking_since))}` : `+${int(n.d7)} in the last 7 days`, 'text-emerald-400')}
-              ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}
-            </div>
-            <div class="mt-4 max-sm:mt-3">${row(GOLD, 'Cybercab', s.cybercab, n.cybercab_30d)}${row(RED, 'Model Y', s.model_y, n.model_y_30d)}</div>
+        <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] max-sm:mt-3 max-sm:gap-4">
+          <div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-5 lg:content-start max-sm:gap-2">
+            ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
+            ${stat(partial ? 'Since tracking began' : 'Last 30 days', `+${int(n.d30)}`, partial ? `Tracking since ${esc(shortDate(d.tracking_since))}` : `+${int(n.d7)} in the last 7 days${n.approx ? ' · approx.' : ''}`, 'text-emerald-400')}
+            ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}
           </div>
           <div class="min-w-0">
-            <div class="flex items-center gap-4 mb-1 text-[11px] text-slate-400"><span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:${GOLD}"></span>Cybercab</span><span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:${RED}"></span>Model Y</span><span class="ml-auto max-sm:hidden">Cumulative, one point per daily snapshot</span></div>
-            <div data-dmv-chart></div>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px] text-slate-400">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded" style="background:${GOLD}"></span>Cybercab</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded" style="background:${RED}"></span>Model Y</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 border-t border-dotted border-slate-300"></span>Total</span>
+              <span class="ml-auto max-sm:hidden">Registered by date · bars: new per day</span>
+            </div>
+            <div data-dmv-chart class="relative"></div>
           </div>
         </div>
-        <p class="mt-4 text-[11px] text-slate-500 leading-relaxed max-sm:mt-3 max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT. TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>`;
-      const box = el.querySelector('[data-dmv-chart]');
-      if (box) box.innerHTML = chart(d.series, box.clientWidth);
+        <div class="mt-5 grid grid-cols-2 gap-3 max-sm:grid-cols-1 max-sm:mt-4 max-sm:gap-2">
+          ${card(GOLD, 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
+          ${card(RED, 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d)}
+        </div>
+        <p class="mt-4 text-[11px] text-slate-500 leading-relaxed max-sm:mt-3 max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
+          ? ` Before ${esc(longDate(hist.until))}, counts are approximate, read from <a href="${esc(hist.url)}" target="_blank" rel="noopener" class="underline hover:text-slate-300">${esc(hist.name)}</a>'s public chart; every day since comes straight from TxDMV.`
+          : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>`;
+      draw(el);
     });
   }
   // Redraw at the new width when the panel is resized.
   if (window.ResizeObserver) {
-    let queued = false;
-    const ro = new ResizeObserver(() => { if (queued || !data || !data.snapshot) return; queued = true; requestAnimationFrame(() => { queued = false; els.forEach(el => { const box = el.querySelector('[data-dmv-chart]'); if (box && box.clientWidth) box.innerHTML = chart(data.series, box.clientWidth); }); }); });
+    let queued = false, lastW = new WeakMap();
+    const ro = new ResizeObserver(() => {
+      if (queued || !data || !data.snapshot) return; queued = true;
+      requestAnimationFrame(() => { queued = false; els.forEach(el => { const box = el.querySelector('[data-dmv-chart]'); if (box && box.clientWidth && lastW.get(el) !== box.clientWidth) { lastW.set(el, box.clientWidth); draw(el); } }); });
+    });
     els.forEach(el => ro.observe(el));
   }
 
