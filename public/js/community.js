@@ -112,7 +112,8 @@
     if (Array.isArray(data.unit) && data.unit.length === 2) unit = data.unit;
     renderTotals(data.totals);
     $('boardTitle').textContent = String(data.label || '').toUpperCase();
-    if (data.help) $('boardHelp').textContent = data.help;
+    $('boardHelp').textContent = data.help || '';
+    $('boardHelp').classList.toggle('hidden', !data.help);
     renderTabs(data.boards);
     const [emptyTitle, emptyText] = EMPTY[activeBoard === 'discovered' ? 'discovered' : 'other'];
     $('boardEmptyTitle').textContent = emptyTitle;
