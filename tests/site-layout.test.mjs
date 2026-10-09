@@ -74,11 +74,14 @@ console.log('4. Old image URLs still work (301 to /images/)');
     check(`/${name}.png -> 301 https://cybercabhunter.com/images/${name}.png`, r.status === 301 && r.headers.get('Location') === `https://cybercabhunter.com/images/${name}.png` && fs.existsSync(`${PUBLIC}images/${name}.png`));
   }
   check('HEAD is redirected too', (await get('/Cybercab2.png', 'HEAD')).status === 301);
-  // Cybercab.png and RedModelY.png were removed with the Fleet ETA page: no redirect to a missing file.
-  for (const name of ['Cybercab', 'RedModelY']) {
-    const r = await get(`/${name}.png`);
-    check(`/${name}.png is no longer redirected (the image was removed)`, r.status !== 301 && !fs.existsSync(`${PUBLIC}images/${name}.png`));
+  // Cybercab.png was removed with the Fleet ETA page: no redirect to a missing file.
+  {
+    const r = await get('/Cybercab.png');
+    check('/Cybercab.png is no longer redirected (the image was removed)', r.status !== 301 && !fs.existsSync(`${PUBLIC}images/Cybercab.png`));
   }
+  // RedModelY.png is back, under /images/ only (the DMV panel's Model Y picture
+  // is made from it); its old root URL stays un-redirected.
+  check('/RedModelY.png at the root is not redirected', (await get('/RedModelY.png')).status !== 301 && fs.existsSync(`${PUBLIC}images/RedModelY.png`));
   seen.length = 0;
   const other = await get('/images/Cybercab2.png');
   check('the new path is served by the static assets, not redirected', other.status === 200 && seen.join() === '/images/Cybercab2.png');

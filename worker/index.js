@@ -555,8 +555,8 @@ export default {
     // The site's images moved from the web root into /images/. The old root
     // URLs (/Cybercab2.png ...) are permanent redirects to the new place, so
     // an external link, a cached page or a link preview that still points at
-    // them keeps working. Only these known files (Cybercab.png and
-    // RedModelY.png were removed with the Fleet ETA page): any other path
+    // them keeps working. Only these known files (Cybercab.png was removed
+    // with the Fleet ETA page; RedModelY.png lives only at /images/): any other path
     // falls through to the static site unchanged.
     const legacyImage = url.pathname.match(/^\/(Cybercab2|CybercabFlipped|HeroImage)\.png$/);
     if (legacyImage && (request.method === 'GET' || request.method === 'HEAD')) {
