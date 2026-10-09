@@ -197,98 +197,121 @@
   </div>
 </section>
 
-<section class="pt-10 pb-16 max-sm:pt-6 max-sm:pb-10">
+<!-- ===== Fleet economics: the Fleet ETA look (a gold model card per part,
+     React Bits glow on the three results, icon labels). The only picture is
+     the Cybercab (images/dmv-cybercab.webp). Every id js/main.js / the inline
+     calculator reads or writes is kept. ===== -->
+<section class="pt-10 pb-16 max-sm:pt-6 max-sm:pb-10" aria-labelledby="roiHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-6 max-sm:mb-4">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Inputs · Results · Breakeven</p>
+      <h2 id="roiHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Fleet economics</h2>
+    </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5">
-      <!-- Inputs -->
+      <!-- Inputs: one gold card with the Cybercab -->
       <div class="lg:col-span-1">
-      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3 max-sm:mb-2">Inputs</h2>
-      <div class="glass rounded-2xl p-7 space-y-7 h-fit max-sm:p-4 max-sm:space-y-3.5">
-        <!-- Starting values: the fleet size is the live public registry count
-             (GET /api/registry/stats); electricity and daily miles are examples. -->
-        <p id="roiStartNote" class="text-xs text-slate-400 leading-relaxed -mb-2 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-0">Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them.</p>
-        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07] max-sm:pb-3">
-          <label class="text-[13px] font-medium text-slate-300">Tesla Network Cut</label>
-          <span class="stat-value font-semibold text-white text-lg max-sm:text-base"><span id="networkCutOut">0</span>%</span>
-        </div>
-        <div class="flex items-center justify-between pb-4 border-b border-white/[0.07] max-sm:pb-3">
-          <label class="text-[13px] font-medium text-slate-300">Cost per Unit</label>
-          <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="costPerCabOut">0</span></span>
-        </div>
-        <div class="pb-4 border-b border-white/[0.07] max-sm:pb-3">
-          <div class="flex items-center justify-between">
+        <div class="dmv-card glass relative rounded-2xl border p-6 h-fit max-sm:p-4" style="--c:212 175 55;border-color:#D4AF3759;background:linear-gradient(135deg, #D4AF371c, transparent 62%)">
+          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-12%] top-2 w-[62%] max-w-[230px] opacity-95 max-sm:w-[50%] max-sm:top-1"></div>
+          <div class="relative max-w-[55%] min-h-[88px] max-sm:min-h-[72px]">
+            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab fleet</p>
+            <h3 class="font-display font-bold text-xl text-white uppercase tracking-wide mt-1 max-sm:text-lg">Inputs</h3>
+          </div>
+          <p id="roiStartNote" class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:text-[11px] max-sm:leading-snug max-sm:mt-2">Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them.</p>
+          <div class="mt-1 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Network &amp; fare</p>
+            <div class="flex items-center justify-between pb-3 border-b border-white/[0.07]">
+            <label class="text-[13px] font-medium text-slate-300">Tesla Network Cut</label>
+            <span class="stat-value font-semibold text-white text-lg max-sm:text-base"><span id="networkCutOut">0</span>%</span>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-white/[0.07]">
+            <label class="text-[13px] font-medium text-slate-300">Cost per Unit</label>
+            <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="costPerCabOut">0</span></span>
+            </div>
+            <div class="pt-3">
+            <div class="flex items-center justify-between">
             <label class="text-[13px] font-medium text-slate-300">Passenger Fare</label>
             <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="baseFareOut">0.00</span> + $<span id="perMileFareOut">0.00</span>/mi</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:mt-1">Base fare per trip, plus per-mile rate (~5 mi avg trip)</div>
+            </div>
           </div>
-          <div class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:mt-1">Base fare per trip, plus per-mile rate (~5 mi avg trip)</div>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17M8 12l1-3h6l1 3M7 20v-3M17 20v-3"/></svg>Fleet</p>
+            <div>
+            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Fleet Size</label>
             <input type="number" id="fleetSizeLabel" min="0" max="100" step="1" value="0" class="stat-value font-semibold text-white text-lg bg-transparent w-16 text-right outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]">
+            </div>
+            <input type="range" id="fleetSize" data-elastic min="0" max="100" step="1" value="0">
+            </div>
           </div>
-          <input type="range" id="fleetSize" data-elastic min="0" max="100" step="1" value="0">
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>Energy</p>
+            <div>
+            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Electricity Rate</label>
             <div class="flex items-center gap-1">
-              <span class="text-slate-400 text-sm font-semibold">$</span>
-              <input type="number" id="electricityLabel" min="0" max="0.40" step="0.01" value="0.12" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
-              <span class="text-slate-400 text-sm font-semibold">/kWh</span>
+            <span class="text-slate-400 text-sm font-semibold">$</span>
+            <input type="number" id="electricityLabel" min="0" max="0.40" step="0.01" value="0.12" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
+            <span class="text-slate-400 text-sm font-semibold">/kWh</span>
             </div>
-          </div>
-          <input type="range" id="electricityRate" data-elastic min="0" max="0.40" step="0.01" value="0.12">
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-2 max-sm:mb-0">
+            </div>
+            <input type="range" id="electricityRate" data-elastic min="0" max="0.40" step="0.01" value="0.12">
+            </div>
+            <div class="h-4"></div>
+            <div>
+            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
             <label class="text-[13px] font-medium text-slate-300">Daily Miles / Cab</label>
             <div class="flex items-center gap-1">
-              <input type="number" id="milesLabel" min="0" max="400" step="1" value="150" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
-              <span class="text-slate-400 text-sm font-semibold">mi</span>
+            <input type="number" id="milesLabel" min="0" max="400" step="1" value="150" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
+            <span class="text-slate-400 text-sm font-semibold">mi</span>
+            </div>
+            </div>
+            <input type="range" id="dailyMiles" data-elastic min="0" max="400" step="1" value="150">
+            </div>
+            <div class="h-3"></div>
+            <div class="flex items-center justify-between pt-1">
+            <label class="text-[13px] font-medium text-slate-300">Inductive Loss Factor <span id="lossLabel" class="text-slate-300">(8%)</span></label>
+            <div id="lossToggle" class="toggle on"><div class="toggle-dot"></div></div>
             </div>
           </div>
-          <input type="range" id="dailyMiles" data-elastic min="0" max="400" step="1" value="150">
-        </div>
-        <div class="flex items-center justify-between pt-2 max-sm:pt-0">
-          <label class="text-[13px] font-medium text-slate-300">Inductive Loss Factor <span id="lossLabel" class="text-slate-300">(8%)</span></label>
-          <div id="lossToggle" class="toggle on"><div class="toggle-dot"></div></div>
-        </div>
-        <button id="exportBtn" class="btn-magnetic w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
+          </div>
+          <button id="exportBtn" class="btn-magnetic mt-5 w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/> <path d="M7 11l5 5l5 -5"/> <path d="M12 4l0 12"/></svg>
           Export
-        </button>
-      </div>
+          </button>
+        </div>
       </div>
 
-      <!-- Outputs -->
-      <div class="lg:col-span-2">
-      <h2 data-split class="text-xs font-semibold text-slate-400 uppercase mb-3 max-sm:mb-2">Projected Results</h2>
-      <div class="space-y-6 max-sm:space-y-4">
+      <!-- Results -->
+      <div class="lg:col-span-2 space-y-6 max-sm:space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-sm:grid-cols-3 max-sm:gap-2">
-          <div data-glow class="glass rounded-2xl p-6 min-w-0 max-sm:px-2.5 max-sm:py-3">
-            <div class="text-xs text-slate-400 font-medium mb-2 max-sm:text-[10px] max-sm:leading-tight max-sm:mb-1.5">Monthly Energy Overhead</div>
-            <div class="stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="energyOut">0</span></div>
+          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:212 175 55;border-color:#D4AF3740;background:linear-gradient(135deg, #D4AF3712, transparent 65%)">
+            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>Monthly energy overhead</div>
+            <div class="dmv-card-num stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="energyOut">0</span></div>
           </div>
-          <div data-glow class="glass rounded-2xl p-6 min-w-0 max-sm:px-2.5 max-sm:py-3">
-            <div class="text-xs text-slate-400 font-medium mb-2 max-sm:text-[10px] max-sm:leading-tight max-sm:mb-1.5">Gross Fleet Revenue</div>
-            <div class="stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="revenueOut">0</span></div>
+          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:212 175 55;border-color:#D4AF3740;background:linear-gradient(135deg, #D4AF3712, transparent 65%)">
+            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>Gross fleet revenue</div>
+            <div class="dmv-card-num stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="revenueOut">0</span></div>
           </div>
-          <div data-glow class="glass rounded-2xl p-6 min-w-0 max-sm:px-2.5 max-sm:py-3">
-            <div class="text-xs text-slate-400 font-medium mb-2 max-sm:text-[10px] max-sm:leading-tight max-sm:mb-1.5">Net Operating Income</div>
-            <div class="stat-value font-semibold text-3xl text-gold leading-none max-sm:text-[clamp(12px,3.9vw,16px)] max-sm:leading-normal">$<span id="noiOut">0</span></div>
+          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:212 175 55;border-color:#D4AF3780;background:linear-gradient(135deg, #D4AF3726, transparent 65%)">
+            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6 4 4 6-7M20 8v4M20 8h-4"/></svg>Net operating income</div>
+            <div class="dmv-card-num stat-value font-semibold text-3xl text-gold leading-none max-sm:text-[clamp(12px,3.9vw,16px)] max-sm:leading-normal">$<span id="noiOut">0</span></div>
           </div>
         </div>
 
-        <div class="glass rounded-2xl p-7 max-sm:p-5">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-sm font-medium text-slate-300">Cumulative cash flow to breakeven</div>
-            <span id="breakevenLabel" class="stat-value font-semibold text-gold">— mo</span>
+        <div class="dmv-card glass relative rounded-2xl border p-7 max-sm:p-5" style="--c:212 175 55;border-color:#D4AF3740">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-2">
+            <div>
+              <p class="rhw-label mb-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Breakeven</p>
+              <p class="font-display font-bold text-lg text-white uppercase tracking-wide max-sm:text-base">Cumulative cash flow</p>
+            </div>
+            <span id="breakevenLabel" class="dmv-card-num stat-value font-semibold text-2xl text-gold max-sm:text-xl">— mo</span>
           </div>
           <svg id="cashFlowChart" viewBox="0 0 600 200" class="w-full h-auto mt-2" preserveAspectRatio="none"></svg>
           <div class="text-xs text-slate-500 mt-2 max-sm:text-[11px] max-sm:leading-snug">Projected net cash position from initial fleet capital outlay through recovery.</div>
         </div>
-      </div>
       </div>
     </div>
   </div>
