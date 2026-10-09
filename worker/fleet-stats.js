@@ -74,17 +74,25 @@ function median(sorted) {
 }
 const round2 = n => Math.round(n * 100) / 100;
 
+// THE city ride sample (see FARES above): counted rides on a publicly eligible
+// vehicle in the city, or with no vehicle and the city as their own service
+// area. `FROM … WHERE …` with two binds (the lower-case city name); callers
+// add their own conditions and GROUP BY t.robotaxi_vehicle_id,
+// COALESCE(t.ride_key, t.id) for one row per physical ride.
+export const CITY_RIDES_FROM = `${RIDES_FROM}
+    LEFT JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
+    WHERE ${COUNTED_RIDES_WHERE}
+      AND ((v.id IS NOT NULL AND ${publicVehicleEligibleSql('v')} AND ${inCity('v')})
+           OR (t.robotaxi_vehicle_id IS NULL AND ${inCity('t')}))`;
+export const MILES_SQL = `CASE WHEN lower(COALESCE(t.distance_unit, 'mi')) = 'km' THEN t.distance * ${KM_TO_MI} ELSE t.distance END`;
+
 // The fare model from the city's rides (see FARES above). Pure aside from the query.
 export async function computeFareStats(sql, cityName, nowMs = Date.now()) {
   const city = cityName.toLowerCase();
   const { results } = await sql.prepare(`
     SELECT MAX(t.fare_amount_cents) AS fare_cents,
-           MAX(CASE WHEN lower(COALESCE(t.distance_unit, 'mi')) = 'km' THEN t.distance * ${KM_TO_MI} ELSE t.distance END) AS miles
-    FROM ${RIDES_FROM}
-    LEFT JOIN robotaxi_vehicles v ON v.id = t.robotaxi_vehicle_id
-    WHERE ${COUNTED_RIDES_WHERE}
-      AND ((v.id IS NOT NULL AND ${publicVehicleEligibleSql('v')} AND ${inCity('v')})
-           OR (t.robotaxi_vehicle_id IS NULL AND ${inCity('t')}))
+           MAX(${MILES_SQL}) AS miles
+    FROM ${CITY_RIDES_FROM}
       AND t.fare_amount_cents IS NOT NULL AND t.distance > 0
       AND upper(COALESCE(t.currency, 'USD')) = 'USD'
       AND lower(COALESCE(t.distance_unit, 'mi')) IN ('mi', 'km')

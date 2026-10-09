@@ -42,6 +42,7 @@
 import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './ride-status.js';
 import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
+import { registryCitySql } from './db.js';
 
 const CACHE_SECONDS = 60;               // public profiles
 const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
@@ -68,7 +69,10 @@ const SEARCH_LIMIT = 8;
 // sighting, or making the vehicle private or deleting it, moves or drops the
 // credit on the next read.
 // `?` placeholders: the system account id, twice.
-function discoveryCreditCte() {
+// `vehicleFilter` (optional { sql: ' AND …' on alias v, binds }) narrows the
+// credited vehicles, e.g. to one city (the homepage's Top Spotters); the
+// credit rule itself is unchanged. Its binds follow the two system-id binds.
+function discoveryCreditCte(vehicleFilter = null) {
   return `
     ride_first AS (
       SELECT t.robotaxi_vehicle_id AS vid, t.user_id AS uid, t.created_at AS at,
@@ -93,7 +97,7 @@ function discoveryCreditCte() {
       SELECT c.vid, c.uid, c.at,
              ROW_NUMBER() OVER (PARTITION BY c.vid ORDER BY c.at ASC, c.kind ASC) AS rn
       FROM candidates c JOIN robotaxi_vehicles v ON v.id = c.vid
-      WHERE ${publicVehicleEligibleSql('v')}
+      WHERE ${publicVehicleEligibleSql('v')}${vehicleFilter ? vehicleFilter.sql : ''}
     )`;
 }
 
@@ -215,6 +219,26 @@ export function rankBoard(metrics, board, limit = TOP_N) {
     out.push(publicEntry(r, rank, v));
   });
   return out;
+}
+
+// The homepage's Top Spotters: the Most Vehicles Discovered board (the same
+// credit rule, opted-in riders only, the same tie order and ranking) over the
+// vehicles in one city (db registryCitySql — the Cars page's city rule).
+export async function topDiscoverersInCity(sql, env, cityKey, limit = 5) {
+  const sys = systemUserId(env);
+  const filter = registryCitySql('v', cityKey);
+  const { results } = await sql.prepare(`
+    WITH ${discoveryCreditCte(filter)},
+    disc AS (SELECT uid, COUNT(*) AS n, MAX(at) AS reached_at FROM credit WHERE rn = 1 GROUP BY uid)
+    SELECT u.id AS uid, u.display_name, u.handle, u.avatar_url, d.n AS discovered, d.reached_at
+    FROM disc d JOIN users u ON u.id = d.uid
+    WHERE u.leaderboard_opt_in = 1 AND u.id <> ?
+  `).bind(sys, sys, ...filter.binds, sys).all();
+  const metrics = (results || []).map(r => ({
+    uid: r.uid, display_name: r.display_name, handle: r.handle, avatar_url: r.avatar_url,
+    discovered: Number(r.discovered) || 0, reached_at: r.reached_at || null, rides: 0, miles: 0, unique_vehicles: 0, cities: 0
+  }));
+  return rankBoard(metrics, BOARDS.discovered, limit).map(({ rank, count, name, handle, avatar_url, profile }) => ({ rank, count, name, handle, avatar_url, profile }));
 }
 
 // Every credited discoverer, opted in or not: counts only (the "Spotters"

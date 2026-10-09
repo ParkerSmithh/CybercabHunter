@@ -656,13 +656,30 @@ async function getApprovedPhotoSightingHourBuckets(sql, { city = null } = {}) {
   return rows.results || [];
 }
 
-async function countPublicPhotoSightings(sql, { city = null } = {}) {
+// `sinceHours`: only sightings spotted in that trailing window (homepage).
+async function countPublicPhotoSightings(sql, { city = null, sinceHours = null } = {}) {
   const filter = publicSightingCityFilter(city);
+  const since = Number.isInteger(sinceHours) && sinceHours > 0 ? ` AND o.observed_at > datetime('now', '-${sinceHours} hours')` : '';
   const row = await sql.prepare(`
     SELECT COUNT(*) AS n FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
-    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${since}
   `).bind(...filter.binds).first();
   return row ? row.n : 0;
+}
+
+// The most-sighted places (the stored approximate location; the caller makes
+// it public with publicLocation), same public sightings as above.
+async function getPublicPhotoSightingSpots(sql, { city = null, limit = 10 } = {}) {
+  const filter = publicSightingCityFilter(city);
+  const rows = await sql.prepare(`
+    SELECT o.approx_location AS location, COUNT(*) AS n
+    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql} AND trim(COALESCE(o.approx_location, '')) <> ''
+    GROUP BY o.approx_location
+    ORDER BY n DESC, location
+    LIMIT ?
+  `).bind(...filter.binds, limit).all();
+  return rows.results || [];
 }
 
 // The storage key for ONE publicly displayable photo, by its public id —
@@ -1062,6 +1079,21 @@ export const REGISTRY_SORTS = {
 // own city is that one, or, for a vehicle with no city of its own, that have a
 // counted ride there (a car first seen in Dallas is a Dallas car). Austin
 // lists every public vehicle that is not a Dallas car.
+// THE registry city rule (the Cars page, the homepage rows): ' AND …' for the
+// robotaxi_vehicles alias. A vehicle is in a city when its own city is that
+// one, or (with no city of its own) a counted ride was there. Dallas lists
+// Dallas cars; Austin, the only city before Dallas, lists every other public
+// vehicle, exactly the list it always had minus the Dallas cars, so nothing
+// disappears.
+export function registryCitySql(alias, city) {
+  const counted = `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE} AND lower(trim(t.service_area)) = ?`;
+  const inCity = `(lower(trim(COALESCE(${alias}.service_area, ''))) = ?
+      OR (trim(COALESCE(${alias}.service_area, '')) = '' AND EXISTS (SELECT 1 ${counted})))`;
+  const c = String(city).trim().toLowerCase();
+  const other = c === 'austin' ? 'dallas' : c;
+  return { sql: c === 'austin' ? ` AND NOT ${inCity}` : ` AND ${inCity}`, binds: [other, other] };
+}
+
 async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent', city = null } = {}) {
   const order = REGISTRY_SORTS[sort] || REGISTRY_SORTS.recent;
   const counted = extra => `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}${extra || ''}`;
@@ -1079,16 +1111,9 @@ async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', 
     }
   }
   if (city) {
-    // A vehicle is in a city when its own city is that one, or (with no city
-    // of its own) a counted ride was there. Dallas lists Dallas cars; Austin,
-    // the only city before Dallas, lists every other public vehicle, exactly
-    // the list it always had minus the Dallas cars, so nothing disappears.
-    const inCity = `(lower(trim(COALESCE(v.service_area, ''))) = ?
-      OR (trim(COALESCE(v.service_area, '')) = '' AND EXISTS (SELECT 1 ${counted(` AND lower(trim(t.service_area)) = ?`)})))`;
-    const c = String(city).trim().toLowerCase();
-    search += c === 'austin' ? ` AND NOT ${inCity}` : ` AND ${inCity}`;
-    const other = c === 'austin' ? 'dallas' : c;
-    searchBinds.push(other, other);
+    const rule = registryCitySql('v', city);
+    search += rule.sql;
+    searchBinds.push(...rule.binds);
   }
   // last_data_at (when this vehicle's newest counted receipt data arrived) is
   // used only for ordering; the API does not return it.
@@ -1758,7 +1783,7 @@ export const db = {
   reviewVehicleSighting,
   getPublicPhotoSightings,
   getApprovedPhotoSightingHourBuckets,
-  countPublicPhotoSightings,
+  countPublicPhotoSightings, getPublicPhotoSightingSpots,
   getPublicSightingPhoto,
   listExpiredSightingPhotos,
   clearSightingPhotos,

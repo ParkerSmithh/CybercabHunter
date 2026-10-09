@@ -18,6 +18,7 @@ import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiListReviewComments, apiCreateReviewComment, apiDeleteReviewComment, apiGetReviewPhoto } from './reviews.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
+import { apiHomepageStats } from './homepage-stats.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -364,6 +365,10 @@ export default {
     // Live Fleet & Fares stats (worker/fleet-stats.js): public, edge-cached.
     if (url.pathname === '/api/fleet-stats' && request.method === 'GET') {
       return withCors(await apiFleetStats(request, env, ctx), request);
+    }
+    // The homepage's city rows and hero numbers (worker/homepage-stats.js): public, edge-cached.
+    if (url.pathname === '/api/homepage-stats' && request.method === 'GET') {
+      return withCors(await apiHomepageStats(request, env, ctx), request);
     }
 
     // Community page (worker/community.js): the leaderboard and public rider

@@ -169,18 +169,7 @@ export async function apiListPublicSightings(request, env, ctx) {
     seen,
     order,
     ...(wantStats ? { stats: buildSightingStats(buckets, statsZone) } : {}),
-    sightings: page.map(r => ({
-      id: r.public_id,
-      image_url: `/api/sightings/${r.public_id}/photo`,
-      city: displayCity(r.service_area),
-      location: publicLocation(r.approx_location),   // street/place + city, never a house number
-      plate: r.public_plate || null,                   // only a publicly eligible registry vehicle's plate
-      cybercab: !!r.public_cybercab,                   // that vehicle was approved as a Cybercab (the registry's Cybercab label)
-      spotted_at: toIso(r.observed_at),
-      // The area's local time zone, so the time is shown as it was there
-      // (e.g. Austin in US Central); null when the area is unknown.
-      time_zone: timeZoneFor({ serviceArea: r.service_area, location: r.approx_location })
-    })),
+    sightings: page.map(publicSightingJson),
     next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1], order) : null
   }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });
   if (cache) {
@@ -188,6 +177,22 @@ export async function apiListPublicSightings(request, env, ctx) {
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
   }
   return response;
+}
+
+// One public sighting as every public page receives it (db.getPublicPhotoSightings row).
+export function publicSightingJson(r) {
+  return {
+    id: r.public_id,
+    image_url: `/api/sightings/${r.public_id}/photo`,
+    city: displayCity(r.service_area),
+    location: publicLocation(r.approx_location),   // street/place + city, never a house number
+    plate: r.public_plate || null,                   // only a publicly eligible registry vehicle's plate
+    cybercab: !!r.public_cybercab,                   // that vehicle was approved as a Cybercab (the registry's Cybercab label)
+    spotted_at: toIso(r.observed_at),
+    // The area's local time zone, so the time is shown as it was there
+    // (e.g. Austin in US Central); null when the area is unknown.
+    time_zone: timeZoneFor({ serviceArea: r.service_area, location: r.approx_location })
+  };
 }
 
 const notFound = () => Response.json({ success: false, error: 'not_found' }, { status: 404 });

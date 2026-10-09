@@ -11,14 +11,28 @@
 // deliberately a little wider than Tesla's service-zone polygon.
 // To add a city (e.g. Miami, Orlando), add one entry here.
 
+// Published facts about each city's Robotaxi service zone — the same figures
+// the Zones page shows (not database figures: they describe Tesla's geofence
+// and launch): coverage in square miles (Austin: the published geofence;
+// Dallas: Tesla's figure), first day of service, daily hours (America/Chicago,
+// js/calc.js), and one line describing the zone.
+const ZONE_FACTS = {
+  austin: { square_miles: 264, in_service_since: '2025-06-22', hours: { open: '06:00', close: '23:00' },
+    description: 'First Robotaxi market. Launched as an invite pilot, now unsupervised.' },
+  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '06:00', close: '23:00' },
+    description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
+};
+
 export const SERVICE_AREAS = [
   {
     key: 'austin', name: 'Austin', state: 'TX', timeZone: 'America/Chicago',
-    bbox: { minLon: -98.05, minLat: 30.05, maxLon: -97.45, maxLat: 30.60 }
+    bbox: { minLon: -98.05, minLat: 30.05, maxLon: -97.45, maxLat: 30.60 },
+    zone: ZONE_FACTS.austin
   },
   {
     key: 'dallas', name: 'Dallas', state: 'TX', timeZone: 'America/Chicago',
-    bbox: { minLon: -97.20, minLat: 32.55, maxLon: -96.45, maxLat: 33.15 }
+    bbox: { minLon: -97.20, minLat: 32.55, maxLon: -96.45, maxLat: 33.15 },
+    zone: ZONE_FACTS.dallas
   }
 ];
 
