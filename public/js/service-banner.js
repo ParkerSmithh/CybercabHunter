@@ -73,7 +73,9 @@
     }
     shown = s;
     el.dataset.state = s.live ? 'live' : 'parked';
-    el.innerHTML = s.live
+    // The Cybercab at the strip's end: on the road (live) or parked, dimmed.
+    const car = `<span class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/dmv-cybercab.webp" alt="" decoding="async"></span>`;
+    el.innerHTML = car + (s.live
       ? `<span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>
          <span class="font-semibold text-white uppercase tracking-wide">Cybercabs are on the road now</span>
          <span class="sb-line text-gold font-semibold whitespace-nowrap">Service ends in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums">${cd}</span></span>
@@ -81,7 +83,7 @@
       : `<span class="text-sky-300/80">${MOON}</span>
          <span class="font-semibold text-slate-300">The fleet is parked for the night</span>
          <span class="sb-line text-slate-400 whitespace-nowrap">Back on the road at ${clock(H.openMinute)}<span class="sm:hidden"> CT</span> · Back in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums text-sky-200">${cd}</span></span>
-         <span class="sb-meta text-slate-500 max-sm:hidden">All times Austin time (CT)</span>`;
+         <span class="sb-meta text-slate-500 max-sm:hidden">All times Austin time (CT)</span>`);
   }
 
   // Tick on each minute boundary (the countdown changes then), and on return.

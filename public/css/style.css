@@ -596,6 +596,40 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 @media (max-width:639px){ .service-banner .sb-meta{margin-left:0; font-size:12px;} }
 @media (max-width:369px){ .service-banner .sb-all{display:none;} }
 @media (max-width:359px){ .service-banner .sb-line{white-space:normal;} }
+/* The Cybercab (images/dmv-cybercab.webp) at the strip's right end, fading in
+   from the left over a soft gold light, a dashed road streaming under it while
+   the fleet is live; parked = grey and dim, no road. On a phone it sits faintly
+   behind the text instead (the strip stays two lines). */
+.service-banner{position:relative; overflow:hidden;}
+.service-banner.service-banner{padding-right:146px;}   /* over Tailwind's px-4 */
+.service-banner > :not(.sb-car){position:relative; z-index:1;}
+.service-banner::before{content:''; position:absolute; right:-50px; top:-80%; width:300px; height:260%; background:radial-gradient(closest-side, rgb(var(--gold) / 0.16), transparent); pointer-events:none; transition:opacity var(--t) var(--ease);}
+.service-banner[data-state="parked"]::before{opacity:0;}
+.sb-car{position:absolute; right:14px; bottom:0; width:104px; pointer-events:none; z-index:0;}
+.sb-car img{position:relative; display:block; width:100%; -webkit-mask-image:linear-gradient(to right, transparent 0, #000 26%); mask-image:linear-gradient(to right, transparent 0, #000 26%); filter:drop-shadow(0 6px 10px rgb(0 0 0 / 0.45)); animation:sb-bob 2.6s ease-in-out infinite;}
+.sb-road{position:absolute; left:-40px; right:-14px; bottom:3px; height:2px; background:repeating-linear-gradient(90deg, rgb(var(--gold) / 0.55) 0 10px, transparent 10px 22px); -webkit-mask-image:linear-gradient(to right, transparent, #000 40%, #000 80%, transparent); mask-image:linear-gradient(to right, transparent, #000 40%, #000 80%, transparent); animation:sb-road 0.8s linear infinite;}
+@keyframes sb-road{from{background-position:0 0;} to{background-position:22px 0;}}
+@keyframes sb-bob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-1px);}}
+.service-banner[data-state="parked"] .sb-road{display:none;}
+.service-banner[data-state="parked"] .sb-car img{filter:grayscale(1) brightness(0.55); opacity:0.6; animation:none;}
+@media (max-width:639px){
+  .service-banner.service-banner{padding-right:12px;}
+  .sb-car{right:-10px; bottom:2px; width:112px; opacity:0.4;}
+  .service-banner[data-state="parked"] .sb-car{opacity:0.5;}
+}
+@media (prefers-reduced-motion: reduce){ .sb-road, .sb-car img{animation:none;} }
+
+/* ---------- DMV panel model cards (js/dmv-panel.js) ----------
+   Each card glows in its model's color (--c: an "r g b" triplet), breathing
+   slowly, a little brighter on hover; the count carries the same light. */
+.dmv-card{box-shadow:0 0 0 1px rgb(var(--c) / 0.22), 0 0 22px -6px rgb(var(--c) / 0.45), inset 0 0 26px -10px rgb(var(--c) / 0.35); animation:dmv-card-glow 3.4s ease-in-out infinite; transition:box-shadow var(--t) var(--ease);}
+.dmv-card-num{text-shadow:0 0 18px rgb(var(--c) / 0.55);}
+@keyframes dmv-card-glow{
+  0%,100%{box-shadow:0 0 0 1px rgb(var(--c) / 0.22), 0 0 22px -6px rgb(var(--c) / 0.45), inset 0 0 26px -10px rgb(var(--c) / 0.35);}
+  50%{box-shadow:0 0 0 1px rgb(var(--c) / 0.32), 0 0 32px -4px rgb(var(--c) / 0.6), inset 0 0 30px -8px rgb(var(--c) / 0.45);}
+}
+@media (hover: hover) and (pointer: fine){ .dmv-card:hover{animation:none; box-shadow:0 0 0 1px rgb(var(--c) / 0.4), 0 0 38px -2px rgb(var(--c) / 0.7), inset 0 0 32px -8px rgb(var(--c) / 0.5);} }
+@media (prefers-reduced-motion: reduce){ .dmv-card{animation:none;} }
 
 /* ---------- Homepage Fleet Growth chart (index.html) ----------
    The current-count dot breathes softly (still under reduced motion). */
