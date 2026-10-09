@@ -220,29 +220,78 @@ html .glass[data-tilt].is-tilting{
   opacity:0; transition:opacity var(--t) var(--ease);
 }
 .glass[data-tilt].is-tilting::after{opacity:1;}
-/* BorderGlow (js/main.js initBorderGlow): on a mouse or pen, a gold light
-   runs along a glass card's border toward the pointer, brighter the nearer
-   the pointer is to the edge. The card gets one empty decorative layer,
-   .bg-glow-edge (aria-hidden, no pointer events, out of the layout):
-   its ::before is a cone of the border ring centered on --glow-angle (the
-   pointer's direction from the card's center; 0deg = up, clockwise), and the
-   layer's drop-shadows blur that same cone into a soft glow. --glow-o (0..1,
-   how near the edge) fades it. Touch screens never get the layer. */
+/* BorderGlow (js/main.js initBorderGlow) — a port of React Bits BorderGlow
+   (its CSS, with the site's golds). On a mouse or pen, every .glass card
+   (not the header or the phone bottom bar) lights up toward the pointer:
+     .bg-glow-under (behind the content): ::before the mesh-gradient border,
+       ::after the soft-light mesh fill near the edges;
+     .bg-glow-edge (over it): the outer glow — stacked inner and outer light
+       shadows — masked to a cone at the pointer, added with plus-lighter.
+   --edge-proximity: 0 at the center .. 100 on the edge; --cursor-angle: the
+   pointer's direction from the center (0deg = up). Both layers are empty,
+   aria-hidden and out of the layout. Touch screens get nothing. */
 .glass.bg-glow-pos{position:relative;}
+.glass.bg-glow{
+  isolation:isolate;
+  --edge-proximity:0; --cursor-angle:45deg; --edge-sensitivity:30; --color-sensitivity:calc(var(--edge-sensitivity) + 20);
+  --glow-padding:40px; --cone-spread:25; --fill-opacity:0.5;
+  --glow-color:hsl(40deg 80% 80% / 100%); --glow-color-60:hsl(40deg 80% 80% / 60%); --glow-color-50:hsl(40deg 80% 80% / 50%);
+  --glow-color-40:hsl(40deg 80% 80% / 40%); --glow-color-30:hsl(40deg 80% 80% / 30%); --glow-color-20:hsl(40deg 80% 80% / 20%); --glow-color-10:hsl(40deg 80% 80% / 10%);
+  --mesh:radial-gradient(at 80% 55%, #D4AF37 0px, transparent 50%), radial-gradient(at 69% 34%, #F3E5AB 0px, transparent 50%),
+         radial-gradient(at 8% 6%, #FFD23F 0px, transparent 50%), radial-gradient(at 41% 38%, #D4AF37 0px, transparent 50%),
+         radial-gradient(at 86% 85%, #F3E5AB 0px, transparent 50%), radial-gradient(at 82% 18%, #FFD23F 0px, transparent 50%),
+         radial-gradient(at 51% 4%, #F3E5AB 0px, transparent 50%), linear-gradient(#D4AF37 0 100%);
+}
+.bg-glow-under, .bg-glow-edge{position:absolute; inset:0; border-radius:inherit; pointer-events:none;}
+.bg-glow-under{z-index:-1;}
+.bg-glow-under::before, .bg-glow-under::after, .bg-glow-edge{transition:opacity 0.25s ease-out;}
+.bg-glow-under::before, .bg-glow-under::after{content:''; position:absolute; inset:-1px; border-radius:inherit; border:1px solid transparent;}
+/* the mesh-gradient border */
+.bg-glow-under::before{
+  background:linear-gradient(rgb(var(--glass)) 0 100%) padding-box, var(--mesh);
+  background-origin:border-box; background-clip:padding-box, border-box, border-box, border-box, border-box, border-box, border-box, border-box, border-box;
+  opacity:calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+}
+/* ...shown only as a ring, and only in a cone toward the pointer */
+.bg-glow-under::before{
+  -webkit-mask-image:conic-gradient(from var(--cursor-angle) at center, #000 calc(var(--cone-spread) * 1%), transparent calc((var(--cone-spread) + 15) * 1%), transparent calc((100 - var(--cone-spread) - 15) * 1%), #000 calc((100 - var(--cone-spread)) * 1%)), linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  -webkit-mask-clip:border-box, padding-box, border-box; -webkit-mask-composite:source-in, xor;
+  mask-image:conic-gradient(from var(--cursor-angle) at center, #000 calc(var(--cone-spread) * 1%), transparent calc((var(--cone-spread) + 15) * 1%), transparent calc((100 - var(--cone-spread) - 15) * 1%), #000 calc((100 - var(--cone-spread)) * 1%)), linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip:border-box, padding-box, border-box; mask-composite:intersect, exclude;
+}
+/* the mesh fill near the edges (soft-light) */
+.bg-glow-under::after{
+  background:var(--mesh); background-clip:padding-box;
+  -webkit-mask-image:linear-gradient(#000, #000), radial-gradient(ellipse at 50% 50%, #000 40%, transparent 65%), radial-gradient(ellipse at 66% 66%, #000 5%, transparent 40%), radial-gradient(ellipse at 33% 33%, #000 5%, transparent 40%), radial-gradient(ellipse at 66% 33%, #000 5%, transparent 40%), radial-gradient(ellipse at 33% 66%, #000 5%, transparent 40%), conic-gradient(from var(--cursor-angle) at center, transparent 5%, #000 15%, #000 85%, transparent 95%);
+  -webkit-mask-composite:source-out, source-over, source-over, source-over, source-over, source-over;
+  mask-image:linear-gradient(#000, #000), radial-gradient(ellipse at 50% 50%, #000 40%, transparent 65%), radial-gradient(ellipse at 66% 66%, #000 5%, transparent 40%), radial-gradient(ellipse at 33% 33%, #000 5%, transparent 40%), radial-gradient(ellipse at 66% 33%, #000 5%, transparent 40%), radial-gradient(ellipse at 33% 66%, #000 5%, transparent 40%), conic-gradient(from var(--cursor-angle) at center, transparent 5%, #000 15%, #000 85%, transparent 95%);
+  mask-composite:subtract, add, add, add, add, add;
+  opacity:calc(var(--fill-opacity) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  mix-blend-mode:soft-light;
+}
+/* the outer glow */
 .bg-glow-edge{
-  position:absolute; inset:-1px; border-radius:inherit; pointer-events:none; z-index:3;
-  opacity:var(--glow-o, 0); transition:opacity 180ms ease-out;
-  filter:drop-shadow(0 0 3px rgb(var(--gold) / 0.9)) drop-shadow(0 0 14px rgb(var(--gold) / 0.55));
+  inset:calc(var(--glow-padding) * -1); z-index:3;
+  -webkit-mask-image:conic-gradient(from var(--cursor-angle) at center, #000 2.5%, transparent 10%, transparent 90%, #000 97.5%);
+  mask-image:conic-gradient(from var(--cursor-angle) at center, #000 2.5%, transparent 10%, transparent 90%, #000 97.5%);
+  opacity:calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+  mix-blend-mode:plus-lighter;
 }
 .bg-glow-edge::before{
-  content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
-  background:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), rgb(var(--gold-soft)), rgb(var(--gold)) 30deg, #FFD23F 50deg, rgb(var(--gold-soft)) 80deg, rgb(var(--gold)));
-  -webkit-mask:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), transparent 0deg, #000 25deg, #000 55deg, transparent 80deg), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite:source-in, xor;
-  mask:conic-gradient(from calc(var(--glow-angle, 0deg) - 40deg), transparent 0deg, #000 25deg, #000 55deg, transparent 80deg), linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite:intersect, exclude;
+  content:''; position:absolute; inset:var(--glow-padding); border-radius:inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color), inset 0 0 1px 0 var(--glow-color-60), inset 0 0 3px 0 var(--glow-color-50),
+    inset 0 0 6px 0 var(--glow-color-40), inset 0 0 15px 0 var(--glow-color-30), inset 0 0 25px 2px var(--glow-color-20),
+    inset 0 0 50px 2px var(--glow-color-10),
+    0 0 1px 0 var(--glow-color-60), 0 0 3px 0 var(--glow-color-50), 0 0 6px 0 var(--glow-color-40),
+    0 0 15px 0 var(--glow-color-30), 0 0 25px 2px var(--glow-color-20), 0 0 50px 2px var(--glow-color-10);
 }
-:root[data-theme="light"] .bg-glow-edge{filter:drop-shadow(0 0 2px rgb(var(--gold) / 0.8)) drop-shadow(0 0 10px rgb(var(--gold) / 0.35));}
+/* On the light theme there is nothing to add light to: plain blending, a deeper gold. */
+:root[data-theme="light"] .glass.bg-glow{
+  --glow-color:hsl(43deg 75% 45% / 100%); --glow-color-60:hsl(43deg 75% 45% / 60%); --glow-color-50:hsl(43deg 75% 45% / 50%);
+  --glow-color-40:hsl(43deg 75% 45% / 40%); --glow-color-30:hsl(43deg 75% 45% / 30%); --glow-color-20:hsl(43deg 75% 45% / 20%); --glow-color-10:hsl(43deg 75% 45% / 10%);
+}
+:root[data-theme="light"] .bg-glow-edge, :root[data-theme="light"] .bg-glow-under::after{mix-blend-mode:normal;}
 /* Stepper (batch three): profile.html's delete-account steps. A line under
    the three dots fills to the current step; the current dot is gold. */
 .delete-steps{position:relative; display:flex; justify-content:space-between; gap:8px; margin-bottom:20px; padding:0; list-style:none; --progress:0;}
@@ -536,7 +585,60 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 }
 .review-sort{color:rgb(var(--n-300));}
 .review-sort[aria-pressed="true"]{background:rgb(var(--ink) / 0.08); color:rgb(var(--ink));}
-.review-like[aria-pressed="true"]{color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
+.review-like[aria-pressed="true"]:not(.pulse-heart){color:rgb(var(--gold-ink)); border-color:rgb(var(--gold) / 0.45);}
+
+/* ---------- RubberSegment (js/main.js initRubberSegments) ----------
+   The site's segmented controls (Zones city, replay range / speed / city,
+   review sort, Appearance) get a rubber thumb: a solid ink thumb (React Bits
+   RubberSegment) clipped to the selected slot, holding copies of the labels in
+   the page colour, so the active label reads dark-on-light inside it. The
+   thumb stretches across old and new slot, then contracts with a small squash;
+   it can be dragged and flicked. The buttons keep their own logic: their
+   active background goes (the thumb is the highlight). */
+.rs-track{position:relative; isolation:isolate; touch-action:pan-y; -webkit-tap-highlight-color:transparent;}
+.rs-track > .rs-item{position:relative; z-index:1; background:transparent !important;}
+.rs-track[data-held], .rs-track[data-held] > .rs-item{cursor:grabbing;}
+.rs-track > .rs-item.rs-active{cursor:grab;}
+.rs-item[data-pressed]{transform:scale(0.96); transition:transform 160ms cubic-bezier(0.23, 1, 0.32, 1);}
+.rs-thumb{
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:rgb(var(--ink)); color:rgb(var(--bg));
+  clip-path:inset(0 100% 0 0 round 8px); opacity:0;
+}
+.rs-thumb.is-on{opacity:1;}
+.rs-copy{position:absolute; display:flex; align-items:center; justify-content:center; color:inherit !important; background:none !important; opacity:1 !important; white-space:nowrap;}
+.rs-copy *{color:inherit !important;}
+
+/* ---------- SquishSwitch (js/main.js initSquishSwitches) ----------
+   A role="switch" button's knob ([data-switch-knob]) moves on a spring,
+   stretches with its speed and swells on hover (React Bits SquishSwitch);
+   it can be dragged. Colours stay the page's own. */
+[data-switch-knob]{transition:background-color 320ms ease !important; will-change:transform;}
+
+/* ---------- PulseHeart (js/reviews.js) ----------
+   A review's like button (React Bits PulseHeart): the heart shrinks to a dot,
+   flips to liked at 40% of the run, rebounds past full size, the pill dips 3%,
+   and the count rolls one glyph. Idle: an outline; liked: solid #ff4d6d. */
+.pulse-heart{--ph-liked:#ff4d6d; --ph-idle:rgb(var(--n-400)); --ph-roll:350ms; --ph-ease-out:cubic-bezier(0.23, 1, 0.32, 1); transform-origin:center; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+.pulse-heart[data-pressed]{transform:scale(0.97); transition:transform 160ms var(--ph-ease-out);}
+.pulse-heart__heart{display:block; width:16px; height:16px; color:var(--ph-idle); transform-origin:center; transition:color 160ms ease;}
+.pulse-heart__heart svg{display:block; width:100%; height:100%; overflow:visible; fill:none; stroke:currentColor; stroke-width:1.75px; stroke-linecap:round; stroke-linejoin:round;}
+.pulse-heart[data-liked="true"] .pulse-heart__heart{color:var(--ph-liked);}
+.pulse-heart[data-liked="true"] .pulse-heart__heart svg{fill:currentColor;}
+.pulse-heart[data-running] .pulse-heart__heart, .pulse-heart[data-instant] .pulse-heart__heart{transition:none;}
+@media (hover: hover) and (pointer: fine){
+  .pulse-heart:not([data-liked="true"]):hover .pulse-heart__heart{color:color-mix(in srgb, var(--ph-idle) 45%, var(--ph-liked));}
+}
+.pulse-heart[data-liked="true"]{border-color:color-mix(in srgb, var(--ph-liked) 45%, transparent) !important;}
+.pulse-heart:focus-visible{outline:2px solid color-mix(in srgb, var(--ph-liked) 60%, transparent); outline-offset:3px;}
+.pulse-heart__count{display:inline-flex; line-height:1; font-variant-numeric:tabular-nums;}
+.pulse-heart__count > span{display:block; height:1em;}
+.pulse-heart__slot{position:relative; overflow:hidden;}
+.pulse-heart__roll{display:flex; flex-direction:column; transition:transform var(--ph-roll) var(--ph-ease-out);}
+.pulse-heart__roll > span{display:block; height:1em; line-height:1;}
+@media (prefers-reduced-motion: reduce){
+  .pulse-heart__roll{transition:none;}
+}
 
 /* ---------- Theme switch (footer) ---------- */
 .theme-switch{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line) / calc(var(--line-a) + 0.06)); background:rgb(var(--glass) / var(--glass-a));}

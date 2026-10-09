@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=39">
 <style>
   /* Locked = looks like plain text (no box); unlocked = looks like a normal
      input, toggled by swapping these two classes in js when Edit Profile
@@ -172,7 +172,7 @@
             <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
           </div>
           <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 max-sm:after:absolute max-sm:after:-inset-2 max-sm:after:content-[''] rounded-full bg-[#0F141C] border border-[rgba(212,175,55,0.3)] transition-colors disabled:cursor-not-allowed">
-            <span id="visibilityToggleKnob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
+            <span id="visibilityToggleKnob" data-switch-knob class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-slate-400 transition-transform"></span>
           </button>
         </div>
 
@@ -356,7 +356,7 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=25"></script>
+<script src="js/main.js?v=26"></script>
 <script>
   CCC.init();
 

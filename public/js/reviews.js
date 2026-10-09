@@ -13,7 +13,70 @@
   const PAGE = 20;
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PERSON_ICON = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/> <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>';
-  const HEART = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.979 3.074a6 6 0 0 1 4.988 1.425l.037 .033l.034 -.03a6 6 0 0 1 4.733 -1.44l.246 .036a6 6 0 0 1 3.364 10.008l-.18 .185l-.048 .041l-7.45 7.379a1 1 0 0 1 -1.313 .082l-.094 -.082l-7.493 -7.422a6 6 0 0 1 3.176 -10.215z"/></svg>';
+  // PulseHeart (React Bits): the Hugeicons "Favourite" heart, drawn as an
+  // outline when idle and solid when liked (css/style.css .pulse-heart).
+  const HEART = '<span class="pulse-heart__heart" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g data-glyph><path vector-effect="non-scaling-stroke" d="M19.4626 3.99415C16.7809 2.34923 14.4404 3.01211 13.0344 4.06801C12.4578 4.50096 12.1696 4.71743 12 4.71743C11.8304 4.71743 11.5422 4.50096 10.9656 4.06801C9.55962 3.01211 7.21909 2.34923 4.53744 3.99415C1.01807 6.15294 0.221721 13.2749 8.33953 19.2834C9.88572 20.4278 10.6588 21 12 21C13.3412 21 14.1143 20.4278 15.6605 19.2834C23.7783 13.2749 22.9819 6.15294 19.4626 3.99415Z"/></g></svg></span>';
+  // PulseHeart's run: the heart swells down to a dot (40% of the run), the
+  // state flips there, then it rebounds past full size and settles; the pill
+  // (the button) dips 3%; the changed digit of the count rolls.
+  const PH = { duration: 560, dotSize: 0.3, overshoot: 1.7, beat: 3, roll: 350, out: 0.4 };
+  const phBack = (k, c) => { const u = k - 1; return 1 + (c + 1) * u ** 3 + c * u ** 2; };
+  const phSwell = t => (t <= 0 ? 0 : t < PH.out ? 1 - (1 - t / PH.out) ** 3 : 1 - phBack((t - PH.out) / (1 - PH.out), PH.overshoot));
+  const phReduce = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // Show `to` in a like button's count; roll the changed glyph when asked.
+  function phCount(btn, from, to, roll) {
+    const el = btn.querySelector('[data-like-count]');
+    const a = String(from), b = String(to);
+    clearTimeout(btn._phRoll);
+    if (!roll || a === b) { el.textContent = b; return; }
+    const changed = a.length === b.length ? [...b].flatMap((ch, i) => (ch !== a[i] ? [i] : [])) : [];
+    const at = changed.length === 1 ? changed[0] : -1, up = to > from;
+    const cell = (top, bottom) => `<span class="pulse-heart__slot"><span class="pulse-heart__roll"><span>${esc(top)}</span><span>${esc(bottom)}</span></span></span>`;
+    el.innerHTML = at === -1 ? cell(up ? a : b, up ? b : a)
+      : [...b].map((ch, i) => (i === at ? cell(up ? a[i] : ch, up ? ch : a[i]) : `<span>${esc(ch)}</span>`)).join('');
+    const r = el.querySelector('.pulse-heart__roll');
+    r.style.transition = 'none';
+    r.style.transform = `translateY(${up ? '0' : '-1em'})`;
+    r.getBoundingClientRect();
+    r.style.transition = '';
+    r.style.transform = `translateY(${up ? '-1em' : '0'})`;
+    btn._phRoll = setTimeout(() => { el.textContent = b; }, PH.roll);
+  }
+  // Land a like state on a button with no run (keyboard, reduced motion, a revert).
+  function phSet(btn, liked, count) {
+    btn.dataset.instant = '';
+    btn.dataset.liked = String(liked);
+    btn.setAttribute('aria-pressed', String(liked));
+    phCount(btn, count, count, false);
+    btn.getBoundingClientRect();
+    delete btn.dataset.instant;
+  }
+  function phRun(btn, liked, from, to) {
+    const glyph = btn.querySelector('[data-glyph]');
+    btn.dataset.running = '';
+    let swapped = false, prev = 0;
+    const t0 = performance.now();
+    const tick = now => {
+      const t = Math.min(1, (now - t0) / PH.duration);
+      const step = prev ? now - prev : 1000 / 60;
+      prev = now;
+      const sw = phSwell(t);
+      if (glyph) glyph.setAttribute('transform', `translate(12 12) scale(${1 - (1 - PH.dotSize) * sw}) translate(-12 -12)`);
+      btn.style.transform = `scale(${1 - (PH.beat / 100) * sw})`;
+      if (!swapped && t + step / 2 / PH.duration >= PH.out) {
+        swapped = true;
+        btn.dataset.liked = String(liked);
+        phCount(btn, from, to, true);
+      }
+      if (t < 1) { btn._phRaf = requestAnimationFrame(tick); return; }
+      btn._phRaf = 0;
+      if (glyph) glyph.removeAttribute('transform');
+      btn.style.transform = '';
+      delete btn.dataset.running;
+      if (btn._phSettle) { const f = btn._phSettle; btn._phSettle = null; f(); }
+    };
+    btn._phRaf = requestAnimationFrame(tick);
+  }
   const BUBBLE = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h8"/> <path d="M8 13h6"/> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12"/></svg>';
   const ERRORS = {
     already_reviewed: "You've already reviewed this Cybercab. Use Edit on your review below.",
@@ -118,7 +181,7 @@
         <p class="mt-3 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words max-sm:mt-2 max-sm:text-[13px] max-sm:leading-snug" data-body></p>
         ${photos ? `<div class="mt-3 grid grid-cols-3 gap-2 max-w-sm">${photos}</div>` : ''}
         <footer class="mt-3 flex items-center gap-2 flex-wrap max-sm:mt-1.5">
-          <button type="button" data-like aria-pressed="${r.liked}" class="review-like inline-flex items-center gap-1.5 px-3 py-1.5 max-sm:min-h-[40px] rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${HEART}<span data-like-count>${r.like_count}</span><span class="sr-only"> likes</span></button>
+          <button type="button" data-like aria-pressed="${r.liked}" data-liked="${r.liked}" class="review-like pulse-heart inline-flex items-center gap-1.5 px-3 py-1.5 max-sm:min-h-[40px] rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${HEART}<span class="pulse-heart__count" data-like-count>${r.like_count}</span><span class="sr-only"> likes</span></button>
           <button type="button" data-comments aria-expanded="false" class="inline-flex items-center gap-1.5 px-3 py-1.5 max-sm:min-h-[40px] rounded-lg border border-white/[0.1] text-xs font-semibold text-slate-300 hover:bg-white/5">${BUBBLE}<span data-comment-count>${r.comment_count}</span><span class="sr-only"> comments</span></button>
           <span class="flex-1"></span>
           ${r.mine ? '<button type="button" data-edit class="px-3 py-1.5 max-sm:min-h-[40px] rounded-lg text-xs font-semibold text-slate-400 hover:text-white">Edit</button>' : ''}
@@ -324,6 +387,14 @@
   }
   function setCommentCount(c, n) { c.review.comment_count = n; c.el.querySelector('[data-comment-count]').textContent = String(n); }
 
+  $('reviewList').addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-like]');
+    if (b && e.button === 0 && !phReduce()) b.dataset.pressed = '';
+  });
+  ['pointerup', 'pointercancel', 'pointerout'].forEach(t => $('reviewList').addEventListener(t, e => {
+    const b = e.target.closest && e.target.closest('[data-like]');
+    if (b) delete b.dataset.pressed;
+  }));
   $('reviewList').addEventListener('click', async e => {
     const c = card(e.target);
     if (!c || !c.review) return;
@@ -332,13 +403,26 @@
     if (e.target.closest('[data-like]')) {
       if (!viewer.signed_in) { location.href = 'signin.html?returnTo=%2Fcommunity'; return; }
       const btn = c.el.querySelector('[data-like]');
-      const want = btn.getAttribute('aria-pressed') !== 'true';
+      if (btn.dataset.running !== undefined || btn.dataset.saving !== undefined) return;
+      // Shown at once (PulseHeart), saved behind it, put back if saving fails.
+      const was = { liked: btn.getAttribute('aria-pressed') === 'true', count: c.review.like_count };
+      const want = !was.liked;
+      const next = Math.max(0, was.count + (want ? 1 : -1));
+      btn.setAttribute('aria-pressed', String(want));
+      if (e.detail !== 0 && !phReduce()) phRun(btn, want, was.count, next);
+      else phSet(btn, want, next);
+      btn.dataset.saving = '';
       const resp = await api(`/api/reviews/${encodeURIComponent(c.review.id)}/like`, { method: want ? 'PUT' : 'DELETE' }).catch(() => null);
       const data = resp ? await json(resp) : null;
-      if (!resp || !resp.ok || !data) return failToast(data);
+      delete btn.dataset.saving;
+      const settle = (liked, count) => {
+        // Already showing it (the usual case): leave it be; otherwise land it.
+        const f = () => { if (liked === want && count === next) btn.setAttribute('aria-pressed', String(liked)); else phSet(btn, liked, count); };
+        if (btn.dataset.running !== undefined) btn._phSettle = f; else f();
+      };
+      if (!resp || !resp.ok || !data) { settle(was.liked, was.count); return failToast(data); }
       c.review.liked = data.liked; c.review.like_count = data.like_count;
-      btn.setAttribute('aria-pressed', String(data.liked));
-      btn.querySelector('[data-like-count]').textContent = String(data.like_count);
+      settle(data.liked, data.like_count);
       return;
     }
     if (e.target.closest('[data-comments]')) {

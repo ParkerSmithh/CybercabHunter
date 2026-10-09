@@ -1351,19 +1351,17 @@ const CCC = (() => {
   }
 
   /* ---------------- Init ---------------- */
-  /* BorderGlow: a gold light along a glass card's border that follows a mouse
-     or pen pointer and brightens near the edge (css/style.css .bg-glow-edge; the
-     math of the React Bits BorderGlow: edge sensitivity 30, cursor angle with
-     0deg up). One delegated listener for every .glass card on the page, except
-     the header and the phone bottom bar. Touch screens get nothing. Each card
-     gets one empty decorative span (.bg-glow-edge), added the first time a
-     pointer reaches it (and again if the card's content is re-rendered). A
-     static card is made position:relative for it only when that can't move
-     anything inside it (no absolutely positioned descendants). */
+  /* BorderGlow (css/style.css .bg-glow): a port of React Bits BorderGlow onto
+     every .glass card except the header and the phone bottom bar. One
+     delegated listener sets the component's two values on the card under a
+     mouse or pen pointer: --edge-proximity (0 at the center .. 100 on the
+     edge, the nearer axis) and --cursor-angle (0deg = up). The card gets two
+     empty decorative spans the first time a pointer reaches it (again if its
+     content is re-rendered). A static card is made position:relative for them
+     only when that can't move anything inside it (no absolutely positioned
+     descendants). Touch screens get nothing. */
   function initBorderGlow() {
     if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    const EDGE_SENSITIVITY = 30;            // percent of the way from center to edge where the glow starts
-    const START = 1 - EDGE_SENSITIVITY / 100;
     let current = null, raf = 0, last = null;
     const usable = el => {
       if (el.dataset.glow === 'off' || el.matches('header, #mobileBottomNav')) return false;
@@ -1374,36 +1372,38 @@ const CCC = (() => {
         if (ok) el.classList.add('bg-glow-pos');
       }
       el.dataset.glowReady = ok ? '1' : '0';
+      if (ok) el.classList.add('bg-glow');
       return ok;
     };
-    const ensureLayer = el => {
-      if (el.querySelector(':scope > .bg-glow-edge')) return;
-      const layer = document.createElement('span');
-      layer.className = 'bg-glow-edge';
-      layer.setAttribute('aria-hidden', 'true');
-      el.appendChild(layer);
+    const ensureLayers = el => {
+      for (const cls of ['bg-glow-under', 'bg-glow-edge']) {
+        if (el.querySelector(`:scope > .${cls}`)) continue;
+        const layer = document.createElement('span');
+        layer.className = cls;
+        layer.setAttribute('aria-hidden', 'true');
+        el.appendChild(layer);
+      }
     };
-    const off = el => { if (el) el.style.setProperty('--glow-o', '0'); };
+    const off = el => { if (el) el.style.setProperty('--edge-proximity', '0'); };
     function paint() {
       raf = 0;
       if (!current || !last) return;
       const r = current.getBoundingClientRect();
       const cx = r.width / 2, cy = r.height / 2;
       const dx = last.x - r.left - cx, dy = last.y - r.top - cy;
-      // Edge proximity: 0 at the center, 1 on the border (the nearer of the two axes).
       const kx = dx ? cx / Math.abs(dx) : Infinity, ky = dy ? cy / Math.abs(dy) : Infinity;
       const edge = Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
-      let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      let angle = dx || dy ? Math.atan2(dy, dx) * 180 / Math.PI + 90 : 0;
       if (angle < 0) angle += 360;
-      current.style.setProperty('--glow-angle', `${angle.toFixed(1)}deg`);
-      current.style.setProperty('--glow-o', Math.max(0, (edge - START) / (1 - START)).toFixed(3));
+      current.style.setProperty('--edge-proximity', (edge * 100).toFixed(3));
+      current.style.setProperty('--cursor-angle', `${angle.toFixed(3)}deg`);
     }
     document.addEventListener('pointermove', e => {
       if (e.pointerType === 'touch') return;
       const card = e.target.closest && e.target.closest('.glass');
       const next = card && usable(card) ? card : null;
       if (next !== current) { off(current); current = next; }
-      if (current) ensureLayer(current);
+      if (current) ensureLayers(current);
       last = { x: e.clientX, y: e.clientY };
       if (current && !raf) raf = requestAnimationFrame(paint);
     }, { passive: true });
@@ -1411,8 +1411,240 @@ const CCC = (() => {
     window.addEventListener('blur', () => { off(current); current = null; });
   }
 
+  /* RubberSegment (css/style.css .rs-track) — a port of React Bits
+     RubberSegment onto the site's existing segmented controls. The buttons
+     keep their own click handlers; this watches which one is selected
+     (aria-pressed / aria-checked / aria-selected / aria-current) and moves a
+     solid thumb, clip-path'd over a copy of every label in the page colour:
+       a tap: the thumb dilates across old and new slot (stretch 100%, 190ms),
+         then the leading edge lands and the trailing one overshoots 3px and
+         relaxes (squash);
+       a drag on the thumb: it follows the pointer, rubber-banding past the
+         ends; on release (with flick momentum, glide 75) it lands on the
+         nearest slot and clicks that button, so the page's own logic runs.
+     Reduced motion: the thumb jumps. Arrow keys keep the page's behaviour. */
+  const RS_SELECTORS = '#citySelector, #replayRange, #replaySpeed, #replayCityNav, #reviewSort, .theme-switch';
+  function initRubberSegments(root = document) {
+    root.querySelectorAll(RS_SELECTORS).forEach(rubberSegment);
+  }
+  function rubberSegment(track) {
+    if (!track || track.dataset.rs) return;
+    track.dataset.rs = '1';
+    const reduce = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const items = [...track.children].filter(el => el.matches('button, a'));
+    if (items.length < 2) return;
+    track.classList.add('rs-track');
+    items.forEach(el => el.classList.add('rs-item'));
+    const thumb = document.createElement('div');
+    thumb.className = 'rs-thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    const copies = items.map(el => {
+      const c = document.createElement('span');
+      c.className = `${el.className} rs-copy`.replace(/\brs-item\b|\brs-active\b/g, '');
+      c.innerHTML = el.innerHTML;
+      c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      thumb.appendChild(c);
+      return c;
+    });
+    track.appendChild(thumb);
+
+    const DILATE = 190, HANDOFF = 150, SQUASH = 3, FLICK = 110, MAX_V = 2000, DEADZONE = 4, RUBBER = 0.55, GLIDE = 75;
+    const isOn = el => ['aria-pressed', 'aria-checked', 'aria-selected'].some(k => el.getAttribute(k) === 'true') || el.getAttribute('aria-current') === 'page';
+    const activeIndex = () => items.findIndex(isOn);
+    let slots = [], W = 0, radius = 8, L = 0, R = 0, committed = activeIndex(), gen = 0, handoff = 0, landingTo = null;
+    const paint = () => { thumb.style.clipPath = `inset(0 ${Math.max(0, W - R)}px 0 ${Math.max(0, L)}px round ${radius}px)`; };
+    function measure() {
+      const tr = track.getBoundingClientRect();
+      W = tr.width;
+      if (!W) return;
+      slots = items.map((el, i) => {
+        const r = el.getBoundingClientRect();
+        const s = { l: r.left - tr.left, r: r.right - tr.left };
+        Object.assign(copies[i].style, { left: `${s.l}px`, top: `${r.top - tr.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+        return s;
+      });
+      radius = parseFloat(getComputedStyle(items[0]).borderTopLeftRadius) || 8;
+      jump(activeIndex());
+    }
+    function jump(i) {
+      gen += 1; clearTimeout(handoff);
+      committed = i;
+      items.forEach((el, n) => el.classList.toggle('rs-active', n === i));
+      thumb.classList.toggle('is-on', i >= 0);
+      if (i < 0 || !slots[i]) return;
+      L = slots[i].l; R = slots[i].r; paint();
+    }
+    // Tween one edge ('L' or 'R') to `to` over `ms` with ease-out; resolves when done (unless superseded).
+    const easeOut = t => 1 - Math.pow(1 - t, 4);
+    function tween(edge, to, ms, g) {
+      return new Promise(done => {
+        const from = edge === 'L' ? L : R, t0 = performance.now();
+        const step = now => {
+          if (g !== gen) return;
+          const t = Math.min(1, (now - t0) / ms), v = from + (to - from) * easeOut(t);
+          if (edge === 'L') L = v; else R = v;
+          paint();
+          if (t < 1) requestAnimationFrame(step); else done();
+        };
+        requestAnimationFrame(step);
+      });
+    }
+    function land(to, squash, flick) {
+      const b = slots[to];
+      if (!b) return;
+      const g = ++gen;
+      const dir = Math.sign((b.l + b.r) / 2 - (L + R) / 2) || 1;
+      const [lead, leadTo, trail, trailTo] = dir > 0 ? ['R', b.r, 'L', b.l] : ['L', b.l, 'R', b.r];
+      tween(lead, leadTo, flick ? 400 : 300, g);
+      if (!squash) { tween(trail, trailTo, 300, g); return; }
+      tween(trail, trailTo + dir * SQUASH, 300, g).then(() => { if (g === gen) tween(trail, trailTo, 160, g); });
+    }
+    function travel(from, to) {
+      const a = slots[from], b = slots[to];
+      if (!b) return;
+      if (!a || reduce()) return jump(to);
+      clearTimeout(handoff);
+      const g = ++gen;
+      tween('L', Math.min(a.l, b.l), DILATE, g);
+      tween('R', Math.max(a.r, b.r), DILATE, g);
+      handoff = setTimeout(() => { if (g === gen) land(to, true, false); }, HANDOFF);
+    }
+    // The page changed the selection: animate to it (a drag release lands instead).
+    new MutationObserver(() => {
+      const i = activeIndex();
+      items.forEach((el, n) => el.classList.toggle('rs-active', n === i));
+      thumb.classList.toggle('is-on', i >= 0);
+      if (i === committed || i < 0) return;
+      const from = committed;
+      committed = i;
+      if (landingTo === i) { landingTo = null; return; }
+      travel(from, i);
+    }).observe(track, { subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-checked', 'aria-selected', 'aria-current'] });
+    if (window.ResizeObserver) new ResizeObserver(measure).observe(track);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    measure();
+
+    // Drag the thumb.
+    const rubber = (over, dim) => (over * dim * RUBBER) / (dim + RUBBER * Math.abs(over));
+    const project = v => { const d = 1 - 0.1 * Math.pow(0.05, GLIDE / 100); return ((v / 1000) * d) / (1 - d); };
+    let drag = null, suppressClick = false;
+    track.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || committed < 0 || !slots[committed]) return;
+      const tr = track.getBoundingClientRect(), x = e.clientX - tr.left;
+      const item = e.target.closest('.rs-item');
+      if (x < L || x > R) { if (item && !reduce()) item.dataset.pressed = ''; return; }
+      drag = { id: e.pointerId, x0: x, live: false, offset: 0, w: 0, hist: [[e.timeStamp, x]], left: tr.left };
+      gen += 1; clearTimeout(handoff);
+    });
+    track.addEventListener('pointermove', e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const x = e.clientX - drag.left;
+      drag.hist.push([e.timeStamp, x]); if (drag.hist.length > 8) drag.hist.shift();
+      if (!drag.live) {
+        if (Math.abs(x - drag.x0) < DEADZONE) return;
+        drag.live = true; drag.offset = x - L; drag.w = R - L;
+        track.dataset.held = '';
+        try { track.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+      }
+      const l = x - drag.offset, maxL = W - drag.w;
+      if (l < 0) { L = 0; R = drag.w - rubber(-l, drag.w); }
+      else if (l > maxL) { R = W; L = maxL + rubber(l - maxL, drag.w); }
+      else { L = l; R = l + drag.w; }
+      paint();
+    });
+    const endDrag = (e, cancelled) => {
+      items.forEach(el => delete el.dataset.pressed);
+      const d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      drag = null; delete track.dataset.held;
+      if (!d.live) return;
+      const swallowNextClick = () => { suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); };
+      if (cancelled) { swallowNextClick(); return land(committed, false, false); }
+      const recent = d.hist.filter(([t]) => e.timeStamp - t <= 100);
+      let v = 0;
+      if (recent.length >= 2) { const [t0, x0] = recent[0], [t1, x1] = recent[recent.length - 1]; if (t1 - t0 >= 8) v = Math.max(-MAX_V, Math.min(MAX_V, ((x1 - x0) / (t1 - t0)) * 1000)); }
+      const flick = Math.abs(v) > FLICK;
+      const centre = (L + R) / 2 + project(v);
+      let to = 0;
+      slots.forEach((s, i) => { if (Math.abs((s.l + s.r) / 2 - centre) < Math.abs((slots[to].l + slots[to].r) / 2 - centre)) to = i; });
+      if (flick && to === committed) to = Math.max(0, Math.min(items.length - 1, to + Math.sign(v)));
+      if (reduce()) jump(to); else land(to, flick, flick);
+      if (to !== committed) { landingTo = to; items[to].click(); }
+      swallowNextClick();   // the browser's own click for this pointerup, after ours
+    };
+    track.addEventListener('pointerup', e => endDrag(e, false));
+    track.addEventListener('pointercancel', e => endDrag(e, true));
+    track.addEventListener('pointerleave', () => items.forEach(el => delete el.dataset.pressed));
+    // A drag ends with the pointer over some button: that release is not a click.
+    track.addEventListener('click', e => { if (suppressClick) { e.preventDefault(); e.stopImmediatePropagation(); suppressClick = false; } }, true);
+  }
+
+  /* SquishSwitch — a port of React Bits SquishSwitch onto the site's
+     role="switch" buttons that have a [data-switch-knob]. The page keeps its
+     own click handler and colours; this moves the knob on a spring
+     (stiffness 170, damping 21.5, mass 0.9), stretches it with its speed
+     (stretch 36%: up to +14% wide, as much thinner), swells it 3.5% on hover,
+     and lets it be dragged (a drag that ends past the middle is a toggle). */
+  function initSquishSwitches(root = document) {
+    root.querySelectorAll('[role="switch"]').forEach(btn => {
+      const knob = btn.querySelector('[data-switch-knob]');
+      if (!knob || btn.dataset.squish) return;
+      btn.dataset.squish = '1';
+      const reduce = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const travel = () => Math.max(0, btn.clientWidth - knob.offsetWidth - 2 * knob.offsetLeft);
+      const on = () => btn.getAttribute('aria-checked') === 'true';
+      let x = on() ? travel() : 0, v = 0, target = x, swell = 1, raf = 0, last = 0, dragging = null, skipClick = false;
+      const render = () => {
+        const s = 1 + Math.min(0.4, Math.abs(v) / 600) * 0.36;
+        knob.style.transform = `translateX(${x}px) scale(${s * swell}, ${swell / s})`;
+      };
+      const frame = now => {
+        const dt = Math.min(0.032, last ? (now - last) / 1000 : 1 / 60); last = now;
+        if (!dragging) { const a = (-170 * (x - target) - 21.5 * v) / 0.9; v += a * dt; x += v * dt; }
+        render();
+        if (dragging || Math.abs(x - target) > 0.05 || Math.abs(v) > 0.5) raf = requestAnimationFrame(frame);
+        else { x = target; v = 0; render(); raf = 0; last = 0; }
+      };
+      const kick = () => { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } };
+      const sync = () => { target = on() ? travel() : 0; if (reduce()) { x = target; v = 0; render(); } else kick(); };
+      new MutationObserver(sync).observe(btn, { attributes: true, attributeFilter: ['aria-checked'] });
+      btn.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && !btn.disabled) { swell = 1.035; render(); } });
+      btn.addEventListener('pointerleave', () => { swell = 1; render(); });
+      btn.addEventListener('pointerdown', e => {
+        if (btn.disabled || e.button !== 0) return;
+        dragging = { id: e.pointerId, x0: e.clientX, start: x, moved: false, slop: e.pointerType === 'touch' ? 8 : 4, was: on() };
+        try { btn.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+      });
+      btn.addEventListener('pointermove', e => {
+        if (!dragging || e.pointerId !== dragging.id) return;
+        const dx = e.clientX - dragging.x0;
+        if (!dragging.moved && Math.abs(dx) <= dragging.slop) return;
+        dragging.moved = true;
+        const nx = Math.max(0, Math.min(travel(), dragging.start + dx));
+        v = (nx - x) * 60; x = nx; render(); kick();
+      });
+      const end = (e, cancelled) => {
+        if (!dragging || e.pointerId !== dragging.id) return;
+        const d = dragging; dragging = null;
+        if (!d.moved) return;   // a tap: the click that follows toggles as usual
+        skipClick = true; setTimeout(() => { skipClick = false; }, 0);
+        const wantOn = !cancelled && x > travel() / 2;
+        if (wantOn !== on()) { skipClick = false; btn.click(); skipClick = true; setTimeout(() => { skipClick = false; }, 0); }
+        else sync();
+      };
+      btn.addEventListener('pointerup', e => end(e, false));
+      btn.addEventListener('pointercancel', e => end(e, true));
+      btn.addEventListener('click', e => { if (skipClick) { e.preventDefault(); e.stopImmediatePropagation(); skipClick = false; } }, true);
+      knob.style.transition = 'background-color 320ms ease';
+      render();
+      if (window.ResizeObserver) new ResizeObserver(() => { if (!raf) { target = on() ? travel() : 0; x = target; render(); } }).observe(btn);
+    });
+  }
+
   function init() {
     initNav();
+    initRubberSegments();
+    initSquishSwitches();
     initReveal();
     initParticles();
     initSightingDrawer();
@@ -1428,5 +1660,5 @@ const CCC = (() => {
     initBorderGlow();
   }
 
-  return { data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
+  return { initRubberSegments, initSquishSwitches, data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
 })();
