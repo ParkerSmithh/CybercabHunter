@@ -91,10 +91,10 @@
     shown = s;
     el.dataset.state = s.live ? 'live' : 'parked';
     const main = s.live
-      ? `<p class="sb-eyebrow text-emerald-300"><span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>Live now<span class="max-sm:hidden"> · Austin &amp; Dallas</span></p>
+      ? `<p class="sb-eyebrow text-emerald-300"><span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>Live now</p>
          <p class="sb-headline font-display font-bold text-white uppercase tracking-wide">Cybercabs are on the road now</p>
          <p class="sb-line text-gold font-semibold whitespace-nowrap">Service ends in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums">${cd}</span></p>`
-      : `<p class="sb-eyebrow text-sky-300/80">${MOON}Parked<span class="max-sm:hidden"> · Austin &amp; Dallas</span></p>
+      : `<p class="sb-eyebrow text-sky-300/80">${MOON}Parked</p>
          <p class="sb-headline font-display font-bold text-slate-200">The fleet is parked for the night</p>
          <p class="sb-line text-slate-400">Back on the road at ${clock(H.openMinute)} · Back in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums text-sky-200">${cd}</span></p>`;
     el.innerHTML = `<div class="sb-main">${main}</div>
