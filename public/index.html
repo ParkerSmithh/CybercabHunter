@@ -455,13 +455,8 @@
         zoneMap.fitBounds(viewBounds, { padding: 28, animate: false });
       }
 
-      // The city centre as a gold dot only: the Dark Matter basemap already
-      // prints the city's name there, so a label of our own said it twice.
-      const dotEl = document.createElement('div');
-      dotEl.setAttribute('role', 'img');
-      dotEl.setAttribute('aria-label', `${cityName} city centre`);
-      dotEl.style.cssText = 'width:11px;height:11px;border-radius:50%;background:rgb(var(--gold));box-shadow:0 0 0 3px rgb(var(--gold) / 0.25);';
-      new maplibregl.Marker({ element: dotEl, anchor: 'center' }).setLngLat(cityCenter).addTo(zoneMap);
+      // No marker of our own at the city centre: the Dark Matter basemap
+      // already prints the city's name there (a label, then a dot, sat on it).
     });
   }
   // Add one more initZoneMap(...) call per new city card, passing that city's own center + zone polygon.
