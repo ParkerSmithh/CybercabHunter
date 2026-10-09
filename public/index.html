@@ -18,7 +18,8 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=59">
-<link rel="stylesheet" href="css/home-overview.css?v=4">
+<link rel="stylesheet" href="css/home-overview.css?v=6">
+<link rel="stylesheet" href="css/hero-typewriter.css?v=1">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -111,11 +112,15 @@
       <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper max-sm:text-[2.375rem]">
         <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#D4AF37]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
       </h1>
-      <p class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed reveal-on-scroll max-sm:mt-3 max-sm:text-sm" data-delay="250">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+      <p id="heroTypewriter" class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed max-sm:mt-3 max-sm:text-sm">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
       <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll max-sm:mt-5" data-delay="320">
         <a href="/sightings" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
           Browse sightings
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"/> <path d="M13 18l6 -6"/> <path d="M13 6l6 6"/></svg>
+        </a>
+        <a href="#map" class="inline-flex items-center gap-2 min-h-[44px] px-2 py-3 text-xs font-semibold text-goldsoft hover:underline underline-offset-4">
+          Explore service zones
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
       </div>
     </div>
@@ -412,6 +417,7 @@
 <script src="js/home-rows.js?v=9"></script>
 <script src="js/dmv-panel.js?v=12"></script>
 <script src="js/austin-map.js?v=8"></script>
+<script src="js/hero-typewriter.js?v=1" defer></script>
 <script src="js/hero-video.js?v=4" defer></script>
 <script>
   CCC.init();
@@ -456,17 +462,29 @@
       // The same dark basemap and gold zone as the Zones page map (js/austin-map.js).
       CCCAustinMap.styleBasemap(zoneMap);
 
-      if (zoneCoords) {
-        const bounds = zoneCoords.reduce(
-          (b, c) => b.extend(c),
-          new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0])
-        );
-        // The whole zone, centered with an even margin (nothing overlays the map).
-        zoneMap.fitBounds(bounds, { padding: 28, animate: false });
-        CCCAustinMap.addServiceZone(zoneMap, zoneCoords);
-      } else if (viewBounds) {
-        zoneMap.fitBounds(viewBounds, { padding: 28, animate: false });
+      const bounds = zoneCoords
+        ? zoneCoords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(zoneCoords[0], zoneCoords[0]))
+        : viewBounds;
+      if (bounds) {
+        // Leave room for floating labels and controls in both city cards.
+        const fitView = () => zoneMap.fitBounds(bounds, {
+          padding: { top: 70, bottom: 54, left: 24, right: 24 }, animate: false
+        });
+        zoneMap.resize();
+        fitView();
+        if (window.ResizeObserver) {
+          let frame;
+          new ResizeObserver(() => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+              if (!el.clientWidth || !el.clientHeight) return;
+              zoneMap.resize();
+              fitView();
+            });
+          }).observe(el);
+        }
       }
+      if (zoneCoords) CCCAustinMap.addServiceZone(zoneMap, zoneCoords);
 
       // No marker of our own at the city centre: the Dark Matter basemap
       // already prints the city's name there (a label, then a dot, sat on it).

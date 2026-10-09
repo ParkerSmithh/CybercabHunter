@@ -1,0 +1,6 @@
+#heroTypewriter.is-typing{position:relative;}
+#heroTypewriter .typewriter-measure{visibility:hidden;}
+#heroTypewriter .typewriter-ink{position:absolute;inset:0;}
+#heroTypewriter .typewriter-ink::after{content:'';display:inline-block;width:1px;height:1em;margin-left:2px;vertical-align:-.12em;background:#D4AF37;animation:hero-caret 800ms step-end infinite;}
+@keyframes hero-caret{50%{opacity:0;}}
+@media(prefers-reduced-motion:reduce){#heroTypewriter .typewriter-ink::after{animation:none;}}
