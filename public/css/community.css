@@ -32,20 +32,35 @@
   .community-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 0;}
   .community-stat:nth-child(3){border-left:0;}
 }
+/* Phones: the desktop layout, scaled down. The four stats stay in one row
+   beside a small Cybercab; the panels keep their desktop structure with
+   tighter spacing, smaller titles, tabs and buttons. */
 @media(max-width:639px){
-  .community-section{padding:24px 0 40px;}
-  .community-hero{grid-template-columns:minmax(0,1fr);gap:16px;}
-  .community-intro{margin-top:10px;font-size:14px;line-height:1.5;}
-  .community-search{max-width:none;margin-top:20px;}
-  .community-stats{grid-template-columns:minmax(0,1fr);margin-top:24px;padding:0 16px;}
-  .community-stat-grid{gap:0;}
-  .community-stats-art{width:240px;max-width:100%;justify-self:center;padding:0 12px 12px;}
-  .community-stat{padding:16px 12px;}
-  .community-stat:nth-child(3){border-left:0;}
-  .community-stat:nth-child(n+3){border-top:1px solid rgb(var(--ink) / .08);}
-  .community-stat > div:first-child{font-size:11px;}
-  .community-stat > div:nth-child(2){font-size:28px;margin-top:6px;}
-  .community-columns{gap:24px;margin-top:24px;}
-  .community-panel{padding:20px 16px;}
-  .community-panel-title,.community-page #boardTitle{font-size:22px;}
+  .community-section{padding:20px 0 32px;}
+  .community-hero{grid-template-columns:minmax(0,1fr);gap:12px;}
+  .community-intro{margin-top:8px;font-size:13px;line-height:1.5;}
+  .community-search{max-width:none;margin-top:14px;}
+  .community-search input{min-height:40px;font-size:13px;}
+  .community-stats{grid-template-columns:minmax(0,1fr) 50px;margin-top:16px;padding:12px 4px;border-radius:12px;}
+  .community-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;}
+  .community-stat{padding:0 5px;}
+  .community-stat:nth-child(3){border-left:1px solid rgb(var(--ink) / .08);}
+  .community-stat:nth-child(n+3){border-top:0;}
+  .community-stat > div:first-child{font-size:8.5px;letter-spacing:.02em;}
+  .community-stat > div:nth-child(2){font-size:19px;line-height:1.2;margin:4px 0 0;}
+  .community-stats-art{width:auto;padding:0 2px 0 0;justify-self:stretch;}
+  .community-columns{gap:14px;margin-top:16px;}
+  .community-panel{padding:14px 12px;border-radius:12px;}
+  .community-panel > div:first-child{padding-bottom:12px;}
+  .community-panel > div:first-child > span,.community-panel > div:first-child > div:first-child > span{width:20px;height:20px;}
+  .community-panel > div:first-child svg{width:16px;height:16px;}
+  .community-panel-title,.community-page #boardTitle{font-size:17px;}
+  .community-page #reviewWriteBtn{min-height:32px;padding:6px 10px;font-size:11px;border-radius:9px;}
+  .community-page .board-tab{min-height:32px;padding:0 11px;font-size:11px;}
+  .community-page #boardTabs{gap:6px;}
+  .community-page .review-sort{min-height:32px;font-size:11px;}
+}
+@media(max-width:339px){
+  .community-stats{grid-template-columns:minmax(0,1fr);}
+  .community-stats-art{display:none;}
 }
