@@ -48,7 +48,6 @@
   // ---- shared pieces ----
   const seeAll = (href, label, title) => `<a href="${esc(href)}" aria-label="${esc(title)}" class="shrink-0 inline-flex items-center gap-1 min-h-[44px] text-sm font-semibold text-gold hover:underline max-sm:text-xs">${esc(label)}<span aria-hidden="true">→</span></a>`;
   const liveBadge = iso => `<span class="hr-live inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(52,211,153,0.35)] bg-[rgba(52,211,153,0.08)] text-[10px] font-semibold uppercase tracking-wide text-emerald-300"><span class="relative flex w-1.5 h-1.5"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-1.5 h-1.5 rounded-full bg-emerald-400"></span></span>Live · <span data-updated="${esc(iso || '')}">updated ${esc(iso ? ago(iso) : '—')}</span></span>`;
-  const experimental = `<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-white/20 text-[10px] font-semibold uppercase tracking-wide text-slate-300">Experimental</span>`;
   const head = (eyebrow, title, badges, link) => `
     <div class="flex items-end justify-between gap-3 mb-4 max-sm:mb-2.5">
       <div class="min-w-0">
@@ -202,7 +201,6 @@
         tile('Busiest hour', s.peak_hour ? esc(hourLabel(s.peak_hour.hour)) : '—', s.peak_hour ? `${plural(s.peak_hour.count, 'sighting', 'sightings')} at that hour` : (has ? 'Not enough data yet' : '')) +
         tile('All approved', has ? int(s.total) : '—', s.first_day ? `Since ${esc(shortDate(s.first_day))}` : '')) +
       footnote('From approved sightings.') +
-      sub('Camera watch', experimental) +
       tiles('grid-cols-3 max-sm:grid-cols-3',
         tile('Cameras monitored', int(c.monitored), typeof c.reporting_24h === 'number' ? `${int(c.reporting_24h)} reported in the last 24 h` : '') +
         tile('Detections · 24 h', typeof c.detections_24h === 'number' ? int(c.detections_24h) : '—', esc(delta(c.detections_24h, c.prev_24h, 'previous 24 h'))) +
@@ -216,7 +214,7 @@
         ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
         ${card(`<div class="flex items-center justify-between gap-3">${cardTitle('Latest sightings')}${seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)}</div>${latest}${footnote('From approved sightings.')}`)}
       </div>` +
-      about('Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera watch is automated and experimental: it checks public traffic-camera images and records a detection when it spots a Cybercab, can miss a car or misread one, and is never added to the sightings.');
+      about('Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera check is automated and experimental: it checks public traffic-camera images and records a detection when it spots a Cybercab, can miss a car or misread one, and is never added to the sightings.');
   }
 
   const ROWS = { area: rowArea, rides: rowRides, sightings: rowSightings };
