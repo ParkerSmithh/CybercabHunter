@@ -155,13 +155,13 @@ async function run() {
     await settle();
     const text = id => d.getElementById(id).textContent.replace(/\s+/g, ' ');
     check('Austin rows render the database figures', /Rides 4/i.test(text('rowRides')) && /\$13\.25/.test(text('rowRides')) && /All approved 2/i.test(text('rowSightings')));
-    check('headings: RIDE STATS and SIGHTINGS ACTIVITY (the facts sit under SERVICE ZONES, no heading of their own)', ['rowRides', 'rowSightings'].map(id => d.querySelector(`#${id} h2`).textContent).join() === 'RIDE STATS,SIGHTINGS ACTIVITY' && !d.querySelector('#rowArea h2') && /Service area · AUSTIN/i.test(text('rowArea')));
+    check('headings: RIDE STATS and SIGHTINGS ACTIVITY (the facts sit under SERVICE ZONES, no heading of their own)', ['rowRides', 'rowSightings'].map(id => d.querySelector(`#${id} h2`).textContent.split(' · ')[0]).join() === 'RIDE STATS,SIGHTINGS ACTIVITY' && !d.querySelector('#rowArea h2') && /Service area · AUSTIN/i.test(text('rowArea')));
     check('Sightings and the camera check are ONE section: one heading, one LIVE badge, one note; no "Camera watch / Experimental" label', d.querySelectorAll('#rowSightings h2, #rowSightings h3').length === 1 && d.querySelectorAll('#rowSightings .hr-live').length === 1 && d.querySelectorAll('#rowSightings details.hr-about').length === 1 && !/Camera watch|Experimental/.test(text('rowSightings')) && /The camera check is automated and experimental:/.test(text('rowSightings')) && /Cameras monitored/i.test(text('rowSightings')));
     const tilesAll = [...d.querySelectorAll('[data-row] .glass.rounded-xl')];
-    check('every small stat tile carries the border glow; the larger cards do not', tilesAll.length >= 10 && tilesAll.every(el => el.hasAttribute('data-glow')) && [...d.querySelectorAll('#cityRows .glass.rounded-2xl')].every(el => !el.hasAttribute('data-glow')));
+    check('service-area tiles keep their glow; ride and activity metrics use two grouped panels', d.querySelectorAll('.home-data-panel').length === 2 && d.querySelectorAll('.home-data-metric').length === 13 && tilesAll.length === 4 && tilesAll.every(el => el.hasAttribute('data-glow')) && [...d.querySelectorAll('#cityRows .glass.rounded-2xl')].every(el => !el.hasAttribute('data-glow')));
     check('the hero shows Austin, with no all-cities line', d.getElementById('statVehicles').textContent === '3' && !d.getElementById('statVehiclesAll') && !/All cities/.test(html));
     // The Tracker-style detail (owner's section 5)
-    const tilesEls = [...d.querySelectorAll('[data-row] [data-glow]')];
+    const tilesEls = [...d.querySelectorAll('#rowArea [data-glow], .home-data-metric')];
     check('every stat tile has a sub-metric line, never a bare number', tilesEls.length === 17 && tilesEls.every(el => el.children[2] && el.children[2].textContent.trim().length > 0), tilesEls.filter(el => !(el.children[2] && el.children[2].textContent.trim())).map(el => el.children[0].textContent).join());
     check('sub-metrics from the data: rides in 30 days, median fare, week-over-week sightings', /4 in the last 30 days/.test(text('rowRides')) && /Median \$12\.50 · 4 rides/.test(text('rowRides')) && /Up from 0 previous 24 h|vs previous 24 h/.test(text('rowSightings')));
     const charts = [...d.querySelectorAll('#cityRows [data-chart-body]')].map(el => el.dataset.chartBody);

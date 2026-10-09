@@ -48,14 +48,14 @@
   // ---- shared pieces ----
   const seeAll = (href, label, title) => `<a href="${esc(href)}" aria-label="${esc(title)}" class="shrink-0 inline-flex items-center gap-1 min-h-[44px] text-sm font-semibold text-gold hover:underline max-sm:text-xs">${esc(label)}<span aria-hidden="true">→</span></a>`;
   const liveBadge = iso => `<span class="hr-live inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(52,211,153,0.35)] bg-[rgba(52,211,153,0.08)] text-[10px] font-semibold uppercase tracking-wide text-emerald-300"><span class="relative flex w-1.5 h-1.5"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-1.5 h-1.5 rounded-full bg-emerald-400"></span></span>Live · <span data-updated="${esc(iso || '')}">updated ${esc(iso ? ago(iso) : '—')}</span></span>`;
-  const head = (eyebrow, title, badges, link) => `
-    <div class="flex items-end justify-between gap-3 mb-4 max-sm:mb-2.5">
-      <div class="min-w-0">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold max-sm:text-[10px]">${esc(eyebrow)}</p>
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1"><h2 class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white max-sm:text-lg">${esc(title)}</h2>${badges || ''}</div>
-      </div>
+  const head = (city, title, badges, link) => `
+    <div class="home-data-heading">
+      <div class="min-w-0"><h2 class="font-display font-bold">${esc(title)} <span>· ${esc(city)}</span></h2>${badges ? `<div class="home-data-status">${badges}</div>` : ''}</div>
       ${link || ''}
     </div>`;
+  const metric = (label, value, sub) => `<dl class="home-data-metric"><dt>${esc(label)}</dt>
+<dd class="home-data-value stat-value">${value}</dd>
+<dd class="home-data-note">${sub || '&nbsp;'}</dd></dl>`;
   const tile = (label, value, sub) => `
     <div data-glow class="glass rounded-xl p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5">
       <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 truncate max-sm:whitespace-normal max-sm:leading-tight max-sm:min-h-[2.5em] max-sm:text-[9px] max-sm:tracking-normal">${esc(label)}</div>
@@ -160,19 +160,20 @@
 
   function rowRides(d) {
     const r = d.rides || {};
+    const tile = metric;
     const has = r.rides > 0;
-    return head(d.name.toUpperCase(), 'RIDE STATS', '', seeAll('/simulation?view=eta', 'See all', 'See fares and pickup waits on Fleet ETA')) +
+    return `<div class="home-data-panel home-rides-panel">` + head(d.name.toUpperCase(), 'RIDE STATS', '', seeAll('/simulation?view=eta', 'See all', 'See fares and pickup waits on Fleet ETA')) +
       (has ? '' : `<p class="mb-3 text-sm text-slate-400 max-sm:text-xs">No contributed ride receipts in ${esc(d.name)} yet.</p>`) +
-      tiles('grid-cols-6 max-sm:grid-cols-3',
+      `<div class="home-rides-layout"><div class="home-rides-summary">` + tiles('home-rides-metrics',
         tile('Rides', has ? int(r.rides) : '—', has ? `${int(r.rides_30d)} in the last 30 days` : 'No receipts yet') +
         tile('Miles', has && r.miles != null ? one(r.miles) : '—', has ? `Across ${plural(r.rides, 'ride', 'rides')}` : '') +
         tile('Avg fare', money(r.average_fare), r.median_fare != null ? `Median ${money(r.median_fare)} · ${plural(r.fare_rides, 'ride', 'rides')}` : '') +
         tile('Per mile', money(r.per_mile), r.per_mile != null ? 'Total fares ÷ total miles' : '') +
         tile('Avg trip', r.average_miles != null ? `${one(r.average_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi</span>` : '—', r.longest_miles != null ? `Longest ${one(r.longest_miles)} mi` : '') +
         tile('Avg duration', r.average_minutes != null ? `${one(r.average_minutes)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">min</span>` : '—', r.minutes_rides ? `From ${plural(r.minutes_rides, 'ride', 'rides')} with a time` : (has ? 'No ride times on receipts yet' : ''))) +
-      footnote('From contributed ride receipts.') +
-      `<div class="mt-3 max-sm:mt-2">${chartCard('fares', 'Weekly average fare', ['90D', '6M', '1Y', 'All'], faresChart(d), 'From contributed ride receipts.')}</div>` +
-      about('Counted rides only: accepted receipts (pending or approved), never ones under review or rejected, and a ride two riders shared counts once. Rides on a private vehicle are left out. The average fare is the mean per ride; per mile is all fares divided by all miles, so one short ride can\'t skew it.');
+      footnote('From contributed ride receipts.') + `</div>` +
+      `<div class="home-fares-chart">${chartCard('fares', 'Weekly average fare', ['90D', '6M', '1Y', 'All'], faresChart(d), '')}</div></div>` +
+      about('Counted rides only: accepted receipts (pending or approved), never ones under review or rejected, and a ride two riders shared counts once. Rides on a private vehicle are left out. The average fare is the mean per ride; per mile is all fares divided by all miles, so one short ride can\'t skew it.') + `</div>`;
   }
 
   // One section: human sightings, then the automated camera watch (labelled
@@ -180,6 +181,7 @@
   // sightings), under one heading, one LIVE badge and one note.
   function rowSightings(d) {
     const s = d.sightings || {}, c = d.cameras || {};
+    const tile = metric;
     const has = s.total > 0;
     const city = d.city === 'dallas' ? '?city=dallas' : '';
     const spots = (s.top_spots || []).length
@@ -193,19 +195,19 @@
         </a></li>`).join('')}</ol>`
       : `<div class="mt-2">${empty(`No approved sightings in ${d.name} yet.`)}</div>`;
     const sub = (label, extra) => `<div class="mt-6 mb-2 flex flex-wrap items-center gap-2 max-sm:mt-4">${cardTitle(label)}${extra || ''}</div>`;
-    return head(d.name.toUpperCase(), 'SIGHTINGS ACTIVITY', liveBadge(d.generated_at), seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)) +
-      sub('Sightings') +
-      tiles('grid-cols-4 max-sm:grid-cols-4',
+    return `<div class="home-data-panel home-activity-panel">` + head(d.name.toUpperCase(), 'SIGHTINGS ACTIVITY', liveBadge(d.generated_at), seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)) +
+      `<div class="home-activity-summary"><div class="home-human-metrics">` + sub('Approved sightings') +
+      tiles('home-sighting-metrics',
         tile('Last 24 hours', has ? int(s.last_24h) : '—', has ? esc(delta(s.last_24h, s.prev_24h, 'previous 24 h')) : 'No sightings yet') +
         tile('Last 7 days', has ? int(s.last_7_days) : '—', has ? esc(delta(s.last_7_days, s.prev_7_days, 'prior 7 days', true)) : '') +
         tile('Busiest hour', s.peak_hour ? esc(hourLabel(s.peak_hour.hour)) : '—', s.peak_hour ? `${plural(s.peak_hour.count, 'sighting', 'sightings')} at that hour` : (has ? 'Not enough data yet' : '')) +
         tile('All approved', has ? int(s.total) : '—', s.first_day ? `Since ${esc(shortDate(s.first_day))}` : '')) +
-      footnote('From approved sightings.') +
-      tiles('grid-cols-3 max-sm:grid-cols-3',
+      footnote('From approved sightings.') + `</div><div class="home-camera-metrics">` + sub('Camera detections') +
+      tiles('home-camera-grid',
         tile('Cameras monitored', int(c.monitored), typeof c.reporting_24h === 'number' ? `${int(c.reporting_24h)} reported in the last 24 h` : '') +
         tile('Detections · 24 h', typeof c.detections_24h === 'number' ? int(c.detections_24h) : '—', esc(delta(c.detections_24h, c.prev_24h, 'previous 24 h'))) +
         tile('Last detection', c.last_detection_at ? esc(ago(c.last_detection_at)) : '—', c.last_detection_at ? esc([c.last_camera, when(c.last_detection_at)].filter(Boolean).join(' · ')) : 'None yet')) +
-      footnote('From automated camera detections — separate from the human sightings above.') +
+      footnote('From automated camera detections — separate from the human sightings above.') + `</div></div>` +
       `<div class="mt-4 grid gap-3 lg:grid-cols-2 max-sm:mt-3 max-sm:gap-2">
         ${chartCard('sightings', 'Sightings', ['24H', '7D', '30D', '90D'], sightingsChart(d), 'From approved sightings.')}
         ${chartCard('detections', 'Camera detections', ['24H', '30D', '90D', 'All'], detectionsChart(d), 'From automated camera detections.')}
@@ -214,7 +216,7 @@
         ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
         ${card(`<div class="flex items-center justify-between gap-3">${cardTitle('Latest sightings')}${seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)}</div>${latest}${footnote('From approved sightings.')}`)}
       </div>` +
-      about('Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera check is automated and experimental: it checks public traffic-camera images and records a detection when it spots a Cybercab, can miss a car or misread one, and is never added to the sightings.');
+      about('Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera check is automated and experimental: it checks public traffic-camera images and records a detection when it spots a Cybercab, can miss a car or misread one, and is never added to the sightings.') + `</div>`;
   }
 
   const ROWS = { area: rowArea, rides: rowRides, sightings: rowSightings };
