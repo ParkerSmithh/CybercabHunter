@@ -68,7 +68,7 @@ const get = async (ctx, path, session) => {
   let json = null; try { json = JSON.parse(raw); } catch (e) { /* not JSON */ }
   return { status: r.status, json, raw };
 };
-const board = async ctx => (await get(ctx, '/api/community/leaderboard')).json;
+const board = async (ctx, id = 'discovered') => (await get(ctx, `/api/community/leaderboard?board=${id}`)).json;
 const counts = b => b.entries.map(e => `${e.rank}:${e.count}`).join(' ');
 
 async function run() {
@@ -86,7 +86,7 @@ async function run() {
   }
   {
     const ctx = await makeApp();
-    optIn(ctx, 'carol');
+    optIn(ctx, 'carol'); optIn(ctx, 'dave');
     const v = vehicle(ctx, { origin: 'sighting' }); sighting(ctx, 'carol', v, 1, 'pending');
     check('a pending creating sighting earns nothing', (await board(ctx)).entries.length === 0);
     const w = vehicle(ctx, { origin: 'sighting' }); sighting(ctx, 'carol', w, 1); sighting(ctx, 'dave', w, 2);
@@ -95,7 +95,7 @@ async function run() {
     const pendingRide = vehicle(ctx); ride(ctx, 'carol', pendingRide, 1, 'pending');
     check('a pending ride counts (the existing counted-ride rule)', (await board(ctx)).entries[0].count === 2);
     const rejected = vehicle(ctx); ride(ctx, 'dave', rejected, 1, 'approved'); ride(ctx, 'dave', rejected, 2, 'rejected');
-    check('...a rejected one does not', (await board(ctx)).entries.find(e => e.count === 1));
+    check('...a rejected one does not', (await board(ctx)).entries.find(e => e.name === 'Dave').count === 1);
   }
 
   console.log('2. The system account never earns credit');
@@ -128,25 +128,63 @@ async function run() {
     check('the public profile lists no private vehicles', rider.json.discovered.count === 0 && !/PLT/.test(rider.raw));
   }
 
-  console.log('4. Ranking: order, shared ranks, the top-6 cut');
+  console.log('4. Ranking: order, shared ranks, the top-10 cut');
   {
     const ctx = await makeApp();
     const plan = { alice: 5, bob: 3, carol: 3, dave: 2, erin: 1, frank: 1, gina: 1 };
     let m = 0;
     for (const [u, n] of Object.entries(plan)) { optIn(ctx, u); for (let i = 0; i < n; i++) ride(ctx, u, vehicle(ctx), ++m); }
     const b = await board(ctx);
-    check('count descending, ties share a rank (1, 2, 2, 4, 5, 5)', counts(b) === '1:5 2:3 2:3 4:2 5:1 5:1', counts(b));
-    check('only the top 6 are returned', b.entries.length === 6);
-    check('totals count EVERY credited spotter and vehicle (7 spotters, 16 vehicles), not just the top 6', b.totals && b.totals.spotters === 7 && b.totals.vehicles === 16);
+    check('count descending, ties share a rank (1, 2, 2, 4, 5, 5, 5)', counts(b) === '1:5 2:3 2:3 4:2 5:1 5:1 5:1', counts(b));
+    check('totals count EVERY credited spotter and vehicle (7 spotters, 16 vehicles)', b.totals && b.totals.spotters === 7 && b.totals.vehicles === 16);
     check('no "How discovery works" panel on the page', !/HOW DISCOVERY WORKS/i.test(fs.readFileSync(new URL('../public/community.html', import.meta.url), 'utf8')));
-    check('within a tie, whoever reached the count first is listed first (Bob before Carol; Erin before Frank; Gina cut)',
-      b.entries[1].name === 'Bob' && b.entries[2].name === 'Carol' && b.entries[4].name === 'Erin' && b.entries[5].name === 'Frank' && !b.entries.some(e => e.name === 'Gina'));
-    check('the response names its board and lists the boards (one today)', b.board === 'discovered' && b.label === 'Most Vehicles Discovered' && b.boards.length === 1);
+    check('within a tie, whoever reached the count first is listed first (Bob before Carol; Erin, Frank, Gina)',
+      b.entries[1].name === 'Bob' && b.entries[2].name === 'Carol' && b.entries.slice(4).map(e => e.name).join() === 'Erin,Frank,Gina');
+    check('the response names its board and lists the five boards, Top Overall first',
+      b.board === 'discovered' && b.label === 'Most Vehicles Discovered' && b.boards.map(x => x.id).join() === 'overall,discovered,miles,rides,vehicles' && b.boards[0].label === 'Top Overall');
+    check('no board asked for: Top Overall', (await board(ctx, '')).board === 'overall');
     check('an unknown board: 400', (await get(ctx, '/api/community/leaderboard?board=nope')).status === 400);
     const r = await worker.fetch(new Request('https://x/api/community/leaderboard'), ctx.env, {});
-    check('edge-cacheable for ~60s', /public, max-age=60/.test(r.headers.get('Cache-Control')));
+    check('edge-cacheable for 5 minutes', /public, max-age=300/.test(r.headers.get('Cache-Control')));
+    const many = Array.from({ length: 12 }, (_, i) => ({ uid: `u${String(i).padStart(2, '0')}`, handle: `u${i}`, discovered: 12 - i, rides: 0, miles: 0, unique_vehicles: 0, cities: 0, reached_at: '2026' }));
+    const { rankBoard } = await import('../worker/community.js');
+    check('only the top 10 are returned', rankBoard(many, { value: x => x.discovered, include: () => true, tie: () => 0 }).length === 10);
     const empty = await makeApp();
     check('nobody has discovered anything: an empty board, not an error', (await board(empty)).entries.length === 0 && (await board(empty)).totals.spotters === 0);
+  }
+
+  console.log('4b. The other boards: Top Overall, Most Miles, Most Rides, Most Vehicles Ridden');
+  {
+    const ctx = await makeApp();
+    ['alice', 'bob', 'carol'].forEach(u => optIn(ctx, u));
+    const dist = (id, mi, city) => ctx.d1.exec(`UPDATE trips SET distance = ${mi}, service_area = '${city}' WHERE id = '${id}'`);
+    // Alice: discovers v1, v2 (first rider); 3 counted rides in 2 vehicles, 2 cities, 25.5 mi.
+    const v1 = vehicle(ctx), v2 = vehicle(ctx);
+    dist('ride-' + (ride(ctx, 'alice', v1, 1), rn), 10, 'Austin');
+    dist('ride-' + (ride(ctx, 'alice', v1, 2), rn), 5.5, 'Austin');
+    dist('ride-' + (ride(ctx, 'alice', v2, 3), rn), 10, 'Dallas');
+    // Bob: 4 counted rides in v1/v2 (no discoveries), 1 city, 120 mi; one rejected ride ignored.
+    for (let i = 0; i < 4; i++) dist('ride-' + (ride(ctx, 'bob', i % 2 ? v2 : v1, 10 + i), rn), 30, 'Austin');
+    dist('ride-' + (ride(ctx, 'bob', v1, 20, 'rejected'), rn), 500, 'Austin');
+    // Carol: discovers v3 by sighting only; no rides.
+    const v3 = vehicle(ctx, { origin: 'sighting' }); sighting(ctx, 'carol', v3, 0);
+    // Dave (not opted in): the most of everything, and must be in no board.
+    for (let i = 0; i < 6; i++) dist('ride-' + (ride(ctx, 'dave', vehicle(ctx), 30 + i), rn), 99, 'Austin');
+
+    const o = await board(ctx, 'overall');
+    const by = (b, n) => b.entries.find(e => e.name === n);
+    // By hand: Alice 10*2 + 3*3 + 2*2 + 5*2 + round(25.5/10)=3 -> 46; Bob 0 + 12 + 4 + 5 + 12 -> 33; Carol 10 -> 10.
+    check('Top Overall, by hand: Alice 46, Bob 33, Carol 10 (ranked in that order)', counts(o) === '1:46 2:33 3:10' && o.entries.map(e => e.name).join() === 'Alice,Bob,Carol', counts(o));
+    check('...with the raw figures behind each score', JSON.stringify(['discovered', 'rides', 'miles', 'unique_vehicles', 'cities'].map(k => by(o, 'Alice')[k])) === '[2,3,25.5,2,2]' && JSON.stringify(['discovered', 'rides', 'miles', 'unique_vehicles', 'cities'].map(k => by(o, 'Bob')[k])) === '[0,4,120,2,1]');
+    check('...a rider with only a discovery is on it, with 0s for the rest', by(o, 'Carol') && by(o, 'Carol').rides === 0 && by(o, 'Carol').miles === 0);
+    check('...and the formula is sent with it', o.label === 'Top Overall' && /10 × vehicles discovered \+ 3 × rides \+ 2 × unique vehicles ridden \+ 5 × cities ridden in \+ miles ÷ 10 \(rounded\)/.test(o.help));
+    const mi = await board(ctx, 'miles'), rd = await board(ctx, 'rides'), vr = await board(ctx, 'vehicles');
+    check('Most Miles: Bob 120, Alice 25.5 (rejected rides ignored)', counts(mi) === '1:120 2:25.5' && mi.entries[0].name === 'Bob');
+    check('Most Rides: Bob 4, Alice 3', counts(rd) === '1:4 2:3' && rd.entries[0].name === 'Bob');
+    check('Most Vehicles Ridden: Alice 2, Bob 2 (a tie shares rank 1), Carol not on it', counts(vr) === '1:2 1:2' && !by(vr, 'Carol'));
+    check('Carol (no rides) is on no ride board', ![mi, rd, vr].some(b => by(b, 'Carol')));
+    const all = [o, mi, rd, vr, await board(ctx, 'discovered')];
+    check('a rider who is not opted in is in NO board, and leaves no gap in the ranks', all.every(b => !b.entries.some(e => e.score === 594 || e.count === 6 || e.name === 'Dave' || e.name === 'Private spotter') && b.entries.every((e, i) => e.rank <= i + 1)));
   }
 
   console.log('5. Privacy');
@@ -157,9 +195,8 @@ async function run() {
     ctx.d1.exec(`UPDATE users SET display_name = 'Nohandle Nora', handle = NULL WHERE id = 'carol'`); optIn(ctx, 'carol', { name: 'Nohandle Nora', handle: null });
     ride(ctx, 'alice', vehicle(ctx), 1); ride(ctx, 'bob', vehicle(ctx), 2); ride(ctx, 'bob', vehicle(ctx), 3); ride(ctx, 'carol', vehicle(ctx), 4);
     const res = await get(ctx, '/api/community/leaderboard');
-    const bob = res.json.entries.find(e => e.count === 2);
-    check('not opted in (even with profile_visibility "public"): "Private spotter", rank and count only',
-      bob.name === 'Private spotter' && bob.handle === null && bob.avatar_url === null && bob.profile === false && bob.rank === 1);
+    check('not opted in (even with profile_visibility "public"): not on the board at all, and ranks start at 1 without them',
+      !res.json.entries.some(e => e.name === 'Private spotter' || e.count === 2) && res.json.entries.every(e => e.rank === 1));
     check('...and nothing about them is anywhere in the response', !/Bob Secret|bobby|googleusercontent\.com\/a\/bob/.test(res.raw));
     const alice = res.json.entries.find(e => e.name === 'Alice');
     check('opted in with a handle: name, handle, photo and a profile link', alice.handle === 'alice' && /^https:\/\//.test(alice.avatar_url) && alice.profile === true);

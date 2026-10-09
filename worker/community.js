@@ -1,8 +1,12 @@
 // Community page: leaderboards and public rider profiles.
 //
-//   GET /api/community/leaderboard?board=discovered   public, edge-cached
-//     -> { board, label, boards: [{ id, label }], entries: [{ rank, count, name, handle, avatar_url, profile }],
-//          totals: { spotters, vehicles } }   (every ranked rider, not just the top N: counts only)
+//   GET /api/community/leaderboard?board=overall|discovered|miles|rides|vehicles
+//     public, edge-cached (5 min). Default board: overall.
+//     -> { board, label, help, unit, boards: [{ id, label }],
+//          entries: [{ rank, score, count, name, handle, avatar_url, profile,
+//                      discovered, rides, miles, unique_vehicles, cities }],
+//          totals: { spotters, vehicles } }
+//     (totals: every credited discoverer, counts only — the "Spotters" tile)
 //   GET /api/rider-search?q=bo                        public, rate limited, never cached
 //     -> { q, results: [{ name, handle, avatar_url }] }   (at most 8; see apiSearchRiders)
 //   GET /api/riders/:handle                           public, edge-cached
@@ -10,17 +14,20 @@
 //          rides: { count, vehicles, cities: [{ name, rides }] },
 //          reviews: { count, average, recent: [...] } }
 //
-// Boards are a server-side map (BOARDS): a future board (most sightings,
-// longest streak) is one new entry — its ranking SQL and label — and the page
-// shows tab buttons only once there is more than one.
+// Boards are a server-side map (BOARDS) over ONE live query of every rider's
+// figures (riderMetrics): a board is its label, its value per rider and its
+// tie order. The page shows a tab per board.
 //
 // PRIVACY (hard rules):
 //   - A rider is shown only while users.leaderboard_opt_in = 1: on by default
 //     (new accounts, and existing ones via migrations/0021, as the privacy
 //     page states), off with the Profile page's switch. profile_visibility is
 //     not read.
-//   - A rider who has turned it off is a "Private spotter": rank and count only —
-//     no name, handle, photo, id or link ever leaves the server for them.
+//   - A rider who has turned it off is in NO board at all (owner decision,
+//     Oct 2026): no row, no "Private spotter", and ranks are counted among
+//     opted-in riders only, so no gap gives them away. Nothing about them —
+//     name, handle, photo, id, figures — leaves the server. (The "Spotters"
+//     tile's total is a bare count of every credited discoverer.)
 //   - A public profile needs the opt-in AND a handle; anything else is a 404,
 //     identical to an unknown handle (existence isn't revealed).
 //   - A public profile's ride figures are COUNTS ONLY (counted rides, distinct
@@ -36,10 +43,10 @@ import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './rid
 import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
 
-const CACHE_SECONDS = 60;
-const TOP_N = 6;
+const CACHE_SECONDS = 60;               // public profiles
+const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
+const TOP_N = 10;
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
-const PRIVATE_NAME = 'Private spotter';
 const PROFILE_REVIEWS = 10;   // most recent reviews shown on a public profile
 const SEARCH_MIN = 1;
 const SEARCH_MAX = 40;
@@ -93,40 +100,100 @@ function discoveryCreditCte() {
 // A value no user id can equal, when the system account isn't configured.
 const systemUserId = env => env.MUSE_CONNECTOR_USER_ID || '\u0000';
 
-// Riders ranked by discovered vehicles: count, and when they reached it (the
-// time of their latest credited discovery) for ordering within a tie.
-async function rankDiscovered(sql, env) {
+// Every rider's leaderboard figures, computed live in one query:
+//   discovered      vehicles credited to them (discoveryCreditCte, unchanged),
+//                   reached_at = when they reached that count (tie order)
+//   rides           counted rides (COUNTED_RIDES_WHERE — the Rider Data rule)
+//   miles           SUM(trips.distance) over those rides (stored as miles)
+//   unique_vehicles distinct vehicles among those rides
+//   cities          distinct service_area values among those rides
+// Only opted-in riders with any activity (a credited discovery or a counted
+// ride); never the Muse connector's system account.
+async function riderMetrics(sql, env) {
   const sys = systemUserId(env);
   const { results } = await sql.prepare(`
-    WITH ${discoveryCreditCte()}
-    SELECT u.leaderboard_opt_in AS opt_in, u.display_name, u.handle, u.avatar_url,
-           COUNT(*) AS count, MAX(credit.at) AS reached_at, credit.uid AS uid
-    FROM credit JOIN users u ON u.id = credit.uid
-    WHERE credit.rn = 1
-    GROUP BY credit.uid
-    ORDER BY count DESC, reached_at ASC, credit.uid ASC
-  `).bind(sys, sys).all();
-  return results || [];
+    WITH ${discoveryCreditCte()},
+    disc AS (
+      SELECT uid, COUNT(*) AS n, MAX(at) AS reached_at FROM credit WHERE rn = 1 GROUP BY uid
+    ),
+    ridden AS (
+      SELECT t.user_id AS uid, COUNT(*) AS rides, COALESCE(SUM(t.distance), 0) AS miles,
+             COUNT(DISTINCT t.robotaxi_vehicle_id) AS unique_vehicles,
+             COUNT(DISTINCT t.service_area) AS cities
+      FROM ${RIDES_FROM}
+      WHERE ${COUNTED_RIDES_WHERE}
+      GROUP BY t.user_id
+    )
+    SELECT u.id AS uid, u.display_name, u.handle, u.avatar_url,
+           COALESCE(d.n, 0) AS discovered, d.reached_at,
+           COALESCE(r.rides, 0) AS rides, COALESCE(r.miles, 0) AS miles,
+           COALESCE(r.unique_vehicles, 0) AS unique_vehicles, COALESCE(r.cities, 0) AS cities
+    FROM users u
+    LEFT JOIN disc d ON d.uid = u.id
+    LEFT JOIN ridden r ON r.uid = u.id
+    WHERE u.leaderboard_opt_in = 1 AND u.id <> ?
+      AND (d.n IS NOT NULL OR r.rides IS NOT NULL)
+  `).bind(sys, sys, sys).all();
+  return (results || []).map(r => ({
+    uid: r.uid, display_name: r.display_name, handle: r.handle, avatar_url: r.avatar_url,
+    discovered: Number(r.discovered) || 0, reached_at: r.reached_at || null,
+    rides: Number(r.rides) || 0, miles: Number(r.miles) || 0,
+    unique_vehicles: Number(r.unique_vehicles) || 0, cities: Number(r.cities) || 0
+  }));
 }
 
-const BOARDS = {
-  discovered: { label: 'Most Vehicles Discovered', rank: rankDiscovered }
-};
-const DEFAULT_BOARD = 'discovered';
+// Top Overall: shown on the page as OVERALL_FORMULA.
+export function overallScore(r) {
+  return 10 * r.discovered + 3 * r.rides + 2 * r.unique_vehicles + 5 * r.cities + Math.round(r.miles / 10);
+}
+const OVERALL_FORMULA = 'Score = 10 × vehicles discovered + 3 × rides + 2 × unique vehicles ridden + 5 × cities ridden in + miles ÷ 10 (rounded)';
+const miles1 = m => Math.round(m * 10) / 10;
+const byUid = (a, b) => (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
 
-// The public shape of one ranked rider. Only opted-in riders carry anything
-// that identifies them; `profile` is true only when a public page exists.
-function publicEntry(row, rank) {
-  const optedIn = Number(row.opt_in) === 1;
-  if (!optedIn) return { rank, count: Number(row.count), name: PRIVATE_NAME, handle: null, avatar_url: null, profile: false };
-  const handle = row.handle || null;
+// value: the number a board ranks by (and shows); include: who is on it;
+// tie: the order within an equal value.
+const BOARDS = {
+  overall: {
+    label: 'Top Overall', unit: ['pt', 'pts'], help: OVERALL_FORMULA,
+    value: overallScore, include: () => true,
+    tie: (a, b) => b.discovered - a.discovered || b.rides - a.rides || b.miles - a.miles || byUid(a, b)
+  },
+  discovered: {
+    label: 'Most Vehicles Discovered', unit: ['vehicle', 'vehicles'],
+    help: "A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.",
+    value: r => r.discovered, include: r => r.discovered > 0,
+    // Within a tie, whoever reached the count first (unchanged).
+    tie: (a, b) => String(a.reached_at).localeCompare(String(b.reached_at)) || byUid(a, b)
+  },
+  miles: {
+    label: 'Most Miles', unit: ['mi', 'mi'], help: 'Total distance of counted rides.',
+    value: r => miles1(r.miles), include: r => r.miles > 0, tie: (a, b) => b.miles - a.miles || byUid(a, b)
+  },
+  rides: {
+    label: 'Most Rides', unit: ['ride', 'rides'], help: 'Counted rides.',
+    value: r => r.rides, include: r => r.rides > 0, tie: byUid
+  },
+  vehicles: {
+    label: 'Most Vehicles Ridden', unit: ['vehicle', 'vehicles'], help: 'Different Cybercabs ridden in (discovered or not).',
+    value: r => r.unique_vehicles, include: r => r.unique_vehicles > 0, tie: byUid
+  }
+};
+const DEFAULT_BOARD = 'overall';
+
+// The public shape of one ranked (opted-in) rider; `profile` is true only
+// when a public page exists.
+function publicEntry(r, rank, value) {
+  const handle = r.handle || null;
   return {
     rank,
-    count: Number(row.count),
-    name: (row.display_name && String(row.display_name).trim()) || (handle ? `@${handle}` : 'Spotter'),
+    score: value,
+    count: value,   // the board's number (older pages read `count`)
+    name: (r.display_name && String(r.display_name).trim()) || (handle ? `@${handle}` : 'Spotter'),
     handle,
-    avatar_url: safeAvatar(row.avatar_url),
-    profile: !!handle
+    avatar_url: safeAvatar(r.avatar_url),
+    profile: !!handle,
+    discovered: r.discovered, rides: r.rides, miles: miles1(r.miles),
+    unique_vehicles: r.unique_vehicles, cities: r.cities
   };
 }
 
@@ -137,16 +204,28 @@ function safeAvatar(url) {
   return /^https:\/\/[^\s"'<>]+$/.test(url) || /^\/api\/avatars\/[a-f0-9]{32}$/.test(url) ? url : null;
 }
 
-// Competition ranking (1, 1, 3): tied counts share a rank; the rows are
-// already ordered, so within a tie whoever reached the count first is first.
-export function rankEntries(rows, limit = TOP_N) {
+// One board: its riders by value (then its tie order), top N, competition
+// ranking (1, 1, 3) — tied values share a rank.
+export function rankBoard(metrics, board, limit = TOP_N) {
+  const rows = metrics.filter(board.include).map(r => ({ r, v: board.value(r) }))
+    .sort((a, b) => b.v - a.v || board.tie(a.r, b.r));
   const out = [];
-  rows.slice(0, limit).forEach((row, i) => {
-    const prev = out[i - 1];
-    const rank = prev && Number(rows[i - 1].count) === Number(row.count) ? prev.rank : i + 1;
-    out.push(publicEntry(row, rank));
+  rows.slice(0, limit).forEach(({ r, v }, i) => {
+    const rank = i > 0 && rows[i - 1].v === v ? out[i - 1].rank : i + 1;
+    out.push(publicEntry(r, rank, v));
   });
   return out;
+}
+
+// Every credited discoverer, opted in or not: counts only (the "Spotters"
+// tile and the Discovered board's footer).
+async function discoveryTotals(sql, env) {
+  const sys = systemUserId(env);
+  const row = await sql.prepare(`
+    WITH ${discoveryCreditCte()}
+    SELECT COUNT(DISTINCT uid) AS spotters, COUNT(*) AS vehicles FROM credit WHERE rn = 1
+  `).bind(sys, sys).first();
+  return { spotters: Number(row && row.spotters) || 0, vehicles: Number(row && row.vehicles) || 0 };
 }
 
 async function cached(request, ctx, build) {
@@ -169,14 +248,17 @@ export async function apiCommunityLeaderboard(request, env, ctx) {
   const board = Object.prototype.hasOwnProperty.call(BOARDS, boardId) ? BOARDS[boardId] : null;
   if (!board) return Response.json({ success: false, error: 'invalid_board' }, { status: 400 });
   return cached(request, ctx, async () => {
-    const rows = await board.rank(env.cybercabhunter_db, env);
+    const sql = env.cybercabhunter_db;
+    const [metrics, totals] = await Promise.all([riderMetrics(sql, env), discoveryTotals(sql, env)]);
     return Response.json({
       board: boardId,
       label: board.label,
+      help: board.help,
+      unit: board.unit,
       boards: Object.entries(BOARDS).map(([id, b]) => ({ id, label: b.label })),
-      entries: rankEntries(rows),
-      totals: { spotters: rows.length, vehicles: rows.reduce((n, r) => n + Number(r.count), 0) }
-    }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
+      entries: rankBoard(metrics, board),
+      totals
+    }, { headers: { 'Cache-Control': `public, max-age=${BOARD_CACHE_SECONDS}` } });
   });
 }
 
