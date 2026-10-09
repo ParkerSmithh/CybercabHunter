@@ -1,8 +1,8 @@
 /* Refined data panels retain the original metric and chart arrangement. */
-.home-data-panel{padding:24px;border:1px solid rgb(var(--ink) / .1);border-radius:16px;background:rgb(var(--surface));}
+.home-data-panel{padding:24px;border:1px solid rgb(var(--ink) / .1);border-radius:16px;background:linear-gradient(120deg,rgb(var(--gold) / .06),transparent 60%),rgb(var(--surface));}
 .home-data-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:20px;border-bottom:1px solid rgb(var(--ink) / .08);}
 .home-data-heading h2{font-size:22px;line-height:1.3;letter-spacing:-.02em;color:rgb(var(--ink));}
-.home-data-city{margin-bottom:4px;font-size:11px;font-weight:600;letter-spacing:.12em;color:rgb(var(--n-500));}
+.home-data-city{margin-bottom:4px;font-size:11px;font-weight:600;letter-spacing:.12em;color:rgb(var(--gold-ink));}
 .home-data-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;}
 .home-rides-layout{display:block;margin-top:24px;}
 .home-rides-metrics{grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;}
@@ -21,11 +21,7 @@
 .home-camera-grid .home-data-value{font-size:24px;}
 .home-activity-panel [data-chart-body]{padding-top:12px;}
 .home-data-panel .hr-about{padding-top:8px;margin-top:16px;border-top:1px solid rgb(var(--ink) / .08);}
-.home-data-panel a.text-gold{color:rgb(var(--ink));}
-.home-data-panel .hr-range[aria-pressed="true"]::after{background:rgb(var(--ink));}
-.home-data-panel .hr-bars > span:not(.is-empty){color:rgb(var(--ink));}
-.home-data-panel .hr-bars > span:not(.is-empty)::after{animation-name:home-data-dot-pulse;}
-@keyframes home-data-dot-pulse{0%,100%{box-shadow:0 0 0 0 rgb(var(--ink) / 0);}15%{box-shadow:0 0 0 0 rgb(var(--ink) / .25);}65%{box-shadow:0 0 0 6px rgb(var(--ink) / 0);}}
+.home-rides-metrics .home-data-metric:first-child .home-data-value,.home-sighting-metrics .home-data-metric:first-child .home-data-value{color:rgb(var(--gold-ink));}
 @media(max-width:639px){
  .home-data-panel{padding:20px 16px;}
  .home-data-heading{gap:12px;padding-bottom:16px;}
