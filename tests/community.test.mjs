@@ -177,7 +177,7 @@ async function run() {
     check('Top Overall, by hand: Alice 46, Bob 33, Carol 10 (ranked in that order)', counts(o) === '1:46 2:33 3:10' && o.entries.map(e => e.name).join() === 'Alice,Bob,Carol', counts(o));
     check('...with the raw figures behind each score', JSON.stringify(['discovered', 'rides', 'miles', 'unique_vehicles', 'cities'].map(k => by(o, 'Alice')[k])) === '[2,3,25.5,2,2]' && JSON.stringify(['discovered', 'rides', 'miles', 'unique_vehicles', 'cities'].map(k => by(o, 'Bob')[k])) === '[0,4,120,2,1]');
     check('...a rider with only a discovery is on it, with 0s for the rest', by(o, 'Carol') && by(o, 'Carol').rides === 0 && by(o, 'Carol').miles === 0);
-    check('...and the formula is sent with it', o.label === 'Top Overall' && /10 × vehicles discovered \+ 3 × rides \+ 2 × unique vehicles ridden \+ 5 × cities ridden in \+ miles ÷ 10 \(rounded\)/.test(o.help));
+    check('...and no formula is sent with it (removed on owner request)', o.label === 'Top Overall' && !o.help && !/Score =/.test(JSON.stringify(o)));
     const mi = await board(ctx, 'miles'), rd = await board(ctx, 'rides'), vr = await board(ctx, 'vehicles');
     check('Most Miles: Bob 120, Alice 25.5 (rejected rides ignored)', counts(mi) === '1:120 2:25.5' && mi.entries[0].name === 'Bob');
     check('Most Rides: Bob 4, Alice 3', counts(rd) === '1:4 2:3' && rd.entries[0].name === 'Bob');
@@ -358,7 +358,7 @@ async function run() {
     check('the board shows its rows (Bob, not opted in, is not one of them)', rows.length === 2 && !d.getElementById('boardList').classList.contains('hidden') && !/Private spotter/.test(d.getElementById('boardList').textContent));
     const tabs = [...d.querySelectorAll('#boardTabs button')];
     check('five tabs in one row, in order, Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
-    check('the title is the board label, and Top Overall shows its formula', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && /Score = 10 × vehicles discovered/.test(d.getElementById('boardHelp').textContent));
+    check('the title is the board label, and Top Overall shows no formula line', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && d.getElementById('boardHelp').classList.contains('hidden') && !/Score =/.test(d.body.textContent));
     const first = rows[0].querySelector('a');
     check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(212,175,55,0\.45\)\]/.test(first.className) && first.querySelector('img'));
     // Alice: 2 discovered, 2 rides of 2.8 mi (the seed's default) in 2 cars, 1 city:

@@ -142,11 +142,11 @@ async function riderMetrics(sql, env) {
   }));
 }
 
-// Top Overall: shown on the page as OVERALL_FORMULA.
+// Top Overall: 10 x discovered + 3 x rides + 2 x unique vehicles ridden +
+// 5 x cities + round(miles / 10). Not shown on the page (owner request).
 export function overallScore(r) {
   return 10 * r.discovered + 3 * r.rides + 2 * r.unique_vehicles + 5 * r.cities + Math.round(r.miles / 10);
 }
-const OVERALL_FORMULA = 'Score = 10 × vehicles discovered + 3 × rides + 2 × unique vehicles ridden + 5 × cities ridden in + miles ÷ 10 (rounded)';
 const miles1 = m => Math.round(m * 10) / 10;
 const byUid = (a, b) => (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
 
@@ -154,7 +154,7 @@ const byUid = (a, b) => (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
 // tie: the order within an equal value.
 const BOARDS = {
   overall: {
-    label: 'Top Overall', unit: ['pt', 'pts'], help: OVERALL_FORMULA,
+    label: 'Top Overall', unit: ['pt', 'pts'], help: '',
     value: overallScore, include: () => true,
     tie: (a, b) => b.discovered - a.discovered || b.rides - a.rides || b.miles - a.miles || byUid(a, b)
   },
