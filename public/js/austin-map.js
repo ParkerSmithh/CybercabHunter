@@ -1,7 +1,7 @@
 /* Shared Austin map pieces, so the Zones page map (infrastructure.html) and the
    homepage minimap (index.html) can't drift apart:
-     - styleUrl(): the basemap for the site theme (light: OpenFreeMap
-       "positron", dark: "fiord"); styleBasemap(map) tunes its colors
+     - styleUrl(): the basemap, CARTO Dark Matter (every map, both themes);
+       styleBasemap(map) is a no-op kept for its callers
      - addServiceZone(map, coords, look): the gold service zone (both maps;
        the replay passes a quieter look)
      - SERVICE_ZONE: the Austin service-zone boundary, for the replay (the
@@ -15,26 +15,15 @@
        the last 24 hours, refreshed every 60s and reconciled by camera_id.
    Needs MapLibre (maplibregl) and the page's map instance. */
 window.CCCAustinMap = (function () {
-  const isLight = () => document.documentElement.getAttribute('data-theme') === 'light';
-  function styleUrl() { return `https://tiles.openfreemap.org/styles/${isLight() ? 'positron' : 'fiord'}`; }
-  // Basemap colors for the site theme: a cool neutral light map, or the
-  // near-black dark one. Call on load.
-  function styleBasemap(map) {
-    const paint = (id, prop, value) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, value); };
-    if (isLight()) {
-      paint('background', 'background-color', '#eef0f3');
-      paint('water', 'fill-color', '#d9e1e8');
-      paint('park', 'fill-color', '#e3e8e2');
-      paint('landuse_residential', 'fill-color', '#e8eaee');
-      return;
-    }
-    paint('background', 'background-color', '#080a10');
-    paint('water', 'fill-color', '#0c1119');
-    paint('landcover_wood', 'fill-color', 'hsla(232,18%,10%,0.6)');
-    paint('park', 'fill-color', 'hsl(204,17%,12%)');
-    paint('landuse_residential', 'fill-color', '#12151d');
-    paint('building', 'fill-color', 'hsla(232,30%,6%,0.6)');
-  }
+  // Every map on the site uses CARTO's Dark Matter basemap (owner's choice,
+  // Oct 2026), in both site themes: the original Dark Matter style, no key.
+  // Its tiles carry their own credit (© CARTO, © OpenStreetMap contributors),
+  // which MapLibre's attribution control shows.
+  const DARK_MATTER = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+  function styleUrl() { return DARK_MATTER; }
+  // Kept for the pages that call it on load: Dark Matter is used as designed,
+  // so there is nothing to recolour.
+  function styleBasemap() {}
 
   // The Austin service zone (lng, lat), the same boundary as the Zones page.
   const SERVICE_ZONE = [
@@ -202,5 +191,5 @@ window.CCCAustinMap = (function () {
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
     return { refreshCameras: refreshCameraMarkers, refreshChargingLocations };
   }
-  return { styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
+  return { DARK_MATTER, styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
 })();
