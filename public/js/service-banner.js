@@ -15,7 +15,9 @@
    never goes negative), "Xh Ym", or "Ym" under an hour. Measured in real time
    to the next opening / closing instant in Chicago, so a daylight-saving night
    counts its real 23 or 25 hours. Ticks on each minute boundary, and at once
-   when the tab comes back. */
+   when the tab comes back.
+   LAYOUT: the status and countdown | the service day on a 24-hour track
+   (window, the part already run, now, the Austin clock) | the Cybercab. */
 (function () {
   const el = document.getElementById('serviceBanner');
   const C = typeof CCC_CALC !== 'undefined' ? CCC_CALC : null;   // js/calc.js (a top-level const, not a window property)
@@ -62,28 +64,51 @@
   const clock = minute => `${((Math.floor(minute / 60) + 11) % 12) + 1}:${String(minute % 60).padStart(2, '0')} ${minute < 720 ? 'AM' : 'PM'}`;
 
   const MOON = '<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg>';
+  // The service day on a 24-hour track: the open window, the part already
+  // run (live only), and now. Positions are % of the day in Chicago.
+  const pctOf = minute => `${((minute / 1440) * 100).toFixed(3)}%`;
+  function day(now) {
+    const p = parts(now), minute = p.h * 60 + p.mi;
+    return { minute, label: clock(minute) };
+  }
+  function paintDay(s, d) {
+    const run = el.querySelector('[data-sb-run]'), mark = el.querySelector('[data-sb-now]'), lab = el.querySelector('[data-sb-clock]');
+    // The run is a share of the open window (the element it sits in).
+    if (run) run.style.width = s.live ? `${(Math.min(1, Math.max(0, (d.minute - H.openMinute) / (H.closeMinute - H.openMinute))) * 100).toFixed(2)}%` : '0%';
+    if (mark) mark.style.left = pctOf(d.minute);
+    if (lab) lab.textContent = d.label;
+  }
   let shown = null;
   function render() {
-    const s = state(Date.now());
+    const now = Date.now(), s = state(now), d = day(now);
     const cd = countdown(s.ms);
     if (shown && shown.live === s.live) {
-      // Only the countdown changes: update it in place (no layout shift).
+      // Only the countdown, the clock and the marker change: in place (no layout shift).
       el.querySelector('[data-countdown]').textContent = cd;
+      paintDay(s, d);
       return;
     }
     shown = s;
     el.dataset.state = s.live ? 'live' : 'parked';
-    // The Cybercab at the strip's end: on the road (live) or parked, dimmed.
-    const car = `<span class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/dmv-cybercab.webp" alt="" decoding="async"></span>`;
-    el.innerHTML = car + (s.live
-      ? `<span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>
-         <span class="font-semibold text-white uppercase tracking-wide">Cybercabs are on the road now</span>
-         <span class="sb-line text-gold font-semibold whitespace-nowrap">Service ends in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums">${cd}</span></span>
-         <span class="sb-meta text-slate-500"><span class="max-sm:hidden">${clock(H.openMinute)} – ${clock(H.closeMinute)} · </span><span class="sb-all">All times </span>Austin time (CT)</span>`
-      : `<span class="text-sky-300/80">${MOON}</span>
-         <span class="font-semibold text-slate-300">The fleet is parked for the night</span>
-         <span class="sb-line text-slate-400 whitespace-nowrap">Back on the road at ${clock(H.openMinute)}<span class="sm:hidden"> CT</span> · Back in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums text-sky-200">${cd}</span></span>
-         <span class="sb-meta text-slate-500 max-sm:hidden">All times Austin time (CT)</span>`);
+    const main = s.live
+      ? `<p class="sb-eyebrow text-emerald-300"><span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>Live now<span class="max-sm:hidden"> · Austin &amp; Dallas</span></p>
+         <p class="sb-headline font-display font-bold text-white uppercase tracking-wide">Cybercabs are on the road now</p>
+         <p class="sb-line text-gold font-semibold whitespace-nowrap">Service ends in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums">${cd}</span></p>`
+      : `<p class="sb-eyebrow text-sky-300/80">${MOON}Parked<span class="max-sm:hidden"> · Austin &amp; Dallas</span></p>
+         <p class="sb-headline font-display font-bold text-slate-200">The fleet is parked for the night</p>
+         <p class="sb-line text-slate-400">Back on the road at ${clock(H.openMinute)} · Back in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums text-sky-200">${cd}</span></p>`;
+    el.innerHTML = `<div class="sb-main">${main}</div>
+      <div class="sb-day">
+        <div class="flex items-baseline justify-between gap-3 text-xs"><span class="text-slate-400">Service day · <span class="stat-value text-slate-200">${clock(H.openMinute)} – ${clock(H.closeMinute)}</span></span><span class="text-slate-500">Now <span data-sb-clock class="stat-value text-slate-200">${d.label}</span></span></div>
+        <div class="sb-track" aria-hidden="true">
+          <span class="sb-window" style="left:${pctOf(H.openMinute)};width:${pctOf(H.closeMinute - H.openMinute)}"><span data-sb-run class="sb-run"></span></span>
+          <span data-sb-now class="sb-now"></span>
+        </div>
+        <div class="flex justify-between text-[10px] text-slate-500 stat-value" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+        <p class="sb-meta text-[11px] text-slate-500">All times Austin time (CT) · every day</p>
+      </div>
+      <div class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/dmv-cybercab.webp" alt="" decoding="async"></div>`;
+    paintDay(s, d);
   }
 
   // Tick on each minute boundary (the countdown changes then), and on return.
