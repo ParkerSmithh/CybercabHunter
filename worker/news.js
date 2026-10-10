@@ -16,8 +16,9 @@
 //      page's og:image);
 //   3. keeps an item when it matches the allowlist (default: "cybercab", or
 //      "robotaxi" AND "tesla") and its title hits nothing on the blocklist
-//      (stock-price stories); both lists live in news_config and are edited
-//      from /moderation without a redeploy;
+//      (stock-price stories), and its publisher is not on the publisher
+//      blocklist (e.g. BASENOR); all three lists live in news_config and are
+//      edited from /moderation without a redeploy;
 //   4. stores it once: the canonical URL (tracking params removed) is UNIQUE,
 //      so reruns insert nothing twice; then re-clusters the recent stories by
 //      normalized-title similarity (same story, other outlets -> one
@@ -72,6 +73,14 @@ const BACKFILL_QUERIES = ['Tesla Cybercab', 'Tesla robotaxi'];
 // "a + b" means both words. Matching is case-insensitive, on whole words.
 export const DEFAULT_ALLOW = 'cybercab\nrobotaxi + tesla';
 export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts';
+// Publishers whose stories are never kept (news_config 'publisher_blocklist',
+// a JSON array; migrations/0030 seeds it). Matched case-insensitively against
+// a story's source, before scoring and storage.
+export const DEFAULT_PUBLISHER_BLOCKLIST = ['BASENOR'];
+const publisherKey = name => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+export function parsePublisherList(value) {
+  try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().replace(/\s+/g, ' ')) : null; } catch (e) { return null; }
+}
 
 const IMPORTANT = /\b(launch(es|ed|ing)?|expan(sion|ds|d|ding)|crash(es|ed)?|recall(s|ed)?|nhtsa|investigat(ion|ions|es|ed|ing)|lawsuit(s)?|sue(s|d)?|new cit(y|ies)|safety|price(s|d)?|pricing)\b/i;
 const OFFICIAL = ['tesla.com', 'nhtsa.gov', 'waymo.com'];
@@ -276,9 +285,14 @@ async function validThumb(media, fetchImpl, budget) {
 }
 
 async function config(sql) {
-  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block')`).all();
+  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block', 'publisher_blocklist')`).all();
   const map = Object.fromEntries((results || []).map(r => [r.key, r.value]));
-  return { allow: map.allow != null ? map.allow : DEFAULT_ALLOW, block: map.block != null ? map.block : DEFAULT_BLOCK };
+  const publishers = map.publisher_blocklist != null ? parsePublisherList(map.publisher_blocklist) : null;
+  return {
+    allow: map.allow != null ? map.allow : DEFAULT_ALLOW,
+    block: map.block != null ? map.block : DEFAULT_BLOCK,
+    publisher_blocklist: publishers || DEFAULT_PUBLISHER_BLOCKLIST
+  };
 }
 
 const isoDay = d => d.toISOString().slice(0, 10);
@@ -292,8 +306,10 @@ export async function runScheduledNews(env, nowMs = Date.now()) {
 
 export async function runNewsIngest(env, { fetchImpl = fetch, nowMs = Date.now(), backfill } = {}) {
   const sql = env.cybercabhunter_db;
-  const log = { at: new Date(nowMs).toISOString(), fetched: 0, kept: 0, dropped: 0, duplicates: 0, new: 0, not_modified: 0, errors: [], backfill: false };
-  const rules = compileRules(...Object.values(await config(sql)));
+  const log = { at: new Date(nowMs).toISOString(), fetched: 0, kept: 0, dropped: 0, blocked_publisher: 0, duplicates: 0, new: 0, not_modified: 0, errors: [], backfill: false };
+  const cfg = await config(sql);
+  const rules = compileRules(cfg.allow, cfg.block);
+  const blockedPublishers = new Set(cfg.publisher_blocklist.map(publisherKey));
   const doBackfill = backfill != null ? backfill : !(await env.TESLA_SESSIONS.get(KV_BACKFILLED));
   const jobs = FEEDS.map(f => ({ feed: f, conditional: true }));
   if (doBackfill) {
@@ -313,6 +329,8 @@ export async function runNewsIngest(env, { fetchImpl = fetch, nowMs = Date.now()
       if (res.status === 304) { log.not_modified++; continue; }
       log.fetched += res.items.length;
       for (const item of res.items) {
+        // A blocklisted publisher: dropped before anything else (counted on its own).
+        if (blockedPublishers.has(publisherKey(item.source))) { log.blocked_publisher++; log.dropped++; continue; }
         const why = rules.keep(item);
         if (why || item.published_at < oldest) { log.dropped++; continue; }
         if (candidates.has(item.url) || seenStory.has(storyKey(item))) { log.duplicates++; continue; }
@@ -459,16 +477,25 @@ export async function modUpdateNews(request, env, id) {
 export async function modUpdateNewsConfig(request, env) {
   let body = {};
   try { body = await request.json(); } catch (e) { body = {}; }
-  const clean = v => (typeof v === 'string' ? lines(v).map(l => l.slice(0, 80)).slice(0, 100).join('\n') : null);
+  // Each part is optional (only the ones sent are saved); at least one is needed.
+  const clean = v => (typeof v === 'string' ? lines(v).map(l => l.slice(0, 80)).slice(0, 100).join('\n') : undefined);
   const allow = clean(body.allow), block = clean(body.block);
-  if (allow === null || block === null) return Response.json({ success: false, error: 'bad_config' }, { status: 400 });
-  if (!lines(allow).length) return Response.json({ success: false, error: 'empty_allowlist' }, { status: 400 });
+  let publishers;
+  if (body.publisher_blocklist !== undefined) {
+    if (!Array.isArray(body.publisher_blocklist) || body.publisher_blocklist.some(x => typeof x !== 'string')) return Response.json({ success: false, error: 'bad_publisher_blocklist' }, { status: 400 });
+    const seen = new Set();
+    publishers = body.publisher_blocklist.map(x => x.trim().replace(/\s+/g, ' ').slice(0, 80)).filter(x => x && !seen.has(publisherKey(x)) && seen.add(publisherKey(x))).slice(0, 200);
+  }
+  if (allow === undefined && block === undefined && publishers === undefined) return Response.json({ success: false, error: 'bad_config' }, { status: 400 });
+  if (allow !== undefined && !lines(allow).length) return Response.json({ success: false, error: 'empty_allowlist' }, { status: 400 });
   const sql = env.cybercabhunter_db;
-  await sql.batch([
-    sql.prepare(`INSERT INTO news_config (key, value) VALUES ('allow', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(allow),
-    sql.prepare(`INSERT INTO news_config (key, value) VALUES ('block', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(block)
-  ]);
-  return Response.json({ success: true, config: { allow, block } });
+  const put = (k, v) => sql.prepare(`INSERT INTO news_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(k, v);
+  const writes = [];
+  if (allow !== undefined) writes.push(put('allow', allow));
+  if (block !== undefined) writes.push(put('block', block));
+  if (publishers !== undefined) writes.push(put('publisher_blocklist', JSON.stringify(publishers)));
+  await sql.batch(writes);
+  return Response.json({ success: true, config: await config(sql) });
 }
 
 // POST /api/moderation/news/run — run the ingest now (not just at 6 AM).

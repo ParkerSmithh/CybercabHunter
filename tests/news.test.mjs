@@ -190,6 +190,50 @@ async function run() {
     check('stories days apart are not merged (72 h window)', groups.a.cluster_id !== groups.b.cluster_id);
   }
 
+  console.log('6. The publisher blocklist');
+  {
+    const PUB = `<rss><channel>
+${gItem('Cybercab gets a new screen', 'BASENOR', 'https://basenor.com', 2, 'PB1')}
+${gItem('Cybercab seats explained', 'basenor', 'https://basenor.com', 3, 'PB2')}
+${gItem('Cybercab rides expand in Austin', 'Reuters', 'https://www.reuters.com', 4, 'PB3')}
+</channel></rss>`;
+    const fx = async (url, init = {}) => {
+      const u = String(url);
+      if (init.method === 'HEAD') return new Response(null, { status: 404 });
+      if (u.includes('news.google.com') && !u.includes('after%3A')) return new Response(PUB);
+      return new Response('<rss></rss>');
+    };
+    const e = await makeApp();
+    check('news_config "publisher_blocklist" is seeded with ["BASENOR"] (migrations/0030)', e.d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["BASENOR"]');
+    const log = await runNewsIngest(e.env, { fetchImpl: fx, nowMs: NOW });
+    const r = rows(e);
+    check('a listed publisher\'s stories are dropped at ingest, any capitalization ("BASENOR" and "basenor")', !r.some(x => /basenor/i.test(x.source)));
+    check('...and counted as blocked by publisher in the run log', log.blocked_publisher >= 2 && JSON.parse(await e.env.TESLA_SESSIONS.get('news:last_run')).blocked_publisher === log.blocked_publisher);
+    check('a publisher not on the list is unaffected', r.some(x => x.source === 'Reuters' && /expand in Austin/.test(x.title)));
+    const e2 = await makeApp();
+    e2.d1.exec(`UPDATE news_config SET value = '["  basenor "]' WHERE key = 'publisher_blocklist'`);
+    await runNewsIngest(e2.env, { fetchImpl: fx, nowMs: NOW });
+    check('matching ignores case and surrounding spaces in the list too', !rows(e2).some(x => /basenor/i.test(x.source)) && rows(e2).some(x => x.source === 'Reuters'));
+    // Not retroactive: a story stored before its publisher was listed stays.
+    const e3 = await makeApp();
+    e3.d1.exec(`UPDATE news_config SET value = '[]' WHERE key = 'publisher_blocklist'`);
+    await runNewsIngest(e3.env, { fetchImpl: fx, nowMs: NOW });
+    const storedBefore = rows(e3).filter(x => /basenor/i.test(x.source)).length;
+    const put = await call(e3, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { publisher_blocklist: ['BaseNor', 'basenor', ' Example News '] } });
+    check('the moderator saves the list (deduped case-insensitively, trimmed); the other lists are untouched', put.status === 200 && JSON.stringify(put.json.config.publisher_blocklist) === '["BaseNor","Example News"]' && /cybercab/.test(put.json.config.allow));
+    check('a non-moderator cannot save it', (await call(e3, 'PUT', '/api/moderation/news-config', { session: 'rider', body: { publisher_blocklist: [] } })).status === 403);
+    check('a bad list is refused', (await call(e3, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { publisher_blocklist: 'BASENOR' } })).status === 400);
+    // "Run the ingest now" (POST /api/moderation/news/run) honors the saved list.
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fx;
+    let run;
+    try { run = await call(e3, 'POST', '/api/moderation/news/run', { session: 'mod' }); } finally { globalThis.fetch = realFetch; }
+    check('"Run the ingest now" honors the list and reports the count', run.status === 200 && run.json.run.blocked_publisher >= 2);
+    check('already-stored stories from a newly listed publisher are NOT deleted (hide them by hand)', storedBefore === 2 && rows(e3).filter(x => /basenor/i.test(x.source)).length === 2);
+    const list = await call(e3, 'GET', '/api/moderation/news', { session: 'mod' });
+    check('the moderation list returns the publisher blocklist and the last run\'s blocked count', JSON.stringify(list.json.config.publisher_blocklist) === '["BaseNor","Example News"]' && list.json.last_run.blocked_publisher >= 2);
+  }
+
   t.finish();
 }
 
