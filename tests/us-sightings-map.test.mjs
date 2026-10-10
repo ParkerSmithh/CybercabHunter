@@ -59,7 +59,8 @@ console.log('3. The rendered panel');
   check('Heatmap: the panel switches view (dots hidden by CSS), the button shows it, and the choice is remembered', el.classList.contains('us-view-heat') && btn('heat').getAttribute('aria-pressed') === 'true' && btn('dots').getAttribute('aria-pressed') === 'false' && w.localStorage.getItem('cch:us-map-view') === 'heat');
   btn('dots').click();
   check('...and back to Dots', !el.classList.contains('us-view-heat') && w.localStorage.getItem('cch:us-map-view') === 'dots');
-  check('the heatmap is drawn from the same data, clipped to the US outline with clip() (not a destination-in fill)', /usOutline\.addPath\(new Path2D\(st\.d\)\)/.test(MAP) && /ctx\.clip\(usOutline\)/.test(MAP) && !/globalCompositeOperation\s*=\s*'destination-in'/.test(MAP));
+  check('the heatmap runs cold to warm: heat only inside the states with sightings (clip()), every US pixel coloured, borders drawn back', /if \(sighted\.has\(st\.id\)\) sightedOutline\.addPath\(p\)/.test(MAP) && /ctx\.clip\(sightedOutline\)/.test(MAP) && /mc\.fill\(usOutline\)/.test(MAP) && /ctx\.stroke\(usOutline\)/.test(MAP) && !/globalCompositeOperation\s*=\s*'destination-in'/.test(MAP));
+  check('the heatmap legend reads colder (none reported) to warmer (more sightings), with no numbers', /Colder[\s\S]*none reported[\s\S]*Warmer[\s\S]*more sightings/.test(el.querySelector('.us-legend-heat').textContent) && !/\d/.test(el.querySelector('.us-legend-heat').textContent));
   check('no pan or zoom: nothing listens for wheel or drag', !/wheel|pointerdown|mousedown|touchstart|drag/.test(MAP));
 }
 

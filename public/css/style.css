@@ -508,7 +508,7 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .us-view-heat .us-legend-dots{display:none;}
 .us-view-heat .us-cities{display:none;}
 .us-view-heat .us-map .us-states path.is-sighted{fill:rgb(var(--ink) / 0.07);}
-.us-heat-ramp{background:linear-gradient(90deg, rgba(150,95,18,0.55), #D4AF37 45%, #F2CF5B 75%, #FFF6D6);}
+.us-heat-ramp{background:linear-gradient(90deg, #0a1a3d, #173a7a 10%, #1f6fb8 25%, #22a8c4 40%, #3cbf7a 55%, #e3cf45 70%, #f08a24 85%, #e0321c);}
 .us-key-sighted{background:rgb(212 175 55 / 0.30);}
 .us-key-none{background:rgb(var(--ink) / 0.07);}
 .us-state-row{padding:10px 2px;}

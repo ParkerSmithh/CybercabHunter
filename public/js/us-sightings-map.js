@@ -6,9 +6,9 @@
    state, the busiest first. No sighting counts are shown. Community-reported
    data, credited.
    Two views, switched in the header (the choice is remembered): Dots, and
-   Heatmap — a canvas over the same SVG where each city adds a soft spot
-   weighted by its logged sightings, the sum coloured amber -> gold -> pale
-   gold and clipped to the US outline (the state paths). */
+   Heatmap — a canvas over the same SVG, cold to warm: states with no reported
+   sighting coldest, sighted states cool, warmer around cities by their logged
+   sightings (drawHeat). */
 (function () {
   const els = [...document.querySelectorAll('[data-us-map]')];
   const D = window.CCH_US_MAP;
@@ -91,7 +91,7 @@
           <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gold"></span>City with a sighting (larger: more)</span>
         </div>
         <div class="us-legend-heat mt-2 flex items-center gap-2 text-[11px] text-slate-400">
-          <span>Fewer sightings</span><span class="us-heat-ramp h-2 w-32 rounded-full max-sm:w-24"></span><span>More sightings</span>
+          <span>Colder <span class="text-slate-500">(none reported)</span></span><span class="us-heat-ramp h-2 w-36 rounded-full max-sm:w-20"></span><span>Warmer <span class="text-slate-500">(more sightings)</span></span>
         </div>
       </div>
       <ul data-us-list class="us-state-list min-w-0 divide-y divide-white/[0.06] max-sm:divide-y-0 lg:max-h-[440px] lg:overflow-y-auto lg:pr-2">${list}</ul>
@@ -99,10 +99,14 @@
     </div>
     <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Community-reported sightings from ${D.sources.map(src => `the <a href="${esc(src.url)}" target="_blank" rel="noopener" class="underline hover:text-slate-300">${esc(src.name)}</a> ${esc(src.what)} (${esc(src.date)})`).join(' and ')}. Not verified by Cybercab Hunter. Map: US Census state boundaries.</p>`;
 
-  // ---- Heatmap: each city a soft spot (weight from its logged sightings;
-  // a city with none on record counts as one), summed, coloured through the
-  // ramp and clipped to the US. Drawn at the canvas's real pixel size.
-  const RAMP = [[0, 'rgba(120,72,10,0)'], [0.18, 'rgba(150,95,18,0.55)'], [0.45, 'rgba(212,175,55,0.85)'], [0.75, 'rgba(242,207,91,0.95)'], [1, 'rgba(255,246,214,1)']];
+  // ---- Heatmap, cold to warm. Over the whole US: states with no reported
+  // sighting are the coldest colour; a state with sightings starts cool; each
+  // city adds warmth (weighted by its logged sightings; a city with none on
+  // record counts as one), never across into a state with no sightings. The
+  // summed intensity is coloured navy -> blue -> cyan -> green -> yellow ->
+  // orange -> red, and the state borders are drawn back on top.
+  const RAMP = [[0, '#0a1a3d'], [0.1, '#173a7a'], [0.25, '#1f6fb8'], [0.4, '#22a8c4'], [0.55, '#3cbf7a'], [0.7, '#e3cf45'], [0.85, '#f08a24'], [1, '#e0321c']];
+  const SIGHTED_BASE = 0.1;   // a sighted state's floor: cool, not coldest
   let palette = null;
   function rampPalette() {
     if (palette) return palette;
@@ -115,7 +119,12 @@
   }
   const VB = D.viewBox.split(/\s+/).map(Number);
   const maxN = Math.max(1, ...D.cities.map(c => c.n || 1));
-  let usOutline = null;
+  let usOutline = null, sightedOutline = null;
+  function outlines() {
+    if (usOutline) return;
+    usOutline = new Path2D(); sightedOutline = new Path2D();
+    D.states.forEach(st => { const p = new Path2D(st.d); usOutline.addPath(p); if (sighted.has(st.id)) sightedOutline.addPath(p); });
+  }
   function drawHeat(canvas) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h || typeof Path2D === 'undefined') return;
@@ -123,34 +132,48 @@
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     const ctx = canvas.getContext('2d'), pal = rampPalette();
     if (!ctx || !pal) return;
-    const k = canvas.width / VB[2];
-    // 1. intensity in the alpha channel, clipped to the US outline (a clip,
-    // not a destination-in fill of the outline, which erases nearly all of it)
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!usOutline) { usOutline = new Path2D(); D.states.forEach(st => usOutline.addPath(new Path2D(st.d))); }
+    outlines();
+    const k = canvas.width / VB[2], W = canvas.width, H = canvas.height;
+    // 1. intensity (alpha), only inside the states with sightings: their cool
+    //    floor, then each city's spot. (Clipped with clip(): a destination-in
+    //    fill of these outlines erases nearly all of it.)
+    ctx.clearRect(0, 0, W, H);
     ctx.save();
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    ctx.clip(usOutline);
+    ctx.clip(sightedOutline);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = `rgba(0,0,0,${SIGHTED_BASE})`;
+    ctx.fillRect(0, 0, W, H);
     for (const c of D.cities) {
       const weight = Math.sqrt(c.n || 1) / Math.sqrt(maxN);
-      const R = (14 + 22 * weight) * k, x = c.x * k, y = c.y * k;
+      const R = (16 + 26 * weight) * k, x = c.x * k, y = c.y * k;
       const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-      g.addColorStop(0, `rgba(0,0,0,${(0.22 + 0.55 * weight).toFixed(3)})`);
+      g.addColorStop(0, `rgba(0,0,0,${(0.2 + 0.6 * weight).toFixed(3)})`);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g;
       ctx.fillRect(x - R, y - R, R * 2, R * 2);
     }
     ctx.restore();
-    // 2. colour it through the ramp (outside the US the alpha is 0 and stays so)
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height), px = img.data;
-    for (let i = 3; i < px.length; i += 4) {
-      const a = px[i];
-      if (!a) continue;
-      const j = a * 4;
-      px[i - 3] = pal[j]; px[i - 2] = pal[j + 1]; px[i - 1] = pal[j + 2]; px[i] = pal[j + 3];
+    // 2. which pixels are inside the US at all
+    const m = document.createElement('canvas'); m.width = W; m.height = H;
+    const mc = m.getContext('2d');
+    mc.setTransform(k, 0, 0, k, 0, 0); mc.fill(usOutline);
+    const mask = mc.getImageData(0, 0, W, H).data;
+    // 3. colour every US pixel by its intensity (0 = coldest); outside, nothing
+    const img = ctx.getImageData(0, 0, W, H), px = img.data;
+    for (let i = 0; i < px.length; i += 4) {
+      const inside = mask[i + 3];
+      if (!inside) { px[i + 3] = 0; continue; }
+      const j = px[i + 3] * 4;
+      px[i] = pal[j]; px[i + 1] = pal[j + 1]; px[i + 2] = pal[j + 2]; px[i + 3] = Math.round(inside * 0.92);
     }
     ctx.putImageData(img, 0, 0);
+    // 4. the state borders, back on top
+    ctx.save();
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.strokeStyle = 'rgba(5,10,20,0.55)'; ctx.lineWidth = 0.8; ctx.lineJoin = 'round';
+    ctx.stroke(usOutline);
+    ctx.restore();
   }
   const VIEW_KEY = 'cch:us-map-view';
   let view = 'dots';
