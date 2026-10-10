@@ -266,14 +266,14 @@ async function run() {
     {
       const b = await makeApp();
       const block = b.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value.split('\n');
-      check('migration 0033: "investors" and "valuation" on the headline blocklist, the old rules kept', block.includes('investors') && block.includes('valuation') && block.includes('analysts') && block.length === 10);
+      check('migration 0033: "investors" and "valuation" on the headline blocklist, the old rules kept', block.includes('investors') && block.includes('valuation') && block.includes('stocktwits') && block.includes('analysts') && block.length === 11);
       b.d1.exec(`UPDATE news_config SET value = 'stock' || char(10) || 'Investors' WHERE key = 'block'; UPDATE news_config SET value = '["stocktwits"]' WHERE key = 'publisher_blocklist'`);
       b.d1.exec(fs.readFileSync(new URL('../migrations/0033_news_investor_blocklist.sql', import.meta.url), 'utf8'));
-      check('...rerun over moderator edits: nothing duplicated, their entries kept', b.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value === 'stock\nInvestors\nvaluation' && b.d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["stocktwits"]');
-      const web = async url => { const f = FEEDS.find(x => x.url === String(url)); return new Response(f && f.id === 'electrek' ? RSS([rssItem('Tesla Launches the Cybercab: 2 Key Takeaways for Investors', 'https://electrek.co/inv/', 2), rssItem('Cybercab fleet math and Tesla valuation', 'https://electrek.co/val/', 2), rssItem('Cybercab rides open in Austin', 'https://electrek.co/ok/', 2, '', '<source url="https://x.example">Stocktwits</source>')]) : RSS([])); };
+      check('...rerun over moderator edits: nothing duplicated, their entries kept', b.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value === 'stock\nInvestors\nvaluation\nstocktwits' && b.d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["stocktwits"]');
+      const web = async url => { const f = FEEDS.find(x => x.url === String(url)); return new Response(f && f.id === 'electrek' ? RSS([rssItem('Tesla Launches the Cybercab: 2 Key Takeaways for Investors', 'https://electrek.co/inv/', 2), rssItem('Cybercab fleet math and Tesla valuation', 'https://electrek.co/val/', 2), rssItem('Cybercab rides open in Austin', 'https://electrek.co/ok/', 2, '', '<source url="https://x.example">Stocktwits</source>'), rssItem('Stocktwits Zero To Sixty — Texas Cybercab Fleet Scales', 'https://electrek.co/z60/', 2, '', '<source url="https://y.example">Asianet Newsable</source>')]) : RSS([])); };
       const c = await makeApp();
       const lg = await runNewsIngest(c.env, { fetchImpl: web, nowMs: NOW });
-      check('...an investor headline, a valuation headline and a Stocktwits story are all dropped at ingest', rows(c).length === 0 && lg.blocked_publisher === 1 && lg.dropped === 3);
+      check('...an investor headline, a valuation headline, a Stocktwits story and a syndicated Stocktwits column are all dropped at ingest', rows(c).length === 0 && lg.blocked_publisher === 1 && lg.dropped === 4);
     }
     const realFetch = globalThis.fetch;
     globalThis.fetch = stubWeb();

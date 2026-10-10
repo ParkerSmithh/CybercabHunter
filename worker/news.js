@@ -84,7 +84,7 @@ export const FEEDS = [
 // Defaults for news_config (migrations/0029 seeds the same). One rule per line;
 // "a + b" means both words. Matching is case-insensitive, on whole words.
 export const DEFAULT_ALLOW = 'cybercab\nrobotaxi + tesla';
-export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts\ninvestors\nvaluation';
+export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts\ninvestors\nvaluation\nstocktwits';
 // Publishers whose stories are never kept (news_config 'publisher_blocklist',
 // a JSON array; migrations/0030 seeds it, 0033 adds Stocktwits). Matched case-insensitively against
 // a story's source, before scoring and storage.
