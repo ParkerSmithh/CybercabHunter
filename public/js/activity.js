@@ -103,7 +103,7 @@
         button.addEventListener('focus', () => showTooltip(button, entry, cat));
         button.addEventListener('mouseleave', () => { tooltip.hidden = true; });
         button.addEventListener('blur', () => { tooltip.hidden = true; });
-        button.addEventListener('click', () => { tooltip.hidden = true; openDay(entry.day.date, true); });
+        button.addEventListener('click', () => { tooltip.hidden = true; openDay(entry.day.date); });
         // Arrow navigation follows the contribution grid's week/day geometry.
         button.addEventListener('keydown', event => {
           const step = { ArrowLeft: -7, ArrowRight: 7, ArrowUp: -1, ArrowDown: 1 }[event.key];
@@ -120,15 +120,18 @@
     if (!response.ok) throw new Error('Activity unavailable');
     return response.json();
   }
-  async function openDay(date, scroll = false) {
+  function closeDay() {
+    if ($('activityDayDialog')?.open) $('activityDayDialog').close();
+  }
+  async function openDay(date) {
     selectedDate = date;
-    const token = ++detailSequence, panel = $('activityDetail'); panel.hidden = false;
+    const token = ++detailSequence, panel = $('activityDetail');
     for (const button of $('activityGrid').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.date === date));
-    const heading = el('h2', `CYBERCAB DAILY — ${readable(date)}`);
+    const heading = el('h2', `CYBERCAB DAILY — ${readable(date)}`); heading.id = 'activityDayHeading';
     const day = data.days.find(d => d.date === date);
     panel.replaceChildren(heading, stats(day, ['registry', 'dmv', 'cybercab', 'model_y', 'sightings', 'cameras']));
     const note = el('p', 'Retrieving daily highlights…', 'activity-muted'); panel.append(note);
-    if (scroll) panel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    if (!$('activityDayDialog').open) { $('activityDayDialog').showModal(); document.body.classList.add('activity-modal-open'); }
     try {
       const response = await get({ date }); if (token !== detailSequence) return;
       // Use the exact same aggregate as the year response; a new record may have arrived.
@@ -173,21 +176,33 @@
       } else {
         const years = data.years.includes(selectedYear) ? data.years : [...data.years, selectedYear].sort((a, b) => b - a);
         $('activityYear').replaceChildren(...years.map(y => { const o = el('option', String(y)); o.value = y; return o; })); $('activityYear').value = selectedYear;
-        renderCalendar(); if (selectedDate?.startsWith(String(selectedYear))) openDay(selectedDate);
+        renderCalendar(); if ($('activityDayDialog').open && selectedDate?.startsWith(String(selectedYear))) openDay(selectedDate);
       }
     } catch {
       if (token !== sequence) return;
       if (card) { $('dailyUpdated').textContent = 'Refresh pending'; $('dailyStats').replaceChildren(stats(null), el('p', 'Activity could not be retrieved. Automatic refresh will retry.', 'activity-muted')); }
-      else { data = null; $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); $('activityDetail').hidden = true; $('activityStatus').textContent = 'Activity could not be retrieved. Retry or wait for the automatic refresh.'; }
+      else { data = null; $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); closeDay(); $('activityStatus').textContent = 'Activity could not be retrieved. Retry or wait for the automatic refresh.'; }
       const retry = el('button', 'Retry', 'activity-retry'); retry.type = 'button'; retry.addEventListener('click', () => { retry.remove(); load(); });
       (card ? $('dailyStats') : $('activitySummary')).append(retry);
     }
   }
   if (calendar) {
+    const dialog = $('activityDayDialog');
+    $('activityDayClose').addEventListener('click', closeDay);
+    dialog.addEventListener('close', () => {
+      ++detailSequence;
+      document.body.classList.remove('activity-modal-open');
+      const target = selectedDate ? $('activityGrid').querySelector(`[data-date="${selectedDate}"]`) : null;
+      (target || $('activityCategory')).focus({ preventScroll: true });
+    });
+    dialog.addEventListener('click', event => {
+      const rect = dialog.getBoundingClientRect();
+      if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) closeDay();
+    });
     tooltip = el('div', undefined, 'activity-tooltip'); tooltip.hidden = true; tooltip.setAttribute('role', 'tooltip'); document.body.append(tooltip);
     const initialYear = el('option', String(selectedYear)); initialYear.value = selectedYear; $('activityYear').append(initialYear);
     $('activityCategory').addEventListener('change', () => { if (data) renderCalendar(); });
-    const changeYear = year => { selectedYear = Number(year); data = null; selectedDate = null; ++detailSequence; $('activityDetail').hidden = true; $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); $('activityStatus').textContent = 'Retrieving daily activity…'; load(); };
+    const changeYear = year => { selectedYear = Number(year); data = null; selectedDate = null; ++detailSequence; closeDay(); $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); $('activityStatus').textContent = 'Retrieving daily activity…'; load(); };
     $('activityYear').addEventListener('change', event => changeYear(event.target.value));
     $('activityCurrent').addEventListener('click', () => changeYear(today().slice(0, 4)));
     window.addEventListener('scroll', () => { tooltip.hidden = true; }, true);
@@ -198,7 +213,7 @@
     if (current !== lastDay || Date.now() - fetched >= 300000) {
       if (calendar && current !== lastDay && selectedYear === Number(lastDay.slice(0, 4))) {
         selectedYear = Number(current.slice(0, 4));
-        if (selectedDate && !selectedDate.startsWith(String(selectedYear))) { selectedDate = null; ++detailSequence; $('activityDetail').hidden = true; }
+        if (selectedDate && !selectedDate.startsWith(String(selectedYear))) { selectedDate = null; ++detailSequence; closeDay(); }
       }
       load();
     }

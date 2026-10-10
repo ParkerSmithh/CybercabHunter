@@ -57,3 +57,15 @@
   #cybercabDaily .daily-metric-detail{white-space:normal;top:calc(100% + 16px);font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){#cybercabDaily .daily-calendar-link{transition:none}#cybercabDaily .daily-calendar-link:hover{transform:none}}
+
+/* Native dialog supplies focus containment and Escape-to-close. */
+body.activity-modal-open{overflow:hidden}
+.activity-dialog{position:fixed;inset:0;margin:auto;width:min(760px,calc(100% - 32px));max-height:calc(100dvh - 48px);overflow-y:auto;padding:32px;box-sizing:border-box;box-shadow:0 24px 80px rgb(0 0 0 / .55);overscroll-behavior:contain}
+.activity-dialog::backdrop{background:rgb(0 0 0 / .78);backdrop-filter:blur(4px)}
+.activity-dialog .activity-detail{border:0;margin:0;padding:0;scroll-margin:0}
+.activity-dialog #activityDayHeading{font-size:22px;line-height:1.35;padding-right:40px;margin:0 0 20px;text-wrap:balance}
+.activity-dialog .activity-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 20px;margin:20px 0 24px}
+.activity-dialog-close{position:absolute;right:16px;top:16px;display:grid;place-items:center;width:44px;height:44px;border:1px solid rgb(var(--gold) / .3);border-radius:10px;background:rgb(var(--surface-2));color:rgb(var(--ink));cursor:pointer}
+.activity-dialog-close:hover{background:rgb(var(--gold) / .15)}
+.activity-dialog-close:focus-visible{outline:2px solid rgb(var(--gold));outline-offset:3px}
+@media(max-width:640px){.activity-dialog{padding:24px 20px;width:calc(100% - 24px);max-height:calc(100dvh - 24px)}.activity-dialog #activityDayHeading{font-size:18px}.activity-dialog .activity-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}.activity-dialog-close{right:10px;top:10px}}

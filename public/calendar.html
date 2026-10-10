@@ -18,7 +18,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=74">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/activity.css?v=1">
+<link rel="stylesheet" href="css/activity.css?v=6">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -102,7 +102,7 @@
 <div id="activitySummary" aria-live="polite"></div>
 <div class="activity-scroll" tabindex="0" aria-label="Daily activity calendar; scroll horizontally to explore all months"><div id="activityGrid" class="activity-grid"></div></div>
 <div class="activity-legend"><span>LESS ACTIVITY</span><span class="activity-swatch"></span><span class="activity-swatch" data-level="1"></span><span class="activity-swatch" data-level="2"></span><span class="activity-swatch" data-level="3"></span><span class="activity-swatch" data-level="4"></span><span class="activity-swatch" data-level="5"></span><span>→ MORE ACTIVITY</span><span class="activity-swatch" data-level="unknown"></span><span>Unavailable / incomplete</span></div>
-<div id="activityDetail" class="activity-detail" hidden aria-live="polite"></div>
+
 <div class="activity-method activity-muted"><h2>How activity is counted</h2>
 <p>All dates use America/Chicago, including daylight saving time. Registry additions count unique publicly eligible Cybercabs by the date added to the registry, rather than their first sighting. Sightings use the date spotted and the existing approved public photo rules. Public photos expire after 30 days; older sighting totals cannot be reconstructed reliably and are unavailable. Camera captures use actual detection times; duplicate camera/time captures are prevented by the database.</p>
 <p>DMV totals include Cybercab and Model Y VINs first observed after the initial baseline, only on days with a successful Texas DMV snapshot. The source does not publish official registration dates. Missing polls and the baseline are unavailable, and approximate imported history is excluded.</p>
@@ -246,8 +246,12 @@
 </footer>
 
 
+<dialog id="activityDayDialog" class="activity-dialog activity-surface" aria-labelledby="activityDayHeading">
+  <button type="button" id="activityDayClose" class="activity-dialog-close" aria-label="Close daily activity"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  <div id="activityDetail" class="activity-detail" aria-live="polite"></div>
+</dialog>
 <script src="js/calc.js?v=7"></script>
 <script src="js/main.js?v=27"></script>
 <script>CCC.init();</script>
-<script src="js/activity.js?v=1" defer></script>
+<script src="js/activity.js?v=5" defer></script>
 </body></html>
