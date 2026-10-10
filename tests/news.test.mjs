@@ -14,15 +14,12 @@
 //   - Major scoring (migration 0032): keywords (editable), the numeric fleet
 //     signal, the Workers AI check on rules-score-1 new stories (mocked), the
 //     daily rules-only rescore
-//   - curation (migration 0034): viral-clip / app-version blocks (incidents
-//     kept), the substance signal, excerpts, the config-driven tiered feed
-//     list, feed validation and auto-discovery from moderation
 // Run: node tests/news.test.mjs
 
 import worker from '../worker/index.js';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import { fakeR2 } from './helpers/d1-sqlite.mjs';
-import { DEFAULT_FEEDS, pickFeed, discoverFeed, excerptOf, substantive, DEFAULT_MAJOR_KEYWORDS, aiVerdict, parseVerdict, runNewsIngest, runNewsTick, parseFeed, canonicalUrl, clusterAndScore, extractImage, parseRobots, robotsAllows, makeThumb, processThumbs, pruneOld, sweepOrphans, thumbKey, NEWS_CRON, FEEDS } from '../worker/news.js';
+import { DEFAULT_MAJOR_KEYWORDS, aiVerdict, parseVerdict, runNewsIngest, runNewsTick, parseFeed, canonicalUrl, clusterAndScore, extractImage, parseRobots, robotsAllows, makeThumb, processThumbs, pruneOld, sweepOrphans, thumbKey, NEWS_CRON, FEEDS } from '../worker/news.js';
 import fs from 'node:fs';
 
 const t = makeCheck();
@@ -100,7 +97,7 @@ const uuid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 async function run() {
   console.log('1. Sources and parsing');
   {
-    check('25 seeded publisher feeds (6 tier 1, 19 tier 2), https, unique ids, no Google News', FEEDS.length === 25 && FEEDS.filter(f => f.tier === 1).length === 6 && FEEDS.every(f => /^https:\/\//.test(f.url) && !/news\.google\.com/.test(f.url)) && new Set(FEEDS.map(f => f.id)).size === 25);
+    check('eleven publisher feeds, no Google News', FEEDS.length === 11 && FEEDS.every(f => f.kind === 'rss' && /^https:\/\//.test(f.url) && !/news\.google\.com/.test(f.url)));
     const e = parseFeed(FEED_BODIES.electrek, feedOf('electrek'));
     check('RSS: CDATA title, the outlet from the feed, tags stripped from the excerpt', e[0].title === 'Tesla Cybercab launches in Phoenix, its third city' && e[0].source === 'Electrek' && e[0].excerpt === 'Tesla launched Cybercab rides in Phoenix today.');
     check('canonical URL: tracking params removed', e[0].url === 'https://electrek.co/phoenix/' && canonicalUrl('https://x.com/a?utm_source=b&fbclid=c&gclid=d&id=7') === 'https://x.com/a?id=7');
@@ -109,7 +106,7 @@ async function run() {
     const agg = parseFeed(RSS([rssItem('Cybercab news - Some Outlet', 'https://agg.example/1', 1, '', '<source url="https://some.example">Some Outlet</source>')]), { id: 'x', kind: 'rss', name: 'Agg' });
     check('an RSS <source> names the outlet (and its " - Outlet" suffix is dropped)', agg[0].source === 'Some Outlet' && agg[0].title === 'Cybercab news');
     const long = parseFeed(RSS([rssItem('Cybercab', 'https://a.com/1', 1, 'word '.repeat(200))]), { id: 'x', kind: 'rss', name: 'A' });
-    check('an excerpt is at most ~300 characters, never the full text', long[0].excerpt.length <= 300 && long[0].excerpt.endsWith('…'));
+    check('an excerpt is at most ~280 characters, never the full text', long[0].excerpt.length <= 280 && long[0].excerpt.endsWith('…'));
   }
 
   console.log('2. Ingest (all feeds)');
@@ -269,7 +266,7 @@ async function run() {
     {
       const b = await makeApp();
       const block = b.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value.split('\n');
-      check('migration 0033: "investors" and "valuation" on the headline blocklist, the old rules kept', block.includes('investors') && block.includes('valuation') && block.includes('stocktwits') && block.includes('analysts') && block.length === 19);
+      check('migration 0033: "investors" and "valuation" on the headline blocklist, the old rules kept', block.includes('investors') && block.includes('valuation') && block.includes('stocktwits') && block.includes('analysts') && block.length === 11);
       b.d1.exec(`UPDATE news_config SET value = 'stock' || char(10) || 'Investors' WHERE key = 'block'; UPDATE news_config SET value = '["stocktwits"]' WHERE key = 'publisher_blocklist'`);
       b.d1.exec(fs.readFileSync(new URL('../migrations/0033_news_investor_blocklist.sql', import.meta.url), 'utf8'));
       check('...rerun over moderator edits: nothing duplicated, their entries kept', b.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value === 'stock\nInvestors\nvaluation\nstocktwits' && b.d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["stocktwits"]');
@@ -289,14 +286,13 @@ async function run() {
   {
     const one = (title, extra = {}) => clusterAndScore([{ id: 'x', title, excerpt: '', source: 'Solo', published_at: '2026-10-09T00:00:00Z', ...extra }]).x;
     const reg = one('Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry');
-    check('"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry", one outlet: Major (number + fleet word; registry keyword / substantive)', reg.importance === 2 && reg.rules === 2);
+    check('"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry", one outlet: Major (number + fleet word, registry keyword)', reg.importance === 2 && reg.rules === 2);
     check('"Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot", one outlet: Major ("dozens" counts as a number)', one('Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot').importance === 2);
     check('a number without a fleet word, or a fleet word without a number: no numeric signal', one('Tesla Q3 2026 earnings call date set').rules === 0 && one('Robotaxi riders praise smooth trip').rules === 0);
     check('a single-outlet crash story with no other signal stays at 1', one('Tesla Cybercab crash on Lamar Blvd').importance === 1);
     const three = clusterAndScore(['A', 'B', 'C'].map((src, i) => ({ id: 'p' + i, title: 'Cybercab picks up riders near Zilker Park on Sunday', excerpt: 'Riders shared videos.', source: src, published_at: `2026-10-09T0${i}:00:00Z` })));
     check('a 3-outlet story with no keywords: 1, not Major', ['p0', 'p1', 'p2'].every(id => three[id].importance === 1 && three[id].source_count === 3));
-    const social = { source_type: 'social' };   // no substance signal: the keyword alone
-    check('keywords are case-insensitive, start-of-word, and read the excerpt too', one('TESLA CYBERCAB RECALL').importance === 1 && one('Cybercab LAUNCHES rides', social).importance === 1 && one('Cybercab owner issues statement').importance === 0 && one('Cybercab story', { excerpt: 'The NHTSA asked questions.', ...social }).importance === 1);
+    check('keywords are case-insensitive, start-of-word, and read the excerpt too', one('TESLA CYBERCAB RECALL').importance === 1 && one('Cybercab LAUNCHES rides').importance === 1 && one('Cybercab owner issues statement').importance === 0 && one('Cybercab story', { excerpt: 'The NHTSA asked questions.' }).importance === 1);
     check('a stored AI "major" verdict adds +1; featured is always 2; capped at 2', one('Tesla Cybercab crash on Lamar Blvd', { ai_major: 1 }).importance === 2 && one('Cybercab spotted', { featured: 1 }).importance === 2 && one('Tesla Adds 150 Cybercabs to fleet registry', { ai_major: 1 }).importance === 2);
     const seeded = (await makeApp()).d1.query(`SELECT value FROM news_config WHERE key = 'major_keywords'`)[0].value;
     check('migration 0032 seeds major_keywords with the full list (old + fleet + DMV + new-market terms)', JSON.stringify(JSON.parse(seeded)) === JSON.stringify(DEFAULT_MAJOR_KEYWORDS) && ['launch', 'nhtsa', 'fleet', 'rolls out', 'dmv', 'self-certification', 'arrives in'].every(k => DEFAULT_MAJOR_KEYWORDS.includes(k)));
@@ -356,99 +352,11 @@ async function run() {
       check('major_keywords saved from moderation (trimmed, lowercased, deduped); other lists untouched', put.status === 200 && JSON.stringify(put.json.config.major_keywords) === '["parade","round rock"]' && /cybercab/.test(put.json.config.allow));
       check('...an invalid major_keywords is refused', (await call(e, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { major_keywords: 'parade' } })).status === 400);
       const t3 = await runNewsTick(e.env, { fetchImpl: stubWeb({ notModified: true }), nowMs: NOW + 1200e3 });
-      check('...and apply on the next run: matching stored stories rescored (12-day-old one included; the registry story keeps its number + substance signals)', t3.rescored >= 1 && get(uuid(3)).importance === 1 && get(uuid(1)).importance === 2);
+      check('...and apply on the next run: matching stored stories rescored (12-day-old one included)', t3.rescored >= 1 && get(uuid(3)).importance === 1 && get(uuid(1)).importance === 1);
       check('hidden stays hidden through the rescore (it is scored, never shown)', get(uuid(2)).hidden === 1 && get(uuid(2)).importance === 1 && !(await call(e, 'GET', '/api/news')).json.stories.some(x => x.id === uuid(2)));
       const list = await call(e, 'GET', '/api/moderation/news', { session: 'mod' });
       check('moderation lists the Major keywords and each story\'s AI verdict fields', Array.isArray(list.json.config.major_keywords) && 'ai_major' in list.json.stories[0]);
     }
-  }
-
-  console.log('7. Curation');
-  {
-    const BLOCKED = ['Video Shows Man Stuck in Tesla Cybercab That Goes in Circles Around Parking Lot', 'WATCH: Tesla Cybercab dodges a scooter', 'Shocking Tesla Cybercab moment in Austin', 'You won’t believe what this Tesla Cybercab did', 'Tesla Cybercab clip goes viral', 'Tesla Cybercab caught on camera running a light', 'Leaked video of Tesla Cybercab interior', 'Tesla Robotaxi App 26.8.3 Now Live on iOS'];
-    const KEPT = ['Empty Tesla Robotaxi involved in injury crash on the Las Vegas Strip', 'NHTSA opens investigation into Tesla Cybercab crash', 'Tesla registers a record 150 Cybercabs in Texas in one day', 'Tesla Cybercab app adds tipping'];
-    const feedXml = RSS([...BLOCKED, ...KEPT, 'Rivian R2 deliveries begin'].map((t, i) => rssItem(t, `https://electrek.co/c${i}/`, 2 + i, 'Details from the report.')));
-    const web = async url => { const f = FEEDS.find(x => x.url === String(url)); return new Response(f && f.id === 'electrek' ? feedXml : RSS([])); };
-    const e = await makeApp();
-    const lg = await runNewsIngest(e.env, { fetchImpl: web, nowMs: NOW });
-    const titles = rows(e).map(x => x.title);
-    check('viral-clip framing blocked at ingest (video shows, watch:, shocking, you won’t believe, goes viral, caught on camera, leaked video)', BLOCKED.slice(0, 7).every(t => !titles.includes(t)));
-    check('app-version posts blocked by the /app\\s+\\d+\\.\\d+/ pattern', !titles.includes('Tesla Robotaxi App 26.8.3 Now Live on iOS'));
-    check('incident reporting kept (injury crash, NHTSA investigation), and an app story without a version number', KEPT.every(t => titles.includes(t)) && titles.length === KEPT.length);
-    check('the allowlist matches plurals and possessives ("150 Cybercabs" alone is on topic)', titles.includes('Tesla registers a record 150 Cybercabs in Texas in one day'));
-    check('the allowlist still drops generic EV news', !titles.includes('Rivian R2 deliveries begin') && lg.dropped === BLOCKED.length + 1);
-    const block = e.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value.split('\n');
-    check('migration 0034: the new patterns are on the editable blocklist, the old entries kept', ['video shows', 'watch:', "you won't believe", 'leaked video', '/app\\s+\\d+\\.\\d+/', 'investors', 'stock'].every(w => block.includes(w)));
-    const bad = await call(e, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { block: 'stock\n/app(\\s+/' } });
-    check('a /pattern/ that does not compile is refused on save', bad.status === 400 && bad.json.error === 'bad_pattern' && bad.json.line === '/app(\\s+/');
-
-    const story = (title, extra = {}) => ({ title, excerpt: '', source_type: 'press', ...extra });
-    check('substance signal: press or official, tagged Regulatory / Data / Expansion / Business', substantive(story('NHTSA asks Tesla about the Cybercab')) && substantive(story('Tesla registers 150 Cybercabs', { source_type: 'official' })) && substantive(story('Waymo partners with Uber')) && substantive(story('Tesla Cybercab expands to Dallas')));
-    check('...never social, never other tags (a ride clip, a crash with no official status)', !substantive(story('NHTSA asks Tesla about the Cybercab', { source_type: 'social' })) && !substantive(story('Riders try the Cybercab')) && !substantive(story('Tesla Cybercab crash on Lamar Blvd')));
-    const sc = clusterAndScore([{ id: 'a', title: 'Riders try the Cybercab downtown', excerpt: '', source: 'X', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }, { id: 'b', title: 'NHTSA asks Tesla about Cybercab door handles', excerpt: '', source: 'Y', source_type: 'social', published_at: '2026-10-09T00:00:00Z' }, { id: 'c', title: 'NHTSA asks Tesla about Cybercab door handles', excerpt: '', source: 'Z', source_type: 'press', published_at: '2026-10-08T00:00:00Z' }]);
-    check('...worth +1 in the score, shared with the keyword signal (not +2 for both)', sc.a.rules === 0 && sc.c.rules === 1 && clusterAndScore([{ id: 'r', title: 'Regulators grill Tesla over Cybercab design', excerpt: '', source: 'X', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }]).r.rules === 1);
-    check('...so a keyword-plus-substance opinion piece stays notable', clusterAndScore([{ id: 'o', title: 'Compare the iPhone Duo and Cybercab Launches. Notice Something?', excerpt: '', source: 'Bloomberg', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }]).o.importance === 1);
-
-    const long = 'Tesla added 150 Cybercabs to its Texas registry on Thursday, a single-day record. The fleet now stands at 420 vehicles across Austin and Dallas. Analysts expect the pace to continue through the end of the year as the Giga Texas line ramps. A fourth sentence that should not fit in the excerpt at all because it runs long.';
-    const ex = excerptOf(long, 'Tesla registers 150 Cybercabs');
-    check('excerpts: up to ~300 characters, cut at a sentence end', ex.length <= 300 && ex.endsWith('ramps.') && !ex.includes('fourth'));
-    check('...the WordPress "The post … appeared first on …" tail and "[…]" are removed', excerptOf('<p>The fleet grew to 420 vehicles.</p><p>The post Tesla fleet grows appeared first on TESLARATI.</p>', 'Tesla fleet grows') === 'The fleet grew to 420 vehicles.' && excerptOf('Tesla expanded hours to 11 p.m. in Austin [&#8230;]', 'Hours extended') === 'Tesla expanded hours to 11 p.m. in Austin');
-    check('...one that only repeats the headline is none', excerptOf('Tesla registers a record 150 Cybercabs in Texas - Teslanorth', 'Tesla registers a record 150 Cybercabs in Texas') === null && excerptOf('Tesla Registers Record 150 Cybercabs in Texas!', 'Tesla registers a record 150 Cybercabs in Texas') === null);
-
-    // The tiered schedule: one feed a step, tier 1 about every 2 h, tier 2 about every 6 h.
-    const checks = {}, count = {};
-    for (let k = 0; k < 144 * 2; k++) { const f = pickFeed(DEFAULT_FEEDS, checks, NOW + k * 600e3); checks[f.id] = NOW + k * 600e3; if (k >= 144) count[f.id] = (count[f.id] || 0) + 1; }
-    const t1 = DEFAULT_FEEDS.filter(f => f.tier === 1).map(f => count[f.id]), t2 = DEFAULT_FEEDS.filter(f => f.tier === 2).map(f => count[f.id]);
-    check(`the schedule over a day: each tier-1 feed ~12 checks (${Math.min(...t1)}-${Math.max(...t1)}), each tier-2 feed ~4 (${Math.min(...t2)}-${Math.max(...t2)})`, Math.min(...t1) >= 10 && Math.max(...t1) <= 12 && Math.min(...t2) >= 3 && Math.max(...t2) <= 4);
-
-    // Feeds from moderation: validated on the spot; a bare domain is discovered.
-    const GOOD = RSS([rssItem('Tesla Cybercab fleet tops 500', 'https://good.example/a', 30, 'The fleet grew.'), rssItem('Old Cybercab note', 'https://good.example/old', 24 * 40, 'old')]).replace('<channel>', '<channel><title>Good Outlet</title>');
-    const site = {
-      'https://good.example/feed.xml': GOOD,
-      'https://disc.example/rss.xml': GOOD.replace('Good Outlet', 'Disc Outlet'),
-      'https://home.example/': '<html><head><link rel="alternate" type="application/rss+xml" title="x" href="/news/feed.rss"></head></html>',
-      'https://home.example/news/feed.rss': GOOD.replace('Good Outlet', 'Home Outlet'),
-      'https://html.example/page': '<html><body>just a page</body></html>',
-      'https://blocked.example/feed.xml': GOOD,
-      'https://blocked.example/robots.txt': 'User-agent: *\nDisallow: /',
-      'https://none.example/': '<html><body>no feeds here</body></html>'
-    };
-    const siteWeb = async url => { const u = String(url).split('#')[0]; if (site[u] != null) return new Response(site[u]); return new Response('not found', { status: 404 }); };
-    const add = (b) => call(e2, 'POST', '/api/moderation/news-feeds', { session: 'mod', body: b });
-    const e2 = await makeApp();
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = siteWeb;
-    let ok, dup, html, robots, bare, home, none, rider, after;
-    try {
-      ok = await add({ action: 'add', url: 'https://good.example/feed.xml', tier: 1 });
-      dup = await add({ action: 'add', url: 'https://good.example/feed.xml' });
-      html = await add({ action: 'add', url: 'https://html.example/page' });
-      robots = await add({ action: 'add', url: 'https://blocked.example/feed.xml' });
-      bare = await add({ action: 'add', url: 'disc.example' });
-      home = await add({ action: 'add', url: 'home.example', name: 'Home Paper' });
-      none = await add({ action: 'add', url: 'none.example' });
-      rider = await call(e2, 'POST', '/api/moderation/news-feeds', { session: 'rider', body: { action: 'add', url: 'https://good.example/feed.xml' } });
-    } finally { globalThis.fetch = realFetch; }
-    const added = ok.json.feeds.find(f => f.url === 'https://good.example/feed.xml');
-    check('a good feed is accepted: checked now, named from the feed, the chosen tier, appended to the list', ok.status === 200 && added && added.name === 'Good Outlet' && added.tier === 1 && added.id === 'good-example' && ok.json.feeds.length === 26);
-    check('a duplicate is refused (409)', dup.status === 409 && dup.json.error === 'duplicate');
-    check('a URL that is not a feed is refused with a clear message', html.status === 400 && html.json.error === 'not_a_feed' && /not an RSS or Atom feed/.test(html.json.message));
-    check('a feed robots.txt disallows is refused', robots.status === 400 && robots.json.error === 'robots_disallowed' && /robots\.txt/.test(robots.json.message));
-    check('a bare domain: /feed, /rss, then /rss.xml found', bare.status === 200 && bare.json.feeds.some(f => f.url === 'https://disc.example/rss.xml' && f.tier === 2 && f.name === 'Disc Outlet'));
-    check('...or the homepage\'s <link rel="alternate" type="application/rss+xml"> (the given name wins)', home.status === 200 && home.json.feeds.some(f => f.url === 'https://home.example/news/feed.rss' && f.name === 'Home Paper'));
-    check('...nothing anywhere: "no feed found"', none.status === 400 && none.json.error === 'no_feed_found' && /No feed found/.test(none.json.message));
-    check('moderators only', rider.status === 403);
-    const d = await discoverFeed({ TESLA_SESSIONS: e2.env.TESLA_SESSIONS }, 'http://good.example/feed.xml', { fetchImpl: siteWeb });
-    check('https only', d.error === 'https_only');
-    const tier = await call(e2, 'POST', '/api/moderation/news-feeds', { session: 'mod', body: { action: 'tier', id: 'good-example', tier: 2 } });
-    const rm = await call(e2, 'POST', '/api/moderation/news-feeds', { session: 'mod', body: { action: 'remove', id: 'kvue' } });
-    check('a feed\'s tier changes, and a feed is removed', tier.json.feeds.find(f => f.id === 'good-example').tier === 2 && rm.status === 200 && !rm.json.feeds.some(f => f.id === 'kvue') && (await call(e2, 'GET', '/api/moderation/news', { session: 'mod' })).json.config.feeds.length === 27);
-    // The next step: every seeded feed already checked, so the new ones go first and backfill (30 days).
-    await e2.env.TESLA_SESSIONS.put('news:feed_checks', JSON.stringify(Object.fromEntries(DEFAULT_FEEDS.map(f => [f.id, NOW - 60e3]))));
-    const step = await runNewsTick(e2.env, { fetchImpl: async url => { const r = await siteWeb(url); return r.status === 404 && String(url).endsWith('/robots.txt') ? r : (r.status === 404 ? new Response(RSS([])) : r); }, nowMs: NOW });
-    check('a newly added feed is checked on the next step and backfills its items (30-day cap)', step.feeds[0] === 'good-example' && rows(e2).some(x => x.title === 'Tesla Cybercab fleet tops 500' && x.source === 'Good Outlet') && !rows(e2).some(x => x.title === 'Old Cybercab note'));
-    const disallowed = await runNewsIngest(e2.env, { fetchImpl: async url => (String(url) === 'https://electrek.co/robots.txt' ? new Response('User-agent: *\nDisallow: /feed/') : new Response(RSS([]))), nowMs: NOW });
-    check('a feed whose robots.txt now disallows it is skipped (logged), never fetched', disallowed.errors.some(x => /electrek: robots\.txt disallows/.test(x)));
   }
 
   t.finish();
