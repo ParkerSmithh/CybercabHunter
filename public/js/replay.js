@@ -112,7 +112,7 @@ window.CCCReplay = (function () {
 
   // ---- Golden-day tint: the colour washed over the map at local hour h ----
   // Strong enough to read at a glance on a phone; midday stays clear.
-  const TINT_KEYS = [[0, [22, 26, 88, 0.58]], [4.5, [30, 32, 100, 0.54]], [6.5, [255, 146, 56, 0.46]], [8.5, [255, 200, 110, 0.24]], [11, [255, 245, 220, 0.04]], [12, [255, 255, 255, 0]], [15, [255, 222, 150, 0.12]], [18.5, [255, 108, 40, 0.48]], [20.5, [62, 40, 118, 0.54]], [24, [22, 26, 88, 0.58]]];
+  const TINT_KEYS = [[0, [22, 26, 88, 0.58]], [4.5, [30, 32, 100, 0.54]], [6.5, [255, 146, 56, 0.46]], [8.5, [250, 224, 48, 0.24]], [11, [255, 245, 220, 0.04]], [12, [255, 255, 255, 0]], [15, [250, 224, 48, 0.12]], [18.5, [255, 108, 40, 0.48]], [20.5, [62, 40, 118, 0.54]], [24, [22, 26, 88, 0.58]]];
   function tintColor(hour) {
     for (let i = 1; i < TINT_KEYS.length; i++) {
       const [h1, c1] = TINT_KEYS[i];
@@ -134,7 +134,7 @@ window.CCCReplay = (function () {
   function phaseAt(hour) {
     if (hour < 5 || hour >= 21) return { name: 'Night', color: '#1e2470', text: '#ffffff' };
     if (hour < 9) return { name: 'Dawn', color: '#ff9a3c', text: '#2a1600' };
-    if (hour < 17) return { name: 'Midday', color: '#ffe08a', text: '#2a2210' };
+    if (hour < 17) return { name: 'Midday', color: '#FAE030', text: '#2a2210' };
     return { name: 'Dusk', color: '#e8622a', text: '#ffffff' };
   }
   function tintAt(hour) {
@@ -242,10 +242,10 @@ window.CCCReplay = (function () {
           ctx.beginPath();
           ring.forEach(([lng, lat], i) => { const [x, y] = project(lng, lat); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
           ctx.closePath();
-          ctx.fillStyle = 'rgba(255,199,44,0.10)'; ctx.fill();
+          ctx.fillStyle = 'rgba(250,224,48,0.10)'; ctx.fill();
           ctx.lineJoin = 'round';
-          ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,199,44,0.22)'; ctx.stroke();   // soft glow
-          ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,210,63,0.95)'; ctx.stroke();   // crisp edge
+          ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(250,224,48,0.22)'; ctx.stroke();   // soft glow
+          ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(250,224,48,0.95)'; ctx.stroke();   // crisp edge
         }
         // Every watched camera: a pale dot with a dark ring (reads on the light
         // map and the night sky alike) until a sighting lands on it.
@@ -262,7 +262,7 @@ window.CCCReplay = (function () {
           const [x, y] = project(d.lng, d.lat);
           const r = 14 + 9 * Math.sqrt(count);
           const g = ctx.createRadialGradient ? ctx.createRadialGradient(x, y, 0, x, y, r) : null;
-          if (g) { g.addColorStop(0, `rgba(255,${Math.max(90, 190 - count * 8)},40,${Math.min(0.55, 0.18 + count * 0.04)})`); g.addColorStop(1, 'rgba(255,170,40,0)'); ctx.fillStyle = g; }
+          if (g) { g.addColorStop(0, `rgba(255,${Math.max(90, 190 - count * 8)},40,${Math.min(0.55, 0.18 + count * 0.04)})`); g.addColorStop(1, 'rgba(250,224,48,0)'); ctx.fillStyle = g; }
           ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
         }
         // Markers (one per location, its latest sighting).

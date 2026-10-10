@@ -43,7 +43,7 @@
   let predict = false, horizon = 30, howOpen = false;
   // The projection's lighter colours (deeper ones on the light theme, for contrast).
   const light = () => document.documentElement.getAttribute('data-theme') === 'light';
-  const softGold = () => (light() ? '#a07c12' : '#F3E5AB'), softRed = () => (light() ? '#dc2626' : '#fca5a5');
+  const softGold = () => (light() ? '#FAE030' : '#FAE030'), softRed = () => (light() ? '#dc2626' : '#fca5a5');
   const HORIZONS = [7, 30, 90];
   const fcCache = new Map();
   // Both models' forecasts (each from its own counts; approximate imported

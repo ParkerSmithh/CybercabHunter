@@ -18,12 +18,12 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/home-overview.css?v=7">
 <link rel="stylesheet" href="css/hero-typewriter.css?v=2">
 <link rel="stylesheet" href="css/home-data.css?v=3">
-<link rel="stylesheet" href="css/activity.css?v=8">
+<link rel="stylesheet" href="css/activity.css?v=9">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -464,14 +464,14 @@
 <script src="js/calc.js?v=7"></script>
 <script src="js/service-banner.js?v=12"></script>
 <script src="js/activity.js?v=6" defer></script>
-<script src="js/main.js?v=28"></script>
+<script src="js/main.js?v=29"></script>
 <script src="js/home-stats.js?v=9"></script>
 <script src="js/home-rows.js?v=12"></script>
 <script src="js/forecast.js?v=1"></script>
-<script src="js/dmv-panel.js?v=14"></script>
+<script src="js/dmv-panel.js?v=15"></script>
 <script src="js/us-sightings-data.js?v=2"></script>
-<script src="js/us-sightings-map.js?v=14"></script>
-<script src="js/austin-map.js?v=9"></script>
+<script src="js/us-sightings-map.js?v=15"></script>
+<script src="js/austin-map.js?v=10"></script>
 <script src="js/hero-typewriter.js?v=1" defer></script>
 <script src="js/hero-video.js?v=6" defer></script>
 <script>
@@ -597,7 +597,7 @@
     // horizon / day, and drawn after "Today" without touching the actuals.
     let predict = false, horizon = 30;
     // The projection's lighter gold (a deeper one on the light theme, for contrast).
-    const softGold = () => (document.documentElement.getAttribute('data-theme') === 'light' ? '#a07c12' : '#F3E5AB');
+    const softGold = () => (document.documentElement.getAttribute('data-theme') === 'light' ? '#FAE030' : '#FAE030');
     const fcCache = new Map();
     function currentForecast() {
       if (!predict || !series || !window.CCCForecast) return null;

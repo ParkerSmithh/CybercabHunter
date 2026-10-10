@@ -522,7 +522,7 @@ const CCC = (() => {
 
   /* ---------------- Confetti ---------------- */
   function spawnConfetti(originEl) {
-    const colors = ['#FAE030', '#F3E5AB', '#B8954A', '#ECEEF1'];   // the one accent, in three tones, plus ink
+    const colors = ['#FAE030', '#FAE030', '#FAE030', '#ECEEF1'];   // the one accent, in three tones, plus ink
     const rect = originEl ? originEl.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
     const originX = rect.left + rect.width / 2;
     const originY = rect.top + rect.height / 2;

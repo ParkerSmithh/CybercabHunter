@@ -58,14 +58,14 @@ window.CCCAustinMap = (function () {
   // look.id names a second zone on the same map (Dallas): its source and layers
   // get that suffix; without it the ids are Austin's, as before.
   function addServiceZone(map, coords, look = {}) {
-    const L = Object.assign({ fill: 0.13, glow: 0.45, line: '#FFD23F', width: 2.5, lineOpacity: 1 }, look);
+    const L = Object.assign({ fill: 0.13, glow: 0.45, line: '#FAE030', width: 2.5, lineOpacity: 1 }, look);
     const sfx = L.id ? '-' + L.id : '';
     map.addSource('service-zone' + sfx, {
       type: 'geojson',
       data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } }
     });
-    map.addLayer({ id: 'zone-fill' + sfx, type: 'fill', source: 'service-zone' + sfx, paint: { 'fill-color': '#FFC72C', 'fill-opacity': L.fill } });
-    map.addLayer({ id: 'zone-line-glow' + sfx, type: 'line', source: 'service-zone' + sfx, layout: { 'line-join': 'round' }, paint: { 'line-color': '#FFC72C', 'line-width': 10, 'line-blur': 7, 'line-opacity': L.glow } });
+    map.addLayer({ id: 'zone-fill' + sfx, type: 'fill', source: 'service-zone' + sfx, paint: { 'fill-color': '#FAE030', 'fill-opacity': L.fill } });
+    map.addLayer({ id: 'zone-line-glow' + sfx, type: 'line', source: 'service-zone' + sfx, layout: { 'line-join': 'round' }, paint: { 'line-color': '#FAE030', 'line-width': 10, 'line-blur': 7, 'line-opacity': L.glow } });
     map.addLayer({ id: 'zone-line' + sfx, type: 'line', source: 'service-zone' + sfx, layout: { 'line-join': 'round' }, paint: { 'line-color': L.line, 'line-width': L.width, 'line-opacity': L.lineOpacity } });
   }
 

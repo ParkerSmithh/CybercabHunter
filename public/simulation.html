@@ -17,11 +17,11 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <style>
   input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:2px; background:rgb(var(--n-800)); outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#FAE030); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#FAE030,#FAE030); box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; margin-top:-7px; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
   input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:rgb(var(--n-800));}
   /* Phones: a 40px touch strip around the same 4px track (the track itself is drawn by the
      track pseudo-elements, so the slider looks the same). */
@@ -29,12 +29,12 @@
     input[type=range]{height:40px; background:transparent;}
     input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:rgb(var(--n-800));}
   }
-  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#F3E5AB,#FAE030); border:none; box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:linear-gradient(150deg,#FAE030,#FAE030); border:none; box-shadow:0 2px 8px -2px rgb(var(--shadow) / 0.5); cursor:pointer; transform:translateX(var(--thumb-x, 0px)) scale(var(--thumb-sx, 1), var(--thumb-sy, 1));}
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   input[type=number]{-moz-appearance:textfield; appearance:textfield;}
   .toggle{width:44px; height:24px; border-radius:999px; background:rgb(var(--n-800)); position:relative; transition:background 0.25s ease; cursor:pointer;}
-  .toggle.on{background:linear-gradient(120deg,#F3E5AB,#FAE030);}
+  .toggle.on{background:linear-gradient(120deg,#FAE030,#FAE030);}
   .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:rgb(var(--ink)); transition:transform var(--t) var(--ease);}
   .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
   /* The Cybercab in both views' headers: one size and place, always to the
@@ -847,7 +847,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=28"></script>
+<script src="js/main.js?v=29"></script>
 <script>
   CCC.init();
 
@@ -1024,7 +1024,7 @@
       doc.text('CYBERCAB HUNTER', marginX, y);
       y += 24;
       doc.setFontSize(14);
-      doc.setTextColor(150, 120, 40);
+      doc.setTextColor(250, 224, 48);
       doc.text('Investment Prospectus', marginX, y);
       doc.setTextColor(0, 0, 0);
       y += 20;

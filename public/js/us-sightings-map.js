@@ -47,7 +47,7 @@
       + `<title>${esc(label(c))}</title></g>`;
   };
   const map = `<svg viewBox="${D.viewBox}" class="us-map w-full h-auto block" role="img" aria-label="${esc(`Map of the United States: ${stateCount} states and DC with reported Cybercab sightings, ${D.cities.length} named cities`)}">
-      <defs><radialGradient id="usDotFill" cx="38%" cy="35%" r="70%"><stop offset="0" stop-color="#FFF1BF"/><stop offset="0.45" stop-color="#E8C55A"/><stop offset="1" stop-color="#A9851E"/></radialGradient><radialGradient id="usHaloFill"><stop offset="0" stop-color="#F2CF5B" stop-opacity="0.75"/><stop offset="0.45" stop-color="#FAE030" stop-opacity="0.32"/><stop offset="1" stop-color="#FAE030" stop-opacity="0"/></radialGradient></defs>
+      <defs><radialGradient id="usDotFill" cx="38%" cy="35%" r="70%"><stop offset="0" stop-color="#FAE030"/><stop offset="0.45" stop-color="#FAE030"/><stop offset="1" stop-color="#FAE030"/></radialGradient><radialGradient id="usHaloFill"><stop offset="0" stop-color="#FAE030" stop-opacity="0.75"/><stop offset="0.45" stop-color="#FAE030" stop-opacity="0.32"/><stop offset="1" stop-color="#FAE030" stop-opacity="0"/></radialGradient></defs>
       <g class="us-states">${D.states.map(s => `<path d="${s.d}" class="${sighted.has(s.id) ? 'is-sighted' : ''}" data-state="${s.id}"><title>${esc(s.name)}${sighted.has(s.id) ? ' · sightings reported' : ''}</title></path>`).join('')}</g>
       <g class="us-cities">${D.cities.map((c, i) => [c, i]).sort((a, b) => radius(b[0]) - radius(a[0])).map(([c, i]) => dot(c, i)).join('')}</g>
     </svg>`;
@@ -105,7 +105,7 @@
   // record counts as one), never across into a state with no sightings. The
   // summed intensity is coloured navy -> blue -> cyan -> green -> yellow ->
   // orange -> red, and the state borders are drawn back on top.
-  const RAMP = [[0, '#0a1a3d'], [0.1, '#173a7a'], [0.25, '#1f6fb8'], [0.4, '#22a8c4'], [0.55, '#3cbf7a'], [0.7, '#e3cf45'], [0.85, '#f08a24'], [1, '#e0321c']];
+  const RAMP = [[0, '#0a1a3d'], [0.1, '#173a7a'], [0.25, '#1f6fb8'], [0.4, '#22a8c4'], [0.55, '#3cbf7a'], [0.7, '#FAE030'], [0.85, '#f08a24'], [1, '#e0321c']];
   const SIGHTED_BASE = 0.1;   // a sighted state's floor: cool, not coldest
   let palette = null;
   function rampPalette() {
