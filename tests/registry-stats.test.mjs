@@ -2,7 +2,7 @@
 // and js/home-stats.js, plus the removal of the invented numbers and the invented leaderboard.
 //   - the two numbers use the SAME public gate as the registry list (public AND a counted ride)
 //   - private / ineligible vehicles, pending/rejected/unverified sightings, review-only rides never change them
-//   - the response is an explicit two-field whitelist, cached 60s, public, GET only
+//   - the response is an explicit three-field whitelist, uncached, public, GET only
 //   - a failed request shows a dash, never 0 (a REAL zero shows 0)
 // Real SQL (every migration) + the REAL Worker router; the homepage script runs in jsdom.
 // Run: node tests/registry-stats.test.mjs
@@ -62,7 +62,7 @@ async function run() {
     check('200', r.status === 200);
     check('public_vehicles counts only eligible vehicles (A, B)', body.public_vehicles === 2, `got ${body.public_vehicles}`);
     check('recorded_rides retains all five rides that entered the counted state, including the later superseded row', body.recorded_rides === 5, `got ${body.recorded_rides}`);
-    check('sightings (pending, rejected, needs_review, approved-but-unverified, approved+verified, and one on a private vehicle) change neither number', JSON.stringify(beforeSightings) === JSON.stringify(body) && Object.keys(body).join() === 'public_vehicles,recorded_rides');
+    check('sightings (pending, rejected, needs_review, approved-but-unverified, approved+verified, and one on a private vehicle) change neither number', beforeSightings.public_vehicles === body.public_vehicles && beforeSightings.recorded_rides === body.recorded_rides && Object.keys(body).join() === 'public_vehicles,recorded_rides,sightings_all_time');
 
     // The stats must equal what the public registry list shows.
     const list = await (await call(ctx, '/api/robotaxi-vehicles')).json();
@@ -83,8 +83,8 @@ async function run() {
     const ctx = await makeApp();
     const A = vehicle(ctx, 1, 'AAA1111', 'public'); ride(ctx, A);
     const anon = await stats(ctx);
-    check('exactly the two whitelisted fields, in this shape', Object.keys(anon.body).join() === 'public_vehicles,recorded_rides' && Number.isInteger(anon.body.public_vehicles) && Number.isInteger(anon.body.recorded_rides));
-    check('Cache-Control is exactly public, max-age=60', anon.r.headers.get('Cache-Control') === 'public, max-age=60');
+    check('exactly the three whitelisted fields, in this shape', Object.keys(anon.body).join() === 'public_vehicles,recorded_rides,sightings_all_time' && Number.isInteger(anon.body.public_vehicles) && Number.isInteger(anon.body.recorded_rides));
+    check('Cache-Control is exactly no-store', anon.r.headers.get('Cache-Control') === 'no-store');
     check('JSON content type', /application\/json/.test(anon.r.headers.get('content-type') || ''));
     check('no authentication required (200 with no Authorization header)', anon.r.status === 200);
     const bogus = await stats(ctx, { headers: { Authorization: 'Bearer not-a-real-session' } });
@@ -92,7 +92,7 @@ async function run() {
     check('a bogus or a real session makes no difference — the body is identical and user-independent', bogus.raw === anon.raw && signedIn.raw === anon.raw);
     check('no cookies or session data set', !anon.r.headers.get('set-cookie'));
     const text = anon.raw;
-    check('nothing private or identifying in the payload', !/user|session|token|fare|address|plate|id"|submission|review|moderat|contributor|visibility|sighting|AAA1111/i.test(text));
+    check('nothing private or identifying in the payload', !/user|session|token|fare|address|plate|id"|submission|review|moderat|contributor|visibility|AAA1111/i.test(text));
     for (const m of ['POST', 'DELETE', 'PATCH']) { const x = await call(ctx, '/api/registry/stats', { method: m }); check(`${m} is not answered with the stats`, !(await x.text()).includes('public_vehicles')); }
     check('the per-vehicle and list routes are unaffected', (await call(ctx, '/api/robotaxi-vehicles')).status === 200 && (await call(ctx, `/api/robotaxi-vehicles/${A}`)).status === 200 && (await call(ctx, '/api/robotaxi-vehicles/stats')).status === 400);
     check('CORS matches the other public routes (allowed origin echoed)', anon.r.headers.get('Access-Control-Allow-Origin') === 'https://cybercabhunter.com');
@@ -128,7 +128,7 @@ async function run() {
 
     // ...while a genuine database answer of zero is still a normal 200 with zeroes.
     const zero = await answer(() => ({ run: async () => ({}), all: async () => ({ results: [{key:'cybercabs_spotted',value:0},{key:'rides_total',value:0}] }) }));
-    check('a genuine aggregate result of zero is a 200 with zeroes, cached 60s', zero.status === 200 && zero.body.public_vehicles === 0 && zero.body.recorded_rides === 0 && zero.cache === 'public, max-age=60' && Object.keys(zero.body).join() === 'public_vehicles,recorded_rides');
+    check('a genuine aggregate result of zero is a 200 with zeroes, uncached', zero.status === 200 && zero.body.public_vehicles === 0 && zero.body.recorded_rides === 0 && zero.cache === 'no-store' && Object.keys(zero.body).join() === 'public_vehicles,recorded_rides,sightings_all_time');
     const normal = await answer(() => ({ run: async () => ({}), all: async () => ({ results: [{key:'cybercabs_spotted',value:4},{key:'rides_total',value:5}] }) }));
     check('a normal aggregate result is a 200 with those numbers', normal.status === 200 && normal.body.public_vehicles === 4 && normal.body.recorded_rides === 5);
     // Direct check at the data layer: the function itself throws instead of inventing zeros.
@@ -159,24 +159,32 @@ async function run() {
     check('a third tile, "Sightings", starts as an em dash', /<dl class="grid grid-cols-3[\s\S]*?Total Rides[\s\S]*?<dt[^>]*>Sightings<\/dt>[\s\S]*?id="statSightings"[^>]*>—</.test(HTML));
     const ctx = await makeApp();
     let seen = 117, failing = false;
-    const p = await home(ctx, { intercept: async path => path.startsWith('/api/sightings') ? (failing ? new Response('x', { status: 503 }) : Response.json({ seen: 0, sightings_all_time: seen, sightings: [] })) : null });
+    const p = await home(ctx, { intercept: async path => path.startsWith('/api/registry/stats') ? (failing ? new Response('x', { status: 503 }) : Response.json({ public_vehicles: 0, recorded_rides: 0, sightings_all_time: seen })) : null });
     const el = () => p.d.getElementById('statSightings');
     check('shows every city\'s approved sightings (the API\'s lifetime counter)', el().textContent === '117' && el().dataset.value === '117');
     seen = 118;
     p.d.dispatchEvent(new p.w.Event('visibilitychange'));
     await new Promise(r => setTimeout(r, 60));
-    check('updates when a new sighting comes in (re-read on return to the tab, and every 30s)', el().textContent === '118' && /SIGHTINGS_POLL_MS = 30 \* 1000/.test(STATS) && /setInterval\(loadSightings, SIGHTINGS_POLL_MS\)/.test(STATS));
+    check('updates when a new sighting comes in (re-read on return to the tab, and every 30s)', el().textContent === '118' && /TOTALS_POLL_MS = 30 \* 1000/.test(STATS) && /setInterval\(loadTotals, TOTALS_POLL_MS\)/.test(STATS));
     failing = true;
     p.d.dispatchEvent(new p.w.Event('visibilitychange'));
     await new Promise(r => setTimeout(r, 60));
     check('a failed read keeps the last good number', el().textContent === '118');
     p.w.close();
+    const zeroCtx = await makeApp();
+    zeroCtx.d1.exec("DELETE FROM site_stat_counters WHERE key='sightings_all_time'");
+    const zeroPage = await home(zeroCtx, { intercept: async path => path.startsWith('/api/sightings') ? new Response('{}', { status: 503 }) : null });
+    check('a missing sightings counter is recreated as zero and all three cards render without the gallery endpoint',
+      zeroPage.v() === '0' && zeroPage.r() === '0' && zeroPage.d.getElementById('statSightings').textContent === '0' &&
+      zeroCtx.d1.query("SELECT value FROM site_stat_counters WHERE key='sightings_all_time'")[0].value === 0 && zeroPage.requests.length === 1);
+    check('the headline request bypasses cached pre-counter payloads', zeroPage.requests[0].cache === 'no-store');
+    zeroPage.w.close();
   }
 
   console.log('5. Homepage behavior (real js/home-stats.js against the real Worker)');
   // Headline totals use the global public registry endpoint.
   const hp = (v, r) => Response.json({ public_vehicles: v, recorded_rides: r });
-  const isHome = path => path === '/api/registry/stats';
+  const isHome = path => path.startsWith('/api/registry/stats');
   async function home(ctx, { intercept, reducedMotion = true, observer = 'immediate' } = {}) {
     const dom = new JSDOM(HTML.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/', pretendToBeVisual: true });
     const w = dom.window;
@@ -185,7 +193,7 @@ async function run() {
     w.matchMedia = q => ({ matches: reducedMotion && /reduce/.test(q), addEventListener() {}, removeEventListener() {} });
     const requests = [];
     w.fetch = async (u, init = {}) => {
-      const path = String(u).replace(WORKER_ORIGIN, ''); requests.push({ path, headers: init.headers || {} });
+      const path = String(u).replace(WORKER_ORIGIN, ''); requests.push({ path, headers: init.headers || {}, cache: init.cache });
       if (intercept) { const x = await intercept(path); if (x) return x; }
       return worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com' } }), ctx.env, {});
     };
@@ -203,8 +211,8 @@ async function run() {
     ctx.d1.prepare('UPDATE robotaxi_vehicles SET service_area = ? WHERE id = ?').bind('Dallas', D)._exec();
     const p = await home(ctx);
     check('the tiles total Austin and Dallas: 3 public vehicles, 4 rides', p.v() === '3' && p.r() === '4', `${p.v()} / ${p.r()}`);
-    check('two same-origin requests for global registry and sighting totals, no Authorization header',
-      p.requests.map(r => r.path).join() === '/api/registry/stats,/api/sightings?limit=1' && p.requests.every(r => !('Authorization' in r.headers)));
+    check('one same-origin request for all lifetime totals, no Authorization header',
+      p.requests.map(r => r.path).join() === '/api/registry/stats?lifetime=1' && p.requests.every(r => !('Authorization' in r.headers)));
     check('no all-cities line beneath the tiles (removed on owner request)', !/All cities/.test(p.d.querySelector('section dl').textContent) && !p.d.getElementById('statVehiclesAll'));
     check('the values are recorded on the tiles', p.d.getElementById('statVehicles').dataset.value === '3' && p.d.getElementById('statRides').dataset.value === '4');
     const big = await home(ctx, { intercept: async path => (isHome(path) ? hp(1234, 56789) : null) });

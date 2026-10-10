@@ -3,7 +3,7 @@
    Failed refreshes retain the last good value; initial failures keep a dash. */
 (function () {
   const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
-  const SIGHTINGS_POLL_MS = 30 * 1000;
+  const TOTALS_POLL_MS = 30 * 1000;
   const DATA_TTL_MS = 5 * 60 * 1000;
 
   // ---- The homepage data, one request per city, kept 5 minutes ----
@@ -29,38 +29,29 @@
   }
   const $ = id => document.getElementById(id);
 
-  function loadRegistry() {
-    fetch('/api/registry/stats')
+  function loadTotals() {
+    // A versioned, uncached request cannot reuse a pre-counter API payload.
+    fetch('/api/registry/stats?lifetime=1', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
       .then(body => {
-        if (!body) return;
-        for (const [id, n] of [['statVehicles', body.public_vehicles], ['statRides', body.recorded_rides]]) {
+        if (!body || typeof body !== 'object') return;
+        for (const [id, n] of [['statVehicles', body.public_vehicles], ['statRides', body.recorded_rides], ['statSightings', body.sightings_all_time]]) {
           const el = $(id);
           if (el && isCount(n) && el.dataset.value !== String(n)) reveal(el, n);
         }
-      }).catch(() => { /* retain the last good totals */ });
+      }).catch(() => { /* retain the last good totals; a failed read is not zero */ });
   }
 
-  let sightingsTimer = null;
-  function loadSightings() {
-    fetch('/api/sightings?limit=1')
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
-      .then(body => {
-        const el = $('statSightings');
-        if (el && body && isCount(body.sightings_all_time) && el.dataset.value !== String(body.sightings_all_time)) reveal(el, body.sightings_all_time);
-      }).catch(() => { /* retain the last good total */ });
-  }
-  function startSightings() {
-    if (sightingsTimer) clearInterval(sightingsTimer);
-    sightingsTimer = document.hidden ? null : setInterval(loadSightings, SIGHTINGS_POLL_MS);
+  let totalsTimer = null;
+  function startTotals() {
+    if (totalsTimer) clearInterval(totalsTimer);
+    totalsTimer = document.hidden ? null : setInterval(loadTotals, TOTALS_POLL_MS);
   }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) { loadRegistry(); loadSightings(); }
-    startSightings();
+    if (!document.hidden) loadTotals();
+    startTotals();
   });
 
-  loadRegistry();
-  loadSightings();
-  setInterval(() => { if (!document.hidden) loadRegistry(); }, DATA_TTL_MS);
-  startSightings();
+  loadTotals();
+  startTotals();
 })();

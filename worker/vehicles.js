@@ -21,23 +21,25 @@
 // money). Everything else getRobotaxiVehicleHistory returns is forwarded
 // as-is.
 
+import { getSiteStatCounters } from './site-stats.js';
 import { db, REGISTRY_SORTS } from './db.js';
 import { serviceAreaFor } from './service-areas.js';
 
 export const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Public: two aggregate numbers for the homepage (see db.getPublicRegistryStats).
-// GET only, no session, an explicit two-field whitelist. A database failure is a
+// Public: three lifetime numbers for the homepage (see db.getPublicRegistryStats).
+// GET only, no session, an explicit three-field whitelist. A database failure is a
 // generic 503 that is never cached — the page then shows a dash, because "could
 // not load" is not the same as zero.
 export async function apiGetRegistryStats(request, env) {
   try {
-    const stats = await db.getPublicRegistryStats(env.cybercabhunter_db);
+    const stats = await getSiteStatCounters(env.cybercabhunter_db);
     return Response.json({
-      public_vehicles: stats.public_vehicles,
-      recorded_rides: stats.recorded_rides
+      public_vehicles: stats.cybercabs_spotted,
+      recorded_rides: stats.rides_total,
+      sightings_all_time: stats.sightings_all_time
     }, {
-      headers: { 'Cache-Control': 'public, max-age=60' }
+      headers: { 'Cache-Control': 'no-store' }
     });
   } catch (err) {
     return Response.json({ success: false, error: 'stats_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });

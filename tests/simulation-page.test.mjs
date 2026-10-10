@@ -77,17 +77,17 @@ async function run() {
     check('changing the inputs recomputes the revenue', revenue > 0);
   }
 
-  console.log('2b. Starting values: the live registry count and labeled examples');
+  console.log('2b. Starting values: the lifetime registry count and labeled examples');
   {
     const p = open('https://cybercabhunter.com/simulation', { public_vehicles: 45, recorded_rides: 3 });
     await new Promise(r => setTimeout(r, 900));
     const note = p.d.getElementById('roiStartNote').textContent;
-    check('fleet size starts at the live registry count (45)', p.d.getElementById('fleetSize').value === '45' && p.d.getElementById('fleetSizeLabel').value === '45');
-    check('electricity starts at $0.12/kWh and daily miles at 150, labeled as examples', p.d.getElementById('electricityRate').value === '0.12' && p.d.getElementById('dailyMiles').value === '150' && /live registry count \(45 public Cybercabs\)/.test(note) && /example values/.test(note));
+    check('fleet size starts at the lifetime registry count (45)', p.d.getElementById('fleetSize').value === '45' && p.d.getElementById('fleetSizeLabel').value === '45');
+    check('electricity starts at $0.12/kWh and daily miles at 150, labeled as examples', p.d.getElementById('electricityRate').value === '0.12' && p.d.getElementById('dailyMiles').value === '150' && /lifetime registry count \(45 Cybercabs spotted\)/.test(note) && /example values/.test(note));
     check('so the page opens on a real projection, not $0', Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, '')) > 0);
     const down = open('https://cybercabhunter.com/simulation');
     await new Promise(r => setTimeout(r, 300));
-    check('if the count can\'t load, fleet size stays 0 and the note says so', down.d.getElementById('fleetSize').value === '0' && /Couldn't load the live registry count/.test(down.d.getElementById('roiStartNote').textContent));
+    check('if the count can\'t load, fleet size stays 0 and the note says so', down.d.getElementById('fleetSize').value === '0' && /Couldn't load the lifetime registry count/.test(down.d.getElementById('roiStartNote').textContent));
   }
 
   console.log('3. Navigation and old URLs');

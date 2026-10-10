@@ -305,7 +305,7 @@ async function run() {
     ctx.env = peakCtx.env;
     const peakPage = await open('https://cybercabhunter.com/sightings');
     check('no activity charts on the page', !peakPage.d.getElementById('activityDays') && !peakPage.d.getElementById('activityHours') && !/LAST 14 DAYS|TIME OF DAY/.test(peakPage.d.body.textContent));
-    check('the All time tile and the toolbar count', peakPage.text('statTotal') === '3' && peakPage.text('feedCount') === '3 sightings in Austin');
+    check('the lifetime tile includes the historical camera; toolbar counts the live city gallery', peakPage.text('statTotal') === '4' && peakPage.text('feedCount') === '3 sightings in Austin');
     check('each card says how long ago it was spotted', peakPage.cards().length === 3 && /3h ago/.test(peakPage.cards()[0].textContent) && /9d ago/.test(peakPage.cards()[2].textContent));
     check('a clear busiest hour is shown as a range, out of ALL sightings since the first one', /^\d{1,2}:00 (AM|PM) - \d{1,2}:00 (AM|PM)$/.test(peakPage.text('statPeakHour')) && /^All time · 2 of 3 sightings since [A-Z][a-z]{2} \d{1,2}$/.test(peakPage.text('statPeakCount')), peakPage.text('statPeakCount'));
     check('the card is labelled Peak hour, with All time in its sub-text', />Peak hour<\/div>/.test(fs.readFileSync(new URL('../public/sightings.html', import.meta.url), 'utf8')));
