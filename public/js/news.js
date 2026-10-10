@@ -45,6 +45,7 @@
       img.addEventListener('error', () => { const box = img.parentNode; box.classList.add('is-initial'); box.textContent = box.dataset.initial || '?'; });
     });
   }
+  function chip(type) { return `<span class="news-chip news-chip-${esc(type)}">${esc(LABEL[type] || 'Press')}</span>`; }
   function card(s, { top = false } = {}) {
     const url = safeUrl(s.url);
     if (!url) return '';
@@ -52,21 +53,29 @@
     const also = (s.also || []).filter(o => safeUrl(o.url));
     return `<article class="news-card${major ? ' is-major' : ''}${top ? ' is-top' : ''}">
       ${thumb(s, top)}
-      <div class="min-w-0 flex-1">
+      <div class="news-body">
         <div class="news-meta">
           ${major ? '<span class="news-badge-major">Major</span>' : ''}
           <span class="news-source">${esc(s.source)}</span>
-          <span class="news-type news-type-${esc(s.source_type)}">${esc(LABEL[s.source_type] || 'Press')}</span>
+          ${chip(s.source_type)}
           <span class="news-time"><time datetime="${esc(s.published_at)}">${esc(ago(s.published_at))}</time></span>
         </div>
         <h3 class="news-title"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}<span class="sr-only"> (opens ${esc(s.source)} in a new tab)</span></a></h3>
         ${s.excerpt ? `<p class="news-excerpt">${esc(s.excerpt)}</p>` : ''}
-        <div class="news-foot">
-          ${(s.tags || []).map(t => `<span class="news-tag">${esc(t)}</span>`).join('')}
-          ${also.length ? `<details class="news-also"><summary>Also: ${also.length} more ${also.length === 1 ? 'outlet' : 'outlets'}</summary><ul>${also.map(o => `<li><a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">${esc(o.source)}</a><span class="news-type news-type-${esc(o.source_type)}">${esc(LABEL[o.source_type] || 'Press')}</span><span class="text-slate-500"> · ${esc(ago(o.published_at))}</span></li>`).join('')}</ul></details>` : ''}
-        </div>
+        ${(s.tags || []).length ? `<div class="news-tags">${s.tags.map(t => `<span class="news-tag">${esc(t)}</span>`).join('')}</div>` : ''}
+        ${also.length ? `<details class="news-also"><summary>Also covered by ${also.length} ${also.length === 1 ? 'outlet' : 'outlets'}</summary><ul>${also.map(o => `<li><a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">${esc(o.source)}</a>${chip(o.source_type)}<span class="news-time">${esc(ago(o.published_at))}</span></li>`).join('')}</ul></details>` : ''}
       </div>
     </article>`;
+  }
+  const dayHead = d => `<div class="news-section-head news-day"><h2>${esc(d)}</h2><span class="news-rule" aria-hidden="true"></span></div>`;
+
+  // Cards ease in as they scroll into view (once; nothing moves with reduced motion).
+  const reveal = 'IntersectionObserver' in window && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    ? new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); reveal.unobserve(e.target); } }), { rootMargin: '0px 0px -40px 0px' })
+    : null;
+  function wireReveal(root) {
+    if (!reveal) return;
+    root.querySelectorAll('.news-card:not([data-rv])').forEach(c => { c.dataset.rv = '1'; c.classList.add('news-reveal'); reveal.observe(c); });
   }
 
   // ---- state
@@ -93,11 +102,12 @@
     let html = '';
     for (const s of body.stories) {
       const d = dayLabel(s.published_at);
-      if (d !== lastDay) { html += `<h2 class="news-day">${esc(d)}</h2>`; lastDay = d; }
+      if (d !== lastDay) { html += dayHead(d); lastDay = d; }
       html += card(s);
     }
     list.insertAdjacentHTML('beforeend', html);
     wireThumbs(list);
+    wireReveal(list);
     cursor = body.next_cursor;
     show('newsMore', !!cursor);
     show('newsEmpty', !more && !body.stories.length);
@@ -109,7 +119,34 @@
     const stories = body && Array.isArray(body.stories) ? body.stories.slice(0, 4) : [];
     $('newsTopList').innerHTML = stories.map(s => card(s, { top: true })).join('');
     wireThumbs($('newsTopList'));
+    $('newsTopCount').textContent = stories.length ? `${stories.length} major` : '';
     show('newsTop', stories.length > 0);
+  }
+
+  // The hero count and the stats bar, counted from GET /api/news pages
+  // (newest first, 50 a page, edge-cached): stories, majors in the last 7
+  // days, distinct outlets (a story's and its "also" outlets). Each stays a
+  // dash until it is known.
+  async function loadStats() {
+    let cursor = null, stories = 0, major = 0, pages = 0;
+    const sources = new Set(), weekAgo = Date.now() - 7 * 864e5;
+    do {
+      let body = null;
+      try { const r = await fetch('/api/news?limit=50' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')); body = r.ok ? await r.json() : null; } catch (e) { body = null; }
+      if (!body || !Array.isArray(body.stories)) return;
+      for (const s of body.stories) {
+        stories++;
+        if (s.importance === 2 && Date.parse(s.published_at) >= weekAgo) major++;
+        sources.add(String(s.source).toLowerCase());
+        (s.also || []).forEach(o => sources.add(String(o.source).toLowerCase()));
+      }
+      cursor = body.next_cursor;
+    } while (cursor && ++pages < 12);
+    const fmt = n => n.toLocaleString('en-US');
+    $('newsHeroCount').textContent = fmt(stories);
+    $('newsStatStories').textContent = fmt(stories);
+    $('newsStatMajor').textContent = fmt(major);
+    $('newsStatSources').textContent = fmt(sources.size);
   }
 
   filterBtns.forEach(b => b.addEventListener('click', () => {
@@ -126,4 +163,5 @@
 
   loadTop();
   fetchPage(false);
+  loadStats();
 })();
