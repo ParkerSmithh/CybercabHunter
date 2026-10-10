@@ -10,6 +10,28 @@
   if (!$('modPanelNews')) return;
   const sessionId = localStorage.getItem('teslaSessionId');
   let loaded = false, cursor = null;
+  let publishers = [];   // the publisher blocklist being edited (saved with "Save lists")
+  function renderPublishers() {
+    const ul = $('modNewsPublishers');
+    ul.textContent = '';
+    if (!publishers.length) { ul.append(el('li', 'text-xs text-slate-500', 'None blocked.')); return; }
+    publishers.forEach((name, i) => {
+      const li = el('li', 'inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full border border-white/15 text-xs text-slate-200');
+      li.append(el('span', '', name));
+      const x = el('button', 'w-5 h-5 rounded-full hover:bg-white/10 text-slate-400', '×');
+      x.type = 'button'; x.dataset.removePublisher = String(i); x.setAttribute('aria-label', `Remove ${name}`);
+      li.append(x);
+      ul.append(li);
+    });
+  }
+  function addPublisher() {
+    const v = $('modNewsPublisherInput').value.trim().replace(/\s+/g, ' ');
+    if (!v) return;
+    if (!publishers.some(p => p.toLowerCase() === v.toLowerCase())) publishers.push(v);
+    $('modNewsPublisherInput').value = '';
+    renderPublishers();
+    $('modNewsConfigNote').textContent = 'Not saved yet.';
+  }
 
   async function api(path, options = {}) {
     const resp = await fetch(WORKER + path, { ...options, headers: { Authorization: 'Bearer ' + sessionId, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) } });
@@ -49,10 +71,13 @@
       $('modNewsList').textContent = '';
       const lr = d.last_run;
       $('modNewsRun').textContent = lr
-        ? `Last run ${when(lr.at)}: ${lr.fetched} fetched, ${lr.kept} kept, ${lr.dropped} dropped, ${lr.new} new${lr.not_modified ? `, ${lr.not_modified} feeds unchanged` : ''}${lr.errors && lr.errors.length ? ` · ${lr.errors.length} feed errors` : ''}.`
+        ? `Last run ${when(lr.at)}: ${lr.fetched} fetched, ${lr.kept} kept, ${lr.dropped} dropped${typeof lr.blocked_publisher === 'number' ? ` (${lr.blocked_publisher} by publisher)` : ''}, ${lr.new} new${lr.not_modified ? `, ${lr.not_modified} feeds unchanged` : ''}${lr.errors && lr.errors.length ? ` · ${lr.errors.length} feed errors` : ''}.`
         : 'The ingest has not run yet.';
       $('modNewsAllow').value = d.config.allow;
       $('modNewsBlock').value = d.config.block;
+      publishers = Array.isArray(d.config.publisher_blocklist) ? d.config.publisher_blocklist.slice() : [];
+      renderPublishers();
+      $('modNewsBlockedCount').textContent = lr && typeof lr.blocked_publisher === 'number' ? `Last run: ${lr.blocked_publisher} ${lr.blocked_publisher === 1 ? 'story' : 'stories'} blocked by publisher.` : '';
     }
     d.stories.forEach(s => $('modNewsList').append(row(s)));
     if (!d.stories.length && !more) $('modNewsList').append(el('p', 'text-sm text-slate-400', 'No stories collected yet.'));
@@ -70,6 +95,15 @@
     if (r.ok) load(false);
   });
   $('modNewsMore').addEventListener('click', () => load(true));
+  $('modNewsPublisherAdd').addEventListener('click', addPublisher);
+  $('modNewsPublisherInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addPublisher(); } });
+  $('modNewsPublishers').addEventListener('click', e => {
+    const b = e.target.closest('button[data-remove-publisher]');
+    if (!b) return;
+    publishers.splice(Number(b.dataset.removePublisher), 1);
+    renderPublishers();
+    $('modNewsConfigNote').textContent = 'Not saved yet.';
+  });
   $('modNewsRunNow').addEventListener('click', async () => {
     const b = $('modNewsRunNow');
     b.disabled = true; b.textContent = 'Running…';
@@ -79,7 +113,8 @@
   });
   $('modNewsConfig').addEventListener('submit', async e => {
     e.preventDefault();
-    const r = await api('/api/moderation/news-config', { method: 'PUT', body: JSON.stringify({ allow: $('modNewsAllow').value, block: $('modNewsBlock').value }) });
+    const r = await api('/api/moderation/news-config', { method: 'PUT', body: JSON.stringify({ allow: $('modNewsAllow').value, block: $('modNewsBlock').value, publisher_blocklist: publishers }) });
+    if (r.ok && r.json && r.json.config) { publishers = r.json.config.publisher_blocklist.slice(); renderPublishers(); }
     $('modNewsConfigNote').textContent = r.ok ? 'Saved. The next run uses these lists.' : (r.json && r.json.error === 'empty_allowlist' ? 'The allowlist needs at least one rule.' : 'Couldn\'t save.');
   });
   const open = () => { if (!loaded) { loaded = true; load(false); } };

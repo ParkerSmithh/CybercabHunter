@@ -155,6 +155,16 @@
             <span class="block text-xs text-slate-500 mt-0.5 mb-2">A story whose headline has any of these is dropped.</span>
             <textarea id="modNewsBlock" rows="5" class="w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
           </label>
+          <div class="md:col-span-2 text-sm">
+            <span class="font-semibold text-slate-100">Blocked publishers</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">Stories from these outlets are dropped (any capitalization), from the next run. Stories already collected stay; hide them above if needed. <span id="modNewsBlockedCount"></span></span>
+            <ul id="modNewsPublishers" class="flex flex-wrap gap-2 mb-2"></ul>
+            <div class="flex gap-2 max-w-md">
+              <label for="modNewsPublisherInput" class="sr-only">Publisher name</label>
+              <input id="modNewsPublisherInput" type="text" maxlength="80" placeholder="Publisher name, e.g. BASENOR" class="flex-1 min-w-0 bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm">
+              <button id="modNewsPublisherAdd" type="button" class="px-3 py-2 rounded-lg text-xs font-semibold border border-white/10 text-slate-200 hover:bg-white/5">Add</button>
+            </div>
+          </div>
           <div class="md:col-span-2 flex items-center gap-3">
             <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Save lists</button>
             <span id="modNewsConfigNote" class="text-xs text-slate-400" role="status"></span>
@@ -191,6 +201,6 @@
 </dialog>
 
 <script src="js/moderation.js?v=12"></script>
-<script src="js/moderation-news.js?v=2"></script>
+<script src="js/moderation-news.js?v=3"></script>
 </body>
 </html>
