@@ -37,7 +37,7 @@
     const r = radius(c);
     return `<g class="us-city" tabindex="0" data-city="${i}" transform="translate(${c.x} ${c.y})">`
       + `<circle class="us-city-pulse" r="${r.toFixed(1)}" style="animation-delay:-${pulseDelay(i)}s"></circle>`
-      + `<circle class="us-city-halo" r="${(r * 2.4 + 3).toFixed(1)}" fill="url(#usHaloFill)"></circle>`
+      + `<circle class="us-city-halo" r="${(r * 1.6 + 2).toFixed(1)}" fill="url(#usHaloFill)"></circle>`
       + `<circle class="us-city-dot" r="${r.toFixed(1)}" fill="url(#usDotFill)"></circle>`
       + `<circle class="us-city-shine" cx="${(-r * 0.32).toFixed(1)}" cy="${(-r * 0.32).toFixed(1)}" r="${(r * 0.32).toFixed(1)}"></circle>`
       + `<title>${esc(label(c))}</title></g>`;
