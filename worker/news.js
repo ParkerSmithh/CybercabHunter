@@ -84,11 +84,11 @@ export const FEEDS = [
 // Defaults for news_config (migrations/0029 seeds the same). One rule per line;
 // "a + b" means both words. Matching is case-insensitive, on whole words.
 export const DEFAULT_ALLOW = 'cybercab\nrobotaxi + tesla';
-export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts';
+export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts\ninvestors\nvaluation';
 // Publishers whose stories are never kept (news_config 'publisher_blocklist',
-// a JSON array; migrations/0030 seeds it). Matched case-insensitively against
+// a JSON array; migrations/0030 seeds it, 0033 adds Stocktwits). Matched case-insensitively against
 // a story's source, before scoring and storage.
-export const DEFAULT_PUBLISHER_BLOCKLIST = ['BASENOR'];
+export const DEFAULT_PUBLISHER_BLOCKLIST = ['BASENOR', 'Stocktwits'];
 const publisherKey = name => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
 export function parsePublisherList(value) {
   try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().replace(/\s+/g, ' ')) : null; } catch (e) { return null; }
