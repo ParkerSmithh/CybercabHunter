@@ -95,7 +95,7 @@
          <p class="sb-headline font-display font-bold text-white uppercase tracking-wide">Cybercabs are on the road now</p>
          <p class="sb-line text-gold font-semibold whitespace-nowrap">Service ends in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums">${cd}</span></p>`
       : `<p class="sb-eyebrow text-sky-300/80">${MOON}Parked</p>
-         <p class="sb-headline font-display font-bold text-slate-200">The fleet is parked for the night</p>
+         <p class="sb-headline font-display font-bold text-slate-200 uppercase tracking-wide">The fleet is parked for the night</p>
          <p class="sb-line text-slate-400">Back on the road at ${clock(H.openMinute)} · Back in <span data-countdown class="stat-value inline-block min-w-[6.5ch] tabular-nums text-sky-200">${cd}</span></p>`;
     el.innerHTML = `<div class="sb-main">${main}</div>
       <div class="sb-day">
