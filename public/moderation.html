@@ -144,6 +144,24 @@
         </div>
         <div id="modNewsList" class="space-y-2"></div>
         <div class="flex justify-center mt-4"><button id="modNewsMore" type="button" class="hidden text-xs font-semibold px-4 py-2 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5">Load older</button></div>
+        <section class="glass rounded-2xl p-5 mt-8" aria-labelledby="modNewsFeedsTitle">
+          <h3 id="modNewsFeedsTitle" class="font-semibold text-slate-100 text-sm">Feeds</h3>
+          <p class="text-xs text-slate-500 mt-0.5 mb-3">One feed is checked every 10 minutes: tier 1 about every 2 hours, tier 2 about every 6 hours. A new feed is checked now (robots.txt, a real RSS / Atom feed); a bare domain like example.com is searched for its feed. Changes apply from the next run; a new feed brings in its last 30 days.</p>
+          <ul id="modNewsFeeds" class="divide-y divide-white/5 text-sm mb-4"></ul>
+          <form id="modNewsFeedAdd" class="flex flex-wrap gap-2 items-end">
+            <label class="flex-1 min-w-[14rem] text-xs text-slate-400">Feed URL or domain
+              <input id="modNewsFeedUrl" type="text" required maxlength="300" placeholder="https://example.com/feed or example.com" class="mt-1 w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </label>
+            <label class="w-44 text-xs text-slate-400">Name (optional)
+              <input id="modNewsFeedName" type="text" maxlength="80" class="mt-1 w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </label>
+            <label class="text-xs text-slate-400">Tier
+              <select id="modNewsFeedTier" class="mt-1 block bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-100"><option value="2">2 · ~6 h</option><option value="1">1 · ~2 h</option></select>
+            </label>
+            <button id="modNewsFeedAddBtn" type="submit" class="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Add feed</button>
+          </form>
+          <p id="modNewsFeedNote" class="text-xs text-slate-400 mt-2" role="status"></p>
+        </section>
         <form id="modNewsConfig" class="glass rounded-2xl p-5 mt-8 grid gap-4 md:grid-cols-2">
           <label class="block text-sm">
             <span class="font-semibold text-slate-100">Allowlist</span>
@@ -152,7 +170,7 @@
           </label>
           <label class="block text-sm">
             <span class="font-semibold text-slate-100">Blocklist</span>
-            <span class="block text-xs text-slate-500 mt-0.5 mb-2">A story whose headline has any of these is dropped.</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">A story whose headline has any of these is dropped. A line like /app\s+\d+\.\d+/ is a pattern (any capitalization).</span>
             <textarea id="modNewsBlock" rows="5" class="w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
           </label>
           <div class="md:col-span-2 text-sm">
@@ -211,6 +229,6 @@
 </dialog>
 
 <script src="js/moderation.js?v=12"></script>
-<script src="js/moderation-news.js?v=5"></script>
+<script src="js/moderation-news.js?v=6"></script>
 </body>
 </html>

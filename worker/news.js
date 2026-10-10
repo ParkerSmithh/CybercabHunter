@@ -1,18 +1,25 @@
 // Cybercab news: an automatic headline aggregator for /news (public/news.html).
 //
-// SOURCES: eleven publisher RSS / Atom feeds (FEEDS), each verified Oct 9-10,
-// 2026: robots.txt allows the feed path for generic bots, and the feed answers
-// from Cloudflare's network. (Google News was dropped: from Cloudflare it
-// answers 503, and its links are redirects, not the publishers' articles.)
+// SOURCES: publisher RSS / Atom feeds, kept in news_config 'feeds' (a JSON
+// array of {id, name, url, tier}; seeded from DEFAULT_FEEDS, each verified
+// Oct 10, 2026: a parseable feed that robots.txt allows). Moderators add and
+// remove feeds from /moderation (modNewsFeeds): a new URL is checked on the
+// spot (robots.txt, parses as RSS / Atom); a bare domain is auto-discovered
+// (/feed, /rss, /rss.xml, /atom.xml, then the homepage's <link rel=alternate>).
+// (Google News was dropped: from Cloudflare it answers 503.)
 //
 // SCHEDULE (runNewsTick, on NEWS_CRON = every 10 minutes at :05, :15, ...):
 // each tick, so it stays inside the Workers free plan's per-run limits:
-//   1. checks ONE feed, in rotation (KV news:next_feed), politely: a
-//      descriptive User-Agent and If-None-Match / If-Modified-Since (a 304
-//      is "nothing new"). Each feed is checked about every 110 minutes;
+//   1. checks ONE feed (pickFeed): the most overdue against its tier's
+//      interval (tier 1, the dedicated EV / Tesla outlets: ~2 h; tier 2,
+//      general tech, business and local press: ~6 h; a feed never checked
+//      goes first, so a new feed backfills its last 30 days on the next
+//      step), politely: robots.txt honored, a descriptive User-Agent and
+//      If-None-Match / If-Modified-Since (a 304 is "nothing new");
 //   2. parses title, link, publisher, date and description; keeps an item
 //      that matches the allowlist (default "cybercab", or "robotaxi" AND
-//      "tesla"), has no blocklisted headline word (stock stories), is not
+//      "tesla"), has no blocklisted headline word or /pattern/ (stock and
+//      investor stories, viral-clip framing, app-version posts), is not
 //      from a blocklisted publisher, and is at most 30 days old (all lists in
 //      news_config, edited from /moderation);
 //   3. stores it once (the canonical URL is UNIQUE; the same outlet's same
@@ -21,7 +28,8 @@
 //      3+ outlets ran it within 24 h; a Major keyword in a headline or
 //      excerpt (news_config 'major_keywords': launch, crash, NHTSA, fleet,
 //      registry, new market, ...); a number in a headline with a fleet word
-//      ("Tesla Adds 150 Cybercabs"); and, for a NEW story whose rules score
+//      ("Tesla Adds 150 Cybercabs"); a substantive press / official story
+//      (tagged Regulatory, Data, Expansion or Business); and, for a NEW story whose rules score
 //      is exactly 1, a Workers AI significance verdict (aiVerdict; at most
 //      AI_PER_TICK a step; an error keeps the rules score). 2+ = major,
 //      1 = notable; FEATURED by a moderator = 2. Once a day every stored
@@ -38,13 +46,14 @@
 //      (sweepOrphans).
 // Each tick is logged (KV news:last_run; the last prune and sweep too).
 //
-// Excerpts are the feed's own description, tags stripped, at most 280
-// characters — never invented, never the article body.
+// Excerpts are the feed's own description, tags stripped, at most ~300
+// characters cut at a sentence end — never invented, never the article body;
+// none when it only repeats the headline.
 
 const UA = 'CybercabHunter-NewsBot/1.0 (+https://cybercabhunter.com/news; RSS check)';
 export const NEWS_CRON = '5-59/10 * * * *';
 const TZ = 'America/Chicago';
-const EXCERPT_MAX = 280;
+const EXCERPT_MAX = 300;
 const RECLUSTER_DAYS = 5;              // re-cluster this many days back (a story's cluster window is 72 h)
 const MAX_AGE_DAYS = 30;               // older items are not stored, and stored ones are deleted
 const THUMBS_PER_TICK = 3;
@@ -54,7 +63,9 @@ const FETCH_TIMEOUT_MS = 10000;
 const ROBOTS_TTL_SECONDS = 7 * 86400;
 const CACHE_SECONDS = 900;
 const KV_RUN = 'news:last_run';
-const KV_NEXT_FEED = 'news:next_feed';
+const KV_FEED_CHECKS = 'news:feed_checks';   // {feed id: last check, ms}
+const TIER_MINUTES = { 1: 120, 2: 360 };
+const FEED_PAGE_MAX_BYTES = 2 * 1024 * 1024;
 const KV_PRUNE = 'news:last_prune';
 const KV_SWEEP = 'news:last_sweep';
 const KV_RESCORE = 'news:last_rescore';
@@ -67,24 +78,64 @@ const storyKey = it => `${String(it.source).toLowerCase()}|${[...titleTokens(it.
 export const thumbKey = id => `thumbs/${id}.webp`;
 export const thumbUrl = id => `/news-img/${id}.webp`;
 
-export const FEEDS = [
-  { id: 'electrek', kind: 'rss', name: 'Electrek', url: 'https://electrek.co/feed/' },
-  { id: 'teslarati', kind: 'rss', name: 'Teslarati', url: 'https://www.teslarati.com/feed/' },
-  { id: 'notateslaapp', kind: 'rss', name: 'Not a Tesla App', url: 'https://www.notateslaapp.com/rss' },
-  { id: 'teslaoracle', kind: 'rss', name: 'Tesla Oracle', url: 'https://www.teslaoracle.com/feed/' },
-  { id: 'teslanorth', kind: 'rss', name: 'Teslanorth', url: 'https://teslanorth.com/feed/' },
-  { id: 'driveteslacanada', kind: 'rss', name: 'Drive Tesla Canada', url: 'https://driveteslacanada.ca/feed/' },
-  { id: 'techcrunch', kind: 'rss', name: 'TechCrunch', url: 'https://techcrunch.com/category/transportation/feed/' },
-  { id: 'theverge', kind: 'rss', name: 'The Verge', url: 'https://www.theverge.com/rss/tesla/index.xml' },
-  { id: 'arstechnica', kind: 'rss', name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/cars' },
-  { id: 'electrive', kind: 'rss', name: 'Electrive', url: 'https://www.electrive.com/feed/' },
-  { id: 'insideevs', kind: 'rss', name: 'InsideEVs', url: 'https://insideevs.com/rss/articles/all/' }
+// The seeded feed list (migrations/0034 stores the same in news_config).
+// Tier 1: the dedicated EV / Tesla outlets; tier 2: general tech, business
+// and local press. Left out on Oct 10, 2026: Reuters, AP, Axios (robots.txt
+// disallows), CleanTechnica (403 to bots), Green Car Reports (feed stale
+// since 2025), Austin American-Statesman and Dallas Morning News (no feed),
+// Austin Business Journal (403).
+export const DEFAULT_FEEDS = [
+  { id: 'electrek', tier: 1, name: 'Electrek', url: 'https://electrek.co/feed/' },
+  { id: 'teslarati', tier: 1, name: 'Teslarati', url: 'https://www.teslarati.com/feed/' },
+  { id: 'insideevs', tier: 1, name: 'InsideEVs', url: 'https://insideevs.com/rss/articles/all/' },
+  { id: 'notateslaapp', tier: 1, name: 'Not a Tesla App', url: 'https://www.notateslaapp.com/rss' },
+  { id: 'teslanorth', tier: 1, name: 'Teslanorth', url: 'https://teslanorth.com/feed/' },
+  { id: 'driveteslacanada', tier: 1, name: 'Drive Tesla Canada', url: 'https://driveteslacanada.ca/feed/' },
+  { id: 'teslaoracle', tier: 2, name: 'Tesla Oracle', url: 'https://www.teslaoracle.com/feed/' },
+  { id: 'techcrunch', tier: 2, name: 'TechCrunch', url: 'https://techcrunch.com/category/transportation/feed/' },
+  { id: 'theverge', tier: 2, name: 'The Verge', url: 'https://www.theverge.com/rss/tesla/index.xml' },
+  { id: 'arstechnica', tier: 2, name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/cars' },
+  { id: 'electrive', tier: 2, name: 'Electrive', url: 'https://www.electrive.com/feed/' },
+  { id: 'cnbc-autos', tier: 2, name: 'CNBC', url: 'https://www.cnbc.com/id/10000101/device/rss/rss.html' },
+  { id: 'cnbc-tech', tier: 2, name: 'CNBC', url: 'https://www.cnbc.com/id/19854910/device/rss/rss.html' },
+  { id: 'bloomberg-tech', tier: 2, name: 'Bloomberg', url: 'https://www.bloomberg.com/feeds/technology/news.rss' },
+  { id: 'businessinsider', tier: 2, name: 'Business Insider', url: 'https://feeds.businessinsider.com/custom/all' },
+  { id: 'fortune', tier: 2, name: 'Fortune', url: 'https://fortune.com/feed/fortune-feeds/?id=3230629' },
+  { id: 'nytimes-tech', tier: 2, name: 'The New York Times', url: 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml' },
+  { id: 'thedriven', tier: 2, name: 'The Driven', url: 'https://thedriven.io/feed/' },
+  { id: 'therobotreport', tier: 2, name: 'The Robot Report', url: 'https://www.therobotreport.com/feed/' },
+  { id: 'carscoops', tier: 2, name: 'Carscoops', url: 'https://www.carscoops.com/feed/' },
+  { id: 'jalopnik', tier: 2, name: 'Jalopnik', url: 'https://www.jalopnik.com/feed/' },
+  { id: 'kxan', tier: 2, name: 'KXAN', url: 'https://www.kxan.com/feed/' },
+  { id: 'kvue', tier: 2, name: 'KVUE', url: 'https://www.kvue.com/feeds/syndication/rss/news' },
+  { id: 'communityimpact', tier: 2, name: 'Community Impact', url: 'https://communityimpact.com/rss/' },
+  { id: 'lvrj', tier: 2, name: 'Las Vegas Review-Journal', url: 'https://www.reviewjournal.com/feed/' }
 ];
+export const FEEDS = DEFAULT_FEEDS;
+// A stored feed list -> the valid entries, or null.
+export function parseFeedList(value) {
+  let v; try { v = JSON.parse(value); } catch (e) { return null; }
+  if (!Array.isArray(v)) return null;
+  const out = v.filter(f => f && typeof f.id === 'string' && /^[a-z0-9-]{1,60}$/.test(f.id) && typeof f.url === 'string' && /^https:\/\//i.test(f.url))
+    .map(f => ({ id: f.id, name: String(f.name || '').trim().slice(0, 80) || hostOf(f.url), url: f.url, tier: f.tier === 1 ? 1 : 2 }));
+  return out;
+}
+// The feed to check this step: never checked first (in list order), then the
+// most overdue against its tier's interval.
+export function pickFeed(feeds, checks, nowMs) {
+  let best = null, bestScore = -1;
+  for (const f of feeds) {
+    const last = checks[f.id];
+    const score = last ? (nowMs - last) / (TIER_MINUTES[f.tier === 1 ? 1 : 2] * 60e3) : Infinity;
+    if (score > bestScore) { best = f; bestScore = score; }
+  }
+  return best;
+}
 
 // Defaults for news_config (migrations/0029 seeds the same). One rule per line;
 // "a + b" means both words. Matching is case-insensitive, on whole words.
 export const DEFAULT_ALLOW = 'cybercab\nrobotaxi + tesla';
-export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts\ninvestors\nvaluation\nstocktwits';
+export const DEFAULT_BLOCK = 'stock\nstocks\nshares\nprice target\nTSLA\nwall street\nanalyst\nanalysts\ninvestors\nvaluation\nstocktwits\nvideo shows\nwatch:\nshocking\nyou won\'t believe\ngoes viral\ncaught on camera\nleaked video\n/app\\s+\\d+\\.\\d+/';
 // Publishers whose stories are never kept (news_config 'publisher_blocklist',
 // a JSON array; migrations/0030 seeds it, 0033 adds Stocktwits). Matched case-insensitively against
 // a story's source, before scoring and storage.
@@ -159,15 +210,27 @@ export function canonicalUrl(raw) {
   return u.toString();
 }
 
-function excerptOf(description, title) {
-  const text = stripTags(description);
+export function excerptOf(description, title) {
+  // WordPress feeds end with "The post … appeared first on …" and "[…]" / "Read more".
+  const text = stripTags(description)
+    .replace(/\s*The post\b[\s\S]*?\bappeared first on\b[\s\S]*$/i, '')
+    .replace(/\s*(\[(…|\.\.\.)\]|\(…\)|Continue reading\b.*|Read more\b.*)$/i, '')
+    .trim();
   if (!text) return null;
-  const norm = s => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  // Google News: the description is just the headline and the outlet again.
-  if (norm(text).startsWith(norm(title).slice(0, 40))) return null;
+  const norm = s => String(s).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const nt = norm(text), nh = norm(title);
+  // Only the headline again (Google News style, or the headline plus the outlet): none.
+  if (nt.startsWith(nh.slice(0, 40)) || nh.includes(nt)) return null;
+  const tw = nt.split(' '), hw = new Set(nh.split(' '));
+  if (tw.length <= hw.size + 3 && tw.filter(w => hw.has(w)).length / tw.length >= 0.8) return null;
   if (text.length <= EXCERPT_MAX) return text;
-  const cut = text.slice(0, EXCERPT_MAX - 1);
-  return cut.slice(0, Math.max(cut.lastIndexOf(' '), EXCERPT_MAX - 40)).replace(/[\s,;:.—-]+$/, '') + '…';
+  // Cut at the last sentence end that fits; failing that, at a word, with "…".
+  const cut = text.slice(0, EXCERPT_MAX);
+  let end = -1;
+  for (const m of cut.matchAll(/[.!?]["”’)]?(?=\s)/g)) end = m.index + m[0].length;
+  if (end >= 80) return cut.slice(0, end);
+  const words = cut.slice(0, EXCERPT_MAX - 1);
+  return words.slice(0, Math.max(words.lastIndexOf(' '), EXCERPT_MAX - 40)).replace(/[\s,;:.—-]+$/, '') + '…';
 }
 
 // ---------- feed parsing (RSS 2.0 and Atom) ----------
@@ -215,14 +278,25 @@ export function parseFeed(xml, feed) {
 // ---------- allow / block ----------
 const lines = s => String(s || '').split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
 const word = w => new RegExp(`(^|[^a-z0-9])${w.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`, 'i');
+// A blocklist line: words / a phrase (whole words), or /a pattern/ (always
+// case-insensitive; null when it does not compile).
+export function blockPattern(line) {
+  const m = /^\/(.+)\/([a-z]*)$/.exec(line);
+  if (!m) return word(line);
+  try { return new RegExp(m[1], [...new Set((m[2] + 'i').replace(/[^imsu]/g, ''))].join('')); } catch (e) { return null; }
+}
+const straightQuotes = s => String(s || '').replace(/[’‘]/g, "'").replace(/[“”]/g, '"');
 export function compileRules(allowText, blockText) {
-  const allow = lines(allowText).map(l => l.split('+').map(t => t.trim()).filter(Boolean).map(word));
-  const block = lines(blockText).map(word);
+  // Allowlist words also match their plural and possessive ("Cybercabs", "Cybercab's").
+  const allowWord = w => new RegExp(`(^|[^a-z0-9])${w.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(s|['’]s)?($|[^a-z0-9])`, 'i');
+  const allow = lines(allowText).map(l => l.split('+').map(t => t.trim()).filter(Boolean).map(allowWord));
+  const block = lines(blockText).map(blockPattern).filter(Boolean);
   return {
     keep(item) {
       const text = `${item.title} ${item.excerpt || ''}`;
       if (!allow.some(rule => rule.every(re => re.test(text)))) return 'not_relevant';
-      if (block.some(re => re.test(item.title))) return 'blocked';
+      const title = straightQuotes(item.title);
+      if (block.some(re => re.test(title))) return 'blocked';
       return null;
     }
   };
@@ -240,9 +314,10 @@ export function similar(a, b) {
   const union = a.size + b.size - inter;
   return inter >= 3 && inter / union >= 0.5;
 }
-// Rows: {id, title, excerpt, source, published_at, featured, ai_major}.
+// Rows: {id, title, excerpt, source, source_type, published_at, featured, ai_major}.
 // Returns per-id {cluster_id, source_count, importance, rules}: rules is the
-// cluster's deterministic score (outlets + keyword + numeric fleet), and
+// cluster's deterministic score (outlets + keyword + numeric fleet +
+// substantive), and
 // importance adds a stored AI "major" verdict, capped at 2 (featured = 2).
 export function clusterAndScore(rows, { keywords = DEFAULT_MAJOR_KEYWORDS } = {}) {
   const hasKeyword = keywordMatcher(keywords);
@@ -265,25 +340,32 @@ export function clusterAndScore(rows, { keywords = DEFAULT_MAJOR_KEYWORDS } = {}
     const within24 = new Set(members.filter(m => ms(m) - ms(first) <= 24 * 3600e3).map(m => m.source.toLowerCase()));
     const rules = (within24.size >= 3 ? 1 : 0)
       + (members.some(m => hasKeyword(m.title) || hasKeyword(m.excerpt)) ? 1 : 0)
-      + (members.some(m => fleetNumber(m.title)) ? 1 : 0);
+      + (members.some(m => fleetNumber(m.title)) ? 1 : 0)
+      + (members.some(substantive) ? 1 : 0);
     const ai = members.some(m => m.ai_major === 1) ? 1 : 0;
     for (const m of members) out[m.id] = { cluster_id: first.id, source_count: sources.size, importance: m.featured ? 2 : Math.min(2, rules + ai), rules };
   }
   return out;
 }
 
-// Topic tags for a story (computed when served).
+// Topic tags for a story (computed when served; scoring reads them too).
 const TOPICS = [
   ['Expansion', /\b(expan\w*|launch\w*|new cit(y|ies)|rollout|rolls? out|coming to|arriv\w*|cities)\b/i],
   ['Regulatory', /\b(nhtsa|regulat\w*|permit\w*|dmv|lawsuit\w*|sue[sd]?|investigat\w*|federal|congress|senate|legislat\w*|law|cpuc|approval)\b/i],
+  ['Data', /\b(registr\w*|data|statistics?|fleet|miles)\b|\d[\d,.]*\s*(cybercabs?|robotaxis?|vehicles|units|rides|miles)\b/i],
+  ['Business', /\b(funding|raises?|raised|partner\w*|ipo|acquir\w*|acquisition|merger|deal|investment)\b/i],
   ['Safety', /\b(crash\w*|safety|recall\w*|collision\w*|injur\w*|incident\w*)\b/i],
   ['Production', /\b(production|factory|gigafactory|giga|manufactur\w*|assembly)\b/i],
   ['Pricing', /\b(price\w*|pricing|fares?|cost\w*)\b/i],
   ['Rides', /\b(ride\w*|riders?|passengers?|app)\b/i]
 ];
+export const topicsOf = s => { const text = `${s.title} ${s.excerpt || ''}`; return TOPICS.filter(([, re]) => re.test(text)).map(([n]) => n); };
+// The substance signal: a press or official story (not social) tagged
+// Regulatory, Data, Expansion or Business.
+const SUBSTANTIVE = new Set(['Regulatory', 'Data', 'Expansion', 'Business']);
+export const substantive = s => (s.source_type || 'press') !== 'social' && topicsOf(s).some(t => SUBSTANTIVE.has(t));
 export function tagsOf(s) {
-  const text = `${s.title} ${s.excerpt || ''}`;
-  const t = TOPICS.filter(([, re]) => re.test(text)).map(([n]) => n);
+  const t = topicsOf(s);
   if (/\btesla\b/i.test(s.title)) t.unshift('Tesla');
   return t.slice(0, 4);
 }
@@ -318,6 +400,7 @@ async function fetchFeed(env, feed, fetchImpl) {
   const headers = { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5' };
   if (state.etag) headers['If-None-Match'] = state.etag;
   if (state.lastModified) headers['If-Modified-Since'] = state.lastModified;
+  if (!(await robotsOk(env, feed.url, fetchImpl))) throw new Error(`${feed.id}: robots.txt disallows the feed (or could not be read)`);
   const r = await fetchWithTimeout(fetchImpl, feed.url, { headers, redirect: 'follow' });
   if (r.status === 304) return { status: 304, items: [] };
   if (!r.ok) throw new Error(`${feed.id}: HTTP ${r.status}`);
@@ -329,7 +412,7 @@ async function fetchFeed(env, feed, fetchImpl) {
 
 const domainList = value => { try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')) : null; } catch (e) { return null; } };
 async function config(sql) {
-  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block', 'publisher_blocklist', 'thumb_blocklist', 'major_keywords')`).all();
+  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block', 'publisher_blocklist', 'thumb_blocklist', 'major_keywords', 'feeds')`).all();
   const map = Object.fromEntries((results || []).map(r => [r.key, r.value]));
   const publishers = map.publisher_blocklist != null ? parsePublisherList(map.publisher_blocklist) : null;
   return {
@@ -337,16 +420,17 @@ async function config(sql) {
     block: map.block != null ? map.block : DEFAULT_BLOCK,
     publisher_blocklist: publishers || DEFAULT_PUBLISHER_BLOCKLIST,
     thumb_blocklist: (map.thumb_blocklist != null && domainList(map.thumb_blocklist)) || [],
-    major_keywords: (map.major_keywords != null && parseKeywordList(map.major_keywords)) || DEFAULT_MAJOR_KEYWORDS
+    major_keywords: (map.major_keywords != null && parseKeywordList(map.major_keywords)) || DEFAULT_MAJOR_KEYWORDS,
+    feeds: (map.feeds != null && parseFeedList(map.feeds)) || DEFAULT_FEEDS
   };
 }
 
 const newLog = (nowMs, extra = {}) => ({ at: new Date(nowMs).toISOString(), feeds: [], fetched: 0, kept: 0, dropped: 0, blocked_publisher: 0, duplicates: 0, new: 0, not_modified: 0, errors: [], ...extra });
 
 // Checks the given feeds and stores their new stories.
-async function ingestFeeds(env, feeds, { fetchImpl, nowMs, log }) {
+async function ingestFeeds(env, feeds, { fetchImpl, nowMs, log, cfg }) {
   const sql = env.cybercabhunter_db;
-  const cfg = await config(sql);
+  if (!cfg) cfg = await config(sql);
   const rules = compileRules(cfg.allow, cfg.block);
   const blockedPublishers = new Set(cfg.publisher_blocklist.map(publisherKey));
   const candidates = new Map(), seenStory = new Set();
@@ -399,14 +483,14 @@ async function ingestFeeds(env, feeds, { fetchImpl, nowMs, log }) {
 
 // ---------- Workers AI significance (new stories only) ----------
 const AI_SYSTEM = `You judge whether a Tesla Cybercab / robotaxi news story is MAJOR for people tracking the Cybercab rollout.
-MAJOR: fleet growth (more Cybercabs or robotaxis registered or deployed), regulatory action (NHTSA, DMV, permits, audits, investigations, lawsuits), a launch or expansion into a new city or market, a serious crash or recall.
-NOT MAJOR: routine app or software updates, viral clips, opinion, sightings, minor anecdotes.
+MAJOR (substantive news): fleet data (registrations, fleet counts, growth numbers), regulatory action with official status (NHTSA, certifications, permits, investigations), expansion (new cities or markets, service-hour changes, from official announcements or reputable press), business moves (funding, partnerships, IPOs of robotaxi operators), safety data with real numbers, new vehicle variants entering service, a serious crash with injuries or an official investigation.
+NOT MAJOR: viral clips of single incidents, app version updates, opinion or analysis with no news, stock chatter, rumors, gossip.
 Examples:
-"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry" -> major: fleet growth
-"Tesla gets more time to respond to NHTSA Cybercab audit" -> major: regulatory
-"Tesla Cybercab coming to Phoenix" -> major: market expansion
-"Tesla Robotaxi App 26.8.3 Now Live on iOS" -> not-major: routine app update
-"Video Shows Man Stuck in Tesla Cybercab That Goes in Circles" -> not-major: viral clip, no fleet or regulatory significance
+"Tesla registers a record 150 Cybercabs in Texas in one day" -> major: fleet data
+"NHTSA gives Tesla until Oct. 30 to answer, under oath, how it certified the Cybercab" -> major: regulatory
+"Tesla extends Austin Robotaxi service hours to 11 p.m." -> major: expansion
+"Video Shows Man Stuck in Tesla Cybercab That Goes in Circles Around Parking Lot" -> not-major: viral clip
+"Tesla Robotaxi App 26.8.3 Now Live on iOS" -> not-major: routine update
 Answer with exactly one line: "major: <short reason>" or "not-major: <short reason>".`;
 // The model's answer -> {major, reason}, or null when it isn't one of the two.
 export function parseVerdict(text) {
@@ -461,7 +545,8 @@ async function aiPass(env, ids, scored, log) {
 // Every feed in one go (tests and one-off backfills; the schedule uses runNewsTick).
 export async function runNewsIngest(env, { fetchImpl = fetch, nowMs = Date.now(), thumbs = false } = {}) {
   const log = newLog(nowMs);
-  await ingestFeeds(env, FEEDS, { fetchImpl, nowMs, log });
+  const cfg = await config(env.cybercabhunter_db);
+  await ingestFeeds(env, cfg.feeds, { fetchImpl, nowMs, log, cfg });
   if (thumbs) log.thumbs = await processThumbs(env, { fetchImpl, limit: thumbs === true ? THUMBS_PER_TICK : thumbs });
   await env.TESLA_SESSIONS.put(KV_RUN, JSON.stringify(log));
   console.log('news ingest', JSON.stringify(log));
@@ -475,10 +560,17 @@ const chicagoDay = ms => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 
 // daily prune / monthly orphan sweep when they are due.
 export async function runNewsTick(env, { fetchImpl = fetch, nowMs = Date.now() } = {}) {
   const kv = env.TESLA_SESSIONS;
-  const i = (Number(await kv.get(KV_NEXT_FEED)) || 0) % FEEDS.length;
-  await kv.put(KV_NEXT_FEED, String((i + 1) % FEEDS.length));
+  const cfg = await config(env.cybercabhunter_db);
+  let checks = {}; try { checks = JSON.parse((await kv.get(KV_FEED_CHECKS)) || '{}') || {}; } catch (e) { checks = {}; }
+  const feed = pickFeed(cfg.feeds, checks, nowMs);
   const log = newLog(nowMs);
-  await ingestFeeds(env, [FEEDS[i]], { fetchImpl, nowMs, log });
+  if (feed) {
+    // Only the feeds still listed are remembered.
+    const next = Object.fromEntries(cfg.feeds.filter(f => checks[f.id]).map(f => [f.id, checks[f.id]]));
+    next[feed.id] = nowMs;
+    await kv.put(KV_FEED_CHECKS, JSON.stringify(next));
+    await ingestFeeds(env, [feed], { fetchImpl, nowMs, log, cfg });
+  }
   log.thumbs = await processThumbs(env, { fetchImpl, limit: THUMBS_PER_TICK });
   const today = chicagoDay(nowMs);
   let prune = null; try { prune = JSON.parse((await kv.get(KV_PRUNE)) || 'null'); } catch (e) { prune = null; }
@@ -515,7 +607,7 @@ export async function runNewsTick(env, { fetchImpl = fetch, nowMs = Date.now() }
 async function recluster(sql, nowMs, days, keywords) {
   if (!keywords) keywords = (await config(sql)).major_keywords;
   const since = new Date(nowMs - days * 864e5).toISOString();
-  const { results } = await sql.prepare(`SELECT id, title, excerpt, source, published_at, featured, ai_major, cluster_id, source_count, importance FROM news_articles WHERE published_at >= ?`).bind(since).all();
+  const { results } = await sql.prepare(`SELECT id, title, excerpt, source, source_type, published_at, featured, ai_major, cluster_id, source_count, importance FROM news_articles WHERE published_at >= ?`).bind(since).all();
   const rows = results || [];
   const next = clusterAndScore(rows, { keywords });
   const updates = rows.filter(r => { const n = next[r.id]; return n && (n.cluster_id !== r.cluster_id || n.source_count !== r.source_count || n.importance !== r.importance); })
@@ -835,6 +927,8 @@ export async function modUpdateNewsConfig(request, env) {
   }
   if (allow === undefined && block === undefined && publishers === undefined && thumbDomains === undefined && majorKeywords === undefined) return Response.json({ success: false, error: 'bad_config' }, { status: 400 });
   if (allow !== undefined && !lines(allow).length) return Response.json({ success: false, error: 'empty_allowlist' }, { status: 400 });
+  const badPattern = block !== undefined && lines(block).find(l => !blockPattern(l));
+  if (badPattern) return Response.json({ success: false, error: 'bad_pattern', line: badPattern }, { status: 400 });
   const sql = env.cybercabhunter_db;
   const put = (k, v) => sql.prepare(`INSERT INTO news_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(k, v);
   const writes = [];
@@ -847,6 +941,103 @@ export async function modUpdateNewsConfig(request, env) {
   // New Major keywords: the next step rescores every stored story.
   if (majorKeywords !== undefined) await env.TESLA_SESSIONS.delete(KV_RESCORE);
   return Response.json({ success: true, config: await config(sql) });
+}
+
+// ---------- feed discovery and validation (moderation) ----------
+const looksLikeFeed = text => /<(rss|feed|rdf:RDF)\b/i.test(String(text).slice(0, 4000));
+const feedTitle = xml => { const head = String(xml).split(/<(item|entry)\b/i)[0]; return stripTags(tag(head, 'title')).slice(0, 80); };
+// One candidate URL -> {url, title} when it is a feed robots.txt allows, else {error}.
+async function tryFeed(env, url, fetchImpl) {
+  if (!(await robotsOk(env, url, fetchImpl))) return { error: 'robots_disallowed' };
+  let r;
+  try { r = await fetchWithTimeout(fetchImpl, url, { headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/html;q=0.5' }, redirect: 'follow' }); } catch (e) { return { error: 'unreachable' }; }
+  if (!r.ok) return { error: `http_${r.status}` };
+  const text = new TextDecoder().decode(await readCapped(r, FEED_PAGE_MAX_BYTES));
+  if (!looksLikeFeed(text)) return { error: 'not_a_feed', html: text };
+  const finalUrl = r.url && /^https:\/\//i.test(r.url) ? r.url : url;
+  if (finalUrl !== url && !(await robotsOk(env, finalUrl, fetchImpl))) return { error: 'robots_disallowed' };
+  return { url: finalUrl, title: feedTitle(text), items: parseFeed(text, { id: 'check', name: 'check' }).length };
+}
+// The first <link rel="alternate" type="application/rss+xml|atom+xml"> of a page.
+export function alternateFeed(html, pageUrl) {
+  for (const t of String(html).match(/<link\b[^>]*>/gi) || []) {
+    if (!/\brel\s*=\s*["']?alternate/i.test(t) || !/\btype\s*=\s*["']application\/(rss|atom)\+xml/i.test(t)) continue;
+    const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(t);
+    if (href) { try { const u = new URL(decode(href[1]), pageUrl); if (u.protocol === 'https:') return u.toString(); } catch (e) { /* skip */ } }
+  }
+  return null;
+}
+// A URL or bare domain -> {url, title} of a feed we may fetch, or {error}:
+// robots_disallowed, no_feed_found, not_a_feed.
+export async function discoverFeed(env, input, { fetchImpl = fetch } = {}) {
+  let raw = String(input || '').trim();
+  if (!raw) return { error: 'no_feed_found' };
+  if (!/^[a-z]+:\/\//i.test(raw)) raw = 'https://' + raw;
+  let u;
+  try { u = new URL(raw); } catch (e) { return { error: 'bad_url' }; }
+  if (u.protocol !== 'https:') return { error: 'https_only' };
+  const bare = (u.pathname === '/' || u.pathname === '') && !u.search;
+  let disallowed = false;
+  const candidates = bare ? ['/feed', '/rss', '/rss.xml', '/atom.xml'].map(p => u.origin + p) : [u.toString()];
+  let page = null;
+  for (const c of candidates) {
+    const res = await tryFeed(env, c, fetchImpl);
+    if (res.url) return res;
+    if (res.error === 'robots_disallowed') disallowed = true;
+    if (!bare && res.html) page = res.html;
+  }
+  // The homepage (or the given page) may name its feed.
+  if (bare) {
+    if (!(await robotsOk(env, u.origin + '/', fetchImpl))) disallowed = true;
+    else {
+      try { const r = await fetchWithTimeout(fetchImpl, u.origin + '/', { headers: { 'User-Agent': UA, Accept: 'text/html' }, redirect: 'follow' }); if (r.ok) page = new TextDecoder().decode(await readCapped(r, FEED_PAGE_MAX_BYTES)); } catch (e) { page = null; }
+    }
+  }
+  const alt = page && alternateFeed(page, bare ? u.origin + '/' : u.toString());
+  if (alt) {
+    const res = await tryFeed(env, alt, fetchImpl);
+    if (res.url) return res;
+    if (res.error === 'robots_disallowed') disallowed = true;
+  }
+  return { error: disallowed ? 'robots_disallowed' : bare ? 'no_feed_found' : 'not_a_feed' };
+}
+const FEED_ERRORS = {
+  robots_disallowed: 'That site\'s robots.txt does not allow fetching its feed.',
+  no_feed_found: 'No feed found (tried /feed, /rss, /rss.xml, /atom.xml and the homepage).',
+  not_a_feed: 'That URL is not an RSS or Atom feed, and the page names none.',
+  bad_url: 'That is not a valid URL or domain.',
+  https_only: 'Only https feeds can be added.',
+  duplicate: 'That feed is already on the list.',
+  not_found: 'No feed with that id.'
+};
+const feedError = (error, status = 400) => Response.json({ success: false, error, message: FEED_ERRORS[error] || error }, { status });
+// POST /api/moderation/news-feeds {action: add, url, name?, tier} | {action: remove, id} | {action: tier, id, tier}
+// Adds are checked now (robots.txt, parses as RSS / Atom; a bare domain is
+// auto-discovered); every change applies from the next step.
+export async function modNewsFeeds(request, env, { fetchImpl = fetch } = {}) {
+  let body = {};
+  try { body = await request.json(); } catch (e) { body = {}; }
+  const sql = env.cybercabhunter_db;
+  const feeds = (await config(sql)).feeds.slice();
+  const tier = body.tier === 1 || body.tier === '1' ? 1 : 2;
+  if (body.action === 'add') {
+    const found = await discoverFeed(env, body.url, { fetchImpl });
+    if (found.error) return feedError(found.error);
+    if (feeds.some(f => f.url.replace(/\/+$/, '').toLowerCase() === found.url.replace(/\/+$/, '').toLowerCase())) return feedError('duplicate', 409);
+    if (feeds.length >= 60) return feedError('too_many_feeds');
+    const base = hostOf(found.url).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'feed';
+    let id = base, n = 2;
+    while (feeds.some(f => f.id === id)) id = `${base}-${n++}`;
+    feeds.push({ id, name: String(body.name || '').trim().replace(/\s+/g, ' ').slice(0, 80) || found.title || hostOf(found.url), url: found.url, tier });
+  } else if (body.action === 'remove' || body.action === 'tier') {
+    const i = feeds.findIndex(f => f.id === body.id);
+    if (i < 0) return feedError('not_found', 404);
+    if (body.action === 'remove') feeds.splice(i, 1); else feeds[i] = { ...feeds[i], tier };
+  } else {
+    return feedError('bad_action');
+  }
+  await sql.prepare(`INSERT INTO news_config (key, value) VALUES ('feeds', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(feeds)).run();
+  return Response.json({ success: true, feeds });
 }
 
 // POST /api/moderation/news/run — the next scheduled step, now (one feed, a
