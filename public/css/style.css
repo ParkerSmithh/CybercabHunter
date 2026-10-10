@@ -478,6 +478,28 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
    Desktop: dark on the left where the headline sits, clear over the car.
    Phones: the headline sits low across the whole width, so the photo darkens
    from the bottom up instead (the car stays visible above the text). */
+/* "Cybercab sightings across the US" (js/us-sightings-map.js): a fixed SVG.
+   Sighted states in a gold tint, the rest muted; city dots gold with a soft
+   halo; a hovered state row lights its state and cities. */
+.us-map .us-states path{fill:rgb(var(--ink) / 0.05); stroke:rgb(var(--bg)); stroke-width:1; stroke-linejoin:round; transition:fill var(--t-fast) var(--ease);}
+.us-map .us-states path.is-sighted{fill:rgb(212 175 55 / 0.30);}
+.us-map .us-states path.is-sighted.is-lit, .us-map .us-states path.is-sighted:hover{fill:rgb(212 175 55 / 0.55);}
+.us-map .us-states path:not(.is-sighted):hover{fill:rgb(var(--ink) / 0.09);}
+.us-city-dot{fill:#D4AF37; stroke:rgb(var(--bg)); stroke-width:1.5;}
+.us-city-halo{fill:rgb(212 175 55 / 0.22); transition:r var(--t-fast) var(--ease);}
+.us-city{cursor:default; outline:none;}
+.us-city:hover .us-city-halo, .us-city:focus-visible .us-city-halo, .us-city.is-lit .us-city-halo{r:14; fill:rgb(212 175 55 / 0.35);}
+.us-key-sighted{background:rgb(212 175 55 / 0.30);}
+.us-key-none{background:rgb(var(--ink) / 0.07);}
+.us-state-row{padding:10px 2px;}
+/* Phones: two columns; a state with 3+ cities and "Also reported in" span both. */
+@media (max-width:639px){
+  .us-state-list{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:14px;}
+  .us-state-list > .us-state-row{padding:7px 0; border-top:1px solid rgb(var(--ink) / 0.06);}
+  .us-state-list > .us-row-wide{grid-column:1 / -1;}
+}
+.us-state-list{scrollbar-width:thin;}
+
 /* Homepage hero on tall wide screens (index.html, js/hero-video.js): no
    pin and no pin spacer, so the stats, the service banner and the sections
    below follow the hero straight away instead of after a viewport of empty
