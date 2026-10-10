@@ -20,6 +20,8 @@ import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
+import { apiNews, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runScheduledNews, NEWS_CRON } from './news.js';
+import { requireModerator } from './moderation.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
@@ -369,6 +371,25 @@ export default {
     }
     // Texas DMV automated-vehicle registrations (worker/txdmv.js): read from the
     // daily D1 snapshots only, never TxDMV itself. Public, edge-cached.
+    // News (worker/news.js): the public feed, and the moderator's tools
+    // (each checks requireModerator before anything else).
+    if (url.pathname === '/api/news' && request.method === 'GET') {
+      return withCors(await apiNews(request, env, ctx), request);
+    }
+    if (url.pathname.startsWith('/api/moderation/news')) {
+      const auth = await requireModerator(request, env);
+      if (auth.error) {
+        return withCors(auth.error === 'unauthenticated'
+          ? Response.json({ authenticated: false }, { status: 401 })
+          : Response.json({ success: false, error: 'forbidden' }, { status: 403 }), request);
+      }
+      if (url.pathname === '/api/moderation/news' && request.method === 'GET') return withCors(await modListNews(request, env), request);
+      if (url.pathname === '/api/moderation/news-config' && request.method === 'PUT') return withCors(await modUpdateNewsConfig(request, env), request);
+      if (url.pathname === '/api/moderation/news/run' && request.method === 'POST') return withCors(await modRunNews(request, env), request);
+      const one = url.pathname.match(/^\/api\/moderation\/news\/([0-9a-f-]{36})$/i);
+      if (one && request.method === 'POST') return withCors(await modUpdateNews(request, env, one[1]), request);
+      return withCors(Response.json({ success: false, error: 'not_found' }, { status: 404 }), request);
+    }
     if (url.pathname === '/api/dmv-registrations' && request.method === 'GET') {
       return withCors(await apiDmvRegistrations(request, env, ctx), request);
     }
@@ -590,6 +611,12 @@ export default {
     // Daily: recompute the stored Fleet & Fares model (worker/fleet-stats.js).
     if (controller && controller.cron === FLEET_STATS_CRON) {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}));
+      return;
+    }
+    // Daily, 6 AM Chicago: the news ingest (worker/news.js; the cron fires at
+    // 11:00 and 12:00 UTC and only the one that is 6 AM local does the work).
+    if (controller && controller.cron === NEWS_CRON) {
+      ctx.waitUntil(runScheduledNews(env).catch(() => {}));
       return;
     }
     // Daily: the TxDMV automated-vehicle roster snapshot (worker/txdmv.js).
