@@ -69,3 +69,8 @@ body.activity-modal-open{overflow:hidden}
 .activity-dialog-close:hover{background:rgb(var(--gold) / .15)}
 .activity-dialog-close:focus-visible{outline:2px solid rgb(var(--gold));outline-offset:3px}
 @media(max-width:640px){.activity-dialog{padding:24px 20px;width:calc(100% - 24px);max-height:calc(100dvh - 24px)}.activity-dialog #activityDayHeading{font-size:18px}.activity-dialog .activity-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}.activity-dialog-close{right:10px;top:10px}}
+.activity-photo-dialog{width:min(1080px,calc(100% - 24px));padding:20px}
+.activity-photo-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.activity-photo-header h2{margin:0;font-size:18px}
+.activity-photo-header button{flex-shrink:0}
+.activity-photo-dialog img{display:block;max-width:100%;max-height:calc(100dvh - 180px);width:auto;height:auto;object-fit:contain;margin:12px auto 0;border-radius:8px}

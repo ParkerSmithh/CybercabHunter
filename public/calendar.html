@@ -18,7 +18,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=74">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/activity.css?v=6">
+<link rel="stylesheet" href="css/activity.css?v=7">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -250,8 +250,13 @@
   <button type="button" id="activityDayClose" class="activity-dialog-close" aria-label="Close daily activity"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <div id="activityDetail" class="activity-detail" aria-live="polite"></div>
 </dialog>
+<dialog id="activityPhotoDialog" class="activity-dialog activity-surface activity-photo-dialog" aria-labelledby="activityPhotoHeading">
+  <div class="activity-photo-header"><h2 id="activityPhotoHeading">Sighting photo</h2><button type="button" id="activityPhotoClose" class="activity-retry">Close photo</button></div>
+  <p id="activityPhotoStatus" class="activity-muted" role="status"></p>
+  <img id="activityPhotoImage" alt="Approved Cybercab sighting">
+</dialog>
 <script src="js/calc.js?v=7"></script>
 <script src="js/main.js?v=27"></script>
 <script>CCC.init();</script>
-<script src="js/activity.js?v=5" defer></script>
+<script src="js/activity.js?v=6" defer></script>
 </body></html>

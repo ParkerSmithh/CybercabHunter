@@ -41,7 +41,7 @@
   }
   let data, lastDay = today(), fetched = 0, sequence = 0, detailSequence = 0, selectedDate = null;
   let selectedYear = Number(lastDay.slice(0, 4));
-  let tooltip;
+  let tooltip, photoTrigger;
   const category = () => calendar ? $('activityCategory').value : 'all';
   function quantile(values, q) { if (!values.length) return 1; return values[Math.floor((values.length - 1) * q)]; }
   function valuesFor(categoryKey) {
@@ -121,6 +121,7 @@
     return response.json();
   }
   function closeDay() {
+    if ($('activityPhotoDialog')?.open) $('activityPhotoDialog').close();
     if ($('activityDayDialog')?.open) $('activityDayDialog').close();
   }
   async function openDay(date) {
@@ -145,7 +146,15 @@
       }
       for (const sighting of response.details.sightings || []) {
         const at = new Date(sighting.observed_at.replace(' ', 'T') + 'Z').toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
-        const li = el('li', `Approved sighting at ${at} CT: `), link = el('a', 'View recorded photo'); link.href = `${API}/api/sightings/${encodeURIComponent(sighting.public_id)}/photo`; li.append(link); list.append(li);
+        const li = el('li', `Approved sighting at ${at} CT: `), link = el('a', 'View recorded photo'); link.href = `${API}/api/sightings/${encodeURIComponent(sighting.public_id)}/photo`; link.addEventListener('click', event => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          photoTrigger = link;
+          $('activityPhotoStatus').textContent = 'Loading photo…';
+          $('activityPhotoImage').src = link.href;
+          $('activityPhotoDialog').showModal();
+        });
+        li.append(link); list.append(li);
       }
       if (response.details.cameras?.length) {
         list.append(el('li', `Most active camera: ${response.details.cameras[0].camera_name} (${number(response.details.cameras[0].count)} detections). ${response.details.cameras.length} unique cameras detected Cybercabs.`));
@@ -176,7 +185,7 @@
       } else {
         const years = data.years.includes(selectedYear) ? data.years : [...data.years, selectedYear].sort((a, b) => b - a);
         $('activityYear').replaceChildren(...years.map(y => { const o = el('option', String(y)); o.value = y; return o; })); $('activityYear').value = selectedYear;
-        renderCalendar(); if ($('activityDayDialog').open && selectedDate?.startsWith(String(selectedYear))) openDay(selectedDate);
+        renderCalendar(); if ($('activityDayDialog').open && !$('activityPhotoDialog').open && selectedDate?.startsWith(String(selectedYear))) openDay(selectedDate);
       }
     } catch {
       if (token !== sequence) return;
@@ -187,6 +196,19 @@
     }
   }
   if (calendar) {
+    const photoDialog = $('activityPhotoDialog'), photo = $('activityPhotoImage');
+    $('activityPhotoClose').addEventListener('click', () => photoDialog.close());
+    photo.addEventListener('load', () => { $('activityPhotoStatus').textContent = ''; });
+    photo.addEventListener('error', () => { $('activityPhotoStatus').textContent = 'This photo is unavailable or has expired. Close the photo to return to daily activity.'; });
+    photoDialog.addEventListener('close', () => {
+      photo.removeAttribute('src');
+      if ($('activityDayDialog').open) (photoTrigger?.isConnected ? photoTrigger : $('activityDayClose')).focus({ preventScroll: true });
+      photoTrigger = null;
+    });
+    photoDialog.addEventListener('click', event => {
+      const rect = photoDialog.getBoundingClientRect();
+      if (event.target === photoDialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) photoDialog.close();
+    });
     const dialog = $('activityDayDialog');
     $('activityDayClose').addEventListener('click', closeDay);
     dialog.addEventListener('close', () => {
