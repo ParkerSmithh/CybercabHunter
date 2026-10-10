@@ -46,6 +46,10 @@
 			"bucket_name": "cybercabhunter-news-thumbs"
 		}
 	],
+	// Workers AI: the /news Major significance check (worker/news.js aiVerdict).
+	"ai": {
+		"binding": "AI"
+	},
 	"ratelimits": [
 		{
 			"name": "MUSE_RIDES_LIMITER",

@@ -51,6 +51,7 @@
     if (s.importance === 2) meta.append(el('span', 'px-1.5 rounded bg-gold text-[#1a1204] font-bold', s.featured ? 'Major · featured' : 'Major'));
     else if (s.importance === 1) meta.append(el('span', 'px-1.5 rounded border border-white/15', 'Notable'));
     if (s.source_count > 1) meta.append(el('span', '', `${s.source_count} outlets`));
+    if (s.ai_major != null) { const ai = el('span', 'px-1.5 rounded border border-white/15', s.ai_major ? 'AI: major' : 'AI: not major'); if (s.ai_reason) ai.title = s.ai_reason; meta.append(ai); }
     if (s.hidden) meta.append(el('span', 'px-1.5 rounded border border-crimson/50 text-red-300', 'Hidden'));
     const a = el('a', 'block mt-1 text-sm font-semibold text-slate-100 hover:underline', s.title);
     a.href = /^https:\/\//.test(s.url) ? s.url : '#';
@@ -74,6 +75,8 @@
       const pr = d.last_prune;
       $('modNewsRun').textContent = lr
         ? `Last step ${when(lr.at)}${lr.feeds && lr.feeds.length === 1 ? ` (${lr.feeds[0]})` : ''}: ${lr.fetched} fetched, ${lr.kept} kept, ${lr.dropped} dropped${typeof lr.blocked_publisher === 'number' ? ` (${lr.blocked_publisher} by publisher)` : ''}, ${lr.new} new${lr.not_modified ? ', feed unchanged' : ''}${lr.errors && lr.errors.length ? ` · ${lr.errors.length} feed errors` : ''}`
+          + (lr.ai ? `. AI check: ${lr.ai.checked} asked, ${lr.ai.promoted} promoted${lr.ai.failed ? `, ${lr.ai.failed} failed` : ''}` : '')
+          + (typeof lr.rescored === 'number' ? `. Rescored: ${lr.rescored} changed` : '')
           + (th ? `. Thumbnails: ${th.done} made, ${th.failed} failed, ${th.skipped} skipped${th.unavailable ? ' (storage not bound)' : ''}` : '')
           + (pr ? `. Last prune ${pr.day}: ${pr.stories_pruned} stories, ${pr.thumbs_deleted} thumbnails deleted` : '') + '.'
         : 'The ingest has not run yet.';
@@ -81,6 +84,7 @@
       $('modNewsBlock').value = d.config.block;
       publishers = Array.isArray(d.config.publisher_blocklist) ? d.config.publisher_blocklist.slice() : [];
       $('modNewsThumbBlock').value = (d.config.thumb_blocklist || []).join('\n');
+      $('modNewsMajor').value = (d.config.major_keywords || []).join('\n');
       renderPublishers();
       $('modNewsBlockedCount').textContent = lr && typeof lr.blocked_publisher === 'number' ? `Last run: ${lr.blocked_publisher} ${lr.blocked_publisher === 1 ? 'story' : 'stories'} blocked by publisher.` : '';
     }
@@ -118,8 +122,8 @@
   });
   $('modNewsConfig').addEventListener('submit', async e => {
     e.preventDefault();
-    const r = await api('/api/moderation/news-config', { method: 'PUT', body: JSON.stringify({ allow: $('modNewsAllow').value, block: $('modNewsBlock').value, publisher_blocklist: publishers, thumb_blocklist: $('modNewsThumbBlock').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean) }) });
-    if (r.ok && r.json && r.json.config) { publishers = r.json.config.publisher_blocklist.slice(); renderPublishers(); $('modNewsThumbBlock').value = (r.json.config.thumb_blocklist || []).join('\n'); }
+    const r = await api('/api/moderation/news-config', { method: 'PUT', body: JSON.stringify({ allow: $('modNewsAllow').value, block: $('modNewsBlock').value, publisher_blocklist: publishers, thumb_blocklist: $('modNewsThumbBlock').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean), major_keywords: $('modNewsMajor').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean) }) });
+    if (r.ok && r.json && r.json.config) { publishers = r.json.config.publisher_blocklist.slice(); renderPublishers(); $('modNewsThumbBlock').value = (r.json.config.thumb_blocklist || []).join('\n'); $('modNewsMajor').value = (r.json.config.major_keywords || []).join('\n'); }
     $('modNewsConfigNote').textContent = r.ok ? 'Saved. The next run uses these lists.' : (r.json && r.json.error === 'empty_allowlist' ? 'The allowlist needs at least one rule.' : 'Couldn\'t save.');
   });
   const open = () => { if (!loaded) { loaded = true; load(false); } };
