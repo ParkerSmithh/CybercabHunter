@@ -22,7 +22,7 @@ import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
 import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
 import { requireModerator } from './moderation.js';
-import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
+import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory, apiCameraSightingsHeat } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
@@ -462,6 +462,9 @@ export default {
     // Every detection in a window, for the /replay page (public, paged).
     if (url.pathname === '/api/camera-sightings/history' && request.method === 'GET') {
       return withCors(await apiCameraSightingsHistory(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/camera-sightings/heat' && request.method === 'GET') {
+      return withCors(await apiCameraSightingsHeat(request, env, ctx), request);
     }
     if (url.pathname === '/api/camera-sightings' && request.method === 'POST') {
       return apiCreateCameraSighting(request, env);

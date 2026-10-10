@@ -14,7 +14,11 @@
                           below; All / 1W / 1M / 90D; hover for a day's counts
      Model cards          each model's count, share and 30-day additions, with
                           its picture (illustration only, never on the chart)
-   A number is only ever one the server sent; no snapshot yet -> a short note. */
+   A number is only ever one the server sent; no snapshot yet -> a short note.
+   Actual + Predictions (off by default; js/forecast.js): Cybercab and Model Y
+   are each forecast from their OWN history, the total is their sum, drawn
+   lighter and dashed after a "Today" divider and always labeled an estimate,
+   never a TxDMV number. Recomputed from whatever the API returned. */
 (function () {
   const els = [...document.querySelectorAll('[data-dmv-panel]')];
   if (!els.length) return;
@@ -36,6 +40,26 @@
     return h < 48 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
   }
   let data = null, range = 'All';
+  let predict = false, horizon = 30, howOpen = false;
+  // The projection's lighter colours (deeper ones on the light theme, for contrast).
+  const light = () => document.documentElement.getAttribute('data-theme') === 'light';
+  const softGold = () => (light() ? '#a07c12' : '#F3E5AB'), softRed = () => (light() ? '#dc2626' : '#fca5a5');
+  const HORIZONS = [7, 30, 90];
+  const fcCache = new Map();
+  // Both models' forecasts (each from its own counts; approximate imported
+  // points flagged so the range widens), or null when predictions are off.
+  function forecastFor(d) {
+    if (!predict || !d || !d.snapshot || !window.CCCForecast) return null;
+    const key = `${d.snapshot.polled_at}|${d.series.length}|${horizon}|${Math.floor(Date.now() / DAY)}`;
+    if (!fcCache.has(key)) {
+      const obs = k => d.series.map(p => ({ t: Date.parse(`${p.date}T00:00:00Z`), value: p[k], approx: !!p.approx }));
+      const cy = CCCForecast.forecast(obs('cybercab'), { horizonDays: horizon });
+      const my = CCCForecast.forecast(obs('model_y'), { horizonDays: horizon });
+      const ok = cy.ok && my.ok;
+      fcCache.set(key, ok ? { ok, cy, my, computedAt: Date.now() } : { ok, reason: (!cy.ok ? cy : my).reason });
+    }
+    return fcCache.get(key);
+  }
 
   // The points in the selected window, plus the count that held at its start.
   function windowed(series) {
@@ -53,22 +77,29 @@
   }
 
   // Drawn at the box's real width (so the labels stay readable on phones).
-  function chart(series, boxW, trackingSince) {
+  function chart(series, boxW, trackingSince, fc) {
     const pts = windowed(series);
     if (!pts.length) return { svg: `<p class="text-xs text-slate-500 py-8 text-center">No snapshots in this window.</p>` };
     const w = Math.max(280, Math.round(boxW || 640)), narrow = w < 480;
     const padL = 34, padR = narrow ? 64 : 92, padT = 14, mainH = narrow ? 168 : 206, gap = 16, barsH = narrow ? 34 : 42, axisH = 20;
     const h = padT + mainH + gap + barsH + axisH;
     const today = isoDay(Date.now());
-    const start = Date.parse(`${pts[0].date}T00:00:00Z`), end = Math.max(Date.parse(`${today}T23:59:59Z`), start + DAY);
+    const fcOk = !!(fc && fc.ok);
+    const todayEnd = Math.max(Date.parse(`${today}T23:59:59Z`), Date.parse(`${pts[0].date}T00:00:00Z`) + DAY);
+    const fcEnd = fcOk ? fc.cy.points[fc.cy.points.length - 1].t + DAY - 1000 : todayEnd;
+    const start = Date.parse(`${pts[0].date}T00:00:00Z`), end = Math.max(todayEnd, fcEnd);
     const plotW = w - padL - padR;
-    const x = d => padL + ((Date.parse(`${d}T00:00:00Z`) - start) / (end - start)) * plotW;
+    const xm = ms => padL + ((ms - start) / (end - start)) * plotW;
+    const x = d => xm(Date.parse(`${d}T00:00:00Z`));
     const xEnd = padL + plotW;
-    const { step: yStep, max: maxY } = niceMax(Math.max(...pts.map(p => p.total)));
+    // The actual lines end at the end of today; with predictions the axis runs on.
+    const xToday = fcOk ? xm(todayEnd) : xEnd;
+    const fcTotal = fcOk ? fc.cy.points.map((p, i) => ({ t: p.t, cy: p.value, my: fc.my.points[i].value, total: p.value + fc.my.points[i].value, cyLow: p.low, cyHigh: p.high, myLow: fc.my.points[i].low, myHigh: fc.my.points[i].high })) : [];
+    const { step: yStep, max: maxY } = niceMax(Math.max(...pts.map(p => p.total), ...fcTotal.map(p => p.cyHigh + p.myHigh)));
     const y = v => padT + mainH * (1 - v / maxY);
     const base = y(0);
     // Step lines: a count holds until the next snapshot changes it.
-    const stepPath = key => { let d = `M ${x(pts[0].date).toFixed(1)} ${y(pts[0][key]).toFixed(1)}`; for (let i = 1; i < pts.length; i++) d += ` H ${x(pts[i].date).toFixed(1)} V ${y(pts[i][key]).toFixed(1)}`; return d + ` H ${xEnd.toFixed(1)}`; };
+    const stepPath = key => { let d = `M ${x(pts[0].date).toFixed(1)} ${y(pts[0][key]).toFixed(1)}`; for (let i = 1; i < pts.length; i++) d += ` H ${x(pts[i].date).toFixed(1)} V ${y(pts[i][key]).toFixed(1)}`; return d + ` H ${xToday.toFixed(1)}`; };
     const fillPath = key => `${stepPath(key)} V ${base.toFixed(1)} H ${x(pts[0].date).toFixed(1)} Z`;
     const label = (tx, ty, t, a = 'end', fill = 'rgb(var(--n-500))', weight = 400) => `<text x="${tx.toFixed ? tx.toFixed(1) : tx}" y="${ty.toFixed ? ty.toFixed(1) : ty}" text-anchor="${a}" font-size="10" font-weight="${weight}" style="fill:${fill};font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${esc(t)}</text>`;
     // Grid.
@@ -79,11 +110,17 @@
     const spanDays = (end - start) / DAY;
     if (spanDays > 45) {
       const s = new Date(start); let m = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 1, 1));
-      while (m.getTime() < end) { const tx = x(isoDay(m.getTime())); if (tx > padL + 14 && tx < xEnd - 34) ticks += `<line x1="${tx.toFixed(1)}" x2="${tx.toFixed(1)}" y1="${padT}" y2="${h - axisH}" style="stroke:rgb(var(--ink) / 0.04)"/>${label(tx, h - 6, m.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }), 'middle')}`; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1)); }
+      // With predictions, a month label never crowds "Today" or the end date.
+      const clear = tx => !fcOk || (Math.abs(tx - xToday) > 34 && tx < xEnd - 56);
+      while (m.getTime() < end) { const tx = x(isoDay(m.getTime())); if (tx > padL + 14 && tx < xEnd - 34 && clear(tx)) ticks += `<line x1="${tx.toFixed(1)}" x2="${tx.toFixed(1)}" y1="${padT}" y2="${h - axisH}" style="stroke:rgb(var(--ink) / 0.04)"/>${label(tx, h - 6, m.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }), 'middle')}`; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1)); }
     } else {
       ticks += label(padL, h - 6, shortDate(pts[0].date), 'start');
     }
-    ticks += label(xEnd, h - 6, 'Today');
+    if (fcOk) {
+      const room = xEnd - xToday;
+      ticks += label(xToday, h - 6, 'Today', room < 70 ? 'end' : 'middle');
+      if (room >= 48) ticks += label(xEnd, h - 6, shortDate(isoDay(fcEnd)));
+    } else ticks += label(xEnd, h - 6, 'Today');
     // The imported stretch: hatched, with the start of our own polling marked.
     let imported = '';
     const firstOwn = pts.find(p => !p.approx);
@@ -93,7 +130,7 @@
       if (firstOwn) imported += `<line x1="${x1.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${padT - 4}" y2="${(base).toFixed(1)}" stroke="${GOLD}" stroke-opacity="0.55" stroke-dasharray="3 3"/>`;
       if (!narrow && x1 - padL > 150) imported += label(padL + 8, padT + 12, 'Approx. history · Robotaxi Tracker', 'start', 'rgb(var(--n-500))');
     }
-    if (firstOwn && x(firstOwn.date) < xEnd - 4) { const mx = x(firstOwn.date), right = mx + 100 < xEnd; imported += label(right ? mx + 5 : mx - 5, padT + 4, narrow ? 'TxDMV daily' : 'Daily TxDMV polls', right ? 'start' : 'end', GOLD, 600); }
+    if (firstOwn && x(firstOwn.date) < xEnd - 4) { const mx = x(firstOwn.date), right = mx + 100 < (fcOk ? xToday - 4 : xEnd); imported += label(right ? mx + 5 : mx - 5, padT + 4, narrow ? 'TxDMV daily' : 'Daily TxDMV polls', right ? 'start' : 'end', GOLD, 600); }
     // Daily additions, as bars under the lines (Model Y below, Cybercab on top).
     const adds = [];
     for (let i = 1; i < pts.length; i++) {
@@ -109,13 +146,44 @@
       return `<g><title>${esc(longDate(a.date))}: +${a.m} Model Y, +${a.c} Cybercab</title>${hm ? stem(base, base - hm, RED) : ''}${hc ? stem(base - hm, base - hm - hc, GOLD) : ''}</g>`;
     }).join('');
     const barsAxis = `<line x1="${padL}" x2="${xEnd.toFixed(1)}" y1="${(barsTop + barsH).toFixed(1)}" y2="${(barsTop + barsH).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.14)"/>${label(padL - 6, barsTop + 8, `+${int(maxAdd)}`)}${label(xEnd + 8, barsTop + barsH - 2, 'new / day', 'start')}`;
+    // The projection (estimates, never TxDMV data): faint bands, dashed lines
+    // for each model and the total, faint projected daily additions, and a
+    // divider at today labeled PROJECTED.
+    let projection = '';
+    if (fcOk) {
+      const cur = { cy: fc.cy.current, my: fc.my.current };
+      const fx = p => xm(p.t + DAY);
+      const line = (key, base) => `M ${xToday.toFixed(1)} ${y(base).toFixed(1)} ` + fcTotal.map(p => `L ${fx(p).toFixed(1)} ${y(p[key]).toFixed(1)}`).join(' ');
+      const band = (lo, hi, base) => `M ${xToday.toFixed(1)} ${y(base).toFixed(1)} ` + fcTotal.map(p => `L ${fx(p).toFixed(1)} ${y(p[hi]).toFixed(1)}`).join(' ') + ' ' + [...fcTotal].reverse().map(p => `L ${fx(p).toFixed(1)} ${y(p[lo]).toFixed(1)}`).join(' ') + ' Z';
+      let prev = { cy: cur.cy, my: cur.my };
+      const fbars = fcTotal.map(p => {
+        const c = Math.max(0, p.cy - prev.cy), m = Math.max(0, p.my - prev.my); prev = p;
+        if (!(c + m)) return '';
+        const cx = fx(p) - (fx(p) - xm(p.t)) / 2, b0 = barsTop + barsH, hm = Math.min(barsH - 4, bh(m)), hc = Math.min(barsH - 4 - hm, bh(c));
+        return `${hm ? `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${b0.toFixed(1)}" y2="${(b0 - hm).toFixed(1)}" stroke="${RED}" stroke-opacity="0.35" stroke-width="1.5"/>` : ''}${hc ? `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${(b0 - hm).toFixed(1)}" y2="${(b0 - hm - hc).toFixed(1)}" stroke="${GOLD}" stroke-opacity="0.4" stroke-width="1.5"/>` : ''}`;
+      }).join('');
+      projection = `<g class="forecast-layer">
+        <rect x="${xToday.toFixed(1)}" y="${padT}" width="${Math.max(0, xEnd - xToday).toFixed(1)}" height="${mainH}" fill="${GOLD}" fill-opacity="0.035"/>
+        <line x1="${xToday.toFixed(1)}" x2="${xToday.toFixed(1)}" y1="${padT - 4}" y2="${(barsTop + barsH).toFixed(1)}" stroke="${GOLD}" stroke-opacity="0.5" stroke-dasharray="3 3"/>
+        <path d="${band('myLow', 'myHigh', cur.my)}" fill="${RED}" fill-opacity="0.08"/>
+        <path d="${band('cyLow', 'cyHigh', cur.cy)}" fill="${GOLD}" fill-opacity="0.12"/>
+        <path d="${line('total', cur.cy + cur.my)}" fill="none" style="stroke:rgb(var(--n-300))" stroke-opacity="0.45" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"/>
+        <path d="${line('my', cur.my)}" fill="none" stroke="${softRed()}" stroke-opacity="0.85" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/>
+        <path d="${line('cy', cur.cy)}" fill="none" stroke="${softGold()}" stroke-opacity="0.9" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/>
+        ${xEnd - xToday > 70 ? label(xToday + 6, padT + 20, 'PROJECTED', 'start', softGold(), 700).replace('font-size="10"', 'font-size="9" letter-spacing="0.12em"') : ''}
+        ${fbars}
+      </g>`;
+    }
     // End labels, nudged apart so they never overlap.
     const last = pts[pts.length - 1];
-    const ends = [{ v: last.total, t: `${int(last.total)} total`, c: 'rgb(var(--n-300))' }, { v: last.model_y, t: `${int(last.model_y)} Model Y`, c: RED }, { v: last.cybercab, t: `${int(last.cybercab)} Cybercab`, c: GOLD }]
+    const fl = fcTotal[fcTotal.length - 1];
+    const ends = (fcOk
+      ? [{ v: fl.total, t: `≈${int(fl.total)} total`, c: 'rgb(var(--n-300))' }, { v: fl.my, t: `≈${int(fl.my)} Model Y`, c: softRed() }, { v: fl.cy, t: `≈${int(fl.cy)} Cybercab`, c: softGold() }]
+      : [{ v: last.total, t: `${int(last.total)} total`, c: 'rgb(var(--n-300))' }, { v: last.model_y, t: `${int(last.model_y)} Model Y`, c: RED }, { v: last.cybercab, t: `${int(last.cybercab)} Cybercab`, c: GOLD }])
       .map(e => ({ ...e, y: y(e.v) + 3.5 })).sort((a, b) => a.y - b.y);
     for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 12) ends[i].y = ends[i - 1].y + 12;
-    const endLabels = ends.map(e => label(xEnd + 6, e.y, narrow ? int(e.v) : e.t, 'start', e.c, 600)).join('');
-    const svg = `<svg viewBox="0 0 ${w} ${h}" class="w-full h-auto block select-none" role="img" aria-label="${esc(`Registered Tesla automated vehicles in Texas: ${int(last.total)} (${int(last.cybercab)} Cybercab, ${int(last.model_y)} Model Y) on ${longDate(last.date)}`)}">
+    const endLabels = ends.map(e => label(xEnd + 6, e.y, narrow ? `${fcOk ? '≈' : ''}${int(e.v)}` : e.t, 'start', e.c, 600)).join('');
+    const svg = `<svg viewBox="0 0 ${w} ${h}" class="w-full h-auto block select-none" role="img" aria-label="${esc(`Registered Tesla automated vehicles in Texas: ${int(last.total)} (${int(last.cybercab)} Cybercab, ${int(last.model_y)} Model Y) on ${longDate(last.date)}${fcOk ? `; projected about ${int(fl.total)} (${int(fl.cy)} Cybercab, ${int(fl.my)} Model Y) in ${horizon} days, an estimate` : ''}`)}">
       <defs>
         <pattern id="dmvHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:rgb(var(--ink) / 0.05)" stroke-width="2"/></pattern>
         <linearGradient id="dmvRed" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${RED}" stop-opacity="0.30"/><stop offset="1" stop-color="${RED}" stop-opacity="0.02"/></linearGradient>
@@ -127,12 +195,13 @@
       <path d="${stepPath('total')}" fill="none" style="stroke:rgb(var(--n-300))" stroke-opacity="0.7" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"/>
       <path d="${stepPath('model_y')}" fill="none" stroke="${RED}" stroke-width="2" stroke-linejoin="round"/>
       <path d="${stepPath('cybercab')}" fill="none" stroke="${GOLD}" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="${xEnd.toFixed(1)}" cy="${y(last.model_y).toFixed(1)}" r="3" fill="${RED}"/><circle cx="${xEnd.toFixed(1)}" cy="${y(last.cybercab).toFixed(1)}" r="3" fill="${GOLD}"/>
+      ${projection}
+      <circle cx="${xToday.toFixed(1)}" cy="${y(last.model_y).toFixed(1)}" r="3" fill="${RED}"/><circle cx="${xToday.toFixed(1)}" cy="${y(last.cybercab).toFixed(1)}" r="3" fill="${GOLD}"/>
       ${endLabels}${bars}${barsAxis}
       <line data-dmv-cross x1="0" x2="0" y1="${padT}" y2="${barsTop + barsH}" style="stroke:rgb(var(--ink) / 0.35);display:none"/>
     </svg>`;
     // For the hover readout: the count that held on a given day.
-    const geo = { w, padL, xEnd, start, end, pts };
+    const geo = { w, padL, xEnd, xToday, start, end, pts, fc: fcOk ? { rows: fcTotal, cur: fc.cy.current + fc.my.current } : null };
     return { svg, geo };
   }
 
@@ -145,6 +214,23 @@
     svg.addEventListener('pointermove', e => {
       const r = svg.getBoundingClientRect(), vx = ((e.clientX - r.left) / r.width) * geo.w;
       if (vx < geo.padL || vx > geo.xEnd) return hide();
+      if (geo.fc && vx > geo.xToday) {
+        // A projected day: estimates only, never shown as TxDMV data.
+        const ms = geo.start + ((vx - geo.padL) / (geo.xEnd - geo.padL)) * (geo.end - geo.start);
+        let q = geo.fc.rows[0]; for (const row of geo.fc.rows) { if (row.t <= ms) q = row; else break; }
+        cross.setAttribute('x1', vx.toFixed(1)); cross.setAttribute('x2', vx.toFixed(1)); cross.style.display = '';
+        const diff = q.total - geo.fc.cur;
+        tip.innerHTML = `<div class="font-semibold text-slate-100">${esc(longDate(isoDay(q.t)))}</div>
+          <div class="text-[10px] font-semibold uppercase tracking-wide mb-0.5" style="color:${softGold()}">Projected · estimate, not TxDMV data</div>
+          <div class="flex justify-between gap-4"><span style="color:${softGold()}">Cybercab</span><span class="stat-value text-white">≈${int(q.cy)}</span></div>
+          <div class="flex justify-between gap-4"><span style="color:${softRed()}">Model Y</span><span class="stat-value text-white">≈${int(q.my)}</span></div>
+          <div class="flex justify-between gap-4 border-t border-white/[0.08] mt-1 pt-1"><span class="text-slate-400">Total</span><span class="stat-value text-white">≈${int(q.total)}</span></div>
+          <div class="text-slate-400 mt-0.5">${diff >= 0 ? '+' : '−'}${int(Math.abs(diff))} vs. today's registered fleet</div>`;
+        tip.classList.remove('hidden');
+        const px = (vx / geo.w) * r.width, tw = tip.offsetWidth;
+        tip.style.left = `${Math.min(Math.max(0, px + 12 + tw > r.width ? px - tw - 12 : px + 12), r.width - tw)}px`;
+        return;
+      }
       const day = isoDay(geo.start + ((vx - geo.padL) / (geo.xEnd - geo.padL)) * (geo.end - geo.start));
       let p = null; for (const q of geo.pts) { if (q.date <= day) p = q; else break; }
       if (!p) return hide();
@@ -162,7 +248,8 @@
   function draw(el) {
     const box = el.querySelector('[data-dmv-chart]');
     if (!box || !box.clientWidth || !data || !data.snapshot) return;
-    const { svg, geo } = chart(data.series, box.clientWidth, data.tracking_since);
+    const fc = forecastFor(data);
+    const { svg, geo } = chart(data.series, box.clientWidth, data.tracking_since, fc);
     box.innerHTML = svg + `<div data-dmv-tip class="hidden pointer-events-none absolute top-2 z-10 min-w-[150px] rounded-lg border border-white/[0.1] bg-[rgb(var(--surface))]/95 px-3 py-2 text-[11px] shadow-xl backdrop-blur"></div>`;
     attachHover(box, geo);
   }
@@ -173,7 +260,13 @@
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">Texas DMV registrations · Tesla</h2>
           <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
+          <div class="forecast-controls-col">
           <div class="flex items-center gap-1" role="group" aria-label="Time range">${Object.keys(RANGES).map(r => `<button type="button" data-dmv-range="${r}" aria-pressed="${r === range}" class="text-xs font-semibold px-2 py-1 rounded-md max-sm:min-h-[44px] max-sm:min-w-[40px] ${r === range ? 'text-white bg-white/[0.08]' : 'text-slate-400 hover:text-slate-200'}">${r}</button>`).join('')}</div>
+          <div class="forecast-controls">
+            <div class="forecast-seg" role="group" aria-label="Predictions"><button type="button" data-dmv-mode="actual" aria-pressed="${!predict}">Actual</button><button type="button" data-dmv-mode="predict" aria-pressed="${predict}">Actual + Predictions</button></div>
+            ${predict ? `<div class="forecast-seg forecast-horizon" role="group" aria-label="Forecast horizon"><span class="forecast-seg-label" aria-hidden="true">Next</span>${HORIZONS.map(hz => `<button type="button" data-dmv-horizon="${hz}" aria-pressed="${hz === horizon}" aria-label="Next ${hz} days">${hz}D</button>`).join('')}</div>` : ''}
+          </div>
+          </div>
         </div>`;
       if (!d) { el.innerHTML = head + `<div class="mt-4 h-40 rounded-xl bg-white/[0.03] animate-pulse"></div>`; return; }
       if (!d.snapshot) {
@@ -199,13 +292,45 @@
           </div>
         </div>`;
       const failed = d.last_attempt && !d.last_attempt.ok && Date.parse(d.last_attempt.at) > Date.parse(s.polled_at);
+      // Predictions: the summary replaces the stat column; a note when there
+      // is too little history; and how the forecast works, under the chart.
+      const fc = forecastFor(d);
+      let fcStats = '', fcBelow = '';
+      if (fc && fc.ok) {
+        const e = { cy: fc.cy.points[fc.cy.points.length - 1], my: fc.my.points[fc.my.points.length - 1] };
+        const total = e.cy.value + e.my.value, added = total - s.total;
+        const small = (label, value, sub, color = 'text-white') => `<div class="min-w-0"><div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 max-sm:text-[10px]">${esc(label)}</div>
+          <div class="stat-value font-semibold text-2xl leading-tight mt-0.5 ${color} max-sm:text-xl">${value}</div><div class="text-[11px] text-slate-500 mt-0.5 max-sm:text-[10px]">${sub}</div></div>`;
+        fcStats = `<div class="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-3.5 lg:content-start max-sm:gap-2 forecast-stats" aria-label="Forecast summary (estimates)">
+            ${small('Current registered fleet', int(s.total), 'TxDMV, by VIN', 'text-gold')}
+            ${small(`Projected total fleet`, `≈${int(total)}`, `in ${horizon} days · estimate`)}
+            ${small('Projected Cybercabs', `≈${int(e.cy.value)}`, `range ${int(e.cy.low)}–${int(e.cy.high)}`)}
+            ${small('Projected Model Y', `≈${int(e.my.value)}`, `range ${int(e.my.low)}–${int(e.my.high)}`)}
+            ${small('Expected new registrations', `+${int(added)}`, `+${int(e.cy.value - fc.cy.current)} Cybercab · +${int(e.my.value - fc.my.current)} Model Y`, 'text-emerald-400')}
+          </div>`;
+      }
+      if (fc) {
+        const when = fc.computedAt ? new Date(fc.computedAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' CT' : '';
+        fcBelow = (fc.ok ? '' : `<p class="forecast-note-inline" role="status"><strong>Predictions unavailable.</strong> ${esc(fc.reason)}</p>`) + `
+          <details class="forecast-how mt-3" ${howOpen ? 'open' : ''} data-dmv-how>
+            <summary>How predictions work</summary>
+            <ul>
+              <li><span>Data:</span> the daily TxDMV snapshots above (and, before ${esc(longDate(hist ? hist.until : d.tracking_since))}, the approximate imported history). Cybercab and Model Y are forecast separately, each from its own counts; the total is their sum.</li>
+              <li><span>Method:</span> daily additions (a gap between snapshots is spread evenly over its days, never counted as zero); one unusually large batch is capped so it can't set the pace; the 7-day, 30-day and all-time rates are blended 50/30/20 and ease toward the 30-day pace. Straight-line growth, never exponential; projections never go down, though real TxDMV counts can (corrections and removals stay in the history).</li>
+              <li><span>Range:</span> an 80% band from how much daily registrations vary, widened while the recent history includes approximate counts.</li>
+              <li><span>Updated:</span> ${when ? `computed ${esc(when)} ` : ''}from the TxDMV poll of ${esc(centralTime(s.polled_at))} CT; it recalculates with each new daily snapshot.</li>
+              <li><span>Why it can differ:</span> these are estimates, not TxDMV figures. Tesla registers vehicles in batches, and new cities, production changes or deregistrations can move the real counts either way.</li>
+            </ul>
+          </details>`;
+      }
+      el.classList.toggle('is-predicting', !!fc);
       el.innerHTML = head + `
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] max-sm:mt-3 max-sm:gap-4">
-          <div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-5 lg:content-start max-sm:gap-2">
+          ${fcStats || `<div class="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-5 lg:content-start max-sm:gap-2">
             ${stat('Registered AV fleet', int(s.total), `by VIN · polled ${esc(ago(s.polled_at))}`, 'text-gold')}
             ${stat(partial ? 'Since tracking began' : 'Last 30 days', `+${int(n.d30)}`, partial ? `Tracking since ${esc(shortDate(d.tracking_since))}` : `+${int(n.d7)} in the last 7 days${n.approx ? ' · approx.' : ''}`, 'text-emerald-400')}
             ${stat('Matched to tracked plates', int(m.count), `${int(m.spotted_30d)} spotted in the last 30 days`)}
-          </div>
+          </div>`}
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px] text-slate-400">
               <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded" style="background:${GOLD}"></span>Cybercab</span>
@@ -214,6 +339,7 @@
               <span class="ml-auto max-sm:hidden">Registered by date · bars: new per day</span>
             </div>
             <div data-dmv-chart class="relative"></div>
+            ${fcBelow}
           </div>
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3 max-sm:grid-cols-1 max-sm:mt-4 max-sm:gap-2">
@@ -222,7 +348,7 @@
         </div>
         <div class="mt-5 flex items-center gap-6 max-sm:mt-4 max-sm:flex-col-reverse max-sm:items-stretch max-sm:gap-3">
         <p class="flex-1 min-w-0 text-[11px] text-slate-500 leading-relaxed max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
-          ? ` Before ${esc(longDate(hist.until))}, counts are approximate.`
+          ? ` Before ${esc(longDate(hist.until))}, counts are approximate.${fc ? ' Projected values are estimates, not official TxDMV numbers.' : ''}`
           : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>
         <a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(212,175,55,0.75)] max-sm:justify-between">
           <span class="flex items-center gap-3">
@@ -246,11 +372,17 @@
   }
 
   document.addEventListener('click', e => {
-    const b = e.target.closest && e.target.closest('[data-dmv-range]');
-    if (!b || !data || !data.snapshot) return;
-    range = b.dataset.dmvRange;
+    const t = e.target.closest && e.target;
+    if (!t || !data || !data.snapshot) return;
+    const b = t.closest('[data-dmv-range]'), mode = t.closest('[data-dmv-mode]'), hz = t.closest('[data-dmv-horizon]');
+    if (b) range = b.dataset.dmvRange;
+    else if (mode) { const on = mode.dataset.dmvMode === 'predict'; if (on === predict) return; predict = on; }
+    else if (hz) horizon = Number(hz.dataset.dmvHorizon);
+    else return;
     render();
   });
+  // Remember whether "How predictions work" is open across redraws.
+  document.addEventListener('toggle', e => { if (e.target && e.target.matches && e.target.matches('[data-dmv-how]')) howOpen = e.target.open; }, true);
   render();
   fetch('/api/dmv-registrations').then(r => (r.ok ? r.json() : null)).catch(() => null).then(d => {
     if (d) { data = d; render(); }

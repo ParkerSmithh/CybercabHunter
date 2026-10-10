@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/home-overview.css?v=6">
 <link rel="stylesheet" href="css/hero-typewriter.css?v=1">
@@ -240,11 +240,26 @@
             <p id="fleetChartCaption" class="text-xs text-slate-500 mt-0.5 max-sm:text-[11px] max-sm:leading-snug">Austin Cybercabs documented in the registry, over time</p>
           </div>
           </div>
+          <div class="forecast-controls-col">
           <div class="flex items-center gap-1 shrink-0 -ml-2 sm:ml-0 max-sm:ml-0 max-sm:gap-0" id="fleetChartRange" role="group" aria-label="Time range">
             <button data-range="90d" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">90D</button>
             <button data-range="6m" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">6M</button>
             <button data-range="1y" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">1Y</button>
             <button data-range="all" class="range-btn text-xs font-semibold px-2 py-1 rounded-md text-slate-400 max-sm:min-h-[40px] max-sm:min-w-[36px]">All</button>
+          </div>
+          <!-- Predictions (js/forecast.js): off by default; the chart is unchanged until turned on. -->
+          <div class="forecast-controls" id="fleetForecastControls">
+            <div class="forecast-seg" role="group" aria-label="Predictions">
+              <button type="button" data-fleet-mode="actual" aria-pressed="true">Actual</button>
+              <button type="button" data-fleet-mode="predict" aria-pressed="false">Actual + Predictions</button>
+            </div>
+            <div class="forecast-seg forecast-horizon hidden" id="fleetHorizon" role="group" aria-label="Forecast horizon">
+              <span class="forecast-seg-label" aria-hidden="true">Next</span>
+              <button type="button" data-fleet-horizon="7" aria-pressed="false" aria-label="Next 7 days">7D</button>
+              <button type="button" data-fleet-horizon="30" aria-pressed="true" aria-label="Next 30 days">30D</button>
+              <button type="button" data-fleet-horizon="90" aria-pressed="false" aria-label="Next 90 days">90D</button>
+            </div>
+          </div>
           </div>
         </div>
         <!-- Summary for the selected city and range (drawn with the chart, from
@@ -254,7 +269,8 @@
         <!-- Chart draws at the plot's actual size, keeping circles and labels crisp. -->
         <div id="fleetChartMount" class="home-growth-plot relative"></div>
         </div>
-        <div class="home-growth-footer"><p>First documented Cybercabs · public registry coverage</p><a href="/vehicles">View Cybercabs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+        <div id="fleetHowPanel" class="forecast-how-pop hidden" role="region" aria-label="How predictions work"></div>
+        <div class="home-growth-footer"><p id="fleetFooterNote">First documented Cybercabs · public registry coverage</p><button type="button" id="fleetHowBtn" class="forecast-how-btn hidden" aria-expanded="false" aria-controls="fleetHowPanel">How predictions work</button><a href="/vehicles">View Cybercabs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
       </div>
 
       <!-- Add more city cards here as Cybercab expands: copy the Austin map
@@ -434,7 +450,8 @@
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=7"></script>
 <script src="js/home-rows.js?v=12"></script>
-<script src="js/dmv-panel.js?v=12"></script>
+<script src="js/forecast.js?v=1"></script>
+<script src="js/dmv-panel.js?v=13"></script>
 <script src="js/us-sightings-data.js?v=2"></script>
 <script src="js/us-sightings-map.js?v=13"></script>
 <script src="js/austin-map.js?v=8"></script>
@@ -558,6 +575,24 @@
     const UTC_DAY_TIME = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' };
     let series = null;       // [{date, count}] one point per exact first_seen_at the total changed, ascending
     let activeRange = '90d';
+    // Predictions (js/forecast.js): off by default. The forecast is computed
+    // from the loaded series only (never stored), once per city / data /
+    // horizon / day, and drawn after "Today" without touching the actuals.
+    let predict = false, horizon = 30;
+    // The projection's lighter gold (a deeper one on the light theme, for contrast).
+    const softGold = () => (document.documentElement.getAttribute('data-theme') === 'light' ? '#a07c12' : '#F3E5AB');
+    const fcCache = new Map();
+    function currentForecast() {
+      if (!predict || !series || !window.CCCForecast) return null;
+      if (!series.length) return { ok: false, reason: `No ${CHART_CITY} Cybercabs in the registry yet, so there is nothing to project from.` };
+      const key = `${CHART_CITY}|${series.length}|${series[series.length - 1].date.getTime()}|${horizon}|${Math.floor(Date.now() / DAY_MS)}`;
+      if (!fcCache.has(key)) {
+        // The registry held none before the first documented vehicle.
+        const obs = [{ t: series[0].date.getTime() - DAY_MS, value: 0 }, ...series.map(p => ({ t: p.date.getTime(), value: p.count }))];
+        fcCache.set(key, { ...CCCForecast.forecast(obs, { horizonDays: horizon }), computedAt: Date.now() });
+      }
+      return fcCache.get(key);
+    }
 
     function setMessage(text) {
       mount.innerHTML = `<div class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 text-center px-4">${text}</div>`;
@@ -576,9 +611,28 @@
       return h < 48 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
     }
     const countAt = t => { let c = 0; for (const p of series) { if (p.date.getTime() <= t) c = p.count; else break; } return c; };
-    function renderStats(points) {
+    function renderStats(points, fc) {
       const el = document.getElementById('fleetChartStats');
       if (!el) return;
+      if (fc && fc.ok) {
+        const end = fc.points[fc.points.length - 1], added = end.value - fc.current;
+        const growth = fc.current > 0 ? Math.round((added / fc.current) * 100) : null;
+        // Four compact tiles (no picture): the panel's height is fixed.
+        const ftile = (label, value, sub, cls = '') => `
+        <div class="forecast-tile ${cls}">
+          <div class="forecast-tile-label">${label}</div>
+          <div class="forecast-tile-value stat-value">${value}</div>
+          <div class="forecast-tile-sub">${sub}</div>
+        </div>`;
+        el.classList.add('is-forecast-stats');
+        el.innerHTML =
+          ftile('Current documented fleet', String(fc.current), `${CHART_CITY} Cybercabs`, 'is-current') +
+          ftile(`Projected in ${horizon} days`, `≈${end.value}`, `Range ${end.low}–${end.high}`, 'is-projected') +
+          ftile('Expected additions', `+${added}`, `≈${fc.rate.toFixed(1)} a day now`) +
+          ftile('Predicted growth', growth == null ? '—' : `+${growth}%`, `by ${new Date(end.t).toLocaleDateString('en-US', SHORT_DATE)}`);
+        return;
+      }
+      el.classList.remove('is-forecast-stats');
       const has = series && series.length;
       const now = Date.now();
       const total = has ? series[series.length - 1].count : 0;
@@ -692,7 +746,9 @@
     function render() {
       if (!series) return;
       const hadFocus = document.activeElement && document.activeElement.id === 'fleetPlayBtn';
-      drawChart(windowedPoints());
+      const fc = currentForecast();
+      drawChart(windowedPoints(), fc);
+      renderHow(fc);
       // A redraw (a resize) mid-timelapse picks the frame back up where it was.
       if (anim.state === 'playing' || anim.state === 'paused') drawFrame(easeInOutQuad(playProgress()));
       if (hadFocus) document.getElementById('fleetPlayBtn')?.focus();
@@ -716,7 +772,7 @@
       return { d, areaD, endX, endY: y(last.count), count: last.count };
     }
 
-    function drawChart(points) {
+    function drawChart(points, fc) {
       // The viewBox is set to the mount's REAL pixel size (not a fixed 600x220
       // stretched to fit) — this card's height comes from a CSS grid stretch
       // to match its neighbor, whose aspect ratio has nothing to do with a
@@ -728,8 +784,12 @@
       const padL = 30, padR = 34, padT = 18, padB = 22;
       const plotW = w - padL - padR, plotH = h - padT - padB;
       const empty = !series.length;
-      const minX = points[0].date.getTime(), maxX = points[points.length - 1].date.getTime();
-      const maxY = Math.max(1, ...points.map(p => p.count));
+      const fcOk = !!(fc && fc.ok);
+      // With predictions the axis runs past today to the horizon; the actual
+      // line still ends today (actualMaxX), exactly as without them.
+      const minX = points[0].date.getTime(), actualMaxX = points[points.length - 1].date.getTime();
+      const maxX = fcOk ? Math.max(actualMaxX, fc.points[fc.points.length - 1].t) : actualMaxX;
+      const maxY = Math.max(1, ...points.map(p => p.count), ...(fcOk ? fc.points.map(p => p.high) : []));
       // The line uses the top of the plot; the new-per-day bars sit in a band
       // along its floor (their own scale), under the line.
       const BAND = Math.round(plotH * 0.22);
@@ -737,8 +797,8 @@
       const y = c => padT + (plotH - BAND - 6) - (c / maxY) * (plotH - BAND - 6);
       const baseY = padT + plotH;
 
-      const { d, areaD } = stepPaths(points, x, y, baseY, maxX);
-      geom = { points, x, y, baseY, minX, maxX };
+      const { d, areaD } = stepPaths(points, x, y, baseY, actualMaxX);
+      geom = { points, x, y, baseY, minX, maxX: actualMaxX };
 
       const yTicks = niceTicks(maxY, 3);
       const gridLines = yTicks.map(t => `<line x1="${padL}" y1="${y(t).toFixed(1)}" x2="${w - padR}" y2="${y(t).toFixed(1)}" style="stroke:rgb(var(--ink) / 0.07)" stroke-width="1" ${t ? 'stroke-dasharray="2 4"' : ''}/>`).join('');
@@ -762,14 +822,47 @@
       }).join('');
 
       // Date labels along the bottom: four evenly spaced, the last is today.
-      const xTicks = [0, 1 / 3, 2 / 3, 1].map(f => minX + f * (maxX - minX));
-      const xLabels = xTicks.map((t, i) => label(x(t).toFixed(1), h - 6, i === 3 ? 'Today' : new Date(t).toLocaleDateString('en-US', SHORT_DATE), i === 0 ? 'start' : i === 3 ? 'end' : 'middle')).join('');
+      // With predictions: the start, mid-history, Today, and the horizon's end.
+      let xLabels;
+      if (fcOk) {
+        const nowX = x(actualMaxX), endX = x(maxX), dateOf = t => new Date(t).toLocaleDateString('en-US', SHORT_DATE);
+        xLabels = label(x(minX).toFixed(1), h - 6, dateOf(minX), 'start');
+        if (nowX - x(minX) > 150) xLabels += label(x(minX + (actualMaxX - minX) / 2).toFixed(1), h - 6, dateOf(minX + (actualMaxX - minX) / 2), 'middle');
+        const roomRight = endX - nowX;
+        xLabels += label(nowX.toFixed(1), h - 6, 'Today', roomRight < 70 ? 'end' : 'middle');
+        if (roomRight >= 48) xLabels += label(endX.toFixed(1), h - 6, dateOf(maxX), 'end');
+      } else {
+        const xTicks = [0, 1 / 3, 2 / 3, 1].map(f => minX + f * (maxX - minX));
+        xLabels = xTicks.map((t, i) => label(x(t).toFixed(1), h - 6, i === 3 ? 'Today' : new Date(t).toLocaleDateString('en-US', SHORT_DATE), i === 0 ? 'start' : i === 3 ? 'end' : 'middle')).join('');
+      }
 
       const last = points[points.length - 1];
       const lastX = x(last.date.getTime());
 
+      // The projection: an 80% band, a dashed soft-gold line joined to today's
+      // count, a divider at today and the PROJECTED label. Kept in one group
+      // (hidden while the timelapse replays the actuals).
+      let forecastSvg = '';
+      if (fcOk) {
+        const fp = fc.points, y0 = y(fc.current);
+        const lineD = `M ${lastX.toFixed(1)} ${y0.toFixed(1)} ` + fp.map(p => `L ${x(p.t).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
+        const bandD = `M ${lastX.toFixed(1)} ${y0.toFixed(1)} ` + fp.map(p => `L ${x(p.t).toFixed(1)} ${y(p.high).toFixed(1)}`).join(' ')
+          + ' ' + [...fp].reverse().map(p => `L ${x(p.t).toFixed(1)} ${y(p.low).toFixed(1)}`).join(' ') + ` L ${lastX.toFixed(1)} ${y0.toFixed(1)} Z`;
+        const endP = fp[fp.length - 1], futureW = x(maxX) - lastX;
+        forecastSvg = `<g id="fleetForecast" class="forecast-layer">
+          <rect x="${lastX.toFixed(1)}" y="${padT}" width="${Math.max(0, futureW).toFixed(1)}" height="${plotH}" fill="${GOLD}" fill-opacity="0.035"/>
+          <line x1="${lastX.toFixed(1)}" y1="${padT - 6}" x2="${lastX.toFixed(1)}" y2="${baseY}" stroke="${GOLD}" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="3 3"/>
+          <path d="${bandD}" fill="${GOLD}" fill-opacity="0.12" stroke="none"/>
+          <path d="${lineD}" fill="none" stroke="${softGold()}" stroke-opacity="0.9" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${x(endP.t).toFixed(1)}" cy="${y(endP.value).toFixed(1)}" r="3.5" fill="none" stroke="${softGold()}" stroke-width="1.5"/>
+          ${futureW > 64 ? `<text x="${(lastX + 6).toFixed(1)}" y="${(padT + 8).toFixed(1)}" font-size="9" font-weight="700" letter-spacing="0.12em" style="fill:${softGold()};font-family:'Inter',sans-serif">PROJECTED</text>` : ''}
+          <text x="${(x(endP.t) + 6).toFixed(1)}" y="${(y(endP.value) + 4).toFixed(1)}" font-size="10" font-weight="600" style="fill:${softGold()};font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">≈${endP.value}</text>
+        </g>`;
+      }
+      const fcNote = predict && fc && !fc.ok ? `<div class="forecast-note" role="status"><strong>Predictions unavailable.</strong> ${fc.reason}</div>` : '';
+
       mount.innerHTML = `
-        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="${empty ? `No ${CHART_CITY} Cybercabs in the registry yet` : `Cumulative ${CHART_CITY} Cybercabs documented in the registry, currently ${last.count}, with new vehicles per day`}">
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-full block" id="fleetSvg" role="img" aria-label="${empty ? `No ${CHART_CITY} Cybercabs in the registry yet` : `Cumulative ${CHART_CITY} Cybercabs documented in the registry, currently ${last.count}, with new vehicles per day${fcOk ? `; projected about ${fc.points[fc.points.length - 1].value} in ${horizon} days (an estimate)` : ''}`}">
           <defs>
             <linearGradient id="fleetGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="${GOLD}" stop-opacity="0.32"/>
@@ -779,22 +872,25 @@
           ${gridLines}
           <line x1="${padL}" y1="${baseY}" x2="${w - padR}" y2="${baseY}" style="stroke:rgb(var(--ink) / 0.12)" stroke-width="1"/>
           ${bars}
+          ${forecastSvg}
           ${empty ? '' : `<path id="fleetArea" d="${areaD}" fill="url(#fleetGrad)" stroke="none"/>`}
           <path id="fleetLine" d="${d}" fill="none" stroke="${GOLD}" stroke-width="${empty ? 1.5 : 2.25}" ${empty ? 'stroke-dasharray="4 4" stroke-opacity="0.5"' : ''} stroke-linejoin="round" stroke-linecap="round"/>
           ${empty ? '' : `<circle id="fleetEndGlow" class="fleet-end-glow" cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="9" fill="${GOLD}" fill-opacity="0.22"/>
           <circle id="fleetEndDot" cx="${lastX.toFixed(1)}" cy="${y(last.count).toFixed(1)}" r="4" fill="${GOLD}" style="stroke:rgb(var(--surface))" stroke-width="2"/>
-          <text id="fleetEndLabel" x="${(lastX + 8).toFixed(1)}" y="${(y(last.count) + 4).toFixed(1)}" font-size="11" font-weight="700" style="fill:rgb(var(--ink));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${last.count}</text>`}
+          <text id="fleetEndLabel" x="${(fcOk ? lastX - 6 : lastX + 8).toFixed(1)}" y="${(fcOk ? y(last.count) - 9 : y(last.count) + 4).toFixed(1)}" ${fcOk ? 'text-anchor="end"' : ''} font-size="11" font-weight="700" style="fill:rgb(var(--ink));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${last.count}</text>`}
           ${yLabels}
           ${xLabels}
           ${empty ? '' : `<g style="font-family:'Inter',sans-serif" font-size="9">
             <line x1="${padL + 2}" y1="${padT - 8}" x2="${padL + 14}" y2="${padT - 8}" stroke="${GOLD}" stroke-width="2"/>${label(padL + 18, padT - 5, 'Cybercabs', 'start')}
             <rect x="${padL + 74}" y="${padT - 12}" width="6" height="8" rx="1" fill="${GOLD}" fill-opacity="0.65"/>${label(padL + 84, padT - 5, 'New per day', 'start')}
+            ${fcOk ? `<line x1="${padL + 146}" y1="${padT - 8}" x2="${padL + 160}" y2="${padT - 8}" stroke="${softGold()}" stroke-width="2" stroke-dasharray="4 3"/>${label(padL + 164, padT - 5, 'Projected', 'start')}` : ''}
           </g>`}
           <line id="fleetCrosshair" x1="0" y1="${padT}" x2="0" y2="${baseY}" style="display:none;stroke:rgb(var(--ink) / 0.25)" stroke-width="1"/>
           <circle id="fleetHoverDot" r="4" fill="${GOLD}" stroke-width="2" style="display:none;stroke:rgb(var(--surface))"/>
           <rect id="fleetHoverCatcher" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" tabindex="${empty ? -1 : 0}" role="slider" aria-label="Scrub the fleet growth chart" aria-valuemin="0" aria-valuemax="${points.length - 1}" aria-valuenow="${points.length - 1}" style="cursor:crosshair; outline:none;${empty ? 'pointer-events:none;' : ''}"/>
         </svg>
         ${empty ? `<div class="absolute inset-0 flex items-center justify-center pointer-events-none px-6"><div class="text-center"><div class="text-sm font-semibold text-slate-200">No ${CHART_CITY} Cybercabs in the registry yet</div><div class="text-xs text-slate-500 mt-1">The line starts with the first one documented.</div></div></div>` : ''}
+        ${fcNote}
         <div id="fleetTooltip" class="absolute hidden pointer-events-none glass rounded-lg px-3 py-2 text-xs" style="z-index:5;"></div>
         <div class="absolute flex items-center gap-3 ${empty ? 'hidden' : ''}" style="right:${padR + 6}px; bottom:${padB + BAND + 8}px; z-index:6;">
           <div id="fleetPlayReadout" class="hidden pointer-events-none whitespace-nowrap text-sm tabular-nums"></div>
@@ -802,13 +898,13 @@
         </div>
       `;
 
-      renderStats(points);
-      if (!empty) wireHover(points, x, y, padL, plotW, w);
+      renderStats(points, fc);
+      if (!empty) wireHover(points, x, y, padL, plotW, w, fcOk ? fc : null);
       document.getElementById('fleetPlayBtn').addEventListener('click', onPlayClick);
       syncPlayButton();
     }
 
-    function wireHover(points, x, y, padL, plotW, w) {
+    function wireHover(points, x, y, padL, plotW, w, fc) {
       const svg = document.getElementById('fleetSvg');
       const catcher = document.getElementById('fleetHoverCatcher');
       const crosshair = document.getElementById('fleetCrosshair');
@@ -842,10 +938,29 @@
       }
       function hide() { crosshair.style.display = 'none'; dot.style.display = 'none'; tooltip.classList.add('hidden'); }
 
+      // Past today: the projection's day nearest the pointer (an estimate).
+      const nowX = x(points[points.length - 1].date.getTime());
+      function showForecast(px) {
+        if (anim.state === 'playing' || anim.state === 'paused') return;
+        let i = 0;
+        for (let k = 0; k < fc.points.length; k++) { if (x(fc.points[k].t) <= px + 0.5) i = k; else break; }
+        const p = fc.points[i], cx = x(p.t), cy = y(p.value);
+        crosshair.setAttribute('x1', cx); crosshair.setAttribute('x2', cx); crosshair.style.display = '';
+        dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.style.display = '';
+        tooltip.classList.remove('hidden');
+        const diff = p.value - fc.current;
+        tooltip.innerHTML = `<div class="text-[10px] font-semibold uppercase tracking-wide" style="color:${softGold()}">Projected · estimate</div><div class="font-bold text-slate-100 mt-0.5">≈${p.value} Cybercab${p.value === 1 ? '' : 's'}</div><div class="text-slate-400 mt-0.5">Range ${p.low}–${p.high} · +${diff} from today</div><div class="text-slate-400 mt-0.5">${new Date(p.t).toLocaleDateString('en-US', READOUT_DATE)}</div>`;
+        const leftPct = cx / w * 100;
+        tooltip.style.left = leftPct > 65 ? 'auto' : `calc(${leftPct}% + 10px)`;
+        tooltip.style.right = leftPct > 65 ? `calc(${100 - leftPct}% + 10px)` : 'auto';
+        tooltip.style.top = '4px';
+      }
       catcher.addEventListener('pointermove', e => {
         const rect = svg.getBoundingClientRect();
         const svgX = (e.clientX - rect.left) / rect.width * w;
-        show(nearestIndex(Math.max(padL, Math.min(padL + plotW, svgX))));
+        const px = Math.max(padL, Math.min(padL + plotW, svgX));
+        if (fc && px > nowX + 2) showForecast(px);
+        else show(nearestIndex(px));
       });
       catcher.addEventListener('pointerleave', hide);
       catcher.addEventListener('pointerdown', e => e.preventDefault());
@@ -912,6 +1027,8 @@
       const val = document.getElementById('fleetEndLabel');
       if (val) { val.setAttribute('x', (f.endX + 8).toFixed(1)); val.setAttribute('y', (f.endY + 4).toFixed(1)); val.textContent = String(f.count); }
       document.querySelectorAll('#fleetSvg .fleet-bar').forEach(b => { b.style.opacity = Number(b.dataset.t) <= cutoff ? '' : '0'; });
+      const fcLayer = document.getElementById('fleetForecast');
+      if (fcLayer) fcLayer.style.opacity = p >= 1 ? '' : '0';   // the projection returns once the actuals are drawn
       const readout = document.getElementById('fleetPlayReadout');
       if (readout) {
         const dateStr = new Date(cutoff).toLocaleDateString('en-US', READOUT_DATE);
@@ -980,6 +1097,54 @@
       });
     });
 
+
+    // ---- Predictions toggle, horizon and "How predictions work" ----
+    const modeBtns = document.querySelectorAll('[data-fleet-mode]');
+    const horizonBtns = document.querySelectorAll('[data-fleet-horizon]');
+    const howBtn = document.getElementById('fleetHowBtn');
+    const howPanel = document.getElementById('fleetHowPanel');
+    const footerNote = document.getElementById('fleetFooterNote');
+    const FOOTER_ACTUAL = footerNote ? footerNote.textContent : '';
+    const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function closeHow(focus) { if (!howPanel || howPanel.classList.contains('hidden')) return; howPanel.classList.add('hidden'); howBtn.setAttribute('aria-expanded', 'false'); if (focus) howBtn.focus(); }
+    function setPredict(on) {
+      predict = on;
+      modeBtns.forEach(b => b.setAttribute('aria-pressed', String((b.dataset.fleetMode === 'predict') === on)));
+      document.getElementById('fleetHorizon')?.classList.toggle('hidden', !on);
+      howBtn?.classList.toggle('hidden', !on);
+      if (!on) closeHow(false);
+      if (footerNote) footerNote.textContent = on ? 'Estimates of Cybercabs we will document, not Tesla’s total built or deployed.' : FOOTER_ACTUAL;
+      document.getElementById('homeFleetChart')?.classList.toggle('is-predicting', on);
+      stopPlayback();
+      render();
+    }
+    modeBtns.forEach(b => b.addEventListener('click', () => { if ((b.dataset.fleetMode === 'predict') !== predict) setPredict(!predict); }));
+    horizonBtns.forEach(b => b.addEventListener('click', () => {
+      horizon = Number(b.dataset.fleetHorizon);
+      horizonBtns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      stopPlayback();
+      render();
+    }));
+    howBtn?.addEventListener('click', () => {
+      const open = howPanel.classList.toggle('hidden') === false;
+      howBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHow(true); });
+    function renderHow(fc) {
+      if (!howPanel) return;
+      const when = fc && fc.computedAt ? new Date(fc.computedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' CT' : '—';
+      const through = series && series.length ? series[series.length - 1].date.toLocaleDateString('en-US', READOUT_DATE) : '—';
+      howPanel.innerHTML = `
+        <div class="flex items-start justify-between gap-3"><h4 class="text-xs font-bold uppercase tracking-wide text-white">How predictions work</h4><button type="button" class="forecast-how-close" aria-label="Close" data-how-close>×</button></div>
+        <ul class="mt-2 space-y-1.5 text-[11px] leading-relaxed text-slate-400">
+          <li><span class="text-slate-200">Data:</span> the date each ${esc(CHART_CITY)} Cybercab was first documented in Cybercab Hunter's public registry. Nothing else.</li>
+          <li><span class="text-slate-200">Method:</span> daily additions (UTC days); one unusually big day is capped so a single batch can't set the pace; the 7-day, 30-day and all-time daily rates are blended 50/30/20, and the rate then eases toward the 30-day pace. Growth is projected in a straight line, never exponentially, and never goes down.</li>
+          <li><span class="text-slate-200">Range:</span> the shaded band is an 80% range, based on how much the daily additions vary.</li>
+          <li><span class="text-slate-200">Updated:</span> computed ${esc(when)} from registry data through ${esc(through)}; it recalculates whenever new vehicles are documented.</li>
+          <li><span class="text-slate-200">Why it can be wrong:</span> it only extends the past. Tesla's rollout plans, new cities, how often spotters document cars and registry clean-ups all change the real numbers. It counts vehicles we document, not Tesla's total built or deployed.</li>
+        </ul>`;
+      howPanel.querySelector('[data-how-close]').addEventListener('click', () => closeHow(true));
+    }
 
     // The mount's box changes with the window (and once when the neighboring
     // map card's own height settles) — since drawChart() draws to that exact
