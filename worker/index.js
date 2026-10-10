@@ -20,7 +20,7 @@ import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
-import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modNewsFeeds, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
+import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
 import { requireModerator } from './moderation.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -390,7 +390,6 @@ export default {
       if (url.pathname === '/api/moderation/news' && request.method === 'GET') return withCors(await modListNews(request, env), request);
       if (url.pathname === '/api/moderation/news-config' && request.method === 'PUT') return withCors(await modUpdateNewsConfig(request, env), request);
       if (url.pathname === '/api/moderation/news/run' && request.method === 'POST') return withCors(await modRunNews(request, env), request);
-      if (url.pathname === '/api/moderation/news-feeds' && request.method === 'POST') return withCors(await modNewsFeeds(request, env), request);
       const one = url.pathname.match(/^\/api\/moderation\/news\/([0-9a-f-]{36})$/i);
       if (one && request.method === 'POST') return withCors(await modUpdateNews(request, env, one[1]), request);
       return withCors(Response.json({ success: false, error: 'not_found' }, { status: 404 }), request);

@@ -64,44 +64,6 @@
     return box;
   }
 
-  // ---- feeds (POST /api/moderation/news-feeds; each change is saved at once)
-  function renderFeeds(feeds) {
-    const ul = $('modNewsFeeds');
-    ul.textContent = '';
-    [1, 2].forEach(tier => feeds.filter(f => f.tier === tier).forEach(f => {
-      const li = el('li', 'flex flex-wrap items-center gap-2 py-2');
-      li.dataset.feedId = f.id;
-      li.append(el('span', `px-1.5 rounded text-[11px] font-bold ${tier === 1 ? 'bg-gold text-[#1a1204]' : 'border border-white/15 text-slate-300'}`, `T${tier}`), el('span', 'font-semibold text-slate-100', f.name), el('span', 'text-xs text-slate-500 truncate min-w-0 flex-1', f.url));
-      const b = (label, action) => { const x = el('button', 'text-xs font-semibold px-2.5 py-1 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5', label); x.type = 'button'; x.dataset.feedAction = action; return x; };
-      li.append(b(tier === 1 ? 'Move to tier 2' : 'Move to tier 1', 'tier'), b('Remove', 'remove'));
-      ul.append(li);
-    }));
-  }
-  async function feedCall(payload) {
-    const r = await api('/api/moderation/news-feeds', { method: 'POST', body: JSON.stringify(payload) });
-    if (r.ok && r.json && r.json.feeds) renderFeeds(r.json.feeds);
-    return r;
-  }
-  $('modNewsFeedAdd').addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = $('modNewsFeedAddBtn');
-    btn.disabled = true; $('modNewsFeedNote').textContent = 'Checking the feed…';
-    const r = await feedCall({ action: 'add', url: $('modNewsFeedUrl').value, name: $('modNewsFeedName').value, tier: Number($('modNewsFeedTier').value) });
-    btn.disabled = false;
-    if (r.ok) { const f = r.json.feeds[r.json.feeds.length - 1]; $('modNewsFeedNote').textContent = `Added ${f.name} (${f.url}), tier ${f.tier}. It is checked on the next run.`; $('modNewsFeedUrl').value = ''; $('modNewsFeedName').value = ''; }
-    else $('modNewsFeedNote').textContent = (r.json && r.json.message) || 'Couldn\'t add that feed.';
-  });
-  $('modNewsFeeds').addEventListener('click', async e => {
-    const b = e.target.closest('button[data-feed-action]');
-    if (!b) return;
-    const li = b.closest('[data-feed-id]'), id = li.dataset.feedId, name = li.children[1].textContent;
-    if (b.dataset.feedAction === 'remove' && !confirm(`Remove ${name} from the feeds?`)) return;
-    b.disabled = true;
-    const r = await feedCall(b.dataset.feedAction === 'remove' ? { action: 'remove', id } : { action: 'tier', id, tier: li.firstChild.textContent === 'T1' ? 2 : 1 });
-    $('modNewsFeedNote').textContent = r.ok ? (b.dataset.feedAction === 'remove' ? `Removed ${name}.` : `Moved ${name}.`) : ((r.json && r.json.message) || 'Couldn\'t save.');
-    b.disabled = false;
-  });
-
   async function load(more) {
     const r = await api('/api/moderation/news?limit=50' + (more && cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
     if (!r.ok || !r.json) { $('modNewsRun').textContent = r.status === 403 ? 'Not authorized.' : 'Couldn\'t load the news.'; return; }
@@ -123,7 +85,6 @@
       publishers = Array.isArray(d.config.publisher_blocklist) ? d.config.publisher_blocklist.slice() : [];
       $('modNewsThumbBlock').value = (d.config.thumb_blocklist || []).join('\n');
       $('modNewsMajor').value = (d.config.major_keywords || []).join('\n');
-      renderFeeds(d.config.feeds || []);
       renderPublishers();
       $('modNewsBlockedCount').textContent = lr && typeof lr.blocked_publisher === 'number' ? `Last run: ${lr.blocked_publisher} ${lr.blocked_publisher === 1 ? 'story' : 'stories'} blocked by publisher.` : '';
     }
@@ -163,7 +124,7 @@
     e.preventDefault();
     const r = await api('/api/moderation/news-config', { method: 'PUT', body: JSON.stringify({ allow: $('modNewsAllow').value, block: $('modNewsBlock').value, publisher_blocklist: publishers, thumb_blocklist: $('modNewsThumbBlock').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean), major_keywords: $('modNewsMajor').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean) }) });
     if (r.ok && r.json && r.json.config) { publishers = r.json.config.publisher_blocklist.slice(); renderPublishers(); $('modNewsThumbBlock').value = (r.json.config.thumb_blocklist || []).join('\n'); $('modNewsMajor').value = (r.json.config.major_keywords || []).join('\n'); }
-    $('modNewsConfigNote').textContent = r.ok ? 'Saved. The next run uses these lists.' : (r.json && r.json.error === 'empty_allowlist' ? 'The allowlist needs at least one rule.' : r.json && r.json.error === 'bad_pattern' ? `That pattern doesn't work: ${r.json.line}` : 'Couldn\'t save.');
+    $('modNewsConfigNote').textContent = r.ok ? 'Saved. The next run uses these lists.' : (r.json && r.json.error === 'empty_allowlist' ? 'The allowlist needs at least one rule.' : 'Couldn\'t save.');
   });
   const open = () => { if (!loaded) { loaded = true; load(false); } };
   document.addEventListener('cch:moderation-news', open);
