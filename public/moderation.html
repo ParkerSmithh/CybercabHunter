@@ -140,7 +140,7 @@
       <div id="modPanelNews" role="tabpanel" aria-labelledby="modTabNews" class="hidden">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <p id="modNewsRun" class="text-xs text-slate-400">Loading…</p>
-          <button id="modNewsRunNow" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Run the ingest now</button>
+          <button id="modNewsRunNow" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Run the next ingest step now</button>
         </div>
         <div id="modNewsList" class="space-y-2"></div>
         <div class="flex justify-center mt-4"><button id="modNewsMore" type="button" class="hidden text-xs font-semibold px-4 py-2 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5">Load older</button></div>
@@ -165,6 +165,11 @@
               <button id="modNewsPublisherAdd" type="button" class="px-3 py-2 rounded-lg text-xs font-semibold border border-white/10 text-slate-200 hover:bg-white/5">Add</button>
             </div>
           </div>
+          <label class="md:col-span-2 block text-sm">
+            <span class="font-semibold text-slate-100">No thumbnails from these domains</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">One domain per line (e.g. example.com). Their stories are still listed, with the outlet's initial instead of a picture. Applies to stories collected from now on.</span>
+            <textarea id="modNewsThumbBlock" rows="3" class="w-full max-w-md bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+          </label>
           <div class="md:col-span-2 flex items-center gap-3">
             <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Save lists</button>
             <span id="modNewsConfigNote" class="text-xs text-slate-400" role="status"></span>
@@ -201,6 +206,6 @@
 </dialog>
 
 <script src="js/moderation.js?v=12"></script>
-<script src="js/moderation-news.js?v=3"></script>
+<script src="js/moderation-news.js?v=4"></script>
 </body>
 </html>

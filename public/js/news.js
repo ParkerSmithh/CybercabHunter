@@ -12,6 +12,9 @@
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TZ = 'America/Chicago';
   const safeUrl = u => (/^https:\/\//i.test(String(u || '')) ? String(u) : null);
+  // Our own thumbnail (same origin, /news-img/<id>.webp) first, then a feed's
+  // enclosure, then the outlet's initial.
+  const thumbSrc = s => (/^\/news-img\/[0-9a-f-]{36}\.webp$/i.test(String(s.thumb_url || '')) ? s.thumb_url : safeUrl(s.image_url));
   const dayKey = iso => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
   function dayLabel(iso) {
     const k = dayKey(iso), today = dayKey(new Date().toISOString()), yest = dayKey(new Date(Date.now() - 864e5).toISOString());
@@ -31,7 +34,7 @@
   const LABEL = { official: 'Official', social: 'Social', press: 'Press' };
 
   function thumb(s, big) {
-    const img = safeUrl(s.image_url);
+    const img = thumbSrc(s);
     if (img) return `<span class="news-thumb${big ? ' is-big' : ''}" data-initial="${esc((s.source || '?').trim().charAt(0).toUpperCase())}"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>`;
     return `<span class="news-thumb is-initial${big ? ' is-big' : ''}" aria-hidden="true">${esc((s.source || '?').trim().charAt(0).toUpperCase())}</span>`;
   }
