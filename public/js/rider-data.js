@@ -134,7 +134,7 @@
           <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1 max-sm:text-[9.5px] max-sm:tracking-wide max-sm:leading-tight max-sm:whitespace-nowrap">Average fare</div><div class="font-display font-bold text-lg max-sm:text-sm">${esc(fmtMoney(s.avgCents, s.currency))}</div></div>
           <div><div class="text-slate-500 text-xs uppercase tracking-wider mb-1 max-sm:text-[9.5px] max-sm:tracking-wide max-sm:leading-tight max-sm:whitespace-nowrap">Free rides</div><div class="font-display font-bold text-lg max-sm:text-sm">${esc(fmtInt(s.freeCount))}</div></div>
         </div>
-      </div>`).join('<div class="border-t border-[rgba(212,175,55,0.1)]"></div>');
+      </div>`).join('<div class="border-t border-[rgba(250,224,48,0.1)]"></div>');
 
     const notes = [`Fares recorded for ${cov.withFare} of ${plural(cov.rides, 'ride')}.`];
     if (cov.withFare < cov.rides) notes.push('Rides with no fare on the receipt are left out. They are not counted as free.');
@@ -194,7 +194,7 @@
       const dist = c.rides_with_distance > 0
         ? fmtMiles(c.total_distance) + (c.rides_with_distance < c.ride_count ? ` (${c.rides_with_distance} of ${c.ride_count} rides)` : '')
         : 'distance unknown';
-      return `<div class="p-3 max-sm:px-3 max-sm:py-2.5 rounded-xl border border-[rgba(212,175,55,0.08)]">
+      return `<div class="p-3 max-sm:px-3 max-sm:py-2.5 rounded-xl border border-[rgba(250,224,48,0.08)]">
         <div class="flex items-center justify-between">
           <span class="font-semibold">${esc(c.service_area)}</span>
           <span class="font-display font-bold text-slate-300">${esc(plural(c.ride_count, 'ride'))}</span>
@@ -213,7 +213,7 @@
     if (pendingDeleteId === id) {
       return `<span class="text-xs text-slate-300 mr-2">Remove this ride?</span>
         <button type="button" data-action="confirm-remove" data-id="${esc(id)}" class="text-xs px-2 py-1 rounded border border-crimson/50 text-crimson hover:bg-crimson/10">Remove</button>
-        <button type="button" data-action="cancel-remove" class="text-xs px-2 py-1 ml-1 rounded border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>`;
+        <button type="button" data-action="cancel-remove" class="text-xs px-2 py-1 ml-1 rounded border border-[rgba(250,224,48,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>`;
     }
     return `<button type="button" data-action="ask-remove" data-id="${esc(id)}" aria-label="Remove this ride from your history" class="max-sm:min-h-[40px] max-sm:inline-flex max-sm:items-center text-xs text-slate-500 hover:text-crimson underline-offset-2 hover:underline">Remove</button>`;
   }
@@ -230,7 +230,7 @@
       const badges = [];
       if (r.status === 'under_review') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-amber-400/40 text-amber-300 uppercase tracking-wide" title="Kept, but not counted in your statistics until reviewed">Under review</span>');
       if (r.status === 'rejected') badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-crimson/50 text-crimson uppercase tracking-wide">Rejected</span>');
-      if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
+      if (r.corrected) badges.push('<span class="ml-2 text-[11px] px-1.5 py-0.5 rounded-full border border-[rgba(250,224,48,0.3)] text-slate-400 uppercase tracking-wide" title="A later receipt changed the fare, distance, duration, or currency">Corrected</span>');
       const fare = r.fare_amount_cents == null ? '—' : (r.fare_amount_cents === 0 ? 'Free' : fmtMoney(r.fare_amount_cents, r.currency));
       return `<tr class="${r.status === 'counted' ? '' : 'opacity-70'}">
         <td class="py-3 pr-4 max-sm:py-1.5 max-sm:pr-2.5 whitespace-nowrap">${esc(fmtDate(r.ride_date))}${badges.join('')}</td>

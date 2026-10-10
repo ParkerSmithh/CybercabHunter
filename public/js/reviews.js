@@ -174,7 +174,7 @@
           ${avatarHtml(r.author, 'w-10 h-10 max-sm:w-8 max-sm:h-8')}
           <div class="min-w-0 flex-1">
             <div class="flex items-baseline gap-2 flex-wrap">${nameHtml(r.author)}<span class="text-xs text-slate-500">${esc(relative(r.created_at))}${edited}</span></div>
-            <div class="mt-1"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(212,175,55,0.2)] bg-[rgba(212,175,55,0.06)] text-xs text-slate-400"><svg class="w-3 h-3 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>Cybercab ${vehicle}</span></div>
+            <div class="mt-1"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[rgba(250,224,48,0.2)] bg-[rgba(250,224,48,0.06)] text-xs text-slate-400"><svg class="w-3 h-3 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>Cybercab ${vehicle}</span></div>
           </div>
           <span class="shrink-0 text-gold text-base tracking-wider max-sm:text-xs max-sm:tracking-normal" role="img" aria-label="${r.rating} out of 5 stars">${stars(r.rating)}</span>
         </header>
@@ -190,7 +190,7 @@
         <div data-thread class="hidden mt-3 pt-3 border-t border-white/[0.06]">
           <ul data-comment-list class="space-y-3"></ul>
           ${viewer.signed_in
-            ? `<form data-comment-form class="mt-3 flex gap-2"><label class="sr-only" for="c-${esc(r.id)}">Add a comment</label><input id="c-${esc(r.id)}" maxlength="500" placeholder="Add a comment" class="flex-1 min-w-0 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-sm placeholder:text-slate-600"><button type="submit" class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Post</button></form><p data-comment-error class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>`
+            ? `<form data-comment-form class="mt-3 flex gap-2"><label class="sr-only" for="c-${esc(r.id)}">Add a comment</label><input id="c-${esc(r.id)}" maxlength="500" placeholder="Add a comment" class="flex-1 min-w-0 bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2 text-sm placeholder:text-slate-600"><button type="submit" class="shrink-0 px-3 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Post</button></form><p data-comment-error class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>`
             : '<p class="mt-3 text-xs text-slate-500"><a href="signin.html?returnTo=%2Fcommunity" class="text-gold hover:underline">Sign in</a> to comment.</p>'}
         </div>
       </article>`;

@@ -60,14 +60,14 @@
     const isBusy = busy.has(s.submission_id);
     // Only a sighting with a plate and no registry vehicle yet can become one.
     const canPromote = !!s.license_plate && !s.robotaxi_vehicle_id;
-    return `<div class="flex items-center gap-2 flex-wrap pt-3 border-t border-[rgba(212,175,55,0.1)]">
+    return `<div class="flex items-center gap-2 flex-wrap pt-3 border-t border-[rgba(250,224,48,0.1)]">
         ${rejecting ? `
           <div class="w-full">
             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rejection reason</label>
-            <textarea data-reject-reason rows="2" maxlength="280" placeholder="Why is this sighting being rejected?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
+            <textarea data-reject-reason rows="2" maxlength="280" placeholder="Why is this sighting being rejected?" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
             <div class="flex items-center gap-2 mt-2">
               <button type="button" data-action="confirm-reject" ${isBusy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-crimson/50 text-crimson hover:bg-crimson/10 disabled:opacity-50">Confirm Reject</button>
-              <button type="button" data-action="cancel-reject" class="text-xs px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
+              <button type="button" data-action="cancel-reject" class="text-xs px-3 py-2 rounded-lg border border-[rgba(250,224,48,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
             </div>
           </div>
         ` : `
@@ -93,7 +93,7 @@
           <div class="font-display font-bold text-xl">${esc(s.license_plate || 'Plate not given')}</div>
           <div class="text-xs text-slate-500 mt-1">Submitted ${esc(fmtDateTime(s.submitted_at))} · Observed ${esc(fmtDateTime(s.observed_at))}</div>
         </div>
-        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(s.service_area || 'Area unknown')}</span>
+        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(250,224,48,0.3)] text-slate-300 uppercase tracking-wider">${esc(s.service_area || 'Area unknown')}</span>
       </div>
       <div class="text-sm mb-3">${vehicleLine}</div>
       ${details.length ? `<div class="text-xs text-slate-400 space-y-1 mb-3">${details.map(d => `<div>${d}</div>`).join('')}</div>` : ''}
@@ -142,7 +142,7 @@
       ? '<div class="text-xs font-semibold text-gold" data-on-map>On the Zones map ✓</div>'
       : a.on_map
       ? '<div class="text-xs text-slate-400 leading-snug" data-off-map>Off the Zones map: the map shows the last 24 hours</div>'
-      : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.45)] text-gold hover:bg-[rgba(212,175,55,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
+      : `<button type="button" data-approved-action="add-to-map" ${mapBusy.has(a.submission_id) ? 'disabled' : ''} class="self-start text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(250,224,48,0.45)] text-gold hover:bg-[rgba(250,224,48,0.08)] disabled:opacity-50">${mapBusy.has(a.submission_id) ? 'Adding…' : 'Add to map'}</button>`;
     return `<div class="glass rounded-xl p-3 flex flex-col gap-2 [overflow-wrap:anywhere]" data-approved-id="${esc(a.submission_id)}">
       <div class="mod-photo relative rounded-lg overflow-hidden">
         <a data-sighting-photo-link target="_blank" rel="noopener" title="Open the full photo" class="block aspect-[4/3] bg-black/30">
@@ -154,7 +154,7 @@
       <div class="font-display font-bold text-sm leading-tight">${esc(a.license_plate || 'Plate not given')}</div>
       <div class="text-xs text-slate-500 leading-snug">${facts.map(esc).join(' · ')}</div>
       ${cameraLine(a)}
-      <div class="mt-auto pt-2 border-t border-[rgba(212,175,55,0.1)] flex">${status}</div>
+      <div class="mt-auto pt-2 border-t border-[rgba(250,224,48,0.1)] flex">${status}</div>
     </div>`;
   }
 
@@ -549,7 +549,7 @@
       <p class="text-xs text-slate-400 leading-relaxed">Permanently delete <span class="font-semibold text-slate-200">${esc(v.license_plate || 'this vehicle')}</span> from the registry? This cannot be undone. It disappears from the public site immediately, and the ride(s)/receipt(s) logged against it are deleted too.</p>
       <div class="flex items-center gap-2 mt-3 flex-wrap">
         <button type="button" data-vehicle-action="confirm-delete" ${isBusy ? 'disabled' : ''} class="border border-crimson/50 text-crimson hover:bg-crimson/10 text-xs font-bold px-4 py-2.5 rounded-lg disabled:opacity-50">${isBusy ? 'Working…' : 'Confirm Delete'}</button>
-        <button type="button" data-vehicle-action="cancel-review" class="text-xs px-3 py-2.5 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
+        <button type="button" data-vehicle-action="cancel-review" class="text-xs px-3 py-2.5 rounded-lg border border-[rgba(250,224,48,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
       </div>
     </div>`;
   }
@@ -582,8 +582,8 @@
     const vinRow = `<div class="text-xs text-slate-300 mt-2">${v.vin ? `VIN on file: <span class="font-mono">${esc(v.vin)}</span>` : 'No VIN on file (optional).'}</div>
          <div class="flex items-center gap-2 mt-1 flex-wrap">
            <input type="text" data-vehicle-vin-input="${esc(v.id)}" value="${esc(v.vin || '')}" placeholder="17-character VIN" maxlength="17" autocomplete="off"
-             class="bg-black/30 border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2 text-xs font-mono uppercase w-48 disabled:opacity-50" ${busy ? 'disabled' : ''}>
-           <button type="button" data-vehicle-action="save-vin" ${busy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.3)] text-slate-200 hover:bg-white/5 disabled:opacity-50">${busy ? 'Working…' : 'Save VIN'}</button>
+             class="bg-black/30 border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2 text-xs font-mono uppercase w-48 disabled:opacity-50" ${busy ? 'disabled' : ''}>
+           <button type="button" data-vehicle-action="save-vin" ${busy ? 'disabled' : ''} class="text-xs font-bold px-3 py-2 rounded-lg border border-[rgba(250,224,48,0.3)] text-slate-200 hover:bg-white/5 disabled:opacity-50">${busy ? 'Working…' : 'Save VIN'}</button>
            ${v.vin ? `<button type="button" data-vehicle-action="clear-vin" ${busy ? 'disabled' : ''} class="text-xs px-3 py-2 rounded-lg border border-slate-500/40 text-slate-400 hover:bg-white/5 disabled:opacity-50">Clear VIN</button>` : ''}
          </div>`;
     let decision;
@@ -598,7 +598,7 @@
           ? 'Approves it as VIN verified (public VIN verified badge).'
           : 'No VIN: approves it as Manual, with no VIN verified badge. You can add a VIN and verify it later.'}</div>`;
     }
-    return `<div class="mt-3 pt-3 border-t border-[rgba(212,175,55,0.1)]">
+    return `<div class="mt-3 pt-3 border-t border-[rgba(250,224,48,0.1)]">
       <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Cybercab verification</div>
       <a href="${esc(ROBOTAXI_TRACKER_URL)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">Check Robotaxi Tracker →</a>
       <div class="text-xs text-slate-500 mt-1">Look up ${esc(v.license_plate || 'this plate')} there. If it's shown as a Cybercab, copy its VIN and enter it below. The VIN is optional: you can approve without one and add it later. If it's shown as a Model Y (or anything else), use Delete Vehicle instead. There is no separate rejection step.</div>
@@ -665,7 +665,7 @@
           <div class="font-display font-bold text-xl">${esc(v.license_plate || 'Plate unknown')}</div>
           <div class="text-xs text-slate-500 mt-1">${esc(v.counted_ride_count)} counted ${v.counted_ride_count === 1 ? 'ride' : 'rides'}</div>
         </div>
-        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(212,175,55,0.3)] text-slate-300 uppercase tracking-wider">${esc(view.badge)}</span>
+        <span class="max-w-full text-xs font-semibold px-2.5 py-1 rounded-full border border-[rgba(250,224,48,0.3)] text-slate-300 uppercase tracking-wider">${esc(view.badge)}</span>
       </div>
       <div class="text-sm font-semibold ${view.cls}">${esc(view.line)}</div>
       ${reasons}
@@ -675,7 +675,7 @@
       ${record}
       ${reviewLine(v)}
       ${dupe}
-      <div class="flex items-center gap-2 flex-wrap pt-4 mt-4 border-t border-[rgba(212,175,55,0.1)]">
+      <div class="flex items-center gap-2 flex-wrap pt-4 mt-4 border-t border-[rgba(250,224,48,0.1)]">
         ${actions}
         ${v.publicly_eligible && !mode ? `<a href="vehicle/${esc(v.id)}" target="_blank" rel="noopener" class="text-xs text-cyan hover:underline">View public page →</a>` : ''}
       </div>

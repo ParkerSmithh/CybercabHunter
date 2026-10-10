@@ -75,9 +75,9 @@
   function card(s) {
     // The Fleet ETA model-card look: gold border and tint (.dmv-card, --c).
     const article = el('article', 'group dmv-card glass rounded-2xl max-sm:rounded-xl overflow-hidden flex flex-col border transition-[border-color] duration-200 ease-out');
-    article.style.setProperty('--c', '212 175 55');
-    article.style.borderColor = 'rgb(212 175 55 / 0.3)';
-    article.style.background = 'linear-gradient(160deg, rgb(212 175 55 / 0.08), transparent 55%)';
+    article.style.setProperty('--c', '250 224 48');
+    article.style.borderColor = 'rgb(250 224 48 / 0.3)';
+    article.style.background = 'linear-gradient(160deg, rgb(250 224 48 / 0.08), transparent 55%)';
     article.dataset.tilt = '';   // TiltedCard on a fine pointer (js/main.js)
     article.dataset.glow = '';   // BorderGlow (js/main.js)
     const caption = [s.city, s.location, s.plate, fmtSpotted(s.spotted_at, s.time_zone)].filter(Boolean).join(' · ');
@@ -126,7 +126,7 @@
     }
     if (meta.childNodes.length) body.appendChild(meta);
     // The plate, styled like one.
-    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 max-sm:text-xs max-sm:px-2 max-sm:py-0.5 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)]', s.plate));
+    if (s.plate) body.appendChild(el('span', 'self-start font-display font-bold text-sm tracking-[0.18em] px-2.5 py-1 max-sm:text-xs max-sm:px-2 max-sm:py-0.5 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(250,224,48,0.6)]', s.plate));
     if (s.location) {
       const where = el('p', 'flex items-start gap-1.5 text-xs text-slate-300 leading-snug [overflow-wrap:anywhere] max-sm:gap-1 max-sm:text-[11px]');
       where.innerHTML = PIN;

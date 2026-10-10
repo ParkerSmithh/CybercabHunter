@@ -18,7 +18,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=3"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=74">
+<link rel="stylesheet" href="css/style.css?v=75">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -28,7 +28,7 @@
      here: the page asks GET /api/moderation/access only to pick which state
      to show, and POST /api/moderation/receipt-import enforces the moderator
      role itself on every request. -->
-<header class="border-b border-[rgba(212,175,55,0.15)]">
+<header class="border-b border-[rgba(250,224,48,0.15)]">
   <div class="max-w-5xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-12 h-12 object-contain">
@@ -80,23 +80,23 @@
         <div>
           <label for="impRiderSearch" class="text-[13px] font-medium text-slate-300">Rider <span class="normal-case text-slate-500 font-normal">(required)</span></label>
           <div id="impRiderPicker" class="mt-2">
-            <input id="impRiderSearch" type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="Search by display name" aria-describedby="impRiderHelp" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+            <input id="impRiderSearch" type="search" maxlength="100" autocomplete="off" spellcheck="false" placeholder="Search by display name" aria-describedby="impRiderHelp" class="w-full bg-panel border border-[rgba(250,224,48,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
             <p id="impRiderHelp" class="text-xs text-slate-500 mt-2">The ride is added to this rider's Rider Data. Only riders with a display name can be chosen.</p>
             <p id="impRiderStatus" class="hidden text-xs text-slate-400 mt-2" aria-live="polite"></p>
             <ul id="impRiderResults" class="mt-2 space-y-1"></ul>
           </div>
-          <div id="impRiderSelected" class="hidden mt-2 flex items-center justify-between gap-3 rounded-lg border border-gold/50 bg-[rgba(212,175,55,0.06)] px-4 py-3">
+          <div id="impRiderSelected" class="hidden mt-2 flex items-center justify-between gap-3 rounded-lg border border-gold/50 bg-[rgba(250,224,48,0.06)] px-4 py-3">
             <div class="min-w-0">
               <div id="impRiderName" class="text-sm font-semibold [overflow-wrap:anywhere]"></div>
               <div id="impRiderMeta" class="text-xs text-slate-500 [overflow-wrap:anywhere]"></div>
             </div>
-            <button id="impRiderChange" type="button" class="shrink-0 text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Change</button>
+            <button id="impRiderChange" type="button" class="shrink-0 text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Change</button>
           </div>
         </div>
 
         <div>
           <label for="impFiles" class="text-[13px] font-medium text-slate-300">Receipt files</label>
-          <input id="impFiles" type="file" multiple accept=".eml,.txt,message/rfc822,text/plain" class="mt-2 block w-full min-w-0 text-sm text-slate-300 file:mr-4 file:px-4 file:py-2.5 file:rounded-lg file:border file:border-[rgba(212,175,55,0.35)] file:bg-panel file:text-slate-100 file:text-sm file:font-semibold hover:file:bg-white/5 file:cursor-pointer cursor-pointer">
+          <input id="impFiles" type="file" multiple accept=".eml,.txt,message/rfc822,text/plain" class="mt-2 block w-full min-w-0 text-sm text-slate-300 file:mr-4 file:px-4 file:py-2.5 file:rounded-lg file:border file:border-[rgba(250,224,48,0.35)] file:bg-panel file:text-slate-100 file:text-sm file:font-semibold hover:file:bg-white/5 file:cursor-pointer cursor-pointer">
           <ul class="text-xs text-slate-500 leading-relaxed mt-3 space-y-1 list-disc pl-4">
             <li><span class="text-slate-300">.eml</span>: the Tesla receipt email saved as a file (in Gmail: open the email, <span class="whitespace-nowrap">⋮ → Download message</span>). Best: the sender and headers help confirm it.</li>
             <li><span class="text-slate-300">.txt</span>: the receipt email's text copied into a plain-text file.</li>
@@ -106,7 +106,7 @@
 
         <div>
           <label for="impText" class="text-[13px] font-medium text-slate-300">Or paste the receipt text <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-          <textarea id="impText" rows="5" spellcheck="false" placeholder="Paste the full text of the Tesla receipt email" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
+          <textarea id="impText" rows="5" spellcheck="false" placeholder="Paste the full text of the Tesla receipt email" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"></textarea>
         </div>
 
         <p id="impFormError" class="hidden text-sm text-crimson" role="alert"></p>
@@ -126,10 +126,10 @@
 </main>
 
 <script src="js/calc.js?v=2"></script>
-<script src="js/main.js?v=27"></script>
+<script src="js/main.js?v=28"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/import-receipt.js?v=2"></script>
+<script src="js/import-receipt.js?v=3"></script>
 </body>
 </html>

@@ -61,7 +61,7 @@
     // Cybercab, neutral slate otherwise. Never coloured by the model field:
     // this page shows no model text, and the Cybercab badge is its only type
     // signal. The eyebrow is the vehicle's city (text only, from the record).
-    const kind = approvedCybercab ? ['212 175 55', '#D4AF37', 'text-gold', ''] : ['148 163 184', '#94a3b8', 'text-slate-300', ''];
+    const kind = approvedCybercab ? ['250 224 48', '#FAE030', 'text-gold', ''] : ['148 163 184', '#94a3b8', 'text-slate-300', ''];
     const hero = $('vHero');
     if (hero) {
       hero.style.setProperty('--c', kind[0]);

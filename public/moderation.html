@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=74">
+<link rel="stylesheet" href="css/style.css?v=75">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -28,7 +28,7 @@
      (js/main.js), and only as a convenience: the link grants nothing.
      Authorization is never decided here: every state below reflects
      what GET /api/moderation/vehicle-sightings actually returned. -->
-<header class="border-b border-[rgba(212,175,55,0.15)]">
+<header class="border-b border-[rgba(250,224,48,0.15)]">
   <div class="max-w-5xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-12 h-12 object-contain">
@@ -80,7 +80,7 @@
           <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2 max-sm:mb-1">Review Queue</p>
           <h1 class="font-display font-bold text-3xl tracking-tight max-sm:text-xl">VEHICLE SIGHTINGS</h1>
         </div>
-        <a id="modImportReceipt" href="/moderation/import-receipt" class="text-xs font-semibold px-3 py-2 max-sm:shrink-0 max-sm:whitespace-nowrap max-sm:min-h-[40px] max-sm:inline-flex max-sm:items-center rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Import Receipt</a>
+        <a id="modImportReceipt" href="/moderation/import-receipt" class="text-xs font-semibold px-3 py-2 max-sm:shrink-0 max-sm:whitespace-nowrap max-sm:min-h-[40px] max-sm:inline-flex max-sm:items-center rounded-lg border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Import Receipt</a>
       </div>
 
       <!-- Two review sections, switched with these buttons (js/moderation.js):
@@ -103,15 +103,15 @@
       <div id="modVehicles" class="mt-16 max-sm:mt-10">
         <h2 data-split class="font-display font-bold text-2xl tracking-tight mb-2 max-sm:text-xl">REGISTRY VEHICLES</h2>
         <p class="text-xs text-slate-500 leading-relaxed mb-3 max-w-2xl">Receipts create vehicles internally, but nothing confirms who actually issued a receipt, so a new vehicle stays private until you make it public. Public visibility alone is not enough: a vehicle also needs at least one counted ride before it appears on the public site.</p>
-        <p id="modProvenanceNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Provenance describes how data entered Cybercab Hunter. It does not prove that a receipt was genuinely issued by Tesla.</p>
-        <p id="modApprovalNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(212,175,55,0.35)] pl-3">Approving a vehicle means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. Each approval or return to private is recorded in the vehicle's review history.</p>
+        <p id="modProvenanceNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(250,224,48,0.35)] pl-3">Provenance describes how data entered Cybercab Hunter. It does not prove that a receipt was genuinely issued by Tesla.</p>
+        <p id="modApprovalNote" class="text-xs text-slate-400 leading-relaxed mb-5 max-w-2xl border-l-2 border-[rgba(250,224,48,0.35)] pl-3">Approving a vehicle means a Cybercab Hunter moderator reviewed this registry record and intentionally approved it for public visibility. Each approval or return to private is recorded in the vehicle's review history.</p>
         <form id="modVehicleSearch" class="flex items-center gap-2 flex-wrap mb-5 max-sm:flex-nowrap">
-          <select id="modVehicleScope" aria-label="Which vehicles to list" class="min-w-0 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm">
+          <select id="modVehicleScope" aria-label="Which vehicles to list" class="min-w-0 bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm">
             <option value="private">Private</option>
             <option value="public">Public</option>
           </select>
-          <input id="modVehiclePlate" type="text" maxlength="40" autocomplete="off" placeholder="Or search by plate" aria-label="Search by plate" class="min-w-0 flex-1 basis-40 max-sm:basis-0 bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
-          <button type="submit" class="text-xs font-semibold px-4 py-2.5 max-sm:shrink-0 max-sm:min-h-[40px] max-sm:px-3 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Search</button>
+          <input id="modVehiclePlate" type="text" maxlength="40" autocomplete="off" placeholder="Or search by plate" aria-label="Search by plate" class="min-w-0 flex-1 basis-40 max-sm:basis-0 bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+          <button type="submit" class="text-xs font-semibold px-4 py-2.5 max-sm:shrink-0 max-sm:min-h-[40px] max-sm:px-3 rounded-lg border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Search</button>
         </form>
         <div id="modVehiclesLoading" class="hidden glass rounded-2xl p-7 h-24 animate-pulse" aria-busy="true"><span class="sr-only">Loading registry vehicles…</span></div>
         <div id="modVehiclesError" class="hidden glass rounded-2xl p-6 text-sm text-slate-400">Couldn't load registry vehicles. <button id="modVehiclesRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></div>
@@ -141,7 +141,7 @@
       <div id="modPanelNews" role="tabpanel" aria-labelledby="modTabNews" class="hidden">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <p id="modNewsRun" class="text-xs text-slate-400">Loading…</p>
-          <button id="modNewsRunNow" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Run the next ingest step now</button>
+          <button id="modNewsRunNow" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Run the next ingest step now</button>
         </div>
         <div id="modNewsList" class="space-y-2"></div>
         <div class="flex justify-center mt-4"><button id="modNewsMore" type="button" class="hidden text-xs font-semibold px-4 py-2 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5">Load older</button></div>
@@ -189,7 +189,7 @@
 </main>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=27"></script>
+<script src="js/main.js?v=28"></script>
 <script>
   CCC.init();
 </script>
@@ -199,19 +199,19 @@
     <h2 data-split id="modMapTitle" class="font-display font-bold text-lg">Add to the Zones map</h2>
     <div>
       <label for="modMapCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera</label>
-      <select id="modMapCamera" required class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <select id="modMapCamera" required class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a camera</option>
       </select>
       <p class="text-xs text-slate-500 mt-1.5">The marker goes at this camera, with this photo and the sighting's observed time.</p>
     </div>
     <div class="flex items-center gap-2 justify-end">
-      <button type="button" id="modMapCancel" class="text-xs px-4 py-2.5 rounded-lg border border-[rgba(212,175,55,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
+      <button type="button" id="modMapCancel" class="text-xs px-4 py-2.5 rounded-lg border border-[rgba(250,224,48,0.2)] text-slate-400 hover:text-slate-200">Cancel</button>
       <button type="submit" id="modMapSubmit" class="btn-magnetic text-xs font-bold px-4 py-2.5 rounded-lg bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Add to map</button>
     </div>
   </form>
 </dialog>
 
-<script src="js/moderation.js?v=12"></script>
+<script src="js/moderation.js?v=13"></script>
 <script src="js/moderation-news.js?v=5"></script>
 </body>
 </html>

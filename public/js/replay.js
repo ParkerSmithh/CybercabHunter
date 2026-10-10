@@ -33,7 +33,7 @@ window.CCCReplay = (function () {
   const PLAY_MS_AT_1X = 150000;   // at 1x any window plays in ~2.5 minutes (4x: ~37 s, 60x: ~2.5 s)
   const PING_MS = 1100;           // a landing ping's life, in real time
   const MAX_PAGES = 40;
-  const GOLD = '#D4AF37';
+  const GOLD = '#FAE030';
   // The city replayed (?city=dallas; Austin by default, its URLs unchanged).
   // Dallas: its TxDOT camera captures, framed on its service zone like Austin
   // (cameras outside it are a pan away). Same time zone.
@@ -282,7 +282,7 @@ window.CCCReplay = (function () {
           const d = state.dots[i];
           const [x, y] = project(d.lng, d.lat);
           ctx.beginPath(); ctx.arc(x, y, 8 + 30 * age, 0, Math.PI * 2);
-          ctx.lineWidth = 3 * (1 - age); ctx.strokeStyle = `rgba(212,175,55,${(1 - age).toFixed(3)})`; ctx.stroke();
+          ctx.lineWidth = 3 * (1 - age); ctx.strokeStyle = `rgba(250,224,48,${(1 - age).toFixed(3)})`; ctx.stroke();
         }
       }
       drawRibbon();

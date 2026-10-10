@@ -90,7 +90,7 @@ window.CCCAustinMap = (function () {
       { name: 'Ridgepoint Robotaxi Charging Site', lat: 30.3285815, lng: -97.6749944, note: '2323 Ridgepoint Dr, Austin, TX. 24-stall V4 DC fast-charging depot' }
     ];
     chargingLocations.forEach(c => {
-      addPin(c.lat, c.lng, '#D4AF37', `
+      addPin(c.lat, c.lng, '#FAE030', `
          <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
          <div class="font-display font-bold text-sm mb-1">${c.name}</div>
          <div class="text-xs text-slate-300">${c.note}</div>`,
@@ -105,7 +105,7 @@ window.CCCAustinMap = (function () {
       dallasChargingMarkers = [];
       if (cityOf() !== 'dallas') return;
       (opts.dallasChargingLocations || []).forEach(c => {
-        dallasChargingMarkers.push(addPin(c.lat, c.lng, '#D4AF37', `
+        dallasChargingMarkers.push(addPin(c.lat, c.lng, '#FAE030', `
          <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
          <div class="font-display font-bold text-sm mb-1">${c.name}</div>
          <div class="text-xs text-slate-300">${c.note}</div>`,
@@ -129,7 +129,7 @@ window.CCCAustinMap = (function () {
       const when = new Date(d.observed_at).toLocaleString('en-US', CAMERA_TIME);
       const image = typeof d.image_url === 'string' && /^\/api\/camera-sightings\/[A-Za-z0-9-]+\/image$/.test(d.image_url)
         ? `<img src="${d.image_url}" alt="Traffic camera capture of a Cybercab at ${escapeHtml(d.camera_name)}" class="block rounded-lg mb-2" style="width:220px;max-width:100%;aspect-ratio:16/9;object-fit:cover;background:#0c1119;">`
-        : `<div class="flex items-center justify-center rounded-lg mb-2 text-xs text-slate-400 border border-dashed border-[rgba(212,175,55,0.35)]" style="width:220px;max-width:100%;aspect-ratio:16/9;">Capture image pending</div>`;
+        : `<div class="flex items-center justify-center rounded-lg mb-2 text-xs text-slate-400 border border-dashed border-[rgba(250,224,48,0.35)]" style="width:220px;max-width:100%;aspect-ratio:16/9;">Capture image pending</div>`;
       return `
          <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Cybercab spotted</div>
          ${image}
@@ -143,7 +143,7 @@ window.CCCAustinMap = (function () {
       el.className = 'camera-cybercab';
       el.setAttribute('aria-label', `Cybercab seen by the traffic camera at ${name}`);
       el.style.cssText = 'width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-      el.innerHTML = `<span style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(8,10,16,0.8);box-shadow:0 0 0 1.5px rgba(212,175,55,0.7),0 0 12px rgba(212,175,55,0.45);"><img src="images/CybercabOverhead.png" alt="" width="30" height="30" style="width:30px;height:30px;object-fit:contain;pointer-events:none;"></span>`;
+      el.innerHTML = `<span style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(8,10,16,0.8);box-shadow:0 0 0 1.5px rgba(250,224,48,0.7),0 0 12px rgba(250,224,48,0.45);"><img src="images/CybercabOverhead.png" alt="" width="30" height="30" style="width:30px;height:30px;object-fit:contain;pointer-events:none;"></span>`;
       return el;
     }
 

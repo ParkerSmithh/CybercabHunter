@@ -360,7 +360,7 @@ async function run() {
     check('five tabs in one row, in order, Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
     check('the title is the board label, and Top Overall shows no formula line', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && d.getElementById('boardHelp').classList.contains('hidden') && !/Score =/.test(d.body.textContent));
     const first = rows[0].querySelector('a');
-    check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(212,175,55,0\.45\)\]/.test(first.className) && first.querySelector('img'));
+    check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(250,224,48,0\.45\)\]/.test(first.className) && first.querySelector('img'));
     // Alice: 2 discovered, 2 rides of 2.8 mi (the seed's default) in 2 cars, 1 city:
     // 20 + 6 + 4 + 5 + round(5.6 / 10) = 36.
     check('rows show rank, name, score in pts and the breakdown', /Alice/.test(rows[0].textContent) && /36\s*pts/.test(rows[0].textContent.replace(/\s+/g, ' ')) && /2 found · 2 rides · 2 cars · 1 city · 5\.6 mi/.test(rows[0].textContent.replace(/\u00a0/g, ' ')));

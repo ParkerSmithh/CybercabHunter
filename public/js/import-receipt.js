@@ -125,7 +125,7 @@
 
     const v = r.vehicle;
     if (v) {
-      const box = el('div', 'mt-5 pt-4 border-t border-[rgba(212,175,55,0.12)] text-sm space-y-1');
+      const box = el('div', 'mt-5 pt-4 border-t border-[rgba(250,224,48,0.12)] text-sm space-y-1');
       box.appendChild(el('p', 'text-slate-300', v.created ? 'New registry vehicle created.' : 'Matched an existing registry vehicle.'));
       if (v.publicly_eligible) {
         box.appendChild(el('p', 'text-emerald-300', 'This vehicle is public. The ride counts toward public totals.'));
@@ -188,7 +188,7 @@
     riderStatus('');
     for (const r of body.riders) {
       const li = el('li');
-      const b = el('button', 'w-full text-left rounded-lg px-3 py-2.5 border border-[rgba(212,175,55,0.15)] hover:border-gold/60 hover:bg-white/5 transition-colors');
+      const b = el('button', 'w-full text-left rounded-lg px-3 py-2.5 border border-[rgba(250,224,48,0.15)] hover:border-gold/60 hover:bg-white/5 transition-colors');
       b.type = 'button';
       b.dataset.riderId = r.id;
       b.appendChild(el('div', 'text-sm font-semibold [overflow-wrap:anywhere]', r.display_name));

@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=74">
+<link rel="stylesheet" href="css/style.css?v=75">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/community.css?v=5">
 </head>
@@ -25,7 +25,7 @@
 <div class="bg-mesh"></div>
 <a href="#main" class="skip-link">Skip to content</a>
 
-<header class="sticky top-0 z-50 glass border-b border-[rgba(212,175,55,0.15)]">
+<header class="sticky top-0 z-50 glass border-b border-[rgba(250,224,48,0.15)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-2">
       <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-12 h-12 object-contain">
@@ -44,10 +44,10 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
-      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
       <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
-        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
+        <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100">Sign In</a>
       </div>
       <div id="accountSignedIn" class="hidden">
         <button id="accountMenuTrigger" type="button" class="w-10 h-10 rounded-xl overflow-hidden bg-panel text-gold flex items-center justify-center">
@@ -59,7 +59,7 @@
   </div>
 </header>
 
-<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(212,175,55,0.15)] flex" style="padding-bottom:var(--safe-bottom,env(safe-area-inset-bottom))" aria-label="Primary">
+<nav id="mobileBottomNav" class="lg:hidden fixed bottom-0 inset-x-0 z-[90] glass border-t border-[rgba(250,224,48,0.15)] flex" style="padding-bottom:var(--safe-bottom,env(safe-area-inset-bottom))" aria-label="Primary">
   <a href="infrastructure.html" data-nav="infrastructure" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/> <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0"/></svg>
     <span class="text-[11px] font-semibold">Zones</span>
@@ -102,9 +102,9 @@
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
           <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
             aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Search by name"
-            class="w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
+            class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
         </div>
-        <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(212,175,55,0.25)] py-1 shadow-2xl"></ul>
+        <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
       </div>
       </div>
     </div>
@@ -146,7 +146,7 @@
     <div id="reviews" class="community-panel">
       <div class="flex items-start justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-2">
         <div class="flex items-start gap-3 min-w-0 max-sm:gap-2.5">
-          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
+          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(250,224,48,0.1)] border border-[rgba(250,224,48,0.25)] text-gold" aria-hidden="true">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
           </span>
           <div>
@@ -174,11 +174,11 @@
       <p id="reviewSignInNote" class="hidden text-xs text-slate-400 mt-3"><a href="signin.html?returnTo=%2Fcommunity" class="text-gold hover:underline">Sign in</a> to review a Cybercab, like reviews and comment.</p>
 
       <!-- Write / edit: signed-in riders only (the server checks every write). -->
-      <form id="reviewForm" class="hidden mt-5 p-4 rounded-xl border border-[rgba(212,175,55,0.2)] bg-white/[0.02] space-y-4" novalidate>
+      <form id="reviewForm" class="hidden mt-5 p-4 rounded-xl border border-[rgba(250,224,48,0.2)] bg-white/[0.02] space-y-4" novalidate>
         <h3 id="reviewFormTitle" class="font-display font-bold text-sm">Write a review</h3>
         <div>
           <label for="reviewVehicle" class="text-[13px] font-medium text-slate-300">Cybercab</label>
-          <select id="reviewVehicle" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+          <select id="reviewVehicle" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
             <option value="">Choose a Cybercab by plate</option>
           </select>
           <p class="text-xs text-slate-500 mt-1.5">Vehicles in the public registry. One review per Cybercab; you can edit yours any time.</p>
@@ -189,13 +189,13 @@
         </div>
         <div>
           <label for="reviewBody" class="text-[13px] font-medium text-slate-300">Your review</label>
-          <textarea id="reviewBody" rows="5" maxlength="2000" placeholder="How was the ride? Comfort, driving, cleanliness…" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-y"></textarea>
+          <textarea id="reviewBody" rows="5" maxlength="2000" placeholder="How was the ride? Comfort, driving, cleanliness…" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-y"></textarea>
           <p class="text-xs text-slate-500 text-right"><span id="reviewBodyCount">0</span> / 2000</p>
         </div>
         <div>
           <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Photos <span class="normal-case text-slate-500 font-normal">(optional, up to 3)</span></span>
           <div id="reviewPhotoList" class="mt-2 flex flex-wrap gap-2"></div>
-          <label id="reviewPhotoAdd" for="reviewPhotos" class="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] text-xs font-semibold text-gold cursor-pointer hover:border-gold">Add photos</label>
+          <label id="reviewPhotoAdd" for="reviewPhotos" class="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[rgba(250,224,48,0.35)] text-xs font-semibold text-gold cursor-pointer hover:border-gold">Add photos</label>
           <input id="reviewPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
           <p class="text-xs text-slate-500 mt-1.5">JPEG, PNG or WebP · up to 5 MB each. Location data is removed from photos.</p>
         </div>
@@ -218,7 +218,7 @@
         <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
       </div>
       <div id="reviewList" class="hidden mt-4 max-sm:mt-2"></div>
-      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(212,175,55,0.25)] bg-white/[0.02] p-8 text-center max-sm:mt-3 max-sm:p-5">
+      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(250,224,48,0.25)] bg-white/[0.02] p-8 text-center max-sm:mt-3 max-sm:p-5">
         <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
         <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
         <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
@@ -237,7 +237,7 @@
 
     <div class="community-panel">
       <div class="flex items-start gap-3 max-sm:gap-2.5">
-        <span class="w-10 h-10 max-sm:w-8 max-sm:h-8 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.25)] text-gold" aria-hidden="true">
+        <span class="w-10 h-10 max-sm:w-8 max-sm:h-8 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(250,224,48,0.1)] border border-[rgba(250,224,48,0.25)] text-gold" aria-hidden="true">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21l8 0"/> <path d="M12 17l0 4"/> <path d="M7 4l10 0"/> <path d="M17 4v8a5 5 0 0 1 -10 0v-8"/> <path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/> <path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
         </span>
         <div class="min-w-0 flex-1">
@@ -292,7 +292,7 @@
     <h2 class="font-display font-bold text-xl uppercase tracking-wide">Account</h2>
     <button id="closeAccountDrawer" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
   </div>
-  <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(212,175,55,0.15)]">
+  <div class="flex items-center gap-2 mb-6 pb-6 border-b border-[rgba(250,224,48,0.15)]">
     <span id="accountMenuProviderLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider"></span>
   </div>
   <div class="space-y-1 mb-6">
@@ -305,7 +305,7 @@
       Rider Data
     </a>
   </div>
-  <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(212,175,55,0.12)] pt-4">
+  <button id="accountMenuSignOut" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-crimson hover:bg-white/5 transition-colors border-t border-[rgba(250,224,48,0.12)] pt-4">
     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/> <path d="M9 12h12l-3 -3"/> <path d="M18 15l3 -3"/></svg>
     Sign out
   </button>
@@ -324,7 +324,7 @@
   <form id="sightingForm" class="space-y-5">
     <div>
       <span class="text-[13px] font-medium text-slate-300">Photo</span>
-      <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(212,175,55,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
+      <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(250,224,48,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
         <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
         <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
@@ -335,7 +335,7 @@
     <div>
       <label for="sightingServiceArea" class="text-[13px] font-medium text-slate-300">City / Service Area <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from the supported service areas (GET /api/service-areas). -->
-      <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <select id="sightingServiceArea" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Choose a city</option>
       </select>
     </div>
@@ -344,8 +344,8 @@
       <!-- Only a real place can be chosen: type, then pick from the suggestions
            (GET /api/places, OpenStreetMap via worker/places.js). -->
       <div class="relative mt-2">
-        <input id="sightingLoc" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="sightingLocOptions" aria-describedby="sightingLocHelp" disabled placeholder="Choose a city first" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">
-        <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(212,175,55,0.3)] rounded-lg shadow-xl py-1"></ul>
+        <input id="sightingLoc" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="sightingLocOptions" aria-describedby="sightingLocHelp" disabled placeholder="Choose a city first" class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">
+        <ul id="sightingLocOptions" role="listbox" aria-label="Matching places" class="hidden absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-panel border border-[rgba(250,224,48,0.3)] rounded-lg shadow-xl py-1"></ul>
       </div>
       <input id="sightingLocId" type="hidden">
       <p id="sightingLocHelp" class="text-xs text-slate-500 mt-1.5">Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search &copy; OpenStreetMap.</p>
@@ -353,36 +353,36 @@
     </div>
     <div>
       <label for="sightingDate" class="text-[13px] font-medium text-slate-300">Date Spotted <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
     <div>
       <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
-      <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
+      <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>
       </select>
       <p id="sightingCameraHelp" class="text-xs text-slate-500 mt-1.5">Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.</p>
     </div>
     <div>
       <label for="sightingNotes" class="text-[13px] font-medium text-slate-300">Description <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
+      <textarea id="sightingNotes" rows="3" maxlength="280" placeholder="What did you see?" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-none"></textarea>
     </div>
     <div>
       <label for="sightingVehicle" class="text-[13px] font-medium text-slate-300">License Plate <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
-      <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(212,175,55,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
+      <input id="sightingVehicle" placeholder="e.g. ABC-1234" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600">
     </div>
     <button id="sightingSubmitBtn" type="submit" class="btn-magnetic w-full py-3.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
     <p class="text-xs text-slate-500 text-center leading-relaxed">Sightings are submitted for review. They're not verified or made public immediately.</p>
   </form>
   <div id="sightingSuccess" class="hidden text-center py-8" role="status">
-    <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(212,175,55,0.35)] flex items-center justify-center text-gold">
+    <div class="w-14 h-14 mx-auto mb-5 rounded-full border border-[rgba(250,224,48,0.35)] flex items-center justify-center text-gold">
       <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
     </div>
     <h3 class="font-display font-bold text-xl mb-2">Sighting submitted!</h3>
     <p class="text-sm text-slate-400 mb-7">Your photo has been received and is awaiting review.</p>
     <div class="flex gap-3 justify-center">
-      <button id="sightingAnother" type="button" class="px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Submit another</button>
+      <button id="sightingAnother" type="button" class="px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100">Submit another</button>
       <button id="sightingDone" type="button" class="btn-magnetic px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Done</button>
     </div>
   </div>
@@ -420,13 +420,13 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=27"></script>
+<script src="js/main.js?v=28"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=12"></script>
+<script src="js/community.js?v=13"></script>
 <script src="js/peek-rating.js?v=1"></script>
-<script src="js/reviews.js?v=7"></script>
+<script src="js/reviews.js?v=8"></script>
 <script src="js/rider-search.js?v=2"></script>
 </body>
 </html>

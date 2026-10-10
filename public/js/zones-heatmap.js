@@ -25,8 +25,8 @@ window.CCCZonesHeat = (function () {
   const when = iso => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) + ' CT';
   // The gradient: transparent -> faint gold -> soft yellow -> bright gold -> orange -> red-orange.
   const HEAT_COLOR = ['interpolate', ['linear'], ['heatmap-density'],
-    0, 'rgba(212,175,55,0)', 0.1, 'rgba(212,175,55,0.16)', 0.28, 'rgba(243,229,171,0.5)',
-    0.5, 'rgba(212,175,55,0.82)', 0.75, 'rgba(249,115,22,0.88)', 1, 'rgba(255,69,0,0.95)'];
+    0, 'rgba(250,224,48,0)', 0.1, 'rgba(250,224,48,0.16)', 0.28, 'rgba(243,229,171,0.5)',
+    0.5, 'rgba(250,224,48,0.82)', 0.75, 'rgba(249,115,22,0.88)', 1, 'rgba(255,69,0,0.95)'];
 
   // Per-camera numbers for the selection (hour: null = all hours).
   function statsFor(cam, hour) {

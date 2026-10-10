@@ -23,7 +23,7 @@
   const els = [...document.querySelectorAll('[data-dmv-panel]')];
   if (!els.length) return;
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const GOLD = '#D4AF37', RED = '#ef4444';
+  const GOLD = '#FAE030', RED = '#ef4444';
   const RANGES = { All: Infinity, '1W': 7, '1M': 30, '90D': 90 };
   const DAY = 864e5;
   const int = n => (typeof n === 'number' ? n.toLocaleString('en-US') : '—');
@@ -343,14 +343,14 @@
           </div>
         </div>
         <div class="mt-5 grid grid-cols-2 gap-3 max-sm:grid-cols-1 max-sm:mt-4 max-sm:gap-2">
-          ${card(GOLD, '212 175 55', 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
+          ${card(GOLD, '250 224 48', 'Cybercab', '/images/dmv-cybercab.webp', s.cybercab, n.cybercab_30d)}
           ${card(RED, '239 68 68', 'Model Y', '/images/dmv-model-y.webp', s.model_y, n.model_y_30d, 'red')}
         </div>
         <div class="mt-5 flex items-center gap-6 max-sm:mt-4 max-sm:flex-col-reverse max-sm:items-stretch max-sm:gap-3">
         <p class="flex-1 min-w-0 text-[11px] text-slate-500 leading-relaxed max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
           ? ` Before ${esc(longDate(hist.until))}, counts are approximate.${fc ? ' Projected values are estimates, not official TxDMV numbers.' : ''}`
           : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>
-        <a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(212,175,55,0.75)] max-sm:justify-between">
+        <a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(250,224,48,0.75)] max-sm:justify-between">
           <span class="flex items-center gap-3">
             <span class="grid place-items-center w-10 h-10 rounded-lg bg-black/[0.12]" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
             <span class="text-left leading-tight"><span class="block text-base font-bold tracking-tight">View Registry</span><span class="block text-xs font-semibold opacity-70 stat-value">${int(s.total)} VINs · <span class="max-sm:hidden">straight </span>from TxDMV</span></span>

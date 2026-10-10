@@ -68,7 +68,7 @@
   // Cybercab, red for a Model Y, slate for anything else; `glow` is the React
   // Bits BorderGlow colour ([data-glow], js/main.js; "" = gold).
   const KINDS = {
-    cybercab: { rgb: '212 175 55', hex: '#D4AF37', text: 'text-gold', glow: '' },
+    cybercab: { rgb: '250 224 48', hex: '#FAE030', text: 'text-gold', glow: '' },
     modely: { rgb: '239 68 68', hex: '#ef4444', text: 'text-red-400', glow: 'red' },
     other: { rgb: '148 163 184', hex: '#94a3b8', text: 'text-slate-300', glow: '' }
   };
@@ -164,7 +164,7 @@
     top.appendChild(eyebrow);
     // The plate, styled like one (the same treatment as the Sightings cards).
     top.appendChild(el('h2', v.license_plate
-      ? 'mt-3 inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:mt-2 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.6)] [overflow-wrap:anywhere]'
+      ? 'mt-3 inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:mt-2 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(250,224,48,0.6)] [overflow-wrap:anywhere]'
       : 'mt-3 font-display font-bold text-lg text-slate-400 max-sm:mt-2 max-sm:text-sm', v.license_plate || 'Plate not recorded'));
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');

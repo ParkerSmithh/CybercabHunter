@@ -7,7 +7,7 @@
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PAGE = 100;
   let model = '', q = '', offset = 0, seq = 0, timer = 0;
-  const dot = m => (/cybercab/i.test(m) ? '#D4AF37' : /model y/i.test(m) ? '#ef4444' : '#64748b');
+  const dot = m => (/cybercab/i.test(m) ? '#FAE030' : /model y/i.test(m) ? '#ef4444' : '#64748b');
   async function load(reset) {
     const mine = ++seq;
     if (reset) { offset = 0; $('vinRows').innerHTML = ''; }

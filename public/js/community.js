@@ -41,10 +41,10 @@
         <span class="block text-[11px] uppercase tracking-wide text-slate-500 mt-1">${esc(e.count === 1 ? unit[0] : unit[1])}</span>
       </span>`;
     const box = `w-full flex items-center gap-3 p-3 max-sm:gap-2.5 max-sm:px-2.5 max-sm:py-2 rounded-xl border transition-colors ${first
-      ? 'border-[rgba(212,175,55,0.45)] bg-gradient-to-r from-[rgba(212,175,55,0.12)] to-transparent'
+      ? 'border-[rgba(250,224,48,0.45)] bg-gradient-to-r from-[rgba(250,224,48,0.12)] to-transparent'
       : 'border-transparent hover:bg-white/[0.03]'}`;
     if (e.profile && e.handle) {
-      return `<li><a href="/rider/${encodeURIComponent(e.handle)}" class="${box} hover:border-[rgba(212,175,55,0.5)]">${inner}</a></li>`;
+      return `<li><a href="/rider/${encodeURIComponent(e.handle)}" class="${box} hover:border-[rgba(250,224,48,0.5)]">${inner}</a></li>`;
     }
     // No public page: tapping explains why, and nothing else.
     const note = "This spotter hasn't set up a public profile yet.";

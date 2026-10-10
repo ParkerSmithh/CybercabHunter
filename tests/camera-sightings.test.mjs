@@ -196,7 +196,7 @@ async function run() {
     const m65 = p.live().find(m => m.popup.html.includes('TRINITY'));
     check('the marker sits at the camera: [lng, lat], anchored center', m65.ll[0] === -97.734512 && m65.ll[1] === 30.279638 && m65.anchor === 'center');
     check('the marker icon is CybercabOverhead.png at 34px inside a 44px tap target, with a gold ring',
-      m65.el.querySelector('img').getAttribute('src') === 'images/CybercabOverhead.png' && m65.el.style.width === '44px' && /width:34px/.test(m65.el.innerHTML) && /rgba\(212,175,55/.test(m65.el.innerHTML));
+      m65.el.querySelector('img').getAttribute('src') === 'images/CybercabOverhead.png' && m65.el.style.width === '44px' && /width:34px/.test(m65.el.innerHTML) && /rgba\(250,224,48/.test(m65.el.innerHTML));
     check('the marker has an accessible label', /TRINITY/.test(m65.el.getAttribute('aria-label')));
     const html = m65.popup.html;
     check('popup: the capture image (220px max, rounded)', /<img src="\/api\/camera-sightings\/id-65\/image"/.test(html) && /width:220px;max-width:100%/.test(html) && /rounded-lg/.test(html));
@@ -288,7 +288,7 @@ async function run() {
     check('...the Zones map too', zones.maps[0].o.style === DARK_MATTER && Object.keys(zones.paints).length === 0);
     check('...and the Replay map', /style: window\.CCCAustinMap \? CCCAustinMap\.styleUrl\(\)/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8')) && !/openfreemap/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8') + fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8')));
     check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v8)', /<script src="js\/austin-map\.js\?v=8"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=8"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v9)', /<script src="js\/austin-map\.js\?v=9"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=9"><\/script>/.test(ZONES));
   }
 
   t.finish();
