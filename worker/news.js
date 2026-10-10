@@ -485,6 +485,16 @@ export function extractImage(html, pageUrl) {
   return null;
 }
 
+// A WebP's pixel width, from its header (VP8, VP8L or VP8X); null if unreadable.
+export function webpWidth(b) {
+  if (!b || b.length < 30 || String.fromCharCode(...b.subarray(0, 4)) !== 'RIFF' || String.fromCharCode(...b.subarray(8, 12)) !== 'WEBP') return null;
+  const chunk = String.fromCharCode(...b.subarray(12, 16));
+  if (chunk === 'VP8 ') return (b[26] | (b[27] << 8)) & 0x3fff;
+  if (chunk === 'VP8L') return 1 + ((b[21] | (b[22] << 8)) & 0x3fff);
+  if (chunk === 'VP8X') return 1 + (b[24] | (b[25] << 8) | (b[26] << 16));
+  return null;
+}
+
 // One story's thumbnail. Returns { status: 'done', key } or { status: 'failed' |
 // 'skipped', reason }. A failure never touches the story itself.
 export async function makeThumb(env, story, { fetchImpl = fetch, cfg } = {}) {
@@ -513,6 +523,10 @@ export async function makeThumb(env, story, { fetchImpl = fetch, cfg } = {}) {
     if (!/^image\/webp/i.test(r.headers.get('content-type') || '')) return { status: 'failed', reason: 'no_transform' };
     bytes = await readCapped(r, THUMB_MAX_BYTES + 1);
     if (bytes.length > THUMB_MAX_BYTES) return { status: 'failed', reason: 'too_big' };
+    // A WebP the publisher served itself (not resized by us) is refused too:
+    // only a real thumbnail, at most 400 px wide, is ever stored.
+    const w = webpWidth(bytes);
+    if (!w || w > 400) return { status: 'failed', reason: 'not_resized' };
   } catch (e) { return { status: 'failed', reason: 'image_fetch' }; }
   const key = thumbKey(story.id);
   await env.NEWS_THUMBS.put(key, bytes, { httpMetadata: { contentType: 'image/webp', cacheControl: 'public, max-age=2592000' } });

@@ -39,11 +39,13 @@ const FEED_BODIES = {
   theverge: `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><title type="html"><![CDATA[Tesla’s robotaxi service expands to Dallas suburbs]]></title><link rel="alternate" type="text/html" href="https://www.theverge.com/tesla/1/dallas" /><published>2026-10-08T09:00:00-04:00</published><summary type="html"><![CDATA[Tesla’s robotaxi now covers Plano and Frisco.]]></summary></entry></feed>`
 };
 const PAGE = (og, tw, imgs = '') => `<!doctype html><html><head><title>x</title>${og ? `<meta property="og:image" content="${og}">` : ''}${tw ? `<meta name="twitter:image" content="${tw}">` : ''}</head><body>${imgs}<p>article</p></body></html>`;
-const WEBP = new Uint8Array([82, 73, 70, 70, 36, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 32, 1, 2, 3, 4]);   // "RIFF....WEBPVP8 "
+// A WebP header ("RIFF....WEBPVP8 ") with a given pixel width.
+const webpOf = width => { const b = new Uint8Array(40); b.set([82, 73, 70, 70, 32, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 32]); b[23] = 0x9d; b[24] = 0x01; b[25] = 0x2a; b[26] = width & 0xff; b[27] = (width >> 8) & 0x3f; b[28] = 0x10; b[29] = 0x01; return b; };
+const WEBP = webpOf(400);
 
 // A stub web: the feeds, robots.txt, article pages and images. Image requests
 // with cf.image come back as WebP (Image Transformations on) unless transform:false.
-function stubWeb({ notModified = false, transform = true, robots = {}, pages = {}, failPages = [] } = {}) {
+function stubWeb({ notModified = false, transform = true, robots = {}, pages = {}, failPages = [], nativeWebp = false } = {}) {
   const calls = [];
   const fn = async (url, init = {}) => {
     const u = String(url);
@@ -58,6 +60,7 @@ function stubWeb({ notModified = false, transform = true, robots = {}, pages = {
     if (failPages.some(p => u.startsWith(p))) return new Response('err', { status: 500 });
     if (pages[u] != null) return new Response(pages[u], { headers: { 'content-type': 'text/html; charset=utf-8' } });
     if (/\.(jpe?g|png|webp)(\?|$)/i.test(u)) {
+      if (nativeWebp) return new Response(webpOf(1600), { headers: { 'content-type': 'image/webp' } });   // the site's own full-size WebP
       if (init.cf && init.cf.image && transform) return new Response(WEBP, { headers: { 'content-type': 'image/webp' } });
       return new Response(new Uint8Array(500000), { headers: { 'content-type': 'image/jpeg' } });
     }
@@ -173,6 +176,11 @@ async function run() {
     insertStory(e2, { id: uuid(2), url: 'https://good.example/article', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
     await processThumbs(e2.env, { fetchImpl: stubWeb({ transform: false, pages: { 'https://good.example/article': PAGE('https://img.good.example/photo.jpg', null) } }) });
     check('no transformation -> no thumbnail and nothing stored (never a full-size image)', e2.env.NEWS_THUMBS._objects.size === 0 && rows(e2)[0].thumb_status === 'failed:no_transform' && rows(e2)[0].thumb_key === null);
+    // A publisher that serves its own full-size WebP (no transformation ran): refused.
+    const e2b = await makeApp();
+    insertStory(e2b, { id: uuid(22), url: 'https://good.example/article', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
+    await processThumbs(e2b.env, { fetchImpl: stubWeb({ nativeWebp: true, pages: { 'https://good.example/article': PAGE('https://img.good.example/photo.webp', null) } }) });
+    check('a WebP wider than 400 px (the publisher\'s own file, not our resize) is refused, nothing stored', e2b.env.NEWS_THUMBS._objects.size === 0 && rows(e2b)[0].thumb_status === 'failed:not_resized');
     // robots.txt disallows the article -> the page is never fetched.
     const e3 = await makeApp();
     insertStory(e3, { id: uuid(3), url: 'https://strict.example/news/1', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
