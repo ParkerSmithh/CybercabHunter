@@ -20,7 +20,7 @@ import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
-import { apiNews, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runScheduledNews, NEWS_CRON } from './news.js';
+import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
 import { requireModerator } from './moderation.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory } from './camera-sightings.js';
 import { apiMuseLogRide } from './muse-rides.js';
@@ -376,6 +376,10 @@ export default {
     if (url.pathname === '/api/news' && request.method === 'GET') {
       return withCors(await apiNews(request, env, ctx), request);
     }
+    const newsImg = url.pathname.match(/^\/news-img\/([0-9a-f-]{36})\.webp$/i);
+    if (newsImg && (request.method === 'GET' || request.method === 'HEAD')) {
+      return apiNewsImage(request, env, newsImg[1]);
+    }
     if (url.pathname.startsWith('/api/moderation/news')) {
       const auth = await requireModerator(request, env);
       if (auth.error) {
@@ -613,10 +617,10 @@ export default {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}));
       return;
     }
-    // Daily, 6 AM Chicago: the news ingest (worker/news.js; the cron fires at
-    // 11:00 and 12:00 UTC and only the one that is 6 AM local does the work).
+    // Every 10 minutes (offset from the */10 run): one news step (worker/news.js
+    // runNewsTick: the next feed, a few thumbnails, the daily prune).
     if (controller && controller.cron === NEWS_CRON) {
-      ctx.waitUntil(runScheduledNews(env).catch(() => {}));
+      ctx.waitUntil(runNewsTick(env).catch(() => {}));
       return;
     }
     // Daily: the TxDMV automated-vehicle roster snapshot (worker/txdmv.js).

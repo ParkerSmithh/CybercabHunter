@@ -1,58 +1,67 @@
-// /news (worker/news.js, migrations/0029): the feed ingest against stubbed
-// RSS / Atom, the public API and the moderator tools.
-//   - parsing: Google News (" - Publisher" stripped, the source tag), RSS with
-//     an enclosure, Atom; canonical URLs without tracking params
-//   - the allowlist (cybercab, or robotaxi + tesla) and the blocklist (stock
-//     stories), both read from news_config
-//   - reruns insert nothing twice; a 304 is "nothing new"
-//   - the same story at three outlets is one cluster, importance 2
-//   - GET /api/news: shape, newest first, cursor pages, hidden never served,
-//     major-only, search
-//   - moderation: 401 / 403 for others; hide / unhide / feature; config edit
-//   - the scheduled run only works at 6 AM Chicago
+// /news (worker/news.js; migrations 0029-0031): the publisher-feed ingest,
+// the 10-minute step, thumbnails, 30-day retention, the public API and the
+// moderator tools — all against stubbed feeds, pages and images.
+//   - parsing: RSS (CDATA, enclosure, <source>), Atom; canonical URLs; excerpts
+//   - the allowlist / blocklist / publisher blocklist; dedupe; 304s; 30-day cap
+//   - clustering (no chaining) and scoring
+//   - the 10-minute step: one feed per run, in rotation; prune daily, sweep monthly
+//   - thumbnails: og:image -> twitter:image -> <img> > 200 px; robots.txt;
+//     thumb_blocklist; 400 px WebP via Image Transformations, never the original;
+//     failures leave the story intact
+//   - retention: 30-day prune of rows AND R2 objects (hidden / featured too);
+//     orphan sweep; keyset pages survive rows vanishing
+//   - GET /api/news (thumb_url before image_url), /news-img/<id>.webp, moderation
 // Run: node tests/news.test.mjs
 
 import worker from '../worker/index.js';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
-import { runNewsIngest, runScheduledNews, parseFeed, canonicalUrl, clusterAndScore, NEWS_CRON, FEEDS } from '../worker/news.js';
+import { fakeR2 } from './helpers/d1-sqlite.mjs';
+import { runNewsIngest, runNewsTick, parseFeed, canonicalUrl, clusterAndScore, extractImage, parseRobots, robotsAllows, makeThumb, processThumbs, pruneOld, sweepOrphans, thumbKey, NEWS_CRON, FEEDS } from '../worker/news.js';
 import fs from 'node:fs';
 
 const t = makeCheck();
 const { check } = t;
-const NOW = Date.parse('2026-10-09T11:00:00Z');   // 6 AM CDT
+const NOW = Date.parse('2026-10-09T16:00:00Z');
 const iso = h => new Date(NOW - h * 3600e3).toUTCString();
+const feedOf = id => FEEDS.find(f => f.id === id);
 
-const gItem = (title, src, srcUrl, hoursAgo, id) => `<item><title>${title} - ${src}</title><link>https://news.google.com/rss/articles/${id}?oc=5</link><guid isPermaLink="false">${id}</guid><pubDate>${iso(hoursAgo)}</pubDate><description>&lt;a href="https://news.google.com/rss/articles/${id}?oc=5"&gt;${title}&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;${src}&lt;/font&gt;</description><source url="${srcUrl}">${src}</source></item>`;
-const GOOGLE = `<?xml version="1.0"?><rss><channel><title>Google News</title>
-${gItem('Tesla Cybercab launches in Phoenix, its third city', 'Reuters', 'https://www.reuters.com', 5, 'AAA1')}
-${gItem('Tesla launches Cybercab in Phoenix as third city', 'The Verge', 'https://www.theverge.com', 7, 'AAA2')}
-${gItem('Cybercab launches in Phoenix: Tesla third city', 'CNBC', 'https://www.cnbc.com', 9, 'AAA3')}
-${gItem('Tesla stock jumps as Cybercab hype builds', 'MarketWatch', 'https://www.marketwatch.com', 3, 'AAA4')}
-${gItem('Ford unveils a new electric pickup', 'Autoblog', 'https://www.autoblog.com', 2, 'AAA5')}
-${gItem('Tesla robotaxi app adds airport pickups in Austin', 'Teslarati', 'https://www.teslarati.com', 30, 'AAA6')}
-${gItem('Tesla posts video of the Cybercab interior', 'Tesla', 'https://www.tesla.com', 50, 'AAA7')}
-</channel></rss>`;
-const ELECTREK = `<?xml version="1.0"?><rss xmlns:media="http://search.yahoo.com/mrss/"><channel>
-<item><title><![CDATA[Tesla Cybercab spotted testing in snow]]></title><link>https://electrek.co/2026/10/08/cybercab-snow/?utm_source=rss&amp;utm_medium=feed</link><pubDate>${iso(20)}</pubDate>
-<description><![CDATA[<p>A Tesla Cybercab prototype was seen <b>testing</b> on snowy roads near the Gigafactory, a first for the two-seat robotaxi.</p>]]></description>
-<enclosure url="https://electrek.co/wp-content/uploads/cybercab-snow.jpg" type="image/jpeg" length="48000"/></item>
-<item><title>Rivian R2 deliveries begin</title><link>https://electrek.co/2026/10/08/r2/</link><pubDate>${iso(21)}</pubDate><description>Not about robotaxis.</description></item>
-</channel></rss>`;
-const VERGE_ATOM = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
-<entry><title type="html"><![CDATA[Tesla’s robotaxi service expands to Dallas suburbs]]></title><link rel="alternate" type="text/html" href="https://www.theverge.com/transportation/1/tesla-robotaxi-dallas" /><published>2026-10-08T09:00:00-04:00</published><summary type="html"><![CDATA[Tesla’s robotaxi now covers Plano and Frisco.]]></summary></entry>
-</feed>`;
+const rssItem = (title, link, hoursAgo, desc = '', extra = '') => `<item><title><![CDATA[${title}]]></title><link>${link}</link><pubDate>${iso(hoursAgo)}</pubDate><description><![CDATA[${desc}]]></description>${extra}</item>`;
+const RSS = items => `<?xml version="1.0"?><rss xmlns:media="http://search.yahoo.com/mrss/"><channel>${items.join('')}</channel></rss>`;
+const FEED_BODIES = {
+  electrek: RSS([
+    rssItem('Tesla Cybercab launches in Phoenix, its third city', 'https://electrek.co/phoenix/?utm_source=rss', 5, '<p>Tesla <b>launched</b> Cybercab rides in Phoenix today.</p>'),
+    rssItem('Tesla Cybercab spotted testing in snow', 'https://electrek.co/snow/', 20, 'A prototype was seen on snowy roads.', '<enclosure url="https://electrek.co/snow.jpg" type="image/jpeg" length="48000"/>'),
+    rssItem('Rivian R2 deliveries begin', 'https://electrek.co/r2/', 21, 'Not about robotaxis.'),
+    rssItem('Tesla stock jumps on Cybercab hype', 'https://electrek.co/stock/', 3, '')
+  ]),
+  teslarati: RSS([rssItem('Tesla launches Cybercab in Phoenix as third city', 'https://www.teslarati.com/phoenix/', 7, 'Phoenix is next.')]),
+  notateslaapp: RSS([rssItem('Cybercab launches in Phoenix: Tesla third city', 'https://www.notateslaapp.com/phoenix', 9, 'More cities.'), rssItem('Old Cybercab story from spring', 'https://www.notateslaapp.com/old', 24 * 60, 'old')]),
+  theverge: `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><title type="html"><![CDATA[Tesla’s robotaxi service expands to Dallas suburbs]]></title><link rel="alternate" type="text/html" href="https://www.theverge.com/tesla/1/dallas" /><published>2026-10-08T09:00:00-04:00</published><summary type="html"><![CDATA[Tesla’s robotaxi now covers Plano and Frisco.]]></summary></entry></feed>`
+};
+const PAGE = (og, tw, imgs = '') => `<!doctype html><html><head><title>x</title>${og ? `<meta property="og:image" content="${og}">` : ''}${tw ? `<meta name="twitter:image" content="${tw}">` : ''}</head><body>${imgs}<p>article</p></body></html>`;
+const WEBP = new Uint8Array([82, 73, 70, 70, 36, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 32, 1, 2, 3, 4]);   // "RIFF....WEBPVP8 "
 
-function stubFetch({ notModified = false } = {}) {
+// A stub web: the feeds, robots.txt, article pages and images. Image requests
+// with cf.image come back as WebP (Image Transformations on) unless transform:false.
+function stubWeb({ notModified = false, transform = true, robots = {}, pages = {}, failPages = [] } = {}) {
   const calls = [];
   const fn = async (url, init = {}) => {
-    calls.push({ url: String(url), init });
     const u = String(url);
-    if (init.method === 'HEAD') return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg', 'content-length': '40000' } });
-    if (notModified && !u.includes('news.google.com')) return new Response(null, { status: 304 });
-    if (u.includes('news.google.com')) return new Response(u.includes('after%3A') ? '<rss><channel></channel></rss>' : GOOGLE, { headers: { 'content-type': 'application/xml' } });
-    if (u.includes('electrek')) return new Response(ELECTREK, { headers: { etag: '"e1"', 'last-modified': 'Fri, 09 Oct 2026 10:00:00 GMT' } });
-    if (u.includes('theverge')) return new Response(VERGE_ATOM, { headers: { etag: '"v1"' } });
-    return new Response('<rss><channel></channel></rss>');
+    calls.push({ url: u, init });
+    const host = new URL(u).host;
+    if (u.endsWith('/robots.txt')) return robots[host] != null ? new Response(robots[host]) : new Response('not found', { status: 404 });
+    const feed = FEEDS.find(f => f.url === u);
+    if (feed) {
+      if (notModified) return new Response(null, { status: 304 });
+      return new Response(FEED_BODIES[feed.id] || RSS([]), { headers: { etag: `"${feed.id}-1"`, 'last-modified': 'Fri, 09 Oct 2026 10:00:00 GMT' } });
+    }
+    if (failPages.some(p => u.startsWith(p))) return new Response('err', { status: 500 });
+    if (pages[u] != null) return new Response(pages[u], { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    if (/\.(jpe?g|png|webp)(\?|$)/i.test(u)) {
+      if (init.cf && init.cf.image && transform) return new Response(WEBP, { headers: { 'content-type': 'image/webp' } });
+      return new Response(new Uint8Array(500000), { headers: { 'content-type': 'image/jpeg' } });
+    }
+    return new Response(PAGE('/img/hero.jpg', null), { headers: { 'content-type': 'text/html' } });
   };
   fn.calls = calls;
   return fn;
@@ -63,6 +72,7 @@ async function makeApp() {
   ctx.d1.exec(`UPDATE users SET role = 'moderator' WHERE id = 'mod'`);
   for (const u of ['rider', 'mod']) await ctx.env.TESLA_SESSIONS.put(`session:session-${u}`, JSON.stringify({ user_id: u }));
   ctx.env.ASSETS = { fetch: async () => new Response('asset') };
+  ctx.env.NEWS_THUMBS = fakeR2();
   return ctx;
 }
 const call = async (ctx, method, path, { session, body } = {}) => {
@@ -71,167 +81,182 @@ const call = async (ctx, method, path, { session, body } = {}) => {
   if (body) headers['Content-Type'] = 'application/json';
   const r = await worker.fetch(new Request(`https://x${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }), ctx.env, { waitUntil() {} });
   let json = null; try { json = await r.clone().json(); } catch (e) { json = null; }
-  return { status: r.status, json };
+  return { status: r.status, json, r };
 };
 const rows = ctx => ctx.d1.query(`SELECT * FROM news_articles ORDER BY published_at DESC`);
+const insertStory = (ctx, o) => ctx.d1.prepare(`INSERT INTO news_articles (id, title, url, source, published_at, cluster_id, thumb_key, thumb_status, hidden, featured, importance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+  .bind(o.id, o.title || 'Cybercab story', o.url || `https://example.com/${o.id}`, o.source || 'Example', o.published_at, o.id, o.thumb_key || null, o.thumb_status || 'done', o.hidden || 0, o.featured || 0, o.importance || 0)._exec();
+const uuid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 async function run() {
-  console.log('1. Parsing and URLs');
+  console.log('1. Sources and parsing');
   {
-    const g = parseFeed(GOOGLE, FEEDS.find(f => f.kind === 'google'));
-    check('Google News: the " - Publisher" suffix is stripped and the outlet comes from <source>', g[0].title === 'Tesla Cybercab launches in Phoenix, its third city' && g[0].source === 'Reuters');
-    check('...its description (just the headline again) gives no excerpt', g[0].excerpt === null);
-    check('...a tesla.com story is "official", a Reuters one "press"', g.find(i => i.source === 'Tesla').source_type === 'official' && g[0].source_type === 'press');
-    const e = parseFeed(ELECTREK, FEEDS.find(f => f.id === 'electrek'));
-    check('RSS: CDATA title, tags stripped from the excerpt, the enclosure as a thumbnail candidate', e[0].title === 'Tesla Cybercab spotted testing in snow' && /^A Tesla Cybercab prototype was seen testing on snowy roads/.test(e[0].excerpt) && !/<|>/.test(e[0].excerpt) && e[0].media[0].url.endsWith('cybercab-snow.jpg'));
-    check('canonical URL: tracking params removed', e[0].url === 'https://electrek.co/2026/10/08/cybercab-snow/' && canonicalUrl('https://x.com/a?utm_source=b&fbclid=c&gclid=d&id=7') === 'https://x.com/a?id=7');
-    const a = parseFeed(VERGE_ATOM, FEEDS.find(f => f.id === 'theverge'));
-    check('Atom: the alternate link, published date, summary', a.length === 1 && a[0].url === 'https://www.theverge.com/transportation/1/tesla-robotaxi-dallas' && a[0].published_at === '2026-10-08T13:00:00.000Z' && /Plano and Frisco/.test(a[0].excerpt));
-    const long = parseFeed(`<rss><item><title>Cybercab</title><link>https://a.com/1</link><pubDate>${iso(1)}</pubDate><description>${'word '.repeat(200)}</description></item></rss>`, { id: 'x', kind: 'rss', name: 'A' });
+    check('eleven publisher feeds, no Google News', FEEDS.length === 11 && FEEDS.every(f => f.kind === 'rss' && /^https:\/\//.test(f.url) && !/news\.google\.com/.test(f.url)));
+    const e = parseFeed(FEED_BODIES.electrek, feedOf('electrek'));
+    check('RSS: CDATA title, the outlet from the feed, tags stripped from the excerpt', e[0].title === 'Tesla Cybercab launches in Phoenix, its third city' && e[0].source === 'Electrek' && e[0].excerpt === 'Tesla launched Cybercab rides in Phoenix today.');
+    check('canonical URL: tracking params removed', e[0].url === 'https://electrek.co/phoenix/' && canonicalUrl('https://x.com/a?utm_source=b&fbclid=c&gclid=d&id=7') === 'https://x.com/a?id=7');
+    const a = parseFeed(FEED_BODIES.theverge, feedOf('theverge'));
+    check('Atom: the alternate link, published date, summary', a.length === 1 && a[0].url === 'https://www.theverge.com/tesla/1/dallas' && a[0].published_at === '2026-10-08T13:00:00.000Z' && /Plano and Frisco/.test(a[0].excerpt));
+    const agg = parseFeed(RSS([rssItem('Cybercab news - Some Outlet', 'https://agg.example/1', 1, '', '<source url="https://some.example">Some Outlet</source>')]), { id: 'x', kind: 'rss', name: 'Agg' });
+    check('an RSS <source> names the outlet (and its " - Outlet" suffix is dropped)', agg[0].source === 'Some Outlet' && agg[0].title === 'Cybercab news');
+    const long = parseFeed(RSS([rssItem('Cybercab', 'https://a.com/1', 1, 'word '.repeat(200))]), { id: 'x', kind: 'rss', name: 'A' });
     check('an excerpt is at most ~280 characters, never the full text', long[0].excerpt.length <= 280 && long[0].excerpt.endsWith('…'));
   }
 
-  console.log('2. The ingest');
+  console.log('2. Ingest (all feeds)');
   const ctx = await makeApp();
   {
-    const f = stubFetch();
-    const log = await runNewsIngest(ctx.env, { fetchImpl: f, nowMs: NOW });
-    const r = rows(ctx);
-    const titles = r.map(x => x.title);
-    check('kept: the Cybercab and "Tesla robotaxi" stories', titles.includes('Tesla Cybercab spotted testing in snow') && titles.includes('Tesla robotaxi app adds airport pickups in Austin') && titles.includes('Tesla’s robotaxi service expands to Dallas suburbs'));
-    check('dropped: the stock story (blocklist) and the generic EV stories (no match)', !titles.some(x => /stock|Ford|Rivian/.test(x)) && log.dropped >= 3);
-    check('every feed was fetched with a descriptive User-Agent', f.calls.filter(c => c.init.method !== 'HEAD').every(c => /CybercabHunter-NewsBot/.test(c.init.headers['User-Agent'])) && FEEDS.every(fd => f.calls.some(c => c.url === fd.url)));
-    check('the first run backfills 30 days from Google News date windows', log.backfill === true && f.calls.filter(c => /after%3A/.test(c.url)).length >= 14);
-    check('the thumbnail came only from the feed (its declared size checked), not a HEAD of anything else', r.find(x => /snow/.test(x.title)).image_url === 'https://electrek.co/wp-content/uploads/cybercab-snow.jpg');
+    const web = stubWeb();
+    const log = await runNewsIngest(ctx.env, { fetchImpl: web, nowMs: NOW });
+    const r = rows(ctx), titles = r.map(x => x.title);
+    check('kept: Cybercab and Tesla-robotaxi stories from several outlets', titles.includes('Tesla Cybercab spotted testing in snow') && titles.includes('Tesla’s robotaxi service expands to Dallas suburbs') && r.filter(x => /Phoenix/.test(x.title)).length === 3);
+    check('dropped: the stock story (blocklist), the off-topic one, and one older than 30 days', !titles.some(x => /stock|Rivian|spring/.test(x)) && log.dropped >= 3);
+    check('every feed fetched with a descriptive User-Agent; no Google request', FEEDS.every(f => web.calls.some(c => c.url === f.url && /CybercabHunter-NewsBot/.test(c.init.headers['User-Agent']))) && !web.calls.some(c => /google/.test(c.url)));
     const phx = r.filter(x => /Phoenix/.test(x.title));
-    check('the same story at three outlets: one cluster, the earliest item primary, 3 outlets, importance 2 (3+ outlets in 24 h and "launch")', phx.length === 3 && new Set(phx.map(x => x.cluster_id)).size === 1 && phx[0].cluster_id === phx.find(x => x.source === 'CNBC').id && phx.every(x => x.source_count === 3 && x.importance === 2));
-    check('a one-outlet story with an "expands" headline is notable (1); a plain one normal (0)', r.find(x => /Dallas suburbs/.test(x.title)).importance === 1 && r.find(x => /snow/.test(x.title)).importance === 0);
-    check('the run is logged', JSON.parse(await ctx.env.TESLA_SESSIONS.get('news:last_run')).new === r.length);
+    check('the same story at three outlets: one cluster, earliest primary, importance 2', new Set(phx.map(x => x.cluster_id)).size === 1 && phx.every(x => x.source_count === 3 && x.importance === 2) && phx[0].cluster_id === phx.find(x => x.source === 'Not a Tesla App').id);
+    check('new stories are queued for a thumbnail', r.every(x => x.thumb_status === 'pending' && x.thumb_key === null));
     const before = r.length;
-    const f2 = stubFetch();
-    const again = await runNewsIngest(ctx.env, { fetchImpl: f2, nowMs: NOW + 3600e3 });
-    check('a rerun inserts nothing twice (URL is UNIQUE), and does not backfill again', rows(ctx).length === before && again.new === 0 && again.backfill === false);
-    check('...and sends the saved validators (If-None-Match / If-Modified-Since)', f2.calls.some(c => c.url.includes('electrek') && c.init.headers['If-None-Match'] === '"e1"' && c.init.headers['If-Modified-Since']));
-    const f3 = stubFetch({ notModified: true });
-    const nm = await runNewsIngest(ctx.env, { fetchImpl: f3, nowMs: NOW + 7200e3 });
-    check('a 304 is "nothing new"', nm.not_modified >= 5 && nm.new === 0);
-    const dup = await makeApp();
-    const twice = async (url, body) => { const ok = { headers: {} }; return new Response(body, ok); };
-    const fx = async (url, init = {}) => {
-      const u = String(url);
-      if (init.method === 'HEAD') return new Response(null, { status: 404 });
-      if (u.includes('electrek')) return new Response(`<rss><item><title>Cybercab loses a door in Philadelphia</title><link>https://electrek.co/door/</link><pubDate>${iso(4)}</pubDate><description>The door came off.</description></item></rss>`);
-      if (u.includes('news.google.com') && !u.includes('after%3A')) return new Response(`<rss>${gItem('Cybercab loses a door in Philadelphia', 'Electrek', 'https://electrek.co', 4, 'DUP1')}${gItem('Old Cybercab story from spring', 'Reuters', 'https://www.reuters.com', 24 * 60, 'OLD1')}</rss>`);
-      return new Response('<rss></rss>');
-    };
-    await runNewsIngest(dup.env, { fetchImpl: fx, nowMs: NOW });
-    const dr = rows(dup);
-    check('the same outlet\'s same headline via Google News is one story (the publisher\'s own item, with its excerpt, kept)', dr.filter(x => /door/.test(x.title)).length === 1 && dr.find(x => /door/.test(x.title)).url === 'https://electrek.co/door/' && /door came off/.test(dr.find(x => /door/.test(x.title)).excerpt));
-    check('stories older than 30 days are not stored', !dr.some(x => /spring/.test(x.title)));
-  }
-
-  console.log('3. GET /api/news');
-  {
-    const a = await call(ctx, 'GET', '/api/news');
-    const s = a.json.stories;
-    check('newest first, one entry per story (the Phoenix cluster once, its other outlets as "also")', a.status === 200 && s.filter(x => /Phoenix/.test(x.title)).length === 1 && s.find(x => /Phoenix/.test(x.title)).also.length === 2 && s.every((x, i) => !i || s[i - 1].published_at >= x.published_at));
-    const p = s.find(x => /Phoenix/.test(x.title));
-    check('the shape: id, title, url, source, source_type, published_at, excerpt, image_url, importance, source_count, tags, also', ['id', 'title', 'url', 'source', 'source_type', 'published_at', 'excerpt', 'image_url', 'importance', 'source_count', 'tags', 'also'].every(k => k in p) && p.tags.includes('Expansion') && p.also.every(o => o.url && o.source));
-    check('the disclosure travels with the data', /picked and summarized automatically/.test(a.json.disclosure));
-    const p1 = await call(ctx, 'GET', '/api/news?limit=2');
-    const p2 = await call(ctx, 'GET', `/api/news?limit=2&cursor=${p1.json.next_cursor}`);
-    check('cursor pages: no overlap, still newest first', p1.json.stories.length === 2 && p2.json.stories.length >= 1 && !p2.json.stories.some(x => p1.json.stories.some(y => y.id === x.id)) && p2.json.stories[0].published_at <= p1.json.stories[1].published_at);
-    const major = await call(ctx, 'GET', '/api/news?importance=2');
-    check('importance=2: the major stories only', major.json.stories.length >= 1 && major.json.stories.every(x => x.importance === 2));
-    const q = await call(ctx, 'GET', '/api/news?q=snow');
-    check('search over title and excerpt', q.json.stories.length === 1 && /snow/.test(q.json.stories[0].title));
-  }
-
-  console.log('4. Moderation');
-  {
-    check('signed out: 401; an ordinary rider: 403', (await call(ctx, 'GET', '/api/moderation/news')).status === 401 && (await call(ctx, 'GET', '/api/moderation/news', { session: 'rider' })).status === 403);
-    const list = await call(ctx, 'GET', '/api/moderation/news', { session: 'mod' });
-    check('a moderator sees every story, the last run and the config', list.status === 200 && list.json.stories.length === rows(ctx).length && list.json.last_run && /cybercab/.test(list.json.config.allow));
-    const snow = rows(ctx).find(x => /snow/.test(x.title));
-    const hide = await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'hide' } });
-    const pub = await call(ctx, 'GET', '/api/news?limit=50');
-    check('hide: kept in D1, never served', hide.json.story.hidden === true && rows(ctx).some(x => x.id === snow.id) && !pub.json.stories.some(x => x.id === snow.id));
-    await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'unhide' } });
-    const feat = await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'feature' } });
-    check('unhide, then feature: importance 2', feat.json.story.featured === true && feat.json.story.importance === 2);
-    await runNewsIngest(ctx.env, { fetchImpl: stubFetch(), nowMs: NOW + 9000e3 });
-    check('...and a rerun keeps a featured story at 2', rows(ctx).find(x => x.id === snow.id).importance === 2);
-    await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'unfeature' } });
-    check('unfeature: back to its scored importance', rows(ctx).find(x => x.id === snow.id).importance === 0);
-    check('an unknown action is refused', (await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'delete' } })).status === 400);
-    const cfg = await call(ctx, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { allow: 'cybercab\nrobotaxi + tesla', block: 'stock\nsnow' } });
-    check('the lists are edited without a redeploy...', cfg.status === 200 && ctx.d1.query(`SELECT value FROM news_config WHERE key = 'block'`)[0].value === 'stock\nsnow');
-    const fresh = await makeApp();
-    fresh.d1.exec(`UPDATE news_config SET value = 'stock\nsnow' WHERE key = 'block'`);
-    await runNewsIngest(fresh.env, { fetchImpl: stubFetch(), nowMs: NOW });
-    check('...and the next run uses them', !rows(fresh).some(x => /snow/.test(x.title)));
-    check('an empty allowlist is refused', (await call(ctx, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { allow: '  ', block: '' } })).status === 400);
-  }
-
-  console.log('5. The schedule');
-  {
-    const wr = fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
-    check('the cron fires at 11:00 and 12:00 UTC (6 AM Chicago in CDT and CST)', NEWS_CRON === '0 11,12 * * *' && wr.includes('"0 11,12 * * *"'));
-    const e = await makeApp();
-    check('only the run that is 6 AM in Chicago does the work', (await runScheduledNews(e.env, Date.parse('2026-10-09T12:00:00Z'))).skipped === 'not_the_local_hour' && (await runScheduledNews(e.env, Date.parse('2026-12-09T11:00:00Z'))).skipped === 'not_the_local_hour');
+    const again = await runNewsIngest(ctx.env, { fetchImpl: stubWeb(), nowMs: NOW + 3600e3 });
+    check('a rerun inserts nothing twice', rows(ctx).length === before && again.new === 0);
+    const web3 = stubWeb({ notModified: true });
+    const nm = await runNewsIngest(ctx.env, { fetchImpl: web3, nowMs: NOW + 7200e3 });
+    check('...it sends the saved validators, and a 304 is "nothing new"', web3.calls.some(c => c.url === FEEDS[0].url && c.init.headers['If-None-Match'] === '"electrek-1"') && nm.not_modified === FEEDS.length && nm.new === 0);
     const chain = clusterAndScore([
       { id: 'c1', title: 'Cybercab launches rides in Austin today for public', source: 'A', published_at: '2026-10-01T00:00:00Z' },
       { id: 'c2', title: 'Cybercab launches public rides in Austin today, feds watch', source: 'B', published_at: '2026-10-01T02:00:00Z' },
       { id: 'c3', title: 'Feds watch Cybercab rides today in Austin, probe', source: 'C', published_at: '2026-10-01T04:00:00Z' }]);
-    check('no chaining: a story joins a cluster only by matching its first story', chain.c1.cluster_id === chain.c2.cluster_id && chain.c3.cluster_id !== chain.c1.cluster_id);
-    const groups = clusterAndScore([
-      { id: 'a', title: 'Cybercab enters Miami market with ten cars', source: 'A', published_at: '2026-10-01T00:00:00Z' },
-      { id: 'b', title: 'Cybercab enters Miami market with ten cars today', source: 'B', published_at: '2026-10-05T00:00:00Z' }]);
-    check('stories days apart are not merged (72 h window)', groups.a.cluster_id !== groups.b.cluster_id);
+    check('clustering never chains: a story joins only by matching a cluster\'s first story', chain.c1.cluster_id === chain.c2.cluster_id && chain.c3.cluster_id !== chain.c1.cluster_id);
   }
 
-  console.log('6. The publisher blocklist');
+  console.log('3. The 10-minute step');
   {
-    const PUB = `<rss><channel>
-${gItem('Cybercab gets a new screen', 'BASENOR', 'https://basenor.com', 2, 'PB1')}
-${gItem('Cybercab seats explained', 'basenor', 'https://basenor.com', 3, 'PB2')}
-${gItem('Cybercab rides expand in Austin', 'Reuters', 'https://www.reuters.com', 4, 'PB3')}
-</channel></rss>`;
-    const fx = async (url, init = {}) => {
-      const u = String(url);
-      if (init.method === 'HEAD') return new Response(null, { status: 404 });
-      if (u.includes('news.google.com') && !u.includes('after%3A')) return new Response(PUB);
-      return new Response('<rss></rss>');
-    };
+    const wr = fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+    check('the news cron runs every 10 minutes (offset from */10), and the old daily one is gone', NEWS_CRON === '5-59/10 * * * *' && wr.includes('"5-59/10 * * * *"') && !wr.includes('"0 11,12 * * *"'));
+    check('the R2 bucket is bound as NEWS_THUMBS', /"binding":\s*"NEWS_THUMBS",\s*"bucket_name":\s*"cybercabhunter-news-thumbs"/.test(wr));
     const e = await makeApp();
-    check('news_config "publisher_blocklist" is seeded with ["BASENOR"] (migrations/0030)', e.d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["BASENOR"]');
-    const log = await runNewsIngest(e.env, { fetchImpl: fx, nowMs: NOW });
-    const r = rows(e);
-    check('a listed publisher\'s stories are dropped at ingest, any capitalization ("BASENOR" and "basenor")', !r.some(x => /basenor/i.test(x.source)));
-    check('...and counted as blocked by publisher in the run log', log.blocked_publisher >= 2 && JSON.parse(await e.env.TESLA_SESSIONS.get('news:last_run')).blocked_publisher === log.blocked_publisher);
-    check('a publisher not on the list is unaffected', r.some(x => x.source === 'Reuters' && /expand in Austin/.test(x.title)));
+    const w1 = stubWeb();
+    const t1 = await runNewsTick(e.env, { fetchImpl: w1, nowMs: NOW });
+    const t2 = await runNewsTick(e.env, { fetchImpl: stubWeb(), nowMs: NOW + 600e3 });
+    check('one feed per step, in rotation', t1.feeds.length === 1 && t2.feeds.length === 1 && t1.feeds[0] === FEEDS[0].id && t2.feeds[0] === FEEDS[1].id && w1.calls.filter(c => FEEDS.some(f => f.url === c.url)).length === 1);
+    let last;
+    for (let k = 2; k <= FEEDS.length; k++) last = await runNewsTick(e.env, { fetchImpl: stubWeb(), nowMs: NOW + k * 600e3 });
+    check('...wrapping around after the eleventh', last.feeds[0] === FEEDS[0].id);
+    check('the prune runs once per Austin day (first step only), the orphan sweep once a month', 'stories_pruned' in t1 && !('stories_pruned' in t2) && 'orphans_deleted' in t1 && !('orphans_deleted' in t2));
+  }
+
+  console.log('4. Thumbnails');
+  {
+    const html = PAGE('https://cdn.a.com/og.jpg', 'https://cdn.a.com/tw.jpg', '<img src="https://cdn.a.com/body.jpg" width="800">');
+    check('extraction order: og:image first', extractImage(html, 'https://a.com/p').url === 'https://cdn.a.com/og.jpg');
+    check('...then twitter:image', extractImage(PAGE(null, '/tw.jpg', '<img src="/body.jpg" width="800">'), 'https://a.com/p').url === 'https://a.com/tw.jpg');
+    check('...then the first <img> wider than 200 px (a 1 px pixel and a narrow icon skipped)', extractImage(PAGE(null, null, '<img src="/pixel.gif" width="1" height="1"><img src="/icon.png" width="64"><img src="/body.jpg" width="640">'), 'https://a.com/p').url === 'https://a.com/body.jpg');
+    check('no SVG or data: URI ever', extractImage(PAGE('/logo.svg', 'data:image/png;base64,AAA', ''), 'https://a.com/p') === null);
+    const rules = parseRobots('User-agent: *\nDisallow: /private/\nAllow: /private/ok\n\nUser-agent: OtherBot\nDisallow: /');
+    check('robots.txt: longest match wins, Allow beats a shorter Disallow; another bot\'s group ignored', robotsAllows(rules, 'https://a.com/news/1') && !robotsAllows(rules, 'https://a.com/private/x') && robotsAllows(rules, 'https://a.com/private/ok'));
+
+    const e = await makeApp();
+    const sid = uuid(1), story = { id: sid, url: 'https://good.example/article' };
+    insertStory(e, { id: sid, url: story.url, published_at: new Date(NOW - 3600e3).toISOString(), thumb_status: 'pending' });
+    const web = stubWeb({ pages: { 'https://good.example/article': PAGE('https://img.good.example/photo.jpg?w=1600', null) } });
+    const res = await processThumbs(e.env, { fetchImpl: web, limit: 3 });
+    const obj = await e.env.NEWS_THUMBS.get(thumbKey(sid));
+    const imgCall = web.calls.find(c => c.url.startsWith('https://img.good.example/photo.jpg'));
+    check('the image is fetched through Image Transformations: 400 px wide, WebP, quality 70', imgCall && imgCall.init.cf.image.width === 400 && imgCall.init.cf.image.format === 'webp' && imgCall.init.cf.image.quality === 70);
+    check('...stored in R2 at thumbs/<id>.webp as image/webp, cached 30 days, and the row points at it', res.done === 1 && obj && obj.httpMetadata.contentType === 'image/webp' && obj.httpMetadata.cacheControl === 'public, max-age=2592000' && rows(e)[0].thumb_key === `thumbs/${sid}.webp` && rows(e)[0].thumb_status === 'done');
+    const served = await call(e, 'GET', `/news-img/${sid}.webp`);
+    check('/news-img/<id>.webp serves it (WebP, long cache); an unknown id is a 404', served.status === 200 && served.r.headers.get('content-type') === 'image/webp' && /max-age=2592000/.test(served.r.headers.get('cache-control')) && (await call(e, 'GET', `/news-img/${uuid(99)}.webp`)).status === 404);
+    const api = await call(e, 'GET', '/api/news');
+    check('the API gives our thumbnail URL', api.json.stories[0].thumb_url === `/news-img/${sid}.webp`);
+
+    // No transformation (e.g. not enabled for the zone): never store the original.
     const e2 = await makeApp();
-    e2.d1.exec(`UPDATE news_config SET value = '["  basenor "]' WHERE key = 'publisher_blocklist'`);
-    await runNewsIngest(e2.env, { fetchImpl: fx, nowMs: NOW });
-    check('matching ignores case and surrounding spaces in the list too', !rows(e2).some(x => /basenor/i.test(x.source)) && rows(e2).some(x => x.source === 'Reuters'));
-    // Not retroactive: a story stored before its publisher was listed stays.
+    insertStory(e2, { id: uuid(2), url: 'https://good.example/article', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
+    await processThumbs(e2.env, { fetchImpl: stubWeb({ transform: false, pages: { 'https://good.example/article': PAGE('https://img.good.example/photo.jpg', null) } }) });
+    check('no transformation -> no thumbnail and nothing stored (never a full-size image)', e2.env.NEWS_THUMBS._objects.size === 0 && rows(e2)[0].thumb_status === 'failed:no_transform' && rows(e2)[0].thumb_key === null);
+    // robots.txt disallows the article -> the page is never fetched.
     const e3 = await makeApp();
-    e3.d1.exec(`UPDATE news_config SET value = '[]' WHERE key = 'publisher_blocklist'`);
-    await runNewsIngest(e3.env, { fetchImpl: fx, nowMs: NOW });
-    const storedBefore = rows(e3).filter(x => /basenor/i.test(x.source)).length;
-    const put = await call(e3, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { publisher_blocklist: ['BaseNor', 'basenor', ' Example News '] } });
-    check('the moderator saves the list (deduped case-insensitively, trimmed); the other lists are untouched', put.status === 200 && JSON.stringify(put.json.config.publisher_blocklist) === '["BaseNor","Example News"]' && /cybercab/.test(put.json.config.allow));
-    check('a non-moderator cannot save it', (await call(e3, 'PUT', '/api/moderation/news-config', { session: 'rider', body: { publisher_blocklist: [] } })).status === 403);
-    check('a bad list is refused', (await call(e3, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { publisher_blocklist: 'BASENOR' } })).status === 400);
-    // "Run the ingest now" (POST /api/moderation/news/run) honors the saved list.
+    insertStory(e3, { id: uuid(3), url: 'https://strict.example/news/1', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
+    const w3 = stubWeb({ robots: { 'strict.example': 'User-agent: *\nDisallow: /news/' } });
+    await processThumbs(e3.env, { fetchImpl: w3 });
+    check('robots.txt disallowing the article: skipped, the page never fetched', rows(e3)[0].thumb_status === 'skipped:robots' && !w3.calls.some(c => c.url === 'https://strict.example/news/1'));
+    // A publisher on thumb_blocklist: listed, never fetched.
+    const e4 = await makeApp();
+    e4.d1.exec(`UPDATE news_config SET value = '["optout.example"]' WHERE key = 'thumb_blocklist'`);
+    insertStory(e4, { id: uuid(4), url: 'https://www.optout.example/a', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
+    const w4 = stubWeb();
+    await processThumbs(e4.env, { fetchImpl: w4 });
+    check('thumb_blocklist honored: no request to that publisher at all, the story still listed', rows(e4)[0].thumb_status === 'skipped:thumb_blocklist' && !w4.calls.some(c => /optout\.example/.test(c.url)) && (await call(e4, 'GET', '/api/news')).json.stories.length === 1);
+    // A page that fails: the story stays, without a thumbnail, and is not retried.
+    const e5 = await makeApp();
+    insertStory(e5, { id: uuid(5), url: 'https://down.example/a', published_at: new Date(NOW).toISOString(), thumb_status: 'pending' });
+    await processThumbs(e5.env, { fetchImpl: stubWeb({ failPages: ['https://down.example/a'] }) });
+    const w5 = stubWeb();
+    await processThumbs(e5.env, { fetchImpl: w5 });
+    check('a failed page: the story intact with no thumbnail, and no retry', rows(e5).length === 1 && rows(e5)[0].thumb_status === 'failed:page_http_500' && !w5.calls.some(c => /down\.example/.test(c.url)));
+    // A Google redirect link (stories stored before the switch): nothing to fetch.
+    const g = await makeThumb(e5.env, { id: uuid(6), url: 'https://news.google.com/rss/articles/ABC' }, { fetchImpl: stubWeb(), cfg: { thumb_blocklist: [] } });
+    check('a Google News redirect link is skipped (no article page)', g.status === 'skipped' && g.reason === 'no_article_url');
+    // The page prefers thumb_url, then image_url, then the badge.
+    const js = fs.readFileSync(new URL('../public/js/news.js', import.meta.url), 'utf8');
+    check('/news shows thumb_url first, then the feed\'s image_url, then the initial; in a fixed box (no layout shift)', /const thumbSrc = s => \(\/\^\\\/news-img\\\/[^?]+\? s\.thumb_url : safeUrl\(s\.image_url\)\)/.test(js) && /\.news-thumb\{flex-shrink:0; width:72px; height:72px;/.test(fs.readFileSync(new URL('../public/css/style.css', import.meta.url), 'utf8')));
+  }
+
+  console.log('5. Retention');
+  {
+    const e = await makeApp();
+    const old = uuid(10), oldHidden = uuid(11), oldFeatured = uuid(12), fresh = uuid(13);
+    const day31 = new Date(NOW - 31 * 864e5).toISOString();
+    for (const [id, extra] of [[old, {}], [oldHidden, { hidden: 1 }], [oldFeatured, { featured: 1, importance: 2 }]]) {
+      insertStory(e, { id, published_at: day31, thumb_key: thumbKey(id), ...extra });
+      await e.env.NEWS_THUMBS.put(thumbKey(id), WEBP, { httpMetadata: { contentType: 'image/webp' } });
+    }
+    insertStory(e, { id: fresh, published_at: new Date(NOW - 2 * 864e5).toISOString(), thumb_key: thumbKey(fresh) });
+    await e.env.NEWS_THUMBS.put(thumbKey(fresh), WEBP);
+    const p = await pruneOld(e.env, NOW);
+    check('a 31-day-old story: its row AND its R2 thumbnail are deleted', !rows(e).some(r => r.id === old) && !(await e.env.NEWS_THUMBS.get(thumbKey(old))));
+    check('...hidden and featured stories are pruned the same (no exemptions)', !rows(e).some(r => r.id === oldHidden || r.id === oldFeatured) && !(await e.env.NEWS_THUMBS.get(thumbKey(oldFeatured))));
+    check('...a newer story and its thumbnail stay; the counts are reported', rows(e).some(r => r.id === fresh) && !!(await e.env.NEWS_THUMBS.get(thumbKey(fresh))) && p.stories_pruned === 3 && p.thumbs_deleted === 3);
+    await e.env.NEWS_THUMBS.put(thumbKey(uuid(77)), WEBP);
+    await e.env.NEWS_THUMBS.put('thumbs/not-a-story.webp', WEBP);
+    const o = await sweepOrphans(e.env);
+    check('the orphan sweep deletes thumbnails with no story, keeps the rest', o.orphans_deleted === 2 && !(await e.env.NEWS_THUMBS.get(thumbKey(uuid(77)))) && !!(await e.env.NEWS_THUMBS.get(thumbKey(fresh))));
+    // Keyset pages survive rows vanishing mid-pagination.
+    const k = await makeApp();
+    for (let i = 0; i < 6; i++) insertStory(k, { id: uuid(100 + i), title: `Cybercab story number ${i} unique words ${i}`, published_at: new Date(NOW - i * 3600e3).toISOString() });
+    const p1 = await call(k, 'GET', '/api/news?limit=2');
+    k.d1.exec(`DELETE FROM news_articles WHERE id IN ('${uuid(101)}', '${uuid(102)}')`);   // page 1's last row and the next one vanish
+    const p2 = await call(k, 'GET', `/api/news?limit=2&cursor=${p1.json.next_cursor}`);
+    check('a cursor still works after rows vanish mid-pagination (keyset on published_at, id): no error, no repeats, still newest first', p2.status === 200 && p2.json.stories.map(s => s.id).join() === [uuid(103), uuid(104)].join() && !p2.json.stories.some(s => p1.json.stories.some(x => x.id === s.id)));
+  }
+
+  console.log('6. GET /api/news and moderation');
+  {
+    const a = await call(ctx, 'GET', '/api/news');
+    const s = a.json.stories;
+    check('newest first, one entry per story (the Phoenix cluster once, other outlets as "also")', a.status === 200 && s.filter(x => /Phoenix/.test(x.title)).length === 1 && s.find(x => /Phoenix/.test(x.title)).also.length === 2);
+    check('each story has thumb_url and image_url (null until a thumbnail exists)', s.every(x => 'thumb_url' in x && 'image_url' in x));
+    const major = await call(ctx, 'GET', '/api/news?importance=2');
+    check('importance=2: the major stories only; search over title and excerpt', major.json.stories.every(x => x.importance === 2) && (await call(ctx, 'GET', '/api/news?q=snow')).json.stories.length === 1);
+    check('moderation: 401 signed out, 403 for a rider', (await call(ctx, 'GET', '/api/moderation/news')).status === 401 && (await call(ctx, 'GET', '/api/moderation/news', { session: 'rider' })).status === 403);
+    const snow = rows(ctx).find(x => /snow/.test(x.title));
+    await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'hide' } });
+    check('hide: kept in D1, never served', rows(ctx).some(x => x.id === snow.id) && !(await call(ctx, 'GET', '/api/news?limit=50')).json.stories.some(x => x.id === snow.id));
+    await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'unhide' } });
+    const feat = await call(ctx, 'POST', `/api/moderation/news/${snow.id}`, { session: 'mod', body: { action: 'feature' } });
+    check('feature: importance 2', feat.json.story.importance === 2 && feat.json.story.featured === true);
+    const put = await call(ctx, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { thumb_blocklist: ['https://www.OptOut.example/path', 'bad domain', 'other.example'] } });
+    check('thumb_blocklist is saved from moderation (normalized domains; junk dropped); other lists untouched', put.status === 200 && JSON.stringify(put.json.config.thumb_blocklist) === '["optout.example","other.example"]' && /cybercab/.test(put.json.config.allow));
+    const pub = await call(ctx, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { publisher_blocklist: ['electrek'] } });
+    const e = await makeApp();
+    e.d1.exec(`UPDATE news_config SET value = '["electrek"]' WHERE key = 'publisher_blocklist'`);
+    const lg = await runNewsIngest(e.env, { fetchImpl: stubWeb(), nowMs: NOW });
+    check('the publisher blocklist (any capitalization) drops that outlet\'s stories, counted; others unaffected', pub.status === 200 && !rows(e).some(x => x.source === 'Electrek') && lg.blocked_publisher === 4 && rows(e).some(x => x.source === 'Teslarati'));
+    check('migration seeds: publisher_blocklist ["BASENOR"], thumb_blocklist []', e.d1.query(`SELECT value FROM news_config WHERE key = 'thumb_blocklist'`)[0].value === '[]' && (await makeApp()).d1.query(`SELECT value FROM news_config WHERE key = 'publisher_blocklist'`)[0].value === '["BASENOR"]');
     const realFetch = globalThis.fetch;
-    globalThis.fetch = fx;
-    let run;
-    try { run = await call(e3, 'POST', '/api/moderation/news/run', { session: 'mod' }); } finally { globalThis.fetch = realFetch; }
-    check('"Run the ingest now" honors the list and reports the count', run.status === 200 && run.json.run.blocked_publisher >= 2);
-    check('already-stored stories from a newly listed publisher are NOT deleted (hide them by hand)', storedBefore === 2 && rows(e3).filter(x => /basenor/i.test(x.source)).length === 2);
-    const list = await call(e3, 'GET', '/api/moderation/news', { session: 'mod' });
-    check('the moderation list returns the publisher blocklist and the last run\'s blocked count', JSON.stringify(list.json.config.publisher_blocklist) === '["BaseNor","Example News"]' && list.json.last_run.blocked_publisher >= 2);
+    globalThis.fetch = stubWeb();
+    let r;
+    try { r = await call(ctx, 'POST', '/api/moderation/news/run', { session: 'mod' }); } finally { globalThis.fetch = realFetch; }
+    check('"Run the next ingest step now" runs one step (one feed, thumbnails, prune)', r.status === 200 && r.json.run.feeds.length === 1 && r.json.run.thumbs && 'done' in r.json.run.thumbs);
   }
 
   t.finish();
