@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -35,6 +35,7 @@
       <a href="infrastructure.html" data-nav="infrastructure" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Zones</a>
       <a href="/vehicles" data-nav="vehicles" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Cars</a>
       <a href="/sightings" data-nav="sightings" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Sightings</a>
+      <a href="/news" data-nav="news" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">News</a>
       <a href="/community" data-nav="community" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Community</a>
       <a href="/simulation" data-nav="simulation" class="text-sm font-medium text-slate-300 hover:text-white transition-colors py-2">Simulation</a>
       <div id="navIndicator"></div>
@@ -67,6 +68,10 @@
   <a href="/sightings" data-nav="sightings" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/> <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
     <span class="text-[11px] font-semibold">Sightings</span>
+  </a>
+  <a href="/news" data-nav="news" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
+    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 6h3a1 1 0 0 1 1 1v11a2 2 0 0 1 -4 0v-13a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1v12a3 3 0 0 0 3 3h11"/> <path d="M8 8l4 0"/> <path d="M8 12l4 0"/> <path d="M8 16l4 0"/></svg>
+    <span class="text-[11px] font-semibold">News</span>
   </a>
   <a href="/community" data-nav="community" class="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-slate-400 hover:text-white transition-colors">
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/> <path d="M16 3.13a4 4 0 0 1 0 7.75"/> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
@@ -409,6 +414,7 @@
       <a href="infrastructure.html" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Zones</a>
       <a href="/vehicles" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Cars</a>
       <a href="/sightings" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Sightings</a>
+      <a href="/news" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">News</a>
       <a href="/community" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Community</a>
       <a href="/replay?range=month" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Replay</a>
       <a href="/simulation" class="hover:text-white transition-colors max-sm:min-h-[40px] max-sm:flex max-sm:items-center">Simulation</a>

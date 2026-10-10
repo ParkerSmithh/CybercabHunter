@@ -496,6 +496,66 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .us-city:hover .us-city-dot, .us-city:focus-visible .us-city-dot, .us-city.is-lit .us-city-dot{filter:drop-shadow(0 0 2px rgb(255 236 150 / 1)) drop-shadow(0 0 6px rgb(212 175 55 / 0.7));}
 .us-city.is-lit .us-city-pulse{animation-duration:1.4s;}
 @media (prefers-reduced-motion: reduce){ .us-city-pulse{animation:none; opacity:0;} }
+/* ---------- News (news.html, js/news.js) ----------
+   Dense rows: a small thumbnail (or the outlet's initial), the meta line,
+   the headline, one excerpt line, tags and the "Also:" outlets. Major
+   stories carry a gold edge and badge. Phones keep the same rows, smaller. */
+.news-toolbar{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;}
+.news-search{display:flex; align-items:center; gap:8px; min-height:40px; padding:0 12px; width:min(320px,100%); border-radius:10px; border:1px solid rgb(var(--ink) / 0.1); background:rgb(var(--ink) / 0.03);}
+.news-search:focus-within{border-color:rgb(var(--gold) / 0.6);}
+.news-search input{flex:1; min-width:0; background:transparent; border:0; outline:none; font-size:13px; color:rgb(var(--ink));}
+.news-day{margin:22px 0 8px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.16em; color:rgb(var(--n-500));}
+#newsList > .news-day:first-child{margin-top:0;}
+.news-card{display:flex; gap:14px; padding:14px; border-radius:14px; border:1px solid rgb(var(--ink) / 0.08); background:rgb(var(--surface)); transition:border-color var(--t-fast) var(--ease);}
+.news-card + .news-card{margin-top:8px;}
+.news-card:hover{border-color:rgb(var(--ink) / 0.16);}
+.news-card.is-major{border-color:rgb(212 175 55 / 0.55); background:linear-gradient(120deg, rgb(212 175 55 / 0.08), transparent 60%), rgb(var(--surface)); box-shadow:inset 3px 0 0 #D4AF37;}
+.news-card.is-top + .news-card.is-top{margin-top:0;}
+.news-thumb{flex-shrink:0; width:72px; height:72px; border-radius:10px; overflow:hidden; background:rgb(var(--ink) / 0.06); display:grid; place-items:center;}
+.news-thumb.is-big{width:88px; height:88px;}
+.news-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+.news-thumb.is-initial{font-family:var(--font-display, inherit); font-weight:700; font-size:26px; color:#D4AF37; background:linear-gradient(135deg, rgb(212 175 55 / 0.16), rgb(212 175 55 / 0.04)); border:1px solid rgb(212 175 55 / 0.25);}
+.news-meta{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; font-size:12px; color:rgb(var(--n-400));}
+.news-source{font-weight:600; color:rgb(var(--n-200));}
+.news-type{padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; border:1px solid rgb(var(--ink) / 0.14); color:rgb(var(--n-400));}
+.news-type-official{border-color:rgb(52 211 153 / 0.45); color:#6ee7b7;}
+.news-type-social{border-color:rgb(96 165 250 / 0.45); color:#93c5fd;}
+.news-badge-major{padding:1px 7px; border-radius:999px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; background:#D4AF37; color:#1a1204;}
+.news-time{color:rgb(var(--n-500));}
+.news-title{margin-top:4px; font-size:16px; font-weight:600; line-height:1.35; color:rgb(var(--ink));}
+.news-title a:hover{text-decoration:underline; text-underline-offset:3px; text-decoration-color:rgb(212 175 55 / 0.6);}
+.news-excerpt{margin-top:4px; font-size:13px; line-height:1.5; color:rgb(var(--n-400)); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.news-foot{margin-top:8px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+.news-tag{padding:2px 8px; border-radius:6px; font-size:11px; font-weight:500; background:rgb(var(--ink) / 0.05); color:rgb(var(--n-300));}
+.news-also{font-size:12px; color:rgb(var(--n-400));}
+.news-also summary{cursor:pointer; color:#D4AF37; font-weight:600; list-style:none;}
+.news-also summary::-webkit-details-marker{display:none;}
+.news-also summary::after{content:' ▾';}
+.news-also[open] summary::after{content:' ▴';}
+.news-also ul{margin-top:6px; display:grid; gap:4px;}
+.news-also li{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+.news-also a{color:rgb(var(--n-200)); text-decoration:underline; text-decoration-color:rgb(var(--ink) / 0.25); text-underline-offset:2px;}
+.news-skel{height:96px; border-radius:14px; background:rgb(var(--ink) / 0.04); animation:news-skel 1.6s ease-in-out infinite;}
+@keyframes news-skel{50%{opacity:0.45;}}
+@media (prefers-reduced-motion: reduce){ .news-skel{animation:none;} }
+@media (max-width:639px){
+  .news-card{gap:10px; padding:10px; border-radius:12px;}
+  .news-thumb, .news-thumb.is-big{width:52px; height:52px; border-radius:8px;}
+  .news-thumb.is-initial{font-size:20px;}
+  .news-meta{font-size:10.5px; gap:4px 6px;}
+  .news-type, .news-badge-major{font-size:9px; padding:0 5px;}
+  .news-title{font-size:14px; margin-top:2px;}
+  .news-excerpt{font-size:12px; -webkit-line-clamp:2;}
+  .news-foot{margin-top:6px; gap:4px;}
+  .news-tag{font-size:10px; padding:1px 6px;}
+  .news-also{font-size:11px;}
+  .news-search{width:100%;}
+  .news-toolbar{gap:8px;}
+  .news-skel{height:76px;}
+}
+/* The phone bottom bar has six items now (News): slightly smaller labels. */
+#mobileBottomNav > a > span{font-size:10px;}
+
 /* Dots / Heatmap switch and the heatmap view (js/us-sightings-map.js). */
 .us-view-switch{display:inline-flex; padding:3px; gap:2px; border-radius:999px; border:1px solid rgb(var(--ink) / 0.1); background:rgb(var(--ink) / 0.03);}
 .us-view-switch button{min-height:32px; padding:0 14px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--n-400)); transition:background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);}

@@ -47,7 +47,7 @@ check('the Zones Replay button still sits below the map below lg (fit fix 4)', /
 const pages = ['index', 'sightings', 'vehicles', 'community', 'simulation', 'vehicle', 'rider', 'rider-data', 'profile', 'link-gmail'];
 check('the shared footer is compact on phones (brand + Appearance on one row, links in 3 columns) on every page that has it',
   pages.every(f => /<nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 [^"]*max-sm:grid-cols-3/.test(read(`${f}.html`)) && /<div class="max-sm:row-start-1 max-sm:col-start-2 max-sm:justify-self-end">/.test(read(`${f}.html`))));
-check('every footer link is a 40px tap row on phones', pages.every(f => (read(`${f}.html`).match(/class="hover:text-white transition-colors max-sm:min-h-\[40px\] max-sm:flex max-sm:items-center">/g) || []).length === 7));
+check('every footer link is a 40px tap row on phones', pages.every(f => (read(`${f}.html`).match(/class="hover:text-white transition-colors max-sm:min-h-\[40px\] max-sm:flex max-sm:items-center">/g) || []).length === 8));
 const css = fs.readFileSync(`${ROOT}public/css/style.css`, 'utf8');
 check('the Appearance switch buttons are 40px tall on phones', /@media \(max-width:639px\)\{ \.theme-switch button\{min-height:40px;/.test(css));
 check('every page loads the same stylesheet version', new Set([...pages, 'infrastructure', 'moderation', 'replay', 'privacy', 'signin', 'moderation/import-receipt'].map(f => (/css\/style\.css\?v=(\d+)/.exec(read(`${f}.html`)) || [])[1])).size === 1);

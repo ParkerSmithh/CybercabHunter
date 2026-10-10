@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="The public registry of Tesla Cybercabs reported by riders and spotters, in Austin and Dallas, searchable by plate or VIN.">
+<meta name="description" content="Tesla Cybercab and robotaxi news, collected automatically from publishers every day, with links to the original reporting.">
 <meta name="theme-color" content="#090B0F">
 <link rel="icon" type="image/png" sizes="32x32" href="images/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="64x64" href="images/icons/favicon-64.png">
 <link rel="apple-touch-icon" sizes="180x180" href="images/icons/apple-touch-icon.png">
-<title>Cybercab Hunter | Vehicle Registry</title>
+<title>Cybercab Hunter | News</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
@@ -41,6 +41,7 @@
       <div id="navIndicator"></div>
     </nav>
     <div class="flex items-center gap-3">
+      <a id="teslaLinkBtn" href="#" class="hidden btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Link Tesla Account</a>
       <button id="openSightingDrawer" data-magnet class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">Submit</button>
       <div id="accountSignedOut">
         <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100">Sign In</a>
@@ -83,87 +84,63 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<section class="py-16">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-
-    <div class="reveal-on-scroll mb-8 max-sm:mb-5">
-      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2">Vehicles</p>
-      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight mb-3 max-sm:text-2xl max-sm:mb-1.5">CYBERCABS</h1>
-      <p class="text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug">Every Cybercab riders and spotters have reported, with the rides and sightings recorded for each.</p>
-    </div>
-
-    <!-- City: Austin or Dallas Cybercabs (GET /api/robotaxi-vehicles?city=..., kept in the URL) -->
-    <div id="regCity" role="group" aria-label="Show Cybercabs in" class="flex flex-wrap gap-2 mb-4 max-sm:mb-3">
-      <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Austin</button>
-      <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[40px] px-5 rounded-full text-sm font-semibold border transition-colors">Dallas</button>
-    </div>
-
-    <!-- Search: plate or VIN only (server-side, across the chosen city's public vehicles) -->
-    <!-- Search on the left, sort on the right (lined up with the grid's right edge) -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8 max-sm:flex-row max-sm:items-center max-sm:gap-2 max-sm:mb-5">
-    <form id="regSearchForm" role="search" class="relative w-full sm:max-w-md max-sm:flex-1 max-sm:min-w-0" onsubmit="return false">
-      <label for="regSearch" class="sr-only">Search vehicles</label>
-      <span id="regSearchHint" class="sr-only">Search by plate or VIN</span>
-      <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
-      <input id="regSearch" type="search" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Plate or VIN" aria-describedby="regSearchHint" class="w-full bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg pl-10 pr-3 py-3 text-sm placeholder:text-slate-600">
-    </form>
-    <!-- Order of the list (GET /api/robotaxi-vehicles?sort=...) -->
-    <label for="regSort" class="sr-only">Sort vehicles</label>
-    <select id="regSort" class="sm:w-56 max-sm:w-[8.75rem] max-sm:shrink-0 max-sm:px-2 bg-panel border border-[rgba(212,175,55,0.25)] focus:border-gold focus:outline-none rounded-lg px-3 py-3 text-sm [color-scheme:dark]">
-      <option value="recent">Recently Used</option>
-      <option value="least_recent">Used Least Recently</option>
-      <option value="most_miles">Most Miles</option>
-      <option value="most_rides">Most Rides</option>
-    </select>
-    </div>
-
-    <!-- Loading -->
-    <div id="regLoading" class="hidden grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:grid-cols-2 max-sm:gap-3" aria-busy="true" aria-live="polite">
-      <span class="sr-only">Loading vehicles…</span>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse"></div>
-      <div class="glass rounded-2xl p-6 h-44 animate-pulse hidden sm:block"></div>
-    </div>
-
-    <!-- Empty: nothing is public yet -->
-    <div id="regEmpty" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">No vehicles found</h2>
-      <p class="text-slate-400 text-sm leading-relaxed">Vehicles appear here once a moderator approves them. Check back soon.</p>
-    </div>
-
-    <!-- Search found nothing (the registry itself is not empty) -->
-    <div id="regNoMatch" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">No matches</h2>
-      <p class="text-slate-400 text-sm leading-relaxed">No vehicle matches <span id="regNoMatchQuery" class="text-slate-200 font-semibold [overflow-wrap:anywhere]"></span>. Try part of a plate or VIN.</p>
-    </div>
-
-    <!-- Network/server failure — NOT the same as empty -->
-    <div id="regError" class="hidden glass rounded-2xl p-10 max-w-xl text-center">
-      <h2 data-split class="font-display font-bold text-2xl mb-3">We couldn't load the registry</h2>
-      <p class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
-      <button id="regRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
-    </div>
-
-    <!-- Loaded -->
-    <div id="regLoaded" class="hidden">
-      <p id="regCount" class="text-xs text-slate-500 uppercase tracking-wider mb-4"></p>
-      <ul id="regList" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 max-sm:grid-cols-2 max-sm:gap-3"></ul>
-      <div class="mt-8 text-center">
-        <button id="regMore" type="button" class="hidden btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Show more</button>
-        <p id="regMoreError" class="hidden text-sm text-slate-400 mt-3">Couldn't load more right now. <button id="regMoreRetry" type="button" class="ml-1 text-cyan hover:underline">Try again</button></p>
+<!-- ===== News (js/news.js, GET /api/news; worker/news.js collects it daily
+     at 6 AM Chicago). Headlines link out to the original publishers; the
+     excerpts are the feeds' own (at most ~280 characters). ===== -->
+<section class="py-14 max-sm:py-6">
+  <div class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
+      <div class="min-w-0">
+        <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold max-sm:text-[10px]">Cybercab &amp; robotaxi</p>
+        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:mt-1 max-sm:text-[1.75rem]">NEWS</h1>
+        <p class="mt-2 max-w-2xl text-sm text-slate-400 leading-relaxed max-sm:mt-1 max-sm:text-xs">The latest Tesla Cybercab and robotaxi headlines from across the web, checked every morning. Each story links to the original reporting.</p>
       </div>
     </div>
 
-  </div>
-</section>
-<!-- ===== Texas DMV registrations (js/dmv-panel.js, GET /api/dmv-registrations):
-     Tesla's automated-vehicle roster from TxDMV, snapshotted daily. ===== -->
-<section class="pb-16 max-sm:pb-10" aria-label="Texas DMV registrations">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-dmv-panel class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+    <!-- Major stories (importance 2), pinned above the list. -->
+    <section id="newsTop" class="hidden mb-8 max-sm:mb-5" aria-labelledby="newsTopTitle">
+      <h2 id="newsTopTitle" class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold mb-3 max-sm:mb-2">Top stories</h2>
+      <div id="newsTopList" class="grid gap-3 md:grid-cols-2 max-sm:gap-2"></div>
+    </section>
+
+    <!-- Filters: All / Major only, and a search over titles and excerpts. -->
+    <div class="news-toolbar mb-5 max-sm:mb-3">
+      <div class="us-view-switch" role="group" aria-label="Show">
+        <button type="button" data-news-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-news-filter="major" aria-pressed="false">Major only</button>
+      </div>
+      <label class="news-search">
+        <svg class="w-4 h-4 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="sr-only">Search news</span>
+        <input id="newsSearch" type="search" placeholder="Search headlines" maxlength="80" autocomplete="off">
+      </label>
+    </div>
+
+    <div id="newsList" aria-live="polite"></div>
+    <div id="newsLoading" class="space-y-2" aria-busy="true">
+      <span class="sr-only">Loading news…</span>
+      <div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div>
+    </div>
+    <p id="newsEmpty" class="hidden py-10 text-center text-sm text-slate-400">No stories match.</p>
+    <p id="newsError" class="hidden py-10 text-center text-sm text-slate-400">We couldn't load the news right now. Try again in a moment.</p>
+    <div class="flex justify-center mt-6">
+      <button id="newsMore" type="button" class="hidden min-h-[44px] px-6 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Show older stories</button>
+    </div>
+
+    <p class="mt-10 pt-5 border-t border-white/[0.07] text-xs text-slate-500 leading-relaxed max-sm:mt-6 max-sm:text-[11px]">Stories are picked and summarized automatically; follow each link for the original reporting. Headlines and excerpts belong to their publishers. Times are Austin time (CT).</p>
   </div>
 </section>
 </main>
+
+<!-- Expanded photo: opened by clicking a sighting's photo (js/sightings.js).
+     Closes with the × button, a click outside the photo, or Escape. -->
+<div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
+  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-2xl leading-none text-paper hover:bg-white/20">&times;</button>
+  <figure class="flex flex-col items-center gap-3 max-w-full">
+    <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
+    <figcaption id="sightingViewerCaption" class="text-sm text-paper/80 text-center"></figcaption>
+  </figure>
+</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -303,7 +280,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicles.js?v=14"></script>
-<script src="js/dmv-panel.js?v=12"></script>
+<script src="js/news.js?v=2"></script>
 </body>
 </html>
