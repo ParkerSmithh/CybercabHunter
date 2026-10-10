@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=69">
+<link rel="stylesheet" href="css/style.css?v=71">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -83,52 +83,82 @@
   </a>
 </nav>
 
-<main id="main" tabindex="-1">
-<!-- ===== News (js/news.js, GET /api/news; worker/news.js collects it daily
-     at 6 AM Chicago). Headlines link out to the original publishers; the
-     excerpts are the feeds' own (at most ~280 characters). ===== -->
-<section class="py-14 max-sm:py-6">
-  <div class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4">
-    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
+<main id="main" tabindex="-1" class="news-page">
+<!-- ===== News (js/news.js, GET /api/news; worker/news.js collects it every 10
+     minutes from eleven publisher feeds). Headlines link OUT to the original
+     publishers; excerpts are the feeds' own (at most ~280 characters).
+     Layout: a compact hero (eyebrow, stacked headline, the "stories tracked"
+     stat cell with the Cybercab), a hairline stats bar, a sticky filter row,
+     Top stories, then the feed grouped by day. ===== -->
+<section class="news-hero">
+  <div class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4 news-hero-grid">
+    <div class="min-w-0">
+      <p data-decrypt class="news-eyebrow">Cybercab news · Updated every 10 minutes</p>
+      <h1 class="news-h1">
+        <span class="blur-word" style="--i:0">THE</span><br><span class="blur-word news-h1-gold" style="--i:1">WIRE</span>
+      </h1>
+      <p class="news-sub">Every Tesla Cybercab and robotaxi headline, tracked automatically.</p>
+    </div>
+    <!-- The live count, with the Cybercab beside it (decorative). -->
+    <div class="news-statcell" aria-live="polite">
       <div class="min-w-0">
-        <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold max-sm:text-[10px]">Cybercab &amp; robotaxi</p>
-        <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:mt-1 max-sm:text-[1.75rem]">NEWS</h1>
-        <p class="mt-2 max-w-2xl text-sm text-slate-400 leading-relaxed max-sm:mt-1 max-sm:text-xs">The latest Tesla Cybercab and robotaxi headlines from across the web, checked every morning. Each story links to the original reporting.</p>
+        <p class="news-label">Stories tracked</p>
+        <p class="news-statcell-num"><span id="newsHeroCount">—</span></p>
+        <p class="news-caption">Last 30 days<span class="news-caption-long"> · links to the original reporting</span></p>
       </div>
+      <img src="images/CybercabFlipped.png" alt="" aria-hidden="true" width="600" height="416" decoding="async" class="news-statcell-car">
     </div>
-
-    <!-- Major stories (importance 2), pinned above the list. -->
-    <section id="newsTop" class="hidden mb-8 max-sm:mb-5" aria-labelledby="newsTopTitle">
-      <h2 id="newsTopTitle" class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold mb-3 max-sm:mb-2">Top stories</h2>
-      <div id="newsTopList" class="grid gap-3 md:grid-cols-2 max-sm:gap-2"></div>
-    </section>
-
-    <!-- Filters: All / Major only, and a search over titles and excerpts. -->
-    <div class="news-toolbar mb-5 max-sm:mb-3">
-      <div class="us-view-switch" role="group" aria-label="Show">
-        <button type="button" data-news-filter="all" aria-pressed="true">All</button>
-        <button type="button" data-news-filter="major" aria-pressed="false">Major only</button>
-      </div>
-      <label class="news-search">
-        <svg class="w-4 h-4 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <span class="sr-only">Search news</span>
-        <input id="newsSearch" type="search" placeholder="Search headlines" maxlength="80" autocomplete="off">
-      </label>
-    </div>
-
-    <div id="newsList" aria-live="polite"></div>
-    <div id="newsLoading" class="space-y-2" aria-busy="true">
-      <span class="sr-only">Loading news…</span>
-      <div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div>
-    </div>
-    <p id="newsEmpty" class="hidden py-10 text-center text-sm text-slate-400">No stories match.</p>
-    <p id="newsError" class="hidden py-10 text-center text-sm text-slate-400">We couldn't load the news right now. Try again in a moment.</p>
-    <div class="flex justify-center mt-6">
-      <button id="newsMore" type="button" class="hidden min-h-[44px] px-6 rounded-lg text-sm font-semibold border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Show older stories</button>
-    </div>
-
-    <p class="mt-10 pt-5 border-t border-white/[0.07] text-xs text-slate-500 leading-relaxed max-sm:mt-6 max-sm:text-[11px]">Stories are picked and summarized automatically; follow each link for the original reporting. Headlines and excerpts belong to their publishers. Times are Austin time (CT).</p>
   </div>
+</section>
+
+<!-- Stats bar: counted from GET /api/news (each number stays a dash until it loads). -->
+<section class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4" aria-label="News at a glance">
+  <p class="news-label mb-2 max-sm:mb-1.5"><span class="text-gold">All sources</span> · live</p>
+  <dl class="news-statsbar">
+    <div><dt>Stories tracked</dt><dd id="newsStatStories">—</dd></div>
+    <div><dt>Major this week</dt><dd id="newsStatMajor">—</dd></div>
+    <div><dt>Sources</dt><dd id="newsStatSources">—</dd></div>
+  </dl>
+</section>
+
+<!-- Filters: sticky under the site header. -->
+<div class="news-subbar">
+  <div class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4 news-toolbar">
+    <div class="news-pills" role="group" aria-label="Show">
+      <button type="button" data-news-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-news-filter="major" aria-pressed="false">Major only</button>
+    </div>
+    <label class="news-search">
+      <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <span class="sr-only">Search news</span>
+      <input id="newsSearch" type="search" placeholder="Search headlines" maxlength="80" autocomplete="off">
+    </label>
+  </div>
+</div>
+
+<section class="max-w-6xl mx-auto px-6 lg:px-10 max-sm:px-4 pb-16 max-sm:pb-10">
+  <!-- Major stories (importance 2), pinned above the feed. -->
+  <section id="newsTop" class="hidden news-top" aria-labelledby="newsTopTitle">
+    <div class="news-section-head">
+      <h2 id="newsTopTitle">Top stories</h2>
+      <span class="news-rule" aria-hidden="true"></span>
+      <span id="newsTopCount" class="news-count"></span>
+    </div>
+    <div id="newsTopList" class="news-top-grid"></div>
+  </section>
+
+  <div id="newsList" aria-live="polite"></div>
+  <div id="newsLoading" class="news-skel-list" aria-busy="true">
+    <span class="sr-only">Loading news…</span>
+    <div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div><div class="news-skel"></div>
+  </div>
+  <p id="newsEmpty" class="hidden news-empty">No stories match.</p>
+  <p id="newsError" class="hidden news-empty">We couldn't load the news right now. Try again in a moment.</p>
+  <div class="flex justify-center mt-8 max-sm:mt-6">
+    <button id="newsMore" type="button" class="hidden news-more">Show older stories</button>
+  </div>
+
+  <p class="news-disclosure">Stories are picked and summarized automatically; follow each link for the original reporting. Headlines and excerpts belong to their publishers. Times are Austin time (CT).</p>
 </section>
 </main>
 
@@ -280,6 +310,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/news.js?v=3"></script>
+<script src="js/news.js?v=4"></script>
 </body>
 </html>
