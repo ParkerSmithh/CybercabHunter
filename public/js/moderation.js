@@ -254,15 +254,20 @@
     loadPhotos();
   }
 
-  // Vehicles | Images section buttons. The choice is remembered per browser.
+  // Vehicles | Images | News section buttons. The choice is remembered per
+  // browser. Opening News tells js/moderation-news.js to load its panel.
+  const TABS = ['vehicles', 'images', 'news'];
   let activeTab = 'vehicles';
-  try { if (localStorage.getItem('moderationTab') === 'images') activeTab = 'images'; } catch (e) { /* default */ }
+  try { const saved = localStorage.getItem('moderationTab'); if (TABS.includes(saved)) activeTab = saved; } catch (e) { /* default */ }
   function setTab(tab) {
-    activeTab = tab === 'images' ? 'images' : 'vehicles';
+    activeTab = TABS.includes(tab) ? tab : 'vehicles';
     $('modTabVehicles').setAttribute('aria-selected', String(activeTab === 'vehicles'));
     $('modTabImages').setAttribute('aria-selected', String(activeTab === 'images'));
+    if ($('modTabNews')) $('modTabNews').setAttribute('aria-selected', String(activeTab === 'news'));
     show('modPanelVehicles', activeTab === 'vehicles');
     show('modPanelImages', activeTab === 'images');
+    if ($('modPanelNews')) show('modPanelNews', activeTab === 'news');
+    if (activeTab === 'news') document.dispatchEvent(new CustomEvent('cch:moderation-news'));
     try { localStorage.setItem('moderationTab', activeTab); } catch (e) { /* not essential */ }
   }
 
@@ -445,7 +450,7 @@
   }
 
   function setupActions() {
-    ['modTabVehicles', 'modTabImages'].forEach(id => $(id).addEventListener('click', () => setTab($(id).dataset.tab)));
+    ['modTabVehicles', 'modTabImages', 'modTabNews'].filter(id => $(id)).forEach(id => $(id).addEventListener('click', () => setTab($(id).dataset.tab)));
     setTab(activeTab);
     const onQueueClick = e => {
       const btn = e.target.closest('button[data-action]');

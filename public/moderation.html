@@ -16,7 +16,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -88,6 +88,7 @@
       <div id="modTabs" role="tablist" aria-label="Moderation sections" class="flex flex-wrap gap-2 mb-8 max-sm:mb-5">
         <button id="modTabVehicles" type="button" role="tab" data-tab="vehicles" aria-selected="true" aria-controls="modPanelVehicles" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">VEHICLES <span id="modCountVehicles" class="text-xs opacity-70"></span></button>
         <button id="modTabImages" type="button" role="tab" data-tab="images" aria-selected="false" aria-controls="modPanelImages" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">IMAGES <span id="modCountImages" class="text-xs opacity-70"></span></button>
+        <button id="modTabNews" type="button" role="tab" data-tab="news" aria-selected="false" aria-controls="modPanelNews" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">NEWS</button>
       </div>
 
       <div id="modPanelVehicles" role="tabpanel" aria-labelledby="modTabVehicles">
@@ -131,6 +132,35 @@
           <div id="modApprovedList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
         </div>
       </div>
+
+      <!-- News (js/moderation-news.js; worker/news.js): every collected story,
+           hidden ones too. Hide keeps a story out of /news (it stays stored);
+           Feature makes it Major. The allow / block lists decide what the
+           daily ingest keeps, one rule per line, applied from the next run. -->
+      <div id="modPanelNews" role="tabpanel" aria-labelledby="modTabNews" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <p id="modNewsRun" class="text-xs text-slate-400">Loading…</p>
+          <button id="modNewsRunNow" type="button" class="text-xs font-semibold px-3 py-2 rounded-lg border border-[rgba(212,175,55,0.35)] text-slate-100 hover:bg-white/5 disabled:opacity-50">Run the ingest now</button>
+        </div>
+        <div id="modNewsList" class="space-y-2"></div>
+        <div class="flex justify-center mt-4"><button id="modNewsMore" type="button" class="hidden text-xs font-semibold px-4 py-2 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5">Load older</button></div>
+        <form id="modNewsConfig" class="glass rounded-2xl p-5 mt-8 grid gap-4 md:grid-cols-2">
+          <label class="block text-sm">
+            <span class="font-semibold text-slate-100">Allowlist</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">A story is kept when one line matches. "a + b" means both words.</span>
+            <textarea id="modNewsAllow" rows="5" class="w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+          </label>
+          <label class="block text-sm">
+            <span class="font-semibold text-slate-100">Blocklist</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">A story whose headline has any of these is dropped.</span>
+            <textarea id="modNewsBlock" rows="5" class="w-full bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+          </label>
+          <div class="md:col-span-2 flex items-center gap-3">
+            <button type="submit" class="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Save lists</button>
+            <span id="modNewsConfigNote" class="text-xs text-slate-400" role="status"></span>
+          </div>
+        </form>
+      </div>
     </div>
 
   </div>
@@ -160,6 +190,7 @@
   </form>
 </dialog>
 
-<script src="js/moderation.js?v=11"></script>
+<script src="js/moderation.js?v=12"></script>
+<script src="js/moderation-news.js?v=2"></script>
 </body>
 </html>
