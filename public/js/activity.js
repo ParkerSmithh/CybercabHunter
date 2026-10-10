@@ -21,7 +21,19 @@
       const item = el('div'), n = day?.[key];
       const shortLabels = { registry: 'New Cybercabs', dmv: 'DMV additions', sightings: 'Sightings', cameras: 'Detections' };
       const label = el('dt', card ? shortLabels[key] || labels[key] : labels[key]);
-      if (card) label.title = labels[key];
+      if (card) {
+        label.title = labels[key];
+        const paths = { registry: '<path d="M3 15V9l2-4h10l4 4h2v6h-2m-4 0H9m-6-6h16"/><circle cx="6" cy="15" r="3"/><circle cx="18" cy="15" r="3"/>', dmv: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h3"/>', sightings: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>', cameras: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/>' };
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        for (const [attr, value] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5', 'aria-hidden': 'true', class: 'daily-metric-icon' })) icon.setAttribute(attr, value);
+        icon.innerHTML = paths[key] || ''; label.prepend(icon);
+        const previous = data?.days?.find(d => d.date === new Date(Date.parse(lastDay + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10));
+        const change = n != null && previous?.[key] != null ? n - previous[key] : null;
+        const descriptions = { registry: 'Registry entries', dmv: 'First observed', sightings: 'Approved photos', cameras: 'Camera captures' };
+        const note = el('span', change === null ? descriptions[key] : `${change > 0 ? '+' : ''}${number(change)} vs yesterday`, 'daily-metric-detail');
+        note.title = change === null ? descriptions[key] : 'Today’s activity so far compared with the previous full day';
+        label.append(note);
+      }
       item.append(label, el('dd', n == null ? 'Unavailable' : `${key === 'registry' || key === 'dmv' ? '+' : ''}${number(n)}`, n == null ? 'activity-unavailable' : ''));
       dl.append(item);
     }
@@ -157,6 +169,7 @@
       if (token !== sequence) return; data = response; fetched = Date.now();
       if (card) {
         const day = data.days.find(d => d.date === lastDay); $('dailyStats').replaceChildren(stats(day));
+        $('dailyUpdated').textContent = `Updated ${new Date(data.generated_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT`;
       } else {
         const years = data.years.includes(selectedYear) ? data.years : [...data.years, selectedYear].sort((a, b) => b - a);
         $('activityYear').replaceChildren(...years.map(y => { const o = el('option', String(y)); o.value = y; return o; })); $('activityYear').value = selectedYear;
@@ -164,7 +177,7 @@
       }
     } catch {
       if (token !== sequence) return;
-      if (card) { $('dailyStats').replaceChildren(stats(null), el('p', 'Activity could not be retrieved. Automatic refresh will retry.', 'activity-muted')); }
+      if (card) { $('dailyUpdated').textContent = 'Refresh pending'; $('dailyStats').replaceChildren(stats(null), el('p', 'Activity could not be retrieved. Automatic refresh will retry.', 'activity-muted')); }
       else { data = null; $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); $('activityDetail').hidden = true; $('activityStatus').textContent = 'Activity could not be retrieved. Retry or wait for the automatic refresh.'; }
       const retry = el('button', 'Retry', 'activity-retry'); retry.type = 'button'; retry.addEventListener('click', () => { retry.remove(); load(); });
       (card ? $('dailyStats') : $('activitySummary')).append(retry);

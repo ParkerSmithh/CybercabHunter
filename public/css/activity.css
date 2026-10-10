@@ -29,3 +29,31 @@
 #cybercabDaily h2{color:rgb(var(--ink))}
 #cybercabDaily .activity-muted,#cybercabDaily .activity-stats dt,#cybercabDaily .activity-stats dd.activity-unavailable{color:rgb(var(--n-400))}
 #cybercabDaily .activity-stats dd{color:rgb(var(--gold-ink))}
+
+/* A compact daily briefing, using the dashboard's existing gold wash. */
+#cybercabDaily{position:relative;isolation:isolate;column-gap:28px}
+#cybercabDaily h2{display:flex;align-items:center;gap:9px;letter-spacing:.035em;font-size:14px}
+#cybercabDaily .daily-title-icon{width:20px;height:20px;flex-shrink:0;color:rgb(var(--gold-ink))}
+#cybercabDaily .daily-updated{font-size:11px;line-height:1.4;color:rgb(var(--n-400));margin-top:6px;font-variant-numeric:tabular-nums}
+#cybercabDaily .activity-stats{gap:16px}
+#cybercabDaily .activity-stats>div{position:relative;padding-left:16px;border-left:1px solid rgb(var(--gold) / .18);min-width:0}
+#cybercabDaily .activity-stats dt{display:flex;align-items:center;gap:5px;position:relative;padding-bottom:19px}
+#cybercabDaily .daily-metric-icon{width:14px;height:14px;flex-shrink:0;color:rgb(var(--gold-ink))}
+#cybercabDaily .activity-stats dd{font-size:26px;margin-top:-15px;padding-bottom:18px;letter-spacing:-.03em}
+#cybercabDaily .daily-metric-detail{position:absolute;top:calc(100% + 18px);left:0;right:0;display:block;font-size:11px;line-height:1.3;font-weight:400;color:rgb(var(--n-400));white-space:nowrap}
+#cybercabDaily .daily-calendar-link{border-color:rgb(var(--gold) / .65);background:linear-gradient(120deg,#edcf70,#D4AF37);transition:background .18s ease,transform .18s ease}
+#cybercabDaily .daily-calendar-link:hover{background:#edcf70;transform:translateY(-1px)}
+@media(max-width:1200px) and (min-width:1024px){#cybercabDaily{grid-template-columns:190px minmax(0,1fr) auto;column-gap:16px}#cybercabDaily .activity-stats{gap:10px}#cybercabDaily .activity-stats>div{padding-left:10px}#cybercabDaily .daily-metric-icon{display:none}}
+@media(max-width:640px){
+  #cybercabDaily{column-gap:12px}
+  #cybercabDaily h2{font-size:12px;gap:6px}
+  #cybercabDaily .daily-title-icon{width:16px;height:16px}
+  #cybercabDaily .activity-stats{gap:8px}
+  #cybercabDaily .activity-stats>div{padding-left:8px}
+  #cybercabDaily .activity-stats>div:first-child{padding-left:0;border-left:0}
+  #cybercabDaily .activity-stats dt{display:block;font-size:11px;padding-bottom:19px}
+  #cybercabDaily .daily-metric-icon{display:block;width:13px;height:13px;margin-bottom:5px}
+  #cybercabDaily .activity-stats dd{font-size:23px;padding-bottom:35px}
+  #cybercabDaily .daily-metric-detail{white-space:normal;top:calc(100% + 16px);font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){#cybercabDaily .daily-calendar-link{transition:none}#cybercabDaily .daily-calendar-link:hover{transform:none}}
