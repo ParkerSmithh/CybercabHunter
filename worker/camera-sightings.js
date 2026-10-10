@@ -6,6 +6,9 @@
 //        (its latest), newest first. image_url is null while a detection has
 //        no stored image. An unsupported city: 400 invalid_city.
 //
+//   GET  /api/camera-sightings/heat?city=&range=24h|7d|30d|all   public
+//     -> per-camera detection counts for the Zones heatmap (see apiCameraSightingsHeat)
+//
 //   GET  /api/camera-sightings/<id>/image      public
 //     -> the stored JPEG (R2 is not public; the Worker serves it).
 //
@@ -170,6 +173,83 @@ export async function apiCameraSightingsHistory(request, env, ctx, { now = Date.
       source: r.source_submission_id ? 'spotter' : 'watch'
     })),
     next_cursor: rows.length > limit ? `${last.observed_at}|${last.id}` : null
+  }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });
+  if (cache) {
+    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  }
+  return response;
+}
+
+// GET /api/camera-sightings/heat?city=austin|dallas&range=24h|7d|30d|all
+// Public. The Zones map's heatmap: every recorded detection in the window,
+// counted PER CAMERA (heat sits at the camera that saw the Cybercab, never a
+// live position), with the same public filter as the history above (a spotter
+// detection only while its sighting is approved with its photo stored).
+//   -> { city, range, from, to, total, cameras: [{ camera_id, camera_name, lat,
+//        lng, count, last, grid, last_by_hour }] }
+//   grid: 168 counts, index day * 24 + hour, in Austin time (America/Chicago;
+//   day 0 = Sunday), so the page can filter by hour of day without a refetch.
+//   last_by_hour: the latest detection (ISO) in each Austin hour, or null.
+// The same Cybercab filed twice at one camera (the watch and a spotter photo,
+// or two photos) within HEAT_SAME_EVENT_MS counts once. Cameras with no
+// detection in the window are not listed (no heat). Edge-cached like the list.
+const HEAT_RANGES = { '24h': 1, '7d': 7, '30d': 30, all: null };
+const HEAT_SAME_EVENT_MS = 2 * 60 * 1000;
+const HEAT_MAX_ROWS = 20000;
+const CHICAGO_PARTS = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', hourCycle: 'h23' });
+const WEEKDAY = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+export function austinHourDay(ms) {
+  const parts = Object.fromEntries(CHICAGO_PARTS.formatToParts(new Date(ms)).map(p => [p.type, p.value]));
+  return { hour: Number(parts.hour) % 24, day: WEEKDAY[parts.weekday] };
+}
+
+export async function apiCameraSightingsHeat(request, env, ctx, { now = Date.now() } = {}) {
+  const city = requestedCity(request);
+  if (!city) return fail(400, 'invalid_city');
+  const range = new URL(request.url).searchParams.get('range') || '7d';
+  if (!Object.prototype.hasOwnProperty.call(HEAT_RANGES, range)) return fail(400, 'invalid_range');
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
+  const days = HEAT_RANGES[range];
+  const from = days ? toStoredIso(now - days * 86400000) : null;
+  const to = toStoredIso(now + MAX_FUTURE_SKEW_MS);
+  const { results } = await env.cybercabhunter_db.prepare(`
+    SELECT d.camera_id, d.camera_name, d.lat, d.lng, d.observed_at
+    FROM camera_detections d
+    WHERE d.city = ? ${from ? 'AND d.observed_at >= ?' : ''} AND d.observed_at <= ?
+      AND (d.source_submission_id IS NULL OR EXISTS (
+        SELECT 1 FROM submissions s WHERE s.id = d.source_submission_id
+          AND s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_ref IS NOT NULL))
+    ORDER BY d.camera_id ASC, d.observed_at ASC
+    LIMIT ?
+  `).bind(...[city, ...(from ? [from] : []), to, HEAT_MAX_ROWS]).all();
+  const cams = new Map();
+  let total = 0;
+  for (const r of results || []) {
+    const ms = Date.parse(r.observed_at);
+    if (!Number.isFinite(ms) || !Number.isFinite(r.lat) || !Number.isFinite(r.lng)) continue;
+    let c = cams.get(r.camera_id);
+    if (!c) {
+      c = { camera_id: r.camera_id, camera_name: r.camera_name, lat: r.lat, lng: r.lng, count: 0, last: null, grid: new Array(168).fill(0), last_by_hour: new Array(24).fill(null), lastMs: -Infinity };
+      cams.set(r.camera_id, c);
+    }
+    if (ms - c.lastMs < HEAT_SAME_EVENT_MS) continue;   // the same detection, filed again
+    c.lastMs = ms;
+    const { hour, day } = austinHourDay(ms);
+    c.count++; total++;
+    c.grid[day * 24 + hour]++;
+    c.last = r.observed_at; c.camera_name = r.camera_name; c.lat = r.lat; c.lng = r.lng;
+    c.last_by_hour[hour] = r.observed_at;
+  }
+  const response = Response.json({
+    city, range, from, to, total,
+    cameras: [...cams.values()].filter(c => c.count).sort((a, b) => b.count - a.count)
+      .map(({ lastMs, ...c }) => c)
   }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });
   if (cache) {
     const stored = cache.put(cacheKey, response.clone()).catch(() => {});

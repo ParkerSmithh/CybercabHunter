@@ -988,3 +988,107 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 /* The sticky header and the phone tab bar are edged on one side only. */
 header.glass{border-width:0 0 1px;}
 #mobileBottomNav.glass{border-width:1px 0 0;}
+
+
+/* ---- Predictions on the homepage charts (js/forecast.js; index.html fleet
+   chart, js/dmv-panel.js). Off by default; compact segmented controls. ---- */
+.forecast-controls-col{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.forecast-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px;}
+.forecast-seg{display:inline-flex;align-items:center;gap:2px;padding:2px;border:1px solid rgb(var(--ink) / .1);border-radius:9px;background:rgb(var(--ink) / .03);}
+.forecast-seg button{font-size:11px;font-weight:600;line-height:1;padding:6px 9px;border-radius:7px;color:rgb(var(--n-400));white-space:nowrap;transition:color .15s,background-color .15s;}
+.forecast-seg button:hover{color:rgb(var(--ink));}
+.forecast-seg button[aria-pressed="true"]{color:#1a1204;background:#D4AF37;}
+.forecast-seg button:focus-visible{outline:2px solid rgb(212 175 55 / .7);outline-offset:1px;}
+.forecast-seg-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgb(var(--n-500));padding:0 4px 0 6px;}
+.forecast-horizon button[aria-pressed="true"]{color:rgb(var(--ink));background:rgb(var(--ink) / .1);}
+.forecast-note{position:absolute;left:36px;right:36px;top:22px;z-index:4;padding:8px 10px;border:1px solid rgb(212 175 55 / .3);border-radius:10px;background:rgb(var(--surface) / .92);font-size:11px;line-height:1.45;color:rgb(var(--n-300));}
+.forecast-note strong,.forecast-note-inline strong{color:#F3E5AB;font-weight:600;}
+.forecast-note-inline{margin-top:10px;font-size:11px;color:rgb(var(--n-300));}
+.forecast-how-btn{font-size:11px;font-weight:600;color:#F3E5AB;white-space:nowrap;text-decoration:underline;text-decoration-color:rgb(243 229 171 / .35);text-underline-offset:3px;min-height:32px;}
+.forecast-how-btn:hover{text-decoration-color:#F3E5AB;}
+.forecast-how-pop{position:absolute;z-index:8;right:16px;bottom:64px;width:min(380px,calc(100% - 32px));max-height:min(360px,70%);overflow:auto;padding:14px 16px;border:1px solid rgb(212 175 55 / .3);border-radius:14px;background:rgb(var(--surface) / .96);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgb(255 255 255 / .05);}
+.forecast-how-close{width:26px;height:26px;border-radius:8px;color:rgb(var(--n-400));font-size:16px;line-height:1;}
+.forecast-how-close:hover{color:rgb(var(--ink));background:rgb(var(--ink) / .06);}
+.home-growth-panel{position:relative;}
+.home-growth-stat.is-forecast > div:nth-child(2){color:#F3E5AB;}
+.forecast-how{border-top:1px solid rgb(var(--ink) / .08);padding-top:10px;}
+.forecast-how summary{cursor:pointer;font-size:11px;font-weight:600;color:#F3E5AB;list-style:none;display:inline-flex;align-items:center;gap:6px;min-height:32px;}
+.forecast-how summary::-webkit-details-marker{display:none;}
+.forecast-how summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .2s;}
+.forecast-how[open] summary::before{transform:rotate(45deg);}
+.forecast-how ul{margin-top:6px;display:grid;gap:6px;font-size:11px;line-height:1.55;color:rgb(var(--n-400));}
+.forecast-how ul span{color:rgb(var(--n-300));font-weight:600;}
+.forecast-layer{transition:opacity .35s ease;}
+@media (max-width:639px){
+  .forecast-controls-col{align-items:flex-start;width:100%;}
+  .forecast-controls{justify-content:flex-start;}
+  .forecast-seg button{padding:9px 10px;min-height:36px;}
+  .forecast-note{left:8px;right:8px;}
+}
+@media (prefers-reduced-motion: reduce){ .forecast-layer{transition:none;} }
+
+/* ---- Zones map: Normal Map / Heatmap (js/zones-heatmap.js) ---- */
+.zh-ctrl{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin:0 12px 8px !important;clear:both;font-family:'Inter',sans-serif;pointer-events:auto;}
+.maplibregl-ctrl-bottom-right .zh-ctrl{align-items:flex-end;}
+.zh-seg{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid rgb(255 255 255 / .1);border-radius:12px;background:rgb(15 16 17 / .78);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgb(255 255 255 / .06),0 8px 22px -12px rgb(0 0 0 / .7);}
+.zh-seg button{font-size:12px;font-weight:600;line-height:1;padding:9px 12px;border-radius:9px;color:#8A8F98;white-space:nowrap;min-height:34px;transition:color .15s,background-color .15s;}
+.zh-seg button:hover{color:#F7F8F8;}
+.zh-seg button[aria-pressed="true"]{color:#1a1204;background:#D4AF37;}
+.zh-seg button:focus-visible{outline:2px solid rgb(212 175 55 / .75);outline-offset:1px;}
+.zh-panel{width:292px;padding:10px;border:1px solid rgb(255 255 255 / .1);border-radius:14px;background:rgb(15 16 17 / .82);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgb(255 255 255 / .06),0 12px 28px -14px rgb(0 0 0 / .75);color:#D0D6E0;}
+.zh-panel[hidden]{display:none;}
+.zh-panel .zh-seg{background:transparent;box-shadow:none;border-color:rgb(255 255 255 / .08);padding:2px;}
+.zh-panel .zh-seg button{font-size:11px;padding:7px 9px;min-height:30px;}
+.zh-panel .zh-seg button[aria-pressed="true"]{color:#F7F8F8;background:rgb(255 255 255 / .12);}
+.zh-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.zh-hour select{appearance:none;-webkit-appearance:none;font-size:11px;font-weight:600;color:#D0D6E0;background:rgb(255 255 255 / .04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238A8F98' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 7px center;border:1px solid rgb(255 255 255 / .1);border-radius:9px;padding:7px 22px 7px 8px;min-height:30px;max-width:112px;}
+.zh-hour select:focus-visible{outline:2px solid rgb(212 175 55 / .75);outline-offset:1px;}
+.zh-legend{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:10px;color:#8A8F98;}
+.zh-legend i{flex:1;height:6px;border-radius:999px;background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(243,229,171,.6) 28%,#D4AF37 50%,#f97316 75%,#ff4500);box-shadow:0 0 10px rgb(249 115 22 / .35);}
+.zh-status{margin-top:8px;font-size:11px;font-weight:600;color:#F7F8F8;}
+.zh-note{margin-top:2px;font-size:10px;line-height:1.4;color:#7E838C;}
+.zh-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;padding:10px 14px;border:1px solid rgb(212 175 55 / .3);border-radius:12px;background:rgb(15 16 17 / .85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);font-size:12px;font-weight:600;color:#D0D6E0;pointer-events:none;text-align:center;max-width:80%;}
+.zh-empty[hidden]{display:none;}
+.zones-heat-on .camera-cybercab{display:none !important;}
+/* MapLibre styles every button inside a map control (29px squares, a grey
+   hover); these segmented buttons keep their own size and colours. */
+.maplibregl-ctrl.zh-ctrl button{width:auto;height:auto;display:inline-flex;align-items:center;justify-content:center;}
+.maplibregl-ctrl.zh-ctrl button:not(:disabled):hover{background-color:rgb(255 255 255 / .06);}
+.maplibregl-ctrl.zh-ctrl .zh-mode button[aria-pressed="true"],.maplibregl-ctrl.zh-ctrl .zh-mode button[aria-pressed="true"]:hover{background-color:#D4AF37;color:#1a1204;}
+.maplibregl-ctrl.zh-ctrl .zh-panel button[aria-pressed="true"],.maplibregl-ctrl.zh-ctrl .zh-panel button[aria-pressed="true"]:hover{background-color:rgb(255 255 255 / .12);color:#F7F8F8;}
+.zh-pop-row{display:flex;justify-content:space-between;gap:14px;font-size:12px;padding:2px 0;color:#8A8F98;}
+.zh-pop-row b{color:#F7F8F8;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;}
+@media (max-width:639px){
+  .zh-ctrl{margin:0 8px 8px !important;}
+  .zh-panel{width:min(292px,calc(100vw - 56px));padding:8px;}
+  .zh-row{flex-wrap:wrap;}
+  .zh-legend{margin-top:6px;}
+  .zh-status{margin-top:5px;}
+  .zh-note{display:none;}
+  .zh-seg button{padding:9px 11px;min-height:36px;}
+}
+
+/* The fleet panel's forecast summary: four compact tiles in its fixed height. */
+.home-growth-stats.is-forecast-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-content:start;}
+.home-growth-panel.is-predicting .home-growth-footer{flex-wrap:wrap;row-gap:2px;}
+.forecast-tile{min-width:0;padding:6px 8px;border:1px solid rgb(var(--ink) / .08);border-radius:10px;background:rgb(var(--ink) / .02);}
+.forecast-tile.is-current{border-color:rgb(212 175 55 / .3);background:linear-gradient(110deg,rgb(212 175 55 / .12),transparent);}
+.forecast-tile.is-projected{border-color:rgb(243 229 171 / .28);}
+.forecast-tile-label{font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;line-height:1.25;color:rgb(var(--n-500));}
+.forecast-tile-value{margin-top:2px;font-size:18px;font-weight:600;line-height:1.1;color:rgb(var(--ink));font-variant-numeric:tabular-nums;}
+.forecast-tile.is-current .forecast-tile-value{color:rgb(var(--gold-ink));}
+.forecast-tile.is-projected .forecast-tile-value{color:#F3E5AB;}
+.forecast-tile-sub{margin-top:2px;font-size:10px;line-height:1.3;color:rgb(var(--n-500));}
+@media (min-width:1024px) and (max-width:1279px){ .home-growth-stats.is-forecast-stats{grid-template-columns:repeat(4,minmax(0,1fr));} }
+:root[data-theme="light"] .forecast-note strong,:root[data-theme="light"] .forecast-note-inline strong,:root[data-theme="light"] .forecast-how-btn,:root[data-theme="light"] .forecast-how summary,:root[data-theme="light"] .forecast-tile.is-projected .forecast-tile-value,:root[data-theme="light"] .home-growth-stat.is-forecast > div:nth-child(2){color:rgb(var(--gold-ink));}
+:root[data-theme="light"] .forecast-how-btn{text-decoration-color:rgb(var(--gold-ink) / .35);}
+:root[data-theme="light"] .forecast-seg button[aria-pressed="true"]{color:#1a1204;}
+:root[data-theme="light"] .forecast-horizon button[aria-pressed="true"]{color:rgb(var(--ink));}
+@media (min-width:1280px){ .forecast-tile.is-current .forecast-tile-sub{display:none;} }
+@media (max-width:767px){ .home-growth-panel.is-predicting .home-growth-footer p{flex-basis:100%;max-width:none;} }
+/* 768-1023px: the fleet panel's height normally matches the map card beside it;
+   with predictions on it grows to fit the extra controls and keeps a full plot. */
+@media (min-width:768px) and (max-width:1023px){
+  .home-growth-panel.is-predicting{contain:none;}
+  .home-growth-panel.is-predicting .home-growth-plot{height:240px;min-height:240px;}
+}

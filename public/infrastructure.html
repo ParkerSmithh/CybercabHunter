@@ -17,7 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -380,6 +380,7 @@
 <script src="js/main.js?v=27"></script>
 <script src="js/austin-map.js?v=8"></script>
 <script src="js/map-search.js?v=3"></script>
+<script src="js/zones-heatmap.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -507,6 +508,8 @@
   const features = CCCAustinMap.addFeatures(map, { city: () => currentCity, dallasChargingLocations });
   // Place search (js/map-search.js); the map works without it.
   const search = window.CCCMapSearch ? CCCMapSearch.attach(map, { area: () => currentCity }) : null;
+  // Normal Map / Heatmap (js/zones-heatmap.js): Normal by default; the map works without it.
+  const heat = window.CCCZonesHeat ? CCCZonesHeat.attach(map, { city: () => currentCity }) : null;
 
   // ---- The selected city: map view, camera markers, search, replay link, title ----
   // Dallas: frame the service zone and the documented Irving fleet hub.
@@ -529,6 +532,7 @@
     if (search) search.reset();
     if (features && features.refreshCameras) features.refreshCameras();
     if (features && features.refreshChargingLocations) features.refreshChargingLocations();
+    if (heat) heat.refresh();
     if (city === 'dallas') {
       // Leave room for the western hub pin and its 240px popup beside the sidebar.
       const panel = document.getElementById('zonePanel');
