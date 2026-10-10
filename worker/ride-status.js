@@ -14,7 +14,7 @@
 //  - A trip marked superseded_by is a legacy duplicate of another trip and
 //    never counts and never appears.
 //
-// Nothing here is stored as a counter; statistics are always computed live.
+// These rules serve live statistics and seed the lifetime headline counters.
 
 export const COUNTED_SUBMISSION_STATUSES = ['pending', 'approved'];
 

@@ -61,21 +61,21 @@ async function run() {
     const { r, body } = await stats(ctx);
     check('200', r.status === 200);
     check('public_vehicles counts only eligible vehicles (A, B)', body.public_vehicles === 2, `got ${body.public_vehicles}`);
-    check('recorded_rides counts only counted rides on those vehicles: A 2 + B 2 = 4 (the superseded duplicate, review-only, rejected and private-vehicle rides are excluded)', body.recorded_rides === 4, `got ${body.recorded_rides}`);
+    check('recorded_rides retains all five rides that entered the counted state, including the later superseded row', body.recorded_rides === 5, `got ${body.recorded_rides}`);
     check('sightings (pending, rejected, needs_review, approved-but-unverified, approved+verified, and one on a private vehicle) change neither number', JSON.stringify(beforeSightings) === JSON.stringify(body) && Object.keys(body).join() === 'public_vehicles,recorded_rides');
 
     // The stats must equal what the public registry list shows.
     const list = await (await call(ctx, '/api/robotaxi-vehicles')).json();
     check('public_vehicles equals the registry list total', body.public_vehicles === list.total);
-    check('recorded_rides equals the sum of the list entries\' counted rides', body.recorded_rides === list.vehicles.reduce((n, v) => n + v.trip_count, 0));
+    check('lifetime rides retain the subsequently superseded ride', body.recorded_rides === list.vehicles.reduce((n, v) => n + v.trip_count, 0) + 1);
 
     // The gate reacts to state changes.
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'private' WHERE id = '${B}'`);
     let s2 = (await stats(ctx)).body;
-    check('returning a vehicle to private removes it and its rides', s2.public_vehicles === 1 && s2.recorded_rides === 2, JSON.stringify(s2));
+    check('returning a vehicle to private leaves its lifetime totals unchanged', s2.public_vehicles === 2 && s2.recorded_rides === 5, JSON.stringify(s2));
     ctx.d1.exec(`DELETE FROM trips WHERE robotaxi_vehicle_id = '${A}' AND submission_id IN (SELECT id FROM submissions WHERE status IN ('pending', 'approved'))`);
     s2 = (await stats(ctx)).body;
-    check('a public vehicle that loses all its counted rides drops out (its review-only and rejected rides do not keep it)', s2.public_vehicles === 0 && s2.recorded_rides === 0, JSON.stringify(s2));
+    check('deleting counted rides leaves lifetime vehicle and ride totals unchanged', s2.public_vehicles === 2 && s2.recorded_rides === 5, JSON.stringify(s2));
   }
 
   console.log('2. API: response shape, caching, access');
@@ -118,20 +118,22 @@ async function run() {
     const answer = async db => { const x = await worker.fetch(new Request('https://x/api/registry/stats', { headers: { Origin: 'https://cybercabhunter.com' } }), withDb(db), {}); const raw = await x.text(); let body = null; try { body = JSON.parse(raw); } catch {} return { status: x.status, cache: x.headers.get('Cache-Control'), raw, body }; };
     const isGeneric503 = a => a.status === 503 && a.body && a.body.error === 'stats_unavailable' && a.body.success === false && Object.keys(a.body).sort().join() === 'error,success' && a.cache === 'no-store' && !/public_vehicles|recorded_rides|null|undefined|Error|registry stats|aggregate|usable/.test(a.raw);
     for (const [label, result] of [['null', null], ['undefined', undefined], ['an empty object (no columns)', {}], ['one column missing', { public_vehicles: 3 }], ['null columns', { public_vehicles: null, recorded_rides: null }], ['non-numeric columns', { public_vehicles: 'x', recorded_rides: '5' }], ['negative counts', { public_vehicles: -1, recorded_rides: 0 }], ['fractional counts', { public_vehicles: 1.5, recorded_rides: 2 }]]) {
-      const a = await answer(() => ({ first: async () => result }));
+      const results = result && typeof result === 'object' && 'public_vehicles' in result
+        ? [{ key: 'cybercabs_spotted', value: result.public_vehicles }, { key: 'rides_total', value: result.recorded_rides }] : result;
+      const a = await answer(() => ({ run: async () => ({}), all: async () => ({ results }) }));
       check(`the aggregate query resolving ${label} is a generic 503 (no-store, nothing internal) — never zeros`, isGeneric503(a), `${a.status} ${a.raw.slice(0, 60)}`);
     }
-    const rejected = await answer(() => ({ first: async () => { throw new Error('D1_ERROR: connection reset by peer 10.0.0.7'); } }));
+    const rejected = await answer(() => ({ run: async () => ({}), all: async () => { throw new Error('D1_ERROR: connection reset by peer 10.0.0.7'); } }));
     check('the aggregate query rejecting is a generic 503 too, with no internal detail', isGeneric503(rejected) && !/D1_ERROR|10\.0\.0\.7|connection/.test(rejected.raw));
 
     // ...while a genuine database answer of zero is still a normal 200 with zeroes.
-    const zero = await answer(() => ({ first: async () => ({ public_vehicles: 0, recorded_rides: 0 }) }));
+    const zero = await answer(() => ({ run: async () => ({}), all: async () => ({ results: [{key:'cybercabs_spotted',value:0},{key:'rides_total',value:0}] }) }));
     check('a genuine aggregate result of zero is a 200 with zeroes, cached 60s', zero.status === 200 && zero.body.public_vehicles === 0 && zero.body.recorded_rides === 0 && zero.cache === 'public, max-age=60' && Object.keys(zero.body).join() === 'public_vehicles,recorded_rides');
-    const normal = await answer(() => ({ first: async () => ({ public_vehicles: 4, recorded_rides: 5 }) }));
+    const normal = await answer(() => ({ run: async () => ({}), all: async () => ({ results: [{key:'cybercabs_spotted',value:4},{key:'rides_total',value:5}] }) }));
     check('a normal aggregate result is a 200 with those numbers', normal.status === 200 && normal.body.public_vehicles === 4 && normal.body.recorded_rides === 5);
     // Direct check at the data layer: the function itself throws instead of inventing zeros.
     const { db } = await import('../worker/db.js');
-    let threw = false; try { await db.getPublicRegistryStats({ prepare: () => ({ first: async () => null }) }); } catch { threw = true; }
+    let threw = false; try { await db.getPublicRegistryStats({ prepare: () => ({ run: async () => ({}), all: async () => ({ results: null }) }) }); } catch { threw = true; }
     check('db.getPublicRegistryStats throws on a null result instead of returning zeros', threw);
     check('and returns the real zeros for a real empty database', JSON.stringify(await db.getPublicRegistryStats(ctx.d1)) === '{"public_vehicles":0,"recorded_rides":0}');
   }
@@ -141,12 +143,12 @@ async function run() {
   {
     check('the invented tiles are gone: no "Active Cybercabs", no "Unsupervised Rate", no 45 / 98 targets', !/Active Cybercabs|Unsupervised Rate|data-target="(45|98)"|class="counter"/.test(HTML));
     check('the two real tiles exist and start as an em dash, not 0', /id="statVehicles"[^>]*>—</.test(HTML) && /id="statRides"[^>]*>—</.test(HTML));
-    const statsBar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'));
+    const statsBar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('</section>', HTML.indexOf('<!-- ===== Stats bar')));
     check('the two tiles carry the labels "Cybercabs Spotted" and "Total Rides", and no sub-labels', /Cybercabs Spotted/.test(statsBar) && /Total Rides/.test(statsBar) && !/Moderator-approved|On registry vehicles|Vehicles in the Registry|Rides Recorded/.test(statsBar) && !/text-cyan/.test(statsBar));
     check('the page loads the stats script after main.js', /js\/main\.js[^\n]*\n<script src="js\/home-stats\.js/.test(HTML));
-    check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'))));
+    check('no hard-coded numeric targets remain on the stats bar', !/data-target=/.test(HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('</section>', HTML.indexOf('<!-- ===== Stats bar')))));
     check('the homepage no longer contains the old counter observer', !/counterObserver/.test(HTML));
-    const bar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('<!-- ===== Live map'));
+    const bar = HTML.slice(HTML.indexOf('<!-- ===== Stats bar'), HTML.indexOf('</section>', HTML.indexOf('<!-- ===== Stats bar')));
     check('the stats bar has no live region: no aria-live, role=status/alert/log, aria-atomic or aria-relevant', !/aria-live|role="(status|alert|log|timer|marquee)"|aria-atomic|aria-relevant/i.test(bar));
     const statsCode = STATS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');   // executable code only (the comments explain why there is no live region)
     check('the stats script never adds a live region either', !/aria-live|setAttribute\(\s*['"]role|aria-atomic|\.role\s*=/i.test(statsCode));
@@ -157,9 +159,9 @@ async function run() {
     check('a third tile, "Sightings", starts as an em dash', /<dl class="grid grid-cols-3[\s\S]*?Total Rides[\s\S]*?<dt[^>]*>Sightings<\/dt>[\s\S]*?id="statSightings"[^>]*>—</.test(HTML));
     const ctx = await makeApp();
     let seen = 117, failing = false;
-    const p = await home(ctx, { intercept: async path => path.startsWith('/api/sightings') ? (failing ? new Response('x', { status: 503 }) : Response.json({ seen, sightings: [] })) : null });
+    const p = await home(ctx, { intercept: async path => path.startsWith('/api/sightings') ? (failing ? new Response('x', { status: 503 }) : Response.json({ seen: 0, sightings_all_time: seen, sightings: [] })) : null });
     const el = () => p.d.getElementById('statSightings');
-    check('shows every city\'s approved sightings (the API\'s all-city "seen")', el().textContent === '117' && el().dataset.value === '117');
+    check('shows every city\'s approved sightings (the API\'s lifetime counter)', el().textContent === '117' && el().dataset.value === '117');
     seen = 118;
     p.d.dispatchEvent(new p.w.Event('visibilitychange'));
     await new Promise(r => setTimeout(r, 60));

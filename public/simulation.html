@@ -1089,7 +1089,7 @@
 
     recompute();
 
-    // Fleet size starts at the live public registry count (real data, not an
+    // Fleet size starts at the lifetime registry count (real data, not an
     // invented number); if it can't be loaded, the field stays at 0 and says so.
     fetch('https://cybercabhunter.contactjoeclos.workers.dev/api/registry/stats')
       .then(r => (r.ok ? r.json() : null))
@@ -1100,11 +1100,11 @@
         fleetSize.value = String(v);
         const label = document.getElementById('fleetSizeLabel');
         label.value = String(v);
-        document.getElementById('roiStartNote').textContent = `Fleet size starts at the live registry count (${n.toLocaleString('en-US')} public Cybercabs). Electricity rate and daily miles start at example values. Change any of them.`;
+        document.getElementById('roiStartNote').textContent = `Fleet size starts at the lifetime registry count (${n.toLocaleString('en-US')} Cybercabs spotted). Electricity rate and daily miles start at example values. Change any of them.`;
         recompute();
       })
       .catch(() => {
-        document.getElementById('roiStartNote').textContent = "Couldn't load the live registry count, so fleet size starts at 0. Electricity rate and daily miles start at example values.";
+        document.getElementById('roiStartNote').textContent = "Couldn't load the lifetime registry count, so fleet size starts at 0. Electricity rate and daily miles start at example values.";
       });
   })();
 </script>

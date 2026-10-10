@@ -254,7 +254,7 @@
       $('statPeakHour').textContent = '—';
       $('statPeakCount').textContent = '';
     }
-    num('statTotal', ok && stats.total);
+    num('statTotal', ok && stats.sightings_all_time);
     const cityName = CITY_NAMES[city] || '';
     $('feedCount').textContent = ok && isCount(stats.total) && stats.total > 0
       ? `${plural(stats.total, 'sighting', 'sightings')}${cityName ? ` in ${cityName}` : ''}` : '';

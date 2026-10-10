@@ -14,6 +14,7 @@
 // Never a user/submission/observation id, the R2 key, the submitter, the
 // description, or moderation data.
 
+import { getSiteStatCounters } from './site-stats.js';
 import { db } from './db.js';
 import { publicLocation } from './places.js';
 import { timeZoneFor, usLocalParts } from './timezones.js';
@@ -123,7 +124,8 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
 // GET /api/sightings?city=all|austin|dallas&order=desc|asc&limit=&cursor=&stats=1
 // -> { seen, order, stats?, sightings: [...], next_cursor }. `stats` (with
 // stats=1): see buildSightingStats. `seen` is the live count for
-// the selected filter (not just this page).
+// the selected filter (not just this page). sightings_all_time is the global
+// lifetime counter, independent of filters, deletions and photo expiry.
 // Responses are cached at the edge for LIST_CACHE_SECONDS (Cache API; works on
 // the custom domain, where the Sightings page calls it). This protects D1's
 // daily rows-read allowance from many open tabs polling once a minute — each
@@ -157,18 +159,20 @@ export async function apiListPublicSightings(request, env, ctx) {
   const wantStats = params.get('stats') === '1';
 
   const sql = env.cybercabhunter_db;
-  const [seen, rows, buckets] = await Promise.all([
+  const [seen, rows, buckets, counters] = await Promise.all([
     db.countPublicPhotoSightings(sql, { city }),
     db.getPublicPhotoSightings(sql, { city, limit: limit + 1, after, order }),
-    wantStats ? db.getApprovedPhotoSightingHourBuckets(sql, { city }) : null
+    wantStats ? db.getApprovedPhotoSightingHourBuckets(sql, { city }) : null,
+    getSiteStatCounters(sql)
   ]);
   const page = rows.slice(0, limit);
   const area = cityParam === 'all' ? null : serviceAreaFor(cityParam);
   const statsZone = area && usLocalParts(0, area.timeZone) ? area.timeZone : STATS_DEFAULT_ZONE;
   const response = Response.json({
     seen,
+    sightings_all_time: counters.sightings_all_time,
     order,
-    ...(wantStats ? { stats: buildSightingStats(buckets, statsZone) } : {}),
+    ...(wantStats ? { stats: { ...buildSightingStats(buckets, statsZone), sightings_all_time: counters.sightings_all_time } } : {}),
     sightings: page.map(publicSightingJson),
     next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1], order) : null
   }, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } });

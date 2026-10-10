@@ -2,6 +2,7 @@
 // Every query touching tesla_connections or vehicles is scoped by user_id —
 // callers must resolve that from the session first; never from request input.
 
+import { getSiteStatCounters } from './site-stats.js';
 import { rideQueries } from './db-rides.js';
 import { gmailQueries } from './db-gmail.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, approvalEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
@@ -1034,20 +1035,8 @@ async function getImportedRideSummary(sql, userId, tripId) {
 }
 
 async function getPublicRegistryStats(sql) {
-  const row = await sql.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}) AS public_vehicles,
-      (SELECT COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0)
-         FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}) AS recorded_rides
-  `).first();
-  // An aggregate SELECT of COUNT(*)s always yields exactly one row of whole numbers. Anything else (no row,
-  // a null result, missing or non-numeric columns) means the query did not really answer, and that must
-  // surface as a failure (the caller turns a throw into the generic 503) — never be reported as a zero.
-  const whole = n => Number.isInteger(n) && n >= 0;
-  if (!row || !whole(row.public_vehicles) || !whole(row.recorded_rides)) {
-    throw new Error('registry stats: the aggregate query returned no usable row');
-  }
-  return { public_vehicles: row.public_vehicles, recorded_rides: row.recorded_rides };
+  const counters = await getSiteStatCounters(sql);
+  return { public_vehicles: counters.cybercabs_spotted, recorded_rides: counters.rides_total };
 }
 
 // The public registry LIST: exactly the vehicles getPublicRobotaxiVehicle would

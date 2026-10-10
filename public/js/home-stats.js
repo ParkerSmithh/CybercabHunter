@@ -1,5 +1,5 @@
-/* Homepage headline counts cover the entire public registry and all approved
-   sightings. City-specific detail rows continue using the shared city loader.
+/* Homepage headline counts are lifetime counters for the public registry,
+   recorded rides and approved human/camera sightings. City-specific detail rows continue using the shared city loader.
    Failed refreshes retain the last good value; initial failures keep a dash. */
 (function () {
   const isCount = n => typeof n === 'number' && Number.isInteger(n) && n >= 0;
@@ -47,7 +47,7 @@
       .then(r => (r.ok ? r.json() : Promise.reject(new Error('http_' + r.status))))
       .then(body => {
         const el = $('statSightings');
-        if (el && body && isCount(body.seen) && el.dataset.value !== String(body.seen)) reveal(el, body.seen);
+        if (el && body && isCount(body.sightings_all_time) && el.dataset.value !== String(body.sightings_all_time)) reveal(el, body.sightings_all_time);
       }).catch(() => { /* retain the last good total */ });
   }
   function startSightings() {
