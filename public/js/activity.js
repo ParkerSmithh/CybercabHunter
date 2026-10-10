@@ -157,7 +157,6 @@
       if (token !== sequence) return; data = response; fetched = Date.now();
       if (card) {
         const day = data.days.find(d => d.date === lastDay); $('dailyStats').replaceChildren(stats(day));
-        $('dailyNote').textContent = `DMV: ${day?.dmv === null ? data.errors.dmv || 'awaiting a successful daily snapshot; baseline counts are excluded.' : `${number(day.cybercab)} Cybercab · ${number(day.model_y)} Model Y first observed today.`} Official registration dates are not published.`;
       } else {
         const years = data.years.includes(selectedYear) ? data.years : [...data.years, selectedYear].sort((a, b) => b - a);
         $('activityYear').replaceChildren(...years.map(y => { const o = el('option', String(y)); o.value = y; return o; })); $('activityYear').value = selectedYear;
@@ -165,7 +164,7 @@
       }
     } catch {
       if (token !== sequence) return;
-      if (card) { $('dailyStats').replaceChildren(stats(null)); $('dailyNote').textContent = 'Activity could not be retrieved. Automatic refresh will retry.'; }
+      if (card) { $('dailyStats').replaceChildren(stats(null), el('p', 'Activity could not be retrieved. Automatic refresh will retry.', 'activity-muted')); }
       else { data = null; $('activityGrid').replaceChildren(); $('activitySummary').replaceChildren(); $('activityDetail').hidden = true; $('activityStatus').textContent = 'Activity could not be retrieved. Retry or wait for the automatic refresh.'; }
       const retry = el('button', 'Retry', 'activity-retry'); retry.type = 'button'; retry.addEventListener('click', () => { retry.remove(); load(); });
       (card ? $('dailyStats') : $('activitySummary')).append(retry);
