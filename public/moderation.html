@@ -166,6 +166,11 @@
             </div>
           </div>
           <label class="md:col-span-2 block text-sm">
+            <span class="font-semibold text-slate-100">Major keywords</span>
+            <span class="block text-xs text-slate-500 mt-0.5 mb-2">One per line. A headline or excerpt with any of these (at the start of a word, any capitalization) adds +1; with 3+ outlets, a number plus a fleet word, or the AI check, 2 makes a story Major. Every stored story is rescored on the next run.</span>
+            <textarea id="modNewsMajor" rows="6" class="w-full max-w-md bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+          </label>
+          <label class="md:col-span-2 block text-sm">
             <span class="font-semibold text-slate-100">No thumbnails from these domains</span>
             <span class="block text-xs text-slate-500 mt-0.5 mb-2">One domain per line (e.g. example.com). Their stories are still listed, with the outlet's initial instead of a picture. Applies to stories collected from now on.</span>
             <textarea id="modNewsThumbBlock" rows="3" class="w-full max-w-md bg-panel border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
@@ -206,6 +211,6 @@
 </dialog>
 
 <script src="js/moderation.js?v=12"></script>
-<script src="js/moderation-news.js?v=4"></script>
+<script src="js/moderation-news.js?v=5"></script>
 </body>
 </html>

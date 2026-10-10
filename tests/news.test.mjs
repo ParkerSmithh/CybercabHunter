@@ -11,12 +11,15 @@
 //   - retention: 30-day prune of rows AND R2 objects (hidden / featured too);
 //     orphan sweep; keyset pages survive rows vanishing
 //   - GET /api/news (thumb_url before image_url), /news-img/<id>.webp, moderation
+//   - Major scoring (migration 0032): keywords (editable), the numeric fleet
+//     signal, the Workers AI check on rules-score-1 new stories (mocked), the
+//     daily rules-only rescore
 // Run: node tests/news.test.mjs
 
 import worker from '../worker/index.js';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
 import { fakeR2 } from './helpers/d1-sqlite.mjs';
-import { runNewsIngest, runNewsTick, parseFeed, canonicalUrl, clusterAndScore, extractImage, parseRobots, robotsAllows, makeThumb, processThumbs, pruneOld, sweepOrphans, thumbKey, NEWS_CRON, FEEDS } from '../worker/news.js';
+import { DEFAULT_MAJOR_KEYWORDS, aiVerdict, parseVerdict, runNewsIngest, runNewsTick, parseFeed, canonicalUrl, clusterAndScore, extractImage, parseRobots, robotsAllows, makeThumb, processThumbs, pruneOld, sweepOrphans, thumbKey, NEWS_CRON, FEEDS } from '../worker/news.js';
 import fs from 'node:fs';
 
 const t = makeCheck();
@@ -265,6 +268,83 @@ async function run() {
     let r;
     try { r = await call(ctx, 'POST', '/api/moderation/news/run', { session: 'mod' }); } finally { globalThis.fetch = realFetch; }
     check('"Run the next ingest step now" runs one step (one feed, thumbnails, prune)', r.status === 200 && r.json.run.feeds.length === 1 && r.json.run.thumbs && 'done' in r.json.run.thumbs);
+  }
+
+  console.log('6. Major scoring');
+  {
+    const one = (title, extra = {}) => clusterAndScore([{ id: 'x', title, excerpt: '', source: 'Solo', published_at: '2026-10-09T00:00:00Z', ...extra }]).x;
+    const reg = one('Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry');
+    check('"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry", one outlet: Major (number + fleet word, registry keyword)', reg.importance === 2 && reg.rules === 2);
+    check('"Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot", one outlet: Major ("dozens" counts as a number)', one('Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot').importance === 2);
+    check('a number without a fleet word, or a fleet word without a number: no numeric signal', one('Tesla Q3 2026 earnings call date set').rules === 0 && one('Robotaxi riders praise smooth trip').rules === 0);
+    check('a single-outlet crash story with no other signal stays at 1', one('Tesla Cybercab crash on Lamar Blvd').importance === 1);
+    const three = clusterAndScore(['A', 'B', 'C'].map((src, i) => ({ id: 'p' + i, title: 'Cybercab picks up riders near Zilker Park on Sunday', excerpt: 'Riders shared videos.', source: src, published_at: `2026-10-09T0${i}:00:00Z` })));
+    check('a 3-outlet story with no keywords: 1, not Major', ['p0', 'p1', 'p2'].every(id => three[id].importance === 1 && three[id].source_count === 3));
+    check('keywords are case-insensitive, start-of-word, and read the excerpt too', one('TESLA CYBERCAB RECALL').importance === 1 && one('Cybercab LAUNCHES rides').importance === 1 && one('Cybercab owner issues statement').importance === 0 && one('Cybercab story', { excerpt: 'The NHTSA asked questions.' }).importance === 1);
+    check('a stored AI "major" verdict adds +1; featured is always 2; capped at 2', one('Tesla Cybercab crash on Lamar Blvd', { ai_major: 1 }).importance === 2 && one('Cybercab spotted', { featured: 1 }).importance === 2 && one('Tesla Adds 150 Cybercabs to fleet registry', { ai_major: 1 }).importance === 2);
+    const seeded = (await makeApp()).d1.query(`SELECT value FROM news_config WHERE key = 'major_keywords'`)[0].value;
+    check('migration 0032 seeds major_keywords with the full list (old + fleet + DMV + new-market terms)', JSON.stringify(JSON.parse(seeded)) === JSON.stringify(DEFAULT_MAJOR_KEYWORDS) && ['launch', 'nhtsa', 'fleet', 'rolls out', 'dmv', 'self-certification', 'arrives in'].every(k => DEFAULT_MAJOR_KEYWORDS.includes(k)));
+    check('the AI binding is configured (Workers AI)', /"ai":\s*\{\s*"binding":\s*"AI"/.test(fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')));
+
+    // A new-story ingest with a mocked Workers AI.
+    const AI_FEED = RSS([
+      rssItem('Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry', 'https://electrek.co/registry/', 2, 'The registry grew again.'),
+      rssItem('Tesla Cybercab crash on Lamar Blvd', 'https://electrek.co/lamar/', 3, 'A minor fender bender.'),
+      rssItem('Cybercab spotted downtown near the Capitol', 'https://electrek.co/capitol/', 4, 'A white Cybercab was seen.')
+    ]);
+    const aiWeb = () => async url => { const f = FEEDS.find(x => x.url === String(url)); return new Response(f && f.id === 'electrek' ? AI_FEED : RSS([])); };
+    const mockAI = answer => { const calls = []; return { calls, run: async (model, input) => { calls.push({ model, text: input.messages[1].content }); return answer(input); } }; };
+    const imp = (e, re) => rows(e).find(x => re.test(x.title));
+    for (const [label, answer, expect] of [['major', () => ({ response: 'major: a crash is a safety event' }), 2], ['not-major', () => ({ response: 'not-major: minor incident' }), 1]]) {
+      const e = await makeApp();
+      e.env.AI = mockAI(answer);
+      const lg = await runNewsIngest(e.env, { fetchImpl: aiWeb(), nowMs: NOW });
+      check(`AI "${label}" on the rules-score-1 story -> importance ${expect}; reason stored and logged`, imp(e, /Lamar/).importance === expect && imp(e, /Lamar/).ai_major === (expect === 2 ? 1 : 0) && imp(e, /Lamar/).ai_reason && lg.ai.checked === 1 && lg.ai.verdicts[0].reason === imp(e, /Lamar/).ai_reason);
+      check(`...only that story was sent to the model (scores 0 and 2 skip it): ${label}`, e.env.AI.calls.length === 1 && /Lamar/.test(e.env.AI.calls[0].text) && /llama/.test(e.env.AI.calls[0].model) && imp(e, /Registry/).importance === 2 && imp(e, /Registry/).ai_major === null && imp(e, /Capitol/).importance === 0 && imp(e, /Capitol/).ai_major === null);
+    }
+    {
+      const e = await makeApp();
+      e.env.AI = mockAI(() => { throw new Error('upstream 500'); });
+      const lg = await runNewsIngest(e.env, { fetchImpl: aiWeb(), nowMs: NOW });
+      check('AI error: the rules score stands (1), nothing invented, the ingest completes, the failure logged', imp(e, /Lamar/).importance === 1 && imp(e, /Lamar/).ai_major === null && lg.new === 3 && lg.ai.failed === 1 && /upstream 500/.test(lg.ai.verdicts[0].error));
+      const g = await makeApp();
+      g.env.AI = mockAI(() => ({ response: 'Sure! Here is my analysis of the story.' }));
+      const lg2 = await runNewsIngest(g.env, { fetchImpl: aiWeb(), nowMs: NOW });
+      check('AI garbage: the rules score stands, logged as unparseable', imp(g, /Lamar/).importance === 1 && lg2.ai.failed === 1 && lg2.ai.verdicts[0].error === 'ai_unparseable');
+      const h = await makeApp();
+      const lg3 = await runNewsIngest(h.env, { fetchImpl: aiWeb(), nowMs: NOW });
+      check('no AI binding: the rules score stands, logged', imp(h, /Lamar/).importance === 1 && lg3.ai.verdicts[0].error === 'ai_unavailable');
+      let hang = false;
+      try { await aiVerdict({ AI: { run: () => new Promise(() => {}) } }, { title: 'x' }, { timeoutMs: 30 }); } catch (err) { hang = err.message === 'ai_timeout'; }
+      check('AI timeout: the call gives up (ai_timeout) instead of hanging the ingest', hang);
+      check('the verdict parser: "major: …" / "not-major: …", markdown tolerated, anything else rejected', parseVerdict('**Major**: fleet growth').major === true && parseVerdict('**Major**: fleet growth').reason === 'fleet growth' && parseVerdict('Not major - app update').major === false && parseVerdict('maybe?') === null);
+    }
+
+    // The daily rescore: rules only, the moderator's keywords from the next run, hidden stays hidden.
+    {
+      const e = await makeApp();
+      e.env.AI = mockAI(() => ({ response: 'major: should never be asked' }));
+      const at = h => new Date(NOW - h * 3600e3).toISOString();
+      insertStory(e, { id: uuid(1), title: 'Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry', published_at: at(24 * 9) });   // stored at 0 under the old rules
+      insertStory(e, { id: uuid(2), title: 'Cybercab parade in Round Rock', published_at: at(24 * 3), hidden: 1 });
+      insertStory(e, { id: uuid(3), title: 'Cybercab parade in Round Rock again', published_at: at(24 * 12) });
+      const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(NOW));
+      await e.env.TESLA_SESSIONS.put('news:last_prune', JSON.stringify({ day }));
+      await e.env.TESLA_SESSIONS.put('news:last_sweep', JSON.stringify({ month: day.slice(0, 7) }));
+      const t1 = await runNewsTick(e.env, { fetchImpl: stubWeb({ notModified: true }), nowMs: NOW });
+      const get = id => e.d1.query(`SELECT importance, hidden, ai_major FROM news_articles WHERE id = '${id}'`)[0];
+      check('the daily rescore: a stored 9-day-old story that newly qualifies becomes Major, with no AI call', t1.rescored >= 1 && get(uuid(1)).importance === 2 && get(uuid(1)).ai_major === null && e.env.AI.calls.length === 0);
+      const t2 = await runNewsTick(e.env, { fetchImpl: stubWeb({ notModified: true }), nowMs: NOW + 600e3 });
+      check('...once a day (the next step does not rescore again)', t2.rescored === undefined);
+      const put = await call(e, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { major_keywords: ['  Parade ', 'parade', 'Round   Rock'] } });
+      check('major_keywords saved from moderation (trimmed, lowercased, deduped); other lists untouched', put.status === 200 && JSON.stringify(put.json.config.major_keywords) === '["parade","round rock"]' && /cybercab/.test(put.json.config.allow));
+      check('...an invalid major_keywords is refused', (await call(e, 'PUT', '/api/moderation/news-config', { session: 'mod', body: { major_keywords: 'parade' } })).status === 400);
+      const t3 = await runNewsTick(e.env, { fetchImpl: stubWeb({ notModified: true }), nowMs: NOW + 1200e3 });
+      check('...and apply on the next run: matching stored stories rescored (12-day-old one included)', t3.rescored >= 1 && get(uuid(3)).importance === 1 && get(uuid(1)).importance === 1);
+      check('hidden stays hidden through the rescore (it is scored, never shown)', get(uuid(2)).hidden === 1 && get(uuid(2)).importance === 1 && !(await call(e, 'GET', '/api/news')).json.stories.some(x => x.id === uuid(2)));
+      const list = await call(e, 'GET', '/api/moderation/news', { session: 'mod' });
+      check('moderation lists the Major keywords and each story\'s AI verdict fields', Array.isArray(list.json.config.major_keywords) && 'ai_major' in list.json.stories[0]);
+    }
   }
 
   t.finish();

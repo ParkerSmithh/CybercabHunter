@@ -17,10 +17,16 @@
 //      news_config, edited from /moderation);
 //   3. stores it once (the canonical URL is UNIQUE; the same outlet's same
 //      headline under another URL is the same story), then re-clusters the
-//      recent stories by headline similarity and scores them: +1 when 3+
-//      outlets ran it within 24 h, +1 for a launch / expansion / crash /
-//      recall / NHTSA / investigation / lawsuit / new city / safety / price
-//      headline (2 = major, 1 = notable); FEATURED by a moderator = 2;
+//      recent stories by headline similarity and scores them, +1 per signal:
+//      3+ outlets ran it within 24 h; a Major keyword in a headline or
+//      excerpt (news_config 'major_keywords': launch, crash, NHTSA, fleet,
+//      registry, new market, ...); a number in a headline with a fleet word
+//      ("Tesla Adds 150 Cybercabs"); and, for a NEW story whose rules score
+//      is exactly 1, a Workers AI significance verdict (aiVerdict; at most
+//      AI_PER_TICK a step; an error keeps the rules score). 2+ = major,
+//      1 = notable; FEATURED by a moderator = 2. Once a day every stored
+//      story is rescored by the rules (the stored AI verdicts count, the
+//      model is never asked again);
 //   4. makes up to THUMBS_PER_TICK thumbnails (makeThumb): the article page
 //      (robots.txt respected, 10 s, 2 MB cap) -> og:image, twitter:image, or
 //      the first <img> wider than 200 px -> fetched through Cloudflare Image
@@ -51,6 +57,10 @@ const KV_RUN = 'news:last_run';
 const KV_NEXT_FEED = 'news:next_feed';
 const KV_PRUNE = 'news:last_prune';
 const KV_SWEEP = 'news:last_sweep';
+const KV_RESCORE = 'news:last_rescore';
+export const AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const AI_PER_TICK = 4;
+const AI_TIMEOUT_MS = 8000;
 const kvFeed = id => `news:feed:${id}`;
 const kvRobots = host => `news:robots:${host}`;
 const storyKey = it => `${String(it.source).toLowerCase()}|${[...titleTokens(it.title)].sort().join(' ')}`;
@@ -84,7 +94,29 @@ export function parsePublisherList(value) {
   try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().replace(/\s+/g, ' ')) : null; } catch (e) { return null; }
 }
 
-const IMPORTANT = /\b(launch(es|ed|ing)?|expan(sion|ds|d|ding)|crash(es|ed)?|recall(s|ed)?|nhtsa|investigat(ion|ions|es|ed|ing)|lawsuit(s)?|sue(s|d)?|new cit(y|ies)|safety|price(s|d)?|pricing)\b/i;
+// The Major keywords (news_config 'major_keywords', a JSON array; migrations/0032
+// seeds the same). Each matches case-insensitively at the start of a word
+// ("launch" also matches "launches", "sues" never matches "issues"), in a
+// headline or its excerpt.
+export const DEFAULT_MAJOR_KEYWORDS = ['launch', 'expansion', 'expands', 'expanded', 'expanding', 'crash', 'recall', 'nhtsa', 'investigation', 'investigates', 'investigated', 'lawsuit', 'sues', 'sued', 'new city', 'new cities', 'safety', 'price', 'pricing',
+  'fleet', 'deploys', 'deployment', 'rolls out', 'rollout', 'adds', 'dozens', 'hundreds',
+  'dmv', 'registry', 'registered', 'registration', 'certification', 'self-certification',
+  'new market', 'service area', 'service zone', 'expands to', 'launch in', 'arrives in'];
+export function parseKeywordList(value) {
+  try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().replace(/\s+/g, ' ').toLowerCase()) : null; } catch (e) { return null; }
+}
+const reEscape = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function keywordMatcher(keywords) {
+  const list = (keywords || []).map(k => String(k).trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return () => false;
+  const re = new RegExp(`(^|[^a-z0-9])(${list.map(k => reEscape(k).replace(/ /g, '\\s+')).join('|')})`, 'i');
+  return text => re.test(String(text || ''));
+}
+// The numeric fleet signal: a headline with a number (digits, or "dozens" /
+// "hundreds" / "thousands") and a fleet word.
+const FLEET_WORD = /\b(cybercabs?|robotaxis?|fleet|vehicles)\b/i;
+const NUMBER = /\d|\b(dozens|hundreds|thousands)\b/i;
+export const fleetNumber = title => NUMBER.test(String(title || '')) && FLEET_WORD.test(String(title || ''));
 const OFFICIAL = ['tesla.com', 'nhtsa.gov', 'waymo.com'];
 const SOCIAL = ['x.com', 'twitter.com', 'youtube.com', 'youtu.be'];
 
@@ -208,8 +240,12 @@ export function similar(a, b) {
   const union = a.size + b.size - inter;
   return inter >= 3 && inter / union >= 0.5;
 }
-// Rows: {id, title, source, published_at, featured}. Returns per-id {cluster_id, source_count, importance}.
-export function clusterAndScore(rows) {
+// Rows: {id, title, excerpt, source, published_at, featured, ai_major}.
+// Returns per-id {cluster_id, source_count, importance, rules}: rules is the
+// cluster's deterministic score (outlets + keyword + numeric fleet), and
+// importance adds a stored AI "major" verdict, capped at 2 (featured = 2).
+export function clusterAndScore(rows, { keywords = DEFAULT_MAJOR_KEYWORDS } = {}) {
+  const hasKeyword = keywordMatcher(keywords);
   const sorted = [...rows].sort((a, b) => (a.published_at < b.published_at ? -1 : a.published_at > b.published_at ? 1 : a.id < b.id ? -1 : 1));
   const ms = r => Date.parse(r.published_at);
   // Each story joins the first cluster whose FIRST story it matches (within
@@ -227,8 +263,11 @@ export function clusterAndScore(rows) {
     const first = members[0];
     const sources = new Set(members.map(m => m.source.toLowerCase()));
     const within24 = new Set(members.filter(m => ms(m) - ms(first) <= 24 * 3600e3).map(m => m.source.toLowerCase()));
-    let score = (within24.size >= 3 ? 1 : 0) + (members.some(m => IMPORTANT.test(m.title)) ? 1 : 0);
-    for (const m of members) out[m.id] = { cluster_id: first.id, source_count: sources.size, importance: m.featured ? 2 : score };
+    const rules = (within24.size >= 3 ? 1 : 0)
+      + (members.some(m => hasKeyword(m.title) || hasKeyword(m.excerpt)) ? 1 : 0)
+      + (members.some(m => fleetNumber(m.title)) ? 1 : 0);
+    const ai = members.some(m => m.ai_major === 1) ? 1 : 0;
+    for (const m of members) out[m.id] = { cluster_id: first.id, source_count: sources.size, importance: m.featured ? 2 : Math.min(2, rules + ai), rules };
   }
   return out;
 }
@@ -290,14 +329,15 @@ async function fetchFeed(env, feed, fetchImpl) {
 
 const domainList = value => { try { const v = JSON.parse(value); return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')) : null; } catch (e) { return null; } };
 async function config(sql) {
-  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block', 'publisher_blocklist', 'thumb_blocklist')`).all();
+  const { results } = await sql.prepare(`SELECT key, value FROM news_config WHERE key IN ('allow', 'block', 'publisher_blocklist', 'thumb_blocklist', 'major_keywords')`).all();
   const map = Object.fromEntries((results || []).map(r => [r.key, r.value]));
   const publishers = map.publisher_blocklist != null ? parsePublisherList(map.publisher_blocklist) : null;
   return {
     allow: map.allow != null ? map.allow : DEFAULT_ALLOW,
     block: map.block != null ? map.block : DEFAULT_BLOCK,
     publisher_blocklist: publishers || DEFAULT_PUBLISHER_BLOCKLIST,
-    thumb_blocklist: (map.thumb_blocklist != null && domainList(map.thumb_blocklist)) || []
+    thumb_blocklist: (map.thumb_blocklist != null && domainList(map.thumb_blocklist)) || [],
+    major_keywords: (map.major_keywords != null && parseKeywordList(map.major_keywords)) || DEFAULT_MAJOR_KEYWORDS
   };
 }
 
@@ -345,13 +385,77 @@ async function ingestFeeds(env, feeds, { fetchImpl, nowMs, log }) {
   }
   const fresh = urls.filter(u => !known.has(u)).map(u => candidates.get(u)).filter(it => !storedKeys.has(storyKey(it)));
   log.duplicates += urls.length - fresh.length;
+  fresh.forEach(it => { it.id = crypto.randomUUID(); });
   const inserts = fresh.map(it => sql.prepare(`INSERT OR IGNORE INTO news_articles (id, title, url, source, source_type, published_at, excerpt, image_url, thumb_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`)
-    .bind(crypto.randomUUID(), it.title.slice(0, 300), it.url, it.source.slice(0, 80), it.source_type, it.published_at, it.excerpt, null));
+    .bind(it.id, it.title.slice(0, 300), it.url, it.source.slice(0, 80), it.source_type, it.published_at, it.excerpt, null));
   for (let i = 0; i < inserts.length; i += 50) {
     const res = await sql.batch(inserts.slice(i, i + 50));
     log.new += res.reduce((n, r) => n + ((r.meta && r.meta.changes) || 0), 0);
   }
-  if (log.new) await recluster(sql, nowMs, RECLUSTER_DAYS);
+  if (!log.new) return;
+  const scored = await recluster(sql, nowMs, RECLUSTER_DAYS, cfg.major_keywords);
+  if (await aiPass(env, fresh.map(it => it.id), scored, log)) await recluster(sql, nowMs, RECLUSTER_DAYS, cfg.major_keywords);
+}
+
+// ---------- Workers AI significance (new stories only) ----------
+const AI_SYSTEM = `You judge whether a Tesla Cybercab / robotaxi news story is MAJOR for people tracking the Cybercab rollout.
+MAJOR: fleet growth (more Cybercabs or robotaxis registered or deployed), regulatory action (NHTSA, DMV, permits, audits, investigations, lawsuits), a launch or expansion into a new city or market, a serious crash or recall.
+NOT MAJOR: routine app or software updates, viral clips, opinion, sightings, minor anecdotes.
+Examples:
+"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry" -> major: fleet growth
+"Tesla gets more time to respond to NHTSA Cybercab audit" -> major: regulatory
+"Tesla Cybercab coming to Phoenix" -> major: market expansion
+"Tesla Robotaxi App 26.8.3 Now Live on iOS" -> not-major: routine app update
+"Video Shows Man Stuck in Tesla Cybercab That Goes in Circles" -> not-major: viral clip, no fleet or regulatory significance
+Answer with exactly one line: "major: <short reason>" or "not-major: <short reason>".`;
+// The model's answer -> {major, reason}, or null when it isn't one of the two.
+export function parseVerdict(text) {
+  const line = String(text || '').split(/\r?\n/).map(l => l.trim().replace(/^[*"'`>\s-]+/, '')).find(Boolean) || '';
+  const m = /^(not[\s-]?major|major)\b\s*[:\-–—]?\s*(.*)$/i.exec(line);
+  if (!m) return null;
+  return { major: !/^not/i.test(m[1]), reason: m[2].replace(/^[*"`:\s\-–—]+/, '').replace(/["*`]+$/g, '').trim().slice(0, 200) };
+}
+export async function aiVerdict(env, story, { timeoutMs = AI_TIMEOUT_MS } = {}) {
+  if (!env.AI || typeof env.AI.run !== 'function') throw new Error('ai_unavailable');
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('ai_timeout')), timeoutMs); });
+  try {
+    const res = await Promise.race([env.AI.run(AI_MODEL, {
+      messages: [{ role: 'system', content: AI_SYSTEM }, { role: 'user', content: `Headline: ${story.title}\nExcerpt: ${story.excerpt || '(none)'}` }],
+      max_tokens: 60, temperature: 0
+    }), timeout]);
+    const v = parseVerdict(res && typeof res === 'object' ? res.response : res);
+    if (!v) throw new Error('ai_unparseable');
+    return v;
+  } finally { clearTimeout(timer); }
+}
+// Asks the model about the new stories whose rules score is exactly 1 (not
+// featured, and no verdict yet in their cluster); stores each verdict. A
+// failure is logged and the rules score stands. Returns whether any promoted.
+async function aiPass(env, ids, scored, log) {
+  const sql = env.cybercabhunter_db;
+  const rows = scored.rows.filter(r => ids.includes(r.id) && !r.featured && r.ai_major == null && scored.next[r.id] && scored.next[r.id].rules === 1);
+  const judged = new Set(scored.rows.filter(r => r.ai_major != null).map(r => scored.next[r.id] && scored.next[r.id].cluster_id));
+  const ask = [];
+  for (const r of rows) { const c = scored.next[r.id].cluster_id; if (!judged.has(c)) { judged.add(c); ask.push(r); } }
+  if (!ask.length) return false;
+  log.ai = { checked: 0, promoted: 0, failed: 0, skipped: Math.max(0, ask.length - AI_PER_TICK), verdicts: [] };
+  let promoted = false;
+  for (const r of ask.slice(0, AI_PER_TICK)) {
+    const title = String(r.title).slice(0, 100);
+    try {
+      const v = await aiVerdict(env, r);
+      log.ai.checked++;
+      await sql.prepare(`UPDATE news_articles SET ai_major = ?, ai_reason = ? WHERE id = ?`).bind(v.major ? 1 : 0, v.reason, r.id).run();
+      if (v.major) { log.ai.promoted++; promoted = true; }
+      log.ai.verdicts.push({ title, verdict: v.major ? 'major' : 'not-major', reason: v.reason });
+    } catch (e) {
+      log.ai.failed++;
+      log.ai.verdicts.push({ title, error: String(e && e.message || e).slice(0, 120) });
+      console.log('news ai failed', title, String(e && e.message || e));
+    }
+  }
+  return promoted;
 }
 
 // Every feed in one go (tests and one-off backfills; the schedule uses runNewsTick).
@@ -382,6 +486,16 @@ export async function runNewsTick(env, { fetchImpl = fetch, nowMs = Date.now() }
     const p = await pruneOld(env, nowMs);
     Object.assign(log, p);
     await kv.put(KV_PRUNE, JSON.stringify({ day: today, at: log.at, ...p }));
+  } else {
+    // Once a day (and on the step after the Major keywords are saved), on a
+    // step without the prune: every stored story rescored by the rules.
+    let rs = null; try { rs = JSON.parse((await kv.get(KV_RESCORE)) || 'null'); } catch (e) { rs = null; }
+    if (!rs || rs.day !== today) {
+      const cfg = await config(env.cybercabhunter_db);
+      const { changed } = await recluster(env.cybercabhunter_db, nowMs, MAX_AGE_DAYS + 1, cfg.major_keywords);
+      log.rescored = changed;
+      await kv.put(KV_RESCORE, JSON.stringify({ day: today, at: log.at, changed }));
+    }
   }
   const month = today.slice(0, 7);
   let sweep = null; try { sweep = JSON.parse((await kv.get(KV_SWEEP)) || 'null'); } catch (e) { sweep = null; }
@@ -395,15 +509,19 @@ export async function runNewsTick(env, { fetchImpl = fetch, nowMs = Date.now() }
   return log;
 }
 
-async function recluster(sql, nowMs, days) {
+// Re-clusters and rescores (rules + stored AI verdicts) the stories of the
+// last `days`. Only cluster_id, source_count and importance change (hidden
+// stays as it is). Returns {changed, rows, next}.
+async function recluster(sql, nowMs, days, keywords) {
+  if (!keywords) keywords = (await config(sql)).major_keywords;
   const since = new Date(nowMs - days * 864e5).toISOString();
-  const { results } = await sql.prepare(`SELECT id, title, source, published_at, featured, cluster_id, source_count, importance FROM news_articles WHERE published_at >= ?`).bind(since).all();
+  const { results } = await sql.prepare(`SELECT id, title, excerpt, source, published_at, featured, ai_major, cluster_id, source_count, importance FROM news_articles WHERE published_at >= ?`).bind(since).all();
   const rows = results || [];
-  const next = clusterAndScore(rows);
+  const next = clusterAndScore(rows, { keywords });
   const updates = rows.filter(r => { const n = next[r.id]; return n && (n.cluster_id !== r.cluster_id || n.source_count !== r.source_count || n.importance !== r.importance); })
     .map(r => sql.prepare(`UPDATE news_articles SET cluster_id = ?, source_count = ?, importance = ? WHERE id = ?`).bind(next[r.id].cluster_id, next[r.id].source_count, next[r.id].importance, r.id));
   for (let i = 0; i < updates.length; i += 50) await sql.batch(updates.slice(i, i + 50));
-  return updates.length;
+  return { changed: updates.length, rows, next };
 }
 
 // ---------- robots.txt (for article pages and their images) ----------
@@ -660,7 +778,7 @@ export async function modListNews(request, env) {
   const cursor = params.get('cursor') ? decodeCursor(params.get('cursor')) : null;
   const where = [], binds = [];
   if (cursor) { where.push('(published_at < ? OR (published_at = ? AND id < ?))'); binds.push(cursor.p, cursor.p, cursor.id); }
-  const { results } = await env.cybercabhunter_db.prepare(`SELECT id, title, url, source, source_type, published_at, importance, source_count, cluster_id, hidden, featured, thumb_key, thumb_status
+  const { results } = await env.cybercabhunter_db.prepare(`SELECT id, title, url, source, source_type, published_at, importance, source_count, cluster_id, hidden, featured, thumb_key, thumb_status, ai_major, ai_reason
     FROM news_articles ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY published_at DESC, id DESC LIMIT ?`).bind(...binds, limit + 1).all();
   const rows = (results || []).slice(0, limit);
   let last = null;
@@ -710,7 +828,12 @@ export async function modUpdateNewsConfig(request, env) {
     if (!Array.isArray(body.thumb_blocklist) || body.thumb_blocklist.some(x => typeof x !== 'string')) return Response.json({ success: false, error: 'bad_thumb_blocklist' }, { status: 400 });
     thumbDomains = [...new Set(domainList(JSON.stringify(body.thumb_blocklist)).filter(d => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d)))].slice(0, 200);
   }
-  if (allow === undefined && block === undefined && publishers === undefined && thumbDomains === undefined) return Response.json({ success: false, error: 'bad_config' }, { status: 400 });
+  let majorKeywords;
+  if (body.major_keywords !== undefined) {
+    if (!Array.isArray(body.major_keywords) || body.major_keywords.some(x => typeof x !== 'string')) return Response.json({ success: false, error: 'bad_major_keywords' }, { status: 400 });
+    majorKeywords = [...new Set(body.major_keywords.map(x => x.trim().replace(/\s+/g, ' ').toLowerCase().slice(0, 60)).filter(Boolean))].slice(0, 200);
+  }
+  if (allow === undefined && block === undefined && publishers === undefined && thumbDomains === undefined && majorKeywords === undefined) return Response.json({ success: false, error: 'bad_config' }, { status: 400 });
   if (allow !== undefined && !lines(allow).length) return Response.json({ success: false, error: 'empty_allowlist' }, { status: 400 });
   const sql = env.cybercabhunter_db;
   const put = (k, v) => sql.prepare(`INSERT INTO news_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(k, v);
@@ -719,7 +842,10 @@ export async function modUpdateNewsConfig(request, env) {
   if (block !== undefined) writes.push(put('block', block));
   if (publishers !== undefined) writes.push(put('publisher_blocklist', JSON.stringify(publishers)));
   if (thumbDomains !== undefined) writes.push(put('thumb_blocklist', JSON.stringify(thumbDomains)));
+  if (majorKeywords !== undefined) writes.push(put('major_keywords', JSON.stringify(majorKeywords)));
   await sql.batch(writes);
+  // New Major keywords: the next step rescores every stored story.
+  if (majorKeywords !== undefined) await env.TESLA_SESSIONS.delete(KV_RESCORE);
   return Response.json({ success: true, config: await config(sql) });
 }
 
