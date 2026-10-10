@@ -1,9 +1,10 @@
 /* "Cybercab sightings across the US" (index.html [data-us-map], below the
    Texas DMV panel). A fixed SVG picture of the US — no map service, no pan or
    zoom — from js/us-sightings-data.js: states with a reported Cybercab sighting
-   are tinted gold, each city is a dot sized by its logged sightings (its name
-   and count on hover / focus), and beside it the cities grouped by state, the
-   busiest first. Community-reported data, credited. */
+   are tinted gold, each city is a dot (larger where more sightings were
+   logged; its name on hover / focus), and beside it the cities grouped by
+   state, the busiest first. No sighting counts are shown. Community-reported
+   data, credited. */
 (function () {
   const els = [...document.querySelectorAll('[data-us-map]')];
   const D = window.CCH_US_MAP;
@@ -15,14 +16,13 @@
   const byCount = (a, b) => ((b.n || 0) - (a.n || 0)) || a.name.localeCompare(b.name);
   Object.values(byState).forEach(cs => cs.sort(byCount));
   const sumOf = cs => cs.reduce((t, c) => t + (c.n || 0), 0);
-  const logged = sumOf(D.cities);
   // Cities listed per state before "+N more" (fewer on a phone), and on a
   // phone, the states listed before "Show all states".
   const phone = window.matchMedia && window.matchMedia('(max-width: 639px)').matches;
   const SHOWN = phone ? 4 : 8;
   const PHONE_STATES = 6;
   const radius = c => (c.n ? 2.6 + Math.sqrt(c.n) * 1.1 : 3.2);
-  const label = c => `${c.name}, ${c.st}${c.note ? ` (${c.note})` : ''}${c.n ? ` · ${c.n} ${c.n === 1 ? 'sighting' : 'sightings'}` : ''}`;
+  const label = c => `${c.name}, ${c.st}${c.note ? ` (${c.note})` : ''}`;
   const nameOf = Object.fromEntries(D.states.map(s => [s.id, s.name]));
   const stateCount = D.sighted.filter(id => id !== 'DC').length;
   // The list: states with a named city (most cities first); the states with
@@ -39,7 +39,7 @@
     const cs = byState[id];
     return `<li class="us-state-row${cs.length >= 2 ? ' us-row-wide' : ''}${k >= PHONE_STATES ? ' us-row-extra' : ''}" data-state-row="${id}">
         <div class="flex items-baseline justify-between gap-3"><span class="text-sm font-semibold text-slate-100 max-sm:text-[13px]">${esc(nameOf[id])}</span><span class="text-xs text-slate-500 tabular-nums max-sm:text-[11px]${cs.length === 1 ? ' max-sm:hidden' : ''}">${cs.length} ${cs.length === 1 ? 'city' : 'cities'}</span></div>
-        <p class="mt-0.5 text-xs text-slate-400 leading-relaxed max-sm:text-[11px] max-sm:leading-snug">${cs.map((c, i) => `<span${i >= SHOWN ? ' class="hidden" data-more' : ''}>${i ? ' · ' : ''}${esc(c.name)}${c.n ? ` <span class="text-slate-500 tabular-nums">${c.n}</span>` : ''}${c.note ? ` <span class="text-slate-500">(${esc(c.note)})</span>` : ''}</span>`).join('')}${cs.length > SHOWN ? ` <button type="button" data-more-btn class="text-gold hover:underline whitespace-nowrap">+${cs.length - SHOWN} more</button>` : ''}</p>
+        <p class="mt-0.5 text-xs text-slate-400 leading-relaxed max-sm:text-[11px] max-sm:leading-snug">${cs.map((c, i) => `<span${i >= SHOWN ? ' class="hidden" data-more' : ''}>${i ? ' · ' : ''}${esc(c.name)}${c.note ? ` <span class="text-slate-500">(${esc(c.note)})</span>` : ''}</span>`).join('')}${cs.length > SHOWN ? ` <button type="button" data-more-btn class="text-gold hover:underline whitespace-nowrap">+${cs.length - SHOWN} more</button>` : ''}</p>
       </li>`;
   }).join('') + (others.length ? `<li class="us-state-row us-row-wide us-row-extra">
         <div class="text-sm font-semibold text-slate-100 max-sm:text-[13px]">Also reported in</div>
@@ -54,7 +54,6 @@
       <dl class="flex gap-6 max-sm:gap-4">
         <div><dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">States</dt><dd class="stat-value text-2xl font-semibold text-gold leading-tight">${stateCount}<span class="text-sm text-slate-500"> + DC</span></dd></div>
         <div><dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cities</dt><dd class="stat-value text-2xl font-semibold text-white leading-tight">${D.cities.length}</dd></div>
-        <div><dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sightings</dt><dd class="stat-value text-2xl font-semibold text-white leading-tight">${logged.toLocaleString('en-US')}</dd></div>
       </dl>
     </div>
     <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] max-sm:mt-4 max-sm:gap-4">
@@ -63,13 +62,13 @@
         <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
           <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm us-key-sighted"></span>Sightings reported</span>
           <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm us-key-none"></span>None reported</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gold"></span>City, sized by sightings</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gold"></span>City with a sighting (larger: more)</span>
         </div>
       </div>
       <ul data-us-list class="us-state-list min-w-0 divide-y divide-white/[0.06] max-sm:divide-y-0 lg:max-h-[440px] lg:overflow-y-auto lg:pr-2">${list}</ul>
       ${withCities.length > PHONE_STATES ? `<button type="button" data-all-states class="sm:hidden -mt-2 w-full min-h-[40px] rounded-lg border border-white/10 text-xs font-semibold text-slate-200 hover:bg-white/5">Show all ${withCities.length + (others.length ? others.length : 0)} states</button>` : ''}
     </div>
-    <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Community-reported sightings from ${D.sources.map(src => `the <a href="${esc(src.url)}" target="_blank" rel="noopener" class="underline hover:text-slate-300">${esc(src.name)}</a> ${esc(src.what)} (${esc(src.date)})`).join(' and ')}; sighting counts are MyCybercab.com's. Not verified by Cybercab Hunter. Map: US Census state boundaries.</p>`;
+    <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Community-reported sightings from ${D.sources.map(src => `the <a href="${esc(src.url)}" target="_blank" rel="noopener" class="underline hover:text-slate-300">${esc(src.name)}</a> ${esc(src.what)} (${esc(src.date)})`).join(' and ')}. Not verified by Cybercab Hunter. Map: US Census state boundaries.</p>`;
 
   els.forEach(el => {
     el.innerHTML = html;

@@ -51,6 +51,7 @@ console.log('3. The rendered panel');
   const big = svg.querySelector('.us-city[data-city="' + D.cities.findIndex(c => c.name === 'San Diego') + '"] .us-city-dot'), small = svg.querySelector('.us-city[data-city="' + D.cities.findIndex(c => c.name === 'Lawton') + '"] .us-city-dot');
   check('dots are sized by sightings (San Diego 31 > Lawton 1)', Number(big.getAttribute('r')) > Number(small.getAttribute('r')));
   check('the totals: states (DC counted separately) and cities', new RegExp(`${D.sighted.filter(s => s !== 'DC').length}\\s*\\+ DC`).test(el.textContent) && el.textContent.includes(String(D.cities.length)));
+  check('no sighting counts are shown: not in the list, the totals or the hover names', !/San Diego\s*31|Pittsburgh\s*31/.test(el.textContent) && !/Sightings/.test(el.querySelector('dl').textContent) && ![...svg.querySelectorAll('.us-city title')].some(t => /\d+\s*sighting/.test(t.textContent)));
   check('no pan or zoom: nothing listens for wheel or drag', !/wheel|pointerdown|mousedown|touchstart|drag/.test(MAP));
 }
 
