@@ -9,7 +9,7 @@
              "Service ends in Xh Ym"
      parked  moon, cooler tone · "The fleet is parked for the night" ·
              "Back on the road at 6:00 AM" · "Back in Xh Ym" (on a phone the
-             "All times Austin time (CT)" line folds into "6:00 AM CT", so the
+             "All times central time (CT)" line folds into "6:00 AM CT", so the
              strip stays at two lines)
    COUNTDOWN: whole minutes, rounded UP (so it never shows 0m while running and
    never goes negative), "Xh Ym", or "Ym" under an hour. Measured in real time
@@ -105,7 +105,7 @@
           <span data-sb-now class="sb-now"></span>
         </div>
         <div class="flex justify-between text-[10px] text-slate-500 stat-value" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
-        <p class="sb-meta text-[11px] text-slate-500">All times Austin time (CT) · every day</p>
+        <p class="sb-meta text-[11px] text-slate-500">All times central time (CT) · every day</p>
       </div>
       <div class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/dmv-cybercab.webp" alt="" decoding="async"></div>`;
     paintDay(s, d);

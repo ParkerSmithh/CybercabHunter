@@ -74,14 +74,14 @@ async function run() {
   console.log('4. The banner itself');
   {
     const live = page(at('2026-10-09T14:47:20', '-05:00'));
-    check('live: green pulsing dot, the headline, the countdown and "Austin time"', live.el.dataset.state === 'live' && !!live.el.querySelector('.animate-ping.bg-emerald-400') && /Cybercabs are on the road now/.test(live.text()) && /Service ends in 8h 13m/.test(live.text()) && /All times Austin time \(CT\)/.test(live.text()));
+    check('live: green pulsing dot, the headline, the countdown and "central time"', live.el.dataset.state === 'live' && !!live.el.querySelector('.animate-ping.bg-emerald-400') && /Cybercabs are on the road now/.test(live.text()) && /Service ends in 8h 13m/.test(live.text()) && /All times central time \(CT\)/.test(live.text()));
     const cd = live.el.querySelector('[data-countdown]');
     check('the countdown keeps its width as it changes (tabular numbers, reserved width)', /tabular-nums/.test(cd.className) && /min-w-\[6\.5ch\]/.test(cd.className));
     check('it schedules its next tick at the next minute boundary', live.timers.length === 1 && live.timers[0].ms > 0 && live.timers[0].ms <= 60050);
     live.advance(60000);
     check('a minute later it ticks in place (same element, no reload): 8h 12m', live.el.querySelector('[data-countdown]') === cd && cd.textContent === '8h 12m');
     const parked = page(at('2026-10-09T23:30:00', '-05:00'));
-    check('parked: moon, dimmed, "parked for the night", "Back on the road at 6:00 AM", "Back in 6h 30m", no pulse', parked.el.dataset.state === 'parked' && !!parked.el.querySelector('svg') && !parked.el.querySelector('.animate-ping') && /The fleet is parked for the night/.test(parked.text()) && /Back on the road at 6:00 AM/.test(parked.text()) && /Back in 6h 30m/.test(parked.text()) && /All times Austin time \(CT\)/.test(parked.text()));
+    check('parked: moon, dimmed, "parked for the night", "Back on the road at 6:00 AM", "Back in 6h 30m", no pulse', parked.el.dataset.state === 'parked' && !!parked.el.querySelector('svg') && !parked.el.querySelector('.animate-ping') && /The fleet is parked for the night/.test(parked.text()) && /Back on the road at 6:00 AM/.test(parked.text()) && /Back in 6h 30m/.test(parked.text()) && /All times central time \(CT\)/.test(parked.text()));
     const edge = page(at('2026-10-09T05:59:30', '-05:00'));
     check('parked at 5:59:30 ("Back in 1m")...', edge.el.dataset.state === 'parked' && /Back in 1m/.test(edge.text()));
     edge.advance(30000);
