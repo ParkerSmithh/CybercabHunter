@@ -593,7 +593,7 @@ async function getRecentApprovedPhotoSightings(sql, limit) {
 // cleanup has deleted it). Pending, rejected and expired sightings never match.
 // The ONE definition used by the gallery, its Seen counter and the photo route.
 const SIGHTING_PHOTO_RETENTION_DAYS = 30;
-const PUBLIC_PHOTO_SIGHTING_SQL = `
+export const PUBLIC_PHOTO_SIGHTING_SQL = `
   s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'
   AND o.evidence_ref IS NOT NULL AND o.public_id IS NOT NULL
   AND s.submitted_at > datetime('now', '-${SIGHTING_PHOTO_RETENTION_DAYS} days')`;

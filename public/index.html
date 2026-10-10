@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="css/home-overview.css?v=7">
 <link rel="stylesheet" href="css/hero-typewriter.css?v=1">
 <link rel="stylesheet" href="css/home-data.css?v=3">
+<link rel="stylesheet" href="css/activity.css?v=3">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -169,6 +170,20 @@
 <section class="pt-4 max-sm:pt-3" aria-label="Service status">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div id="serviceBanner" class="service-banner rounded-2xl border text-sm"></div>
+  </div>
+</section>
+
+<section class="pt-4" aria-label="Cybercab Daily">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div id="cybercabDaily" class="activity-surface soft-panel">
+      <div class="daily-heading">
+        <h2>CYBERCAB DAILY</h2>
+        <p id="dailyDate" class="activity-muted activity-date"></p>
+      </div>
+      <div id="dailyStats" aria-live="polite"><p class="activity-muted">Retrieving today’s activity…</p></div>
+      <a class="activity-button daily-calendar-link" href="/calendar">VIEW ACTIVITY CALENDAR →</a>
+      <p class="activity-muted" id="dailyNote">DMV additions are dated when first observed, not when officially registered.</p>
+    </div>
   </div>
 </section>
 
@@ -447,6 +462,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="js/calc.js?v=7"></script>
 <script src="js/service-banner.js?v=12"></script>
+<script src="js/activity.js?v=2" defer></script>
 <script src="js/main.js?v=27"></script>
 <script src="js/home-stats.js?v=7"></script>
 <script src="js/home-rows.js?v=12"></script>
