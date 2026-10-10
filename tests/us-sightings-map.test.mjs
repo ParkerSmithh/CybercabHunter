@@ -27,11 +27,12 @@ const D = w.CCH_US_MAP;
   check('every city sits in the 975 x 610 frame, in a sighted state', D.cities.length > 0 && D.cities.every(c => c.x > 0 && c.x < 975 && c.y > 0 && c.y < 610 && D.sighted.includes(c.st)));
   const austin = D.cities.find(c => c.name === 'Austin'), sac = D.cities.find(c => c.name === 'Sacramento');
   check('cities land where they should: Austin in south-central Texas, Sacramento far west', austin && austin.st === 'TX' && austin.x > 400 && austin.x < 480 && austin.y > 430 && sac && sac.x < 120);
-  check('the source is credited with its date', D.source && /CuriousPejjy/.test(D.source.name) && /2026/.test(D.source.date));
+  check('both sources are credited with their dates', D.sources.length === 2 && D.sources.some(x => /MyCybercab/.test(x.name)) && D.sources.some(x => /CuriousPejjy/.test(x.name)) && D.sources.every(x => /2026/.test(x.date)));
+  check('no city is listed twice; counts are whole numbers', new Set(D.cities.map(c => c.name + '|' + c.st)).size === D.cities.length && D.cities.every(c => c.n === undefined || (Number.isInteger(c.n) && c.n > 0)));
 }
 
 console.log('2. No map service');
-check('no map library, tile server or geocoder in either file', !/maplibre|mapbox|leaflet|tile|api\.|https?:\/\/(?!x\.com)/i.test(DATA.replace(/https:\/\/x\.com\/CuriousPejjy/, '') + MAP.replace(/D\.source\.url/, '')));
+check('no map library, tile server or geocoder in either file', !/maplibre|mapbox|leaflet|tile|api\.|https?:\/\//i.test(DATA.replace(/https:\/\/(x\.com\/CuriousPejjy|mycybercab\.com)/g, '') + MAP));
 check('the homepage loads both files, after the DMV panel section', HTML.indexOf('data-dmv-panel') < HTML.indexOf('data-us-map') && /<script src="js\/us-sightings-data\.js[^"]*"><\/script>\s*<script src="js\/us-sightings-map\.js/.test(HTML));
 
 console.log('3. The rendered panel');
@@ -43,6 +44,12 @@ console.log('3. The rendered panel');
   check('the sighted states are tinted, the rest are not', svg.querySelectorAll('path.is-sighted').length === D.sighted.length);
   const withCities = new Set(D.cities.map(c => c.st));
   check('a row per state with a named city, plus "Also reported in" for the rest', el.querySelectorAll('li[data-state-row]').length === withCities.size && /Also reported in/.test(el.textContent));
+  const ca = el.querySelector('li[data-state-row="CA"]');
+  check('a long state lists its busiest cities first, the rest behind "+N more"', /^\s*San Diego/.test(ca.querySelector('p').textContent) && ca.querySelectorAll('[data-more].hidden').length > 0 && !!ca.querySelector('[data-more-btn]'));
+  ca.querySelector('[data-more-btn]').click();
+  check('...which shows them all', ca.querySelectorAll('[data-more].hidden').length === 0 && !ca.querySelector('[data-more-btn]'));
+  const big = svg.querySelector('.us-city[data-city="' + D.cities.findIndex(c => c.name === 'San Diego') + '"] .us-city-dot'), small = svg.querySelector('.us-city[data-city="' + D.cities.findIndex(c => c.name === 'Lawton') + '"] .us-city-dot');
+  check('dots are sized by sightings (San Diego 31 > Lawton 1)', Number(big.getAttribute('r')) > Number(small.getAttribute('r')));
   check('the totals: states (DC counted separately) and cities', new RegExp(`${D.sighted.filter(s => s !== 'DC').length}\\s*\\+ DC`).test(el.textContent) && el.textContent.includes(String(D.cities.length)));
   check('no pan or zoom: nothing listens for wheel or drag', !/wheel|pointerdown|mousedown|touchstart|drag/.test(MAP));
 }
