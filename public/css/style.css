@@ -496,6 +496,19 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 .us-city:hover .us-city-dot, .us-city:focus-visible .us-city-dot, .us-city.is-lit .us-city-dot{filter:drop-shadow(0 0 2px rgb(255 236 150 / 1)) drop-shadow(0 0 6px rgb(212 175 55 / 0.7));}
 .us-city.is-lit .us-city-pulse{animation-duration:1.4s;}
 @media (prefers-reduced-motion: reduce){ .us-city-pulse{animation:none; opacity:0;} }
+/* Dots / Heatmap switch and the heatmap view (js/us-sightings-map.js). */
+.us-view-switch{display:inline-flex; padding:3px; gap:2px; border-radius:999px; border:1px solid rgb(var(--ink) / 0.1); background:rgb(var(--ink) / 0.03);}
+.us-view-switch button{min-height:32px; padding:0 14px; border-radius:999px; font-size:12px; font-weight:600; color:rgb(var(--n-400)); transition:background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);}
+.us-view-switch button:hover{color:rgb(var(--ink));}
+.us-view-switch button[aria-pressed="true"]{background:rgb(var(--gold)); color:#1a1204;}
+.us-heat{display:none;}
+.us-legend-heat{display:none;}
+.us-view-heat .us-heat{display:block;}
+.us-view-heat .us-legend-heat{display:flex;}
+.us-view-heat .us-legend-dots{display:none;}
+.us-view-heat .us-cities{display:none;}
+.us-view-heat .us-map .us-states path.is-sighted{fill:rgb(var(--ink) / 0.07);}
+.us-heat-ramp{background:linear-gradient(90deg, rgba(150,95,18,0.55), #D4AF37 45%, #F2CF5B 75%, #FFF6D6);}
 .us-key-sighted{background:rgb(212 175 55 / 0.30);}
 .us-key-none{background:rgb(var(--ink) / 0.07);}
 .us-state-row{padding:10px 2px;}

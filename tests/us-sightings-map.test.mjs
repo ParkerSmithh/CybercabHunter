@@ -17,7 +17,7 @@ const MAP = read('public/js/us-sightings-map.js');
 const HTML = read('public/index.html');
 
 console.log('1. The data');
-const w = new JSDOM('<!doctype html><body><div data-us-map></div></body>', { runScripts: 'outside-only' }).window;
+const w = new JSDOM('<!doctype html><body><div data-us-map></div></body>', { runScripts: 'outside-only', url: 'https://cybercabhunter.com/' }).window;
 w.eval(DATA);
 const D = w.CCH_US_MAP;
 {
@@ -52,6 +52,14 @@ console.log('3. The rendered panel');
   check('dots are sized by sightings (San Diego 31 > Lawton 1)', Number(big.getAttribute('r')) > Number(small.getAttribute('r')));
   check('the totals: states (DC counted separately) and cities', new RegExp(`${D.sighted.filter(s => s !== 'DC').length}\\s*\\+ DC`).test(el.textContent) && el.textContent.includes(String(D.cities.length)));
   check('no sighting counts are shown: not in the list, the totals or the hover names', !/San Diego\s*31|Pittsburgh\s*31/.test(el.textContent) && !/Sightings/.test(el.querySelector('dl').textContent) && ![...svg.querySelectorAll('.us-city title')].some(t => /\d+\s*sighting/.test(t.textContent)));
+  // Dots / Heatmap
+  const btn = v => el.querySelector(`[data-us-view="${v}"]`);
+  check('two map styles, Dots selected by default, with a heatmap canvas in the frame', btn('dots').getAttribute('aria-pressed') === 'true' && btn('heat').getAttribute('aria-pressed') === 'false' && !!el.querySelector('[data-us-frame] canvas[data-us-heat]') && !el.classList.contains('us-view-heat'));
+  btn('heat').click();
+  check('Heatmap: the panel switches view (dots hidden by CSS), the button shows it, and the choice is remembered', el.classList.contains('us-view-heat') && btn('heat').getAttribute('aria-pressed') === 'true' && btn('dots').getAttribute('aria-pressed') === 'false' && w.localStorage.getItem('cch:us-map-view') === 'heat');
+  btn('dots').click();
+  check('...and back to Dots', !el.classList.contains('us-view-heat') && w.localStorage.getItem('cch:us-map-view') === 'dots');
+  check('the heatmap is drawn from the same data, clipped to the US outline with clip() (not a destination-in fill)', /usOutline\.addPath\(new Path2D\(st\.d\)\)/.test(MAP) && /ctx\.clip\(usOutline\)/.test(MAP) && !/globalCompositeOperation\s*=\s*'destination-in'/.test(MAP));
   check('no pan or zoom: nothing listens for wheel or drag', !/wheel|pointerdown|mousedown|touchstart|drag/.test(MAP));
 }
 
