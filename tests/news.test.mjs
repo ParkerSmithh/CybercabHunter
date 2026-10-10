@@ -289,7 +289,7 @@ async function run() {
   {
     const one = (title, extra = {}) => clusterAndScore([{ id: 'x', title, excerpt: '', source: 'Solo', published_at: '2026-10-09T00:00:00Z', ...extra }]).x;
     const reg = one('Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry');
-    check('"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry", one outlet: Major (number + fleet word, registry keyword, substantive)', reg.importance === 2 && reg.rules === 3);
+    check('"Tesla Adds 150 Cybercabs to Its Texas Robotaxi Registry", one outlet: Major (number + fleet word; registry keyword / substantive)', reg.importance === 2 && reg.rules === 2);
     check('"Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot", one outlet: Major ("dozens" counts as a number)', one('Dozens of Tesla Cybercabs Just Took Over the Dallas Robotaxi Lot').importance === 2);
     check('a number without a fleet word, or a fleet word without a number: no numeric signal', one('Tesla Q3 2026 earnings call date set').rules === 0 && one('Robotaxi riders praise smooth trip').rules === 0);
     check('a single-outlet crash story with no other signal stays at 1', one('Tesla Cybercab crash on Lamar Blvd').importance === 1);
@@ -386,7 +386,8 @@ async function run() {
     check('substance signal: press or official, tagged Regulatory / Data / Expansion / Business', substantive(story('NHTSA asks Tesla about the Cybercab')) && substantive(story('Tesla registers 150 Cybercabs', { source_type: 'official' })) && substantive(story('Waymo partners with Uber')) && substantive(story('Tesla Cybercab expands to Dallas')));
     check('...never social, never other tags (a ride clip, a crash with no official status)', !substantive(story('NHTSA asks Tesla about the Cybercab', { source_type: 'social' })) && !substantive(story('Riders try the Cybercab')) && !substantive(story('Tesla Cybercab crash on Lamar Blvd')));
     const sc = clusterAndScore([{ id: 'a', title: 'Riders try the Cybercab downtown', excerpt: '', source: 'X', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }, { id: 'b', title: 'NHTSA asks Tesla about Cybercab door handles', excerpt: '', source: 'Y', source_type: 'social', published_at: '2026-10-09T00:00:00Z' }, { id: 'c', title: 'NHTSA asks Tesla about Cybercab door handles', excerpt: '', source: 'Z', source_type: 'press', published_at: '2026-10-08T00:00:00Z' }]);
-    check('...worth +1 in the score', sc.a.rules === 0 && sc.c.rules === 2);
+    check('...worth +1 in the score, shared with the keyword signal (not +2 for both)', sc.a.rules === 0 && sc.c.rules === 1 && clusterAndScore([{ id: 'r', title: 'Regulators grill Tesla over Cybercab design', excerpt: '', source: 'X', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }]).r.rules === 1);
+    check('...so a keyword-plus-substance opinion piece stays notable', clusterAndScore([{ id: 'o', title: 'Compare the iPhone Duo and Cybercab Launches. Notice Something?', excerpt: '', source: 'Bloomberg', source_type: 'press', published_at: '2026-10-09T00:00:00Z' }]).o.importance === 1);
 
     const long = 'Tesla added 150 Cybercabs to its Texas registry on Thursday, a single-day record. The fleet now stands at 420 vehicles across Austin and Dallas. Analysts expect the pace to continue through the end of the year as the Giga Texas line ramps. A fourth sentence that should not fit in the excerpt at all because it runs long.';
     const ex = excerptOf(long, 'Tesla registers 150 Cybercabs');

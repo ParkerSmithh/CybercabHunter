@@ -28,8 +28,9 @@
 //      3+ outlets ran it within 24 h; a Major keyword in a headline or
 //      excerpt (news_config 'major_keywords': launch, crash, NHTSA, fleet,
 //      registry, new market, ...); a number in a headline with a fleet word
-//      ("Tesla Adds 150 Cybercabs"); a substantive press / official story
-//      (tagged Regulatory, Data, Expansion or Business); and, for a NEW story whose rules score
+//      ("Tesla Adds 150 Cybercabs"); a Major keyword OR a substantive press /
+//      official story (tagged Regulatory, Data, Expansion or Business) — one
+//      +1 between them; and, for a NEW story whose rules score
 //      is exactly 1, a Workers AI significance verdict (aiVerdict; at most
 //      AI_PER_TICK a step; an error keeps the rules score). 2+ = major,
 //      1 = notable; FEATURED by a moderator = 2. Once a day every stored
@@ -316,8 +317,8 @@ export function similar(a, b) {
 }
 // Rows: {id, title, excerpt, source, source_type, published_at, featured, ai_major}.
 // Returns per-id {cluster_id, source_count, importance, rules}: rules is the
-// cluster's deterministic score (outlets + keyword + numeric fleet +
-// substantive), and
+// cluster's deterministic score (outlets + keyword-or-substantive + numeric
+// fleet), and
 // importance adds a stored AI "major" verdict, capped at 2 (featured = 2).
 export function clusterAndScore(rows, { keywords = DEFAULT_MAJOR_KEYWORDS } = {}) {
   const hasKeyword = keywordMatcher(keywords);
@@ -338,10 +339,11 @@ export function clusterAndScore(rows, { keywords = DEFAULT_MAJOR_KEYWORDS } = {}
     const first = members[0];
     const sources = new Set(members.map(m => m.source.toLowerCase()));
     const within24 = new Set(members.filter(m => ms(m) - ms(first) <= 24 * 3600e3).map(m => m.source.toLowerCase()));
+    // A Major keyword and the substance signal share one +1: they mostly fire
+    // on the same words, and counting both made opinion pieces Major.
     const rules = (within24.size >= 3 ? 1 : 0)
-      + (members.some(m => hasKeyword(m.title) || hasKeyword(m.excerpt)) ? 1 : 0)
-      + (members.some(m => fleetNumber(m.title)) ? 1 : 0)
-      + (members.some(substantive) ? 1 : 0);
+      + (members.some(m => hasKeyword(m.title) || hasKeyword(m.excerpt) || substantive(m)) ? 1 : 0)
+      + (members.some(m => fleetNumber(m.title)) ? 1 : 0);
     const ai = members.some(m => m.ai_major === 1) ? 1 : 0;
     for (const m of members) out[m.id] = { cluster_id: first.id, source_count: sources.size, importance: m.featured ? 2 : Math.min(2, rules + ai), rules };
   }
