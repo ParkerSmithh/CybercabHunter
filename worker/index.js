@@ -1,3 +1,4 @@
+import { apiActivity } from './activity.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
@@ -401,6 +402,9 @@ export default {
       return withCors(await apiDmvVins(request, env), request);
     }
     // The homepage's city rows and hero numbers (worker/homepage-stats.js): public, edge-cached.
+    if (url.pathname === '/api/activity' && request.method === 'GET') {
+      return withCors(await apiActivity(request, env, ctx), request);
+    }
     if (url.pathname === '/api/homepage-stats' && request.method === 'GET') {
       return withCors(await apiHomepageStats(request, env, ctx), request);
     }
