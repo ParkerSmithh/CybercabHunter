@@ -1086,9 +1086,3 @@ header.glass{border-width:0 0 1px;}
 :root[data-theme="light"] .forecast-horizon button[aria-pressed="true"]{color:rgb(var(--ink));}
 @media (min-width:1280px){ .forecast-tile.is-current .forecast-tile-sub{display:none;} }
 @media (max-width:767px){ .home-growth-panel.is-predicting .home-growth-footer p{flex-basis:100%;max-width:none;} }
-/* 768-1023px: the fleet panel's height normally matches the map card beside it;
-   with predictions on it grows to fit the extra controls and keeps a full plot. */
-@media (min-width:768px) and (max-width:1023px){
-  .home-growth-panel.is-predicting{contain:none;}
-  .home-growth-panel.is-predicting .home-growth-plot{height:240px;min-height:240px;}
-}

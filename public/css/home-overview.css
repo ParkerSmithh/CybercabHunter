@@ -110,3 +110,23 @@
 .home-zone-panel .home-zone-footer{position:absolute;z-index:2;left:12px;bottom:12px;padding:0;}
 .home-zone-panel .home-zone-footer p{display:none;}
 .home-zone-panel .home-zone-link{min-height:40px;padding:0 12px;border-radius:8px;background:rgb(var(--surface) / .94);}
+/* 768-1023px: side by side, the fleet panel's height was tied to the narrow map
+   card and its plot disappeared under the stat tiles. Stacked full width here
+   (as on phones): a 16:9 map, then the fleet panel at its natural height. */
+@media(min-width:768px) and (max-width:1023px){
+ .home-overview-grid{grid-template-columns:minmax(0,1fr);}
+ .home-zone-panel.service-zone-card{aspect-ratio:16 / 9;}
+ .home-growth-panel{contain:none;}
+ .home-growth-plot{height:260px;min-height:260px;}
+ .home-growth-stats{grid-template-columns:repeat(4,minmax(0,1fr));}
+}
+/* 1024px and up: the fleet panel used to take its height from the map card
+   beside it (~330px), too short for its tiles, controls and plot. The row now
+   has a minimum height and the map card stretches to match it. */
+@media(min-width:1024px){
+ .home-zone-panel.service-zone-card{aspect-ratio:auto;align-self:stretch;}
+ .home-growth-panel{min-height:580px;}
+}
+@media(min-width:1280px){
+ .home-growth-panel{min-height:480px;}
+}
