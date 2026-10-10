@@ -30,9 +30,22 @@
   const withCities = D.sighted.filter(id => byState[id]).sort((a, b) => (sumOf(byState[b]) - sumOf(byState[a])) || (byState[b].length - byState[a].length) || nameOf[a].localeCompare(nameOf[b]));
   const others = D.sighted.filter(id => !byState[id]).sort((a, b) => nameOf[a].localeCompare(nameOf[b]));
 
+  // Each dot: a ring that pulses out of it (start times spread so the map
+  // shimmers rather than blinks), a soft halo, the gold dot and its highlight.
+  const pulseDelay = i => ((i * 0.618034) % 1 * 2.4).toFixed(2);
+  const dot = (c, i) => {
+    const r = radius(c);
+    return `<g class="us-city" tabindex="0" data-city="${i}" transform="translate(${c.x} ${c.y})">`
+      + `<circle class="us-city-pulse" r="${r.toFixed(1)}" style="animation-delay:-${pulseDelay(i)}s"></circle>`
+      + `<circle class="us-city-halo" r="${(r * 2.4 + 3).toFixed(1)}" fill="url(#usHaloFill)"></circle>`
+      + `<circle class="us-city-dot" r="${r.toFixed(1)}" fill="url(#usDotFill)"></circle>`
+      + `<circle class="us-city-shine" cx="${(-r * 0.32).toFixed(1)}" cy="${(-r * 0.32).toFixed(1)}" r="${(r * 0.32).toFixed(1)}"></circle>`
+      + `<title>${esc(label(c))}</title></g>`;
+  };
   const map = `<svg viewBox="${D.viewBox}" class="us-map w-full h-auto block" role="img" aria-label="${esc(`Map of the United States: ${stateCount} states and DC with reported Cybercab sightings, ${D.cities.length} named cities`)}">
+      <defs><radialGradient id="usDotFill" cx="38%" cy="35%" r="70%"><stop offset="0" stop-color="#FFF1BF"/><stop offset="0.45" stop-color="#E8C55A"/><stop offset="1" stop-color="#A9851E"/></radialGradient><radialGradient id="usHaloFill"><stop offset="0" stop-color="#F2CF5B" stop-opacity="0.75"/><stop offset="0.45" stop-color="#D4AF37" stop-opacity="0.32"/><stop offset="1" stop-color="#D4AF37" stop-opacity="0"/></radialGradient></defs>
       <g class="us-states">${D.states.map(s => `<path d="${s.d}" class="${sighted.has(s.id) ? 'is-sighted' : ''}" data-state="${s.id}"><title>${esc(s.name)}${sighted.has(s.id) ? ' · sightings reported' : ''}</title></path>`).join('')}</g>
-      <g class="us-cities">${D.cities.map((c, i) => [c, i]).sort((a, b) => radius(b[0]) - radius(a[0])).map(([c, i]) => `<g class="us-city" tabindex="0" data-city="${i}" transform="translate(${c.x} ${c.y})"><circle class="us-city-halo" r="${(radius(c) + 4).toFixed(1)}"></circle><circle class="us-city-dot" r="${radius(c).toFixed(1)}"></circle><title>${esc(label(c))}</title></g>`).join('')}</g>
+      <g class="us-cities">${D.cities.map((c, i) => [c, i]).sort((a, b) => radius(b[0]) - radius(a[0])).map(([c, i]) => dot(c, i)).join('')}</g>
     </svg>`;
 
   const list = withCities.map((id, k) => {
