@@ -584,7 +584,7 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 @media (max-width:639px){
   .news-hero{padding:22px 0 16px;}
   .news-hero-grid{grid-template-columns:minmax(0,1fr); gap:16px;}
-  .news-h1{font-size:42px; margin-top:8px;}
+  .news-h1{font-size:36px; margin-top:8px; white-space:nowrap;}
   .news-sub{display:none;}
   .news-caption-long{display:none;}
   .news-statcell{padding:12px 4px 12px 14px; gap:10px; justify-content:space-between;}
