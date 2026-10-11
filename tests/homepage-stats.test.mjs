@@ -186,6 +186,25 @@ async function run() {
       const expected = range === 'All' ? expectedDays : expectedDays.slice(-({ '1W': 7, '1M': 30, '90D': 90 })[range]);
       check(`${range} selects the correct daily dates and preserves the matched plot size`, d.querySelectorAll('.sightings-day').length === expected.length && d.querySelector('.sightings-day').dataset.date === expected[0].date && d.querySelector('[data-chart="sightings"][aria-pressed="true"]').dataset.range === range && d.querySelector('.sightings-daily-plot').style.width === '310px');
     }
+    const hover = d.querySelector('.sightings-hover-target');
+    const points = [...d.querySelectorAll('.sightings-day')];
+    hover.getBoundingClientRect = () => ({ left: 10, width: 1000 });
+    hover.dispatchEvent(new w.MouseEvent('pointermove', { bubbles: true, clientX: 510 }));
+    const middle = points[Math.floor((points.length - 1) / 2)];
+    check('hover selects the held daily value and shows a rich date/count tooltip with crosshair', hover.getAttribute('aria-valuenow') === middle.dataset.index && !d.querySelector('.sightings-tooltip').hidden && d.querySelector('.sightings-tooltip').textContent.includes(`${middle.dataset.count} sighting`) && !d.querySelector('.sightings-crosshair').hidden && !d.querySelector('.sightings-hover-dot').hidden);
+    hover.dispatchEvent(new w.KeyboardEvent('keydown', { bubbles: true, key: 'Home' }));
+    check('keyboard Home selects the first date, including a valid zero count', hover.getAttribute('aria-valuenow') === '0' && d.querySelector('.sightings-tooltip').textContent.includes(`${points[0].dataset.count} sighting`) && hover.getAttribute('aria-valuetext').includes('2026'));
+    hover.dispatchEvent(new w.KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }));
+    check('arrow keys move one day at a time', hover.getAttribute('aria-valuenow') === '1');
+    hover.dispatchEvent(new w.KeyboardEvent('keydown', { bubbles: true, key: 'End' }));
+    check('keyboard End selects the latest day and tooltip stays inside the right edge', hover.getAttribute('aria-valuenow') === String(points.length - 1) && d.querySelector('.sightings-tooltip').style.left === 'auto');
+    hover.dispatchEvent(new w.MouseEvent('pointerout', { bubbles: true }));
+    check('leaving the graph dismisses the readout', d.querySelector('.sightings-tooltip').hidden && d.querySelector('.sightings-crosshair').hidden);
+    hover.dispatchEvent(new w.MouseEvent('pointerdown', { bubbles: true, clientX: 10 }));
+    check('touch/pointer selection shows a daily value', !d.querySelector('.sightings-tooltip').hidden && hover.getAttribute('aria-valuenow') === '0');
+    hover.dispatchEvent(new w.KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    check('Escape dismisses the readout', d.querySelector('.sightings-tooltip').hidden);
+    check('chart copies Fleet Growth line weight and fading gold area', d.querySelector('.sightings-area').getAttribute('fill') === 'url(#sightingsGrad)' && d.querySelector('#sightingsGrad stop').getAttribute('stop-opacity') === '0.32');
     check('a LIVE badge on Sightings Activity, with "updated … ago"; no Experimental badge', d.querySelectorAll('#rowSightings .hr-live').length === 1 && /Live · updated/.test(text('rowSightings')) && !/Experimental/.test(text('rowSightings')));
     check('footnotes name each source', /Zone facts as published/.test(text('rowArea')) && /From contributed ride receipts\./.test(text('rowRides')) && /From approved sightings\./.test(text('rowSightings')) && /From automated camera detections/.test(text('rowSightings')));
     check('every block has an "About these numbers" note', ['#rowArea', '#rowRides', '#rowSightings'].every(id => d.querySelectorAll(`${id} details.hr-about`).length === 1));

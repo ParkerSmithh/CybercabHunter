@@ -117,17 +117,68 @@
     let path = `M ${x(0)} ${y(days[0].count)}`;
     for (let i = 1; i < days.length; i++) path += ` L ${x(i)} ${y(days[i - 1].count)} L ${x(i)} ${y(days[i].count)}`;
     const area = `${path} L ${x(days.length - 1)} ${height} L ${x(0)} ${height} Z`;
-    const marks = days.map((day, i) => `<circle data-date="${esc(day.date)}" data-count="${day.count}" cx="${x(i)}" cy="${y(day.count)}" r="8" class="sightings-day"><title>${esc(shortDate(day.date))}: ${plural(day.count, 'sighting', 'sightings')}</title></circle>`).join('');
+    const marks = days.map((day, i) => `<circle data-date="${esc(day.date)}" data-count="${day.count}" cx="${x(i)}" cy="${y(day.count)}" r="8" class="sightings-day" data-index="${i}"><title>${esc(shortDate(day.date))}: ${plural(day.count, 'sighting', 'sightings')}</title></circle>`).join('');
     const labels = [0, Math.floor((days.length - 1) / 2), days.length - 1];
     const description = `${d.name} approved sightings per day. ` + days.map(day => `${shortDate(day.date)}: ${day.count}`).join('; ');
     return `<div class="sightings-axis-title">Sightings per day</div>
       <div class="sightings-daily-plot">
         <div class="sightings-y-axis" aria-hidden="true">${ticks.map(n => `<span>${int(n)}</span>`).join('')}</div>
-        <div class="sightings-line-mount"><svg class="sightings-daily-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(description)}">${lines}<path class="sightings-area" d="${area}"/><path class="sightings-line" d="${path}"/>${marks}</svg><span class="sightings-end-dot" style="top:${100 - days.at(-1).count / ceiling * 100}%" aria-hidden="true"></span></div>
+        <div class="sightings-line-mount"><svg class="sightings-daily-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(description)}"><defs><linearGradient id="sightingsGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FAE030" stop-opacity="0.32"/><stop offset="100%" stop-color="#FAE030" stop-opacity="0"/></linearGradient></defs>${lines}<path class="sightings-area" fill="url(#sightingsGrad)" d="${area}"/><path class="sightings-line" d="${path}"/>${marks}</svg><span class="sightings-end-dot" style="top:${100 - days.at(-1).count / ceiling * 100}%" aria-hidden="true"></span>
+          <div class="sightings-hover-target" tabindex="0" role="slider" aria-label="Explore daily approved sightings in ${esc(d.name)}" aria-valuemin="0" aria-valuemax="${days.length - 1}" aria-valuenow="${days.length - 1}" aria-valuetext="${esc(date(days.at(-1).date))}: ${plural(days.at(-1).count, 'sighting', 'sightings')}"></div>
+          <span class="sightings-crosshair" hidden aria-hidden="true"></span><span class="sightings-hover-dot" hidden aria-hidden="true"></span>
+          <div class="sightings-tooltip glass rounded-lg px-3 py-2 text-xs" hidden></div>
+        </div>
         <div class="sightings-x-axis" aria-hidden="true">${labels.map(i => `<span>${esc(shortDate(days[i].date))}</span>`).join('')}</div>
       </div>` + (days.some(day => day.count) ? '' : footnote(`No approved sightings in ${d.name} in this window.`));
   }
   const CHARTS = { fares: faresChart, sightings: sightingsChart };
+
+  function hideSightingsHover(target) {
+    const mount = target.closest('.sightings-line-mount');
+    mount?.querySelectorAll('.sightings-tooltip, .sightings-crosshair, .sightings-hover-dot').forEach(el => { el.hidden = true; });
+  }
+  function showSightingsHover(target, index) {
+    const mount = target.closest('.sightings-line-mount');
+    const points = [...mount.querySelectorAll('.sightings-day')];
+    index = Math.max(0, Math.min(points.length - 1, index));
+    const point = points[index];
+    if (!point) return;
+    const left = Number(point.getAttribute('cx')) / 720 * 100;
+    const top = Number(point.getAttribute('cy')) / 220 * 100;
+    const line = mount.querySelector('.sightings-crosshair'), dot = mount.querySelector('.sightings-hover-dot'), tip = mount.querySelector('.sightings-tooltip');
+    line.style.left = `${left}%`;
+    dot.style.left = `${left}%`; dot.style.top = `${top}%`;
+    tip.innerHTML = `<div class="font-bold text-slate-100">${plural(Number(point.dataset.count), 'sighting', 'sightings')}</div><div class="text-slate-400 mt-0.5">${esc(date(point.dataset.date))}</div>`;
+    tip.style.left = left > 65 ? 'auto' : `calc(${left}% + 10px)`;
+    tip.style.right = left > 65 ? `calc(${100 - left}% + 10px)` : 'auto';
+    target.setAttribute('aria-valuenow', String(index));
+    target.setAttribute('aria-valuetext', `${date(point.dataset.date)}: ${plural(Number(point.dataset.count), 'sighting', 'sightings')}`);
+    [line, dot, tip].forEach(el => { el.hidden = false; });
+  }
+  function pointerSightings(e) {
+    const target = e.target.closest?.('.sightings-hover-target');
+    if (!target) return;
+    const box = target.getBoundingClientRect();
+    if (!box.width) return;
+    const last = Number(target.getAttribute('aria-valuemax'));
+    // Match Fleet Growth's held step value between daily change points.
+    showSightingsHover(target, Math.floor(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)) * last + 1e-8));
+  }
+  document.addEventListener('pointermove', pointerSightings);
+  document.addEventListener('pointerdown', pointerSightings);
+  document.addEventListener('pointerout', e => { if (e.target.matches?.('.sightings-hover-target')) hideSightingsHover(e.target); });
+  document.addEventListener('focusin', e => { if (e.target.matches?.('.sightings-hover-target')) showSightingsHover(e.target, Number(e.target.getAttribute('aria-valuenow'))); });
+  document.addEventListener('focusout', e => { if (e.target.matches?.('.sightings-hover-target')) hideSightingsHover(e.target); });
+  document.addEventListener('keydown', e => {
+    const target = e.target;
+    if (!target.matches?.('.sightings-hover-target')) return;
+    const index = Number(target.getAttribute('aria-valuenow'));
+    const last = Number(target.getAttribute('aria-valuemax'));
+    const next = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: last }[e.key];
+    if (next !== undefined) { e.preventDefault(); showSightingsHover(target, next); }
+    else if (e.key === 'Escape') { hideSightingsHover(target); target.blur(); }
+  });
+
 
   // ---- the rows ----
   // Part of the SERVICE ZONES section (above the minimap and the fleet chart),
