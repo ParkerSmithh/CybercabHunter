@@ -24,7 +24,6 @@
   const shortDate = iso => date(iso).replace(/, \d{4}$/, '');
   const clock = hhmm => { if (!hhmm) return '—'; const [h, m] = hhmm.split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'AM' : 'PM'}`; };
   const hourLabel = h => `${((h + 11) % 12) + 1}${h < 12 ? 'AM' : 'PM'}`;
-  const localHour = iso => Number(new Intl.DateTimeFormat('en-US', { timeZone: ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(iso))) % 24;
   const when = (iso, tz) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: tz || ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
   function ago(iso) {
     const ms = Date.now() - Date.parse(iso);
@@ -77,7 +76,7 @@
         : `<span class="is-empty" title="${esc(titles[i])}"></span>`).join('')}</div>`;
   }
   // Which window each chart shows (kept across city switches).
-  const state = { fares: '90D', sightings: '24H', detections: '30D' };
+  const state = { fares: '90D', sightings: '30D' };
   const DAYS = { '7D': 7, '30D': 30, '90D': 90, '6M': 182, '1Y': 365 };
   // Range buttons for one chart (the Fleet Growth chart's look; 44px on phones).
   const rangeBtns = (chart, ranges) => `<div class="flex items-center gap-1 shrink-0" role="group" aria-label="Time range">${ranges.map(r =>
@@ -101,40 +100,27 @@
       axis(shortDate(list[0]), null, 'This week');
   }
   function sightingsChart(d) {
-    const s = d.sightings || {};
-    if (state.sightings === '24H') {
-      const h = s.hourly || [];
-      if (!h.length) return empty('No sightings data.');
-      return bars(h.map(x => x.count), h.map(x => `${hourLabel(localHour(x.hour))}: ${plural(x.count, 'sighting', 'sightings')}`)) +
-        axis(hourLabel(localHour(h[0].hour)), hourLabel(localHour(h[12].hour)), 'Now') + (h.some(x => x.count) ? '' : footnote('No sightings in the last 24 hours.'));
-    }
-    const days = (s.daily || []).slice(-DAYS[state.sightings]);
-    if (!days.length) return empty('No sightings data.');
-    return bars(days.map(x => x.count), days.map(x => `${shortDate(x.date)}: ${plural(x.count, 'sighting', 'sightings')}`)) +
-      axis(shortDate(days[0].date), null, 'Today') + (days.some(x => x.count) ? '' : footnote('No sightings in this window.'));
+    const days = (d.sightings?.daily || []).slice(-DAYS[state.sightings]);
+    if (!days.length) return empty(`No approved sightings data for ${d.name} yet.`);
+    const max = Math.max(1, ...days.map(day => day.count));
+    const magnitude = 10 ** Math.floor(Math.log10(max / 4));
+    const step = [1, 2, 5, 10].map(n => n * magnitude).find(n => n >= max / 4 && n >= 1) || 1;
+    const ceiling = Math.ceil(max / step) * step;
+    const ticks = Array.from({ length: Math.round(ceiling / step) + 1 }, (_, i) => ceiling - i * step);
+    const width = 720, height = 180, slot = width / days.length;
+    const y = count => height - count / ceiling * height;
+    const lines = ticks.map(n => `<line x1="0" x2="${width}" y1="${y(n)}" y2="${y(n)}" class="sightings-gridline"/>`).join('');
+    const marks = days.map((day, i) => `<rect data-date="${esc(day.date)}" data-count="${day.count}" x="${i * slot + slot * .18}" y="${y(day.count)}" width="${slot * .64}" height="${day.count / ceiling * height}" class="sightings-day"><title>${esc(shortDate(day.date))}: ${plural(day.count, 'sighting', 'sightings')}</title></rect>`).join('');
+    const labels = [0, Math.floor((days.length - 1) / 2), days.length - 1];
+    const description = `${d.name} approved sightings per day. ` + days.map(day => `${shortDate(day.date)}: ${day.count}`).join('; ');
+    return `<div class="sightings-axis-title">Sightings per day</div>
+      <div class="sightings-daily-plot">
+        <div class="sightings-y-axis" aria-hidden="true">${ticks.map(n => `<span>${int(n)}</span>`).join('')}</div>
+        <svg class="sightings-daily-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(description)}">${lines}${marks}</svg>
+        <div class="sightings-x-axis" aria-hidden="true">${labels.map(i => `<span>${esc(shortDate(days[i].date))}</span>`).join('')}</div>
+      </div>` + (days.some(day => day.count) ? '' : footnote(`No approved sightings in ${d.name} in this window.`));
   }
-  function detectionsChart(d) {
-    const c = d.cameras || {};
-    if (state.detections === '24H') {
-      const h = c.hourly || [];
-      if (!h.length) return empty('No detection data.');
-      return bars(h.map(x => x.count), h.map(x => `${hourLabel(localHour(x.hour))}: ${plural(x.count, 'detection', 'detections')}`)) +
-        axis(hourLabel(localHour(h[0].hour)), hourLabel(localHour(h[12].hour)), 'Now') + (c.detections_24h ? '' : footnote('No detections in the last 24 hours.'));
-    }
-    const have = new Map((c.daily || []).map(x => [x.date, x.count]));
-    if (!have.size) return empty(`No camera detections in ${d.name} yet.`);
-    // Today's local date, then back day by day.
-    const ymd = t => new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
-    const now = Date.now();
-    const span = state.detections === 'All'
-      ? Math.max(1, Math.round((Date.parse(`${ymd(now)}T12:00:00Z`) - Date.parse(`${c.daily[0].date}T12:00:00Z`)) / 864e5) + 1)
-      : DAYS[state.detections];
-    const list = [];
-    for (let i = span - 1; i >= 0; i--) list.push(ymd(now - i * 864e5));
-    return bars(list.map(x => have.get(x) || 0), list.map(x => `${shortDate(x)}: ${plural(have.get(x) || 0, 'detection', 'detections')}`)) +
-      axis(shortDate(list[0]), null, 'Today') + (list.some(x => have.get(x)) ? '' : footnote('No detections in this window.'));
-  }
-  const CHARTS = { fares: faresChart, sightings: sightingsChart, detections: detectionsChart };
+  const CHARTS = { fares: faresChart, sightings: sightingsChart };
 
   // ---- the rows ----
   // Part of the SERVICE ZONES section (above the minimap and the fleet chart),
@@ -177,7 +163,7 @@
   }
 
   // One section: human sightings, then the automated camera watch (labelled
-  // Experimental, kept apart in its own tiles and chart, never added to the
+  // Experimental, kept apart in its own tiles, never added to the
   // sightings), under one heading, one LIVE badge and one note.
   function rowSightings(d) {
     const s = d.sightings || {}, c = d.cameras || {};
@@ -208,9 +194,8 @@
         tile('Detections · 24 h', typeof c.detections_24h === 'number' ? int(c.detections_24h) : '—', esc(delta(c.detections_24h, c.prev_24h, 'previous 24 h'))) +
         tile('Last detection', c.last_detection_at ? esc(ago(c.last_detection_at)) : '—', c.last_detection_at ? esc([c.last_camera, when(c.last_detection_at)].filter(Boolean).join(' · ')) : 'None yet')) +
       footnote('From automated camera detections — separate from the human sightings above.') + `</div></div>` +
-      `<div class="mt-4 grid gap-3 lg:grid-cols-2 max-sm:mt-3 max-sm:gap-2">
-        ${chartCard('sightings', 'Sightings', ['24H', '7D', '30D', '90D'], sightingsChart(d), 'From approved sightings.')}
-        ${chartCard('detections', 'Camera detections', ['24H', '30D', '90D', 'All'], detectionsChart(d), 'From automated camera detections.')}
+      `<div class="home-daily-sightings">
+        ${chartCard('sightings', 'Daily sightings', ['7D', '30D', '90D'], sightingsChart(d), `Approved photo sightings in ${d.name} · dates in Central Time.`)}
       </div>
       <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-2 max-sm:gap-2">
         ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}

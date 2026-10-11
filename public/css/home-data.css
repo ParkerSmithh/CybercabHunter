@@ -36,3 +36,20 @@
  .home-data-note{font-size:10px;}
  .home-data-panel .home-data-value > span{font-size:11px;}
 }
+
+.home-daily-sightings{margin-top:24px;}
+.home-daily-sightings > div{padding:20px 0 0;border:0;border-top:1px solid rgb(var(--ink) / .08);border-radius:0;background:none;backdrop-filter:none;}
+.sightings-axis-title{margin-bottom:16px;font-size:11px;color:rgb(var(--n-500));}
+.sightings-daily-plot{display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:12px;row-gap:12px;font-variant-numeric:tabular-nums;}
+.sightings-y-axis{height:180px;display:flex;flex-direction:column;justify-content:space-between;text-align:right;font-size:11px;line-height:0;color:rgb(var(--n-500));}
+.sightings-daily-svg{width:100%;height:180px;overflow:visible;}
+.sightings-gridline{stroke:rgb(var(--ink) / .12);stroke-width:1;vector-effect:non-scaling-stroke;}
+.sightings-day{fill:rgb(var(--gold-ink));}
+.sightings-day:hover{fill:rgb(var(--ink));}
+.sightings-x-axis{grid-column:2;display:flex;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4;color:rgb(var(--n-500));}
+@media(max-width:639px){
+ .home-daily-sightings{margin-top:20px;}
+ .home-daily-sightings > div > div:first-child{flex-wrap:wrap;gap:8px;}
+ .sightings-daily-plot{grid-template-columns:24px minmax(0,1fr);column-gap:8px;}
+ .sightings-x-axis,.sightings-y-axis{font-size:10px;}
+}
