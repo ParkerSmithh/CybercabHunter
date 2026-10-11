@@ -1,0 +1,117 @@
+{
+  "at": "2026-10-11T00:10:09.437Z",
+  "preview": [
+    {
+      "route": "/api/daily",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null,
+      "day": {
+        "date": "2026-10-10",
+        "registry": 0,
+        "dmv": 2,
+        "sightings": 0,
+        "cameras": 0,
+        "cybercab": 1,
+        "model_y": 1
+      },
+      "errors": {}
+    },
+    {
+      "route": "/calendar",
+      "status": 404,
+      "cache_control": "no-store",
+      "error": "not_found"
+    },
+    {
+      "route": "/api/activity?year=2026",
+      "status": 404,
+      "cache_control": "no-store",
+      "error": "not_found"
+    },
+    {
+      "route": "/api/sightings?stats=1",
+      "status": 200,
+      "cache_control": "public, max-age=30",
+      "error": null
+    },
+    {
+      "route": "/api/news",
+      "status": 200,
+      "cache_control": "public, max-age=900",
+      "error": null
+    },
+    {
+      "route": "/api/registry/stats?lifetime=1",
+      "status": 200,
+      "cache_control": "no-store",
+      "error": null,
+      "counters": {
+        "public_vehicles": 1,
+        "recorded_rides": 1,
+        "sightings_all_time": 4
+      }
+    },
+    {
+      "route": "/api/homepage-stats?city=austin",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null
+    },
+    {
+      "route": "/api/fleet-stats?city=austin",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null
+    },
+    {
+      "route": "/api/dmv-registrations",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null
+    }
+  ],
+  "production": [
+    {
+      "route": "/api/sightings?stats=1",
+      "status": 200,
+      "cache_control": "public, max-age=30",
+      "error": null
+    },
+    {
+      "route": "/api/news",
+      "status": 200,
+      "cache_control": "public, max-age=900",
+      "error": null
+    },
+    {
+      "route": "/api/registry/stats?lifetime=1",
+      "status": 200,
+      "cache_control": "no-store",
+      "error": null,
+      "counters": {
+        "public_vehicles": 95,
+        "recorded_rides": 7,
+        "sightings_all_time": 287
+      }
+    },
+    {
+      "route": "/api/homepage-stats?city=austin",
+      "status": 200,
+      "cache_control": "public, max-age=14400",
+      "error": null
+    },
+    {
+      "route": "/api/fleet-stats?city=austin",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null
+    },
+    {
+      "route": "/api/dmv-registrations",
+      "status": 200,
+      "cache_control": "public, max-age=300",
+      "error": null
+    }
+  ]
+}

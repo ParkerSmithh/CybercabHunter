@@ -1,4 +1,4 @@
-import { apiActivity } from './activity.js';
+import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
@@ -41,7 +41,7 @@ function withCors(response, request) {
   return new Response(response.body, { status: response.status, headers });
 }
 
-export default {
+const worker = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -402,8 +402,11 @@ export default {
       return withCors(await apiDmvVins(request, env), request);
     }
     // The homepage's city rows and hero numbers (worker/homepage-stats.js): public, edge-cached.
-    if (url.pathname === '/api/activity' && request.method === 'GET') {
-      return withCors(await apiActivity(request, env, ctx), request);
+    if (url.pathname === '/api/daily' && request.method === 'GET') {
+      return withCors(await apiDaily(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/activity' || /^\/calendar(?:\.html)?\/?$/.test(url.pathname)) {
+      return withCors(Response.json({ error: 'not_found' }, { status: 404, headers: { 'Cache-Control': 'no-store' } }), request);
     }
     if (url.pathname === '/api/homepage-stats' && request.method === 'GET') {
       return withCors(await apiHomepageStats(request, env, ctx), request);
@@ -639,5 +642,32 @@ export default {
     // Sighting photos are kept 30 days (worker/sightings-public.js); a small
     // bounded batch per run, independent of the Gmail sync above.
     ctx.waitUntil(expireSightingPhotos(env).catch(() => {}));
+  }
+};
+
+// Await the router itself: several routes return a promise directly, so a
+// try/catch inside the router would miss their asynchronous rejections.
+export default {
+  ...worker,
+  async fetch(request, env, ctx) {
+    try {
+      return await worker.fetch(request, env, ctx);
+    } catch (error) {
+      const path = new URL(request.url).pathname;
+      // Never log OAuth query strings, bearer tokens, or provider responses.
+      const databaseUnavailable = String(error?.message || '').includes('D1_ERROR');
+      console.error('Request failed', {
+        method: request.method,
+        path,
+        dependency: databaseUnavailable ? 'd1' : 'unknown'
+      });
+      return withCors(Response.json({
+        success: false,
+        error: databaseUnavailable ? 'database_unavailable' : 'internal_error'
+      }, {
+        status: databaseUnavailable ? 503 : 500,
+        headers: { 'Cache-Control': 'no-store' }
+      }), request);
+    }
   }
 };

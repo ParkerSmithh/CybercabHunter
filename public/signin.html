@@ -69,7 +69,7 @@
 </div>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=29"></script>
+<script src="js/main.js?v=31"></script>
 <script>
   CCC.init();
 
@@ -82,6 +82,7 @@
     var DEFAULT_RETURN = '/link-gmail';
     var link = document.getElementById('signInGoogle');
     if (!link) return;
+    if (/^.+-cybercabhunter\.contactjoeclos\.workers\.dev$/.test(location.hostname)) link.href = location.origin + '/oauth/google/start';
     var raw = new URLSearchParams(location.search).get('returnTo');
     if (!raw || raw.charAt(0) !== '/' || raw.charAt(1) === '/' || raw.charAt(1) === '\\') raw = DEFAULT_RETURN;
     link.href = link.href.split('?')[0] + '?returnTo=' + encodeURIComponent(raw);

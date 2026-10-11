@@ -5,7 +5,7 @@
    Every call is moderator-gated server-side (requireModerator); this page only
    shows what the API returned. Story text goes in through textContent. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const $ = id => document.getElementById(id);
   if (!$('modPanelNews')) return;
   const sessionId = localStorage.getItem('teslaSessionId');

@@ -1,0 +1,59 @@
+/* Cybercab Daily — the existing homepage briefing, without historical UI. */
+.activity-surface{border:1px solid rgba(250,224,48,.2);border-radius:16px;min-width:0;font-family:Inter,sans-serif}
+.activity-surface h2{font-weight:700;letter-spacing:-.025em}
+.activity-muted{font-size:13px;line-height:1.6}
+.activity-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin:18px 0}
+.activity-stats dd{font-weight:650;font-variant-numeric:tabular-nums;line-height:1.25}
+.activity-retry{background:transparent;color:rgb(var(--gold-ink));border:1px solid rgb(var(--gold));padding:8px 16px;border-radius:8px;min-height:44px;cursor:pointer}
+.activity-retry:focus-visible{outline:2px solid rgb(var(--gold));outline-offset:3px}
+.activity-surface ::selection{background:rgb(var(--gold));color:#171205}
+/* The homepage daily strip is shorter than the neighboring service banner. */
+#cybercabDaily{display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;align-content:center;min-height:112px;gap:10px 24px;padding:16px 24px}
+#cybercabDaily h2{font-size:15px;line-height:1.25}
+#cybercabDaily .activity-date{font-size:12px;line-height:1.4;margin:5px 0 0}
+#cybercabDaily .activity-stats{gap:12px;margin:0}
+#cybercabDaily .activity-stats dt{font-size:11px;line-height:1.3}
+#cybercabDaily .activity-stats dd{font-size:22px;margin-top:3px}
+#cybercabDaily .activity-stats dd.activity-unavailable{font-size:12px}
+@media(max-width:1023px){
+  #cybercabDaily{grid-template-columns:minmax(0,1fr);gap:12px 20px}
+  #cybercabDaily #dailyStats{grid-column:1 / -1;grid-row:2}
+}
+@media(max-width:640px){
+  #cybercabDaily{padding:12px 16px;gap:10px 12px}
+  #cybercabDaily h2{font-size:13px}
+  #cybercabDaily .activity-date{font-size:11px}
+  #cybercabDaily .activity-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  #cybercabDaily .activity-stats dd{font-size:20px}
+  #cybercabDaily .activity-stats dd.activity-unavailable{font-size:11px;overflow-wrap:anywhere}
+}
+
+/* Reuse the dashboard’s shared soft-panel gold wash and theme-aware text. */
+#cybercabDaily h2{color:rgb(var(--ink))}
+#cybercabDaily .activity-muted,#cybercabDaily .activity-stats dt,#cybercabDaily .activity-stats dd.activity-unavailable{color:rgb(var(--n-400))}
+#cybercabDaily .activity-stats dd{color:rgb(var(--gold-ink))}
+
+/* A compact daily briefing, using the dashboard's existing gold wash. */
+#cybercabDaily{position:relative;isolation:isolate;column-gap:28px}
+#cybercabDaily h2{display:flex;align-items:center;gap:9px;letter-spacing:.035em;font-size:14px}
+#cybercabDaily .daily-title-icon{width:20px;height:20px;flex-shrink:0;color:rgb(var(--gold-ink))}
+#cybercabDaily .daily-updated{font-size:11px;line-height:1.4;color:rgb(var(--n-400));margin-top:6px;font-variant-numeric:tabular-nums}
+#cybercabDaily .activity-stats{gap:16px}
+#cybercabDaily .activity-stats>div{position:relative;padding-left:16px;border-left:1px solid rgb(var(--gold) / .18);min-width:0}
+#cybercabDaily .activity-stats dt{display:flex;align-items:center;gap:5px}
+#cybercabDaily .daily-metric-icon{width:14px;height:14px;flex-shrink:0;color:rgb(var(--gold-ink))}
+#cybercabDaily .activity-stats dd{display:grid;grid-template-rows:32px auto;gap:6px;font-size:26px;margin:6px 0 0;letter-spacing:-.03em}
+#cybercabDaily .daily-metric-detail{display:block;font-size:11px;line-height:1.3;font-weight:400;letter-spacing:normal;color:rgb(var(--n-400));white-space:nowrap}
+@media(max-width:1200px) and (min-width:1024px){#cybercabDaily{grid-template-columns:190px minmax(0,1fr);column-gap:16px}#cybercabDaily .activity-stats{gap:10px}#cybercabDaily .activity-stats>div{padding-left:10px}#cybercabDaily .daily-metric-icon{display:none}}
+@media(max-width:640px){
+  #cybercabDaily{column-gap:12px}
+  #cybercabDaily h2{font-size:12px;gap:6px}
+  #cybercabDaily .daily-title-icon{width:16px;height:16px}
+  #cybercabDaily .activity-stats{gap:8px}
+  #cybercabDaily .activity-stats>div{padding-left:8px}
+  #cybercabDaily .activity-stats>div:first-child{padding-left:0;border-left:0}
+  #cybercabDaily .activity-stats dt{display:block;font-size:11px;min-height:46px}
+  #cybercabDaily .daily-metric-icon{display:block;width:13px;height:13px;margin-bottom:5px}
+  #cybercabDaily .activity-stats dd{font-size:23px;grid-template-rows:29px auto}
+  #cybercabDaily .daily-metric-detail{white-space:normal;font-size:11px}
+}

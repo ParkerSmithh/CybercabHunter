@@ -1,0 +1,14 @@
+{
+  "production_baseline_24h": 5156816,
+  "removed_calendar_queries_24h": 3299762,
+  "remaining_before_daily": 1857054,
+  "daily_initial_cold_reads": 1581,
+  "dmv_initial_production_reads": 740,
+  "dmv_indexed_preview_reads": 2,
+  "projected_daily_cold_reads": 843,
+  "conservative_cold_requests_per_day": 108,
+  "projected_total_reads_per_day": 1948098,
+  "assumed_cache_savings": 0,
+  "production_index_applied": false,
+  "normal_day_after_rollout_observed": false
+}

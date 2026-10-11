@@ -1087,7 +1087,10 @@ const CCC = (() => {
      The Worker holds the Tesla client secret and all tokens server-side; this
      script only ever learns a boolean "linked" state via a same-origin-safe
      cross-site fetch (credentials: 'include' + the Worker's own CORS allow-list). */
-  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  // Version/alias previews have isolated sessions and must keep their auth
+  // checks on the preview Worker that created the session.
+  const TESLA_WORKER_URL = /^.+-cybercabhunter\.contactjoeclos\.workers\.dev$/.test(location.hostname)
+    ? location.origin : 'https://cybercabhunter.contactjoeclos.workers.dev';
   const TESLA_ICON_SVG = '<path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"/> <path d="M15 19l2 2l4 -4"/>';   // Tabler 'shield-check' (MIT)
 
   const TESLA_SESSION_KEY = 'teslaSessionId';
@@ -1666,5 +1669,5 @@ const CCC = (() => {
     initBorderGlow();
   }
 
-  return { initRubberSegments, initSquishSwitches, data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
+  return { apiOrigin: TESLA_WORKER_URL, initRubberSegments, initSquishSwitches, data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
 })();

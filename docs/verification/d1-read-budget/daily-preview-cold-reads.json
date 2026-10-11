@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-11T00:06:36.012Z",
+  "config": "wrangler.preview.jsonc",
+  "errors": {},
+  "queries": [
+    {
+      "query": "SELECT snapshot_date FROM dmv_snapshots\n        WHERE snapshot_date >= ? AND snapshot_date <= ? AND snapshot_date > (SELECT MIN(snapshot_date) FROM dmv_snapshots)",
+      "rows_read": 3,
+      "rows_written": 0,
+      "duration_ms": 0.1366,
+      "rows_returned": 1
+    },
+    {
+      "query": "SELECT MIN(o.observed_at) AS first,\n        COALESCE(SUM(o.observed_at >= ? AND o.observed_at < ?), 0) AS previous,\n        COALESCE(SUM(o.observed_at >= ? AND o.observed_at < ?), 0) AS today\n        FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id\n        LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND pv.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = pv.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (pv.origin = 'sighting' AND ((pv.vin IS NOT NULL AND pv.vin <> '')\n                                          OR pv.approval_basis IS NOT NULL)))\n        WHERE \n  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'\n  AND o.evidence_ref IS NOT NULL AND o.public_id IS NOT NULL\n  AND s.submitted_at > datetime('now', '-30 days') AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL)",
+      "rows_read": 0,
+      "rows_written": 0,
+      "duration_ms": 0.4133,
+      "rows_returned": 1
+    },
+    {
+      "query": "SELECT v.id, v.license_plate, v.vin, v.created_at FROM robotaxi_vehicles v WHERE v.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = v.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (v.origin = 'sighting' AND ((v.vin IS NOT NULL AND v.vin <> '')\n                                          OR v.approval_basis IS NOT NULL))) AND (lower(trim(v.model)) = 'cybercab' OR v.approval_basis IS NOT NULL) AND lower(trim(COALESCE(v.model, ''))) NOT IN ('model y', 'model_y', 'modely')",
+      "rows_read": 1,
+      "rows_written": 0,
+      "duration_ms": 0.2038,
+      "rows_returned": 0
+    },
+    {
+      "query": "SELECT MIN(observed_at) AS first FROM camera_detections",
+      "rows_read": 1,
+      "rows_written": 0,
+      "duration_ms": 0.3045,
+      "rows_returned": 1
+    },
+    {
+      "query": "SELECT first_seen_date AS date, lower(model) AS model, COUNT(*) AS n FROM dmv_av_vehicles\n        WHERE first_seen_date >= ? AND first_seen_date <= ? AND in_baseline = 0 AND lower(model) IN ('cybercab', 'model y') GROUP BY first_seen_date, lower(model)",
+      "rows_read": 2,
+      "rows_written": 0,
+      "duration_ms": 0.2228,
+      "rows_returned": 2
+    },
+    {
+      "query": "SELECT observed_at FROM camera_detections WHERE observed_at >= ? AND observed_at < ?",
+      "rows_read": 1,
+      "rows_written": 0,
+      "duration_ms": 0.1458,
+      "rows_returned": 0
+    }
+  ],
+  "total_rows_read": 8
+}

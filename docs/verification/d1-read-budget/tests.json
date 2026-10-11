@@ -1,0 +1,310 @@
+[
+  {
+    "test": "tests/account-delete.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/avatars.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/camera-sighting-approval.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/camera-sightings.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/community.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/cybercab-doors.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/daily.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/dallas-camera-plan.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/dallas-copy.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/fleet-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/fleet-timelapse.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/gmail-onboarding.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/gmail-sync.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/google-auth.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/heatmap-forecast.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/homepage-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/link-gmail-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/map-search.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/mobile-density.test.mjs",
+    "exit": 1
+  },
+  {
+    "test": "tests/moderation-access.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/moderation-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/moderation-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/moderation-vehicles-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/moderator-log-ride.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/moderator-receipt-import.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/motion.test.mjs",
+    "exit": 1
+  },
+  {
+    "test": "tests/muse-connector.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/muse-ride-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/news.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-canonical.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-hardening.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-ingest.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-revisions.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/phase2-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/photo-sightings-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/preview-auth-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/profile.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/public-sightings.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/receipt-address.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/receipt-pipeline.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-review-approval.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-review-tooling.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-ride-aggregation.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-sort.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/registry-trust.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/replay.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/reviews.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/rider-data-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/rider-search.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/service-banner.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sighting-drawer.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sighting-location.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sighting-promotion.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sighting-time.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sightings-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sightings-gallery.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/sightings-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/simulation-page.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/site-layout.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/site-stat-counters.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/tesla-oauth.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/tesla-rides.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/theme.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/trips-query.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/txdmv.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/ui-effects.test.mjs",
+    "exit": 1
+  },
+  {
+    "test": "tests/us-sightings-map.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/user-roles.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/vehicle-approval-basis.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/vehicle-identity.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/vehicle-page.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/vehicle-registry.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/vehicles-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/videos.test.mjs",
+    "exit": 0
+  },
+  {
+    "test": "tests/worker-errors.test.mjs",
+    "exit": 0
+  }
+]

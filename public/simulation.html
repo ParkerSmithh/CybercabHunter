@@ -847,7 +847,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=29"></script>
+<script src="js/main.js?v=31"></script>
 <script>
   CCC.init();
 
@@ -1092,7 +1092,7 @@
 
     // Fleet size starts at the lifetime registry count (real data, not an
     // invented number); if it can't be loaded, the field stays at 0 and says so.
-    fetch('https://cybercabhunter.contactjoeclos.workers.dev/api/registry/stats')
+    fetch(((typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev') + '/api/registry/stats')
       .then(r => (r.ok ? r.json() : null))
       .then(stats => {
         const n = stats && Number.isInteger(stats.public_vehicles) ? stats.public_vehicles : null;

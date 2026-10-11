@@ -6,7 +6,7 @@
    request (requireModerator); GET /api/moderation/access here only picks
    which state to show. Every server value is rendered with .textContent. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const SESSION_KEY = 'teslaSessionId';
   const MAX_FILES = 25;
   const MAX_ITEM_CHARS = 2000000;   // mirrors worker/receipt-import.js

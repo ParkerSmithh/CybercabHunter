@@ -7,7 +7,7 @@
    error (network/server) / loaded. Missing values render as an em dash,
    never as 0 — matching every other page here. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
 
   const $ = id => document.getElementById(id);
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);

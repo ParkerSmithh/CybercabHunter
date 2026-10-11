@@ -16,7 +16,7 @@
    comes back to this tab, so finishing a step in Gmail shows up here without
    a reload. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const SESSION_KEY = 'teslaSessionId';
   // Re-check sync status: waiting for the code / waiting for a first receipt / receiving.
   const POLL_MS = { code: 8000, first: 20000, steady: 60000 };

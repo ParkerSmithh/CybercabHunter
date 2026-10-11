@@ -1,0 +1,79 @@
+[
+  {
+    "query": "SELECT strftime('%Y-%m-%dT%H:00:00Z', v.created_at) AS hour, COUNT(*) AS n\n        FROM robotaxi_vehicles v WHERE v.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = v.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (v.origin = 'sighting' AND ((v.vin IS NOT NULL AND v.vin <> '')\n                                          OR v.approval_basis IS NOT NULL))) AND (lower(trim(v.model)) = 'cybercab' OR v.approval_basis IS NOT NULL) AND lower(trim(COALESCE(v.model, ''))) NOT IN ('model y', 'model_y', 'modely') AND NOT EXISTS (\n  SELECT 1 FROM robotaxi_vehicles duplicate WHERE duplicate.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = duplicate.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (duplicate.origin = 'sighting' AND ((duplicate.vin IS NOT NULL AND duplicate.vin <> '')\n                                          OR duplicate.approval_basis IS NOT NULL))) AND (lower(trim(duplicate.model)) = 'cybercab' OR duplicate.approval_basis IS NOT NULL) AND lower(trim(COALESCE(duplicate.model, ''))) NOT IN ('model y', 'model_y', 'modely')\n    AND (duplicate.created_at < v.created_at OR (duplicate.created_at = v.created_at AND duplicate.id < v.id))\n    AND ((upper(trim(COALESCE(v.vin, ''))) <> '' AND upper(trim(COALESCE(v.vin, ''))) = upper(trim(COALESCE(duplicate.vin, ''))))\n      OR (upper(replace(replace(trim(COALESCE(v.license_plate, '')), '-', ''), ' ', '')) <> '' AND upper(replace(replace(trim(COALESCE(v.license_plate, '')), '-', ''), ' ', '')) = upper(replace(replace(trim(COALESCE(duplicate.license_plate, '')), '-', ''), ' ', ''))))) AND v.created_at >= ? AND v.created_at < ? GROUP BY hour",
+    "avgRowsRead": 18092,
+    "totalRowsRead": 1754979,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 11.316956701030927,
+    "totalDurationMs": 1097.7448,
+    "numberOfTimesRun": 97,
+    "queryEfficiency": 0.001105460977227504
+  },
+  {
+    "query": "SELECT MIN(v.created_at) AS first FROM robotaxi_vehicles v WHERE v.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = v.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (v.origin = 'sighting' AND ((v.vin IS NOT NULL AND v.vin <> '')\n                                          OR v.approval_basis IS NOT NULL))) AND (lower(trim(v.model)) = 'cybercab' OR v.approval_basis IS NOT NULL) AND lower(trim(COALESCE(v.model, ''))) NOT IN ('model y', 'model_y', 'modely') AND NOT EXISTS (\n  SELECT 1 FROM robotaxi_vehicles duplicate WHERE duplicate.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = duplicate.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (duplicate.origin = 'sighting' AND ((duplicate.vin IS NOT NULL AND duplicate.vin <> '')\n                                          OR duplicate.approval_basis IS NOT NULL))) AND (lower(trim(duplicate.model)) = 'cybercab' OR duplicate.approval_basis IS NOT NULL) AND lower(trim(COALESCE(duplicate.model, ''))) NOT IN ('model y', 'model_y', 'modely')\n    AND (duplicate.created_at < v.created_at OR (duplicate.created_at = v.created_at AND duplicate.id < v.id))\n    AND ((upper(trim(COALESCE(v.vin, ''))) <> '' AND upper(trim(COALESCE(v.vin, ''))) = upper(trim(COALESCE(duplicate.vin, ''))))\n      OR (upper(replace(replace(trim(COALESCE(v.license_plate, '')), '-', ''), ' ', '')) <> '' AND upper(replace(replace(trim(COALESCE(v.license_plate, '')), '-', ''), ' ', '')) = upper(replace(replace(trim(COALESCE(duplicate.license_plate, '')), '-', ''), ' ', '')))))",
+    "avgRowsRead": 14453,
+    "totalRowsRead": 1329679,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 11.231929347826087,
+    "totalDurationMs": 1033.3375,
+    "numberOfTimesRun": 92,
+    "queryEfficiency": 0
+  },
+  {
+    "query": "SELECT first_seen_date AS date, lower(model) AS model, COUNT(*) AS n FROM dmv_av_vehicles\n      WHERE in_baseline = 0 AND first_seen_date >= ? AND first_seen_date < ? AND lower(model) IN ('cybercab', 'model y') GROUP BY date, lower(model)",
+    "avgRowsRead": 740,
+    "totalRowsRead": 69560,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.37982553191489365,
+    "totalDurationMs": 35.7036,
+    "numberOfTimesRun": 94,
+    "queryEfficiency": 0
+  },
+  {
+    "query": "SELECT MIN(o.observed_at) AS first FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id\n LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND pv.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = pv.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (pv.origin = 'sighting' AND ((pv.vin IS NOT NULL AND pv.vin <> '')\n                                          OR pv.approval_basis IS NOT NULL))) WHERE \n  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'\n  AND o.evidence_ref IS NOT NULL AND o.public_id IS NOT NULL\n  AND s.submitted_at > datetime('now', '-30 days') AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL)",
+    "avgRowsRead": 591,
+    "totalRowsRead": 63879,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.595688888888889,
+    "totalDurationMs": 64.33440000000002,
+    "numberOfTimesRun": 108,
+    "queryEfficiency": 0
+  },
+  {
+    "query": "SELECT strftime('%Y-%m-%dT%H:00:00Z', o.observed_at) AS hour, COUNT(*) AS n\n        FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id\n LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND pv.visibility = 'public' AND (EXISTS (\n    SELECT 1 FROM trips t JOIN submissions s ON s.id = t.submission_id\n    WHERE t.robotaxi_vehicle_id = pv.id AND t.superseded_by IS NULL AND s.status IN ('pending', 'approved')\n  )\n    OR (pv.origin = 'sighting' AND ((pv.vin IS NOT NULL AND pv.vin <> '')\n                                          OR pv.approval_basis IS NOT NULL))) WHERE \n  s.submission_type = 'vehicle_sighting' AND s.status = 'approved' AND s.evidence_type = 'photo'\n  AND o.evidence_ref IS NOT NULL AND o.public_id IS NOT NULL\n  AND s.submitted_at > datetime('now', '-30 days') AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL) AND o.observed_at >= ? AND o.observed_at < ? GROUP BY hour",
+    "avgRowsRead": 745,
+    "totalRowsRead": 58919,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.780072151898734,
+    "totalDurationMs": 61.62569999999999,
+    "numberOfTimesRun": 79,
+    "queryEfficiency": 0.11140939597315436
+  },
+  {
+    "query": "SELECT strftime('%Y-%m-%dT%H:00:00Z', observed_at) AS hour, COUNT(*) AS n\n        FROM camera_detections WHERE 1=1 AND observed_at >= ? AND observed_at < ? GROUP BY hour",
+    "avgRowsRead": 221,
+    "totalRowsRead": 22566,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.38805588235294114,
+    "totalDurationMs": 39.5817,
+    "numberOfTimesRun": 102,
+    "queryEfficiency": 0.3257918552036199
+  },
+  {
+    "query": "SELECT snapshot_date FROM dmv_snapshots ORDER BY snapshot_date",
+    "avgRowsRead": 1,
+    "totalRowsRead": 180,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.16296122448979591,
+    "totalDurationMs": 15.970199999999998,
+    "numberOfTimesRun": 98,
+    "queryEfficiency": 1
+  }
+]

@@ -6,7 +6,7 @@
      data      — includes the "no counted rides yet" sub-state
    Missing values render as an em dash, never as 0. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const SESSION_KEY = 'teslaSessionId';
   const PAGE_SIZE = 10;
 

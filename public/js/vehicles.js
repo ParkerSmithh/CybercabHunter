@@ -11,7 +11,7 @@
    no markup-building step for a plate or model to sneak into. Missing values
    render as an em dash or an honest "not confirmed"/"not recorded", never 0. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const PAGE_SIZE = 50;
   const VEHICLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

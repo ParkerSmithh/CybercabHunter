@@ -1,0 +1,16 @@
+{
+  "uuid": "1873d232-f799-4a4c-915a-615df4556841",
+  "name": "cybercabhunter-db",
+  "created_at": "2026-09-16T20:50:28.547Z",
+  "num_tables": 30,
+  "running_in_region": "WNAM",
+  "read_replication": {
+    "mode": "disabled"
+  },
+  "jurisdiction": null,
+  "database_size": 1646592,
+  "read_queries_24h": 9300,
+  "write_queries_24h": 1099,
+  "rows_read_24h": 5156816,
+  "rows_written_24h": 8015
+}

@@ -410,11 +410,11 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=29"></script>
+<script src="js/main.js?v=31"></script>
 <script>
   CCC.init();
 
-  const TESLA_WORKER_URL = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const TESLA_WORKER_URL = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const TESLA_SESSION_KEY = 'teslaSessionId';
 
   function fmtDate(d) {

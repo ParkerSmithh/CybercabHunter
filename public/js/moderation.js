@@ -7,7 +7,7 @@
    (teslaSessionId in localStorage); no second auth system, no client-side
    role check standing in for the real one. */
 (function () {
-  const WORKER = 'https://cybercabhunter.contactjoeclos.workers.dev';
+  const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const SESSION_KEY = 'teslaSessionId';
 
   const $ = id => document.getElementById(id);
