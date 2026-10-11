@@ -76,8 +76,8 @@
         : `<span class="is-empty" title="${esc(titles[i])}"></span>`).join('')}</div>`;
   }
   // Which window each chart shows (kept across city switches).
-  const state = { fares: '90D' };
-  const DAYS = { '7D': 7, '30D': 30, '90D': 90, '6M': 182, '1Y': 365 };
+  const state = { fares: '90D', sightings: 'All' };
+  const DAYS = { '1W': 7, '1M': 30, '7D': 7, '30D': 30, '90D': 90, '6M': 182, '1Y': 365 };
   // Range buttons for one chart (the Fleet Growth chart's look; 44px on phones).
   const rangeBtns = (chart, ranges) => `<div class="flex items-center gap-1 shrink-0" role="group" aria-label="Time range">${ranges.map(r =>
     `<button type="button" data-chart="${chart}" data-range="${r}" aria-pressed="${state[chart] === r}" class="hr-range text-xs font-semibold px-2 py-1 max-sm:min-h-[44px] max-sm:min-w-[40px]">${r}</button>`).join('')}</div>`;
@@ -100,7 +100,8 @@
       axis(shortDate(list[0]), null, 'This week');
   }
   function sightingsChart(d) {
-    const days = (d.sightings?.daily || []).filter(day => day.date >= '2026-09-29');
+    const history = (d.sightings?.daily || []).filter(day => day.date >= '2026-09-29');
+    const days = state.sightings === 'All' ? history : history.slice(-DAYS[state.sightings]);
     if (!days.length) return empty(`No approved sightings data for ${d.name} yet.`);
     const max = Math.max(1, ...days.map(day => day.count));
     const magnitude = 10 ** Math.floor(Math.log10(max / 4));
@@ -188,7 +189,7 @@
       : `<div class="mt-2">${empty(`No approved sightings in ${d.name} yet.`)}</div>`;
     const sub = (label, extra) => `<div class="mt-6 mb-2 flex flex-wrap items-center gap-2 max-sm:mt-4">${cardTitle(label)}${extra || ''}</div>`;
     return `<div class="home-data-panel home-activity-panel">` + head(d.name.toUpperCase(), 'SIGHTINGS ACTIVITY', liveBadge(d.generated_at), seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)) +
-      `<div class="home-activity-summary"><div class="home-human-metrics">` + sub('Approved sightings') +
+      `<div class="home-activity-layout"><div class="home-activity-summary"><div class="home-human-metrics">` + sub('Approved sightings') +
       tiles('home-sighting-metrics',
         tile('Last 24 hours', has ? int(s.last_24h) : '—', has ? esc(delta(s.last_24h, s.prev_24h, 'previous 24 h')) : 'No sightings yet') +
         tile('Last 7 days', has ? int(s.last_7_days) : '—', has ? esc(delta(s.last_7_days, s.prev_7_days, 'prior 7 days', true)) : '') +
@@ -201,9 +202,9 @@
         tile('Last detection', c.last_detection_at ? esc(ago(c.last_detection_at)) : '—', c.last_detection_at ? esc([c.last_camera, when(c.last_detection_at)].filter(Boolean).join(' · ')) : 'None yet')) +
       footnote('From automated camera detections — separate from the human sightings above.') + `</div></div>` +
       `<div class="home-daily-sightings">
-        ${chartCard('sightings', 'Daily sightings', [], sightingsChart(d), `Approved photo sightings in ${d.name} · dates in Central Time.`)}
-      </div>
-      <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-2 max-sm:gap-2">
+        ${chartCard('sightings', 'Daily sightings', ['All', '1W', '1M', '90D'], sightingsChart(d), `Approved photo sightings in ${d.name} · dates in Central Time.`)}
+      </div></div>
+      <div class="home-activity-details mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-2 max-sm:gap-2">
         ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
         ${card(`<div class="flex items-center justify-between gap-3">${cardTitle('Latest sightings')}${seeAll(`/sightings${city}`, 'See all', `See all ${d.name} sightings`)}</div>${latest}${footnote('From approved sightings.')}`)}
       </div>` +
@@ -222,6 +223,7 @@
     document.querySelectorAll('.sightings-daily-plot').forEach(plot => {
       plot.style.width = `${fleet.clientWidth}px`;
       plot.style.height = `${fleet.clientHeight}px`;
+      plot.closest('.home-activity-layout')?.style.setProperty('--sightings-chart-width', `${fleet.clientWidth}px`);
     });
   }
   const fleetMount = document.getElementById('fleetChartMount');
@@ -257,6 +259,7 @@
     state[b.dataset.chart] = b.dataset.range;
     const body = document.querySelector(`#cityRows [data-chart-body="${b.dataset.chart}"]`);
     if (body) body.innerHTML = CHARTS[b.dataset.chart](current);
+    syncChartSize();
     b.parentElement.querySelectorAll('[data-range]').forEach(x => {
       const on = x.dataset.range === state[b.dataset.chart];
       x.setAttribute('aria-pressed', String(on));

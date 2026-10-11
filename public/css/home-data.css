@@ -56,3 +56,18 @@
  .sightings-daily-plot{grid-template-columns:24px minmax(0,1fr);column-gap:8px;}
  .sightings-x-axis,.sightings-y-axis{font-size:10px;}
 }
+
+/* Sightings uses Fleet Growth's stats-beside-plot composition. */
+.home-activity-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--sightings-chart-width,1fr));gap:24px;margin-top:24px;align-items:start;}
+.home-activity-layout .home-sighting-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}
+.home-activity-layout .home-human-metrics > div:first-child{margin-top:0;}
+.home-activity-layout .home-daily-sightings{margin-top:0;min-width:0;}
+.home-activity-layout .home-daily-sightings > div{padding:0;border:0;}
+.home-activity-layout .home-daily-sightings > div > div:first-child{flex-wrap:wrap;gap:8px;}
+.home-activity-details{margin-top:24px;padding-top:20px;border-top:1px solid rgb(var(--ink) / .08);}
+.home-activity-details > div{padding:0;border:0;border-radius:0;background:none;backdrop-filter:none;}
+@media(max-width:1023px){
+ .home-activity-layout{grid-template-columns:minmax(0,1fr);gap:24px;}
+ .home-activity-layout .home-sighting-metrics{grid-template-columns:repeat(4,minmax(0,1fr));}
+ .home-activity-details{gap:20px;}
+}
