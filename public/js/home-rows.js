@@ -76,13 +76,13 @@
         : `<span class="is-empty" title="${esc(titles[i])}"></span>`).join('')}</div>`;
   }
   // Which window each chart shows (kept across city switches).
-  const state = { fares: '90D', sightings: '30D' };
+  const state = { fares: '90D' };
   const DAYS = { '7D': 7, '30D': 30, '90D': 90, '6M': 182, '1Y': 365 };
   // Range buttons for one chart (the Fleet Growth chart's look; 44px on phones).
   const rangeBtns = (chart, ranges) => `<div class="flex items-center gap-1 shrink-0" role="group" aria-label="Time range">${ranges.map(r =>
     `<button type="button" data-chart="${chart}" data-range="${r}" aria-pressed="${state[chart] === r}" class="hr-range text-xs font-semibold px-2 py-1 max-sm:min-h-[44px] max-sm:min-w-[40px]">${r}</button>`).join('')}</div>`;
   const chartCard = (chart, title, ranges, body, note) => card(`
-    <div class="flex items-center justify-between gap-3 mb-3 max-sm:mb-2">${cardTitle(title)}${rangeBtns(chart, ranges)}</div>
+    <div class="flex items-center justify-between gap-3 mb-3 max-sm:mb-2">${cardTitle(title)}${ranges.length ? rangeBtns(chart, ranges) : ''}</div>
     <div data-chart-body="${chart}">${body}</div>${note ? footnote(note) : ''}`);
   const axis = (l, m, r) => `<div class="flex justify-between mt-1.5 text-[10px] text-slate-500 stat-value"><span>${esc(l)}</span>${m != null ? `<span>${esc(m)}</span>` : ''}<span>${esc(r)}</span></div>`;
 
@@ -100,23 +100,29 @@
       axis(shortDate(list[0]), null, 'This week');
   }
   function sightingsChart(d) {
-    const days = (d.sightings?.daily || []).slice(-DAYS[state.sightings]);
+    const days = (d.sightings?.daily || []).filter(day => day.date >= '2026-09-29');
     if (!days.length) return empty(`No approved sightings data for ${d.name} yet.`);
     const max = Math.max(1, ...days.map(day => day.count));
     const magnitude = 10 ** Math.floor(Math.log10(max / 4));
     const step = [1, 2, 5, 10].map(n => n * magnitude).find(n => n >= max / 4 && n >= 1) || 1;
     const ceiling = Math.ceil(max / step) * step;
     const ticks = Array.from({ length: Math.round(ceiling / step) + 1 }, (_, i) => ceiling - i * step);
-    const width = 720, height = 180, slot = width / days.length;
+    const width = 720, height = 220;
+    const x = i => days.length === 1 ? width / 2 : i / (days.length - 1) * width;
     const y = count => height - count / ceiling * height;
-    const lines = ticks.map(n => `<line x1="0" x2="${width}" y1="${y(n)}" y2="${y(n)}" class="sightings-gridline"/>`).join('');
-    const marks = days.map((day, i) => `<rect data-date="${esc(day.date)}" data-count="${day.count}" x="${i * slot + slot * .18}" y="${y(day.count)}" width="${slot * .64}" height="${day.count / ceiling * height}" class="sightings-day"><title>${esc(shortDate(day.date))}: ${plural(day.count, 'sighting', 'sightings')}</title></rect>`).join('');
+    const lines = ticks.map(n => `<line x1="0" x2="${width}" y1="${y(n)}" y2="${y(n)}" class="sightings-gridline" ${n ? 'stroke-dasharray="2 4"' : ''}/>`).join('');
+    // Fleet Growth's step-line treatment, using each day's count rather than
+    // a cumulative total. Keep real zero days on the baseline.
+    let path = `M ${x(0)} ${y(days[0].count)}`;
+    for (let i = 1; i < days.length; i++) path += ` L ${x(i)} ${y(days[i - 1].count)} L ${x(i)} ${y(days[i].count)}`;
+    const area = `${path} L ${x(days.length - 1)} ${height} L ${x(0)} ${height} Z`;
+    const marks = days.map((day, i) => `<circle data-date="${esc(day.date)}" data-count="${day.count}" cx="${x(i)}" cy="${y(day.count)}" r="8" class="sightings-day"><title>${esc(shortDate(day.date))}: ${plural(day.count, 'sighting', 'sightings')}</title></circle>`).join('');
     const labels = [0, Math.floor((days.length - 1) / 2), days.length - 1];
     const description = `${d.name} approved sightings per day. ` + days.map(day => `${shortDate(day.date)}: ${day.count}`).join('; ');
     return `<div class="sightings-axis-title">Sightings per day</div>
       <div class="sightings-daily-plot">
         <div class="sightings-y-axis" aria-hidden="true">${ticks.map(n => `<span>${int(n)}</span>`).join('')}</div>
-        <svg class="sightings-daily-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(description)}">${lines}${marks}</svg>
+        <div class="sightings-line-mount"><svg class="sightings-daily-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(description)}">${lines}<path class="sightings-area" d="${area}"/><path class="sightings-line" d="${path}"/>${marks}</svg><span class="sightings-end-dot" style="top:${100 - days.at(-1).count / ceiling * 100}%" aria-hidden="true"></span></div>
         <div class="sightings-x-axis" aria-hidden="true">${labels.map(i => `<span>${esc(shortDate(days[i].date))}</span>`).join('')}</div>
       </div>` + (days.some(day => day.count) ? '' : footnote(`No approved sightings in ${d.name} in this window.`));
   }
@@ -195,7 +201,7 @@
         tile('Last detection', c.last_detection_at ? esc(ago(c.last_detection_at)) : '—', c.last_detection_at ? esc([c.last_camera, when(c.last_detection_at)].filter(Boolean).join(' · ')) : 'None yet')) +
       footnote('From automated camera detections — separate from the human sightings above.') + `</div></div>` +
       `<div class="home-daily-sightings">
-        ${chartCard('sightings', 'Daily sightings', ['7D', '30D', '90D'], sightingsChart(d), `Approved photo sightings in ${d.name} · dates in Central Time.`)}
+        ${chartCard('sightings', 'Daily sightings', [], sightingsChart(d), `Approved photo sightings in ${d.name} · dates in Central Time.`)}
       </div>
       <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] max-sm:mt-2 max-sm:gap-2">
         ${card(cardTitle('Top spots') + spots + footnote('From approved sightings.'))}
