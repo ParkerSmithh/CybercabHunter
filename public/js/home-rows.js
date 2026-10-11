@@ -214,6 +214,20 @@
   const skeleton = `<div class="h-6 w-40 rounded bg-white/[0.05] animate-pulse mb-4"></div><div class="h-24 rounded-2xl bg-white/[0.03] animate-pulse"></div>`;
   const rowEls = () => [...document.querySelectorAll('[data-row]')];
 
+  // Use the actual Fleet Growth plot dimensions at every breakpoint.
+  // ResizeObserver follows its grid layout and late-loaded stats as well.
+  function syncChartSize() {
+    const fleet = document.getElementById('fleetChartMount');
+    if (!fleet || !fleet.clientWidth || !fleet.clientHeight) return;
+    document.querySelectorAll('.sightings-daily-plot').forEach(plot => {
+      plot.style.width = `${fleet.clientWidth}px`;
+      plot.style.height = `${fleet.clientHeight}px`;
+    });
+  }
+  const fleetMount = document.getElementById('fleetChartMount');
+  if (fleetMount && window.ResizeObserver) new ResizeObserver(syncChartSize).observe(fleetMount);
+  window.addEventListener('resize', syncChartSize);
+
   let seq = 0, current = null, city = 'austin';
   function draw(d) {
     current = d;
@@ -221,6 +235,7 @@
       el.removeAttribute('aria-busy');
       try { el.innerHTML = ROWS[el.dataset.row](d); } catch (e) { el.innerHTML = ''; }
     });
+    syncChartSize();
   }
   function render(next, { quiet = false } = {}) {
     city = next;

@@ -168,6 +168,15 @@ async function run() {
     check('sub-metrics from the data: rides in 30 days, median fare, week-over-week sightings', /4 in the last 30 days/.test(text('rowRides')) && /Median \$12\.50 · 4 rides/.test(text('rowRides')) && /Up from 0 previous 24 h|vs previous 24 h/.test(text('rowSightings')));
     const charts = [...d.querySelectorAll('#cityRows [data-chart-body]')].map(el => el.dataset.chartBody);
     check('one daily sightings chart alongside fares; camera chart removed', charts.join() === 'fares,sightings' && [...d.querySelectorAll('[data-chart="fares"]')].map(b => b.dataset.range).join() === '90D,6M,1Y,All' && d.querySelector('[data-chart="fares"][aria-pressed="true"]').dataset.range === '90D');
+    const fleetMount = d.getElementById('fleetChartMount');
+    let plotWidth = 480, plotHeight = 280;
+    Object.defineProperty(fleetMount, 'clientWidth', { get: () => plotWidth });
+    Object.defineProperty(fleetMount, 'clientHeight', { get: () => plotHeight });
+    w.dispatchEvent(new w.Event('resize'));
+    check('sightings plot matches the actual Fleet Growth dimensions on desktop', d.querySelector('.sightings-daily-plot').style.width === '480px' && d.querySelector('.sightings-daily-plot').style.height === '280px');
+    plotWidth = 310; plotHeight = 240;
+    w.dispatchEvent(new w.Event('resize'));
+    check('sightings plot follows the resized Fleet Growth dimensions on phones', d.querySelector('.sightings-daily-plot').style.width === '310px' && d.querySelector('.sightings-daily-plot').style.height === '240px');
     const expectedDays = A.sightings.daily.filter(day => day.date >= '2026-09-29');
     check('fleet-style line and area start on September 29, without leading zero history', d.querySelector('.sightings-line') && d.querySelector('.sightings-area') && d.querySelector('.sightings-day').dataset.date === expectedDays[0].date && d.querySelectorAll('.sightings-day').length === expectedDays.length && !d.querySelector('[data-chart="sightings"]'));
     check('daily graph plots approved sightings rather than cumulative totals or cameras', [...d.querySelectorAll('.sightings-day')].reduce((n, el) => n + Number(el.dataset.count), 0) === expectedDays.reduce((n, day) => n + day.count, 0) && /Sightings per day/.test(text('rowSightings')) && d.querySelector('.sightings-y-axis').textContent.includes('0'));
