@@ -1,0 +1,73 @@
+{
+  "at": "2026-10-11T00:43:21.287Z",
+  "checks": [
+    {
+      "route": "/",
+      "status": 200,
+      "dailyScript": true,
+      "calendarLink": false
+    },
+    {
+      "route": "/calendar",
+      "status": 404
+    },
+    {
+      "route": "/calendar.html",
+      "status": 404
+    },
+    {
+      "route": "/api/activity?year=2026",
+      "status": 404
+    },
+    {
+      "route": "/api/daily",
+      "status": 200,
+      "day": {
+        "date": "2026-10-10",
+        "registry": 20,
+        "dmv": 0,
+        "sightings": 20,
+        "cameras": 20,
+        "cybercab": 0,
+        "model_y": 0
+      },
+      "errors": {}
+    },
+    {
+      "route": "/api/sightings?stats=1",
+      "status": 200
+    },
+    {
+      "route": "/api/news",
+      "status": 200
+    },
+    {
+      "route": "/api/registry/stats?lifetime=1",
+      "status": 200
+    },
+    {
+      "route": "/api/homepage-stats?city=austin",
+      "status": 200
+    },
+    {
+      "route": "/api/fleet-stats?city=austin",
+      "status": 200
+    },
+    {
+      "route": "/api/dmv-registrations",
+      "status": 200
+    },
+    {
+      "route": "/sightings",
+      "status": 200
+    },
+    {
+      "route": "/news",
+      "status": 200
+    },
+    {
+      "route": "/moderation",
+      "status": 200
+    }
+  ]
+}
