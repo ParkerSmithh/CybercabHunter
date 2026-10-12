@@ -158,7 +158,7 @@
 
 
       <!-- Automatic forwarding setup -->
-      <div id="lgSetup" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8 items-start max-sm:gap-4">
+      <div id="lgSetup" class="hidden grid grid-cols-1 gap-6 lg:gap-8 items-start max-sm:gap-4">
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
           <h2 id="lgSetupTitle" tabindex="-1" class="mt-3 font-display font-bold text-2xl lg:text-[28px] tracking-tight text-white outline-none max-sm:mt-2 max-sm:text-xl"></h2>
@@ -209,46 +209,6 @@
           </div>
         </section>
 
-        <aside aria-labelledby="lgStatusHeading" class="glass rounded-2xl p-6 max-sm:p-4 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:sticky lg:top-24">
-          <div class="flex items-center justify-between gap-3">
-            <h2 id="lgStatusHeading" class="font-display font-bold text-lg">Status</h2>
-            <button id="lgRefresh" type="button" aria-label="Check status now" title="Check now" class="lg-refresh w-9 h-9 -mr-1.5 rounded-lg inline-flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-60">
-              <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
-            </button>
-          </div>
-
-          <div aria-live="polite">
-            <div id="lgStateOn" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-emerald-400/40 bg-emerald-400/[0.05] p-4">
-              <svg class="w-5 h-5 shrink-0 text-emerald-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
-              <div>
-                <p class="text-sm font-semibold text-emerald-200">Receiving receipts</p>
-                <p class="text-xs text-slate-400 mt-0.5">Your receipts are reaching us.</p>
-              </div>
-            </div>
-            <div id="lgStateOff" class="hidden mt-4 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-400/[0.04] p-4">
-              <svg class="w-5 h-5 shrink-0 text-amber-300 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
-              <div>
-                <p class="text-sm font-semibold text-amber-200">Not receiving yet</p>
-                <p class="text-xs text-slate-400 mt-0.5">Finish the steps to start.</p>
-              </div>
-            </div>
-          </div>
-
-          <dl class="mt-5 space-y-3 text-sm">
-            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Last receipt</dt><dd id="lgLastReceived" class="font-semibold text-white tabular-nums text-right">-</dd></div>
-            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Emails processed</dt><dd id="lgProcessed" class="font-semibold text-white tabular-nums">-</dd></div>
-            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Rides added</dt><dd id="lgAdded" class="font-semibold text-gold tabular-nums">-</dd></div>
-            <div class="flex items-baseline justify-between gap-4"><dt class="text-slate-400">Duplicates skipped</dt><dd id="lgDuplicates" class="font-semibold text-white tabular-nums">-</dd></div>
-          </dl>
-
-          <p id="lgStatusError" class="hidden mt-4 text-xs text-amber-200" role="alert">Couldn't check just now. We'll try again shortly.</p>
-          <p id="lgChecked" class="mt-4 text-xs text-slate-500"></p>
-
-          <a href="rider-data.html" class="mt-5 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-2 text-sm font-semibold text-slate-200 hover:text-white transition-colors">
-            See your rides in Rider Data
-            <svg class="w-4 h-4 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg>
-          </a>
-        </aside>
 
         <div class="min-w-0 flex flex-col gap-6 lg:col-start-1 lg:row-start-3 max-sm:gap-4">
 
@@ -540,6 +500,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/link-gmail.js?v=12"></script>
+<script src="js/link-gmail.js?v=13"></script>
 </body>
 </html>

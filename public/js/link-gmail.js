@@ -26,7 +26,6 @@
 
   let address = null;        // the full address, only when the domain is configured
   let status = null;         // last sync-status payload
-  let checkedAt = null;      // when status was last fetched
   let pollTimer = null;
   let codeKey;               // code + arrival time last rendered (undefined until the first render)
   let codeIsNew = false;
@@ -37,7 +36,6 @@
   let completionRequest = null;
 
   // ---------- formatting ----------
-  const fmtInt = n => (n == null ? '-' : Number(n).toLocaleString());
   const sqlDate = ts => (ts ? new Date(String(ts).replace(' ', 'T') + 'Z') : null);
   function fmtWhen(ts) {
     const dt = sqlDate(ts);
@@ -48,12 +46,6 @@
     if (mins < 24 * 60) return `${Math.round(mins / 60)} h ago`;
     return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
-  function fmtChecked() {
-    if (!checkedAt) return '';
-    const secs = Math.round((Date.now() - checkedAt) / 1000);
-    return secs < 10 ? 'Checked just now' : secs < 60 ? `Checked ${secs}s ago` : `Checked ${Math.round(secs / 60)} min ago`;
-  }
-
   // ---------- network ----------
   async function api(path, options = {}) {
     const resp = await fetch(WORKER + path, {
@@ -195,18 +187,9 @@
 
   function renderStatus() {
     if (!status) return;
-    const f = status.forwarding, totals = (status.receipt_sync && status.receipt_sync.totals) || {};
+    const f = status.forwarding;
 
     const linked = isLinked(f);
-
-    // Live status card
-    show('lgStateOn', linked);
-    show('lgStateOff', !linked);
-    $('lgLastReceived').textContent = fmtWhen(f.last_received_at);
-    $('lgProcessed').textContent = fmtInt(totals.processed);
-    $('lgAdded').textContent = fmtInt(totals.added);
-    $('lgDuplicates').textContent = fmtInt(totals.duplicates);
-    $('lgChecked').textContent = fmtChecked();
 
     // Step 3: Gmail's confirmation (link and/or code). A stored one is always
     // unused: the worker clears it when the next receipt arrives. So it is
@@ -259,24 +242,17 @@
   async function refreshStatus() {
     if (inFlight) return;
     inFlight = true;
-    $('lgRefresh').disabled = true;
-    $('lgRefresh').classList.add('is-busy');
     try {
       const resp = await api('/api/rides/sync-status');
       if (resp.status === 401) { stopPolling(); setView('signedOut'); return; }
       if (resp.ok && resp.json && resp.json.forwarding) {
-        status = resp.json; checkedAt = Date.now();
-        show('lgStatusError', false);
+        status = resp.json;
         renderStatus();
-      } else {
-        show('lgStatusError', true);
       }
     } catch (e) {
-      show('lgStatusError', true);
+      // Keep the confirmation view; scheduled polling retries automatically.
     } finally {
       inFlight = false;
-      $('lgRefresh').disabled = false;
-      $('lgRefresh').classList.remove('is-busy');
       schedulePoll();
     }
   }
@@ -297,13 +273,11 @@
   function stopPolling() { clearTimeout(pollTimer); pollTimer = null; }
 
   function setupStatus() {
-    $('lgRefresh').addEventListener('click', refreshStatus);
     // Coming back from the Gmail tab is exactly when something may have changed.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stopPolling(); else refreshStatus();
     });
-    // Keep the "Checked …" line honest between polls.
-    setInterval(() => { if (checkedAt) $('lgChecked').textContent = fmtChecked(); }, 5000);
+
   }
 
   // Share the existing authenticated completion write with the manual fallback.
@@ -415,7 +389,7 @@
       setView('error'); return;
     }
     applyAddressResponse(addr);
-    status = sync.json; checkedAt = Date.now();
+    status = sync.json;
     previousLinked = isLinked(status.forwarding);
     renderStatus();
     setView('ready');
