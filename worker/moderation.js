@@ -59,6 +59,23 @@ export async function apiModerationAccess(request, env) {
   return Response.json({ authenticated: true, moderator: !auth.error });
 }
 
+// Aggregate forwarding adoption only; no rider or address records leave D1.
+export async function apiModerationForwardingStats(request, env) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  const stats = await env.cybercabhunter_db.prepare(`
+    SELECT
+      COUNT(CASE WHEN status = 'active' THEN 1 END) AS addresses_issued,
+      COUNT(CASE WHEN status = 'active' AND setup_completed_at IS NOT NULL THEN 1 END) AS setup_completed,
+      COUNT(CASE WHEN status = 'active' AND last_received_at IS NOT NULL THEN 1 END) AS actively_receiving,
+      COUNT(CASE WHEN status = 'active' AND last_received_at >= datetime('now', '-7 days') THEN 1 END) AS receiving_7d,
+      COUNT(CASE WHEN status = 'active' AND setup_completed_at >= datetime('now', '-30 days') THEN 1 END) AS linked_30d,
+      (SELECT COUNT(*) FROM receipt_ingestions) AS receipts_processed
+    FROM receipt_ingestion_addresses
+  `).first();
+  return Response.json(stats, { headers: { 'Cache-Control': 'private, no-store' } });
+}
+
 // Moderator-only: the reviewable vehicle-sighting queue. Deliberately does
 // NOT include submitter identity (display name, handle, email) — nothing
 // about the current review workflow needs it, so it's simply left out

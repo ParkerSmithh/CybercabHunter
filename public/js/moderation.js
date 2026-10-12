@@ -51,6 +51,41 @@
     show('modForbidden', view === 'forbidden');
     show('modError', view === 'error');
     show('modQueue', view === 'queue');
+    if (view !== 'queue') setForwardingStatsView('loading');
+  }
+
+  let forwardingStatsLoading = false;
+  const forwardingStatKeys = ['addresses_issued', 'setup_completed', 'actively_receiving', 'receiving_7d', 'linked_30d', 'receipts_processed'];
+
+  function setForwardingStatsView(view) {
+    show('modForwardingStatsLoading', view === 'loading');
+    show('modForwardingStatsValues', view === 'values');
+    show('modForwardingStatsError', view === 'error');
+    $('modForwardingStats').setAttribute('aria-busy', String(view === 'loading'));
+    if (view !== 'values') {
+      document.querySelectorAll('[data-forwarding-stat]').forEach(el => { el.textContent = ''; });
+    }
+  }
+
+  async function loadForwardingStats() {
+    if (forwardingStatsLoading || $('modQueue').classList.contains('hidden')) return;
+    forwardingStatsLoading = true;
+    setForwardingStatsView('loading');
+    try {
+      const resp = await api('/api/moderation/forwarding-stats');
+      if (resp.status === 401 || resp.status === 403) {
+        setForwardingStatsView('error');
+        setView(resp.status === 401 ? 'signedOut' : 'forbidden');
+        return;
+      }
+      if (!resp.ok || !resp.json || !forwardingStatKeys.every(key => Number.isSafeInteger(resp.json[key]) && resp.json[key] >= 0)) throw new Error('counts');
+      if ($('modQueue').classList.contains('hidden')) return;
+      forwardingStatKeys.forEach(key => {
+        document.querySelector(`[data-forwarding-stat="${key}"]`).textContent = resp.json[key].toLocaleString('en-US');
+      });
+      setForwardingStatsView('values');
+    } catch (e) { setForwardingStatsView('error'); }
+    finally { forwardingStatsLoading = false; }
   }
 
   // Approve / Add to registry / Reject (with its inline reason box) — the
@@ -314,6 +349,7 @@
     queue = (resp.json && resp.json.sightings) || [];
     renderQueue();
     setView('queue');
+    loadForwardingStats();
     loadVehicles();
     loadApproved();
   }
@@ -920,6 +956,8 @@
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
+    $('modForwardingStatsRetry').addEventListener('click', loadForwardingStats);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadForwardingStats(); });
     setupActions();
     setupVehicleActions();
     $('modRetry').addEventListener('click', () => loadQueue(true));

@@ -1,0 +1,52 @@
+{
+  "preview": "https://moderation-linking-stats-cybercabhunter.contactjoeclos.workers.dev/moderation",
+  "endpoint": {
+    "addresses_issued": 5,
+    "setup_completed": 3,
+    "actively_receiving": 3,
+    "receiving_7d": 2,
+    "linked_30d": 2,
+    "receipts_processed": 2
+  },
+  "moderator_status": 200,
+  "ordinary_status": 403,
+  "signed_out_status": 401,
+  "ui": [
+    {
+      "role": "moderator",
+      "numbers_rendered": true,
+      "six_labels": [
+        "Addresses issued",
+        "Setup completed",
+        "Actively receiving",
+        "Receiving (7d)",
+        "Linked (30d)",
+        "Receipts processed"
+      ]
+    },
+    {
+      "role": "ordinary",
+      "numbers_rendered": false,
+      "six_labels": [
+        "Addresses issued",
+        "Setup completed",
+        "Actively receiving",
+        "Receiving (7d)",
+        "Linked (30d)",
+        "Receipts processed"
+      ]
+    },
+    {
+      "role": "signed_out",
+      "numbers_rendered": false,
+      "six_labels": [
+        "Addresses issued",
+        "Setup completed",
+        "Actively receiving",
+        "Receiving (7d)",
+        "Linked (30d)",
+        "Receipts processed"
+      ]
+    }
+  ]
+}
