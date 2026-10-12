@@ -134,6 +134,18 @@
         </a>
       </div>
 
+      <div class="mb-5">
+        <button id="stopSyncBtn" type="button" class="hidden inline-flex items-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-white/15 text-slate-200 hover:bg-white/5">Stop Sync</button>
+        <div id="stopSyncConfirm" class="hidden mt-3 space-y-3">
+          <p class="text-sm text-slate-300">Stop syncing receipts? Your current forwarding address will stop working immediately. Existing rides stay saved. To resume, use Setup Tesla Sync and update your Gmail filter with the new address.</p>
+          <div class="flex gap-3">
+            <button id="stopSyncConfirmBtn" type="button" class="min-h-[44px] px-4 py-2 rounded-lg text-sm font-semibold border border-amber-400/40 text-amber-200 disabled:opacity-50">Stop Sync</button>
+            <button id="stopSyncCancel" type="button" class="min-h-[44px] px-4 py-2 rounded-lg text-sm text-slate-300">Keep syncing</button>
+          </div>
+        </div>
+        <p id="stopSyncMessage" role="status" class="hidden mt-3 text-sm text-slate-300"></p>
+      </div>
+
       <!-- Connected accounts: the Tesla account (text + Unlink Tesla, only when
            linked). Linking Tesla happens from the header button on every
            other page; unlinking clears the connection without touching the
@@ -269,7 +281,7 @@
           <h2 data-split class="font-display font-bold text-xl max-sm:text-base">YOUR RIDES</h2>
           <span id="ridesTotal" class="text-xs text-slate-500"></span>
         </div>
-        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received. <a href="/link-gmail" class="text-gold hover:underline underline-offset-2">Link Gmail</a> to start sending them.</div>
+        <div id="ridesEmpty" class="hidden text-sm text-slate-500">No rides yet. Rides appear here once a receipt is received. <a href="/link-gmail" class="text-gold hover:underline underline-offset-2">Setup Tesla Sync</a> to start sending them.</div>
         <div id="ridesTableWrap" class="hidden overflow-x-auto relative">
           <table class="w-full text-sm max-sm:text-xs">
             <thead>
@@ -434,10 +446,10 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=31"></script>
+<script src="js/main.js?v=32"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/rider-data.js?v=24"></script>
+<script src="js/rider-data.js?v=25"></script>
 </body>
 </html>

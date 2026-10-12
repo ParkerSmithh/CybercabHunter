@@ -1170,7 +1170,7 @@ const CCC = (() => {
     btn.title = 'Connect your Tesla account so Cybercab Hunter can see your eligible Tesla vehicle information. This does not import Robotaxi ride history.';
     btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TESLA_ICON_SVG}</svg>Link Tesla Account`;
 
-    // The button only exists for a rider who is signed in (Google Sign-In is
+    // The button only exists for a moderator who is signed in (Google Sign-In is
     // how an account is created) and has not linked Tesla yet. Signed out, or
     // once linked, it is hidden — it starts hidden in the markup, so nothing
     // flashes while /api/me answers, and any failure leaves it hidden.
@@ -1180,11 +1180,14 @@ const CCC = (() => {
     }
 
     if (sessionId) {
-      fetch(TESLA_WORKER_URL + '/api/me', {
-        headers: { Authorization: 'Bearer ' + sessionId }
-      })
-        .then(r => (r.ok ? r.json() : null))
-        .then(d => render(!!(d && d.authenticated === true && !(d.tesla && d.tesla.connected))))
+      fetch(TESLA_WORKER_URL + '/api/me', { headers: { Authorization: 'Bearer ' + sessionId } })
+        .then(r => r.ok ? r.json() : null)
+        .then(async d => {
+          if (!d || d.authenticated !== true || (d.tesla && d.tesla.connected)) { render(false); return; }
+          const response = await fetch(TESLA_WORKER_URL + '/api/moderation/access', { headers: { Authorization: 'Bearer ' + sessionId } });
+          const access = response.ok ? await response.json() : null;
+          render(!!(access && access.moderator === true));
+        })
         .catch(() => render(false));
     }
 

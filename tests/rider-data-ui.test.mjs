@@ -304,7 +304,7 @@ async function run() {
     check('it sits in the header, next to the Submit button', /<header[\s\S]*id="teslaLinkBtn"[\s\S]*id="openSightingDrawer"[\s\S]*<\/header>/.test(HTML));
 
     // me: the /api/me answer — { authenticated, tesla: { connected } }, a Response status, or 'network' for a failed request.
-    async function headerButton(session, me, { hash = '' } = {}) {
+    async function headerButton(session, me, { hash = '', moderator = false } = {}) {
       const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/rider-data.html' + hash, pretendToBeVisual: true });
       const w = dom.window;
       w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
@@ -313,6 +313,7 @@ async function run() {
       w.fetch = async url => {
         const path = String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '');
         calls.push(path);
+        if (path === '/api/moderation/access') return Response.json({ moderator });
         if (path === '/api/me') {
           if (me === 'network') throw new Error('offline');
           if (typeof me === 'number') return new Response('{}', { status: me });
@@ -333,11 +334,51 @@ async function run() {
     r = await headerButton('session-u1', 'network');
     check('the sign-in check fails (offline): the button stays hidden, never shown by default', r.btn.classList.contains('hidden'));
     r = await headerButton('session-u1', { authenticated: true, tesla: { connected: false } });
-    check('signed in, Tesla not linked: the button is shown and starts Tesla linking', !r.btn.classList.contains('hidden') && /\/oauth\/tesla\/start$/.test(r.btn.getAttribute('href')) && /Link Tesla Account/.test(r.btn.textContent) && r.calls.includes('/api/me'));
+    check('normal signed-in user: Tesla link stays hidden', r.btn.classList.contains('hidden'));
+    r = await headerButton('session-u1', { authenticated: true, tesla: { connected: false } }, { moderator: true });
+    check('moderator, Tesla not linked: the button is shown and starts Tesla linking', !r.btn.classList.contains('hidden') && /\/oauth\/tesla\/start$/.test(r.btn.getAttribute('href')) && /Link Tesla Account/.test(r.btn.textContent) && r.calls.includes('/api/me'));
     r = await headerButton('session-u1', { authenticated: true, tesla: { connected: true } });
     check('signed in, Tesla already linked: the button is hidden', r.btn.classList.contains('hidden'));
-    r = await headerButton(null, { authenticated: true, tesla: { connected: false } }, { hash: '#tesla_session=fresh-google-session' });
+    r = await headerButton(null, { authenticated: true, tesla: { connected: false } }, { hash: '#tesla_session=fresh-google-session', moderator: true });
     check('right after the Google sign-in redirect (session arrives in the URL fragment): the button appears', !r.btn.classList.contains('hidden') && r.calls.includes('/api/me'));
+  }
+
+  {
+    for (const moderator of [false, true]) {
+      const ctx = await makeApp();
+      const page = await openPage(ctx, 'u1', path => {
+        if (path === '/api/me') return Response.json({ authenticated: true, tesla: { connected: true } });
+        if (path === '/api/moderation/access') return Response.json({ moderator });
+      });
+      check(`Tesla connected card and unlink are visible only for moderators (${moderator})`, page.visible('dataUnlinkTeslaPrompt') === moderator && page.visible('teslaUnlinkBtn') === moderator && page.visible('accountsPanel') === moderator);
+      page.w.close();
+    }
+  }
+
+  {
+    const ctx = await makeApp({ users: ['u1', 'u2'] });
+    await ctx.email('u1', { body: receiptBody() });
+    const oldAddress = ctx.addressFor('u1');
+    const otherAddress = ctx.addressFor('u2');
+    let fail = true;
+    const page = await openPage(ctx, 'u1', path => fail && path.endsWith('/address/rotate') ? Response.json({}, { status: 500 }) : undefined);
+    await page.waitFor(() => page.visible('stopSyncBtn'), 'stop sync available');
+    page.click(page.d.getElementById('stopSyncBtn'));
+    page.click(page.d.getElementById('stopSyncCancel'));
+    check('cancelling Stop Sync preserves the address', !page.visible('stopSyncConfirm') && ctx.addressFor('u1') === oldAddress);
+    page.click(page.d.getElementById('stopSyncBtn'));
+    page.click(page.d.getElementById('stopSyncConfirmBtn'));
+    await page.waitFor(() => page.visible('stopSyncMessage'), 'stop failure');
+    check('failed Stop Sync retains the address and offers retry', ctx.addressFor('u1') === oldAddress && /Couldn.t stop sync/.test(page.text('stopSyncMessage')));
+    fail = false;
+    page.click(page.d.getElementById('stopSyncConfirmBtn'));
+    await page.waitFor(() => /Sync stopped/.test(page.text('stopSyncMessage')), 'stop success');
+    await page.waitFor(() => !page.visible('stopSyncBtn'), 'stop label');
+    check('Stop Sync invalidates only this rider address and preserves rides', `u_${ctx.d1.query("SELECT opaque_token FROM receipt_ingestion_addresses WHERE user_id = 'u1'")[0].opaque_token}@${ctx.env.RECEIPT_DOMAIN}` !== oldAddress && ctx.addressFor('u2') === otherAddress && countedRides(page) === '1' && !page.visible('stopSyncBtn'));
+    const before = ctx.d1.query("SELECT COUNT(*) AS n FROM trips WHERE user_id = 'u1'")[0].n;
+    await handleIncomingEmail(inboundMessage(eml({ to: oldAddress, body: receiptBody({ date: '2026-09-24' }) }), oldAddress), ctx.env);
+    check('mail to the stopped forwarding address adds no rides', ctx.d1.query("SELECT COUNT(*) AS n FROM trips WHERE user_id = 'u1'")[0].n === before);
+    page.w.close();
   }
 
   console.log('Time on board (UI). Total/average duration render with the site\'s hour/minute formatting; missing data shows —');
@@ -415,8 +456,8 @@ async function run() {
   {
     const ctx = await makeApp();
     let page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'disconnected label');
-    check('no receipt means Link Gmail', page.text('linkGmailLabel') === 'Link Gmail');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Setup Tesla Sync', 'disconnected label');
+    check('no receipt means Link Gmail', page.text('linkGmailLabel') === 'Setup Tesla Sync');
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET last_received_at = datetime('now') WHERE user_id = 'u1'");
     page.w.dispatchEvent(new page.w.Event('focus'));
     await page.waitFor(() => page.text('linkGmailLabel') === 'Gmail Linked', 'linked label');
@@ -427,17 +468,17 @@ async function run() {
     check('fresh browser context retains linked label', page.text('linkGmailLabel') === 'Gmail Linked');
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_code = '123456' WHERE user_id = 'u1'");
     page.w.dispatchEvent(new page.w.Event('focus'));
-    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'pending confirmation');
-    check('pending confirmation requires linking again', page.text('linkGmailLabel') === 'Link Gmail');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Setup Tesla Sync', 'pending confirmation');
+    check('pending confirmation requires linking again', page.text('linkGmailLabel') === 'Setup Tesla Sync');
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET last_received_at = NULL, forwarding_code = NULL WHERE user_id = 'u1'");
     page.w.dispatchEvent(new page.w.Event('focus'));
     await page.waitFor(() => page.d.getElementById('linkGmailBtn').getAttribute('aria-busy') === null, 'rotation refresh');
-    check('resetting current address clears linked state', page.text('linkGmailLabel') === 'Link Gmail');
+    check('resetting current address clears linked state', page.text('linkGmailLabel') === 'Setup Tesla Sync');
     page.w.close();
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET status = 'revoked' WHERE user_id = 'u1'");
     page = await openPage(ctx, 'u1');
-    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'revoked address');
-    check('revoked forwarding address is not linked', page.text('linkGmailLabel') === 'Link Gmail');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Setup Tesla Sync', 'revoked address');
+    check('revoked forwarding address is not linked', page.text('linkGmailLabel') === 'Setup Tesla Sync');
     page.w.close();
     page = await openPage(ctx, 'u1', path => path === '/api/rides/sync-status' ? new Response('{}', { status: 503 }) : null);
     await page.waitFor(() => page.text('linkGmailLabel') === 'Check Gmail', 'status error');

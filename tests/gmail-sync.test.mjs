@@ -995,6 +995,7 @@ async function run() {
   {
     const linkTesla = c => c.d1.prepare(`INSERT INTO tesla_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status) VALUES ('tc-alice', 'alice', 'x', 'x', '2030-01-01T00:00:00Z', 'active')`)._exec();
     const both = await makeApp();
+    both.d1.prepare("UPDATE users SET role = 'moderator' WHERE id = 'alice'")._exec();
     linkTesla(both);
     await connect(both, 'alice');
     const pb = await openPage(both, 'alice');

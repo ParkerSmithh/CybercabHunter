@@ -266,28 +266,30 @@
             <li class="lg-step">
               <span class="lg-step-num" aria-hidden="true">2</span>
               <div class="min-w-0">
-                <h4 class="font-semibold text-white">Add it as a forwarding address in Gmail</h4>
+                <h4 class="font-semibold text-white">Start the filter</h4>
                 <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
                 <p class="lg-path mt-2">
                   <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
                   <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                  <span class="gp">Forwarding and POP/IMAP</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                  <span class="gp">Add a forwarding address</span>
+                  <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
+                  <span class="gp">Create a new filter</span>
                 </p>
 
-                <div data-forwarding-settings></div>
-                <p class="mt-3 text-sm text-slate-300 leading-relaxed">Click <strong class="font-semibold text-white">Add a forwarding address</strong> at the top of the Forwarding section first. The empty dropdowns underneath are normal until an address is added.</p>
-                <p class="mt-3 text-sm text-slate-300 leading-relaxed">Paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
+                <a href="https://mail.google.com/mail/u/0/#settings/filters" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Open Gmail filter settings</a>
+                <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
+                  <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(250,224,48,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
+                  Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it</strong> in the action list, then click the <strong class="font-semibold text-white">Add forwarding address</strong> link next to it.</p>
+                <p class="mt-3 text-sm text-slate-400 leading-relaxed">If the link doesn't take you there, click the <strong class="font-semibold text-white">Forwarding and POP/IMAP</strong> tab yourself.</p>
               </div>
             </li>
 
             <li class="lg-step">
               <span class="lg-step-num" aria-hidden="true">3</span>
               <div class="min-w-0 w-full">
-                <h4 class="font-semibold text-white">Confirm forwarding</h4>
+                <h4 class="font-semibold text-white">Add and verify the address</h4>
 
-                <div data-forwarding-settings></div>
-                <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Gmail emails a confirmation to your forwarding address. It appears right here.</p>
+                <p class="mt-1.5 text-sm text-slate-300 leading-relaxed">On the Forwarding tab opened by the filter dialog, click <strong class="font-semibold text-white">Add a forwarding address</strong>, paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
+                <p class="mt-3 text-sm text-slate-400 leading-relaxed">Gmail emails a confirmation to your forwarding address. It appears right here.</p>
 
                 <div aria-live="polite">
                   <div id="lgCodeWaiting" class="hidden mt-3 flex items-center gap-3 rounded-xl border border-dashed border-white/[0.14] px-4 py-4">
@@ -320,25 +322,17 @@
 
                 <p id="lgHowLink" class="mt-3 text-sm text-slate-300 leading-relaxed">Click <strong class="font-semibold text-white">Confirm in Gmail</strong>. Gmail opens in a new tab; click <strong class="font-semibold text-white">Confirm</strong> there.</p>
                 <p id="lgHowCode" class="mt-3 text-sm text-slate-300 leading-relaxed">If Gmail gives you a code instead, type it into the <strong class="font-semibold text-white">Confirmation code</strong> box under Forwarding and POP/IMAP, then click <strong class="font-semibold text-white">Verify</strong>.</p>
+                <p class="mt-3 text-sm text-slate-400 leading-relaxed">After confirming in Gmail's popup, leave <strong class="font-semibold text-white">Disable forwarding</strong> selected. The filter forwards your Tesla receipts, so leave forwarding for all incoming mail off. No <strong class="font-semibold text-white">Save Changes</strong> is needed on this tab.</p>
               </div>
             </li>
 
             <li class="lg-step">
               <span class="lg-step-num" aria-hidden="true">4</span>
               <div class="min-w-0">
-                <h4 class="font-semibold text-white">Create a filter for Tesla receipts</h4>
-                <p class="mt-1.5 text-sm text-slate-400">In Gmail, open:</p>
-                <p class="lg-path mt-2">
-                  <span class="gp">Settings (gear icon)</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                  <span class="gp">See all settings</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                  <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
-                  <span class="gp">Create a new filter</span>
-                </p>
-
-                <a href="https://mail.google.com/mail/u/0/#settings/filters" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Open Gmail filter settings</a>
-                <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
-                  <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(250,224,48,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
-                  Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it to</strong>, and choose your address. Then click <strong class="font-semibold text-white">Create filter</strong> again.</p>
+                <h4 class="font-semibold text-white">Finish the filter</h4>
+                <p class="mt-1.5 text-sm text-slate-300 leading-relaxed">Go back to <strong class="font-semibold text-white">Filters and Blocked Addresses</strong> and click <strong class="font-semibold text-white">Create a new filter</strong> again. In the <strong class="font-semibold text-white">From</strong> box, type <strong class="font-semibold text-white">tesla.com</strong>, then click <strong class="font-semibold text-white">Create filter</strong>.</p>
+                <p class="mt-3 text-sm text-slate-300 leading-relaxed">Tick <strong class="font-semibold text-white">Forward it</strong>. Your verified address now appears in the dropdown. Select it, then click <strong class="font-semibold text-white">Create filter</strong>.</p>
+                <p class="mt-3 text-sm text-slate-400 leading-relaxed">The first filter dialog was left behind while you verified the address. This second pass finishes creating the filter.</p>
               </div>
             </li>
 
@@ -348,9 +342,7 @@
               </span>
               <div class="min-w-0">
                 <h4 class="font-semibold text-white">Done</h4>
-                <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">The Tesla filter forwards your new receipts automatically. Status on this page turns green when the first one arrives.</p>
-                <p class="mt-3 text-sm text-slate-400 leading-relaxed">If you enable Gmail's general forwarding after confirming, select your address in the <strong class="font-semibold text-white">Forward a copy of incoming mail to</strong> dropdown and click <strong class="font-semibold text-white">Save Changes</strong> at the bottom of Gmail's settings. It only takes effect after you save.</p>
-                <p class="mt-3 text-sm text-slate-400 leading-relaxed">General forwarding sends all incoming mail. To forward only Tesla receipts, leave general forwarding off and use the Tesla filter in step 4 instead.</p>
+                <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">After the filter is created, this page detects the first forwarded receipt on its own and completes setup automatically.</p>
               </div>
             </li>
           </ol>
@@ -360,7 +352,7 @@
             <div class="space-y-2">
               <details class="lg-faq rounded-lg border border-white/[0.08]">
                 <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">Confirmation not showing?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
-                <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">Wait a minute and refresh. Gmail can be slow to send it. If it still hasn't come, check that you pasted the whole address in step 2.</p>
+                <p class="px-4 pb-4 text-sm text-slate-400 leading-relaxed">Wait a minute and refresh. Gmail can be slow to send it. If it still hasn't come, check that you pasted the whole address in step 3.</p>
               </details>
               <details class="lg-faq rounded-lg border border-white/[0.08]">
                 <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-200">No receipts arriving?<svg class="lg-faq-chev w-4 h-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg></summary>
@@ -542,7 +534,7 @@
 </footer>
 
 <script src="js/calc.js?v=7"></script>
-<script src="js/main.js?v=31"></script>
+<script src="js/main.js?v=32"></script>
 <script>
   CCC.init();
 </script>

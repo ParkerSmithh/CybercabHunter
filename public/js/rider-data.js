@@ -327,10 +327,12 @@
       const forwarding = response.ok && response.json && response.json.forwarding;
       if (!forwarding) throw new Error('forwarding status unavailable');
       const linked = !!forwarding.setup_completed_at || (!!forwarding.last_received_at && !forwarding.confirmation_code && !forwarding.confirmation_link);
-      label.textContent = linked ? 'Gmail Linked' : 'Link Gmail';
+      show('stopSyncBtn', linked);
+      label.textContent = linked ? 'Gmail Linked' : 'Setup Tesla Sync';
       button.dataset.linked = String(linked);
       button.title = linked ? 'Gmail forwarding setup is linked. Open setup to manage it.' : 'Set up Gmail receipt forwarding';
     } catch (e) {
+      show('stopSyncBtn', false);
       label.textContent = 'Check Gmail';
       delete button.dataset.linked;
       button.title = 'Connection status unavailable. Open Gmail setup to check or retry.';
@@ -338,6 +340,28 @@
       gmailStatusLoading = false;
       button.removeAttribute('aria-busy');
     }
+  }
+
+  function setupStopSync() {
+    $('stopSyncBtn').addEventListener('click', () => { show('stopSyncConfirm'); show('stopSyncMessage', false); });
+    $('stopSyncCancel').addEventListener('click', () => show('stopSyncConfirm', false));
+    $('stopSyncConfirmBtn').addEventListener('click', async () => {
+      const button = $('stopSyncConfirmBtn');
+      button.disabled = true;
+      try {
+        // Rotating invalidates the old forwarding address without removing rides.
+        const response = await api('/api/receipt-ingestion/address/rotate', { method: 'POST' });
+        if (response.status === 401) { setView('signedOut'); return; }
+        if (!response.ok) throw new Error('stop sync');
+        show('stopSyncConfirm', false);
+        $('stopSyncMessage').textContent = 'Sync stopped. Your old forwarding address no longer accepts receipts. Existing rides are saved. Use Setup Tesla Sync to resume with the new address.';
+        show('stopSyncMessage');
+        await refreshGmailStatus();
+      } catch (e) {
+        $('stopSyncMessage').textContent = "Couldn't stop sync. Try again in a moment.";
+        show('stopSyncMessage');
+      } finally { button.disabled = false; }
+    });
   }
 
   // ---------- connected accounts: Tesla ----------
@@ -360,6 +384,7 @@
     ok: 'border-emerald-400/40 text-emerald-200', info: 'border-slate-500/40 text-slate-300', warn: 'border-amber-400/40 text-amber-200'
   };
   let teslaLinked = false;
+  let moderator = false;
 
   function gmailNotice(key) {
     const [text, kind] = GMAIL_NOTICES[key] || GMAIL_NOTICES.error;
@@ -369,10 +394,11 @@
   }
 
   function updateAccountsPanel() {
-    show('dataUnlinkTeslaPrompt', teslaLinked);
-    show('teslaUnlinkBtn', teslaLinked);
+    const showTesla = moderator && teslaLinked;
+    show('dataUnlinkTeslaPrompt', showTesla);
+    show('teslaUnlinkBtn', showTesla);
     const noticeShown = !$('gmailNotice').classList.contains('hidden');
-    show('accountsPanel', teslaLinked || noticeShown);
+    show('accountsPanel', showTesla || noticeShown);
   }
 
   function showGmailResult() {
@@ -389,10 +415,11 @@
   // ---------- load ----------
   async function refreshAll(showSkeleton) {
     if (showSkeleton) setView('loading');
-    let profile, me, rides;
+    let profile, me, rides, access;
     try {
-      [profile, me, rides] = await Promise.all([
-        api('/api/profile'), api('/api/me'), api(`/api/trips?page=${ridesPage}&page_size=${PAGE_SIZE}`)
+      [profile, me, rides, access] = await Promise.all([
+        api('/api/profile'), api('/api/me'), api(`/api/trips?page=${ridesPage}&page_size=${PAGE_SIZE}`),
+        api('/api/moderation/access').catch(() => ({ ok: false }))
       ]);
     } catch (e) {
       // Network failure: the request never completed. That is an ERROR, not "signed out".
@@ -414,13 +441,14 @@
     ridesPage = rides.json.pagination.page;
     renderRides(rides.json);
     teslaLinked = !!(me.json && me.json.authenticated && me.json.tesla && me.json.tesla.connected);
+    moderator = !!(access.ok && access.json && access.json.moderator === true);
     updateAccountsPanel();
     setView('data');
   }
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupUnlink(); setupRideActions(); showGmailResult();
+    setupUnlink(); setupStopSync(); setupRideActions(); showGmailResult();
     $('dataRetry').addEventListener('click', () => refreshAll(true));
     $('ridesPrev').addEventListener('click', () => loadRides(ridesPage - 1));
     $('ridesNext').addEventListener('click', () => loadRides(ridesPage + 1));

@@ -92,9 +92,9 @@ async function run() {
     const rd = await open(ctx, { page: 'rider-data.html', path: '/rider-data', storage: { teslaSessionId: 'session-alice' } });
     await rd.waitFor(() => !rd.d.getElementById('dataSignedIn').classList.contains('hidden'));
     await rd.settle(300);
-    const gmailActions = [...rd.d.querySelectorAll('a, button')].filter(el => /gmail/i.test(el.textContent));
+    const gmailActions = [...rd.d.querySelectorAll('a, button')].filter(el => el.getAttribute('href') === '/link-gmail');
     check('one "Link Gmail" button, and every Gmail-related control leads to the setup page',
-      !!rd.d.getElementById('linkGmailBtn') && gmailActions.length >= 1 && gmailActions.every(el => el.tagName === 'A' && el.getAttribute('href') === '/link-gmail' && el.textContent.trim() === 'Link Gmail'));
+      !!rd.d.getElementById('linkGmailBtn') && gmailActions.length >= 1 && gmailActions.every(el => el.tagName === 'A' && el.getAttribute('href') === '/link-gmail' && el.textContent.trim() === 'Setup Tesla Sync'));
     check('no Connect/Unlink Gmail button exists, and no Gmail request was made', !rd.d.getElementById('gmailToggleBtn') && !rd.requests.some(r => r.path.startsWith('/api/gmail/')));
     check('the accounts panel stays hidden when Tesla is not linked', rd.d.getElementById('accountsPanel').classList.contains('hidden'));
   }
