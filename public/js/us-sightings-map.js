@@ -175,9 +175,10 @@
     ctx.stroke(usOutline);
     ctx.restore();
   }
-  const VIEW_KEY = 'cch:us-map-view';
+  // Every page load starts on Dots; Heatmap lasts until the page is left
+  // (owner, Oct 2026). The old remembered choice is cleared.
   let view = 'dots';
-  try { if (localStorage.getItem(VIEW_KEY) === 'heat') view = 'heat'; } catch (e) { /* default */ }
+  try { localStorage.removeItem('cch:us-map-view'); } catch (e) { /* nothing stored */ }
 
   els.forEach(el => {
     el.innerHTML = html;
@@ -189,10 +190,7 @@
       el.querySelectorAll('[data-us-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.usView === v)));
       if (v === 'heat') drawHeat(heat);
     };
-    el.querySelectorAll('[data-us-view]').forEach(b => b.addEventListener('click', () => {
-      setView(b.dataset.usView);
-      try { localStorage.setItem(VIEW_KEY, view); } catch (e) { /* not remembered */ }
-    }));
+    el.querySelectorAll('[data-us-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.usView)));
     setView(view);
     if (window.ResizeObserver) {
       let lastW = 0;
