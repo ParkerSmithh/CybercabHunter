@@ -21,6 +21,25 @@
   const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
   const all = sel => [...document.querySelectorAll(sel)];
 
+  // Keep false unless the user verifies that reloading Gmail restores the
+  // Add a forwarding address button. Both outcomes use fixed Google URLs.
+  const FORWARDING_REFRESH_WORKS = false;
+
+  function setupSettingsLinks() {
+    all('[data-forwarding-settings]').forEach(container => {
+      if (!FORWARDING_REFRESH_WORKS) { container.remove(); return; }
+      const link = document.createElement('a');
+      link.href = 'https://mail.google.com/mail/u/0/#settings/fwdandpop';
+      link.target = '_blank'; link.rel = 'noopener';
+      link.className = 'mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors';
+      link.textContent = 'Open Gmail forwarding settings';
+      const note = document.createElement('p');
+      note.className = 'mt-2 text-sm text-slate-400 leading-relaxed';
+      note.textContent = "Don't see 'Add a forwarding address'? Press refresh once. Gmail sometimes loads this tab half-finished from a link.";
+      container.append(link, note);
+    });
+  }
+
   let sessionId = null;
   try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) { /* storage blocked: treated as signed out */ }
 
@@ -427,6 +446,7 @@
   }
 
   function init() {
+    setupSettingsLinks();
     if (!sessionId) { setView('signedOut'); return; }
     setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion();
     $('lgRetry').addEventListener('click', load);

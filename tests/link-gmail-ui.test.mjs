@@ -35,7 +35,7 @@ async function makeApp({ users = ['u1'] } = {}) {
 const opened = [];
 // Opens the page as `userId` (null = signed out). `intercept(path, init)` may
 // return a Response to simulate a failing server.
-async function openPage(ctx, userId, { intercept, clipboard, search = '', storage = {} } = {}) {
+async function openPage(ctx, userId, { intercept, clipboard, search = '', storage = {}, forwardingRefreshWorks } = {}) {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/link-gmail' + search, pretendToBeVisual: true });
   const w = dom.window;
   opened.push(w);
@@ -63,7 +63,8 @@ async function openPage(ctx, userId, { intercept, clipboard, search = '', storag
     const id = nextTimer--; countdowns.set(id, () => fn(...args)); return id;
   };
   w.clearTimeout = id => { if (!countdowns.delete(id)) nativeClear(id); };
-  w.eval(JS.replaceAll("location.assign('/rider-data')", "window.__navigate('/rider-data')"));
+  const pageJS = forwardingRefreshWorks === undefined ? JS : JS.replace('const FORWARDING_REFRESH_WORKS = false;', 'const FORWARDING_REFRESH_WORKS = ' + forwardingRefreshWorks + ';');
+  w.eval(pageJS.replaceAll("location.assign('/rider-data')", "window.__navigate('/rider-data')"));
   const d = w.document;
   const page = {
     w, d, requests, copied, navigations,
@@ -405,8 +406,10 @@ async function run() {
     const ctx = await makeApp();
     const page = await openPage(ctx, 'u1');
     const links = [...page.d.querySelectorAll('a')];
-    check('no Gmail settings deep-link buttons remain', !links.some(a => /^Open Gmail .* settings$/.test(a.textContent.trim())) && !links.some(a => /^https:\/\/mail\.google\.com\/.*#settings\//.test(a.getAttribute('href') || '')));
+    check('shipped forwarding buttons are absent until refresh is verified', !links.some(a => a.textContent.trim() === 'Open Gmail forwarding settings'));
     const steps = [...page.d.querySelectorAll('#lgAuto > ol > li')];
+    const filter = steps[3].querySelector('a');
+    check('step 4 retains the exact filter button', filter.textContent.trim() === 'Open Gmail filter settings' && filter.getAttribute('href') === 'https://mail.google.com/mail/u/0/#settings/filters' && filter.target === '_blank' && filter.rel === 'noopener');
     check('forwarding menu-path chips remain intact', [...steps[1].querySelectorAll('.gp')].map(el => el.textContent).join('|') === 'Settings (gear icon)|See all settings|Forwarding and POP/IMAP|Add a forwarding address');
     check('filter menu-path chips remain intact', [...steps[3].querySelectorAll('.gp')].map(el => el.textContent).join('|') === 'Settings (gear icon)|See all settings|Filters and Blocked Addresses|Create a new filter');
     check('step 2 tells riders to add an address first and explains empty dropdowns', /Add a forwarding address at the top of the Forwarding section first/.test(steps[1].textContent) && /empty dropdowns underneath are normal until an address is added/.test(steps[1].textContent));
@@ -433,6 +436,15 @@ async function run() {
     await page.refresh();
     for (let second = 0; second < 5; second++) page.tickCountdown();
     check('session expiration cancels pending navigation', page.visible('lgSignedOut') && page.navigations.length === 0);
+  }
+
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1', { forwardingRefreshWorks: true });
+    const links = [...page.d.querySelectorAll('#lgAuto a')].filter(a => a.textContent.trim() === 'Open Gmail forwarding settings');
+    check('refresh-fixes mode enables two safe forwarding links with the refresh note directly below each', links.length === 2 && links.every(a => a.href === 'https://mail.google.com/mail/u/0/#settings/fwdandpop' && a.target === '_blank' && a.rel === 'noopener' && /Don't see 'Add a forwarding address'\? Press refresh once/.test(a.nextElementSibling.textContent) && /half-finished from a link/.test(a.nextElementSibling.textContent)));
+    const filter = page.d.querySelector('a[href="https://mail.google.com/mail/u/0/#settings/filters"]');
+    check('enabling forwarding links keeps the filter link unchanged', !!filter && filter.textContent.trim() === 'Open Gmail filter settings');
   }
 
   opened.forEach(w => w.close());
