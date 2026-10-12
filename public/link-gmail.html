@@ -144,6 +144,18 @@
 
     <!-- Ready: automatic forwarding setup -->
     <div id="lgReady" class="hidden">
+      <section id="lgSuccess" class="hidden scroll-mt-24 glass rounded-2xl p-6 sm:p-8 max-w-2xl" aria-labelledby="lgSuccessTitle">
+        <svg class="w-8 h-8 text-gold mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"/></svg>
+        <h2 id="lgSuccessTitle" tabindex="-1" class="font-display font-bold text-2xl text-white">GMAIL IS LINKED</h2>
+        <p class="mt-2 text-sm text-slate-300 leading-relaxed">New Tesla receipts will forward automatically and appear in Rider Data.</p>
+        <p id="lgCountdown" class="mt-4 text-sm text-slate-300" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p id="lgSuccessError" class="hidden mt-3 text-sm text-amber-200" role="alert"></p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button id="lgContinueNow" type="button" class="inline-flex items-center justify-center min-h-[44px] px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Continue now</button>
+          <button id="lgStay" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-3 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Stay on this page</button>
+        </div>
+      </section>
+
 
       <!-- Automatic forwarding setup -->
       <div id="lgSetup" class="hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-8 items-start max-sm:gap-4">
@@ -262,6 +274,8 @@
                   <span class="gp">Forwarding and POP/IMAP</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
                   <span class="gp">Add a forwarding address</span>
                 </p>
+
+                <a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Open Gmail forwarding settings</a>
                 <p class="mt-3 text-sm text-slate-300 leading-relaxed">Paste your address, then click <strong class="font-semibold text-white">Next</strong> and <strong class="font-semibold text-white">Proceed</strong>.</p>
               </div>
             </li>
@@ -270,6 +284,8 @@
               <span class="lg-step-num" aria-hidden="true">3</span>
               <div class="min-w-0 w-full">
                 <h4 class="font-semibold text-white">Confirm forwarding</h4>
+
+                <a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Open Gmail forwarding settings</a>
                 <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">Gmail emails a confirmation to your forwarding address. It appears right here.</p>
 
                 <div aria-live="polite">
@@ -317,6 +333,8 @@
                   <span class="gp">Filters and Blocked Addresses</span><span class="gp-sep" aria-hidden="true">›</span><span class="sr-only">, then </span>
                   <span class="gp">Create a new filter</span>
                 </p>
+
+                <a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Open Gmail forwarding settings</a>
                 <p class="mt-3 text-sm text-slate-300 leading-relaxed">In the <strong class="font-semibold text-white">From</strong> box, type
                   <button type="button" data-copy="tesla.com" title="Copy" class="mx-0.5 inline-flex items-center rounded-md border border-[rgba(250,224,48,0.35)] px-1.5 py-0.5 font-mono text-[13px] text-white hover:bg-white/5 transition-colors"><span data-copy-label>tesla.com</span></button>.
                   Click <strong class="font-semibold text-white">Create filter</strong>, tick <strong class="font-semibold text-white">Forward it to</strong>, and choose your address. Then click <strong class="font-semibold text-white">Create filter</strong> again.</p>
@@ -525,6 +543,6 @@
 <script>
   CCC.init();
 </script>
-<script src="js/link-gmail.js?v=10"></script>
+<script src="js/link-gmail.js?v=11"></script>
 </body>
 </html>
