@@ -684,6 +684,8 @@
   }
 
   function renderVehicles() {
+    $('modVehiclesEmpty').textContent = $('modVehicleScope').value === 'no_vin'
+      ? 'No vehicles without VINs found.' : 'No registry vehicles match.';
     show('modVehiclesEmpty', vehicles.length === 0);
     $('modVehicleList').innerHTML = vehicles.map(vehicleCard).join('');
   }
@@ -700,7 +702,8 @@
     pendingReview.clear();
     const plate = $('modVehiclePlate').value.trim();
     const params = new URLSearchParams();
-    if (plate) params.set('plate', plate); else params.set('scope', $('modVehicleScope').value);
+    if (plate) params.set('plate', plate);
+    if (!plate || $('modVehicleScope').value === 'no_vin') params.set('scope', $('modVehicleScope').value);
     let resp;
     try {
       resp = await api('/api/moderation/robotaxi-vehicles?' + params.toString());
@@ -724,7 +727,10 @@
   }
   let scrolledToVehicles = false;
 
-  const replaceVehicle = fresh => { vehicles = vehicles.map(v => (v.id === fresh.id ? fresh : v)); };
+  const replaceVehicle = fresh => {
+    vehicles = vehicles.map(v => (v.id === fresh.id ? fresh : v));
+    if ($('modVehicleScope').value === 'no_vin') vehicles = vehicles.filter(v => !String(v.vin || '').trim());
+  };
 
   // The one write path: POST .../review, sent the instant the moderator
   // clicks Approve or Return to Private — no confirmation step and no
@@ -790,7 +796,7 @@
     // A plate search isn't scope-filtered at all, so it always stays and
     // just updates in place.
     const searching = !!$('modVehiclePlate').value.trim();
-    if (!searching && json.vehicle.visibility !== $('modVehicleScope').value) {
+    if (!searching && $('modVehicleScope').value !== 'no_vin' && json.vehicle.visibility !== $('modVehicleScope').value) {
       vehicles = vehicles.filter(v => v.id !== vehicleId);
     } else {
       replaceVehicle(json.vehicle);

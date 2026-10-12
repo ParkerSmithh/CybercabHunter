@@ -78,7 +78,7 @@ async function createReceiptIngestion(sql, {
 async function saveForwardingCode(sql, userId, { code = null, link = null, requestedBy = null }) {
   await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET forwarding_code = ?, forwarding_link = ?, forwarding_requested_by = ?, forwarding_code_received_at = datetime('now')
+    SET setup_completed_at = NULL, forwarding_code = ?, forwarding_link = ?, forwarding_requested_by = ?, forwarding_code_received_at = datetime('now')
     WHERE user_id = ? AND status = 'active'
   `).bind(code, link, requestedBy, userId).run();
 }
@@ -347,7 +347,7 @@ async function deleteRideForUser(sql, userId, tripId) {
 async function getSyncStatus(sql, userId) {
   const [address, totals, lastRun, lastReceived, review, unidentified] = await sql.batch([
     sql.prepare(`
-      SELECT opaque_token, created_at, last_received_at, forwarding_code, forwarding_link,
+      SELECT opaque_token, created_at, last_received_at, setup_completed_at, forwarding_code, forwarding_link,
              forwarding_requested_by, forwarding_code_received_at
       FROM receipt_ingestion_addresses WHERE user_id = ? AND status = 'active'
     `).bind(userId),

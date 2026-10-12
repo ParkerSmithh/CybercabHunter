@@ -313,6 +313,33 @@
     });
   }
 
+  // Use the same current-address evidence as the forwarding setup page.
+  // Historical receipt totals alone cannot establish that a new address works.
+  let gmailStatusLoading = false;
+  async function refreshGmailStatus() {
+    if (gmailStatusLoading) return;
+    gmailStatusLoading = true;
+    const button = $('linkGmailBtn'), label = $('linkGmailLabel');
+    button.setAttribute('aria-busy', 'true');
+    try {
+      const response = await api('/api/rides/sync-status');
+      if (response.status === 401) { setView('signedOut'); return; }
+      const forwarding = response.ok && response.json && response.json.forwarding;
+      if (!forwarding) throw new Error('forwarding status unavailable');
+      const linked = !!forwarding.setup_completed_at || (!!forwarding.last_received_at && !forwarding.confirmation_code && !forwarding.confirmation_link);
+      label.textContent = linked ? 'Gmail Linked' : 'Link Gmail';
+      button.dataset.linked = String(linked);
+      button.title = linked ? 'Gmail forwarding setup is linked. Open setup to manage it.' : 'Set up Gmail receipt forwarding';
+    } catch (e) {
+      label.textContent = 'Check Gmail';
+      delete button.dataset.linked;
+      button.title = 'Connection status unavailable. Open Gmail setup to check or retry.';
+    } finally {
+      gmailStatusLoading = false;
+      button.removeAttribute('aria-busy');
+    }
+  }
+
   // ---------- connected accounts: Tesla ----------
   // Gmail is not connected from here: rides come from forwarded receipts, set
   // up on Link Gmail (/link-gmail, the header button). The Gmail OAuth backend
@@ -397,6 +424,12 @@
     $('dataRetry').addEventListener('click', () => refreshAll(true));
     $('ridesPrev').addEventListener('click', () => loadRides(ridesPage - 1));
     $('ridesNext').addEventListener('click', () => loadRides(ridesPage + 1));
+    refreshGmailStatus();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshGmailStatus();
+    });
+    window.addEventListener('pageshow', () => refreshGmailStatus());
+    window.addEventListener('focus', () => refreshGmailStatus());
     refreshAll(true);
   }
 

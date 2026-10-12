@@ -59,13 +59,6 @@ async function openPage(ctx, userId, { intercept, clipboard, search = '', storag
     text: id => d.getElementById(id).textContent.replace(/\s+/g, ' ').trim(),
     visible: id => !d.getElementById(id).classList.contains('hidden'),
     click: el => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true })),
-    choose: value => {
-      const input = d.querySelector(`input[name="lgMethod"][value="${value}"]`);
-      input.checked = true;
-      input.dispatchEvent(new w.Event('change', { bubbles: true }));
-    },
-    submitChoice: () => d.getElementById('lgChoose').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true })),
-    method: () => new URL(w.location.href).searchParams.get('method'),
     async waitFor(cond, label, ms = 3000) {
       const end = Date.now() + ms;
       while (Date.now() < end) { if (cond()) return true; await new Promise(r => setTimeout(r, 10)); }
@@ -106,7 +99,7 @@ async function run() {
     check('every request carries only the rider\'s own session', page.requests.every(r => r.auth === 'Bearer session-u1'));
     check('the "treat it like a password" warning is shown', /Treat this address like a password/.test(page.text('lgAddressReady')));
     const copyButtons = [...page.d.querySelectorAll('[data-copy="address"]')];
-    check('every "Copy address" button is enabled', copyButtons.length >= 3 && copyButtons.every(b => !b.disabled));
+    check('every "Copy address" button is enabled', copyButtons.length >= 2 && copyButtons.every(b => !b.disabled));
     page.click(copyButtons[0]);
     await page.waitFor(() => copyButtons[0].querySelector('[data-copy-label]').textContent === 'Copied', 'copy');
     check('Copy puts the exact address on the clipboard', page.copied[0] === ctx.addressFor('u1'));
@@ -228,60 +221,19 @@ async function run() {
   {
     const text = new JSDOM(HTML).window.document.body.textContent;
     check('no em or en dashes anywhere on the page', !/[–—]/.test(HTML) && !/[–—]/.test(JS));
-    const options = [...new JSDOM(HTML).window.document.querySelectorAll('#lgChoose input[name="lgMethod"]')].map(i => i.value);
-    check('the question offers "Forward automatically" first, then "Forward each receipt"', options.join() === 'auto,manual');
+    check('the per-receipt option is removed', !/FORWARD EACH RECEIPT|Works in the Gmail app/.test(text));
     check('the backfill says duplicates are handled', /never counted twice/.test(text));
   }
 
-  console.log('10. Step 1: "How do you want to send your receipts?"');
+  console.log('10. Automatic forwarding is the only setup');
   {
     const ctx = await makeApp();
-    const page = await openPage(ctx, 'u1');
-    check('arriving on the page asks the question first; no setup is shown yet', page.visible('lgChoose') && !page.visible('lgSetup'));
-    check('it is a multiple-choice question: a fieldset with a legend and two radio options', page.d.querySelector('#lgChoose fieldset legend').textContent === 'How do you want to send your receipts?' && page.d.querySelectorAll('#lgChoose input[type="radio"][name="lgMethod"]').length === 2);
-    const labels = [...page.d.querySelectorAll('.lg-choice')].map(l => [l.querySelector('.lg-choice-letter').textContent, l.querySelector('.font-display').textContent]);
-    check('A is "Forward automatically", B is "Forward each receipt"', JSON.stringify(labels) === JSON.stringify([['A', 'FORWARD AUTOMATICALLY'], ['B', 'FORWARD EACH RECEIPT']]));
-    check('nothing is preselected and Continue waits for an answer', !page.d.querySelector('input[name="lgMethod"]:checked') && page.$('lgContinue').disabled);
-    page.submitChoice();
-    check('submitting without an answer goes nowhere', page.visible('lgChoose') && page.method() === null);
-
-    page.choose('auto');
-    check('choosing an option highlights it and enables Continue', page.d.querySelector('[data-choice="auto"]').classList.contains('is-selected') && !page.d.querySelector('[data-choice="manual"]').classList.contains('is-selected') && !page.$('lgContinue').disabled);
-    page.submitChoice();
-    check('Continue with "Forward automatically" opens its setup (?method=auto)', page.method() === 'auto' && page.visible('lgSetup') && !page.visible('lgChoose') && page.text('lgSetupTitle') === 'FORWARD AUTOMATICALLY');
-    check('...with the address, the Gmail steps, past rides and status', page.visible('lgAddressReady') && page.visible('lgAuto') && !page.visible('lgManual') && !!page.d.getElementById('lgBackfillHeading') && /Forwarding and POP\/IMAP/.test(page.text('lgAuto')));
-    check('...and method-specific wording only for this method', [...page.d.querySelectorAll('[data-for="auto"]')].every(e => !e.classList.contains('hidden')) && [...page.d.querySelectorAll('[data-for="manual"]')].every(e => e.classList.contains('hidden')));
-    check('focus moves to the setup heading', page.d.activeElement === page.$('lgSetupTitle'));
-
-    page.click(page.$('lgChangeMethod'));
-    check('"Change method" goes back to the question, keeping the current answer selected', page.visible('lgChoose') && page.method() === null && page.d.querySelector('input[name="lgMethod"]:checked').value === 'auto');
-    page.choose('manual');
-    page.submitChoice();
-    check('Continue with "Forward each receipt" opens its setup (?method=manual)', page.method() === 'manual' && page.text('lgSetupTitle') === 'FORWARD EACH RECEIPT' && page.visible('lgManual') && !page.visible('lgAuto'));
-    check('...the manual steps need no Gmail settings', !/Forwarding and POP\/IMAP|Create a new filter/.test(page.text('lgManual')) && /Tap Forward/.test(page.text('lgManual')));
-    const manualCopy = page.d.querySelector('#lgManual [data-copy="address"]');
-    page.click(manualCopy);
-    await page.waitFor(() => page.copied.length === 1, 'copy from manual');
-    check('...and its Copy address button copies the address', page.copied[0] === ctx.addressFor('u1'));
-
-    page.click(page.d.querySelector('[data-method-switch="auto"]'));
-    check('"Set up automatic forwarding" switches to the automatic setup', page.method() === 'auto' && page.visible('lgAuto'));
-
-    page.w.history.back();
-    await page.waitFor(() => page.method() === 'manual' && page.visible('lgManual'), 'back to manual');
-    check('the browser Back button returns to the previous step', page.method() === 'manual' && page.visible('lgManual'));
-
-    const keys = await openPage(ctx, 'u1');
-    keys.$('lgChoose').dispatchEvent(new keys.w.KeyboardEvent('keydown', { key: 'b', bubbles: true }));
-    check('pressing B picks option B (multiple-choice keys)', keys.d.querySelector('input[name="lgMethod"]:checked').value === 'manual' && !keys.$('lgContinue').disabled);
-
-    const again = await openPage(ctx, 'u1', { storage: { linkGmailMethod: 'manual' } });
-    check('a returning rider is still asked, with their last answer preselected', again.visible('lgChoose') && again.d.querySelector('input[name="lgMethod"]:checked').value === 'manual');
-
-    const direct = await openPage(ctx, 'u1', { search: '?method=auto' });
-    check('a link to ?method=auto opens that setup directly (refresh keeps the step)', direct.visible('lgSetup') && direct.visible('lgAuto') && !direct.visible('lgChoose'));
-    const junk = await openPage(ctx, 'u1', { search: '?method=nope' });
-    check('an unknown ?method shows the question', junk.visible('lgChoose') && !junk.visible('lgSetup'));
+    for (const search of ['', '?method=auto', '?method=manual', '?method=nope']) {
+      const page = await openPage(ctx, 'u1', { search, storage: { linkGmailMethod: 'manual' } });
+      check('automatic setup opens directly for ' + (search || 'default URL'), page.visible('lgSetup') && page.visible('lgAuto') && page.text('lgSetupTitle') === 'FORWARD AUTOMATICALLY');
+      check('no method chooser or manual setup remains', !page.$('lgChoose') && !page.$('lgManual') && !page.$('lgChangeMethod'));
+      check('Done remains available', !page.$('lgDone').disabled);
+    }
   }
 
   console.log('11. Bug 2026-10-05: a fresh confirmation code always shows, even after receipts have arrived');
@@ -358,6 +310,19 @@ async function run() {
     await ctx.email('u1', { body: receiptBody() });
     await page.refresh();
     check('once forwarding works (a receipt arrives), the link is used up: "Receiving receipts"', !page.visible('lgCodeShown') && page.visible('lgCodeDone') && page.visible('lgStateOn'));
+  }
+
+  console.log('Done button saves setup and handles errors');
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1', { search: '?method=auto',
+      intercept: path => path === '/api/receipt-ingestion/setup/complete' ? new Response('{}', { status: 503 }) : null });
+    check('Done is available after the address loads', !page.$('lgDone').disabled && page.text('lgDone') === 'Done');
+    page.click(page.$('lgDone'));
+    await page.waitFor(() => page.visible('lgDoneError'), 'Done save error');
+    check('failed save keeps setup open and enables retry', !page.$('lgDone').disabled && page.visible('lgDoneError') && page.w.location.pathname === '/link-gmail');
+    check('Done posts with the signed-in session', page.requests.some(r => r.path === '/api/receipt-ingestion/setup/complete' && r.method === 'POST' && r.auth === 'Bearer session-u1'));
+    check('successful Done returns to Rider Data after saving', /if \(!response.ok[\s\S]*location.assign\('\/rider-data'\)/.test(JS));
   }
 
   opened.forEach(w => w.close());

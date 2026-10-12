@@ -1,7 +1,7 @@
 import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
-import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiGetSyncStatus } from './receipt-ingestion.js';
+import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiCompleteForwardingSetup, apiGetSyncStatus } from './receipt-ingestion.js';
 import { apiImportReceipts } from './receipt-import.js';
 import { apiTeslaDebugCapabilities } from './tesla-debug.js';
 import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
@@ -290,6 +290,11 @@ const worker = {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
       return withCors(await apiGetIngestionAddress(request, env, userId), request);
+    }
+    if (url.pathname === '/api/receipt-ingestion/setup/complete' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiCompleteForwardingSetup(request, env, userId), request);
     }
     if (url.pathname === '/api/receipt-ingestion/address/rotate' && request.method === 'POST') {
       const userId = await tesla.requireUserId(request, env);

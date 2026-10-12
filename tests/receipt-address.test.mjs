@@ -138,7 +138,7 @@ async function run() {
     const d = new JSDOM(HTML).window.document;
     check('no receipt-address card, address, Copy button, Gmail forwarding steps or code box', ['fwdCard', 'fwdAddress', 'fwdCopyBtn', 'fwdGmailSteps', 'fwdCodeBox'].every(id => d.getElementById(id) === null));
     check('none of its text remains', !/Your receipt address|Forward a receipt|forward new receipts automatically|Robotaxi Ride Receipt"\s*<\/code>|Disable forwarding/.test(HTML));
-    check('the page script no longer requests or creates the address', !/receipt-ingestion\/address|rides\/sync-status|loadForwarding|setupForwarding/.test(JS));
+    check('the page reads sync status without requesting or creating an address', /rides\/sync-status/.test(JS) && !/receipt-ingestion\/address|loadForwarding|setupForwarding/.test(JS));
   }
 
   t.finish();

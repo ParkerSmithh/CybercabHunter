@@ -525,6 +525,29 @@ async function run() {
     check('clearing the VIN keeps the vehicle public but drops it back to manual', row().vin === null && row().visibility === 'public' && row().approval_basis === 'manual');
   }
 
+  console.log('No VIN: real SQL filtering and existing moderation controls');
+  {
+    const ctx = await makeApp({ mod: 'moderator', rider: 'user' });
+    const missing = [vehicle(ctx, 'NULLVIN'), vehicle(ctx, 'EMPTYVIN', { vin: '' }),
+      vehicle(ctx, 'SPACEVIN', { vin: ' \t\n\u00a0', visibility: 'public' })];
+    vehicle(ctx, 'VALIDVIN', { vin: VIN });
+    const page = await openPage(ctx.env, 'session-mod');
+    const scope = page.d.getElementById('modVehicleScope');
+    scope.value = 'no_vin'; scope.dispatchEvent(new page.w.Event('change'));
+    await page.waitFor(() => page.cards().length === 3, 'missing VIN rows');
+    check('No VIN includes null, empty and Unicode whitespace across visibility',
+      page.cards().map(c => c.dataset.vehicleId).sort().join() === missing.sort().join());
+    const card = page.cards().find(c => c.dataset.vehicleId === missing[0]);
+    card.querySelector('input[data-vehicle-vin-input]').value = VIN;
+    page.click(card.querySelector('button[data-vehicle-action="save-vin"]'));
+    await page.waitFor(() => page.cards().length === 2, 'VIN save removes row');
+    check('saving a VIN removes the vehicle immediately', page.cards().length === 2);
+    page.d.getElementById('modVehiclePlate').value = 'VALIDVIN'; page.submitSearch();
+    await page.waitFor(() => page.visible('modVehiclesEmpty'), 'filtered plate search');
+    check('plate search retains No VIN and uses its empty state', page.cards().length === 0 && page.d.getElementById('modVehiclesEmpty').textContent === 'No vehicles without VINs found.');
+    page.w.close();
+  }
+
   t.finish();
 }
 

@@ -362,7 +362,7 @@ async function rotateReceiptIngestionAddress(sql, userId) {
   const token = crypto.randomUUID().replace(/-/g, '');
   const result = await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET opaque_token = ?, last_received_at = NULL, forwarding_code = NULL, forwarding_link = NULL,
+    SET opaque_token = ?, last_received_at = NULL, setup_completed_at = NULL, forwarding_code = NULL, forwarding_link = NULL,
         forwarding_requested_by = NULL, forwarding_code_received_at = NULL
     WHERE user_id = ? AND status = 'active'
   `).bind(token, userId).run();
@@ -1381,7 +1381,8 @@ function toModeratorVehicle(row) {
 // scope 'awaiting' (default): not public, but has a counted ride — i.e.
 // candidates for approval. scope 'private': every non-public vehicle, including
 // ones with no counted rides (so nothing hides from review). scope 'public':
-// currently public rows, for auditing/takedown. A plate search ignores scope and returns every row
+// currently public rows, for auditing/takedown. no_vin includes either visibility
+// and combines with plate searches. Otherwise a plate search ignores scope and returns every row
 // (any visibility) for that normalized plate, so duplicates are visible.
 async function getRegistryVehiclesForModeration(sql, { plate, scope, limit = 50 } = {}) {
   let where; const binds = [];
@@ -1389,6 +1390,8 @@ async function getRegistryVehiclesForModeration(sql, { plate, scope, limit = 50 
   if (plate) {
     where = normalized ? `WHERE ${sqlNormalizedPlate('v.license_plate')} = ?` : 'WHERE 0';
     if (normalized) binds.push(normalized);
+  } else if (scope === 'no_vin') {
+    where = 'WHERE 1';
   } else if (scope === 'public') {
     where = `WHERE v.visibility = '${VEHICLE_VISIBILITY.PUBLIC}'`;
   } else if (scope === 'private') {
@@ -1396,6 +1399,13 @@ async function getRegistryVehiclesForModeration(sql, { plate, scope, limit = 50 
   } else {
     where = `WHERE v.visibility <> '${VEHICLE_VISIBILITY.PUBLIC}' AND (v.origin = 'sighting' OR EXISTS (
       SELECT 1 FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = v.id AND ${COUNTED_RIDES_WHERE}))`;
+  }
+  // Match JavaScript trim's whitespace set, before ordering and the result cap.
+  // NULL is how absent VINs are stored in D1; no separate records are needed.
+  if (scope === 'no_vin') {
+    const whitespace = ' \t\n\r\v\f\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+    where += ` AND trim(COALESCE(v.vin, ''), ?) = ''`;
+    binds.push(whitespace);
   }
   const result = await sql.prepare(`
     ${REGISTRY_VEHICLE_MOD_SELECT} ${where}

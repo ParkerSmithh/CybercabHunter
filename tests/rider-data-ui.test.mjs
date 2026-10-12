@@ -288,7 +288,7 @@ async function run() {
       'receiptSetup', 'fwdAddressBlock', 'fwdCreateBtn', 'fwdRotateArea', 'importText', 'importFiles', 'importBtn', 'pillTeslaLabel', 'pillFwdLabel', 'pillRidesLabel', 'syncProcessed', 'syncReviewNote'];
     check('the receipt-address card and every older receipt-setup control are absent', gone.every(id => page.d.getElementById(id) === null));
     check('its copy is gone: no "Your receipt address", no forwarding steps, no private address', !/Your receipt address|Forward a receipt|forward new receipts automatically|Get your rides in|Import old receipts|Receipt sync/.test(page.d.body.textContent) && !page.d.body.textContent.includes(addr) && !/u_[0-9a-f]{32}@/.test(HTML));
-    check('the page no longer requests the address (so visiting it never creates one) or the forwarding status', !page.requests.some(r => r.path.startsWith('/api/receipt-ingestion/address') || r.path.startsWith('/api/rides/sync-status')));
+    check('the page reads forwarding status for its label without issuing an address', !page.requests.some(r => r.path.startsWith('/api/receipt-ingestion/address')) && page.requests.some(r => r.path === '/api/rides/sync-status'));
     check('a receipt forwarded by email still becomes a counted ride on the page', page.rows().length === 1 && countedRides(page) === '1');
     check('the empty-state and ride-list copy do not point at controls that do not exist', !/Forward or import a receipt above/i.test(HTML));
   }
@@ -409,6 +409,64 @@ async function run() {
     await page.waitFor(() => page.visible('citiesList'), 'cities to render');
     check('the @handle is shown under the name', page.text('dataHandle') === '@rider_one');
     page.w.close();
+  }
+
+  console.log('Gmail label uses persisted current forwarding status');
+  {
+    const ctx = await makeApp();
+    let page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'disconnected label');
+    check('no receipt means Link Gmail', page.text('linkGmailLabel') === 'Link Gmail');
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET last_received_at = datetime('now') WHERE user_id = 'u1'");
+    page.w.dispatchEvent(new page.w.Event('focus'));
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Gmail Linked', 'linked label');
+    check('returning to the tab reads updated backend state', page.text('linkGmailLabel') === 'Gmail Linked');
+    check('linked button still manages forwarding without OAuth', page.d.getElementById('linkGmailBtn').getAttribute('href') === '/link-gmail' && !page.requests.some(r => r.path.startsWith('/api/gmail/')));
+    page.w.close(); page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Gmail Linked', 'persisted label');
+    check('fresh browser context retains linked label', page.text('linkGmailLabel') === 'Gmail Linked');
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_code = '123456' WHERE user_id = 'u1'");
+    page.w.dispatchEvent(new page.w.Event('focus'));
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'pending confirmation');
+    check('pending confirmation requires linking again', page.text('linkGmailLabel') === 'Link Gmail');
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET last_received_at = NULL, forwarding_code = NULL WHERE user_id = 'u1'");
+    page.w.dispatchEvent(new page.w.Event('focus'));
+    await page.waitFor(() => page.d.getElementById('linkGmailBtn').getAttribute('aria-busy') === null, 'rotation refresh');
+    check('resetting current address clears linked state', page.text('linkGmailLabel') === 'Link Gmail');
+    page.w.close();
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET status = 'revoked' WHERE user_id = 'u1'");
+    page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Link Gmail', 'revoked address');
+    check('revoked forwarding address is not linked', page.text('linkGmailLabel') === 'Link Gmail');
+    page.w.close();
+    page = await openPage(ctx, 'u1', path => path === '/api/rides/sync-status' ? new Response('{}', { status: 503 }) : null);
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Check Gmail', 'status error');
+    check('status failure never claims connected or disconnected', page.text('linkGmailLabel') === 'Check Gmail');
+    page.w.close();
+  }
+
+  console.log('Done saves forwarding setup without waiting for a receipt');
+  {
+    const ctx = await makeApp({ users: ['u1', 'u2'] });
+    const call = (path, user, method = 'GET') => worker.fetch(new Request('https://x' + path, {
+      method, headers: user ? { Authorization: 'Bearer session-' + user } : {}
+    }), ctx.env, {});
+    const endpoint = '/api/receipt-ingestion/setup/complete';
+    check('Done requires authentication', (await call(endpoint, null, 'POST')).status === 401);
+    check('Done stores completion for the current account', (await call(endpoint, 'u1', 'POST')).ok);
+    const sync = await (await call('/api/rides/sync-status', 'u1')).json();
+    check('completion is persisted without claiming a received receipt', !!sync.forwarding.setup_completed_at && !sync.forwarding.last_received_at && !sync.forwarding.receiving);
+    const other = await (await call('/api/rides/sync-status', 'u2')).json();
+    check('other accounts stay disconnected', !other.forwarding.setup_completed_at);
+    const page = await openPage(ctx, 'u1');
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Gmail Linked', 'Done linked label');
+    check('Rider Data reads saved Done state in a fresh browser', page.text('linkGmailLabel') === 'Gmail Linked');
+    page.w.close();
+    await call('/api/receipt-ingestion/address/rotate', 'u1', 'POST');
+    const rotated = await (await call('/api/rides/sync-status', 'u1')).json();
+    check('rotating forwarding address clears completion', !rotated.forwarding.setup_completed_at);
+    ctx.d1.exec("UPDATE receipt_ingestion_addresses SET status = 'revoked' WHERE user_id = 'u1'");
+    check('revoked address cannot be marked Done', (await call(endpoint, 'u1', 'POST')).status === 409);
   }
 
   t.finish();

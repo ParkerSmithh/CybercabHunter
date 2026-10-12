@@ -328,14 +328,14 @@ export async function apiPromoteVehicleSighting(request, env, submissionId) {
 
 const MODERATION_VEHICLE_LIMIT = 50;
 
-// GET /api/moderation/robotaxi-vehicles[?scope=awaiting|public][&plate=…]
+// GET /api/moderation/robotaxi-vehicles[?scope=awaiting|private|public|no_vin][&plate=…]
 export async function apiListRegistryVehicles(request, env) {
   const auth = await requireModerator(request, env);
   if (auth.error) return authFailureResponse(auth);
 
   const params = new URL(request.url).searchParams;
   const rawScope = params.get('scope');
-  const scope = rawScope === 'public' || rawScope === 'private' ? rawScope : 'awaiting';
+  const scope = rawScope === 'public' || rawScope === 'private' || rawScope === 'no_vin' ? rawScope : 'awaiting';
   const rawPlate = params.get('plate');
   const plate = rawPlate && rawPlate.trim() ? rawPlate.trim().slice(0, 40) : null;
 

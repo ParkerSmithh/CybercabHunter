@@ -167,6 +167,18 @@ export async function apiRotateIngestionAddress(request, env, userId) {
   return Response.json({ success: true, address: `u_${token}@${domain}`, domain_configured: true });
 }
 
+// The rider confirms they finished the forwarding instructions. This does
+// not manufacture receipt evidence or change Gmail OAuth authorization.
+export async function apiCompleteForwardingSetup(request, env, userId) {
+  if (!env.RECEIPT_DOMAIN) return Response.json({ success: false, error: 'domain_not_configured' }, { status: 409 });
+  const result = await env.cybercabhunter_db.prepare(`
+    UPDATE receipt_ingestion_addresses SET setup_completed_at = datetime('now')
+    WHERE user_id = ? AND status = 'active'
+  `).bind(userId).run();
+  if (!result.meta.changes) return Response.json({ success: false, error: 'address_unavailable' }, { status: 409 });
+  return Response.json({ success: true });
+}
+
 // Authenticated API: the rider's own receipt-sync picture. These are three
 // DIFFERENT facts and are reported separately (the Tesla account link is a
 // fourth, reported by /api/me): whether a forwarding address exists, whether
@@ -182,6 +194,7 @@ export async function apiGetSyncStatus(request, env, userId) {
   return Response.json({
     forwarding: {
       address_issued: !!address,
+      setup_completed_at: address ? address.setup_completed_at : null,
       address: address && domain ? `u_${address.opaque_token}@${domain}` : null,
       local_part: address ? `u_${address.opaque_token}` : null,
       domain_configured: !!domain,
