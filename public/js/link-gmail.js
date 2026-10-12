@@ -31,6 +31,10 @@
   let codeKey;               // code + arrival time last rendered (undefined until the first render)
   let codeIsNew = false;
   let inFlight = false;
+  let previousLinked = null;
+  let autoCompletion = null;
+  let countdownTimer = null;
+  let completionRequest = null;
 
   // ---------- formatting ----------
   const fmtInt = n => (n == null ? '-' : Number(n).toLocaleString());
@@ -62,6 +66,10 @@
   }
 
   function setView(view) {
+    if (view === 'signedOut') {
+      clearTimeout(countdownTimer);
+      autoCompletion = null;
+    }
     show('lgLoading', view === 'loading');
     show('lgError', view === 'error');
     show('lgSignedOut', view === 'signedOut');
@@ -236,6 +244,16 @@
     show('lgRequestedBy', !!(link && who));
     if (link && who) $('lgRequestedBy').textContent = `Requested by ${who}. Only confirm if that is your Gmail.`;
     if (pending) $('lgCodeWhen').textContent = 'Arrived ' + fmtWhen(f.confirmation_code_received_at).toLowerCase();
+
+    const becameLinked = previousLinked === false && linked;
+    previousLinked = linked;
+    if (!linked && autoCompletion) {
+      clearTimeout(countdownTimer);
+      autoCompletion = null;
+      show('lgSuccess', false);
+      show('lgSetup', true);
+    }
+    if (becameLinked) startAutoCompletion();
   }
 
   async function refreshStatus() {
@@ -288,17 +306,91 @@
     setInterval(() => { if (checkedAt) $('lgChecked').textContent = fmtChecked(); }, 5000);
   }
 
+  // Share the existing authenticated completion write with the manual fallback.
+  async function saveCompletion() {
+    if (!completionRequest) {
+      completionRequest = (async () => {
+        const response = await api('/api/receipt-ingestion/setup/complete', { method: 'POST' });
+        if (response.status === 401) { stopPolling(); setView('signedOut'); return false; }
+        if (!response.ok || !response.json || !response.json.success) throw new Error('save failed');
+        return true;
+      })();
+    }
+    try { return await completionRequest; } finally { completionRequest = null; }
+  }
+
+  function navigateToRiderData() {
+    clearTimeout(countdownTimer);
+    stopPolling();
+    location.assign('/rider-data');
+  }
+
+  function showCompletionError() {
+    $('lgSuccessError').textContent = "Couldn't save your setup. Choose Continue now to try again.";
+    show('lgSuccessError', true);
+    $('lgCountdown').textContent = 'You will stay on this page until your setup is saved.';
+  }
+
+  function startCountdown(completion) {
+    let remaining = 4;
+    function tick() {
+      if (autoCompletion !== completion || completion.stay) return;
+      if (remaining === 0) { navigateToRiderData(); return; }
+      $('lgCountdown').textContent = `Opening Rider Data in ${remaining} ${remaining === 1 ? 'second' : 'seconds'}…`;
+      remaining -= 1;
+      countdownTimer = setTimeout(tick, 1000);
+    }
+    tick();
+  }
+
+  async function startAutoCompletion() {
+    const completion = { stay: false, saved: false };
+    autoCompletion = completion;
+    show('lgSetup', false);
+    show('lgSuccess', true);
+    show('lgSuccessError', false);
+    $('lgCountdown').textContent = 'Saving your setup…';
+    $('lgContinueNow').disabled = false;
+    $('lgSuccessTitle').focus();
+    $('lgSuccess').scrollIntoView({ block: 'start' });
+    try {
+      completion.saved = await saveCompletion();
+      if (autoCompletion === completion && completion.saved && !completion.stay) startCountdown(completion);
+    } catch (e) {
+      if (autoCompletion === completion) showCompletionError();
+    }
+  }
+
+  function setupAutoCompletion() {
+    $('lgStay').addEventListener('click', () => {
+      if (!autoCompletion) return;
+      autoCompletion.stay = true;
+      clearTimeout(countdownTimer);
+      $('lgCountdown').textContent = 'Gmail stays linked. You can continue to Rider Data whenever you are ready.';
+    });
+    $('lgContinueNow').addEventListener('click', async () => {
+      const completion = autoCompletion;
+      if (!completion) return;
+      completion.stay = true;
+      clearTimeout(countdownTimer);
+      $('lgContinueNow').disabled = true;
+      show('lgSuccessError', false);
+      try {
+        if (!completion.saved) completion.saved = await saveCompletion();
+        if (autoCompletion === completion && completion.saved) navigateToRiderData();
+      } catch (e) {
+        if (autoCompletion === completion) showCompletionError();
+      } finally { $('lgContinueNow').disabled = false; }
+    });
+  }
+
   function setupDone() {
     $('lgDone').addEventListener('click', async () => {
       const button = $('lgDone');
       button.disabled = true; button.textContent = 'Saving…';
       show('lgDoneError', false);
       try {
-        const response = await api('/api/receipt-ingestion/setup/complete', { method: 'POST' });
-        if (response.status === 401) { stopPolling(); setView('signedOut'); return; }
-        if (!response.ok || !response.json || !response.json.success) throw new Error('save failed');
-        stopPolling();
-        location.assign('/rider-data');
+        if (await saveCompletion()) navigateToRiderData();
       } catch (e) {
         $('lgDoneError').textContent = "Couldn't save your setup. Please try again.";
         show('lgDoneError', true);
@@ -324,6 +416,7 @@
     }
     applyAddressResponse(addr);
     status = sync.json; checkedAt = Date.now();
+    previousLinked = isLinked(status.forwarding);
     renderStatus();
     setView('ready');
     show('lgSetup', true);
@@ -335,7 +428,7 @@
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupCopy(); setupRotate(); setupStatus(); setupDone();
+    setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion();
     $('lgRetry').addEventListener('click', load);
     load();
   }

@@ -39,6 +39,7 @@ async function openPage(ctx, userId, { intercept, clipboard, search = '', storag
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/link-gmail' + search, pretendToBeVisual: true });
   const w = dom.window;
   opened.push(w);
+  w.HTMLElement.prototype.scrollIntoView = () => {};
   w.scrollTo = () => {};   // jsdom has no layout
   if (userId) w.localStorage.setItem('teslaSessionId', `session-${userId}`);
   for (const [k, v] of Object.entries(storage)) w.localStorage.setItem(k, v);
@@ -51,10 +52,25 @@ async function openPage(ctx, userId, { intercept, clipboard, search = '', storag
     if (intercept) { const r = await intercept(path, init); if (r) return r; }
     return worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com', ...(init.headers || {}) } }), ctx.env, {});
   };
-  w.eval(JS);
+  // jsdom does not implement navigation; capture only the real redirect call.
+  const navigations = [];
+  w.__navigate = path => navigations.push(path);
+  const countdowns = new Map();
+  const nativeTimeout = w.setTimeout.bind(w), nativeClear = w.clearTimeout.bind(w);
+  let nextTimer = -1;
+  w.setTimeout = (fn, delay, ...args) => {
+    if (delay !== 1000) return nativeTimeout(fn, delay, ...args);
+    const id = nextTimer--; countdowns.set(id, () => fn(...args)); return id;
+  };
+  w.clearTimeout = id => { if (!countdowns.delete(id)) nativeClear(id); };
+  w.eval(JS.replaceAll("location.assign('/rider-data')", "window.__navigate('/rider-data')"));
   const d = w.document;
   const page = {
-    w, d, requests, copied,
+    w, d, requests, copied, navigations,
+    tickCountdown: () => {
+      const next = countdowns.entries().next().value;
+      if (next) { countdowns.delete(next[0]); next[1](); }
+    },
     $: id => d.getElementById(id),
     text: id => d.getElementById(id).textContent.replace(/\s+/g, ' ').trim(),
     visible: id => !d.getElementById(id).classList.contains('hidden'),
@@ -322,7 +338,95 @@ async function run() {
     await page.waitFor(() => page.visible('lgDoneError'), 'Done save error');
     check('failed save keeps setup open and enables retry', !page.$('lgDone').disabled && page.visible('lgDoneError') && page.w.location.pathname === '/link-gmail');
     check('Done posts with the signed-in session', page.requests.some(r => r.path === '/api/receipt-ingestion/setup/complete' && r.method === 'POST' && r.auth === 'Bearer session-u1'));
-    check('successful Done returns to Rider Data after saving', /if \(!response.ok[\s\S]*location.assign\('\/rider-data'\)/.test(JS));
+    const success = await openPage(ctx, 'u1');
+    success.click(success.$('lgDone'));
+    await success.waitFor(() => success.navigations.length === 1, 'Done navigation');
+    check('successful Done returns to Rider Data after saving', success.navigations.join() === '/rider-data');
+  }
+
+  console.log('Auto-complete: transition, countdown and controls');
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1');
+    check('initially unlinked: no success panel or completion POST', !page.visible('lgSuccess') && !page.requests.some(r => r.path.endsWith('/setup/complete')));
+    await ctx.email('u1', { body: receiptBody() });
+    await page.refresh();
+    await page.waitFor(() => /4 seconds/.test(page.text('lgCountdown')), 'saved countdown');
+    check('false to true shows success and hides setup', page.visible('lgSuccess') && !page.visible('lgSetup') && page.text('lgSuccessTitle') === 'GMAIL IS LINKED');
+    check('transition saves once with current session only', page.requests.filter(r => r.path.endsWith('/setup/complete')).length === 1 && page.requests.filter(r => r.path.endsWith('/setup/complete')).every(r => r.method === 'POST' && r.auth === 'Bearer session-u1'));
+    const status = await worker.fetch(new Request('https://x/api/rides/sync-status', { headers: { Authorization: 'Bearer session-u1' } }), ctx.env, {});
+    check('transition persists completion in the real backend', !!(await status.json()).forwarding.setup_completed_at);
+    check('countdown is announced accessibly', page.$('lgCountdown').getAttribute('aria-live') === 'polite');
+    await page.refresh();
+    check('another linked poll does not save twice', page.requests.filter(r => r.path.endsWith('/setup/complete')).length === 1);
+    for (let second = 0; second < 3; second++) page.tickCountdown();
+    check('three seconds do not navigate yet', page.navigations.length === 0 && /1 second/.test(page.text('lgCountdown')));
+    page.tickCountdown();
+    check('four seconds navigate to Rider Data', page.navigations.join() === '/rider-data');
+  }
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1');
+    await ctx.email('u1', { body: receiptBody() }); await page.refresh();
+    await page.waitFor(() => /4 seconds/.test(page.text('lgCountdown')), 'countdown for stay');
+    page.click(page.$('lgStay'));
+    for (let second = 0; second < 5; second++) page.tickCountdown();
+    check('Stay cancels navigation and keeps success visible', page.navigations.length === 0 && page.visible('lgSuccess') && /whenever you are ready/.test(page.text('lgCountdown')));
+    page.click(page.$('lgContinueNow'));
+    await page.waitFor(() => page.navigations.length === 1, 'Continue now');
+    check('Continue now navigates immediately without another save', page.navigations.join() === '/rider-data' && page.requests.filter(r => r.path.endsWith('/setup/complete')).length === 1);
+  }
+  {
+    const ctx = await makeApp();
+    await ctx.email('u1', { body: receiptBody() });
+    const page = await openPage(ctx, 'u1');
+    await page.refresh(); for (let second = 0; second < 5; second++) page.tickCountdown();
+    check('already linked on load stays on the existing status view', page.visible('lgStateOn') && page.visible('lgSetup') && !page.visible('lgSuccess') && page.navigations.length === 0 && !page.requests.some(r => r.path.endsWith('/setup/complete')));
+  }
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1');
+    page.click(page.$('lgRotateOpen')); page.click(page.$('lgRotateConfirmBtn'));
+    await page.waitFor(() => page.visible('lgRotateNotice'), 'unlinked rotation'); await page.refresh();
+    check('rotating while unlinked never auto-completes', !page.visible('lgSuccess') && page.navigations.length === 0 && !page.requests.some(r => r.path.endsWith('/setup/complete')));
+  }
+  {
+    const ctx = await makeApp(); let fail = true;
+    const page = await openPage(ctx, 'u1', { intercept: path => fail && path.endsWith('/setup/complete') ? new Response('{}', { status: 503 }) : null });
+    await ctx.email('u1', { body: receiptBody() }); await page.refresh();
+    await page.waitFor(() => page.visible('lgSuccessError'), 'auto-save failure');
+    for (let second = 0; second < 5; second++) page.tickCountdown();
+    check('failed auto-save shows retry without navigating', page.visible('lgSuccess') && page.visible('lgSuccessError') && page.navigations.length === 0);
+    fail = false; page.click(page.$('lgContinueNow'));
+    await page.waitFor(() => page.navigations.length === 1, 'save retry');
+    check('Continue now retries the existing endpoint and then navigates', page.navigations.join() === '/rider-data' && page.requests.filter(r => r.path.endsWith('/setup/complete')).length === 2);
+  }
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1');
+    const links = [...page.d.querySelectorAll('#lgAuto a')].filter(a => a.textContent.trim() === 'Open Gmail forwarding settings');
+    check('each Gmail setup step has the verified static deep link', links.length === 3 && links.every(a => a.getAttribute('href') === 'https://mail.google.com/mail/u/0/#settings/fwdandpop' && a.target === '_blank' && a.rel === 'noopener'));
+  }
+
+  {
+    const ctx = await makeApp(); let release;
+    const page = await openPage(ctx, 'u1', { intercept: path => path.endsWith('/setup/complete') ? new Promise(resolve => { release = () => resolve(null); }) : null });
+    await ctx.email('u1', { body: receiptBody() }); await page.refresh();
+    await page.waitFor(() => !!release, 'pending save');
+    page.click(page.$('lgStay')); release();
+    await page.waitFor(() => !page.text('lgCountdown').includes('Saving'), 'stay during save');
+    for (let second = 0; second < 5; second++) page.tickCountdown();
+    check('Stay during the save also prevents a late countdown', page.navigations.length === 0 && /whenever you are ready/.test(page.text('lgCountdown')));
+  }
+  {
+    const ctx = await makeApp();
+    const page = await openPage(ctx, 'u1');
+    await ctx.email('u1', { body: receiptBody() }); await page.refresh();
+    await page.waitFor(() => /4 seconds/.test(page.text('lgCountdown')), 'countdown before expired session');
+    await ctx.env.TESLA_SESSIONS.delete('session:session-u1');
+    await page.refresh();
+    for (let second = 0; second < 5; second++) page.tickCountdown();
+    check('session expiration cancels pending navigation', page.visible('lgSignedOut') && page.navigations.length === 0);
   }
 
   opened.forEach(w => w.close());
