@@ -32,6 +32,7 @@ import CALC from '../public/js/calc.js';
 import * as M from './fleet-eta-model.js';
 
 const CACHE_SECONDS = 3600;
+const PENDING_CACHE_SECONDS = 60;      // a not-yet-computed answer is replaced within a minute
 export const REPORT_DAILY_LIMIT = 10;        // per rider and per IP, rolling 24 h
 const REPORT_MAX_AGE_DAYS = 30;
 const REPORTS_READ_CAP = 1000;               // newest approved reports the daily job reads per city
@@ -142,8 +143,12 @@ async function fleetLayers(sql, city, vehicles, nowMs) {
     const ms = Date.parse(String(r.at).replace(' ', 'T') + (String(r.at).includes('Z') ? '' : 'Z'));
     if (Number.isFinite(ms) && ms > (latest.get(r.vid) || 0)) latest.set(r.vid, ms);
   }
+  // Every vehicle on the public registry, any city (the Cars page's list).
+  const registry = { total: vehicles.size, cybercab: 0, model_y: 0, unknown: 0 };
+  for (const v of vehicles.values()) registry[v.type] += 1;
   return {
     documented,
+    registry,
     seen: [...latest].map(([vid, ms]) => ({ vid, ms })),
     unidentified_sightings_30d: Math.min(unidentified, COUNT_CAP),
     camera_detections_30d: Number(cams ? cams.n : 0),
@@ -308,6 +313,7 @@ export function buildCityPayload(city, { rides = [], reports = [], fleet = null 
   const seenWithin = days => [...seen.values()].filter(t => nowMs - t <= days * M.DAY_MS).length;
   const fleetOut = fleet ? {
     documented: { ...fleet.documented, total: fleet.documented.cybercab + fleet.documented.model_y + fleet.documented.unknown },
+    registry: fleet.registry || null,
     observed_7d: seenWithin(7),
     observed_30d: seenWithin(30),
     ride_vehicles_30d: ridesVehicles30.size,
@@ -393,20 +399,29 @@ export async function apiFleetEta(request, env, ctx) {
     if (hit) return hit;
   }
   const row = await env.cybercabhunter_db.prepare(`SELECT model_version, payload FROM fleet_eta_stats WHERE city = ?`).bind(city).first();
-  let body;
   if (row && Number(row.model_version) === M.MODEL_VERSION) {
-    body = row.payload;
-  } else {
-    // Not computed yet (before the first daily run, or after a model change):
-    // the published-reports estimate, with no D1 scan. The next run fills it.
-    body = JSON.stringify({ ...buildCityPayload(city, {}, Date.now()), pending_first_run: true });
+    const response = new Response(row.payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
+    if (cache) {
+      const stored = cache.put(cacheKey, response.clone()).catch(() => {});
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+    }
+    return response;
   }
-  const response = new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
-  if (cache) {
-    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
-    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  // Not computed yet (a new deploy before the first daily run, or a model
+  // change): serve the published-reports estimate now, and compute the city's
+  // row once in the background, so the next request (within a minute) has it.
+  // A 5-minute KV marker stops a burst of requests from recomputing in
+  // parallel; the pending answer is cached for a minute only, never an hour.
+  if (ctx && typeof ctx.waitUntil === 'function' && env.TESLA_SESSIONS) {
+    const lockKey = `fleet_eta:first_run:${city}`;
+    ctx.waitUntil((async () => {
+      if (await env.TESLA_SESSIONS.get(lockKey)) return;
+      await env.TESLA_SESSIONS.put(lockKey, '1', { expirationTtl: 300 });
+      await recomputeFleetEta(env, Date.now(), [city]);
+    })().catch(() => {}));
   }
-  return response;
+  const body = JSON.stringify({ ...buildCityPayload(city, {}, Date.now()), pending_first_run: true });
+  return new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${PENDING_CACHE_SECONDS}` } });
 }
 
 // ---- POST /api/fare-reports --------------------------------------------------

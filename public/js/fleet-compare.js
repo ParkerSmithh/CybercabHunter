@@ -58,11 +58,16 @@
   function setHTML(el, html) { if (el && el.innerHTML !== html) el.innerHTML = html; }
   const confPill = level => `<span class="conf conf-${esc(level)}">${esc(CONF_LABEL[level] || level)}</span>`;
 
-  // The documented Cybercab count (a city's precomputed fleet layer) and when
-  // it was counted, or null.
+  // The Cybercab count for a city's fleet mix, and when it was counted (the
+  // daily summary), or null. Austin: every vehicle on the public registry, any
+  // city (the Cars page's list). Dallas: only vehicles documented in Dallas,
+  // so the whole registry is never shown as Dallas's fleet.
   function countOf(city) {
     const p = eta[city];
-    return p && p.fleet && p.fleet.documented ? { cybercabs: p.fleet.documented.cybercab, count_as_of: p.computed_at } : null;
+    const f = p && p.fleet;
+    if (!f) return null;
+    const n = city === 'austin' && f.registry ? f.registry.total : f.documented ? f.documented.cybercab : null;
+    return typeof n === 'number' ? { cybercabs: n, count_as_of: p.computed_at } : null;
   }
 
   // ---- fleet count line + error notice
@@ -70,7 +75,7 @@
     const line = $('fleetLive');
     const data = countOf('austin'), failed = eta.austin === false;
     if (data) {
-      line.textContent = `${plural(data.cybercabs, 'documented Cybercab')} · counted ${ago(data.count_as_of) || 'at an unknown time'}`;
+      line.textContent = `${plural(data.cybercabs, 'Cybercab')} on the registry · counted ${ago(data.count_as_of) || 'at an unknown time'}`;
       if (C.faresStale(data.count_as_of)) {
         const badge = document.createElement('span');
         badge.className = 'stale-badge ml-2';
@@ -355,7 +360,7 @@
     renderFleet(city); renderCalibration(city); renderRecent(city);
     const count = countOf(city), pre = city === 'dallas' ? 'dal' : 'austin';
     renderMix(pre, count ? count.cybercabs : null, city === 'dallas' ? C.DALLAS_MODEL_Y_FLEET : MODEL_Y_FLEET, count
-      ? `Documented by Cybercab Hunter (public, ${CITY_NAME[city]}), counted ${ago(count.count_as_of) || 'at an unknown time'}`
+      ? (city === 'austin' ? `Every Cybercab on the public registry, counted ${ago(count.count_as_of) || 'at an unknown time'}` : `Documented in Dallas by Cybercab Hunter, counted ${ago(count.count_as_of) || 'at an unknown time'}`)
       : (eta[city] === false ? 'Count unavailable' : eta[city] && eta[city].pending_first_run ? 'Count pending the first daily update' : 'Count loading'));
   }
   function renderScenarioButtons() {

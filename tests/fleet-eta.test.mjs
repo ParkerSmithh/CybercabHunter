@@ -210,10 +210,11 @@ async function run() {
     d1.prepare(`UPDATE users SET role = 'moderator' WHERE id = 'mod'`)._exec();
     await env.TESLA_SESSIONS.put('session:s-u1', JSON.stringify({ user_id: 'u1' }));
     await env.TESLA_SESSIONS.put('session:s-mod', JSON.stringify({ user_id: 'mod' }));
+    const background = [];
     const call = (method, path, { body, session, ip = '203.0.113.9' } = {}) => worker.fetch(new Request(`https://cybercabhunter.com${path}`, {
       method, headers: { ...(session ? { Authorization: `Bearer ${session}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), 'CF-Connecting-IP': ip },
       body: body ? JSON.stringify(body) : undefined
-    }), env, { waitUntil() {} });
+    }), env, { waitUntil(p) { background.push(p); } });
 
     // Record every SQL statement the request handlers run.
     const log = [];
@@ -221,11 +222,21 @@ async function run() {
     const watch = on => { d1.prepare = on ? (sql => { log.push(sql.replace(/\s+/g, ' ').trim()); return realPrepare(sql); }) : realPrepare; };
 
     watch(true); log.length = 0;
-    const first = await call('GET', '/api/fleet-eta?city=austin');
+    const first = await call('GET', '/api/fleet-eta?city=dallas');
     const firstJson = await first.json();
     watch(false);
-    check('before the first daily run: published-report estimates, flagged, with one indexed read and no scan', first.status === 200 && firstJson.pending_first_run === true && log.length === 1 && /FROM fleet_eta_stats WHERE city = \?/.test(log[0]));
-    check('the stats API is edge-cacheable for an hour', /max-age=3600/.test(first.headers.get('Cache-Control')));
+    // Everything after the first statement belongs to the background recompute.
+    const inRequest = log.findIndex(q => !/fleet_eta_stats WHERE city/.test(q)) === -1 ? log.length : log.findIndex(q => !/fleet_eta_stats WHERE city/.test(q));
+    check('before the first daily run: published-report estimates, flagged, from one indexed read in the request itself', first.status === 200 && firstJson.pending_first_run === true && inRequest === 1 && /FROM fleet_eta_stats WHERE city = \?/.test(log[0]));
+    check('...cached for a minute only', /max-age=60\b/.test(first.headers.get('Cache-Control')));
+    await Promise.all(background.splice(0));
+    const filled = await (await call('GET', '/api/fleet-eta?city=dallas')).json();
+    check('...and the city\'s row is computed once in the background, so the next request has its fleet count', !filled.pending_first_run && filled.fleet && typeof filled.fleet.documented.cybercab === 'number');
+    await call('GET', '/api/fleet-eta?city=austin');
+    check('a burst of misses recomputes only once (5-minute marker)', await env.TESLA_SESSIONS.get('fleet_eta:first_run:dallas') === '1');
+    await Promise.all(background.splice(0));
+    d1.prepare(`DELETE FROM fleet_eta_stats`)._exec();
+    await env.TESLA_SESSIONS.delete('fleet_eta:first_run:austin'); await env.TESLA_SESSIONS.delete('fleet_eta:first_run:dallas');
     check('unknown city: 400', (await call('GET', '/api/fleet-eta?city=houston')).status === 400);
 
     const vid = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -266,10 +277,14 @@ async function run() {
     check('the daily job stores exactly one current row per city', rows.map(x => x.city).join() === 'austin,dallas');
     const aus = JSON.parse(rows[0].payload);
     check('only APPROVED reports feed it (1 of 11), next to the logged rides', aus.fares.cleaning.sources.reports === 1 && aus.fares.cleaning.sources.rides === 40, JSON.stringify(aus.fares.cleaning.sources));
+    check('the fleet mix count is the whole public registry (any city), the same list as the Cars page', aus.fleet.registry && aus.fleet.registry.total === 1 && aus.fleet.registry.cybercab === 1);
+    check('Austin\'s fleet mix counts the whole public registry (any city); Dallas only cars documented in Dallas', aus.fleet.registry && aus.fleet.registry.total === 1 && JSON.parse(rows[1].payload).fleet.documented.cybercab === 0);
     check('the stored row is aggregates only: no ids, plates, users or addresses', !/CYB1|u1|"mod"|Congress Ave|aaaaaaaa-/.test(rows[0].payload));
     watch(true); log.length = 0;
-    const served = await (await call('GET', '/api/fleet-eta?city=austin')).json();
+    const servedResp = await call('GET', '/api/fleet-eta?city=austin');
+    const served = await servedResp.json();
     watch(false);
+    check('the stats API is edge-cacheable for an hour once computed', /max-age=3600/.test(servedResp.headers.get('Cache-Control')));
     check('a page load reads the one stored row and nothing else', log.length === 1 && served.computed_at === aus.computed_at && !served.pending_first_run);
 
     const page = fs.readFileSync(`${ROOT}public/js/fleet-compare.js`, 'utf8');
