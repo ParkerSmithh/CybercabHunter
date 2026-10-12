@@ -110,10 +110,32 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
   assert.strictEqual(CCC_CALC.DALLAS_MODEL_Y_FLEET, 65);
 }
 
+// ---- Fleet ETA estimate display (ranges from the daily model; tests/fleet-eta.test.mjs
+// checks these match worker/fleet-eta-model.js).
+{
+  const m = { a: 3, b: 1.5, tiers: { quiet: { center: 0.9, lo: 0.8, hi: 1 }, typical: { center: 1, lo: 0.85, hi: 1.15 }, busy: { center: 1.2, lo: 1.05, hi: 1.35 } }, area_mult: { downtown: 1.1 } };
+  const r = CCC_CALC.etaFareRange(m, 4, 'typical');
+  assert.ok(Math.abs(r.center - 9) < 1e-9 && Math.abs(r.lo - 7.65) < 1e-9 && Math.abs(r.hi - 10.35) < 1e-9);
+  assert.strictEqual(CCC_CALC.dollarRange(r), '$7–$11');                                   // rounded outward
+  assert.ok(CCC_CALC.etaFareRange(m, 4, 'busy').center > CCC_CALC.etaFareRange(m, 4, 'quiet').center);
+  assert.ok(Math.abs(CCC_CALC.etaFareRange(m, 4, 'typical', 'downtown').center - 9.9) < 1e-9);
+  assert.strictEqual(CCC_CALC.etaFareRange(null, 4), null);
+  assert.strictEqual(CCC_CALC.dollarRange({ lo: 9.2, hi: 9.4 }), '$9–$10');                // never narrower than a dollar
+  assert.strictEqual(CCC_CALC.minuteRange({ lo: 6.4, hi: 11.2 }), '6–12 min');
+  assert.strictEqual(CCC_CALC.minuteRange({ lo: 30, hi: 60 }), '30–45+ min');
+  // Saturday 7:30 PM in Austin = 00:30 UTC Sunday (CDT).
+  assert.deepStrictEqual(CCC_CALC.etaSlot(new Date('2026-10-11T00:30:00Z')), { key: 'weekend:evening', day: 'Saturday', part: 'evening' });
+  assert.strictEqual(CCC_CALC.assumedTier({ slot_tiers: { 'weekend:evening': { tier: 'busy', reasons: ['x'] } } }, new Date('2026-10-11T00:30:00Z')).tier, 'busy');
+  assert.strictEqual(CCC_CALC.assumedTier(null).tier, 'typical');
+  // Friday 8 PM counts as a weekend evening; Friday noon does not.
+  assert.strictEqual(CCC_CALC.etaSlot(new Date('2026-10-10T01:00:00Z')).key, 'weekend:evening');
+  assert.strictEqual(CCC_CALC.etaSlot(new Date('2026-10-09T17:00:00Z')).key, 'weekday:midday');
+}
+
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
   'DALLAS_AREA_SQ_MI', 'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
-  'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
-  'ageHours', 'clockLabel', 'etaRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'reportedFare', 'serviceStatus'
+  'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'ETA_TIERS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
+  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceStatus'
 ]);
 
 console.log('calc.test.js: all assertions passed');

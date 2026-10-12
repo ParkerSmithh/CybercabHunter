@@ -47,7 +47,7 @@ async function run() {
     check('Fleet ROI shows by default; Fleet ETA is hidden', !hidden('simPanelRoi') && hidden('simPanelEta') && p.d.getElementById('simTabRoi').getAttribute('aria-selected') === 'true');
     check('the Fleet ROI view is the fleet calculator (FLEET ROI, inputs, Export)', /FLEET\s*ROI/.test(p.d.getElementById('simPanelRoi').textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
     check('the Fleet ETA view is the fleet comparison (fares, hours, pickup wait)', /FLEET\s*ETA/.test(p.d.getElementById('simPanelEta').textContent) && ['etaCybercab', 'etaModelY', 'tripMiles', 'fleetLive'].every(id => p.d.getElementById('simPanelEta').querySelector('#' + id)));
-    check('the page asks for the live fleet stats (Fleet ETA)', p.requests.some(u => u.includes('/api/fleet-stats')));
+    check('the page asks for the precomputed Fleet ETA estimates, and no live registry count', p.requests.some(u => u.includes('/api/fleet-eta?city=austin')) && !p.requests.some(u => u.includes('/api/fleet-stats')));
     p.d.getElementById('simTabEta').click();
     check('clicking Fleet ETA switches views', hidden('simPanelRoi') && !hidden('simPanelEta') && p.d.getElementById('simTabEta').getAttribute('aria-selected') === 'true');
     check('...and the URL remembers it (?view=eta)', p.w.location.search === '?view=eta');

@@ -19,6 +19,7 @@ import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiListReviewComments, apiCreateReviewComment, apiDeleteReviewComment, apiGetReviewPhoto } from './reviews.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
+import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
 import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
 import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
@@ -375,6 +376,21 @@ const worker = {
     }
 
     // Live Fleet & Fares stats (worker/fleet-stats.js): public, edge-cached.
+    // Fleet ETA estimates (worker/fleet-eta.js): one precomputed row per city,
+    // edge-cached for an hour; rider fare/wait reports and their moderation.
+    if (url.pathname === '/api/fleet-eta' && request.method === 'GET') {
+      return withCors(await apiFleetEta(request, env, ctx), request);
+    }
+    if (url.pathname === '/api/fare-reports' && request.method === 'POST') {
+      return withCors(await apiCreateFareReport(request, env), request);
+    }
+    if (url.pathname === '/api/moderation/fare-reports' && request.method === 'GET') {
+      return withCors(await apiListFareReports(request, env), request);
+    }
+    const fareReportReview = url.pathname.match(/^\/api\/moderation\/fare-reports\/([0-9a-f-]{36})$/i);
+    if (fareReportReview && request.method === 'POST') {
+      return withCors(await apiReviewFareReport(request, env, fareReportReview[1]), request);
+    }
     if (url.pathname === '/api/fleet-stats' && request.method === 'GET') {
       return withCors(await apiFleetStats(request, env, ctx), request);
     }
@@ -631,8 +647,11 @@ const worker = {
   // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
   async scheduled(controller, env, ctx) {
     // Daily: recompute the stored Fleet & Fares model (worker/fleet-stats.js).
+    // The same daily run then precomputes Austin's Fleet ETA summary
+    // (worker/fleet-eta.js; Dallas's runs with TXDMV_CRON below), so that
+    // feature needs no trigger of its own and each run stays small.
     if (controller && controller.cron === FLEET_STATS_CRON) {
-      ctx.waitUntil(recomputeFleetStats(env).catch(() => {}));
+      ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
       return;
     }
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js
@@ -644,6 +663,7 @@ const worker = {
     // Daily: the TxDMV automated-vehicle roster snapshot (worker/txdmv.js).
     if (controller && controller.cron === TXDMV_CRON) {
       ctx.waitUntil(runTxdmvPoll(env).catch(() => {}));
+      ctx.waitUntil(recomputeFleetEta(env, Date.now(), ['dallas']).catch(() => {}));
       return;
     }
     ctx.waitUntil(gmail.runScheduledSync(env).catch(() => {}));

@@ -15,9 +15,10 @@
 //      sightings, sightings, submissions, sync runs and connections (Tesla,
 //      Tesla ride sync, Robotaxi owner, Gmail, Google), their own Tesla
 //      vehicles (`vehicles` — the rider's private Tesla-account cars, NOT the
-//      public registry), receipt addresses, then the users row. Shared records
-//      that only NAME them as a moderator keep existing: submissions.reviewed_by
-//      and robotaxi_vehicles.vin_set_by_user_id become NULL. The moderator
+//      public registry), receipt addresses, Fleet ETA fare/wait reports, then
+//      the users row. Shared records
+//      that only NAME them as a moderator keep existing: submissions.reviewed_by,
+//      fare_reports.reviewed_by and robotaxi_vehicles.vin_set_by_user_id become NULL. The moderator
 //      approval history (robotaxi_vehicle_reviews) is append-only by design and
 //      deliberately survives a moderator's account (migrations/0012): its
 //      moderator_user_id keeps the now-orphaned random id — no name, email or
@@ -131,7 +132,9 @@ export async function apiDeleteAccount(request, env) {
     mine('tesla_connections'),
     sql.prepare(`DELETE FROM vehicles WHERE owner_user_id = ?`).bind(userId),
     mine('receipt_ingestion_addresses'),
+    mine('fare_reports'),
     sql.prepare(`UPDATE submissions SET reviewed_by = NULL WHERE reviewed_by = ?`).bind(userId),
+    sql.prepare(`UPDATE fare_reports SET reviewed_by = NULL WHERE reviewed_by = ?`).bind(userId),
     sql.prepare(`UPDATE robotaxi_vehicles SET vin_set_by_user_id = NULL WHERE vin_set_by_user_id = ?`).bind(userId),
     sql.prepare(`DELETE FROM users WHERE id = ?`).bind(userId)
   ]);

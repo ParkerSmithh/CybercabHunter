@@ -156,7 +156,58 @@ const CCC_CALC = (() => {
     };
   }
 
+  // ---- Fleet ETA estimates (GET /api/fleet-eta; fitted daily by
+  // worker/fleet-eta-model.js). These two mirror its fareRange / waitRange so
+  // the distance slider and area picker need no request: keep them equal.
+  const ETA_TIERS = ['quiet', 'typical', 'busy'];
+  function etaFareRange(model, miles, tier = 'typical', area = null) {
+    if (!model || !model.tiers || !(miles > 0)) return null;
+    const t = model.tiers[tier] || model.tiers.typical;
+    const mult = (area && model.area_mult && model.area_mult[area]) || 1;
+    const at = Math.max(0.5, (model.a + model.b * miles) * mult);
+    return { center: at * t.center, lo: at * t.lo, hi: at * t.hi };
+  }
+  function etaWaitRange(model, tier = 'typical', area = null) {
+    if (!model || !model.tiers) return null;
+    const t = model.tiers[tier] || model.tiers.typical;
+    const m = (area && model.area_mult && model.area_mult[area]) || 1;
+    return { center: t.center * m, lo: t.lo * m, hi: t.hi * m };
+  }
+  // "$7–$11": whole dollars, rounded outward so the range never looks
+  // narrower than the estimate; at least a dollar wide.
+  function dollarRange(r) {
+    if (!r) return null;
+    const lo = Math.max(1, Math.floor(r.lo)), hi = Math.max(lo + 1, Math.ceil(r.hi));
+    return `$${lo}–$${hi}`;
+  }
+  // "6–12 min": whole minutes, outward, at least 2 minutes wide; 45+ caps.
+  function minuteRange(r) {
+    if (!r) return null;
+    const lo = Math.max(1, Math.floor(r.lo)), hi = Math.max(lo + 2, Math.ceil(r.hi));
+    return hi > 45 ? `${lo}–45+ min` : `${lo}–${hi} min`;
+  }
+  const PARTS_OF_DAY = { overnight: 'overnight', morning: 'morning', midday: 'midday', afternoon: 'afternoon', evening: 'evening' };
+  function partOfDay(hour) { return hour < 6 ? 'overnight' : hour < 10 ? 'morning' : hour < 15 ? 'midday' : hour < 19 ? 'afternoon' : 'evening'; }
+  // The time slot (weekday/weekend x part of day) of a moment, in Central time:
+  // { key, day, part } with day the weekday name ("Saturday").
+  function etaSlot(date = new Date(), timeZone = 'America/Chicago') {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long', hour: '2-digit', hourCycle: 'h23' }).formatToParts(date);
+    const day = (parts.find(p => p.type === 'weekday') || {}).value || '';
+    const hour = Number((parts.find(p => p.type === 'hour') || {}).value) % 24;
+    // Weekend = Friday evening through Sunday (worker/fleet-eta-model.js isWeekend).
+    const weekend = day === 'Saturday' || day === 'Sunday' || (day === 'Friday' && hour >= 19);
+    const part = partOfDay(hour);
+    return { key: `${weekend ? 'weekend' : 'weekday'}:${part}`, day, part: PARTS_OF_DAY[part] };
+  }
+  // The demand scenario assumed now for a city's estimates: { tier, reasons, slot }.
+  function assumedTier(payload, date = new Date()) {
+    const slot = etaSlot(date);
+    const s = payload && payload.slot_tiers && payload.slot_tiers[slot.key];
+    return { tier: s && ETA_TIERS.includes(s.tier) ? s.tier : 'typical', reasons: (s && s.reasons) || [], slot };
+  }
+
   return {
+    ETA_TIERS, etaFareRange, etaWaitRange, dollarRange, minuteRange, etaSlot, assumedTier,
     fleetFinancials,
     SERVICE_HOURS, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
     DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET, DALLAS_AREA_SQ_MI,
