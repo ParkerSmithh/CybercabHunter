@@ -303,8 +303,9 @@
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
               </span>
               <div class="min-w-0">
-                <h4 class="font-semibold text-white">Done</h4>
+                <button id="lgDone" type="button" disabled class="inline-flex items-center justify-center min-h-[44px] px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Done</button>
                 <p class="mt-1.5 text-sm text-slate-400 leading-relaxed">After the filter is created, this page detects the first forwarded receipt on its own and completes setup automatically.</p>
+                <p id="lgDoneError" role="alert" class="hidden mt-3 text-sm text-amber-200"></p>
               </div>
             </li>
           </ol>
@@ -323,13 +324,6 @@
             </div>
           </div>
           </section>
-
-          <!-- Forward each receipt: nothing changes in Gmail -->
-          <div class="flex flex-col items-start gap-3">
-            <button id="lgDone" type="button" disabled class="inline-flex items-center justify-center min-h-[44px] px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50 disabled:cursor-not-allowed">Done</button>
-            <p class="text-sm text-slate-400">Finished the steps? Save your setup and return to Rider Data.</p>
-            <p id="lgDoneError" role="alert" class="hidden text-sm text-amber-200"></p>
-          </div>
 
           <!-- Past rides -->
           <section aria-labelledby="lgBackfillHeading" class="rounded-2xl border border-white/[0.08] p-6 lg:p-8 max-sm:p-4">

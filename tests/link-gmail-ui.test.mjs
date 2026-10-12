@@ -329,6 +329,8 @@ async function run() {
     const ctx = await makeApp();
     const page = await openPage(ctx, 'u1', { search: '?method=auto',
       intercept: path => path === '/api/receipt-ingestion/setup/complete' ? new Response('{}', { status: 503 }) : null });
+    const finalStep = page.d.querySelector('#lgAuto > ol > li:last-child');
+    check('the single Done button is above the automatic-completion text in the final step', page.d.querySelectorAll('#lgDone').length === 1 && finalStep.contains(page.$('lgDone')) && page.$('lgDone').nextElementSibling.textContent.startsWith('After the filter is created') && finalStep.contains(page.$('lgDoneError')));
     check('Done is available after the address loads', !page.$('lgDone').disabled && page.text('lgDone') === 'Done');
     page.click(page.$('lgDone'));
     await page.waitFor(() => page.visible('lgDoneError'), 'Done save error');
