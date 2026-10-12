@@ -404,16 +404,11 @@ async function run() {
   {
     const ctx = await makeApp();
     const page = await openPage(ctx, 'u1');
-    const links = [...page.d.querySelectorAll('#lgAuto a')].filter(a => /^Open Gmail .* settings$/.test(a.textContent.trim()));
-    const expected = {
-      'Open Gmail forwarding settings': 'https://mail.google.com/mail/u/0/#settings/fwdandpop',
-      'Open Gmail filter settings': 'https://mail.google.com/mail/u/0/#settings/filters'
-    };
-    check('every settings label matches its destination tab and safe new-tab attributes', links.length === 3 && links.every(a => a.getAttribute('href') === expected[a.textContent.trim()] && a.target === '_blank' && a.rel === 'noopener'));
+    const links = [...page.d.querySelectorAll('a')];
+    check('no Gmail settings deep-link buttons remain', !links.some(a => /^Open Gmail .* settings$/.test(a.textContent.trim())) && !links.some(a => /^https:\/\/mail\.google\.com\/.*#settings\//.test(a.getAttribute('href') || '')));
     const steps = [...page.d.querySelectorAll('#lgAuto > ol > li')];
-    const filterLink = steps[3].querySelector('a');
-    check('step 4 opens Filters and Blocked Addresses', filterLink.textContent.trim() === 'Open Gmail filter settings' && filterLink.getAttribute('href') === expected['Open Gmail filter settings']);
-    check('address and confirmation steps retain Forwarding settings', [steps[1], steps[2]].every(step => step.querySelector('a').getAttribute('href') === expected['Open Gmail forwarding settings']));
+    check('forwarding menu-path chips remain intact', [...steps[1].querySelectorAll('.gp')].map(el => el.textContent).join('|') === 'Settings (gear icon)|See all settings|Forwarding and POP/IMAP|Add a forwarding address');
+    check('filter menu-path chips remain intact', [...steps[3].querySelectorAll('.gp')].map(el => el.textContent).join('|') === 'Settings (gear icon)|See all settings|Filters and Blocked Addresses|Create a new filter');
     check('step 2 tells riders to add an address first and explains empty dropdowns', /Add a forwarding address at the top of the Forwarding section first/.test(steps[1].textContent) && /empty dropdowns underneath are normal until an address is added/.test(steps[1].textContent));
     check('closing reminder names the forwarding dropdown and Save Changes', /Forward a copy of incoming mail to/.test(steps[4].textContent) && /Save Changes.*bottom of Gmail.s settings/.test(steps[4].textContent));
     check('reminder distinguishes general forwarding from Tesla-only filters', /General forwarding sends all incoming mail/.test(steps[4].textContent) && /leave general forwarding off and use the Tesla filter/.test(steps[4].textContent));
