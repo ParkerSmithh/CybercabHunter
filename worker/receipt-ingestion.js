@@ -118,7 +118,7 @@ export async function handleIncomingEmail(message, env) {
       errorCode: result.code, errorMessage: result.message, syncRunId: runId
     });
   } else if (['created', 'updated', 'duplicate', 'unidentified'].includes(result.outcome)) {
-    await db.markReceiptReceived(sql, userId);
+    await db.markReceiptReceived(sql, userId, token);
   }
 
   addToCounts(counts, result);
@@ -172,7 +172,7 @@ export async function apiRotateIngestionAddress(request, env, userId) {
 export async function apiCompleteForwardingSetup(request, env, userId) {
   if (!env.RECEIPT_DOMAIN) return Response.json({ success: false, error: 'domain_not_configured' }, { status: 409 });
   const result = await env.cybercabhunter_db.prepare(`
-    UPDATE receipt_ingestion_addresses SET setup_completed_at = datetime('now')
+    UPDATE receipt_ingestion_addresses SET setup_completed_at = COALESCE(setup_completed_at, datetime('now'))
     WHERE user_id = ? AND status = 'active'
   `).bind(userId).run();
   if (!result.meta.changes) return Response.json({ success: false, error: 'address_unavailable' }, { status: 409 });

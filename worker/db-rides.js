@@ -85,13 +85,14 @@ async function saveForwardingCode(sql, userId, { code = null, link = null, reque
 
 // A real receipt has arrived, so forwarding demonstrably works and the
 // one-time confirmation code is no longer needed.
-async function markReceiptReceived(sql, userId) {
+async function markReceiptReceived(sql, userId, token) {
   await sql.prepare(`
     UPDATE receipt_ingestion_addresses
-    SET last_received_at = datetime('now'), forwarding_code = NULL, forwarding_link = NULL,
+    SET last_received_at = datetime('now'), setup_completed_at = COALESCE(setup_completed_at, datetime('now')),
+        forwarding_code = NULL, forwarding_link = NULL,
         forwarding_requested_by = NULL, forwarding_code_received_at = NULL
-    WHERE user_id = ?
-  `).bind(userId).run();
+    WHERE user_id = ? AND opaque_token = ? AND status = 'active'
+  `).bind(userId, token).run();
 }
 
 // ---- Trips: identity lookup, create, revise ----
