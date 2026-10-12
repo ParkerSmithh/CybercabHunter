@@ -411,6 +411,8 @@ async function run() {
     check('setup steps follow the filter-first order', steps.slice(0, 4).map(step => step.querySelector('h4').textContent).join('|') === 'Copy your forwarding address|Start the filter|Add and verify the address|Finish the filter');
     const filter = steps[1].querySelector('a');
     check('step 2 retains the exact filter button', filter.textContent.trim() === 'Open Gmail filter settings' && filter.getAttribute('href') === 'https://mail.google.com/mail/u/0/#settings/filters' && filter.target === '_blank' && filter.rel === 'noopener');
+    const finishFilter = steps[3].querySelector('a');
+    check('step 4 has the same filter-settings button as step 2', !!finishFilter && finishFilter.outerHTML === filter.outerHTML);
     check('no forwarding-tab deep links exist in markup or rendered links', !HTML.includes('#settings/fwdandpop') && !links.some(a => a.href.includes('#settings/fwdandpop')));
     check('filter menu-path chips remain intact in step 2', [...steps[1].querySelectorAll('.gp')].map(el => el.textContent).join('|') === 'Settings (gear icon)|See all settings|Filters and Blocked Addresses|Create a new filter');
     const text = step => step.textContent.replace(/\s+/g, ' ').trim();
@@ -419,6 +421,7 @@ async function run() {
     check('step 3 adds and verifies the address with the existing confirmation UI', /Add a forwarding address, paste your address, then click Next and Proceed/.test(text(steps[2])) && !!steps[2].querySelector('#lgCodeWaiting') && !!steps[2].querySelector('#lgConfirmLink') && !!steps[2].querySelector('#lgCode'));
     check('step 3 leaves general forwarding disabled without saving', /leave Disable forwarding selected/.test(text(steps[2])) && /No Save Changes is needed on this tab/.test(text(steps[2])));
     check('step 4 recreates and completes the filter with the verified address', /Create a new filter again/.test(text(steps[3])) && /From box, type tesla.com/.test(text(steps[3])) && /Tick Forward it.*verified address now appears in the dropdown. Select it, then click Create filter/.test(text(steps[3])) && /second pass finishes creating the filter/.test(text(steps[3])));
+    check('step 4 includes the exact missing-address refresh guidance', text(steps[3]).includes("Don't see your address in the Forward it dropdown? Refresh the Gmail page once, then reopen the filter dialog."));
     check('old empty-dropdown guidance and general-forwarding save reminder are removed', !/empty dropdowns|Without saving, general forwarding/.test(page.d.body.textContent));
     check('closing line explains automatic completion on the first receipt', /detects the first forwarded receipt on its own and completes setup automatically/.test(text(steps[4])));
   }
