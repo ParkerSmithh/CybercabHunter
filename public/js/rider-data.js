@@ -327,12 +327,22 @@
       const forwarding = response.ok && response.json && response.json.forwarding;
       if (!forwarding) throw new Error('forwarding status unavailable');
       const linked = !!forwarding.setup_completed_at || (!!forwarding.last_received_at && !forwarding.confirmation_code && !forwarding.confirmation_link);
-      show('stopSyncBtn', linked);
-      label.textContent = linked ? 'Gmail Linked' : 'Setup Tesla Sync';
+      label.textContent = linked ? 'Stop Sync' : 'Setup Tesla Sync';
+      if (linked) {
+        button.removeAttribute('href');
+        button.setAttribute('role', 'button');
+        button.setAttribute('tabindex', '0');
+      } else {
+        button.setAttribute('href', '/link-gmail');
+        button.removeAttribute('role');
+        button.removeAttribute('tabindex');
+      }
       button.dataset.linked = String(linked);
-      button.title = linked ? 'Gmail forwarding setup is linked. Open setup to manage it.' : 'Set up Gmail receipt forwarding';
+      button.title = linked ? 'Stop receipt syncing by invalidating your forwarding address.' : 'Set up Gmail receipt forwarding';
     } catch (e) {
-      show('stopSyncBtn', false);
+      button.setAttribute('href', '/link-gmail');
+      button.removeAttribute('role');
+      button.removeAttribute('tabindex');
       label.textContent = 'Check Gmail';
       delete button.dataset.linked;
       button.title = 'Connection status unavailable. Open Gmail setup to check or retry.';
@@ -343,7 +353,15 @@
   }
 
   function setupStopSync() {
-    $('stopSyncBtn').addEventListener('click', () => { show('stopSyncConfirm'); show('stopSyncMessage', false); });
+    const action = $('linkGmailBtn');
+    action.addEventListener('click', e => {
+      if (action.dataset.linked !== 'true') return;
+      e.preventDefault();
+      show('stopSyncConfirm'); show('stopSyncMessage', false);
+    });
+    action.addEventListener('keydown', e => {
+      if (action.dataset.linked === 'true' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); action.click(); }
+    });
     $('stopSyncCancel').addEventListener('click', () => show('stopSyncConfirm', false));
     $('stopSyncConfirmBtn').addEventListener('click', async () => {
       const button = $('stopSyncConfirmBtn');
