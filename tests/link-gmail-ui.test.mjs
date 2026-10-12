@@ -233,7 +233,7 @@ async function run() {
   console.log('9. Copy');
   {
     const text = new JSDOM(HTML).window.document.body.textContent;
-    check('no em or en dashes anywhere on the page', !/[–—]/.test(HTML) && !/[–—]/.test(JS));
+    check('no em or en dashes outside the requested Done helper copy', !/[–—]/.test(HTML.replace('No need to wait —', 'No need to wait')) && !/[–—]/.test(JS));
     check('the per-receipt option is removed', !/FORWARD EACH RECEIPT|Works in the Gmail app/.test(text));
     check('the backfill says duplicates are handled', /never counted twice/.test(text));
   }
@@ -246,6 +246,9 @@ async function run() {
       check('automatic setup opens directly for ' + (search || 'default URL'), page.visible('lgSetup') && page.visible('lgAuto') && page.text('lgSetupTitle') === 'FORWARD AUTOMATICALLY');
       check('no method chooser or manual setup remains', !page.$('lgChoose') && !page.$('lgManual') && !page.$('lgChangeMethod'));
       check('Done remains available', !page.$('lgDone').disabled);
+      const hint = page.$('lgDone').nextElementSibling;
+      check('Done has the exact completion helper immediately beside it', hint?.id === 'lgDoneHint' && hint.textContent === 'No need to wait — take your first ride and setup completes on its own when your receipt arrives. Or click Done now.');
+      check('the Done helper matches existing helper styling', hint?.classList.contains('text-sm') && hint.classList.contains('text-slate-400'));
     }
   }
 
@@ -330,7 +333,7 @@ async function run() {
     const page = await openPage(ctx, 'u1', { search: '?method=auto',
       intercept: path => path === '/api/receipt-ingestion/setup/complete' ? new Response('{}', { status: 503 }) : null });
     const finalStep = page.d.querySelector('#lgAuto > ol > li:last-child');
-    check('the single Done button is above the automatic-completion text in the final step', page.d.querySelectorAll('#lgDone').length === 1 && finalStep.contains(page.$('lgDone')) && page.$('lgDone').nextElementSibling.textContent.startsWith('After the filter is created') && finalStep.contains(page.$('lgDoneError')));
+    check('the single Done button is above the completion helper in the final step', page.d.querySelectorAll('#lgDone').length === 1 && finalStep.contains(page.$('lgDone')) && page.$('lgDone').nextElementSibling === page.$('lgDoneHint') && finalStep.contains(page.$('lgDoneError')));
     check('Done is available after the address loads', !page.$('lgDone').disabled && page.text('lgDone') === 'Done');
     page.click(page.$('lgDone'));
     await page.waitFor(() => page.visible('lgDoneError'), 'Done save error');
@@ -428,7 +431,7 @@ async function run() {
     check('step 4 copies tesla.com to the clipboard', page.copied[0] === 'tesla.com' && finishCopy.querySelector('[data-copy-label]').textContent === 'Copied');
     check('step 4 includes the exact missing-address refresh guidance', text(steps[3]).includes("Don't see your address in the Forward it dropdown? Refresh the Gmail page once, then reopen the filter dialog."));
     check('old empty-dropdown guidance and general-forwarding save reminder are removed', !/empty dropdowns|Without saving, general forwarding/.test(page.d.body.textContent));
-    check('closing line explains automatic completion on the first receipt', /detects the first forwarded receipt on its own and completes setup automatically/.test(text(steps[4])));
+    check('closing line explains both completion paths', text(steps[4]).includes('No need to wait — take your first ride and setup completes on its own when your receipt arrives. Or click Done now.'));
   }
 
   {
