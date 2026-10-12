@@ -420,8 +420,7 @@ async function run() {
     check('manual tab fallback is provided', /If the link doesn't take you there, click the Forwarding and POP\/IMAP tab yourself/.test(text(steps[1])));
     check('step 3 adds and verifies the address with the existing confirmation UI', /Add a forwarding address, paste your address, then click Next and Proceed/.test(text(steps[2])) && !!steps[2].querySelector('#lgCodeWaiting') && !!steps[2].querySelector('#lgConfirmLink') && !!steps[2].querySelector('#lgCode'));
     check('step 3 leaves general forwarding disabled without saving', /leave Disable forwarding selected/.test(text(steps[2])) && /No Save Changes is needed on this tab/.test(text(steps[2])));
-    const refreshReminder = steps[2].querySelector('#lgRefreshGmailReminder');
-    check('step 3 ends with a prominent Gmail refresh reminder', !!refreshReminder && refreshReminder === refreshReminder.parentElement.lastElementChild && refreshReminder.classList.contains('text-xl') && refreshReminder.classList.contains('font-bold') && refreshReminder.textContent === 'After confirming your address, refresh the Gmail page before continuing to step 4.');
+    check('the removed step-3 refresh callout is absent', !steps[2].querySelector('#lgRefreshGmailReminder'));
     check('step 4 recreates and completes the filter with the verified address', /Create a new filter again/.test(text(steps[3])) && /From box, type tesla.com/.test(text(steps[3])) && /Tick Forward it.*verified address now appears in the dropdown. Select it, then click Create filter/.test(text(steps[3])) && /second pass finishes creating the filter/.test(text(steps[3])));
     const finishCopy = steps[3].querySelector('[data-copy="tesla.com"]');
     check('step 4 has the same tesla.com copy control as step 2', !!finishCopy && finishCopy.outerHTML === steps[1].querySelector('[data-copy="tesla.com"]').outerHTML);
