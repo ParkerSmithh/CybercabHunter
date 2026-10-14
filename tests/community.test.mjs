@@ -359,8 +359,12 @@ async function run() {
     const tabs = [...d.querySelectorAll('#boardTabs button')];
     check('five tabs in one row, in order, Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
     check('the title is the board label, and Top Overall shows no formula line', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && d.getElementById('boardHelp').classList.contains('hidden') && !/Score =/.test(d.body.textContent));
-    const first = rows[0].querySelector('a');
-    check('1st place: gold highlight, links to /rider/alice, photo shown', first && first.getAttribute('href') === '/rider/alice' && /border-\[rgba\(250,224,48,0\.45\)\]/.test(first.className) && first.querySelector('img'));
+    const first = rows[0].querySelector('button[data-row]');
+    first.click();
+    check('1st place: gold highlight and medal, opens to its breakdown with the link to /rider/alice, photo shown', first && /border-\[rgba\(250,224,48,0\.45\)\]/.test(first.className) && first.querySelector('.lb-rank.is-gold') && first.getAttribute('aria-expanded') === 'true' && !rows[0].querySelector('.lb-details').hidden && rows[0].querySelector('.lb-details a[href="/rider/alice"]') && first.querySelector('img'));
+    check('...the breakdown shows the points math: 20 + 6 + 4 + 5 + 1 = 36 pts', /20\s*2 found × 10\s*\+\s*6\s*2 rides × 3\s*\+\s*4\s*2 cars × 2\s*\+\s*5\s*1 city × 5\s*\+\s*1\s*5\.6 mi ÷ 10\s*=\s*36\s*pts/.test(rows[0].querySelector('.lb-math').textContent.replace(/\u00a0/g, ' ')));
+    check('ranks are shown once (no "Rank 1 1"): the badge reads "1", "Rank" is for screen readers only', rows[0].querySelector('.lb-rank').textContent.replace(/\s+/g, ' ').trim() === 'Rank 1' && !rows[0].querySelector('.lb-rank[aria-label]') && rows[0].querySelector('.lb-rank .sr-only'));
+    check('the heading counts the rows actually ranked, with an invitation to join', d.getElementById('boardCount').textContent === '2 ranked' && /Room for 8 more/.test(d.getElementById('boardInvite').textContent));
     // Alice: 2 discovered, 2 rides of 2.8 mi (the seed's default) in 2 cars, 1 city:
     // 20 + 6 + 4 + 5 + round(5.6 / 10) = 36.
     check('rows show rank, name, score in pts and the breakdown', /Alice/.test(rows[0].textContent) && /36\s*pts/.test(rows[0].textContent.replace(/\s+/g, ' ')) && /2 found · 2 rides · 2 cars · 1 city · 5\.6 mi/.test(rows[0].textContent.replace(/\u00a0/g, ' ')));
@@ -372,7 +376,7 @@ async function run() {
     await new Promise(r => setTimeout(r, 60));
     const carol = rows.find(r => /Carol/.test(r.textContent));
     const avatarSlot = row => row.querySelector('span.w-10');
-    check('opted in without a username: initials, no link', carol && !carol.querySelector('a') && !carol.querySelector('img') && avatarSlot(carol).textContent.trim() === 'C');
+    check('opted in without a username: initials, no profile link (its breakdown says so)', carol && !carol.querySelector('a') && !carol.querySelector('img') && avatarSlot(carol).textContent.trim() === 'C' && /hasn't set up a public profile/.test(carol.querySelector('.lb-details').textContent));
     const img = first.querySelector('img');
     img.dispatchEvent(new w.Event('error'));
     check('a photo that fails to load falls back to initials', !first.querySelector('img') && avatarSlot(rows[0]).textContent.trim() === 'A', avatarSlot(rows[0]).innerHTML);
