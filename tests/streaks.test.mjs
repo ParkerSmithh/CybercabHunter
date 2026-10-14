@@ -13,7 +13,8 @@
 import fs from 'node:fs';
 import worker from '../worker/index.js';
 import { makeEnv, makeCheck } from './helpers/env.mjs';
-import { computeStreaks, austinDayIndex, dayKey, weekIndex, weekMonday, apiMyStreaks, apiStreakLeaderboard } from '../worker/streaks.js';
+import { computeStreaks, austinDayIndex, dayKey, weekIndex, weekMonday, apiMyStreaks } from '../worker/streaks.js';
+import { apiStreakLeaderboard } from '../worker/community-summary.js';
 
 const t = makeCheck();
 const { check } = t;
@@ -137,7 +138,7 @@ async function run() {
     check('Top weekly: cy (4 weeks) first', weekly.json.entries[0].handle === 'cy' && weekly.json.entries[0].weekly_current === 4);
     const longest = await lb('longest');
     check('Longest all-time: by best daily streak (bo 9 first)', longest.json.entries[0].handle === 'bo' && longest.json.entries[0].longest_daily === 9);
-    check('entries carry public fields only (no ids, emails or sighting details)', daily.json.entries.every(e => Object.keys(e).sort().join() === 'avatar_url,daily_current,handle,longest_daily,longest_weekly,name,profile,rank,weekly_current'));
+    check('entries carry public fields only (no ids, emails or sighting details)', daily.json.entries.every(e => Object.keys(e).sort().join() === 'avatar_url,daily_current,handle,longest_daily,longest_weekly,name,profile,rank,tied,weekly_current'));
     check('unknown board: 400', (await lb('nope')).status === 400);
     // At-a-glance counts over every spotter (the opted-out rider too, never the system account), naming no one.
     // Active daily: ann, bo, priv; weekly: ann, bo, cy, priv. Record 13 (priv). This week (Mon Oct 12 on, after ann's Oct 14 ones were deleted): ann 2, bo 2, cy 1, priv 2.

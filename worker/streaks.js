@@ -5,12 +5,8 @@
 //          weekly: { current, longest, week_done }, verified: { sightings, days },
 //          calendar: { from, to, days: [{ date, count }] },   (days with sightings only)
 //          milestones: [{ type, n, unlocked, unlocked_on }] }
-//   GET /api/streaks/leaderboard?board=daily|weekly|longest   public, edge-cached 5 min
-//     -> { board, entries: [{ rank, name, handle, avatar_url, profile,
-//          daily_current, weekly_current, longest_daily, longest_weekly }],
-//          stats: { active_daily, active_weekly, record_daily, record_weekly, verified_this_week } }
-//     stats are counts over EVERY spotter (opted in or not; never the system
-//     account) and name no one, like the page's other at-a-glance totals.
+//   The public streak rankings and community totals are precomputed once a
+//   day: worker/community-summary.js (/api/streaks/leaderboard, /api/community/summary).
 //
 // THE RULES (computed live from the database on every request, never stored,
 // so they are always right after a review, a deletion or a status change):
@@ -36,16 +32,12 @@
 // details. A rider who opted out still sees their own streaks.
 
 import { tesla } from './tesla.js';
-import { safeAvatar } from './community.js';
 
 export const STREAK_TZ = 'America/Chicago';
 export const DAILY_MILESTONES = [3, 7, 14, 30, 60, 100];
 export const WEEKLY_MILESTONES = [2, 4, 8, 12, 26, 52];
 const DAY = 864e5;
 const CALENDAR_DAYS = 371;          // 53 weeks
-const BOARD_CACHE_SECONDS = 300;
-const TOP_N = 10;
-const BOARDS = { daily: 'Top daily streaks', weekly: 'Top weekly streaks', longest: 'Longest all-time streaks' };
 const APPROVED_SIGHTING = `submission_type = 'vehicle_sighting' AND status = 'approved'`;
 
 // ---- Austin time without Intl (fast enough for every rider's rows) ----
@@ -141,57 +133,4 @@ export async function apiMyStreaks(request, env, { now = Date.now() } = {}) {
     calendar: { from: dayKey(from), to: dayKey(today), days: calendar },
     milestones: s.milestones
   }, { headers: { 'Cache-Control': 'private, no-store' } });
-}
-
-// Every opted-in rider's streaks, ranked for one board.
-export async function apiStreakLeaderboard(request, env, ctx, { now = Date.now() } = {}) {
-  const board = new URL(request.url).searchParams.get('board') || 'daily';
-  if (!Object.prototype.hasOwnProperty.call(BOARDS, board)) return Response.json({ success: false, error: 'invalid_board' }, { status: 400 });
-  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
-  if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
-  const sys = env.MUSE_CONNECTOR_USER_ID || '\u0000';
-  const { results } = await env.cybercabhunter_db.prepare(`
-    SELECT s.user_id AS uid, substr(s.submitted_at, 1, 13) AS hr, COUNT(*) AS n,
-           u.display_name, u.handle, u.avatar_url, u.leaderboard_opt_in AS opt_in
-    FROM submissions s JOIN users u ON u.id = s.user_id
-    WHERE s.${APPROVED_SIGHTING.replace(' AND status', ' AND s.status')} AND u.id <> ?
-    GROUP BY s.user_id, hr
-  `).bind(sys).all();
-  const byUser = new Map();
-  for (const r of results || []) {
-    if (!byUser.has(r.uid)) byUser.set(r.uid, { user: r, rows: [] });
-    byUser.get(r.uid).rows.push(r);
-  }
-  const today = austinDayIndex(now), thisWeek = weekIndex(today);
-  let verifiedThisWeek = 0;
-  const everyone = [...byUser.values()].map(({ user, rows }) => {
-    const counts = toDayCounts(rows);
-    for (const [day, n] of counts) if (day <= today && weekIndex(day) === thisWeek) verifiedThisWeek += n;
-    const s = computeStreaks(counts, today);
-    return { user, daily_current: s.daily.current, weekly_current: s.weekly.current, longest_daily: s.daily.longest, longest_weekly: s.weekly.longest };
-  });
-  const stats = {
-    active_daily: everyone.filter(r => r.daily_current > 0).length,
-    active_weekly: everyone.filter(r => r.weekly_current > 0).length,
-    record_daily: Math.max(0, ...everyone.map(r => r.longest_daily)),
-    record_weekly: Math.max(0, ...everyone.map(r => r.longest_weekly)),
-    verified_this_week: verifiedThisWeek
-  };
-  // Only riders who opted in are ever named or ranked.
-  const riders = everyone.filter(r => Number(r.user.opt_in) === 1);
-  const key = { daily: r => [r.daily_current, r.longest_daily, r.weekly_current], weekly: r => [r.weekly_current, r.longest_weekly, r.daily_current], longest: r => [r.longest_daily, r.longest_weekly, r.daily_current] }[board];
-  const name = r => (r.user.display_name && String(r.user.display_name).trim()) || (r.user.handle ? `@${r.user.handle}` : 'Spotter');
-  const cmp = (a, b) => { const ka = key(a), kb = key(b); for (let i = 0; i < ka.length; i++) if (kb[i] !== ka[i]) return kb[i] - ka[i]; return name(a).localeCompare(name(b)); };
-  const ranked = riders.filter(r => key(r)[0] > 0).sort(cmp).slice(0, TOP_N);
-  const entries = [];
-  ranked.forEach((r, i) => {
-    const rank = i > 0 && key(ranked[i - 1])[0] === key(r)[0] ? entries[i - 1].rank : i + 1;
-    entries.push({ rank, name: name(r), handle: r.user.handle || null, avatar_url: safeAvatar(r.user.avatar_url), profile: !!r.user.handle,
-      daily_current: r.daily_current, weekly_current: r.weekly_current, longest_daily: r.longest_daily, longest_weekly: r.longest_weekly });
-  });
-  const response = Response.json({ board, label: BOARDS[board], timezone: STREAK_TZ, boards: Object.entries(BOARDS).map(([id, label]) => ({ id, label })), entries, stats },
-    { headers: { 'Cache-Control': `public, max-age=${BOARD_CACHE_SECONDS}` } });
-  if (cache) { const stored = cache.put(cacheKey, response.clone()).catch(() => {}); if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored); }
-  return response;
 }
