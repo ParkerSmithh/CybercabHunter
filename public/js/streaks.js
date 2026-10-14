@@ -48,7 +48,23 @@
         boardData[id] = r.ok ? { state: 'ready', ...(await r.json()) } : { state: 'error' };
       } catch (e) { boardData[id] = { state: 'error' }; }
     }
+    fillStats(boardData[id].stats);
     renderBoard();
+  }
+
+  // The Streaks tab's at-a-glance tiles (counts over every spotter, from the rankings).
+  function fillStats(st) {
+    const set = (id, v, sub) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = Number.isInteger(v) ? v.toLocaleString('en-US') : '—';
+      const s = document.querySelector(`[data-sub="${id}"]`);
+      if (s && sub && Number.isInteger(v)) s.textContent = sub(v);
+    };
+    if (!st) return;
+    set('statStreakWeekly', st.active_weekly, n => `${n === 1 ? 'Spotter' : 'Spotters'} on a weekly run`);
+    set('statStreakDaily', st.active_daily, n => `${n === 1 ? 'Spotter' : 'Spotters'} on a daily run`);
+    set('statStreakRecord', st.record_daily, n => `${n === 1 ? 'Day' : 'Days'} in a row, all-time`);
+    set('statStreakWeek', st.verified_this_week, () => 'Approved since Monday');
   }
 
   function statCard(kind, d) {

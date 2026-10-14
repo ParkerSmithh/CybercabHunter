@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=6">
+<link rel="stylesheet" href="css/community.css?v=7">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -123,29 +123,75 @@
 
     <!-- At a glance: every number is the server's (reviews: GET /api/reviews,
          js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
-         GET /api/registry/stats, js/community.js). Each starts as an em dash
-         and stays one if it can't be loaded — never a made-up 0. -->
+         GET /api/registry/stats, js/community.js; streaks: GET
+         /api/streaks/leaderboard, js/streaks.js). One set of four per tab,
+         about that tab. Each starts as an em dash and stays one if it can't
+         be loaded — never a made-up 0. -->
     <div id="communityStats" class="community-stats glass soft-panel">
-      <div class="community-stat-grid">
+      <div class="community-stat-grid" data-stats-view="reviews">
       <div class="community-stat">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statReviews">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Posted by signed-in riders</div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statReviews">Posted by signed-in riders</div>
       </div>
       <div class="community-stat">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statRating">—</span><span class="text-sm text-slate-500 max-sm:text-[10px]"> / 5</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Across all reviews</div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statRating">Across all reviews</div>
       </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Five-star reviews</span><span class="sm:hidden">5★</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statFiveStar">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statFiveStar">Share of all reviews</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Open to review</span><span class="sm:hidden">Cybercabs</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statVehiclesReview">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statVehiclesReview">Public Cybercabs to rate</div>
+      </div>
+      </div>
+      <div class="community-stat-grid hidden" data-stats-view="streaks">
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Active weekly streaks</span><span class="sm:hidden">Weekly</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statStreakWeekly">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statStreakWeekly">Spotters on a weekly run</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Active daily streaks</span><span class="sm:hidden">Daily</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statStreakDaily">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statStreakDaily">Spotters on a daily run</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Longest streak</span><span class="sm:hidden">Record</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statStreakRecord">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statStreakRecord">Days in a row, all-time</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Verified this week</span><span class="sm:hidden">This week</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statStreakWeek">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statStreakWeek">Approved since Monday</div>
+      </div>
+      </div>
+      <div class="community-stat-grid hidden" data-stats-view="leaderboard">
       <div class="community-stat">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Spotters</div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statSpotters">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Credited with a discovery</div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statSpotters">Credited with a discovery</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Vehicles discovered</span><span class="sm:hidden">Found</span></div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statDiscovered">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statDiscovered">First spotted or ridden</div>
       </div>
       <div class="community-stat">
         <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Public Cybercabs</span><span class="sm:hidden">Cybercabs</span></div>
         <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statVehicles">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">In the public registry</div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statVehicles">In the public registry</div>
+      </div>
+      <div class="community-stat">
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Top score</div>
+        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statTopScore">—</span></div>
+        <div class="text-xs text-slate-500 max-sm:hidden" data-sub="statTopScore">Leading Top Overall</div>
       </div>
       </div>
       <div class="community-stats-art" aria-hidden="true"><img src="images/CybercabFlipped.png" width="600" height="416" alt="" decoding="async"></div>
@@ -448,11 +494,11 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=13"></script>
+<script src="js/community.js?v=14"></script>
 <script src="js/peek-rating.js?v=1"></script>
-<script src="js/reviews.js?v=8"></script>
+<script src="js/reviews.js?v=9"></script>
 <script src="js/rider-search.js?v=2"></script>
-<script src="js/streaks.js?v=2"></script>
+<script src="js/streaks.js?v=3"></script>
 <script>
   // ---- Reviews | Streaks | Leaderboard (the Simulation page's tabs) ----
   (function () {
@@ -465,6 +511,7 @@
         tab(v).setAttribute('aria-selected', String(v === view));
         tab(v).tabIndex = v === view ? 0 : -1;
         panel(v).classList.toggle('hidden', v !== view);
+        document.querySelectorAll(`[data-stats-view="${v}"]`).forEach(g => g.classList.toggle('hidden', v !== view));
       }
       if (focus) tab(view).focus();
       document.dispatchEvent(new CustomEvent('cch:community-view', { detail: { view } }));

@@ -63,6 +63,7 @@
   function renderTotals(t) {
     const ok = t && Number.isInteger(t.spotters) && Number.isInteger(t.vehicles);
     if ($('statSpotters')) $('statSpotters').textContent = ok ? t.spotters.toLocaleString('en-US') : '—';
+    if ($('statDiscovered')) $('statDiscovered').textContent = ok ? t.vehicles.toLocaleString('en-US') : '—';
     const el = $('boardTotals');
     if (!el) return;
     el.classList.toggle('hidden', !ok || t.spotters === 0 || activeBoard !== 'discovered');
@@ -71,12 +72,16 @@
 
   // Public Cybercabs, for the at-a-glance tile (GET /api/registry/stats).
   async function loadRegistryCount() {
-    if (!$('statVehicles')) return;
+    // The same number on the Leaderboard tab and, as "Open to review", on Reviews.
+    const ids = ['statVehicles', 'statVehiclesReview'].filter(id => $(id));
+    if (!ids.length) return;
+    let text = '—';
     try {
       const resp = await fetch(`${API}/api/registry/stats`);
       const data = resp.ok ? await resp.json() : null;
-      $('statVehicles').textContent = data && Number.isInteger(data.public_vehicles) ? data.public_vehicles.toLocaleString('en-US') : '—';
-    } catch (e) { $('statVehicles').textContent = '—'; }
+      if (data && Number.isInteger(data.public_vehicles)) text = data.public_vehicles.toLocaleString('en-US');
+    } catch (e) { text = '—'; }
+    ids.forEach(id => { $(id).textContent = text; });
   }
 
   let activeBoard = null;
@@ -111,6 +116,13 @@
     activeBoard = data.board;
     if (Array.isArray(data.unit) && data.unit.length === 2) unit = data.unit;
     renderTotals(data.totals);
+    // The Top score tile: the Top Overall leader's points (a public board row).
+    if (activeBoard === 'overall' && $('statTopScore')) {
+      const lead = data.entries[0];
+      $('statTopScore').textContent = lead && Number.isFinite(lead.score) ? Number(lead.score).toLocaleString('en-US') : '—';
+      const sub = document.querySelector('[data-sub="statTopScore"]');
+      if (sub) sub.textContent = lead ? `${lead.name} · Top Overall` : 'Leading Top Overall';
+    }
     $('boardTitle').textContent = String(data.label || '').toUpperCase();
     $('boardHelp').textContent = data.help || '';
     $('boardHelp').classList.toggle('hidden', !data.help);

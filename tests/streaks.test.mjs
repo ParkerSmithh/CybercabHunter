@@ -139,6 +139,11 @@ async function run() {
     check('Longest all-time: by best daily streak (bo 9 first)', longest.json.entries[0].handle === 'bo' && longest.json.entries[0].longest_daily === 9);
     check('entries carry public fields only (no ids, emails or sighting details)', daily.json.entries.every(e => Object.keys(e).sort().join() === 'avatar_url,daily_current,handle,longest_daily,longest_weekly,name,profile,rank,weekly_current'));
     check('unknown board: 400', (await lb('nope')).status === 400);
+    // At-a-glance counts over every spotter (the opted-out rider too, never the system account), naming no one.
+    // Active daily: ann, bo, priv; weekly: ann, bo, cy, priv. Record 13 (priv). This week (Mon Oct 12 on, after ann's Oct 14 ones were deleted): ann 2, bo 2, cy 1, priv 2.
+    const st = daily.json.stats;
+    check('stats: active streak counts over every spotter (opted out included, system account never)', st.active_daily === 3 && st.active_weekly === 4);
+    check('...the all-time record and this week\'s verified sightings (Mon Oct 12 onward)', st.record_daily === 13 && st.verified_this_week === 2 + 2 + 1 + 2 && Object.keys(st).sort().join() === 'active_daily,active_weekly,record_daily,record_weekly,verified_this_week');
     const viaRoute = await worker.fetch(new Request('https://x/api/streaks/me', { headers: { Authorization: 'Bearer session-ann', Origin: 'https://cybercabhunter.com' } }), env, { waitUntil() {} });
     check('the routes are wired (/api/streaks/me, /api/streaks/leaderboard)', viaRoute.status === 200 && (await worker.fetch(new Request('https://x/api/streaks/leaderboard?board=weekly'), env, { waitUntil() {} })).status === 200);
   }

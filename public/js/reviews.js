@@ -161,6 +161,11 @@
     // The page's at-a-glance tiles.
     if ($('statReviews')) $('statReviews').textContent = count == null ? '—' : count.toLocaleString('en-US');
     if ($('statRating')) $('statRating').textContent = avg == null ? '—' : avg.toFixed(1);
+    // Five-star reviews: their count, and their share of all reviews below it.
+    const five = dist && Number.isInteger(dist[5]) ? dist[5] : null;
+    if ($('statFiveStar')) $('statFiveStar').textContent = five == null ? '—' : five.toLocaleString('en-US');
+    const fiveSub = document.querySelector('[data-sub="statFiveStar"]');
+    if (fiveSub) fiveSub.textContent = five != null && count ? `${Math.round((five / count) * 100)}% of all reviews` : 'Share of all reviews';
   }
 
   function cardHtml(r) {
