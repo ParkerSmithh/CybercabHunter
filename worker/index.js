@@ -1,4 +1,5 @@
 import { apiMyStreaks } from './streaks.js';
+import { apiMyXp, apiXpRules, reconcileAllXp } from './progression.js';
 import { apiStreakLeaderboard, apiCommunitySummary, recomputeCommunitySummary } from './community-summary.js';
 import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
@@ -287,6 +288,12 @@ const worker = {
     if (moderationPublicPhotoMatch && request.method === 'DELETE') {
       return withCors(await apiDeletePublicSightingPhoto(request, env, moderationPublicPhotoMatch[1]), request);
     }
+    // Spotter XP: the full reconcile now (moderators; normally the daily cron).
+    if (url.pathname === '/api/moderation/xp/reconcile' && request.method === 'POST') {
+      const auth = await requireModerator(request, env);
+      if (auth.error) return withCors(Response.json({ success: false, error: auth.error === 'unauthenticated' ? 'unauthenticated' : 'forbidden' }, { status: auth.error === 'unauthenticated' ? 401 : 403 }), request);
+      return withCors(Response.json({ success: true, ...(await reconcileAllXp(env)) }), request);
+    }
     const moderationReviewMatch = url.pathname.match(/^\/api\/moderation\/vehicle-sightings\/([^/]+)$/);
     if (moderationReviewMatch && request.method === 'PATCH') {
       return withCors(await apiReviewVehicleSighting(request, env, moderationReviewMatch[1]), request);
@@ -453,6 +460,13 @@ const worker = {
     }
     if (url.pathname === '/api/community/summary' && request.method === 'GET') {
       return withCors(await apiCommunitySummary(request, env, ctx), request);
+    }
+    // Spotter XP, levels, ranks and missions (worker/progression.js).
+    if (url.pathname === '/api/xp/me' && request.method === 'GET') {
+      return withCors(await apiMyXp(request, env), request);
+    }
+    if (url.pathname === '/api/xp/rules' && request.method === 'GET') {
+      return withCors(await apiXpRules(), request);
     }
     if (url.pathname === '/api/rider-search' && request.method === 'GET') {
       return withCors(await apiSearchRiders(request, env), request);
@@ -665,8 +679,9 @@ const worker = {
     // feature needs no trigger of its own and each run stays small.
     if (controller && controller.cron === FLEET_STATS_CRON) {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
-      // The Community page's numbers (worker/community-summary.js): once a day.
-      ctx.waitUntil(recomputeCommunitySummary(env).catch(() => {}));
+      // Spotter XP (worker/progression.js): the full reconcile (backfill,
+      // discoveries, reversals), then the Community page's daily numbers.
+      ctx.waitUntil(reconcileAllXp(env).catch(() => {}).then(() => recomputeCommunitySummary(env)).catch(() => {}));
       return;
     }
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js
