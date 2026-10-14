@@ -332,3 +332,16 @@ a.streak-row:hover{border-color:rgb(var(--gold) / .45);background:rgb(var(--ink)
   .streak-ms-name{font-size:11px;}
   .streak-ms-sub{font-size:9px;}
 }
+
+/* The section tabs and Find riders share one row (search on the right); on
+   phones the search sits full width under the tabs. Works from every section. */
+.community-toolbar{position:relative;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.community-toolbar #communityTabs{min-width:0;}
+.community-toolbar-search{width:320px;max-width:100%;margin-top:0;flex-shrink:0;}
+.community-toolbar-search input{min-height:44px;}
+@media(max-width:767px){
+  .community-toolbar{flex-direction:column;align-items:stretch;gap:10px;}
+  .community-toolbar-search{width:100%;}
+  .community-toolbar-search input{min-height:40px;font-size:13px;}
+}
+.community-toolbar #riderSearchList{background:rgb(var(--surface) / .98);}

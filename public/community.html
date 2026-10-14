@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=11">
+<link rel="stylesheet" href="css/community.css?v=14">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -92,10 +92,25 @@
      The choice is kept in the URL (?view=streaks / ?view=leaderboard). -->
 <section class="pt-8 max-sm:pt-4">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-    <div id="communityTabs" role="tablist" aria-label="Community" class="flex flex-wrap gap-2">
-      <button id="communityTabReviews" type="button" role="tab" data-view="reviews" aria-selected="true" aria-controls="communityPanelReviews" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">REVIEWS</button>
-      <button id="communityTabStreaks" type="button" role="tab" data-view="streaks" aria-selected="false" aria-controls="communityPanelStreaks" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">STREAKS</button>
-      <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
+    <div class="community-toolbar">
+      <div id="communityTabs" role="tablist" aria-label="Community" class="flex flex-wrap gap-2">
+        <button id="communityTabReviews" type="button" role="tab" data-view="reviews" aria-selected="true" aria-controls="communityPanelReviews" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">REVIEWS</button>
+        <button id="communityTabStreaks" type="button" role="tab" data-view="streaks" aria-selected="false" aria-controls="communityPanelStreaks" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">STREAKS</button>
+        <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
+      </div>
+      <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
+           from the first character, only riders with a public profile. Beside
+           the section tabs, so it works from every section. -->
+      <div id="riderSearch" class="community-search community-toolbar-search relative">
+        <label for="riderSearchInput" class="sr-only">Find riders</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
+          <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
+            aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Find riders by name"
+            class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-full pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-500 focus:outline-none focus:border-gold">
+        </div>
+        <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
+      </div>
     </div>
   </div>
 </section>
@@ -322,19 +337,6 @@
         </div>
       </div>
 
-      <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
-         from the first character, only riders with a public profile.
-         In the Leaderboard section, where riders are listed. -->
-    <div id="riderSearch" class="community-search board-search relative">
-      <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5 max-sm:sr-only">Find riders</label>
-      <div class="relative">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
-        <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
-          aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Search by name"
-          class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
-      </div>
-      <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
-    </div>
     <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="board-tabs hidden mt-5 mb-5 flex flex-nowrap gap-2 overflow-x-auto"></div>
       <div id="boardLoading" class="mt-4 space-y-2" aria-busy="true">
         <span class="sr-only">Loading the leaderboard…</span>
