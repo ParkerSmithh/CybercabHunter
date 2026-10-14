@@ -1,3 +1,4 @@
+import { apiMyStreaks, apiStreakLeaderboard } from './streaks.js';
 import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
@@ -440,6 +441,14 @@ const worker = {
     // profiles. Public GETs; only opted-in riders are ever identified.
     if (url.pathname === '/api/community/leaderboard' && request.method === 'GET') {
       return withCors(await apiCommunityLeaderboard(request, env, ctx), request);
+    }
+    // Spotting Streaks (worker/streaks.js): the signed-in rider's own streaks
+    // (live, never cached) and the public streak rankings (opted-in riders only).
+    if (url.pathname === '/api/streaks/me' && request.method === 'GET') {
+      return withCors(await apiMyStreaks(request, env), request);
+    }
+    if (url.pathname === '/api/streaks/leaderboard' && request.method === 'GET') {
+      return withCors(await apiStreakLeaderboard(request, env, ctx), request);
     }
     if (url.pathname === '/api/rider-search' && request.method === 'GET') {
       return withCors(await apiSearchRiders(request, env), request);
