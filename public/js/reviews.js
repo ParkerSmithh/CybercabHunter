@@ -159,8 +159,18 @@
     $('reviewSummary').classList.toggle('hidden', !count);
     $('reviewSort').classList.toggle('hidden', !count);
     // The page's at-a-glance tiles.
-    if ($('statReviews')) $('statReviews').textContent = count == null ? '—' : count.toLocaleString('en-US');
-    if ($('statRating')) $('statRating').textContent = avg == null ? '—' : avg.toFixed(1);
+    // Counted up as they come into view (js/community-stats.js).
+    const stat = window.CommunityStats;
+    const setStat = (id, n, opts) => { if (stat) stat.set(id, n, opts); else if ($(id)) $(id).textContent = n == null ? '—' : opts && opts.decimals ? n.toFixed(opts.decimals) : n.toLocaleString('en-US'); };
+    setStat('statReviews', count == null ? null : count, { note: count === 0 ? 'Be the first to post one' : 'Posted by signed-in riders' });
+    // No reviews: not a bare "— / 5", an invitation.
+    const noRatings = count === 0;
+    setStat('statRating', noRatings ? null : avg, { decimals: 1, note: noRatings ? 'Be the first to rate a ride' : 'Across all reviews' });
+    if ($('statRating') && noRatings) $('statRating').textContent = 'None yet';
+    document.querySelector('[data-suffix="statRating"]')?.classList.toggle('hidden', noRatings || avg == null);
+    // Five-star reviews: their count, and their share of all reviews below it.
+    const five = dist && Number.isInteger(dist[5]) ? dist[5] : null;
+    setStat('statFiveStar', five, { note: five != null && count ? `${Math.round((five / count) * 100)}% of all reviews` : 'Share of all reviews' });
   }
 
   function cardHtml(r) {

@@ -1,4 +1,5 @@
-import { apiMyStreaks, apiStreakLeaderboard } from './streaks.js';
+import { apiMyStreaks } from './streaks.js';
+import { apiStreakLeaderboard, apiCommunitySummary, recomputeCommunitySummary } from './community-summary.js';
 import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
@@ -450,6 +451,9 @@ const worker = {
     if (url.pathname === '/api/streaks/leaderboard' && request.method === 'GET') {
       return withCors(await apiStreakLeaderboard(request, env, ctx), request);
     }
+    if (url.pathname === '/api/community/summary' && request.method === 'GET') {
+      return withCors(await apiCommunitySummary(request, env, ctx), request);
+    }
     if (url.pathname === '/api/rider-search' && request.method === 'GET') {
       return withCors(await apiSearchRiders(request, env), request);
     }
@@ -661,6 +665,8 @@ const worker = {
     // feature needs no trigger of its own and each run stays small.
     if (controller && controller.cron === FLEET_STATS_CRON) {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
+      // The Community page's numbers (worker/community-summary.js): once a day.
+      ctx.waitUntil(recomputeCommunitySummary(env).catch(() => {}));
       return;
     }
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js

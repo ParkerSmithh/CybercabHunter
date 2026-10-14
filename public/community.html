@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=6">
+<link rel="stylesheet" href="css/community.css?v=11">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -101,54 +101,98 @@
 </section>
 <section class="community-section">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <!-- Hero: the headline and an intro for the selected section, beside the
+         gold Cybercab on a soft glow (decorative; it eases in once on load). -->
     <div class="community-hero">
-      <div class="min-w-0">
-        <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:text-[1.75rem]">COMMUNITY</h1>
-        <p class="community-intro">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
-
-      <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
-           from the first character, only riders with a public profile. -->
-      <div id="riderSearch" class="community-search relative">
-        <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5 max-sm:sr-only">Find riders</label>
-        <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
-          <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
-            aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Search by name"
-            class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
-        </div>
-        <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
+      <div class="community-hero-copy">
+        <p class="community-eyebrow"><span class="community-eyebrow-dot" aria-hidden="true"></span>Cybercab Hunter community</p>
+        <h1 class="community-title font-display font-bold">COMMUNITY</h1>
+        <p class="community-intro" id="communityIntro">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
       </div>
+      <div class="community-hero-art" aria-hidden="true">
+        <span class="community-hero-glow"></span><span class="community-hero-grid"></span>
+        <img src="images/CybercabFlipped.png" width="600" height="416" alt="" decoding="async">
       </div>
     </div>
 
-    <!-- At a glance: every number is the server's (reviews: GET /api/reviews,
-         js/reviews.js; spotters: GET /api/community/leaderboard and Cybercabs:
-         GET /api/registry/stats, js/community.js). Each starts as an em dash
-         and stays one if it can't be loaded — never a made-up 0. -->
+    <!-- At a glance, about the selected section. Every number is the server's:
+         reviews (GET /api/reviews, js/reviews.js); spotters and vehicles found
+         (GET /api/community/leaderboard, js/community.js); public Cybercabs
+         (GET /api/registry/stats); sightings, photos, cities and streaks
+         (GET /api/community/summary, precomputed daily; js/community-stats.js).
+         Each starts as an em dash and stays one if it can't be loaded. -->
     <div id="communityStats" class="community-stats glass soft-panel">
-      <div class="community-stat-grid">
-      <div class="community-stat">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Reviews</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statReviews">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Posted by signed-in riders</div>
+      <div class="community-stat-grid" data-stats-view="reviews" style="--cells:4">
+        <div class="community-stat">
+          <div class="community-stat-label">Reviews</div>
+          <div class="community-stat-value"><span id="statReviews" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statReviews">Posted by signed-in riders</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
+          <div class="community-stat-value"><span id="statRating" class="stat-value">—</span><span class="community-stat-suffix" data-suffix="statRating"> / 5</span></div>
+          <div class="community-stat-sub" data-sub="statRating">Across all reviews</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Five-star reviews</span><span class="sm:hidden">5★</span></div>
+          <div class="community-stat-value"><span id="statFiveStar" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statFiveStar">Share of all reviews</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Open to review</span><span class="sm:hidden">Cybercabs</span></div>
+          <div class="community-stat-value"><span id="statVehiclesReview" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statVehiclesReview">Public Cybercabs to rate</div>
+        </div>
       </div>
-      <div class="community-stat">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statRating">—</span><span class="text-sm text-slate-500 max-sm:text-[10px]"> / 5</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Across all reviews</div>
+      <div class="community-stat-grid hidden" data-stats-view="streaks" style="--cells:4">
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Active weekly streaks</span><span class="sm:hidden">Weekly</span></div>
+          <div class="community-stat-value"><span id="statStreakWeekly" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statStreakWeekly">Spotters on a weekly run</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Active daily streaks</span><span class="sm:hidden">Daily</span></div>
+          <div class="community-stat-value"><span id="statStreakDaily" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statStreakDaily">Spotters on a daily run</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Longest streak</span><span class="sm:hidden">Record</span></div>
+          <div class="community-stat-value"><span id="statStreakRecord" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statStreakRecord">Days in a row, all-time</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Verified this week</span><span class="sm:hidden">This week</span></div>
+          <div class="community-stat-value"><span id="statStreakWeek" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statStreakWeek">Approved since Monday</div><div class="community-spark" data-spark="statStreakWeek" aria-hidden="true"></div>
+        </div>
       </div>
-      <div class="community-stat">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate">Spotters</div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statSpotters">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">Credited with a discovery</div>
+      <div class="community-stat-grid hidden" data-stats-view="leaderboard" style="--cells:5">
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Credited spotters</span><span class="sm:hidden">Spotters</span></div>
+          <div class="community-stat-value"><span id="statSpotters" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statSpotters">With a vehicle discovery</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Vehicles discovered</span><span class="sm:hidden">Found</span></div>
+          <div class="community-stat-value"><span id="statDiscovered" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statDiscovered">First spotted or ridden</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Verified sightings</span><span class="sm:hidden">Sightings</span></div>
+          <div class="community-stat-value"><span id="statSightings" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statSightings">Approved, all-time</div><div class="community-spark" data-spark="statSightings" aria-hidden="true"></div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Photos submitted</span><span class="sm:hidden">Photos</span></div>
+          <div class="community-stat-value"><span id="statPhotos" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statPhotos">Sighting photos sent in</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Cities covered</span><span class="sm:hidden">Cities</span></div>
+          <div class="community-stat-value"><span id="statCities" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statCities">With a verified sighting</div>
+        </div>
       </div>
-      <div class="community-stat">
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-sm:text-[9px] max-sm:tracking-normal max-sm:truncate"><span class="max-sm:hidden">Public Cybercabs</span><span class="sm:hidden">Cybercabs</span></div>
-        <div class="mt-1.5 font-display font-bold text-2xl text-white tabular-nums max-sm:mt-0.5 max-sm:text-lg"><span id="statVehicles">—</span></div>
-        <div class="text-xs text-slate-500 max-sm:hidden">In the public registry</div>
-      </div>
-      </div>
-      <div class="community-stats-art" aria-hidden="true"><img src="images/CybercabFlipped.png" width="600" height="416" alt="" decoding="async"></div>
     </div>
 
     <!-- One section at a time (the tabs above). -->
@@ -235,6 +279,12 @@
         <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
         <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
         <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
+        <!-- How reviews work: so the empty section teaches, not just waits. -->
+        <ol class="review-steps" aria-label="How reviews work">
+          <li><span class="review-step-n">1</span><span><b>Ride a Cybercab</b>Any trip in a public Cybercab counts.</span></li>
+          <li><span class="review-step-n">2</span><span><b>Sign in and pick it</b>Choose the Cybercab you rode from the list.</span></li>
+          <li><span class="review-step-n">3</span><span><b>Rate and share</b>Stars, a few words and up to three photos.</span></li>
+        </ol>
       </div>
       <div id="reviewError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
         <div class="font-display font-bold tracking-wide">We couldn't load reviews</div>
@@ -266,18 +316,31 @@
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline justify-between gap-3">
             <h2 data-split id="boardTitle" class="font-display font-bold text-lg leading-tight max-sm:text-base">MOST VEHICLES DISCOVERED</h2>
-            <span class="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top 10</span>
+            <span id="boardCount" class="board-count shrink-0">Top 10</span>
           </div>
           <p id="boardHelp" class="text-xs text-slate-500 mt-1 leading-relaxed max-sm:text-[11px] max-sm:leading-snug">A vehicle's discoverer is the first to ride in it, or the first to spot it with an approved sighting.</p>
         </div>
       </div>
 
+      <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
+         from the first character, only riders with a public profile.
+         In the Leaderboard section, where riders are listed. -->
+    <div id="riderSearch" class="community-search board-search relative">
+      <label for="riderSearchInput" class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5 max-sm:sr-only">Find riders</label>
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/> <path d="M21 21l-6 -6"/></svg>
+        <input id="riderSearchInput" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
+          aria-autocomplete="list" aria-expanded="false" aria-controls="riderSearchList" placeholder="Search by name"
+          class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-xl pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:border-gold">
+      </div>
+      <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
+    </div>
     <div id="boardTabs" role="tablist" aria-label="Leaderboards" class="board-tabs hidden mt-5 mb-5 flex flex-nowrap gap-2 overflow-x-auto"></div>
       <div id="boardLoading" class="mt-4 space-y-2" aria-busy="true">
         <span class="sr-only">Loading the leaderboard…</span>
-        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
-        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
-        <div class="h-16 rounded-xl bg-white/[0.03] animate-pulse"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
       </div>
       <ol id="boardList" class="hidden mt-4 space-y-2 max-sm:mt-3 max-sm:space-y-1.5"></ol>
       <div id="boardEmpty" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
@@ -288,11 +351,13 @@
         <div class="font-display font-bold tracking-wide">We couldn't load the leaderboard</div>
         <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
       </div>
-      <!-- Discovered board: totals over every credited spotter (js/community.js). -->
+      <!-- Under every board: who is ranked here vs. credited with a discovery
+           (the Spotters tile), and room to join (js/community.js). -->
+      <p id="boardInvite" class="board-invite hidden"></p>
       <p id="boardTotals" class="hidden mt-4 pt-3 border-t border-white/[0.06] text-xs text-slate-500 max-sm:mt-3 max-sm:text-[11px]"></p>
+      <p class="board-privacy">Spotters are listed by name and photo. Prefer not to be listed? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> page, and you will be left off every Community board.</p>
     </div>
 
-    <p class="text-xs text-slate-500 mt-4 leading-relaxed max-sm:mt-3 max-sm:text-[11px] max-sm:leading-snug">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to be left off the leaderboard.</p>
     </div>
     </div>
     </div>
@@ -448,11 +513,12 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community.js?v=13"></script>
+<script src="js/community-stats.js?v=1"></script>
+<script src="js/community.js?v=15"></script>
 <script src="js/peek-rating.js?v=1"></script>
-<script src="js/reviews.js?v=8"></script>
+<script src="js/reviews.js?v=10"></script>
 <script src="js/rider-search.js?v=2"></script>
-<script src="js/streaks.js?v=2"></script>
+<script src="js/streaks.js?v=5"></script>
 <script>
   // ---- Reviews | Streaks | Leaderboard (the Simulation page's tabs) ----
   (function () {
@@ -465,6 +531,7 @@
         tab(v).setAttribute('aria-selected', String(v === view));
         tab(v).tabIndex = v === view ? 0 : -1;
         panel(v).classList.toggle('hidden', v !== view);
+        document.querySelectorAll(`[data-stats-view="${v}"]`).forEach(g => g.classList.toggle('hidden', v !== view));
       }
       if (focus) tab(view).focus();
       document.dispatchEvent(new CustomEvent('cch:community-view', { detail: { view } }));
