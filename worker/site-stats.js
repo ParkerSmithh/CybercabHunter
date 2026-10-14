@@ -15,3 +15,12 @@ export async function getSiteStatCounters(sql) {
   }
   return counters;
 }
+
+// A city's lifetime approved photo sightings ('sightings_all_time:<city>',
+// migrations/0042): one row, 0 before the city's first.
+export async function getCitySightingsAllTime(sql, cityKey) {
+  const row = await sql.prepare('SELECT value FROM site_stat_counters WHERE key = ?').bind(`sightings_all_time:${String(cityKey).toLowerCase()}`).first();
+  const v = row ? row.value : 0;
+  if (!Number.isInteger(v) || v < 0) throw new Error('invalid site counter');
+  return v;
+}
