@@ -140,8 +140,8 @@ async function run() {
     check('no "How discovery works" panel on the page', !/HOW DISCOVERY WORKS/i.test(fs.readFileSync(new URL('../public/community.html', import.meta.url), 'utf8')));
     check('within a tie, whoever reached the count first is listed first (Bob before Carol; Erin, Frank, Gina)',
       b.entries[1].name === 'Bob' && b.entries[2].name === 'Carol' && b.entries.slice(4).map(e => e.name).join() === 'Erin,Frank,Gina');
-    check('the response names its board and lists the five boards, Top Overall first',
-      b.board === 'discovered' && b.label === 'Most Vehicles Discovered' && b.boards.map(x => x.id).join() === 'overall,discovered,miles,rides,vehicles' && b.boards[0].label === 'Top Overall');
+    check('the response names its board and lists the six boards (Top XP last), Top Overall first',
+      b.board === 'discovered' && b.label === 'Most Vehicles Discovered' && b.boards.map(x => x.id).join() === 'overall,discovered,miles,rides,vehicles,xp' && b.boards[0].label === 'Top Overall');
     check('no board asked for: Top Overall', (await board(ctx, '')).board === 'overall');
     check('an unknown board: 400', (await get(ctx, '/api/community/leaderboard?board=nope')).status === 400);
     const r = await worker.fetch(new Request('https://x/api/community/leaderboard'), ctx.env, {});
@@ -357,7 +357,7 @@ async function run() {
     const rows = [...d.querySelectorAll('#boardList > li')];
     check('the board shows its rows (Bob, not opted in, is not one of them)', rows.length === 2 && !d.getElementById('boardList').classList.contains('hidden') && !/Private spotter/.test(d.getElementById('boardList').textContent));
     const tabs = [...d.querySelectorAll('#boardTabs button')];
-    check('five tabs in one row, in order, Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
+    check('six tabs in one row, in order (Top XP last), Top Overall selected (gold)', tabs.map(t => t.textContent).join('|') === 'Top Overall|Most Vehicles Discovered|Most Miles|Most Rides|Most Vehicles Ridden|Top XP' && tabs[0].getAttribute('aria-selected') === 'true' && tabs.every(t => t.classList.contains('board-tab')) && /flex-nowrap/.test(d.getElementById('boardTabs').className) && /overflow-x-auto/.test(d.getElementById('boardTabs').className));
     check('the title is the board label, and Top Overall shows no formula line', d.getElementById('boardTitle').textContent === 'TOP OVERALL' && d.getElementById('boardHelp').classList.contains('hidden') && !/Score =/.test(d.body.textContent));
     const first = rows[0].querySelector('button[data-row]');
     first.click();

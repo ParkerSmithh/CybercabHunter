@@ -455,6 +455,12 @@ async function run() {
     check('session expiration cancels pending navigation', page.visible('lgSignedOut') && page.navigations.length === 0);
   }
 
+  {
+    const html = fs.readFileSync(new URL('../public/link-gmail.html', import.meta.url), 'utf8');
+    check('the page says, up front, to use the same Gmail as the Tesla account (and why)', /id="lgSameAccount" role="note"/.test(html) && /Use the same Gmail as your Tesla account/.test(html) && /A filter in any other Gmail never sees your receipts/.test(html) && html.indexOf('lgSameAccount') < html.indexOf('id="lgSetup"'));
+    check('...and step 2 says to check the signed-in account before starting the filter', /Check you're in the right Gmail first:/.test(html) && html.indexOf("Check you're in the right Gmail first") < html.indexOf('mail.google.com/mail/u/0/#settings/filters'));
+  }
+
   opened.forEach(w => w.close());
   t.finish();
 }

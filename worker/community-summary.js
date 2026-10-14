@@ -18,8 +18,9 @@
 // same public fields as the main leaderboard; the system account never counts.
 // The rider's own /api/streaks/me stays live (one rider's rows, by index).
 
-import { computeStreaks, austinDayIndex, dayKey, weekIndex, STREAK_TZ } from './streaks.js';
+import { computeStreaks, austinDayIndex, dayKey, weekIndex, weekMonday, STREAK_TZ } from './streaks.js';
 import { safeAvatar } from './community.js';
+import { rankFor } from './progression-levels.js';
 
 const KEY = 'community';
 const MAX_AGE_MS = 36 * 3600e3;
@@ -52,7 +53,8 @@ function rankBoard(riders, board) {
 export async function computeCommunitySummary(env, now = Date.now()) {
   const sql = env.cybercabhunter_db;
   const sys = env.MUSE_CONNECTOR_USER_ID || '\u0000';
-  const [byHour, totals, cities] = await Promise.all([
+  const xpWeek = dayKey(weekMonday(weekIndex(austinDayIndex(now))));
+  const [byHour, totals, cities, xpRow] = await Promise.all([
     sql.prepare(`
       SELECT s.user_id AS uid, substr(s.submitted_at, 1, 13) AS hr, COUNT(*) AS n,
              u.display_name, u.handle, u.avatar_url, u.leaderboard_opt_in AS opt_in
@@ -65,7 +67,11 @@ export async function computeCommunitySummary(env, now = Date.now()) {
     sql.prepare(`
       SELECT DISTINCT lower(trim(o.service_area)) AS area
       FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
-      WHERE ${APPROVED} AND s.user_id <> ? AND o.service_area IS NOT NULL AND trim(o.service_area) <> ''`).bind(sys).all()
+      WHERE ${APPROVED} AND s.user_id <> ? AND o.service_area IS NOT NULL AND trim(o.service_area) <> ''`).bind(sys).all(),
+    // Spotter XP totals (worker/progression.js): small tables, once a day.
+    sql.prepare(`SELECT COALESCE(SUM(x.xp), 0) AS total, SUM(x.xp > 0) AS spotters, MAX(x.xp) AS top,
+        (SELECT COUNT(*) FROM xp_awards a WHERE a.ref_type = 'mission' AND a.active = 1 AND a.period = ? AND a.user_id <> ?) AS missions
+      FROM user_xp x WHERE x.user_id <> ?`).bind(xpWeek, sys, sys).first().catch(() => null)
   ]);
   const today = austinDayIndex(now), thisWeek = weekIndex(today);
   const users = new Map(), spark = new Map();
@@ -105,6 +111,12 @@ export async function computeCommunitySummary(env, now = Date.now()) {
       record_weekly: Math.max(0, ...everyone.map(r => r.longest_weekly)),
       verified_this_week: verifiedThisWeek
     },
+    xp: {
+      total: Math.max(0, Number(xpRow && xpRow.total) || 0),
+      spotters: Number(xpRow && xpRow.spotters) || 0,
+      missions_this_week: Number(xpRow && xpRow.missions) || 0,
+      top_rank: rankFor(Number(xpRow && xpRow.top) || 0).name
+    },
     boards: { daily: rankBoard(listed, 'daily'), weekly: rankBoard(listed, 'weekly'), longest: rankBoard(listed, 'longest') }
   };
 }
@@ -120,7 +132,8 @@ export async function recomputeCommunitySummary(env, now = Date.now()) {
 export async function getCommunitySummary(env, now = Date.now()) {
   const row = await env.cybercabhunter_db.prepare(`SELECT value, computed_at FROM community_summary WHERE key = ?`).bind(KEY).first();
   if (row && now - Date.parse(row.computed_at) < MAX_AGE_MS) {
-    try { return JSON.parse(row.value); } catch (e) { /* recompute below */ }
+    // A row written before a field existed (e.g. xp) is recomputed once.
+    try { const v = JSON.parse(row.value); if (v && v.xp) return v; } catch (e) { /* recompute below */ }
   }
   return recomputeCommunitySummary(env, now);
 }
@@ -137,7 +150,7 @@ async function cached(request, ctx, build) {
 export async function apiCommunitySummary(request, env, ctx, { now = Date.now() } = {}) {
   return cached(request, ctx, async () => {
     const s = await getCommunitySummary(env, now);
-    return Response.json({ computed_at: s.computed_at, timezone: s.timezone, sightings: s.sightings, streaks: s.streaks },
+    return Response.json({ computed_at: s.computed_at, timezone: s.timezone, sightings: s.sightings, streaks: s.streaks, xp: s.xp || null },
       { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
   });
 }

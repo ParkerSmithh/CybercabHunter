@@ -12,6 +12,7 @@
 // database directly; nothing in this file or elsewhere lets a caller set
 // or influence their own role through any request.
 
+import { syncSubmissionXp } from './progression.js';
 import { tesla } from './tesla.js';
 import { db, VEHICLE_VISIBILITY } from './db.js';
 import { VEHICLE_ID_RE } from './vehicles.js';
@@ -257,6 +258,10 @@ export async function apiReviewVehicleSighting(request, env, submissionId) {
     return Response.json({ success: false, error: 'already_reviewed' }, { status: 409 });
   }
 
+  // Spotter XP (worker/progression.js): that rider's week, now. A failure here
+  // never undoes the decision; the daily reconcile catches up.
+  try { await syncSubmissionXp(env, submissionId); } catch (err) { /* daily reconcile */ }
+
   // A photo sighting captured from a traffic camera goes on the Zones map as
   // part of the same Approve (camera-sightings.js placeSightingOnMap). The
   // approval stands either way; if placing fails, the moderator can use
@@ -314,6 +319,7 @@ export async function apiPromoteVehicleSighting(request, env, submissionId) {
     return Response.json({ success: false, error: stillPending ? 'vehicle_exists' : 'already_reviewed' }, { status: 409 });
   }
 
+  try { await syncSubmissionXp(env, submissionId); } catch (err) { /* daily reconcile */ }
   const vehicle = await db.getRegistryVehicleForModeration(sql, result.vehicleId);
   // This approves the sighting too, so a traffic-camera photo goes on the
   // Zones map here just as with Approve (the map row never has the plate).

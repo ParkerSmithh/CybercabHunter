@@ -42,6 +42,7 @@
 import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './ride-status.js';
 import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
+import { levelFor, rankFor } from './progression-levels.js';
 
 const CACHE_SECONDS = 60;               // public profiles
 const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
@@ -68,6 +69,8 @@ const SEARCH_LIMIT = 8;
 // sighting, or making the vehicle private or deleting it, moves or drops the
 // credit on the next read.
 // `?` placeholders: the system account id, twice.
+// The same rule for the XP reconcile (worker/progression.js): binds (sys, sys).
+export function discoveryCreditSql() { return discoveryCreditCte(); }
 function discoveryCreditCte() {
   return `
     ride_first AS (
@@ -127,18 +130,21 @@ async function riderMetrics(sql, env) {
     SELECT u.id AS uid, u.display_name, u.handle, u.avatar_url,
            COALESCE(d.n, 0) AS discovered, d.reached_at,
            COALESCE(r.rides, 0) AS rides, COALESCE(r.miles, 0) AS miles,
-           COALESCE(r.unique_vehicles, 0) AS unique_vehicles, COALESCE(r.cities, 0) AS cities
+           COALESCE(r.unique_vehicles, 0) AS unique_vehicles, COALESCE(r.cities, 0) AS cities,
+           COALESCE(x.xp, 0) AS xp
     FROM users u
     LEFT JOIN disc d ON d.uid = u.id
     LEFT JOIN ridden r ON r.uid = u.id
+    LEFT JOIN user_xp x ON x.user_id = u.id
     WHERE u.leaderboard_opt_in = 1 AND u.id <> ?
-      AND (d.n IS NOT NULL OR r.rides IS NOT NULL)
+      AND (d.n IS NOT NULL OR r.rides IS NOT NULL OR x.xp > 0)
   `).bind(sys, sys, sys).all();
   return (results || []).map(r => ({
     uid: r.uid, display_name: r.display_name, handle: r.handle, avatar_url: r.avatar_url,
     discovered: Number(r.discovered) || 0, reached_at: r.reached_at || null,
     rides: Number(r.rides) || 0, miles: Number(r.miles) || 0,
-    unique_vehicles: Number(r.unique_vehicles) || 0, cities: Number(r.cities) || 0
+    unique_vehicles: Number(r.unique_vehicles) || 0, cities: Number(r.cities) || 0,
+    xp: Math.max(0, Number(r.xp) || 0)
   }));
 }
 
@@ -155,7 +161,8 @@ const byUid = (a, b) => (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
 const BOARDS = {
   overall: {
     label: 'Top Overall', unit: ['pt', 'pts'], help: '',
-    value: overallScore, include: () => true,
+    // Riders with a discovery or a ride, as before (XP alone doesn't add a 0-point row).
+    value: overallScore, include: r => r.discovered > 0 || r.rides > 0,
     tie: (a, b) => b.discovered - a.discovered || b.rides - a.rides || b.miles - a.miles || byUid(a, b)
   },
   discovered: {
@@ -176,6 +183,11 @@ const BOARDS = {
   vehicles: {
     label: 'Most Vehicles Ridden', unit: ['vehicle', 'vehicles'], help: 'Different Cybercabs ridden in (discovered or not).',
     value: r => r.unique_vehicles, include: r => r.unique_vehicles > 0, tie: byUid
+  },
+  // Spotter XP (worker/progression.js): approved contributions and missions.
+  xp: {
+    label: 'Top XP', unit: ['XP', 'XP'], help: 'Spotter XP from verified sightings, first discoveries and missions.',
+    value: r => r.xp, include: r => r.xp > 0, tie: (a, b) => b.discovered - a.discovered || byUid(a, b)
   }
 };
 const DEFAULT_BOARD = 'overall';
@@ -193,7 +205,9 @@ function publicEntry(r, rank, value) {
     avatar_url: safeAvatar(r.avatar_url),
     profile: !!handle,
     discovered: r.discovered, rides: r.rides, miles: miles1(r.miles),
-    unique_vehicles: r.unique_vehicles, cities: r.cities
+    unique_vehicles: r.unique_vehicles, cities: r.cities,
+    // Spotter progression: XP, level and rank title (text, never a badge).
+    xp: r.xp || 0, level: levelFor(r.xp || 0).n, spotter_rank: rankFor(r.xp || 0).name, spotter_rank_key: rankFor(r.xp || 0).key
   };
 }
 

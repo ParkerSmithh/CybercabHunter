@@ -28,7 +28,7 @@
     terms.push({ label: `${fmtNum(e.miles)} mi ÷ 10`, pts: Math.round(e.miles / 10) });
     return `<div class="lb-math" aria-label="How ${esc(fmtNum(e.score))} points add up">${terms.map(t => `<span><b>${fmtNum(t.pts)}</b>${esc(t.label)}</span>`).join('<i aria-hidden="true">+</i>')}<i aria-hidden="true">=</i><span class="lb-math-total"><b>${esc(fmtNum(e.score))}</b>pts</span></div>`;
   }
-  const METRICS = [['discovered', 'Found'], ['rides', 'Rides'], ['miles', 'Miles'], ['unique_vehicles', 'Cars ridden'], ['cities', 'Cities']];
+  const METRICS = [['discovered', 'Found'], ['rides', 'Rides'], ['miles', 'Miles'], ['unique_vehicles', 'Cars ridden'], ['cities', 'Cities'], ['xp', 'Spotter XP']];
   const MEDAL = ['gold', 'silver', 'bronze'];
 
   // A row: the rank (gold / silver / bronze for 1-3; a shared rank is shown
@@ -50,8 +50,8 @@
         ${rankBadge}
         <span class="w-10 h-10 max-sm:w-9 max-sm:h-9 shrink-0 rounded-xl overflow-hidden">${avatarHtml(e)}</span>
         <span class="min-w-0 flex-1 text-left">
-          <span class="block font-semibold text-sm text-slate-100 truncate">${esc(e.name)}${tied ? ' <span class="lb-tie">Tied</span>' : ''}</span>
-          <span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}</span>${detail}
+          <span class="block font-semibold text-sm text-slate-100 truncate">${esc(e.name)}${e.spotter_rank ? ` <span class="lb-spotter-rank spotter-rank rank-${esc(e.spotter_rank_key)}">— ${esc(e.spotter_rank)}</span>` : ''}${tied ? ' <span class="lb-tie">Tied</span>' : ''}</span>
+          <span class="block text-xs ${e.handle ? 'text-gold' : 'text-slate-500'} truncate">${sub}${Number.isFinite(e.level) ? `<span class="lb-level"> · Level ${esc(e.level)} · ${esc(fmtNum(e.xp || 0))} XP</span>` : ''}</span>${detail}
         </span>
         <span class="shrink-0 text-right">
           <span class="block stat-value font-semibold text-xl max-sm:text-lg ${e.rank === 1 ? 'text-gold' : 'text-white'} leading-none">${esc(fmtNum(e.count))}</span>
