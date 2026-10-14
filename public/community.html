@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=14">
+<link rel="stylesheet" href="css/community.css?v=16">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -87,9 +87,9 @@
 </nav>
 
 <main id="main" class="community-page" tabindex="-1">
-<!-- Community: three sections on one page, switched with the buttons below
-     (the Simulation page's pattern): Reviews (default), Streaks, Leaderboard.
-     The choice is kept in the URL (?view=streaks / ?view=leaderboard). -->
+<!-- Community: four sections on one page, switched with the buttons below
+     (the Simulation page's pattern): Reviews (default), Streaks, Leaderboard,
+     Progress. The choice is kept in the URL (?view=streaks / leaderboard / progress). -->
 <section class="pt-8 max-sm:pt-4">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <div class="community-toolbar">
@@ -97,6 +97,7 @@
         <button id="communityTabReviews" type="button" role="tab" data-view="reviews" aria-selected="true" aria-controls="communityPanelReviews" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">REVIEWS</button>
         <button id="communityTabStreaks" type="button" role="tab" data-view="streaks" aria-selected="false" aria-controls="communityPanelStreaks" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">STREAKS</button>
         <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
+        <button id="communityTabProgress" type="button" role="tab" data-view="progress" aria-selected="false" aria-controls="communityPanelProgress" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">PROGRESS</button>
       </div>
       <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
            from the first character, only riders with a public profile. Beside
@@ -208,6 +209,28 @@
           <div class="community-stat-sub" data-sub="statCities">With a verified sighting</div>
         </div>
       </div>
+      <div class="community-stat-grid hidden" data-stats-view="progress" style="--cells:4">
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">XP earned</span><span class="sm:hidden">XP</span></div>
+          <div class="community-stat-value"><span id="statXpTotal" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statXpTotal">By every spotter, all-time</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Spotters with XP</span><span class="sm:hidden">Spotters</span></div>
+          <div class="community-stat-value"><span id="statXpSpotters" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statXpSpotters">From verified contributions</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Missions this week</span><span class="sm:hidden">Missions</span></div>
+          <div class="community-stat-value"><span id="statXpMissions" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statXpMissions">Completed since Monday</div>
+        </div>
+        <div class="community-stat">
+          <div class="community-stat-label"><span class="max-sm:hidden">Top rank</span><span class="sm:hidden">Top rank</span></div>
+          <div class="community-stat-value"><span id="statXpTopRank" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statXpTopRank">The highest spotter rank</div>
+        </div>
+      </div>
     </div>
 
     <!-- One section at a time (the tabs above). -->
@@ -315,6 +338,13 @@
          activity calendar, milestones and the public streak rankings. -->
     <div id="communityPanelStreaks" role="tabpanel" aria-labelledby="communityTabStreaks" class="community-view hidden">
       <div id="streaks" class="community-panel streaks"></div>
+    </div>
+
+    <!-- Spotter progress (js/progress.js, worker/progression.js): XP, level,
+         rank title, daily and weekly missions, rank ladder, recent XP. XP is
+         the only reward: no badges. -->
+    <div id="communityPanelProgress" role="tabpanel" aria-labelledby="communityTabProgress" class="community-view hidden">
+      <div id="progress" class="community-panel progress"></div>
     </div>
 
     <div id="communityPanelLeaderboard" role="tabpanel" aria-labelledby="communityTabLeaderboard" class="community-view hidden">
@@ -515,16 +545,17 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community-stats.js?v=1"></script>
-<script src="js/community.js?v=15"></script>
+<script src="js/community-stats.js?v=2"></script>
+<script src="js/community.js?v=16"></script>
 <script src="js/peek-rating.js?v=1"></script>
 <script src="js/reviews.js?v=10"></script>
 <script src="js/rider-search.js?v=2"></script>
 <script src="js/streaks.js?v=5"></script>
+<script src="js/progress.js?v=2"></script>
 <script>
   // ---- Reviews | Streaks | Leaderboard (the Simulation page's tabs) ----
   (function () {
-    const VIEWS = ['reviews', 'streaks', 'leaderboard'];
+    const VIEWS = ['reviews', 'streaks', 'leaderboard', 'progress'];
     const tab = v => document.getElementById('communityTab' + v[0].toUpperCase() + v.slice(1));
     const panel = v => document.getElementById('communityPanel' + v[0].toUpperCase() + v.slice(1));
     function show(view, focus) {
@@ -548,7 +579,8 @@
     document.getElementById('communityTabs').addEventListener('keydown', e => {
       const i = VIEWS.findIndex(v => tab(v) === document.activeElement);
       if (i < 0) return;
-      const next = e.key === 'ArrowRight' ? (i + 1) % 3 : e.key === 'ArrowLeft' ? (i + 2) % 3 : e.key === 'Home' ? 0 : e.key === 'End' ? 2 : -1;
+      const n = VIEWS.length;
+      const next = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i + n - 1) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
       if (next >= 0) { e.preventDefault(); show(VIEWS[next], true); }
     });
     show(new URLSearchParams(location.search).get('view'));

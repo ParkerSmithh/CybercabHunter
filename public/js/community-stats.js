@@ -54,6 +54,16 @@ window.CommunityStats = (function () {
     set('statStreakRecord', st ? st.record_daily : null, { note: st ? `${st.record_daily === 1 ? 'Day' : 'Days'} in a row, all-time` : undefined });
     set('statStreakWeek', st ? st.verified_this_week : null);
     if (s) spark('statStreakWeek', s.last_14_days.slice(-7));
+    // Progress tab: XP totals (precomputed with the rest, once a day).
+    const x = summary && summary.xp;
+    set('statXpTotal', x ? x.total : null);
+    set('statXpSpotters', x ? x.spotters : null);
+    set('statXpMissions', x ? x.missions_this_week : null);
+    const top = document.getElementById('statXpTopRank');
+    if (top) {
+      top.textContent = x && x.spotters ? x.top_rank.replace(' Spotter', '') : '—';
+      top.className = `stat-value ${x && x.spotters ? 'spotter-rank rank-' + x.top_rank.split(' ')[0].toLowerCase() : ''}`;
+    }
     document.dispatchEvent(new CustomEvent('cch:community-summary', { detail: summary }));
   }
 
@@ -61,7 +71,8 @@ window.CommunityStats = (function () {
   const INTRO = {
     reviews: 'Reviews from people who have ridden in a Cybercab: ratings, photos and what the ride was really like.',
     streaks: 'Spot Cybercabs on consecutive days or weeks. Every verified sighting keeps your streak alive.',
-    leaderboard: 'The spotters and riders who found each Cybercab first, and who have ridden the most.'
+    leaderboard: 'The spotters and riders who found each Cybercab first, and who have ridden the most.',
+    progress: 'Earn XP for verified contributions, level up and climb from Bronze to Diamond Spotter.'
   };
   document.addEventListener('cch:community-view', e => {
     const el = document.getElementById('communityIntro');
