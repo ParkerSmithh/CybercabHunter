@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=5">
+<link rel="stylesheet" href="css/community.css?v=6">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -87,6 +87,18 @@
 </nav>
 
 <main id="main" class="community-page" tabindex="-1">
+<!-- Community: three sections on one page, switched with the buttons below
+     (the Simulation page's pattern): Reviews (default), Streaks, Leaderboard.
+     The choice is kept in the URL (?view=streaks / ?view=leaderboard). -->
+<section class="pt-8 max-sm:pt-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+    <div id="communityTabs" role="tablist" aria-label="Community" class="flex flex-wrap gap-2">
+      <button id="communityTabReviews" type="button" role="tab" data-view="reviews" aria-selected="true" aria-controls="communityPanelReviews" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">REVIEWS</button>
+      <button id="communityTabStreaks" type="button" role="tab" data-view="streaks" aria-selected="false" aria-controls="communityPanelStreaks" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">STREAKS</button>
+      <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
+    </div>
+  </div>
+</section>
 <section class="community-section">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <div class="community-hero">
@@ -139,8 +151,9 @@
       <div class="community-stats-art" aria-hidden="true"><img src="images/CybercabFlipped.png" width="600" height="416" alt="" decoding="async"></div>
     </div>
 
-    <!-- Matching Fleet ETA panels: two columns on desktop, stacked on mobile. -->
-    <div class="community-columns grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <!-- One section at a time (the tabs above). -->
+    <div class="community-columns">
+    <div id="communityPanelReviews" role="tabpanel" aria-labelledby="communityTabReviews" class="community-view">
     <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
          and breakdown are computed live by the server over the reviews shown. -->
     <div id="reviews" class="community-panel">
@@ -230,6 +243,16 @@
       <button type="button" id="reviewMore" class="hidden mt-4 w-full py-2.5 rounded-lg text-xs font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more reviews</button>
     </div>
 
+    </div>
+
+    <!-- Spotting Streaks (js/streaks.js, worker/streaks.js): the signed-in
+         rider's daily and weekly streaks from their approved sightings, an
+         activity calendar, milestones and the public streak rankings. -->
+    <div id="communityPanelStreaks" role="tabpanel" aria-labelledby="communityTabStreaks" class="community-view hidden">
+      <div id="streaks" class="community-panel streaks"></div>
+    </div>
+
+    <div id="communityPanelLeaderboard" role="tabpanel" aria-labelledby="communityTabLeaderboard" class="community-view hidden">
     <div id="leaderboardColumn" class="min-w-0">
     <!-- Leaderboards (js/community.js): five boards from the server, one tab
          each, in a single row that scrolls sideways on phones. -->
@@ -270,6 +293,7 @@
     </div>
 
     <p class="text-xs text-slate-500 mt-4 leading-relaxed max-sm:mt-3 max-sm:text-[11px] max-sm:leading-snug">Spotters are listed by name and photo. Prefer not to be? Turn off <span class="text-slate-300">Community leaderboard &amp; public profile</span> on your <a href="profile.html" class="text-gold hover:underline">Profile</a> to be left off the leaderboard.</p>
+    </div>
     </div>
     </div>
   </div>
@@ -428,5 +452,38 @@
 <script src="js/peek-rating.js?v=1"></script>
 <script src="js/reviews.js?v=8"></script>
 <script src="js/rider-search.js?v=2"></script>
+<script src="js/streaks.js?v=2"></script>
+<script>
+  // ---- Reviews | Streaks | Leaderboard (the Simulation page's tabs) ----
+  (function () {
+    const VIEWS = ['reviews', 'streaks', 'leaderboard'];
+    const tab = v => document.getElementById('communityTab' + v[0].toUpperCase() + v.slice(1));
+    const panel = v => document.getElementById('communityPanel' + v[0].toUpperCase() + v.slice(1));
+    function show(view, focus) {
+      view = VIEWS.includes(view) ? view : 'reviews';
+      for (const v of VIEWS) {
+        tab(v).setAttribute('aria-selected', String(v === view));
+        tab(v).tabIndex = v === view ? 0 : -1;
+        panel(v).classList.toggle('hidden', v !== view);
+      }
+      if (focus) tab(view).focus();
+      document.dispatchEvent(new CustomEvent('cch:community-view', { detail: { view } }));
+      try {
+        const url = new URL(location.href);
+        if (view === 'reviews') url.searchParams.delete('view'); else url.searchParams.set('view', view);
+        history.replaceState(null, '', url);
+      } catch (e) { /* not essential */ }
+    }
+    VIEWS.forEach(v => tab(v).addEventListener('click', () => show(v)));
+    // Arrow keys move between the three buttons (the standard tab pattern).
+    document.getElementById('communityTabs').addEventListener('keydown', e => {
+      const i = VIEWS.findIndex(v => tab(v) === document.activeElement);
+      if (i < 0) return;
+      const next = e.key === 'ArrowRight' ? (i + 1) % 3 : e.key === 'ArrowLeft' ? (i + 2) % 3 : e.key === 'Home' ? 0 : e.key === 'End' ? 2 : -1;
+      if (next >= 0) { e.preventDefault(); show(VIEWS[next], true); }
+    });
+    show(new URLSearchParams(location.search).get('view'));
+  })();
+</script>
 </body>
 </html>

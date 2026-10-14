@@ -199,7 +199,7 @@ function publicEntry(r, rank, value) {
 
 // Only an https image URL (a Google photo) or one of our own profile pictures
 // (/api/avatars/<key>, worker/avatars.js) is ever passed on.
-function safeAvatar(url) {
+export function safeAvatar(url) {
   if (typeof url !== 'string') return null;
   return /^https:\/\/[^\s"'<>]+$/.test(url) || /^\/api\/avatars\/[a-f0-9]{32}$/.test(url) ? url : null;
 }
