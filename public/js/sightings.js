@@ -254,10 +254,8 @@
       $('statPeakHour').textContent = '—';
       $('statPeakCount').textContent = '';
     }
-    // All time for the selected city (all cities when no city is picked).
+    num('statTotal', ok && stats.sightings_all_time);
     const cityName = CITY_NAMES[city] || '';
-    num('statTotal', ok && (cityName && isCount(stats.sightings_all_time_city) ? stats.sightings_all_time_city : stats.sightings_all_time));
-    if ($('statTotalLabel')) $('statTotalLabel').textContent = `All time · ${cityName || 'all cities'}`;
     $('feedCount').textContent = ok && isCount(stats.total) && stats.total > 0
       ? `${plural(stats.total, 'sighting', 'sightings')}${cityName ? ` in ${cityName}` : ''}` : '';
     const best = ok && stats.best_day;
