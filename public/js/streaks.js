@@ -95,7 +95,7 @@
     return `<div class="streak-card ${weekly ? 'is-weekly' : ''}">
       <div class="streak-card-head"><span class="streak-icon">${weekly ? ICON.calendar : ICON.flame}</span><span>${weekly ? 'Weekly streak' : 'Daily streak'}</span>${weekly ? '<span class="streak-tag">Easiest to keep</span>' : ''}</div>
       <div class="streak-card-body">
-        <div class="streak-ring-wrap">${ring(pct, justHit)}<span class="streak-ring-num stat-value">${d.current}</span></div>
+        <div class="streak-ring-wrap" title="${next ? `${Math.round(pct * 100)}% of the way to ${next.n}` : 'Every milestone unlocked'}">${ring(pct, justHit)}<span class="streak-ring-num">${weekly ? ICON.calendar : ICON.flame}</span></div>
         <div class="min-w-0">
           <div class="streak-value"><span class="stat-value">${d.current}</span> ${d.current === 1 ? unit[0] : unit[1]}</div>
           <div class="streak-longest">Longest: ${plural(d.longest, unit[0], unit[1])}</div>
@@ -120,8 +120,8 @@
     const lived = start ? Math.floor((thisMonday - (start - (((new Date(start).getUTCDay() + 6) % 7) * DAY))) / (7 * DAY)) + 1 : 53;
     const gap = 4;
     const fit = Math.floor((width - 28) / (11 + gap));
-    const weeks = Math.max(8, Math.min(53, fit, lived));
-    const cell = Math.max(11, Math.min(22, Math.floor((width - 28) / weeks) - gap));
+    const weeks = Math.max(4, Math.min(53, fit, lived));
+    const cell = Math.max(11, Math.min(26, Math.floor((width - 28) / weeks) - gap));
     const firstMonday = thisMonday - (weeks - 1) * 7 * DAY;
     let cols = '', months = '', lastMonth = -1;
     for (let w = 0; w < weeks; w++) {
@@ -143,7 +143,7 @@
     const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', ''].map(l => `<span style="height:${cell}px">${l}</span>`).join('');
     const sel = selectedDay ? (() => { const n = counts.get(selectedDay) || 0; return `<strong>${esc(fmtDate(selectedDay, { weekday: 'long', month: 'short', day: 'numeric' }))}</strong> · ${n ? plural(n, 'verified sighting', 'verified sightings') : 'no verified sightings'}`; })() : 'Tap or hover a day to see its verified sightings.';
     return `<div class="streak-calendar">
-      <div class="streak-cal-head"><h3>Activity</h3><span>${plural(m.verified.sightings, 'verified sighting', 'verified sightings')} on ${plural(m.verified.days, 'day', 'days')}</span></div>
+      <div class="streak-cal-head"><h3>Activity</h3><span>${plural(m.verified.sightings, 'verified sighting', 'verified sightings')} on ${plural(m.verified.days, 'day', 'days')}${start && lived <= 53 ? ` · since ${esc(fmtDate(summary.sightings.site_start, { month: 'short', day: 'numeric' }))}, when spotting began` : ''}</span></div>
       <div class="streak-cal-scroll"><div class="streak-cal-grid">
         <div class="streak-months" aria-hidden="true" style="padding-left:28px">${months}</div>
         <div class="streak-cal-body"><div class="streak-daylabels" style="gap:${gap}px" aria-hidden="true">${dayLabels}</div>
