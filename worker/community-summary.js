@@ -132,7 +132,8 @@ export async function recomputeCommunitySummary(env, now = Date.now()) {
 export async function getCommunitySummary(env, now = Date.now()) {
   const row = await env.cybercabhunter_db.prepare(`SELECT value, computed_at FROM community_summary WHERE key = ?`).bind(KEY).first();
   if (row && now - Date.parse(row.computed_at) < MAX_AGE_MS) {
-    try { return JSON.parse(row.value); } catch (e) { /* recompute below */ }
+    // A row written before a field existed (e.g. xp) is recomputed once.
+    try { const v = JSON.parse(row.value); if (v && v.xp) return v; } catch (e) { /* recompute below */ }
   }
   return recomputeCommunitySummary(env, now);
 }
