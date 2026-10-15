@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="The Cybercab Hunter community: posts, photos, sightings talk and ride reviews, plus streaks, leaderboards and spotter progress.">
 <meta name="theme-color" content="#090B0F">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cybercab Hunter">
+<meta property="og:title" content="Cybercab Hunter | Community">
+<meta property="og:description" content="The Cybercab Hunter community: posts, photos, sightings talk and ride reviews, plus streaks, leaderboards and spotter progress.">
+<meta property="og:url" content="https://cybercabhunter.com/community">
+<meta property="og:image" content="https://cybercabhunter.com/images/CybercabAnimation-poster.jpg">
+<meta name="twitter:card" content="summary">
 <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/cybercab-ico-16.png?v=4ecb96d981e1">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/cybercab-ico-32.png?v=4ecb96d981e1">
 <link rel="icon" type="image/png" sizes="64x64" href="/images/icons/cybercab-ico-64.png?v=4ecb96d981e1">
@@ -19,7 +26,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=18">
+<link rel="stylesheet" href="css/community.css?v=19">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -101,6 +108,20 @@
         <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
         <button id="communityTabProgress" type="button" role="tab" data-view="progress" aria-selected="false" aria-controls="communityPanelProgress" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">PROGRESS</button>
       </div>
+      <div class="community-toolbar-end">
+      <!-- Social notifications (js/social.js, GET /api/social/notifications):
+           signed-in riders only; the unread count refreshes every few minutes
+           while the page is open. -->
+      <div id="socialBellWrap" class="social-bell-wrap hidden">
+        <button type="button" id="socialBell" class="social-bell" aria-haspopup="dialog" aria-expanded="false" aria-controls="socialNotifPanel" aria-label="Notifications">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+          <span id="socialBellCount" class="social-bell-count hidden" aria-hidden="true"></span>
+        </button>
+        <div id="socialNotifPanel" class="social-notif-panel hidden" role="dialog" aria-label="Notifications">
+          <div class="social-notif-head"><span class="social-card-title">Notifications</span><button type="button" id="socialNotifAll" class="social-linkbtn">Mark all read</button></div>
+          <ul id="socialNotifList" class="social-notif-list"><li class="social-muted">Loading…</li></ul>
+        </div>
+      </div>
       <!-- Find riders (js/rider-search.js, GET /api/rider-search): suggestions
            from the first character, only riders with a public profile. Beside
            the section tabs, so it works from every section. -->
@@ -113,6 +134,7 @@
             class="w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-full pl-9 pr-3 py-2.5 text-sm placeholder:text-slate-500 focus:outline-none focus:border-gold">
         </div>
         <ul id="riderSearchList" role="listbox" aria-label="Matching riders" class="hidden absolute z-30 left-0 right-0 mt-1.5 max-h-80 overflow-y-auto glass-strong rounded-xl border border-[rgba(250,224,48,0.25)] py-1 shadow-2xl"></ul>
+      </div>
       </div>
     </div>
   </div>
@@ -272,11 +294,18 @@
                   <label><span class="social-field-label">Ride date</span><input id="socialReviewDate" type="date" class="social-input"></label>
                 </div>
               </fieldset>
+              <!-- Attach a Cybercab: search the public registry by plate, VIN or
+                   vehicle id (GET /api/social/vehicles). A link, not a sighting. -->
               <div id="socialVehicleFields" class="social-attach hidden">
-                <div class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>Linked Cybercab <button type="button" data-close-attach="vehicle" class="social-linkbtn">Remove</button></div>
-                <label for="socialVehicle" class="sr-only">Cybercab from the registry</label>
-                <select id="socialVehicle" class="social-input"><option value="">Choose a Cybercab by plate</option></select>
-                <p class="social-hint">Registry vehicles only. Linking one doesn't verify a sighting: <button type="button" id="socialSubmitSighting" class="social-linkbtn">submit the sighting</button> for moderator review to count it.</p>
+                <div class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>Attach Cybercab <button type="button" data-close-attach="vehicle" class="social-linkbtn">Remove</button></div>
+                <div id="socialVehiclePicker" class="social-vpick">
+                  <label for="socialVehicleSearch" class="sr-only">Search the registry by plate, VIN or vehicle ID</label>
+                  <input id="socialVehicleSearch" type="search" role="combobox" autocomplete="off" spellcheck="false" maxlength="40"
+                    aria-autocomplete="list" aria-expanded="false" aria-controls="socialVehicleResults" placeholder="Search by plate, VIN or vehicle ID" class="social-input">
+                  <ul id="socialVehicleResults" role="listbox" aria-label="Matching Cybercabs" class="social-vresults hidden"></ul>
+                </div>
+                <div id="socialVehiclePreview" class="hidden"></div>
+                <p class="social-hint">Registry vehicles only. Attaching one doesn't verify a sighting: <button type="button" id="socialSubmitSighting" class="social-linkbtn">submit the sighting</button> for moderator review to count it.</p>
               </div>
               <div id="socialLinkFields" class="social-attach hidden">
                 <div class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>Link <button type="button" data-close-attach="link" class="social-linkbtn">Remove</button></div>
@@ -290,7 +319,7 @@
                   <label for="socialPhotos" class="social-tool" title="Add photos (up to 4)"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg><span class="max-sm:sr-only">Photos</span></label>
                   <input id="socialPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
                   <button type="button" class="social-tool" data-attach="review" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg><span class="max-sm:sr-only">Ride review</span></button>
-                  <button type="button" class="social-tool" data-attach="vehicle" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg><span class="max-sm:sr-only">Cybercab</span></button>
+                  <button type="button" class="social-tool" data-attach="vehicle" aria-pressed="false" aria-label="Attach Cybercab"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg><span class="max-sm:sr-only">Attach Cybercab</span></button>
                   <button type="button" class="social-tool" data-attach="link" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg><span class="max-sm:sr-only">Link</span></button>
                   <label for="socialCategory" class="sr-only">Post type</label>
                   <select id="socialCategory" class="social-category"><option value="general">General</option><option value="sighting">Sighting</option><option value="question">Question</option><option value="news">News</option><option value="review">Review</option></select>
@@ -312,6 +341,7 @@
             <button type="button" role="tab" data-filter="latest" aria-selected="false" class="social-filter">Latest</button>
             <button type="button" role="tab" data-filter="photos" aria-selected="false" class="social-filter">Photos</button>
             <button type="button" role="tab" data-filter="reviews" aria-selected="false" class="social-filter">Reviews</button>
+            <button type="button" role="tab" data-filter="saved" aria-selected="false" class="social-filter">Saved</button>
           </div>
           <label id="socialSortWrap" class="social-sort hidden"><span class="sr-only">Sort</span>
             <select id="socialSort" class="social-category"><option value="new">Newest</option><option value="popular">Most popular</option></select></label>
@@ -323,6 +353,7 @@
         <div id="socialEmpty" class="hidden social-empty">
           <div class="social-empty-title">Nothing here yet</div>
           <p id="socialEmptyText">Be the first to post about the Cybercab.</p>
+          <a id="socialEmptySignIn" href="signin.html?returnTo=%2Fcommunity" class="hidden social-publish-btn mt-3">Sign in</a>
         </div>
         <div id="socialError" class="hidden social-empty"><div class="social-empty-title">We couldn't load posts</div><p>Please try again in a moment.</p></div>
         <button type="button" id="socialMore" class="hidden social-more">Load more posts</button>
@@ -592,7 +623,7 @@
 <script src="js/rider-search.js?v=2"></script>
 <script src="js/streaks.js?v=5"></script>
 <script src="js/progress.js?v=2"></script>
-<script src="js/social.js?v=1"></script>
+<script src="js/social.js?v=2"></script>
 <script>
   // ---- Social | Streaks | Leaderboard | Progress (the Simulation page's tabs) ----
   (function () {

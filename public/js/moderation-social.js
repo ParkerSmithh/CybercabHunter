@@ -104,7 +104,7 @@
     e.preventDefault();
     const body = $('modSocialAnnBody').value.trim();
     if (!body) { $('modSocialAnnStatus').textContent = 'Write the announcement first.'; return; }
-    const res = await api('/api/moderation/social/announcement', { method: 'PUT', body: JSON.stringify({ body, link_url: $('modSocialAnnLink').value.trim() || null }) });
+    const res = await api('/api/moderation/social/announcement', { method: 'PUT', body: JSON.stringify({ body, link_url: $('modSocialAnnLink').value.trim() || null, notify: $('modSocialAnnNotify').checked }) });
     $('modSocialAnnStatus').textContent = res.ok ? 'Published. It can take up to 2 minutes to show everywhere.' : (res.json && res.json.error === 'invalid_link' ? 'That link doesn\'t look right.' : 'Couldn\'t publish. Try again.');
   });
   $('modSocialAnnClear').addEventListener('click', async () => {

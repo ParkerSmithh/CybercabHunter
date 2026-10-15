@@ -20,7 +20,7 @@ import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiListReviewComments, apiGetReviewPhoto } from './reviews.js';
-import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialResolve, apiModerationSocialAnnouncement } from './social.js';
+import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta } from './social.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
@@ -509,6 +509,23 @@ const worker = {
     if (socialLike && (request.method === 'PUT' || request.method === 'DELETE')) {
       return withCors(await apiSetSocialLike(request, env, socialLike[1], request.method === 'PUT'), request);
     }
+    const socialSave = url.pathname.match(/^\/api\/social\/posts\/([^/]+)\/save$/);
+    if (socialSave && (request.method === 'PUT' || request.method === 'DELETE')) {
+      return withCors(await apiSetSocialSave(request, env, socialSave[1], request.method === 'PUT'), request);
+    }
+    const socialPin = url.pathname.match(/^\/api\/social\/posts\/([^/]+)\/pin$/);
+    if (socialPin && (request.method === 'PUT' || request.method === 'DELETE')) {
+      return withCors(await apiSetSocialPin(request, env, socialPin[1], request.method === 'PUT'), request);
+    }
+    if (url.pathname === '/api/social/notifications' && request.method === 'GET') {
+      return withCors(await apiListSocialNotifications(request, env), request);
+    }
+    if (url.pathname === '/api/social/notifications/read' && request.method === 'POST') {
+      return withCors(await apiReadSocialNotifications(request, env), request);
+    }
+    if (url.pathname === '/api/social/vehicles' && request.method === 'GET') {
+      return withCors(await apiSearchSocialVehicles(request, env), request);
+    }
     const socialComments = url.pathname.match(/^\/api\/social\/posts\/([^/]+)\/comments$/);
     if (socialComments && request.method === 'GET') {
       return withCors(await apiListSocialComments(request, env, socialComments[1]), request);
@@ -644,6 +661,11 @@ const worker = {
     // /vehicle/:id sent the visitor to /vehicle. '/vehicle' is the canonical
     // URL of vehicle.html and is served directly with a 200.
     // /rider/:handle serves rider.html the same way (requested as '/rider').
+    // The Community page runs through the Worker first (wrangler.jsonc
+    // run_worker_first) only so a shared post link gets its own preview tags.
+    if (url.pathname === '/community' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return socialPostMeta(request, env);
+    }
     const riderPageMatch = url.pathname.match(/^\/rider\/([^/]+)$/);
     if (riderPageMatch && request.method === 'GET') {
       const assetUrl = new URL(request.url);

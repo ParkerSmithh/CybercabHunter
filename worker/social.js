@@ -16,9 +16,14 @@
 //   POST   /api/social/reports                         signed in; JSON { target_type, target_id, reason, details? }
 //   GET    /api/social/sidebar                         public, edge-cached 2 min
 //   GET    /api/social/photos/:id                      public while its post is shown
+//   GET    /api/social/vehicles?q=                     public; registry search (plate, VIN, vehicle id) for the composer
+//   PUT    /api/social/posts/:id/save                  signed in; private bookmark (DELETE removes it)
+//   PUT    /api/social/posts/:id/pin                   moderators; at most MAX_PINS (DELETE unpins)
+//   GET    /api/social/notifications?count_only=1      signed in; the rider's own notifications
+//   POST   /api/social/notifications/read              signed in; JSON { ids: [...] } or { all: true }
 //   GET    /api/moderation/social/reports              moderators: open reports, grouped per item
 //   POST   /api/moderation/social/resolve              moderators: { target_type, target_id, action: remove|dismiss, reason? }
-//   PUT    /api/moderation/social/announcement         moderators: { body, link_url? }
+//   PUT    /api/moderation/social/announcement         moderators: { body, link_url?, notify? }
 //   DELETE /api/moderation/social/announcement         moderators
 //
 // RULES (all enforced here; the page only mirrors them):
@@ -38,6 +43,10 @@
 //   - Rate limits per rider (counted in D1 over indexed, capped reads):
 //     posts 10/hour and 40/day, comments 30/hour, reports 20/day; likes and
 //     every write also pass REVIEWS_LIMITER when bound.
+//   - Saved posts and notifications are private to their rider. Notifications:
+//     never for your own actions, one row per event (dedupe_key), gone with the
+//     post or comment they point at; likes, saves and notifications are 0 XP.
+//   - An attached Cybercab is a registry link, never proof of a sighting.
 //   - Removal by a moderator is a soft remove with an audit row
 //     (social_mod_actions); an author's own delete removes the rows and photos.
 
@@ -47,6 +56,7 @@ import { sniffImage, stripMetadata } from './avatars.js';
 import { sha256Hex } from './account.js';
 import { publicPerson } from './reviews.js';
 import { levelFor, rankFor } from './progression-levels.js';
+import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 
 export const MAX_POST_CHARS = 2000;
 export const MAX_COMMENT_CHARS = 1000;
@@ -60,6 +70,10 @@ const FEED_MAX = 25;
 const RANKED_WINDOW = 300;          // newest posts the For You / Popular rankings consider
 const COMMENTS_PAGE = 10;
 const SIDEBAR_CACHE_SECONDS = 120;
+export const MAX_PINS = 3;           // community-wide pinned posts at once
+const NOTIFICATIONS_PAGE = 30;
+const MAX_MENTIONS = 5;              // @mentions notified per post or comment
+const VEHICLE_SEARCH_LIMIT = 8;
 const ID_RE = /^[a-f0-9]{32}$/;
 
 const newId = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -96,12 +110,14 @@ async function countSince(sql, table, column, userId, sinceSql, cap) {
 
 const POST_SELECT = `
   SELECT p.id, p.user_id, p.body, p.category, p.link_url, p.robotaxi_vehicle_id, p.legacy_review_id, p.status,
-         p.removed_reason, p.like_count, p.comment_count, p.has_photos, p.has_review, p.created_at, p.edited_at,
+         p.removed_reason, p.like_count, p.comment_count, p.has_photos, p.has_review, p.pinned, p.created_at, p.edited_at,
          u.leaderboard_opt_in AS opt_in, u.display_name, u.handle, u.avatar_url, x.xp,
-         v.id AS vehicle_id, v.license_plate, v.model AS vehicle_model,
+         v.id AS vehicle_id, v.license_plate, v.model AS vehicle_model, v.vin AS vehicle_vin,
+         v.service_area AS vehicle_area, v.approval_basis AS vehicle_basis,
          CASE WHEN v.id IS NOT NULL AND ${ELIGIBLE_V} THEN 1 ELSE 0 END AS vehicle_public,
          r.rating, r.vehicle_type, r.quoted_fare_cents, r.pickup_wait_minutes, r.ride_date,
-         EXISTS (SELECT 1 FROM social_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked_by_me
+         EXISTS (SELECT 1 FROM social_likes l WHERE l.post_id = p.id AND l.user_id = ?1) AS liked_by_me,
+         EXISTS (SELECT 1 FROM social_saves sv WHERE sv.post_id = p.id AND sv.user_id = ?1) AS saved_by_me
   FROM social_posts p
   JOIN users u ON u.id = p.user_id
   LEFT JOIN user_xp x ON x.user_id = p.user_id
@@ -124,6 +140,24 @@ export function authorJson(row) {
   return { ...person, rank: { key: rank.key, name: rank.name }, level: levelFor(xp).n };
 }
 
+// The public facts of a registry vehicle (the same fields /api/robotaxi-vehicles
+// serves). `cybercab`: approved as a Cybercab (migrations/0025); the image is
+// the site's generic Cybercab picture, never a photo of this car.
+export function vehicleJson(v) {
+  const cybercab = v.approval_basis === 'vin-verified' || v.approval_basis === 'manual';
+  return {
+    id: v.id,
+    short_id: String(v.id).slice(0, 8),
+    license_plate: v.license_plate || null,
+    vin: v.vin || null,
+    service_area: v.service_area || null,
+    cybercab,
+    image: cybercab ? '/images/dmv-cybercab.webp' : null,
+    verified: true,                    // a public registry vehicle (not a verified sighting)
+    url: `/vehicle/${v.id}`
+  };
+}
+
 function postJson(row, photos, me) {
   const mine = !!me && row.user_id === me.id;
   return {
@@ -142,11 +176,17 @@ function postJson(row, photos, me) {
       pickup_wait_minutes: row.pickup_wait_minutes == null ? null : Number(row.pickup_wait_minutes),
       ride_date: row.ride_date || null
     } : null,
-    // A linked registry vehicle, only while it is public (verified in the registry).
-    vehicle: row.vehicle_id && Number(row.vehicle_public) === 1 ? { id: row.vehicle_id, license_plate: row.license_plate || null, model: row.vehicle_model || null, verified: true } : null,
+    // A linked registry vehicle, only while it is public (the registry's own
+    // rule). A link, not a verified sighting. Removed or made private: no card.
+    vehicle: row.vehicle_id && Number(row.vehicle_public) === 1 ? vehicleJson({
+      id: row.vehicle_id, license_plate: row.license_plate, vin: row.vehicle_vin, service_area: row.vehicle_area, approval_basis: row.vehicle_basis
+    }) : null,
     like_count: Number(row.like_count) || 0,
     comment_count: Number(row.comment_count) || 0,
     liked: !!me && Number(row.liked_by_me) === 1,
+    saved: !!me && Number(row.saved_by_me) === 1,
+    pinned: Number(row.pinned) === 1 && row.status === 'visible',
+    can_pin: !!me && me.moderator && row.status === 'visible',
     mine,
     can_edit: mine && row.status === 'visible',
     can_delete: mine || (!!me && me.moderator),
@@ -182,15 +222,31 @@ function decodeCursor(raw) {
 export async function apiSocialFeed(request, env) {
   const sql = env.cybercabhunter_db;
   const params = new URL(request.url).searchParams;
-  const filter = ['foryou', 'latest', 'photos', 'reviews'].includes(params.get('filter')) ? params.get('filter') : 'foryou';
-  const sort = filter === 'foryou' ? 'ranked' : filter === 'latest' ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
+  const filter = ['foryou', 'latest', 'photos', 'reviews', 'saved'].includes(params.get('filter')) ? params.get('filter') : 'foryou';
+  const sort = filter === 'foryou' ? 'ranked' : (filter === 'latest' || filter === 'saved') ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
   const limit = Math.min(Math.max(Number(params.get('limit')) || FEED_DEFAULT, 1), FEED_MAX);
   const cursor = decodeCursor(params.get('cursor'));
   const me = await viewer(request, env);
-  const extra = filter === 'photos' ? ' AND p.has_photos = 1' : filter === 'reviews' ? ' AND p.has_review = 1' : '';
+  const viewerJson = { signed_in: !!me, moderator: !!(me && me.moderator) };
+  if (filter === 'saved' && !me) return Response.json({ authenticated: false, error: 'sign_in_required', viewer: viewerJson }, { status: 401, headers: { 'Cache-Control': 'private, no-store' } });
+  // Community pins sit above For You and Latest (first page only) and are left
+  // out of those lists below them, so a pinned post never shows twice.
+  const withPins = filter === 'foryou' || filter === 'latest';
+  const extra = filter === 'photos' ? ' AND p.has_photos = 1' : filter === 'reviews' ? ' AND p.has_review = 1' : withPins ? ' AND p.pinned = 0' : '';
   const shownFrom = `FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}${extra}`;
   let ids, next = null;
-  if (sort === 'new') {
+  if (filter === 'saved') {
+    // The rider's own bookmarks, most recently saved first; a post that is no
+    // longer shown drops out (its save row stays until the post is deleted).
+    const after = cursor && typeof cursor.t === 'string' && typeof cursor.id === 'string' ? cursor : null;
+    const rows = (await sql.prepare(`SELECT s.post_id AS id, s.created_at AS saved_at
+        FROM social_saves s JOIN social_posts p ON p.id = s.post_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE s.user_id = ? AND ${SHOWN}
+        ${after ? 'AND (s.created_at < ? OR (s.created_at = ? AND s.post_id < ?))' : ''}
+        ORDER BY s.created_at DESC, s.post_id DESC LIMIT ?`).bind(me.id, ...(after ? [after.t, after.t, after.id] : []), limit + 1).all()).results || [];
+    ids = rows.slice(0, limit).map(r => r.id);
+    if (rows.length > limit) { const last = rows[limit - 1]; next = encodeCursor({ t: last.saved_at, id: last.id }); }
+  } else if (sort === 'new') {
     const after = cursor && typeof cursor.t === 'string' && typeof cursor.id === 'string' ? cursor : null;
     const rows = (await sql.prepare(`SELECT p.id, p.created_at ${shownFrom}
         ${after ? 'AND (p.created_at < ? OR (p.created_at = ? AND p.id < ?))' : ''}
@@ -209,8 +265,13 @@ export async function apiSocialFeed(request, env) {
     ids = rows.slice(offset, offset + limit).map(r => r.id);
     if (rows.length > offset + limit) next = encodeCursor({ at, o: offset + limit });
   }
-  const posts = await postsByIds(sql, ids, me);
-  return Response.json({ filter, sort, posts, next_cursor: next, viewer: { signed_in: !!me, moderator: !!(me && me.moderator) } }, { headers: { 'Cache-Control': 'private, no-store' } });
+  let pinnedIds = [];
+  if (withPins && !cursor) {
+    pinnedIds = ((await sql.prepare(`SELECT p.id FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE p.pinned = 1 AND ${SHOWN} ORDER BY p.pinned_at DESC, p.id DESC LIMIT ${MAX_PINS}`).all()).results || []).map(r => r.id);
+  }
+  const posts = await postsByIds(sql, [...pinnedIds, ...ids], me);
+  return Response.json({ filter, sort, posts, next_cursor: next, viewer: viewerJson }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 // One post, or null. Moderators also see removed posts.
@@ -375,6 +436,7 @@ export async function apiCreateSocialPost(request, env) {
     ...photoStmts,
     ...(fields.review ? [reviewUpsert(sql, id, fields.review)] : [])
   ]);
+  await notify(sql, await mentionNotices(sql, fields.body, { actorId: me.id, postId: id }));
   return Response.json({ success: true, post: await onePost(sql, id, me) }, { status: 201 });
 }
 
@@ -411,6 +473,7 @@ export async function apiUpdateSocialPost(request, env, postId) {
   ];
   await sql.batch(stmts);
   if (drop.length) { try { await env.EVIDENCE_BUCKET.delete(drop.map(p => p.r2_key)); } catch (e) { /* rows are gone; best effort */ } }
+  await notify(sql, await mentionNotices(sql, fields.body, { actorId: me.id, postId }));
   return Response.json({ success: true, post: await onePost(sql, postId, me) });
 }
 
@@ -424,6 +487,8 @@ export async function deletePostCompletely(env, postId) {
   const legacy = post.legacy_review_id;
   await sql.batch([
     sql.prepare(`UPDATE social_reports SET status = 'dismissed', resolved_at = datetime('now') WHERE status = 'open' AND ((target_type = 'post' AND target_id = ?) OR (target_type = 'comment' AND target_id IN (SELECT id FROM social_comments WHERE post_id = ?)))`).bind(postId, postId),
+    sql.prepare(`DELETE FROM social_notifications WHERE post_id = ?`).bind(postId),
+    sql.prepare(`DELETE FROM social_saves WHERE post_id = ?`).bind(postId),
     sql.prepare(`DELETE FROM social_comments WHERE post_id = ? AND parent_id IS NOT NULL`).bind(postId),
     sql.prepare(`DELETE FROM social_comments WHERE post_id = ?`).bind(postId),
     sql.prepare(`DELETE FROM social_likes WHERE post_id = ?`).bind(postId),
@@ -449,7 +514,7 @@ async function removePostAsModerator(sql, me, postId, reason) {
   const post = await sql.prepare(`SELECT id, user_id, status FROM social_posts WHERE id = ?`).bind(postId).first();
   if (!post) return false;
   await sql.batch([
-    sql.prepare(`UPDATE social_posts SET status = 'removed', removed_by = ?, removed_at = datetime('now'), removed_reason = ? WHERE id = ?`).bind(me.id, reason || null, postId),
+    sql.prepare(`UPDATE social_posts SET status = 'removed', removed_by = ?, removed_at = datetime('now'), removed_reason = ?, pinned = 0, pinned_at = NULL WHERE id = ?`).bind(me.id, reason || null, postId),
     sql.prepare(`UPDATE social_reports SET status = 'actioned', resolved_by = ?, resolved_at = datetime('now') WHERE status = 'open' AND target_type = 'post' AND target_id = ?`).bind(me.id, postId),
     modAction(sql, me, 'remove_post', 'post', postId, post.user_id, reason)
   ]);
@@ -474,6 +539,37 @@ export async function apiDeleteSocialPost(request, env, postId) {
   return Response.json({ success: true, removed: true });
 }
 
+// ---- Notifications (written by the actions below; read by the rider only) ----
+
+// "@handle" in text: handles are [a-z0-9_]{3,20} (worker/profile.js), matched
+// case-insensitively and only when the @ starts a word (not an email address).
+export function mentionedHandles(text) {
+  const out = new Set();
+  const re = /(^|[^A-Za-z0-9_@.])@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/g;
+  let m;
+  while ((m = re.exec(String(text || ''))) && out.size < MAX_MENTIONS) out.add(m[2].toLowerCase());
+  return [...out];
+}
+
+// One notification per event (dedupe_key is UNIQUE), never for yourself.
+function notifyStmt(sql, { userId, type, actorId, postId, commentId = null, key }) {
+  if (!userId || userId === actorId) return null;
+  return sql.prepare(`INSERT OR IGNORE INTO social_notifications (id, user_id, type, actor_user_id, post_id, comment_id, dedupe_key) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .bind(newId(), userId, type, actorId, postId, commentId, key);
+}
+async function notify(sql, list) {
+  const stmts = list.map(n => notifyStmt(sql, n)).filter(Boolean);
+  if (!stmts.length) return;
+  try { await sql.batch(stmts); } catch (e) { /* a notification never fails the action itself */ }
+}
+// Mentions in a post or comment: matched to real accounts by handle.
+async function mentionNotices(sql, text, { actorId, postId, commentId = null, skip = [] }) {
+  const handles = mentionedHandles(text);
+  if (!handles.length) return [];
+  const rows = (await sql.prepare(`SELECT id FROM users WHERE handle IN (${handles.map(() => '?').join(',')})`).bind(...handles).all()).results || [];
+  return rows.filter(u => !skip.includes(u.id)).map(u => ({ userId: u.id, type: 'mention', actorId, postId, commentId, key: `mention:${commentId || postId}:${u.id}` }));
+}
+
 // ---- Likes ----
 
 async function shownPostRow(sql, id) {
@@ -485,11 +581,15 @@ export async function apiSetSocialLike(request, env, postId, liked) {
   const me = await viewer(request, env);
   if (!me) return unauthenticated();
   const sql = env.cybercabhunter_db;
-  if (!await shownPostRow(sql, postId)) return notFound();
+  const post = await shownPostRow(sql, postId);
+  if (!post) return notFound();
   if (await bindingLimited(env, me.id)) return tooMany();
   await sql.prepare(liked
     ? `INSERT OR IGNORE INTO social_likes (post_id, user_id) VALUES (?, ?)`
     : `DELETE FROM social_likes WHERE post_id = ? AND user_id = ?`).bind(postId, me.id).run();
+  const key = `like:${postId}:${me.id}`;
+  if (liked) await notify(sql, [{ userId: post.user_id, type: 'like', actorId: me.id, postId, key }]);
+  else await sql.prepare(`DELETE FROM social_notifications WHERE dedupe_key = ? AND read_at IS NULL`).bind(key).run();
   const row = await sql.prepare(`SELECT like_count FROM social_posts WHERE id = ?`).bind(postId).first();
   return Response.json({ success: true, liked, like_count: Number(row ? row.like_count : 0) });
 }
@@ -547,22 +647,29 @@ export async function apiCreateSocialComment(request, env, postId) {
   const me = await viewer(request, env);
   if (!me) return unauthenticated();
   const sql = env.cybercabhunter_db;
-  if (!await shownPostRow(sql, postId)) return notFound();
+  const post = await shownPostRow(sql, postId);
+  if (!post) return notFound();
   if (await countSince(sql, 'social_comments', 'user_id', me.id, sqlNow(Date.now() - 3600000), LIMITS.commentsPerHour) >= LIMITS.commentsPerHour || await bindingLimited(env, me.id)) return tooMany();
   let payload = null;
   try { payload = await request.json(); } catch (e) { payload = null; }
   const body = readText(payload && payload.body, MAX_COMMENT_CHARS, { required: true });
   if (body.error) return fail(body.error);
-  let parentId = null;
+  let parentId = null, repliedTo = null;
   if (payload && payload.parent_id) {
-    const parent = await sql.prepare(`SELECT id, parent_id, post_id, status FROM social_comments WHERE id = ?`).bind(String(payload.parent_id)).first();
+    const parent = await sql.prepare(`SELECT id, parent_id, post_id, status, user_id FROM social_comments WHERE id = ?`).bind(String(payload.parent_id)).first();
     if (!parent || parent.post_id !== postId) return fail('invalid_parent');
     parentId = parent.parent_id || parent.id;   // one level: a reply to a reply joins the same thread
     const top = parentId === parent.id ? parent : await sql.prepare(`SELECT status FROM social_comments WHERE id = ?`).bind(parentId).first();
     if (!top || top.status !== 'visible') return fail('invalid_parent');
+    repliedTo = parent.status === 'visible' ? parent.user_id : null;   // whoever was actually replied to
   }
   const id = newId();
   await sql.prepare(`INSERT INTO social_comments (id, post_id, parent_id, user_id, body) VALUES (?, ?, ?, ?, ?)`).bind(id, postId, parentId, me.id, body.text).run();
+  const notices = [];
+  if (repliedTo) notices.push({ userId: repliedTo, type: 'reply', actorId: me.id, postId, commentId: id, key: `reply:${id}` });
+  if (post.user_id !== repliedTo) notices.push({ userId: post.user_id, type: 'comment', actorId: me.id, postId, commentId: id, key: `comment:${id}` });
+  notices.push(...await mentionNotices(sql, body.text, { actorId: me.id, postId, commentId: id, skip: [repliedTo, post.user_id] }));
+  await notify(sql, notices);
   const [row, count] = await Promise.all([
     sql.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).bind(id).first(),
     sql.prepare(`SELECT comment_count FROM social_posts WHERE id = ?`).bind(postId).first()
@@ -575,7 +682,7 @@ export async function apiUpdateSocialComment(request, env, commentId) {
   if (!me) return unauthenticated();
   const sql = env.cybercabhunter_db;
   if (!ID_RE.test(commentId || '')) return notFound();
-  const c = await sql.prepare(`SELECT id, user_id, status FROM social_comments WHERE id = ?`).bind(commentId).first();
+  const c = await sql.prepare(`SELECT id, user_id, post_id, status FROM social_comments WHERE id = ?`).bind(commentId).first();
   if (!c || c.status !== 'visible') return notFound();
   if (c.user_id !== me.id) return fail('forbidden', 403);
   let payload = null;
@@ -583,6 +690,7 @@ export async function apiUpdateSocialComment(request, env, commentId) {
   const body = readText(payload && payload.body, MAX_COMMENT_CHARS, { required: true });
   if (body.error) return fail(body.error);
   await sql.prepare(`UPDATE social_comments SET body = ?, edited_at = datetime('now') WHERE id = ? AND user_id = ?`).bind(body.text, commentId, me.id).run();
+  await notify(sql, await mentionNotices(sql, body.text, { actorId: me.id, postId: c.post_id, commentId }));
   return Response.json({ success: true, comment: commentJson(await sql.prepare(`${COMMENT_SELECT} WHERE c.id = ?`).bind(commentId).first(), me) });
 }
 
@@ -597,6 +705,7 @@ export async function apiDeleteSocialComment(request, env, commentId) {
     // The author's own delete: the comment and its replies go.
     await sql.batch([
       sql.prepare(`UPDATE social_reports SET status = 'dismissed', resolved_at = datetime('now') WHERE status = 'open' AND target_type = 'comment' AND target_id IN (SELECT id FROM social_comments WHERE id = ? OR parent_id = ?)`).bind(commentId, commentId),
+      sql.prepare(`DELETE FROM social_notifications WHERE comment_id IN (SELECT id FROM social_comments WHERE id = ? OR parent_id = ?)`).bind(commentId, commentId),
       sql.prepare(`DELETE FROM social_comments WHERE parent_id = ?`).bind(commentId),
       sql.prepare(`DELETE FROM social_comments WHERE id = ?`).bind(commentId)
     ]);
@@ -703,6 +812,161 @@ export async function apiSocialSidebar(request, env, ctx) {
   return response;
 }
 
+// ---- Saved posts (private bookmarks; no notification, no XP) ----
+
+export async function apiSetSocialSave(request, env, postId, saved) {
+  const me = await viewer(request, env);
+  if (!me) return unauthenticated();
+  const sql = env.cybercabhunter_db;
+  if (!ID_RE.test(postId || '')) return notFound();
+  if (saved && !await shownPostRow(sql, postId)) return notFound();
+  await sql.prepare(saved
+    ? `INSERT OR IGNORE INTO social_saves (user_id, post_id) VALUES (?, ?)`
+    : `DELETE FROM social_saves WHERE user_id = ? AND post_id = ?`).bind(me.id, postId).run();
+  return Response.json({ success: true, saved });
+}
+
+// ---- Community pins (moderators; at most MAX_PINS shown at once) ----
+
+export async function apiSetSocialPin(request, env, postId, pinned) {
+  const { me, res } = await requireMod(request, env);
+  if (res) return res;
+  const sql = env.cybercabhunter_db;
+  const post = await shownPostRow(sql, postId);
+  if (!post) return notFound();
+  if (pinned) {
+    const row = await sql.prepare(`SELECT COUNT(*) AS n FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE p.pinned = 1 AND p.id <> ? AND ${SHOWN}`).bind(postId).first();
+    if (Number(row && row.n) >= MAX_PINS) return fail('too_many_pins', 409, { max: MAX_PINS });
+  }
+  await sql.batch([
+    pinned
+      ? sql.prepare(`UPDATE social_posts SET pinned = 1, pinned_at = COALESCE(CASE WHEN pinned = 1 THEN pinned_at END, datetime('now')), pinned_by = ? WHERE id = ?`).bind(me.id, postId)
+      : sql.prepare(`UPDATE social_posts SET pinned = 0, pinned_at = NULL, pinned_by = NULL WHERE id = ?`).bind(postId),
+    modAction(sql, me, pinned ? 'pin_post' : 'unpin_post', 'post', postId, post.user_id, null)
+  ]);
+  return Response.json({ success: true, pinned });
+}
+
+// ---- Notifications (the rider's own; nothing here is public) ----
+
+const NOTIFICATION_TEXT = {
+  comment: 'commented on your post',
+  reply: 'replied to your comment',
+  like: 'liked your post',
+  mention: 'mentioned you'
+};
+
+// The optional announcement notice: one row for everyone (no fan-out); it is
+// unread for a rider until they mark notifications read after it was posted.
+async function announcementNotice(sql, me) {
+  const ann = await sql.prepare(`SELECT a.body, a.link_url, a.updated_at, a.notify, st.announcement_read_at
+      FROM social_announcements a LEFT JOIN social_notification_state st ON st.user_id = ? WHERE a.id = 1`).bind(me.id).first();
+  if (!ann || Number(ann.notify) !== 1) return null;
+  return {
+    id: 'announcement',
+    type: 'announcement',
+    actor: { name: 'Cybercab Hunter', handle: null, avatar_url: null, anonymous: false, official: true },
+    text: 'posted an announcement',
+    excerpt: String(ann.body).slice(0, 140),
+    url: ann.link_url || '/community',
+    created_at: ann.updated_at,
+    read: !!ann.announcement_read_at && ann.announcement_read_at >= ann.updated_at
+  };
+}
+
+// Only notifications whose post (and comment) is still shown to the public.
+const NOTIFICATION_FROM = `
+  FROM social_notifications n
+  JOIN social_posts p ON p.id = n.post_id
+  LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+  LEFT JOIN social_comments c ON c.id = n.comment_id
+  WHERE n.user_id = ? AND ${SHOWN} AND (n.comment_id IS NULL OR c.status = 'visible')`;
+
+export async function apiListSocialNotifications(request, env) {
+  const me = await viewer(request, env);
+  if (!me) return unauthenticated();
+  const sql = env.cybercabhunter_db;
+  const countOnly = new URL(request.url).searchParams.get('count_only') === '1';
+  const [unreadRow, ann] = await Promise.all([
+    sql.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 ${NOTIFICATION_FROM} AND n.read_at IS NULL LIMIT 100)`).bind(me.id).first(),
+    announcementNotice(sql, me)
+  ]);
+  const unread = Number(unreadRow ? unreadRow.n : 0) + (ann && !ann.read ? 1 : 0);
+  const headers = { 'Cache-Control': 'private, no-store' };
+  if (countOnly) return Response.json({ unread }, { headers });
+  const rows = (await sql.prepare(`SELECT n.id, n.type, n.post_id, n.comment_id, n.read_at, n.created_at,
+        COALESCE(c.body, p.body) AS excerpt,
+        u.leaderboard_opt_in AS opt_in, u.display_name, u.handle, u.avatar_url
+      ${NOTIFICATION_FROM.replace('WHERE n.user_id', 'JOIN users u ON u.id = n.actor_user_id WHERE n.user_id')}
+      ORDER BY n.created_at DESC, n.id DESC LIMIT ${NOTIFICATIONS_PAGE}`).bind(me.id).all()).results || [];
+  const items = rows.map(r => ({
+    id: r.id,
+    type: r.type,
+    actor: publicPerson(r),
+    text: NOTIFICATION_TEXT[r.type],
+    excerpt: String(r.excerpt || '').slice(0, 140),
+    url: `/community?post=${r.post_id}${r.comment_id ? `&comment=${r.comment_id}` : ''}`,
+    created_at: r.created_at,
+    read: !!r.read_at
+  }));
+  if (ann) items.push(ann);
+  items.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  return Response.json({ unread, notifications: items.slice(0, NOTIFICATIONS_PAGE) }, { headers });
+}
+
+export async function apiReadSocialNotifications(request, env) {
+  const me = await viewer(request, env);
+  if (!me) return unauthenticated();
+  const sql = env.cybercabhunter_db;
+  let p = null;
+  try { p = await request.json(); } catch (e) { p = null; }
+  const ids = p && Array.isArray(p.ids) ? p.ids.map(String).slice(0, 100) : [];
+  const stmts = [];
+  if (p && p.all === true) {
+    stmts.push(sql.prepare(`UPDATE social_notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL`).bind(me.id));
+  } else {
+    const real = ids.filter(id => ID_RE.test(id));
+    // Only the rider's own rows can change (user_id = me): someone else's id does nothing.
+    if (real.length) stmts.push(sql.prepare(`UPDATE social_notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL AND id IN (${real.map(() => '?').join(',')})`).bind(me.id, ...real));
+  }
+  if ((p && p.all === true) || ids.includes('announcement')) {
+    stmts.push(sql.prepare(`INSERT INTO social_notification_state (user_id, announcement_read_at) VALUES (?, datetime('now'))
+        ON CONFLICT(user_id) DO UPDATE SET announcement_read_at = excluded.announcement_read_at`).bind(me.id));
+  }
+  if (!stmts.length) return fail('invalid_body');
+  await sql.batch(stmts);
+  return Response.json({ success: true });
+}
+
+// ---- Registry search for the composer's Cybercab picker ----
+// Public vehicles only (the registry's own rule), by license plate, VIN or the
+// vehicle's id (the one in its /vehicle/<id> link); partial and
+// case-insensitive. Only the public registry fields come back. With no query:
+// the most recently seen. Cheap: no per-vehicle ride statistics.
+export async function apiSearchSocialVehicles(request, env) {
+  const raw = (new URL(request.url).searchParams.get('q') || '').trim().slice(0, 40);
+  const compact = normalizePlate(raw) || '';   // A-Z0-9 only, the registry's own rule (worker/plate.js)
+  const idLike = /^[0-9a-f-]{3,36}$/i.test(raw) ? raw.toLowerCase() : null;
+  const norm = sqlNormalizedPlate('v.license_plate');
+  let where = '', binds = [], order = 'COALESCE(v.last_seen_at, v.created_at) DESC';
+  if (raw) {
+    if (!compact) return Response.json({ q: raw, vehicles: [] }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+    where = ` AND (${norm} LIKE ? OR UPPER(COALESCE(v.vin, '')) LIKE ?${idLike ? ' OR v.id LIKE ?' : ''})`;
+    binds = [`%${compact}%`, `%${compact}%`, ...(idLike ? [`${idLike}%`] : [])];
+    // Exact and prefix matches first, then the most recently seen.
+    order = `(${norm} = ?) DESC, (UPPER(COALESCE(v.vin, '')) = ?) DESC, (${norm} LIKE ?) DESC, ${order}`;
+    binds.push(compact, compact, `${compact}%`);
+  }
+  const rows = (await env.cybercabhunter_db.prepare(`
+    SELECT v.id, v.license_plate, v.vin, v.service_area, v.approval_basis
+    FROM robotaxi_vehicles v
+    WHERE ${ELIGIBLE_V}${where}
+    ORDER BY ${order}, v.id
+    LIMIT ${VEHICLE_SEARCH_LIMIT}`).bind(...binds).all()).results || [];
+  return Response.json({ q: raw, vehicles: rows.map(vehicleJson) }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+}
+
 // ---- Moderation ----
 
 async function requireMod(request, env) {
@@ -794,12 +1058,50 @@ export async function apiModerationSocialAnnouncement(request, env, ctx) {
     const link = readLink(p && p.link_url);
     if (link.error) return fail(link.error);
     await sql.batch([
-      sql.prepare(`INSERT INTO social_announcements (id, body, link_url, updated_by, updated_at) VALUES (1, ?, ?, ?, datetime('now'))
-        ON CONFLICT(id) DO UPDATE SET body = excluded.body, link_url = excluded.link_url, updated_by = excluded.updated_by, updated_at = excluded.updated_at`).bind(body.text, link.url, me.id),
+      sql.prepare(`INSERT INTO social_announcements (id, body, link_url, updated_by, updated_at, notify) VALUES (1, ?, ?, ?, datetime('now'), ?)
+        ON CONFLICT(id) DO UPDATE SET body = excluded.body, link_url = excluded.link_url, updated_by = excluded.updated_by, updated_at = excluded.updated_at, notify = excluded.notify`).bind(body.text, link.url, me.id, p && p.notify === true ? 1 : 0),
       modAction(sql, me, 'announcement', 'announcement', '1', null, 'set')
     ]);
   }
   // The sidebar is edge-cached: drop this location's copy so the change shows here at once.
   try { if (typeof caches !== 'undefined' && caches.default) await caches.default.delete(new Request('https://cybercabhunter.com/api/social/sidebar')); } catch (e) { /* expires in 2 min anyway */ }
   return Response.json({ success: true });
+}
+
+// ---- Link previews for shared posts (/community?post=<id>) ----
+// The Community page is static; for a post link the Worker fills in its
+// title and Open Graph tags from the post (public posts only — a removed,
+// hidden or unknown post gets the page's own tags). Text only; quotes and
+// angle brackets are dropped so nothing can break out of an attribute.
+const META_SITE = 'https://cybercabhunter.com';
+const metaText = (v, max) => {
+  const t = String(v || '').replace(/["<>]/g, '').replace(/\s+/g, ' ').trim();
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;
+};
+export function socialMetaFor(post) {
+  const who = post.author && !post.author.anonymous ? post.author.name : 'a Cybercab Hunter';
+  const title = metaText(post.review ? `Ride review by ${who}` : `Post by ${who}`, 80) + ' | Cybercab Hunter Community';
+  const description = metaText(post.body || (post.review ? `${post.review.rating} out of 5 stars` : 'A photo from the Cybercab Hunter community.'), 200);
+  const image = post.photos && post.photos[0] ? META_SITE + post.photos[0].url : `${META_SITE}/images/CybercabAnimation-poster.jpg`;
+  return { title, description, image, url: META_SITE + post.url };
+}
+
+export async function socialPostMeta(request, env) {
+  const asset = await env.ASSETS.fetch(request);
+  const postId = new URL(request.url).searchParams.get('post');
+  if (!postId || !ID_RE.test(postId) || !asset.ok || typeof HTMLRewriter === 'undefined') return asset;
+  let post = null;
+  try { post = await onePost(env.cybercabhunter_db, postId, null); } catch (e) { post = null; }
+  if (!post) return asset;
+  const m = socialMetaFor(post);
+  const set = (value) => ({ element(el) { el.setAttribute('content', value); } });
+  return new HTMLRewriter()
+    .on('title', { element(el) { el.setInnerContent(m.title); } })
+    .on('meta[name="description"]', set(m.description))
+    .on('meta[property="og:title"]', set(m.title))
+    .on('meta[property="og:description"]', set(m.description))
+    .on('meta[property="og:image"]', set(m.image))
+    .on('meta[property="og:url"]', set(m.url))
+    .on('meta[name="twitter:card"]', set(post.photos && post.photos.length ? 'summary_large_image' : 'summary'))
+    .transform(asset);
 }

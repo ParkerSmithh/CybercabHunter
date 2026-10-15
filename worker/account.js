@@ -119,6 +119,11 @@ export async function apiDeleteAccount(request, env) {
     // comments, likes, photos and attached reviews), then their own likes,
     // comments and reports elsewhere. Moderation records keep the action but
     // drop who it was about.
+    // Notifications for / by them or about their posts and comments, saves of their posts and their own saves.
+    sql.prepare(`DELETE FROM social_notifications WHERE user_id = ? OR actor_user_id = ? OR post_id IN (SELECT id FROM social_posts WHERE user_id = ?) OR comment_id IN (SELECT id FROM social_comments WHERE user_id = ?)`).bind(userId, userId, userId, userId),
+    sql.prepare(`DELETE FROM social_saves WHERE user_id = ? OR post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId, userId),
+    sql.prepare(`DELETE FROM social_notification_state WHERE user_id = ?`).bind(userId),
+    sql.prepare(`UPDATE social_posts SET pinned_by = NULL WHERE pinned_by = ?`).bind(userId),
     sql.prepare(`DELETE FROM social_comments WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?) AND parent_id IS NOT NULL`).bind(userId),
     sql.prepare(`DELETE FROM social_comments WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
     sql.prepare(`DELETE FROM social_likes WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
