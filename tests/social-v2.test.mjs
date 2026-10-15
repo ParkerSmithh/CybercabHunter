@@ -140,6 +140,12 @@ async function run() {
     const pg1 = await feed(ctx, 'filter=saved&limit=3', 'carol');
     const pg2 = await feed(ctx, `filter=saved&limit=3&cursor=${pg1.next_cursor}`, 'carol');
     check('Saved pages with a cursor, nothing twice', pg1.posts.length === 3 && pg2.posts.length === 1 && !pg1.posts.some(p => p.id === pg2.posts[0].id));
+    const carolSaved = pg1.posts.concat(pg2.posts);
+    for (const who of ['alice', 'bob', 'mod']) await call(ctx, 'PUT', `/api/social/posts/${carolSaved[3].id}/like`, { session: `s-${who}` });
+    const popular = await feed(ctx, 'filter=saved&sort=popular&limit=3', 'carol');
+    const popular2 = await feed(ctx, `filter=saved&sort=popular&limit=3&cursor=${popular.next_cursor}`, 'carol');
+    check('Saved · Most popular: the most-liked saved post first, paged without repeats', popular.posts[0].id === carolSaved[3].id && popular.posts.length + popular2.posts.length === 4 && new Set(popular.posts.concat(popular2.posts).map(p => p.id)).size === 4);
+    check('Latest ignores ?sort (it is newest-first by definition)', (await feed(ctx, 'filter=latest&sort=popular')).sort === 'new');
   }
 
   console.log('3. Notifications');

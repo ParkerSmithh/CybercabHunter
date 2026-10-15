@@ -223,7 +223,9 @@ export async function apiSocialFeed(request, env) {
   const sql = env.cybercabhunter_db;
   const params = new URL(request.url).searchParams;
   const filter = ['foryou', 'latest', 'photos', 'reviews', 'saved'].includes(params.get('filter')) ? params.get('filter') : 'foryou';
-  const sort = filter === 'foryou' ? 'ranked' : (filter === 'latest' || filter === 'saved') ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
+  // For You has its own ranking and Latest is newest-first by definition;
+  // Photos, Reviews and Saved take ?sort=new|popular.
+  const sort = filter === 'foryou' ? 'ranked' : filter === 'latest' ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
   const limit = Math.min(Math.max(Number(params.get('limit')) || FEED_DEFAULT, 1), FEED_MAX);
   const cursor = decodeCursor(params.get('cursor'));
   const me = await viewer(request, env);
@@ -235,7 +237,17 @@ export async function apiSocialFeed(request, env) {
   const extra = filter === 'photos' ? ' AND p.has_photos = 1' : filter === 'reviews' ? ' AND p.has_review = 1' : withPins ? ' AND p.pinned = 0' : '';
   const shownFrom = `FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}${extra}`;
   let ids, next = null;
-  if (filter === 'saved') {
+  if (filter === 'saved' && sort === 'popular') {
+    // The rider's bookmarks ranked like Most popular (the newest RANKED_WINDOW saves).
+    const at = cursor && Number.isFinite(cursor.at) ? cursor.at : Date.now();
+    const offset = cursor && Number.isInteger(cursor.o) && cursor.o >= 0 ? cursor.o : 0;
+    const rows = (await sql.prepare(`SELECT p.id, p.created_at, p.like_count, p.comment_count
+        FROM social_saves s JOIN social_posts p ON p.id = s.post_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE s.user_id = ? AND ${SHOWN} ORDER BY s.created_at DESC, s.post_id DESC LIMIT ${RANKED_WINDOW}`).bind(me.id).all()).results || [];
+    rows.sort((a, b) => postScore(b, at, 0.8) - postScore(a, at, 0.8) || (a.created_at < b.created_at ? 1 : -1));
+    ids = rows.slice(offset, offset + limit).map(r => r.id);
+    if (rows.length > offset + limit) next = encodeCursor({ at, o: offset + limit });
+  } else if (filter === 'saved') {
     // The rider's own bookmarks, most recently saved first; a post that is no
     // longer shown drops out (its save row stays until the post is deleted).
     const after = cursor && typeof cursor.t === 'string' && typeof cursor.id === 'string' ? cursor : null;

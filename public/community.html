@@ -26,7 +26,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=19">
+<link rel="stylesheet" href="css/community.css?v=20">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -279,7 +279,11 @@
             <div class="min-w-0 flex-1">
               <div class="social-composer-who"><span id="socialMeName">You</span><span id="socialEditing" class="hidden social-editing">Editing your post <button type="button" id="socialEditCancel" class="social-linkbtn">Cancel</button></span></div>
               <label for="socialBody" class="sr-only">Write a post</label>
-              <textarea id="socialBody" rows="3" maxlength="2000" placeholder="What's happening in the Cybercab world?" class="social-textarea"></textarea>
+              <textarea id="socialBody" rows="3" placeholder="What's happening in the Cybercab world?" aria-describedby="socialCount socialCountMsg" class="social-textarea"></textarea>
+              <!-- No maxlength: pasted text is never cut off silently. The
+                   counter shows the 2,000 limit and Post stays off past it
+                   (the server checks the same limit). -->
+              <p id="socialCountMsg" class="social-count-msg hidden" role="status"></p>
               <div id="socialPhotoPreviews" class="social-previews hidden" aria-label="Selected photos"></div>
 
               <!-- Optional attachments, each opened from the toolbar. -->
@@ -325,7 +329,7 @@
                   <select id="socialCategory" class="social-category"><option value="general">General</option><option value="sighting">Sighting</option><option value="question">Question</option><option value="news">News</option><option value="review">Review</option></select>
                 </div>
                 <div class="social-publish">
-                  <span id="socialCount" class="social-count hidden" aria-live="polite"></span>
+                  <span id="socialCount" class="social-count">0 / 2,000</span>
                   <button type="submit" id="socialPublish" class="social-publish-btn" disabled>Post</button>
                 </div>
               </div>
@@ -343,7 +347,13 @@
             <button type="button" role="tab" data-filter="reviews" aria-selected="false" class="social-filter">Reviews</button>
             <button type="button" role="tab" data-filter="saved" aria-selected="false" class="social-filter">Saved</button>
           </div>
-          <label id="socialSortWrap" class="social-sort hidden"><span class="sr-only">Sort</span>
+        </div>
+        <!-- How the feed is ordered: its own row, always shown, so it never
+             squeezes the filter tabs. Photos, Reviews and Saved can be sorted;
+             For You and Latest are orders in themselves and say so. -->
+        <div id="socialFeedbar" class="social-feedbar">
+          <span id="socialSortNote" class="social-sort-note" aria-live="polite">Ranked by recent likes and comments</span>
+          <label id="socialSortWrap" class="social-sort hidden"><span class="social-sort-label">Sort</span>
             <select id="socialSort" class="social-category"><option value="new">Newest</option><option value="popular">Most popular</option></select></label>
         </div>
 
@@ -623,7 +633,7 @@
 <script src="js/rider-search.js?v=2"></script>
 <script src="js/streaks.js?v=5"></script>
 <script src="js/progress.js?v=2"></script>
-<script src="js/social.js?v=2"></script>
+<script src="js/social.js?v=3"></script>
 <script>
   // ---- Social | Streaks | Leaderboard | Progress (the Simulation page's tabs) ----
   (function () {

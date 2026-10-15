@@ -171,7 +171,12 @@
   let viewer = { signed_in: !!session(), moderator: false };
   let me = null;                 // { name, avatar_url } for the composer
   let filter = 'foryou';
-  let sort = 'new';
+  // The chosen sort for Photos / Reviews / Saved, kept across those filters
+  // and remembered in this browser (a convenience only).
+  const SORT_KEY = 'cchSocialSort';
+  let sort = (() => { try { return localStorage.getItem(SORT_KEY) === 'popular' ? 'popular' : 'new'; } catch (e) { return 'new'; } })();
+  const SORTABLE = ['photos', 'reviews', 'saved'];
+  const SORT_NOTE = { foryou: 'Ranked by recent likes and comments', latest: 'Newest posts first' };
   let cursor = null;
   let loading = false;
   let feedToken = 0;
@@ -313,7 +318,7 @@
     }
     $('socialMore').disabled = true;
     const q = new URLSearchParams({ filter, limit: String(PAGE) });
-    if (filter === 'photos' || filter === 'reviews') q.set('sort', sort);
+    if (SORTABLE.includes(filter)) q.set('sort', sort);
     if (!reset && cursor) q.set('cursor', cursor);
     let data = null;
     let status = 0;
@@ -338,7 +343,7 @@
     if (!v) return;
     const changed = v.signed_in !== viewer.signed_in || v.moderator !== viewer.moderator;
     viewer = { signed_in: !!v.signed_in, moderator: !!v.moderator };
-    if (changed) renderComposerAccess();
+    if (changed) { renderComposerAccess(); renderSortBar(); }
   }
 
   function setFilter(next) {
@@ -348,7 +353,7 @@
       b.setAttribute('aria-selected', String(on));
       b.tabIndex = on ? 0 : -1;
     });
-    $('socialSortWrap').classList.toggle('hidden', !(filter === 'photos' || filter === 'reviews'));
+    renderSortBar();
     loadFeed(true);
   }
   const filterBtns = () => [...document.querySelectorAll('.social-filter[data-filter]')];
@@ -360,7 +365,20 @@
     if (j < 0) return;
     e.preventDefault(); list[j].focus(); setFilter(list[j].dataset.filter);
   });
-  $('socialSort').addEventListener('change', () => { sort = $('socialSort').value === 'popular' ? 'popular' : 'new'; loadFeed(true); });
+  // The sort row: a Newest / Most popular choice where the filter supports it,
+  // otherwise one line saying how that feed is ordered. Never hidden as a whole.
+  function renderSortBar() {
+    const sortable = SORTABLE.includes(filter) && !(filter === 'saved' && !viewer.signed_in && !session());
+    $('socialSortWrap').classList.toggle('hidden', !sortable);
+    $('socialSort').value = sort;
+    $('socialSortNote').textContent = sortable ? '' : (SORT_NOTE[filter] || '');
+    $('socialSortNote').classList.toggle('hidden', sortable);
+  }
+  $('socialSort').addEventListener('change', () => {
+    sort = $('socialSort').value === 'popular' ? 'popular' : 'new';
+    try { localStorage.setItem(SORT_KEY, sort); } catch (e) { /* not essential */ }
+    loadFeed(true);
+  });
   $('socialMore').addEventListener('click', () => loadFeed(false));
 
   // ---------- Comments ----------
@@ -717,13 +735,21 @@
 
   function composerError(msg) { $('socialComposerError').textContent = msg || ''; $('socialComposerError').classList.toggle('hidden', !msg); }
   function updateComposer() {
-    const len = $('socialBody').value.length;
+    // The same length the server counts (line breaks as one character).
+    const len = $('socialBody').value.replace(/\r\n/g, '\n').length;
     const left = MAX_CHARS - len;
     const count = $('socialCount');
-    count.classList.toggle('hidden', len < MAX_CHARS - 200);
-    count.textContent = String(left);
-    count.classList.toggle('is-over', left < 0);
-    count.classList.toggle('is-near', left >= 0 && left <= 20);
+    count.textContent = `${len.toLocaleString('en-US')} / ${MAX_CHARS.toLocaleString('en-US')}`;
+    const state = left < 0 ? 'over' : left === 0 ? 'full' : left <= 200 ? 'near' : '';
+    count.classList.toggle('is-over', state === 'over');
+    count.classList.toggle('is-near', state === 'near' || state === 'full');
+    const msg = $('socialCountMsg');
+    const text = state === 'over' ? `${(-left).toLocaleString('en-US')} ${left === -1 ? 'character' : 'characters'} over the ${MAX_CHARS.toLocaleString('en-US')}-character limit. Shorten your post to publish it.`
+      : state === 'full' ? `You've reached the ${MAX_CHARS.toLocaleString('en-US')}-character limit.`
+      : state === 'near' ? `${left.toLocaleString('en-US')} ${left === 1 ? 'character' : 'characters'} left.` : '';
+    if (msg.textContent !== text) msg.textContent = text;   // announced only when it changes
+    msg.classList.toggle('hidden', !text);
+    msg.classList.toggle('is-over', state === 'over');
     const hasContent = $('socialBody').value.trim().length > 0 || keep.length + added.length > 0;
     $('socialPublish').disabled = !viewer.signed_in || !hasContent || left < 0 || (attachOpen.review && !rating) || $('socialPublish').dataset.busy === '1';
   }
@@ -798,9 +824,11 @@
     const q = vInput().value.trim();
     vSearchTimer = setTimeout(() => searchVehicles(q), 200);
   });
-  vInput().addEventListener('focus', () => { if (!vInput().value.trim() && !vResults.length) searchVehicles(''); else if (vResults.length) showVehicleResults(true); });
+  // Suggestions open when typing (or ↓), never on focus alone, so the list
+  // never covers the composer's toolbar uninvited.
+  vInput().addEventListener('focus', () => { if (vInput().value.trim() && vResults.length) showVehicleResults(true); });
   vInput().addEventListener('keydown', e => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); if ($('socialVehicleResults').classList.contains('hidden')) searchVehicles(vInput().value.trim()); else moveActive(1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
     else if (e.key === 'Enter') { e.preventDefault(); if (vActive >= 0 && vResults[vActive]) setVehicle(vResults[vActive]); }
     else if (e.key === 'Escape') showVehicleResults(false);
@@ -923,7 +951,7 @@
     if (!viewer.signed_in) return signIn();
     composerError('');
     const body = $('socialBody').value.trim();
-    if (body.length > MAX_CHARS) return composerError(errorText('text_too_long'));
+    if (body.length > MAX_CHARS) return composerError(`Your post is over the ${MAX_CHARS.toLocaleString('en-US')}-character limit. Shorten it to publish.`);
     if (!body && !keep.length && !added.length) return composerError(errorText('empty_post'));
     if (attachOpen.review && !rating) return composerError(errorText('invalid_rating'));
     if (attachOpen.vehicle && !selectedVehicle) return composerError('Choose a Cybercab from the search results, or remove the attachment.');
@@ -988,7 +1016,7 @@
 
   // ---------- A post's own page (/community?post=<id>) ----------
   let singleId = null;
-  const mainParts = () => [$('socialComposer'), document.querySelector('.social-filters'), $('socialFeed'), $('socialMore'), $('socialEmpty'), $('socialError')];
+  const mainParts = () => [$('socialComposer'), document.querySelector('.social-filters'), $('socialFeedbar'), $('socialFeed'), $('socialMore'), $('socialEmpty'), $('socialError')];
   let hiddenBefore = new Map();
   function enterSingle() {
     if (singleId) return;
