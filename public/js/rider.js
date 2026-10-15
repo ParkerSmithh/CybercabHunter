@@ -63,7 +63,7 @@
     $('riderReviews').innerHTML = recent.map(rv => `
       <article class="py-4 first:pt-0 last:pb-0">
         <div class="flex items-center justify-between gap-3">
-          <a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="profile-plate hover:brightness-110">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>
+          ${rv.vehicle ? `<a href="/vehicle/${encodeURIComponent(rv.vehicle.id)}" class="profile-plate hover:brightness-110">${esc(rv.vehicle.license_plate || 'Cybercab')}</a>` : `<a href="${esc(rv.url || '/community')}" class="text-xs font-semibold text-gold hover:underline">Ride review</a>`}
           <span class="text-gold text-sm tracking-wider" role="img" aria-label="${rv.rating} out of 5 stars">${'★'.repeat(rv.rating)}<span class="text-slate-600">${'★'.repeat(5 - rv.rating)}</span></span>
         </div>
         <p class="mt-2.5 text-sm text-slate-200 leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]" data-body></p>

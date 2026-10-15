@@ -137,6 +137,31 @@
         <ul id="modFareReportsList" class="mt-4 space-y-3"></ul>
       </section>
 
+      <!-- Community Social reports and the pinned announcement
+           (js/moderation-social.js; worker/social.js). One entry per reported
+           post or comment, with every reason, the reporters' notes and the
+           author's moderation history. Remove hides it for everyone (kept for
+           the audit log); Dismiss closes the reports and leaves it up. -->
+      <section id="social-reports" aria-labelledby="modSocialHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5 hidden">
+        <h2 id="modSocialHeading" class="font-display font-bold text-xl">Social reports</h2>
+        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Posts and comments riders reported on Community &rarr; Social, oldest first. Removing never gives or takes XP.</p>
+        <p id="modSocialStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
+        <ul id="modSocialList" class="mt-4 space-y-3"></ul>
+        <form id="modSocialAnnouncement" class="mt-6 pt-5 border-t border-white/10">
+          <h3 class="font-display font-bold text-base">Pinned announcement</h3>
+          <p class="text-xs text-slate-400 mt-1">Shown at the top of the Social sidebar for everyone. Up to 280 characters.</p>
+          <label for="modSocialAnnBody" class="sr-only">Announcement</label>
+          <textarea id="modSocialAnnBody" maxlength="280" rows="2" class="mt-3 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm"></textarea>
+          <label for="modSocialAnnLink" class="sr-only">Link (optional)</label>
+          <input id="modSocialAnnLink" type="url" maxlength="500" placeholder="Link (optional), https://" class="mt-2 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm">
+          <div class="mt-3 flex gap-2 flex-wrap items-center">
+            <button type="submit" class="min-h-[44px] px-4 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Publish announcement</button>
+            <button type="button" id="modSocialAnnClear" class="min-h-[44px] px-4 rounded-lg text-sm font-semibold border border-white/15 text-slate-100 hover:bg-white/5">Clear</button>
+            <span id="modSocialAnnStatus" role="status" class="text-xs text-slate-400"></span>
+          </div>
+        </form>
+      </section>
+
       <!-- Two review sections, switched with these buttons (js/moderation.js):
            Vehicles = sightings without a photo + the registry below;
            Images = photo sightings, as a compact grid. -->
@@ -269,5 +294,6 @@
 <script src="js/moderation.js?v=16"></script>
 <script src="js/moderation-news.js?v=6"></script>
 <script src="js/moderation-fare-reports.js?v=1"></script>
+<script src="js/moderation-social.js?v=1"></script>
 </body>
 </html>

@@ -15,8 +15,9 @@
 //      sightings, sightings, submissions, sync runs and connections (Tesla,
 //      Tesla ride sync, Robotaxi owner, Gmail, Google), their own Tesla
 //      vehicles (`vehicles` — the rider's private Tesla-account cars, NOT the
-//      public registry), receipt addresses, Fleet ETA fare/wait reports, then
-//      the users row. Shared records
+//      public registry), receipt addresses, Fleet ETA fare/wait reports,
+//      Community Social posts (with everything under them), likes, comments
+//      and reports, then the users row. Shared records
 //      that only NAME them as a moderator keep existing: submissions.reviewed_by,
 //      fare_reports.reviewed_by and robotaxi_vehicles.vin_set_by_user_id become NULL. The moderator
 //      approval history (robotaxi_vehicle_reviews) is append-only by design and
@@ -43,7 +44,7 @@ import { gmail } from './gmail.js';
 
 export const ACCOUNT_TOMBSTONE_TTL_SECONDS = 60 * 60 * 24 * 90;   // the longest a session lives
 const CONFIRM = 'DELETE';
-const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`, `avatars/${id}/`, `reviews/${id}/`];
+const USER_PREFIXES = id => [`evidence/${id}/`, `receipts/${id}/`, `avatars/${id}/`, `reviews/${id}/`, `social/${id}/`];
 
 export async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -114,6 +115,25 @@ export async function apiDeleteAccount(request, env) {
     sql.prepare(`DELETE FROM cybercab_review_photos WHERE review_id IN (${myReviews})`).bind(userId),
     sql.prepare(`DELETE FROM cybercab_review_likes WHERE review_id IN (${myReviews})`).bind(userId),
     sql.prepare(`DELETE FROM cybercab_review_comments WHERE review_id IN (${myReviews})`).bind(userId),
+    // Community Social: the rider's posts with everything under them (anyone's
+    // comments, likes, photos and attached reviews), then their own likes,
+    // comments and reports elsewhere. Moderation records keep the action but
+    // drop who it was about.
+    sql.prepare(`DELETE FROM social_comments WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?) AND parent_id IS NOT NULL`).bind(userId),
+    sql.prepare(`DELETE FROM social_comments WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
+    sql.prepare(`DELETE FROM social_likes WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
+    sql.prepare(`DELETE FROM social_post_photos WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
+    sql.prepare(`DELETE FROM social_post_reviews WHERE post_id IN (SELECT id FROM social_posts WHERE user_id = ?)`).bind(userId),
+    mine('social_posts'),
+    sql.prepare(`DELETE FROM social_comments WHERE parent_id IN (SELECT id FROM social_comments WHERE user_id = ?)`).bind(userId),
+    mine('social_comments'),
+    mine('social_likes'),
+    sql.prepare(`DELETE FROM social_reports WHERE reporter_user_id = ?`).bind(userId),
+    sql.prepare(`UPDATE social_reports SET target_user_id = NULL WHERE target_user_id = ?`).bind(userId),
+    sql.prepare(`UPDATE social_reports SET resolved_by = NULL WHERE resolved_by = ?`).bind(userId),
+    sql.prepare(`UPDATE social_mod_actions SET target_user_id = NULL WHERE target_user_id = ?`).bind(userId),
+    sql.prepare(`UPDATE social_posts SET removed_by = NULL WHERE removed_by = ?`).bind(userId),
+    sql.prepare(`UPDATE social_comments SET removed_by = NULL WHERE removed_by = ?`).bind(userId),
     mine('cybercab_review_likes'),
     mine('cybercab_review_comments'),
     mine('cybercab_reviews'),

@@ -5,7 +5,7 @@
      /api/community/summary (worker/community-summary.js, precomputed once a
      day — one row read), with a 14-day sparkline where there's a daily series.
    - The intro under COMMUNITY follows the selected section.
-   Loaded before js/community.js, js/reviews.js and js/streaks.js, which fill
+   Loaded before js/community.js, js/social.js and js/streaks.js, which fill
    their own tiles through set(). Never a made-up number. */
 window.CommunityStats = (function () {
   const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -69,7 +69,7 @@ window.CommunityStats = (function () {
 
   // The hero intro, per section.
   const INTRO = {
-    reviews: 'Reviews from people who have ridden in a Cybercab: ratings, photos and what the ride was really like.',
+    social: 'Posts, photos, questions and ride reviews from the people tracking Tesla\'s Cybercab.',
     streaks: 'Spot Cybercabs on consecutive days or weeks. Every verified sighting keeps your streak alive.',
     leaderboard: 'The spotters and riders who found each Cybercab first, and who have ridden the most.',
     progress: 'Earn XP for verified contributions, level up and climb from Bronze to Diamond Spotter.'

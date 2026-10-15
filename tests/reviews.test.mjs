@@ -1,5 +1,8 @@
-// Cybercab reviews on the Community page (worker/reviews.js, js/reviews.js,
-// migrations/0023_cybercab_reviews.sql).
+// Cybercab reviews (worker/reviews.js, migrations/0023_cybercab_reviews.sql),
+// now part of Community Social (migration 0044 copies every review into a
+// post; worker/social.js, js/social.js). The public write routes are retired
+// (410 moved_to_social); the module's write logic is still exercised here by
+// calling it directly, so the reviews it made remain valid input to the copy.
 //   - one review per rider per vehicle; edit, not stack
 //   - 1–5 stars, text ≤ 2000, photos ≤ 3 (a 4th is rejected), JPEG/PNG/WebP, 5 MB
 //   - photos: EXIF/GPS stripped before storing, so never served; R2 layout
@@ -8,7 +11,7 @@
 //   - comments ≤ 500, counts match, own or moderator delete
 //   - the aggregate is live and right; only public vehicles' reviews count
 //   - ownership on every write; rate limiting; account deletion clears it all
-//   - the page renders it (jsdom)
+//   - the page: migrated reviews render in Social (jsdom)
 // Real SQL (every migration) + the REAL Worker router.
 // Run: node tests/reviews.test.mjs
 
@@ -16,6 +19,7 @@ import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { makeEnv, makeCheck, seedVehicle, approveVehicle } from './helpers/env.mjs';
 import worker from '../worker/index.js';
+import { apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiCreateReviewComment, apiDeleteReviewComment } from '../worker/reviews.js';
 
 const t = makeCheck();
 const { check } = t;
@@ -63,9 +67,25 @@ async function makeApp() {
 const auth = u => (u ? { Authorization: `Bearer session-${u}` } : {});
 async function call(ctx, method, path, { user, body, json } = {}) {
   const headers = { ...auth(user), ...(json ? { 'Content-Type': 'application/json' } : {}) };
-  const r = await worker.fetch(new Request(`https://x${path}`, { method, headers, body: json ? JSON.stringify(json) : body }), ctx.env, {});
+  const request = new Request(`https://x${path}`, { method, headers, body: json ? JSON.stringify(json) : body });
+  const r = (method !== 'GET' && await legacyWrite(request, ctx.env)) || await worker.fetch(request, ctx.env, {});
   let data = null; try { data = await r.clone().json(); } catch (e) { /* not json */ }
   return { status: r.status, data, r };
+}
+// The retired review writes, called on the module itself (the router answers 410).
+async function legacyWrite(request, env) {
+  const { pathname } = new URL(request.url);
+  const m = pathname.match(/^\/api\/reviews(?:\/([^/]+))?(?:\/(like|comments))?$/);
+  const c = pathname.match(/^\/api\/review-comments\/([^/]+)$/);
+  if (c && request.method === 'DELETE') return apiDeleteReviewComment(request, env, c[1]);
+  if (!m) return null;
+  const [, id, sub] = m;
+  if (!id && request.method === 'POST') return apiCreateReview(request, env);
+  if (id && !sub && request.method === 'PATCH') return apiUpdateReview(request, env, id);
+  if (id && !sub && request.method === 'DELETE') return apiDeleteReview(request, env, id);
+  if (sub === 'like' && ['PUT', 'DELETE'].includes(request.method)) return apiSetReviewLike(request, env, id, request.method === 'PUT');
+  if (sub === 'comments' && request.method === 'POST') return apiCreateReviewComment(request, env, id);
+  return null;
 }
 function form({ vehicle = 'veh-1', rating = 5, text = 'Smooth, quiet ride.', photos = [], keep = [] } = {}) {
   const fd = new FormData();
@@ -264,7 +284,7 @@ async function run() {
     check('...and leaves everyone else\'s alone', count(ctx, `SELECT COUNT(*) AS n FROM cybercab_reviews WHERE user_id = 'alice'`) === 1 && count(ctx, `SELECT COUNT(*) AS n FROM cybercab_review_comments WHERE user_id = 'bob'`) === 1);
   }
 
-  console.log('9. The page (jsdom)');
+  console.log('9. The page: migrated reviews in Community Social (jsdom)');
   {
     const ctx = await makeApp();
     const a = (await post(ctx, 'alice', { rating: 5, text: 'Great <b>ride</b>', photos: [jpeg()] })).data.review;
@@ -272,92 +292,105 @@ async function run() {
     await call(ctx, 'PUT', `/api/reviews/${a.id}/like`, { user: 'bob' });
     ctx.d1.prepare(`UPDATE cybercab_reviews SET created_at = '2026-09-01 10:00:00', updated_at = '2026-09-01 10:00:00' WHERE id = ?`).bind(a.id)._exec();
     ctx.d1.prepare(`UPDATE cybercab_reviews SET created_at = '2026-09-02 10:00:00', updated_at = '2026-09-02 10:00:00' WHERE id = ?`).bind(c.id)._exec();
+    // Migration 0044's copy step, as it runs on the live database (twice: it is repeatable).
+    const migration = read('migrations/0044_social.sql');
+    const copy = migration.slice(migration.indexOf('-- ---- Existing reviews -> posts'));
+    ctx.d1.exec(copy); ctx.d1.exec(copy);
+    check('the copy is repeatable: one post per review, the like carried over once', count(ctx, `SELECT COUNT(*) AS n FROM social_posts`) === 2 && count(ctx, `SELECT COUNT(*) AS n FROM social_likes WHERE post_id = ?`, a.id) === 1 && count(ctx, `SELECT COUNT(*) AS n FROM cybercab_reviews`) === 2);
+    const html = read('public/community.html');
+    const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(x => x.includes('VIEWS')).join('\n');
     async function open(session) {
-      const html = read('public/community.html').replace(/<script src="https?:[^"]*"><\/script>/g, '');
-      const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community', pretendToBeVisual: true });
+      const dom = new JSDOM(html.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/community', pretendToBeVisual: true });
       const w = dom.window;
       w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
       w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
       w.scrollTo = () => {}; w.HTMLElement.prototype.scrollIntoView = () => {};
+      if (!w.CSS) w.CSS = {};
+      if (!w.CSS.escape) w.CSS.escape = v => String(v).replace(/["\\]/g, '\\$&');
       if (session) w.localStorage.setItem('teslaSessionId', session);
       w.fetch = async (url, opts = {}) => {
         const u = String(url).replace(/^https:\/\/[^/]+/, '');   // main.js calls the Worker by its full URL
         if (u.startsWith('/api/')) return worker.fetch(new Request(`https://x${u}`, opts), ctx.env, {});
         return new Response('{}', { status: 404 });
       };
-      w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/community.js')}\n${read('public/js/peek-rating.js')}\n${read('public/js/reviews.js')}`);
-      await new Promise(r => setTimeout(r, 200));
+      w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/community.js')}\n${read('public/js/peek-rating.js')}\n${read('public/js/social.js')}\n${inline}`);
+      await new Promise(r => setTimeout(r, 300));
       return { w, d: w.document, text: id => w.document.getElementById(id).textContent.replace(/\s+/g, ' ').trim() };
     }
+    const wait = ms => new Promise(r => setTimeout(r, ms));
     const p = await open(null);
-    const cards = [...p.d.querySelectorAll('#reviewList [data-review]')];
-    check('the aggregate is the server\'s: 4.0 over 2 reviews', p.text('reviewAverage') === '4.0' && p.text('reviewCount') === '2 reviews');
-    check('both reviews render, newest first, with stars, like and comment counts', cards.length === 2 && cards[1].querySelector('[role="img"]').getAttribute('aria-label') === '5 out of 5 stars' && cards[1].querySelector('[data-like-count]').textContent === '1' && cards[1].querySelector('[data-comment-count]').textContent === '0');
-    check('the private rider\'s card says Anonymous with the default avatar', /Anonymous/.test(cards[0].textContent) && !cards[0].querySelector('[data-avatar-name]'));
-    const bar = n => p.d.querySelector(`#reviewBreakdown [data-stars="${n}"]`);
-    check('the breakdown: 5★ and 3★ at 50% each, counts beside them, the rest empty', bar(5).querySelector('[data-bar]').style.width === '50%' && bar(3).querySelector('[data-bar]').style.width === '50%' && bar(5).querySelector('[data-n]').textContent === '1' && bar(4).querySelector('[data-bar]').style.width === '0%' && bar(1).querySelector('[data-n]').textContent === '0');
-    check('the at-a-glance tiles: 2 reviews, 4.0 average, 1 spotter, 2 public Cybercabs', p.text('statReviews') === '2' && p.text('statRating') === '4.0' && p.text('statSpotters') === '1' && p.text('statVehiclesReview') === '2');
-    check('under every board, who is ranked there vs. credited with a discovery (so the Spotters tile never seems to disagree)', /ranked on this board · 1 spotter credited with a discovery \(2 vehicles found in all\)/.test(p.text('boardTotals')) && !p.d.getElementById('boardTotals').classList.contains('hidden'));
+    const cards = () => [...p.d.querySelectorAll('#socialFeed [data-post]')];
+    const card = id => p.d.querySelector(`#socialFeed [data-post="${id}"]`);
+    check('both reviews are posts in the feed, same ids, category Review', cards().length === 2 && card(a.id) && card(c.id) && cards().every(el => el.querySelector('.social-cat').textContent === 'Review'));
+    check('each carries its ride review (stars) and the like/comment counts', card(a.id).querySelector('.social-review-stars').getAttribute('aria-label') === '5 out of 5 stars' && card(a.id).querySelector('[data-like-count]').textContent === '1' && card(c.id).querySelector('.social-review-stars').getAttribute('aria-label') === '3 out of 5 stars');
+    check('the private rider\'s post says Anonymous with the default avatar, no rank', /Anonymous/.test(card(c.id).querySelector('.social-post-who').textContent) && !card(c.id).querySelector('[data-avatar-name]') && !card(c.id).querySelector('.social-rank') && !/Carol|carol_secret/.test(p.d.getElementById('socialFeed').innerHTML));
+    check('a public author gets the shared avatar (initials when there is no photo) and their rank', card(a.id).querySelector('[data-avatar-name]').textContent.trim() === 'AA' && !!card(a.id).querySelector('.social-rank'));
+    check('post text is shown as text, never as HTML', card(a.id).querySelector('[data-body]').textContent === 'Great <b>ride</b>' && !card(a.id).querySelector('[data-body] b'));
+    const img = card(a.id).querySelector('[data-photo] img');
+    check('the review\'s photo is the same stored file, served from Social', !!img && /^\/api\/social\/photos\/[a-f0-9]{32}$/.test(img.getAttribute('src')) && (await call(ctx, 'GET', img.getAttribute('src'))).status === 200 && img.getAttribute('loading') === 'lazy');
+    check('the at-a-glance tiles: 2 posts, 2 contributors, 4.0 average rating', p.text('statSocialPosts') === '2' && p.text('statSocialContributors') === '2' && p.text('statSocialRating') === '4.0');
+    check('signed out: the sign-in prompt instead of the composer, and no Edit/Delete', !p.d.getElementById('socialSignIn').classList.contains('hidden') && p.d.querySelector('#socialComposer .social-composer-row').classList.contains('hidden') && !p.d.querySelector('[data-act="edit"], [data-act="delete"]'));
+    p.d.querySelector('[data-filter="photos"]').click();
+    await wait(150);
+    check('the Photos filter shows only the post with a photo', cards().length === 1 && !!card(a.id));
+    p.d.querySelector('[data-filter="reviews"]').click();
+    await wait(150);
+    check('the Reviews filter shows both, with a Newest / Most popular sort', cards().length === 2 && !p.d.getElementById('socialSortWrap').classList.contains('hidden'));
+    check('under every board, who is ranked there vs. credited with a discovery (so the Spotters tile never seems to disagree)', /ranked on this board · 1 spotter credited with a discovery \(2 vehicles found in all\)/.test(p.text('boardTotals')));
     p.d.querySelector('#boardTabs [data-board="discovered"]').click();
-    await new Promise(r => setTimeout(r, 80));
+    await wait(80);
     check('the leaderboard footer totals every credited spotter (Discovered tab)', /1 spotter credited with a discovery \(2 vehicles found in all\)/.test(p.text('boardTotals')) && !p.d.getElementById('boardTotals').classList.contains('hidden'));
-    check('a public author gets the shared avatar (initials when there is no photo)', cards[1].querySelector('[data-avatar-name]').textContent.trim() === 'AA');
-    check('review text is shown as text, never as HTML', cards[1].querySelector('[data-body]').textContent === 'Great <b>ride</b>' && !cards[1].querySelector('[data-body] b'));
-    check('photos are a thumbnail grid that opens the viewer', cards[1].querySelectorAll('[data-photo] img').length === 1 && (cards[1].querySelector('[data-photo]').click(), !p.d.getElementById('sightingViewer').classList.contains('hidden')));
-    check('signed out: a sign-in note, no edit/delete buttons', !p.d.getElementById('reviewSignInNote').classList.contains('hidden') && !p.d.querySelector('[data-edit], [data-delete]'));
-    check('the leaderboard is still on the page', !!p.d.getElementById('boardList'));
-    check('with reviews, the summary and sort are shown; with none, the page starts with both hidden so the empty state says it once', !p.d.getElementById('reviewSummary').classList.contains('hidden') && !p.d.getElementById('reviewSort').classList.contains('hidden') && (() => { const s = new JSDOM(read('public/community.html')).window.document; return s.getElementById('reviewSummary').classList.contains('hidden') && s.getElementById('reviewSort').classList.contains('hidden'); })());
     p.w.close();
 
     const signed = await open('session-alice');
-    const mine = signed.d.querySelector(`[data-review="${a.id}"]`);
-    check('signed in as the author: Edit and Delete on their own card only', mine.querySelector('[data-edit]') && mine.querySelector('[data-delete]') && signed.d.querySelectorAll('[data-edit]').length === 1);
-    mine.querySelector('[data-like]').click();
-    await new Promise(r => setTimeout(r, 120));
-    check('liking from the card updates the live count', mine.querySelector('[data-like-count]').textContent === '2' && mine.querySelector('[data-like]').getAttribute('aria-pressed') === 'true');
-    mine.querySelector('[data-comments]').click();
-    await new Promise(r => setTimeout(r, 120));
-    mine.querySelector('[data-comment-form] input').value = 'Thanks all';
-    mine.querySelector('[data-comment-form]').dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 120));
-    check('commenting from the card: the thread and count update', mine.querySelector('[data-comment-count]').textContent === '1' && /Thanks all/.test(mine.querySelector('[data-comment-list]').textContent));
+    const mine = () => signed.d.querySelector(`#socialFeed [data-post="${a.id}"]`);
+    check('signed in as the author: Edit and Delete in their own post\'s menu only', !!mine().querySelector('[data-act="edit"]') && !!mine().querySelector('[data-act="delete"]') && signed.d.querySelectorAll('#socialFeed [data-act="edit"]').length === 1 && !!signed.d.querySelector(`[data-post="${c.id}"] [data-act="report"]`));
+    mine().querySelector('[data-like]').click();
+    await wait(150);
+    check('liking updates the live count at once and is saved', mine().querySelector('[data-like-count]').textContent === '2' && mine().querySelector('[data-like]').getAttribute('aria-pressed') === 'true' && count(ctx, `SELECT like_count AS n FROM social_posts WHERE id = ?`, a.id) === 2);
+    mine().querySelector('[data-comments]').click();
+    await wait(150);
+    const cform = mine().querySelector('[data-c-new] [data-c-form]');
+    cform.querySelector('textarea').value = 'Thanks all';
+    cform.dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
+    await wait(150);
+    check('commenting: the thread and count update', mine().querySelector('[data-comment-count]').textContent === '1' && /Thanks all/.test(mine().querySelector('[data-comment-list]').textContent));
     {
-      const group = signed.d.getElementById('reviewStars');
+      const group = signed.d.getElementById('socialStars');
       const star = n => group.querySelector(`[data-value="${n}"]`);
       const checked = () => [...group.querySelectorAll('[role="radio"]')].filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.value).join();
       const on = () => group.querySelectorAll('.is-on').length;
-      mine.querySelector('[data-edit]').click();
-      await new Promise(r => setTimeout(r, 150));
-      check('the rating is a PeekRating radiogroup: 5 labelled radios, the review\'s 5 checked, one tab stop', group.getAttribute('role') === 'radiogroup' && group.querySelectorAll('[role="radio"]').length === 5 && checked() === '5' && star(5).tabIndex === 0 && star(1).tabIndex === -1 && star(4).getAttribute('aria-label') === '4 stars, Great');
+      mine().querySelector('[data-act="edit"]').click();
+      await wait(150);
+      check('Edit fills the composer: the text, the photo kept, the ride review open', signed.d.getElementById('socialBody').value === 'Great <b>ride</b>' && signed.d.querySelectorAll('#socialPhotoPreviews .social-preview').length === 1 && !signed.d.getElementById('socialReviewFields').classList.contains('hidden'));
+      check('the rating is a PeekRating radiogroup: 5 labelled radios, the review\'s 5 checked, one tab stop', group.getAttribute('role') === 'radiogroup' && group.querySelectorAll('[role="radio"]').length === 5 && checked() === '5' && [...group.querySelectorAll('[role="radio"]')].filter(b => b.tabIndex === 0).length === 1);
       star(2).dispatchEvent(new signed.w.MouseEvent('pointermove', { bubbles: true, clientX: 40 }));
-      check('hovering previews: 2 stars lit and lifted, the tip says Fair, the value is unchanged', on() === 2 && star(2).classList.contains('is-peek') && group.classList.contains('is-tipping') && group.querySelector('.peek-rating__tip').textContent === 'Fair' && checked() === '5');
+      check('hovering previews: 2 stars lit and lifted, the value is unchanged', on() === 2 && star(2).classList.contains('is-peek') && checked() === '5');
       group.dispatchEvent(new signed.w.MouseEvent('pointerleave'));
-      check('leaving restores the value and hides the tip', on() === 5 && !group.classList.contains('is-tipping') && !group.querySelector('.is-peek'));
+      check('leaving restores the value', on() === 5 && !group.querySelector('.is-peek'));
       star(3).click();
-      check('clicking commits and pops', checked() === '3' && star(3).classList.contains('is-pop') && star(3).tabIndex === 0);
+      check('clicking commits', checked() === '3');
       star(3).click();
-      check('clicking the chosen star again clears it', checked() === '' && on() === 0);
+      check('clicking the chosen star again clears it (and Save waits for a rating)', checked() === '' && on() === 0 && signed.d.getElementById('socialPublish').disabled);
       const key = k => group.dispatchEvent(new signed.w.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
       key('End'); const end = checked();
       key('ArrowLeft'); const left = checked();
       key('Home'); const home = checked();
       key('Backspace'); const cleared = checked();
       key('ArrowRight'); key('ArrowRight'); key('ArrowRight'); key('ArrowRight');
-      check('keyboard: End 5, ArrowLeft 4, Home 1, Backspace clears, ArrowRight steps up (focus follows)', end === '5' && left === '4' && home === '1' && cleared === '' && checked() === '4' && signed.d.activeElement === star(4));
+      check('keyboard: End 5, ArrowLeft 4, Home 1, Backspace clears, ArrowRight steps up', end === '5' && left === '4' && home === '1' && cleared === '' && checked() === '4');
       let sent = null;
       const realFetch = signed.w.fetch;
       signed.w.fetch = async (url, opts = {}) => {
-        if (opts.method === 'PATCH') { sent = opts.body.get('rating'); return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+        if (opts.method === 'PATCH') { sent = { rating: opts.body.get('rating'), review: opts.body.get('review'), keep: opts.body.getAll('keep_photos').length }; return new Response(JSON.stringify({ success: false, error: 'rate_limited' }), { status: 429, headers: { 'Content-Type': 'application/json' } }); }
         return realFetch(url, opts);
       };
-      signed.d.getElementById('reviewForm').dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
-      await new Promise(r => setTimeout(r, 150));
-      check('the chosen rating is what the form sends (4)', sent === '4');
+      signed.d.getElementById('socialComposer').dispatchEvent(new signed.w.Event('submit', { bubbles: true, cancelable: true }));
+      await wait(150);
+      check('the chosen rating is what the form sends (4), with the review on and the photo kept', sent && sent.rating === '4' && sent.review === '1' && sent.keep === 1);
+      check('a server error is shown in the composer, the draft kept', /going a bit fast/.test(signed.text('socialComposerError')) && signed.d.getElementById('socialBody').value === 'Great <b>ride</b>');
       signed.w.fetch = realFetch;
     }
-    signed.d.querySelector('#reviewSort [data-sort="rating"]').click();
-    await new Promise(r => setTimeout(r, 150));
-    check('sorting by Highest rated re-orders the list', signed.d.querySelector('#reviewList [data-review]').dataset.review === a.id && signed.d.querySelector('#reviewSort [data-sort="rating"]').getAttribute('aria-pressed') === 'true');
     signed.w.close();
   }
 
@@ -367,9 +400,15 @@ async function run() {
     check('a REVIEWS_LIMITER rate-limit binding is configured', /"name": "REVIEWS_LIMITER"/.test(wr));
     const page = new JSDOM(read('public/community.html')).window.document;
 
-    check('the box is headed "REVIEWS"', page.querySelector('#reviews h2').textContent === 'REVIEWS' && !/CYBERCAB REVIEWS/.test(read('public/community.html')));
-    check('reviews and the leaderboard are their own Community sections (tabs: Reviews first, then Streaks, Leaderboard)', page.getElementById('reviews').parentElement.id === 'communityPanelReviews' && !!page.querySelector('#communityPanelLeaderboard #leaderboardColumn #boardList') && page.getElementById('communityTabReviews').getAttribute('aria-selected') === 'true');
-    check('the privacy page explains reviews and the Anonymous rule', /Cybercab reviews:[^<]*Anonymous/.test(read('public/privacy.html')));
+    check('the old review writes are retired on the public router (410 moved_to_social); reads stay', await (async () => {
+      const ctx = await makeApp();
+      const r = await worker.fetch(new Request('https://x/api/reviews', { method: 'POST', headers: auth('alice'), body: form() }), ctx.env, {});
+      const like = await worker.fetch(new Request('https://x/api/reviews/abc/like', { method: 'PUT', headers: auth('alice') }), ctx.env, {});
+      const get = await worker.fetch(new Request('https://x/api/reviews'), ctx.env, {});
+      return r.status === 410 && (await r.json()).error === 'moved_to_social' && like.status === 410 && get.status === 200;
+    })());
+    check('Social (where reviews now live) and the leaderboard are their own Community sections (Social first)', !!page.querySelector('#communityPanelSocial #socialFeed') && !!page.querySelector('#communityPanelLeaderboard #leaderboardColumn #boardList') && page.getElementById('communityTabSocial').getAttribute('aria-selected') === 'true' && !page.getElementById('reviews'));
+    check('the privacy page explains reviews, Social and the Anonymous rule', /Cybercab reviews and Community Social:[^<]*Anonymous/.test(read('public/privacy.html')));
     check('no new privacy setting was invented: reviews read users.leaderboard_opt_in', /leaderboard_opt_in AS opt_in/.test(read('worker/reviews.js')) && !/ALTER TABLE users/.test(read('migrations/0023_cybercab_reviews.sql')));
   }
 

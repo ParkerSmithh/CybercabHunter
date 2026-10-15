@@ -19,7 +19,8 @@ import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders } from './community.js';
 import { apiDeleteAccount } from './account.js';
-import { apiListReviews, apiCreateReview, apiUpdateReview, apiDeleteReview, apiSetReviewLike, apiListReviewComments, apiCreateReviewComment, apiDeleteReviewComment, apiGetReviewPhoto } from './reviews.js';
+import { apiListReviews, apiListReviewComments, apiGetReviewPhoto } from './reviews.js';
+import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialResolve, apiModerationSocialAnnouncement } from './social.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
@@ -476,35 +477,64 @@ const worker = {
       return withCors(await apiGetRiderProfile(request, env, ctx, riderApiMatch[1]), request);
     }
 
-    // Cybercab reviews on the Community page (worker/reviews.js): public reads;
-    // every write is the session's own (or a moderator's delete).
+    // The old Reviews section (worker/reviews.js) became the Social section
+    // (worker/social.js; every review was copied into a post by migration
+    // 0044). Its reads stay for old links; its writes are retired, so nothing
+    // can add a review the Social feed would not show.
     if (url.pathname === '/api/reviews' && request.method === 'GET') {
       return withCors(await apiListReviews(request, env), request);
-    }
-    if (url.pathname === '/api/reviews' && request.method === 'POST') {
-      return withCors(await apiCreateReview(request, env), request);
-    }
-    const reviewLikeMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/like$/);
-    if (reviewLikeMatch && (request.method === 'PUT' || request.method === 'DELETE')) {
-      return withCors(await apiSetReviewLike(request, env, reviewLikeMatch[1], request.method === 'PUT'), request);
     }
     const reviewCommentsMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)\/comments$/);
     if (reviewCommentsMatch && request.method === 'GET') {
       return withCors(await apiListReviewComments(request, env, reviewCommentsMatch[1]), request);
     }
-    if (reviewCommentsMatch && request.method === 'POST') {
-      return withCors(await apiCreateReviewComment(request, env, reviewCommentsMatch[1]), request);
+    if (/^\/api\/(reviews(\/[^/]+(\/(like|comments))?)?|review-comments\/[^/]+)$/.test(url.pathname) && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+      return withCors(Response.json({ success: false, error: 'moved_to_social', message: 'Reviews are now part of Community Social: attach a ride review to a post.' }, { status: 410 }), request);
     }
-    const reviewMatch = url.pathname.match(/^\/api\/reviews\/([^/]+)$/);
-    if (reviewMatch && request.method === 'PATCH') {
-      return withCors(await apiUpdateReview(request, env, reviewMatch[1]), request);
+
+    // Community Social (worker/social.js).
+    if (url.pathname === '/api/social/feed' && request.method === 'GET') {
+      return withCors(await apiSocialFeed(request, env), request);
     }
-    if (reviewMatch && request.method === 'DELETE') {
-      return withCors(await apiDeleteReview(request, env, reviewMatch[1]), request);
+    if (url.pathname === '/api/social/sidebar' && request.method === 'GET') {
+      return withCors(await apiSocialSidebar(request, env, ctx), request);
     }
-    const reviewCommentMatch = url.pathname.match(/^\/api\/review-comments\/([^/]+)$/);
-    if (reviewCommentMatch && request.method === 'DELETE') {
-      return withCors(await apiDeleteReviewComment(request, env, reviewCommentMatch[1]), request);
+    if (url.pathname === '/api/social/posts' && request.method === 'POST') {
+      return withCors(await apiCreateSocialPost(request, env), request);
+    }
+    if (url.pathname === '/api/social/reports' && request.method === 'POST') {
+      return withCors(await apiCreateSocialReport(request, env), request);
+    }
+    const socialLike = url.pathname.match(/^\/api\/social\/posts\/([^/]+)\/like$/);
+    if (socialLike && (request.method === 'PUT' || request.method === 'DELETE')) {
+      return withCors(await apiSetSocialLike(request, env, socialLike[1], request.method === 'PUT'), request);
+    }
+    const socialComments = url.pathname.match(/^\/api\/social\/posts\/([^/]+)\/comments$/);
+    if (socialComments && request.method === 'GET') {
+      return withCors(await apiListSocialComments(request, env, socialComments[1]), request);
+    }
+    if (socialComments && request.method === 'POST') {
+      return withCors(await apiCreateSocialComment(request, env, socialComments[1]), request);
+    }
+    const socialPost = url.pathname.match(/^\/api\/social\/posts\/([^/]+)$/);
+    if (socialPost && request.method === 'GET') return withCors(await apiGetSocialPost(request, env, socialPost[1]), request);
+    if (socialPost && request.method === 'PATCH') return withCors(await apiUpdateSocialPost(request, env, socialPost[1]), request);
+    if (socialPost && request.method === 'DELETE') return withCors(await apiDeleteSocialPost(request, env, socialPost[1]), request);
+    const socialComment = url.pathname.match(/^\/api\/social\/comments\/([^/]+)$/);
+    if (socialComment && request.method === 'PATCH') return withCors(await apiUpdateSocialComment(request, env, socialComment[1]), request);
+    if (socialComment && request.method === 'DELETE') return withCors(await apiDeleteSocialComment(request, env, socialComment[1]), request);
+    const socialPhoto = url.pathname.match(/^\/api\/social\/photos\/([^/]+)$/);
+    if (socialPhoto && (request.method === 'GET' || request.method === 'HEAD')) {
+      return withCors(await apiGetSocialPhoto(request, env, socialPhoto[1]), request);
+    }
+    if (url.pathname === '/api/moderation/social/reports' && request.method === 'GET') {
+      return withCors(await apiModerationSocialReports(request, env), request);
+    }
+    if (url.pathname === '/api/moderation/social/resolve' && request.method === 'POST') {
+      return withCors(await apiModerationSocialResolve(request, env), request);
+    }
+    if (url.pathname === '/api/moderation/social/announcement' && (request.method === 'PUT' || request.method === 'DELETE')) {
+      return withCors(await apiModerationSocialAnnouncement(request, env, ctx), request);
     }
     const reviewPhotoMatch = url.pathname.match(/^\/api\/review-photos\/([^/]+)$/);
     if (reviewPhotoMatch && (request.method === 'GET' || request.method === 'HEAD')) {

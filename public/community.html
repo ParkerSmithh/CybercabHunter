@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Rider reviews of the Cybercab, the spotters who found each one first, and a search for riders.">
+<meta name="description" content="The Cybercab Hunter community: posts, photos, sightings talk and ride reviews, plus streaks, leaderboards and spotter progress.">
 <meta name="theme-color" content="#090B0F">
 <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/cybercab-ico-16.png?v=4ecb96d981e1">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/cybercab-ico-32.png?v=4ecb96d981e1">
@@ -19,7 +19,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
-<link rel="stylesheet" href="css/community.css?v=16">
+<link rel="stylesheet" href="css/community.css?v=18">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -88,13 +88,15 @@
 
 <main id="main" class="community-page" tabindex="-1">
 <!-- Community: four sections on one page, switched with the buttons below
-     (the Simulation page's pattern): Reviews (default), Streaks, Leaderboard,
-     Progress. The choice is kept in the URL (?view=streaks / leaderboard / progress). -->
+     (the Simulation page's pattern): Social (default), Streaks, Leaderboard,
+     Progress. The choice is kept in the URL (?view=streaks / leaderboard /
+     progress; an old ?view=reviews link opens Social). A post's own link is
+     /community?post=<id> (js/social.js). -->
 <section class="pt-8 max-sm:pt-4">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
     <div class="community-toolbar">
       <div id="communityTabs" role="tablist" aria-label="Community" class="flex flex-wrap gap-2">
-        <button id="communityTabReviews" type="button" role="tab" data-view="reviews" aria-selected="true" aria-controls="communityPanelReviews" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">REVIEWS</button>
+        <button id="communityTabSocial" type="button" role="tab" data-view="social" aria-selected="true" aria-controls="communityPanelSocial" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">SOCIAL</button>
         <button id="communityTabStreaks" type="button" role="tab" data-view="streaks" aria-selected="false" aria-controls="communityPanelStreaks" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">STREAKS</button>
         <button id="communityTabLeaderboard" type="button" role="tab" data-view="leaderboard" aria-selected="false" aria-controls="communityPanelLeaderboard" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">LEADERBOARD</button>
         <button id="communityTabProgress" type="button" role="tab" data-view="progress" aria-selected="false" aria-controls="communityPanelProgress" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">PROGRESS</button>
@@ -123,7 +125,7 @@
       <div class="community-hero-copy">
         <p class="community-eyebrow"><span class="community-eyebrow-dot" aria-hidden="true"></span>Cybercab Hunter community</p>
         <h1 class="community-title font-display font-bold">COMMUNITY</h1>
-        <p class="community-intro" id="communityIntro">Reviews from people who have ridden in a Cybercab, and the spotters who found each one first.</p>
+        <p class="community-intro" id="communityIntro">Posts, photos, questions and ride reviews from the people tracking Tesla's Cybercab.</p>
       </div>
       <div class="community-hero-art" aria-hidden="true">
         <span class="community-hero-glow"></span><span class="community-hero-grid"></span>
@@ -132,32 +134,32 @@
     </div>
 
     <!-- At a glance, about the selected section. Every number is the server's:
-         reviews (GET /api/reviews, js/reviews.js); spotters and vehicles found
+         posts and ride reviews (GET /api/social/sidebar, js/social.js); spotters and vehicles found
          (GET /api/community/leaderboard, js/community.js); public Cybercabs
          (GET /api/registry/stats); sightings, photos, cities and streaks
          (GET /api/community/summary, precomputed daily; js/community-stats.js).
          Each starts as an em dash and stays one if it can't be loaded. -->
     <div id="communityStats" class="community-stats glass soft-panel">
-      <div class="community-stat-grid" data-stats-view="reviews" style="--cells:4">
+      <div class="community-stat-grid" data-stats-view="social" style="--cells:4">
         <div class="community-stat">
-          <div class="community-stat-label">Reviews</div>
-          <div class="community-stat-value"><span id="statReviews" class="stat-value">—</span></div>
-          <div class="community-stat-sub" data-sub="statReviews">Posted by signed-in riders</div>
+          <div class="community-stat-label">Posts</div>
+          <div class="community-stat-value"><span id="statSocialPosts" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statSocialPosts">Shared by the community</div>
         </div>
         <div class="community-stat">
-          <div class="community-stat-label"><span class="max-sm:hidden">Average rating</span><span class="sm:hidden">Rating</span></div>
-          <div class="community-stat-value"><span id="statRating" class="stat-value">—</span><span class="community-stat-suffix" data-suffix="statRating"> / 5</span></div>
-          <div class="community-stat-sub" data-sub="statRating">Across all reviews</div>
+          <div class="community-stat-label">Contributors</div>
+          <div class="community-stat-value"><span id="statSocialContributors" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statSocialContributors">People who have posted</div>
         </div>
         <div class="community-stat">
-          <div class="community-stat-label"><span class="max-sm:hidden">Five-star reviews</span><span class="sm:hidden">5★</span></div>
-          <div class="community-stat-value"><span id="statFiveStar" class="stat-value">—</span></div>
-          <div class="community-stat-sub" data-sub="statFiveStar">Share of all reviews</div>
+          <div class="community-stat-label"><span class="max-sm:hidden">Posts this week</span><span class="sm:hidden">This week</span></div>
+          <div class="community-stat-value"><span id="statSocialWeek" class="stat-value">—</span></div>
+          <div class="community-stat-sub" data-sub="statSocialWeek">In the last 7 days</div>
         </div>
         <div class="community-stat">
-          <div class="community-stat-label"><span class="max-sm:hidden">Open to review</span><span class="sm:hidden">Cybercabs</span></div>
-          <div class="community-stat-value"><span id="statVehiclesReview" class="stat-value">—</span></div>
-          <div class="community-stat-sub" data-sub="statVehiclesReview">Public Cybercabs to rate</div>
+          <div class="community-stat-label"><span class="max-sm:hidden">Ride reviews</span><span class="sm:hidden">Reviews</span></div>
+          <div class="community-stat-value"><span id="statSocialRating" class="stat-value">—</span><span class="community-stat-suffix" data-suffix="statSocialRating"> / 5</span></div>
+          <div class="community-stat-sub" data-sub="statSocialRating">Average rating</div>
         </div>
       </div>
       <div class="community-stat-grid hidden" data-stats-view="streaks" style="--cells:4">
@@ -235,102 +237,151 @@
 
     <!-- One section at a time (the tabs above). -->
     <div class="community-columns">
-    <div id="communityPanelReviews" role="tabpanel" aria-labelledby="communityTabReviews" class="community-view">
-    <!-- Cybercab reviews (js/reviews.js, worker/reviews.js). The rating summary
-         and breakdown are computed live by the server over the reviews shown. -->
-    <div id="reviews" class="community-panel">
-      <div class="flex items-start justify-between gap-4 flex-wrap max-sm:flex-nowrap max-sm:gap-2">
-        <div class="flex items-start gap-3 min-w-0 max-sm:gap-2.5">
-          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[rgba(250,224,48,0.1)] border border-[rgba(250,224,48,0.25)] text-gold" aria-hidden="true">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
-          </span>
-          <div>
-            <h2 data-split class="community-panel-title font-display font-bold">REVIEWS</h2>
-            <p class="text-xs text-slate-500 mt-1 max-sm:text-[11px] max-sm:leading-snug">What riders say about the Cybercab.</p>
+    <div id="communityPanelSocial" role="tabpanel" aria-labelledby="communityTabSocial" class="community-view">
+    <!-- Community Social (js/social.js, worker/social.js): posts, photos,
+         questions and optional ride reviews; likes, comments and replies;
+         reports go to Moderation. Posts and every number come from the
+         database; nothing here is placeholder content. -->
+    <div class="social-layout">
+      <div class="social-main">
+        <!-- A single post opened by its link (/community?post=<id>). -->
+        <div id="socialSingle" class="hidden">
+          <a href="/community" id="socialBack" class="social-back"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>Back to Social</a>
+          <div id="socialSinglePost"></div>
+        </div>
+
+        <!-- Composer: signed-in riders (the server checks every write). -->
+        <form id="socialComposer" class="community-panel social-composer" novalidate>
+          <div class="social-composer-row">
+            <span id="socialMeAvatar" class="social-avatar" aria-hidden="true"></span>
+            <div class="min-w-0 flex-1">
+              <div class="social-composer-who"><span id="socialMeName">You</span><span id="socialEditing" class="hidden social-editing">Editing your post <button type="button" id="socialEditCancel" class="social-linkbtn">Cancel</button></span></div>
+              <label for="socialBody" class="sr-only">Write a post</label>
+              <textarea id="socialBody" rows="3" maxlength="2000" placeholder="What's happening in the Cybercab world?" class="social-textarea"></textarea>
+              <div id="socialPhotoPreviews" class="social-previews hidden" aria-label="Selected photos"></div>
+
+              <!-- Optional attachments, each opened from the toolbar. -->
+              <fieldset id="socialReviewFields" class="social-attach hidden">
+                <legend class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>Ride review <button type="button" data-close-attach="review" class="social-linkbtn">Remove</button></legend>
+                <div><span id="socialStarsLabel" class="social-field-label">Rating</span><div id="socialStars" role="radiogroup" aria-labelledby="socialStarsLabel"></div></div>
+                <div class="social-attach-grid">
+                  <label><span class="social-field-label">Vehicle</span>
+                    <select id="socialReviewVehicleType" class="social-input"><option value="">Not sure</option><option value="cybercab">Cybercab</option><option value="model_y">Model Y</option></select></label>
+                  <label><span class="social-field-label">Fare ($, optional)</span><input id="socialReviewFare" type="number" inputmode="decimal" min="1" max="250" step="0.01" class="social-input"></label>
+                  <label><span class="social-field-label">Pickup wait (min)</span><input id="socialReviewWait" type="number" inputmode="numeric" min="0" max="120" step="1" class="social-input"></label>
+                  <label><span class="social-field-label">Ride date</span><input id="socialReviewDate" type="date" class="social-input"></label>
+                </div>
+              </fieldset>
+              <div id="socialVehicleFields" class="social-attach hidden">
+                <div class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>Linked Cybercab <button type="button" data-close-attach="vehicle" class="social-linkbtn">Remove</button></div>
+                <label for="socialVehicle" class="sr-only">Cybercab from the registry</label>
+                <select id="socialVehicle" class="social-input"><option value="">Choose a Cybercab by plate</option></select>
+                <p class="social-hint">Registry vehicles only. Linking one doesn't verify a sighting: <button type="button" id="socialSubmitSighting" class="social-linkbtn">submit the sighting</button> for moderator review to count it.</p>
+              </div>
+              <div id="socialLinkFields" class="social-attach hidden">
+                <div class="social-attach-title"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>Link <button type="button" data-close-attach="link" class="social-linkbtn">Remove</button></div>
+                <label for="socialLink" class="sr-only">Article link</label>
+                <input id="socialLink" type="url" inputmode="url" maxlength="500" placeholder="https://" class="social-input">
+              </div>
+
+              <p id="socialComposerError" class="hidden social-error" role="alert"></p>
+              <div class="social-toolbar">
+                <div class="social-tools">
+                  <label for="socialPhotos" class="social-tool" title="Add photos (up to 4)"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg><span class="max-sm:sr-only">Photos</span></label>
+                  <input id="socialPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
+                  <button type="button" class="social-tool" data-attach="review" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg><span class="max-sm:sr-only">Ride review</span></button>
+                  <button type="button" class="social-tool" data-attach="vehicle" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg><span class="max-sm:sr-only">Cybercab</span></button>
+                  <button type="button" class="social-tool" data-attach="link" aria-pressed="false"><svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg><span class="max-sm:sr-only">Link</span></button>
+                  <label for="socialCategory" class="sr-only">Post type</label>
+                  <select id="socialCategory" class="social-category"><option value="general">General</option><option value="sighting">Sighting</option><option value="question">Question</option><option value="news">News</option><option value="review">Review</option></select>
+                </div>
+                <div class="social-publish">
+                  <span id="socialCount" class="social-count hidden" aria-live="polite"></span>
+                  <button type="submit" id="socialPublish" class="social-publish-btn" disabled>Post</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <button type="button" id="reviewWriteBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold max-sm:shrink-0 max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs max-sm:whitespace-nowrap bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)] hover:brightness-105">Write a review</button>
-      </div>
-      <!-- Summary: the average, and how the ratings break down (5★ → 1★). Shown once there is a review to summarise; until then the empty state says it once. -->
-      <div id="reviewSummary" class="hidden mt-5 grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center py-5 border-y border-white/[0.07] max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-4 max-sm:mt-3 max-sm:py-3">
-        <div class="text-center sm:text-left sm:pr-6 sm:border-r sm:border-white/[0.08] max-sm:text-left max-sm:pr-4 max-sm:border-r max-sm:border-white/[0.08]">
-          <div id="reviewAverage" class="stat-value font-semibold text-5xl text-gold leading-none max-sm:text-4xl">—</div>
-          <div id="reviewAverageStars" class="text-gold text-lg tracking-wider mt-2 min-h-[1.5rem] max-sm:text-sm max-sm:mt-1 max-sm:min-h-0" aria-hidden="true"></div>
-          <div id="reviewCount" class="text-xs text-slate-500 mt-1">No reviews yet</div>
-        </div>
-        <ul id="reviewBreakdown" class="space-y-1.5 max-sm:space-y-1" aria-label="Ratings breakdown">
-          <li class="flex items-center gap-3 text-xs" data-stars="5"><span class="w-8 shrink-0 text-slate-400 tabular-nums">5 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
-          <li class="flex items-center gap-3 text-xs" data-stars="4"><span class="w-8 shrink-0 text-slate-400 tabular-nums">4 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
-          <li class="flex items-center gap-3 text-xs" data-stars="3"><span class="w-8 shrink-0 text-slate-400 tabular-nums">3 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
-          <li class="flex items-center gap-3 text-xs" data-stars="2"><span class="w-8 shrink-0 text-slate-400 tabular-nums">2 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
-          <li class="flex items-center gap-3 text-xs" data-stars="1"><span class="w-8 shrink-0 text-slate-400 tabular-nums">1 ★</span><span class="flex-1 h-2 rounded-full overflow-hidden"><span class="block h-full rounded-full bg-gradient-to-r from-goldsoft to-gold" style="width:0%" data-bar></span></span><span class="w-8 shrink-0 text-right text-slate-500 tabular-nums" data-n>—</span></li>
-        </ul>
-      </div>
-      <p id="reviewSignInNote" class="hidden text-xs text-slate-400 mt-3"><a href="signin.html?returnTo=%2Fcommunity" class="text-gold hover:underline">Sign in</a> to review a Cybercab, like reviews and comment.</p>
+          <div id="socialSignIn" class="hidden social-signin"><a href="signin.html?returnTo=%2Fcommunity" class="social-publish-btn">Sign in</a><span>to post, like, comment and report. Anyone can read.</span></div>
+        </form>
 
-      <!-- Write / edit: signed-in riders only (the server checks every write). -->
-      <form id="reviewForm" class="hidden mt-5 p-4 rounded-xl border border-[rgba(250,224,48,0.2)] bg-white/[0.02] space-y-4" novalidate>
-        <h3 id="reviewFormTitle" class="font-display font-bold text-sm">Write a review</h3>
-        <div>
-          <label for="reviewVehicle" class="text-[13px] font-medium text-slate-300">Cybercab</label>
-          <select id="reviewVehicle" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
-            <option value="">Choose a Cybercab by plate</option>
-          </select>
-          <p class="text-xs text-slate-500 mt-1.5">Vehicles in the public registry. One review per Cybercab; you can edit yours any time.</p>
+        <!-- Feed filters and sort. -->
+        <div class="social-filters">
+          <div role="tablist" aria-label="Feed" class="social-filter-tabs">
+            <button type="button" role="tab" data-filter="foryou" aria-selected="true" class="social-filter">For You</button>
+            <button type="button" role="tab" data-filter="latest" aria-selected="false" class="social-filter">Latest</button>
+            <button type="button" role="tab" data-filter="photos" aria-selected="false" class="social-filter">Photos</button>
+            <button type="button" role="tab" data-filter="reviews" aria-selected="false" class="social-filter">Reviews</button>
+          </div>
+          <label id="socialSortWrap" class="social-sort hidden"><span class="sr-only">Sort</span>
+            <select id="socialSort" class="social-category"><option value="new">Newest</option><option value="popular">Most popular</option></select></label>
         </div>
-        <div>
-          <span id="reviewStarsLabel" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rating</span>
-          <div id="reviewStars" role="radiogroup" aria-labelledby="reviewStarsLabel" class="mt-1"></div>
-        </div>
-        <div>
-          <label for="reviewBody" class="text-[13px] font-medium text-slate-300">Your review</label>
-          <textarea id="reviewBody" rows="5" maxlength="2000" placeholder="How was the ride? Comfort, driving, cleanliness…" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600 resize-y"></textarea>
-          <p class="text-xs text-slate-500 text-right"><span id="reviewBodyCount">0</span> / 2000</p>
-        </div>
-        <div>
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Photos <span class="normal-case text-slate-500 font-normal">(optional, up to 3)</span></span>
-          <div id="reviewPhotoList" class="mt-2 flex flex-wrap gap-2"></div>
-          <label id="reviewPhotoAdd" for="reviewPhotos" class="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[rgba(250,224,48,0.35)] text-xs font-semibold text-gold cursor-pointer hover:border-gold">Add photos</label>
-          <input id="reviewPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only">
-          <p class="text-xs text-slate-500 mt-1.5">JPEG, PNG or WebP · up to 5 MB each. Location data is removed from photos.</p>
-        </div>
-        <p id="reviewFormError" class="hidden text-xs text-red-300" role="alert"></p>
-        <div class="flex gap-2 justify-end">
-          <button type="button" id="reviewCancel" class="px-4 py-2.5 rounded-lg text-sm font-semibold border border-white/[0.12] text-slate-300 hover:bg-white/5">Cancel</button>
-          <button type="submit" id="reviewSubmit" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] disabled:opacity-50">Post review</button>
-        </div>
-      </form>
 
-      <div id="reviewSort" role="group" aria-label="Sort reviews" class="hidden mt-5 max-sm:mt-3 inline-flex p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-        <button type="button" data-sort="recent" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most recent</button>
-        <button type="button" data-sort="rating" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Highest rated</button>
-        <button type="button" data-sort="likes" class="review-sort px-3 py-1.5 rounded-lg text-xs font-semibold max-sm:min-h-[40px] max-sm:px-2.5">Most liked</button>
+        <div id="socialFeed" class="social-feed" aria-live="polite" aria-busy="true">
+          <div class="social-skeleton"></div><div class="social-skeleton"></div>
+        </div>
+        <div id="socialEmpty" class="hidden social-empty">
+          <div class="social-empty-title">Nothing here yet</div>
+          <p id="socialEmptyText">Be the first to post about the Cybercab.</p>
+        </div>
+        <div id="socialError" class="hidden social-empty"><div class="social-empty-title">We couldn't load posts</div><p>Please try again in a moment.</p></div>
+        <button type="button" id="socialMore" class="hidden social-more">Load more posts</button>
       </div>
 
-      <div id="reviewLoading" class="mt-4 space-y-2" aria-busy="true">
-        <span class="sr-only">Loading reviews…</span>
-        <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
-        <div class="h-24 rounded-xl bg-white/[0.03] animate-pulse"></div>
-      </div>
-      <div id="reviewList" class="hidden mt-4 max-sm:mt-2"></div>
-      <div id="reviewEmpty" class="hidden mt-4 rounded-xl border border-dashed border-[rgba(250,224,48,0.25)] bg-white/[0.02] p-8 text-center max-sm:mt-3 max-sm:p-5">
-        <svg class="w-8 h-8 mx-auto text-gold/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245"/></svg>
-        <div class="mt-2 font-display font-bold text-gold tracking-wide">NO REVIEWS YET</div>
-        <p class="text-xs text-slate-400 mt-1.5">Ridden in a Cybercab? Be the first to review one.</p>
-        <!-- How reviews work: so the empty section teaches, not just waits. -->
-        <ol class="review-steps" aria-label="How reviews work">
-          <li><span class="review-step-n">1</span><span><b>Ride a Cybercab</b>Any trip in a public Cybercab counts.</span></li>
-          <li><span class="review-step-n">2</span><span><b>Sign in and pick it</b>Choose the Cybercab you rode from the list.</span></li>
-          <li><span class="review-step-n">3</span><span><b>Rate and share</b>Stars, a few words and up to three photos.</span></li>
-        </ol>
-      </div>
-      <div id="reviewError" class="hidden mt-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
-        <div class="font-display font-bold tracking-wide">We couldn't load reviews</div>
-        <p class="text-xs text-slate-400 mt-1.5">Please try again in a moment.</p>
-      </div>
-      <button type="button" id="reviewMore" class="hidden mt-4 w-full py-2.5 rounded-lg text-xs font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more reviews</button>
+      <!-- Sidebar: compact, real numbers only (GET /api/social/sidebar, and the
+           Leaderboard's own data for top contributors). Below the feed on phones. -->
+      <aside id="socialSidebar" class="social-sidebar" aria-label="Community">
+        <div id="socialAnnouncement" class="hidden social-card social-announcement"></div>
+        <section class="social-card" aria-labelledby="socialTrendingTitle">
+          <h3 id="socialTrendingTitle" class="social-card-title">Trending this week</h3>
+          <ol id="socialTrending" class="social-trending"><li class="social-muted">Loading…</li></ol>
+        </section>
+        <section class="social-card" aria-labelledby="socialTopTitle">
+          <h3 id="socialTopTitle" class="social-card-title">Top contributors</h3>
+          <ol id="socialTop" class="social-top"><li class="social-muted">Loading…</li></ol>
+          <button type="button" class="social-linkbtn mt-2" data-to-leaderboard>Full leaderboard</button>
+        </section>
+        <details class="social-card social-rules">
+          <summary class="social-card-title">Community rules</summary>
+          <ul>
+            <li>Keep it about Cybercabs, Tesla's Robotaxi, fleet sightings and autonomous rides.</li>
+            <li>No spam, harassment, threats or unrelated promotion.</li>
+            <li>No one's personal information without their permission.</li>
+            <li>Never follow a vehicle or drive unsafely to get a sighting.</li>
+            <li>No made-up or misleading sightings. Posting doesn't verify a sighting; moderators do.</li>
+          </ul>
+        </details>
+      </aside>
     </div>
 
+    <!-- Photo viewer and report form. -->
+    <dialog id="socialLightbox" class="social-lightbox" aria-label="Photo">
+      <button type="button" class="social-lightbox-close" data-close aria-label="Close">&times;</button>
+      <button type="button" class="social-lightbox-nav" data-step="-1" aria-label="Previous photo">&#8249;</button>
+      <img id="socialLightboxImg" alt="">
+      <button type="button" class="social-lightbox-nav" data-step="1" aria-label="Next photo">&#8250;</button>
+    </dialog>
+    <dialog id="socialReport" class="social-dialog" aria-labelledby="socialReportTitle">
+      <form method="dialog" id="socialReportForm">
+        <h3 id="socialReportTitle" class="font-display font-bold">Report</h3>
+        <p class="social-hint">Moderators review every report.</p>
+        <div class="social-report-reasons">
+          <label><input type="radio" name="reason" value="spam" required> Spam</label>
+          <label><input type="radio" name="reason" value="harassment"> Harassment</label>
+          <label><input type="radio" name="reason" value="off_topic"> Off-topic</label>
+          <label><input type="radio" name="reason" value="misleading"> Misleading information</label>
+          <label><input type="radio" name="reason" value="privacy"> Privacy concern</label>
+          <label><input type="radio" name="reason" value="other"> Other</label>
+        </div>
+        <label for="socialReportDetails" class="social-field-label">Details (optional)</label>
+        <textarea id="socialReportDetails" maxlength="500" rows="3" class="social-input"></textarea>
+        <p id="socialReportError" class="hidden social-error" role="alert"></p>
+        <div class="flex gap-2 justify-end mt-3">
+          <button type="button" value="cancel" data-close class="social-btn-ghost">Cancel</button>
+          <button type="submit" value="send" class="social-publish-btn">Send report</button>
+        </div>
+      </form>
+    </dialog>
     </div>
 
     <!-- Spotting Streaks (js/streaks.js, worker/streaks.js): the signed-in
@@ -396,16 +447,6 @@
   </div>
 </section>
 </main>
-
-<!-- Expanded photo: opened by clicking a review photo (js/reviews.js).
-     Closes with the × button, a click outside the photo, or Escape. -->
-<div id="sightingViewer" class="hidden fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Sighting photo">
-  <button id="sightingViewerClose" type="button" aria-label="Close photo" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-2xl leading-none text-paper hover:bg-white/20">&times;</button>
-  <figure class="flex flex-col items-center gap-3 max-w-full">
-    <img id="sightingViewerImg" alt="" class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl">
-    <figcaption id="sightingViewerCaption" class="text-sm text-paper/80 text-center"></figcaption>
-  </figure>
-</div>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
 <div id="accountDrawer" class="drawer fixed top-0 right-0 z-[110] h-full w-full max-w-md glass-strong p-8 overflow-y-auto">
@@ -545,21 +586,21 @@
 <script>
   CCC.init();
 </script>
-<script src="js/community-stats.js?v=2"></script>
+<script src="js/community-stats.js?v=3"></script>
 <script src="js/community.js?v=16"></script>
 <script src="js/peek-rating.js?v=1"></script>
-<script src="js/reviews.js?v=10"></script>
 <script src="js/rider-search.js?v=2"></script>
 <script src="js/streaks.js?v=5"></script>
 <script src="js/progress.js?v=2"></script>
+<script src="js/social.js?v=1"></script>
 <script>
-  // ---- Reviews | Streaks | Leaderboard (the Simulation page's tabs) ----
+  // ---- Social | Streaks | Leaderboard | Progress (the Simulation page's tabs) ----
   (function () {
-    const VIEWS = ['reviews', 'streaks', 'leaderboard', 'progress'];
+    const VIEWS = ['social', 'streaks', 'leaderboard', 'progress'];
     const tab = v => document.getElementById('communityTab' + v[0].toUpperCase() + v.slice(1));
     const panel = v => document.getElementById('communityPanel' + v[0].toUpperCase() + v.slice(1));
     function show(view, focus) {
-      view = VIEWS.includes(view) ? view : 'reviews';
+      view = VIEWS.includes(view) ? view : 'social';   // an old ?view=reviews link lands here too
       for (const v of VIEWS) {
         tab(v).setAttribute('aria-selected', String(v === view));
         tab(v).tabIndex = v === view ? 0 : -1;
@@ -570,7 +611,7 @@
       document.dispatchEvent(new CustomEvent('cch:community-view', { detail: { view } }));
       try {
         const url = new URL(location.href);
-        if (view === 'reviews') url.searchParams.delete('view'); else url.searchParams.set('view', view);
+        if (view === 'social') url.searchParams.delete('view'); else { url.searchParams.set('view', view); url.searchParams.delete('post'); }
         history.replaceState(null, '', url);
       } catch (e) { /* not essential */ }
     }

@@ -156,8 +156,8 @@ async function run() {
   {
     const html = read('public/community.html'), js = read('public/js/progress.js');
     const tabs = [...html.matchAll(/id="communityTab(\w+)" type="button" role="tab" data-view="(\w+)"[^>]*class="city-filter/g)].map(m => m[2]);
-    check('Community navigation: Reviews | Streaks | Leaderboard | Progress, same button style', tabs.join('|') === 'reviews|streaks|leaderboard|progress');
-    check('the Progress panel, hidden until chosen, kept in the URL like the others', /id="communityPanelProgress" role="tabpanel"[^>]*class="community-view hidden"/.test(html) && /const VIEWS = \['reviews', 'streaks', 'leaderboard', 'progress'\]/.test(html));
+    check('Community navigation: Social | Streaks | Leaderboard | Progress, same button style', tabs.join('|') === 'social|streaks|leaderboard|progress');
+    check('the Progress panel, hidden until chosen, kept in the URL like the others', /id="communityPanelProgress" role="tabpanel"[^>]*class="community-view hidden"/.test(html) && /const VIEWS = \['social', 'streaks', 'leaderboard', 'progress'\]/.test(html));
     check('its own at-a-glance stats from the daily summary (XP earned, spotters, missions, top rank)', /data-stats-view="progress"/.test(html) && /statXpTotal/.test(html) && /x\.missions_this_week/.test(read('public/js/community-stats.js')));
     check('signed out: the rules, the rank ladder and a sign-in prompt; signed in: /api/xp/me with the session', /Sign in to track your Spotter XP and missions\./.test(js) && /\/api\/xp\/rules/.test(js) && /fetch\('\/api\/xp\/me', \{ headers: \{ Authorization: 'Bearer ' \+ s \} \}\)/.test(js));
     check('mission states incl. awaiting verification, and "COMPLETED — +N XP EARNED"', /awaiting_verification: 'Awaiting verification'/.test(js) && /COMPLETED — \+\$\{n\(m\.reward\)\} XP EARNED/.test(js));

@@ -219,6 +219,9 @@ async function run() {
     seedRide(ctx.d1, { id: 'ride-austin-2', userId: 'alice', vehicleId: austinCab, status: 'approved', rideKey: 'rk-austin-2', serviceArea: 'Austin', createdAt: '2026-09-01 11:01:00' });
     seedRide(ctx.d1, { id: 'ride-review', userId: 'alice', vehicleId: austinCab, status: 'needs_review', rideKey: 'rk-review', serviceArea: 'Houston', createdAt: '2026-09-01 11:02:00' });
     ctx.d1.prepare(`INSERT INTO cybercab_reviews (id, user_id, robotaxi_vehicle_id, rating, body, created_at) VALUES ('rv1', 'alice', ?, 4, 'Quiet and smooth.', '2026-09-20 10:00:00')`).bind(austinCab)._exec();
+    // Reviews live on as Social posts: the migration's copy step (repeatable) brings this one over.
+    const migration = fs.readFileSync(ROOT + 'migrations/0044_social.sql', 'utf8');
+    ctx.d1.exec(migration.slice(migration.indexOf('-- ---- Existing reviews -> posts')));
     const counted = await get(ctx, '/api/riders/alice');
     check('public profile ride counts: 3 counted rides in 2 different Cybercabs (the under-review ride is not counted)', counted.json.rides.count === 3 && counted.json.rides.vehicles === 2);
     check('...and rides per city name, busiest first', JSON.stringify(counted.json.rides.cities) === JSON.stringify([{ name: 'Austin', rides: 2 }, { name: 'Dallas', rides: 1 }]));

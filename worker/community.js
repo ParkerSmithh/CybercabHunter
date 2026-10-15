@@ -49,6 +49,8 @@ const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
 const TOP_N = 10;
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 const PROFILE_REVIEWS = 10;   // most recent reviews shown on a public profile
+// A Social post shown to the public (the same rule as worker/social.js SHOWN).
+const SOCIAL_SHOWN = `p.status = 'visible' AND (p.legacy_review_id IS NULL OR (v.id IS NOT NULL AND ${publicVehicleEligibleSql('v')}))`;
 const SEARCH_MIN = 1;
 const SEARCH_MAX = 40;
 const SEARCH_LIMIT = 8;
@@ -301,16 +303,22 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
     const [rideTotals, cityRows, reviewTotals, reviewRows] = await sql.batch([
       sql.prepare(`SELECT COUNT(*) AS rides, COUNT(DISTINCT t.robotaxi_vehicle_id) AS vehicles ${counted}`).bind(user.id),
       sql.prepare(`SELECT t.service_area AS name, COUNT(*) AS rides ${counted} AND t.service_area IS NOT NULL GROUP BY t.service_area ORDER BY rides DESC, t.service_area`).bind(user.id),
+      // Their ride reviews: the reviews attached to their Social posts
+      // (worker/social.js; the old Reviews were copied in by migration 0044).
+      // A copied review keeps the old rule: shown only while its vehicle is public.
       sql.prepare(`
-        SELECT COUNT(*) AS n, AVG(r.rating) AS avg FROM cybercab_reviews r JOIN robotaxi_vehicles v ON v.id = r.robotaxi_vehicle_id
-        WHERE r.user_id = ? AND ${publicVehicleEligibleSql('v')}`).bind(user.id),
+        SELECT COUNT(*) AS n, AVG(r.rating) AS avg
+        FROM social_post_reviews r JOIN social_posts p ON p.id = r.post_id
+        LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE p.user_id = ? AND ${SOCIAL_SHOWN}`).bind(user.id),
       sql.prepare(`
-        SELECT r.id, r.rating, r.body, r.created_at, v.id AS vehicle_id, v.license_plate,
-               (SELECT COUNT(*) FROM cybercab_review_likes l WHERE l.review_id = r.id) AS like_count,
-               (SELECT COUNT(*) FROM cybercab_review_comments c WHERE c.review_id = r.id) AS comment_count
-        FROM cybercab_reviews r JOIN robotaxi_vehicles v ON v.id = r.robotaxi_vehicle_id
-        WHERE r.user_id = ? AND ${publicVehicleEligibleSql('v')}
-        ORDER BY r.created_at DESC, r.id DESC LIMIT ${PROFILE_REVIEWS}`).bind(user.id)
+        SELECT p.id, r.rating, p.body, p.created_at, p.like_count, p.comment_count,
+               CASE WHEN v.id IS NOT NULL AND ${publicVehicleEligibleSql('v')} THEN v.id END AS vehicle_id,
+               CASE WHEN v.id IS NOT NULL AND ${publicVehicleEligibleSql('v')} THEN v.license_plate END AS license_plate
+        FROM social_post_reviews r JOIN social_posts p ON p.id = r.post_id
+        LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE p.user_id = ? AND ${SOCIAL_SHOWN}
+        ORDER BY p.created_at DESC, p.id DESC LIMIT ${PROFILE_REVIEWS}`).bind(user.id)
     ]);
     const rt = (rideTotals.results || [])[0] || {};
     const rv = (reviewTotals.results || [])[0] || {};
@@ -334,7 +342,8 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
         average: reviewCount ? Math.round(Number(rv.avg) * 10) / 10 : null,
         recent: (reviewRows.results || []).map(r => ({
           id: r.id, rating: Number(r.rating), body: r.body, created_at: r.created_at,
-          vehicle: { id: r.vehicle_id, license_plate: r.license_plate || null },
+          vehicle: r.vehicle_id ? { id: r.vehicle_id, license_plate: r.license_plate || null } : null,
+          url: `/community?post=${r.id}`,
           like_count: Number(r.like_count), comment_count: Number(r.comment_count)
         }))
       }
