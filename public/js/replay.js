@@ -449,7 +449,6 @@ window.CCCReplay = (function () {
   }
 
   if (CITY === 'dallas') {
-    document.title = 'Cybercab Hunter | Dallas Replay';
     const heading = document.getElementById('replayCity');
     if (heading) heading.textContent = 'DALLAS, TX';
     const meta = document.querySelector('meta[name="description"]');

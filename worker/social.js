@@ -1082,7 +1082,7 @@ export async function apiModerationSocialAnnouncement(request, env, ctx) {
 
 // ---- Link previews for shared posts (/community?post=<id>) ----
 // The Community page is static; for a post link the Worker fills in its
-// title and Open Graph tags from the post (public posts only — a removed,
+// Open Graph tags from the post (public posts only — a removed,
 // hidden or unknown post gets the page's own tags). Text only; quotes and
 // angle brackets are dropped so nothing can break out of an attribute.
 const META_SITE = 'https://cybercabhunter.com';
@@ -1108,7 +1108,6 @@ export async function socialPostMeta(request, env) {
   const m = socialMetaFor(post);
   const set = (value) => ({ element(el) { el.setAttribute('content', value); } });
   return new HTMLRewriter()
-    .on('title', { element(el) { el.setInnerContent(m.title); } })
     .on('meta[name="description"]', set(m.description))
     .on('meta[property="og:title"]', set(m.title))
     .on('meta[property="og:description"]', set(m.description))

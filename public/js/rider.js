@@ -26,7 +26,6 @@
 
   function render(data) {
     const r = data.rider;
-    document.title = `Cybercab Hunter | ${r.name}`;
     // The shared avatar (js/main.js), large variant.
     CCC.renderAvatar($('riderAvatar'), { url: r.avatar_url, name: r.name, size: 512, textClass: 'text-xl' });
     $('riderName').textContent = r.name;

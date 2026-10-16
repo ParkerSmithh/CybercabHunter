@@ -40,7 +40,7 @@ async function run() {
     const p = open('https://cybercabhunter.com/simulation');
     const hidden = id => p.d.getElementById(id).classList.contains('hidden');
     check('both tools\' scripts run together on one page without errors', p.error === null);
-    check('the tab name is "Simulation"', p.d.title === 'Cybercab Hunter | Simulation');
+    check('the tab name is "Cybercab Hunter"', p.d.title === 'Cybercab Hunter');
     const tabs = [...p.d.querySelectorAll('#simTabs [role="tab"]')];
     check('two buttons: "FLEET ROI" and "FLEET ETA"', tabs.map(b => b.textContent.trim()).join('|') === 'FLEET ROI|FLEET ETA');
     check('the buttons come first, right under the header', (() => { const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling; const first = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav; return first.tagName === 'SECTION' && !!first.querySelector('#simTabs'); })());

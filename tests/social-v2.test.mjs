@@ -40,7 +40,7 @@ const VPRIV = 'd4e5f6a7-0000-4000-8000-000000000004';
 const USERS = ['alice', 'bob', 'carol', 'mod'];
 async function makeApp() {
   const ctx = await makeEnv({ users: USERS });
-  ctx.env.ASSETS = { fetch: async () => new Response('<html><head><title>Cybercab Hunter | Community</title></head></html>', { headers: { 'Content-Type': 'text/html' } }) };
+  ctx.env.ASSETS = { fetch: async () => new Response('<html><head><title>Cybercab Hunter</title></head></html>', { headers: { 'Content-Type': 'text/html' } }) };
   for (const u of USERS) await ctx.env.TESLA_SESSIONS.put(`session:s-${u}`, JSON.stringify({ user_id: u }));
   ctx.d1.prepare(`UPDATE users SET leaderboard_opt_in = 1, display_name = 'Alice A', handle = 'alice_a' WHERE id = 'alice'`)._exec();
   ctx.d1.prepare(`UPDATE users SET leaderboard_opt_in = 1, display_name = 'Bob B', handle = 'bob_b' WHERE id = 'bob'`)._exec();
