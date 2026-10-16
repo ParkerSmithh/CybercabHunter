@@ -233,7 +233,7 @@
       : `<div class="mt-2">${empty('No sighting locations yet.')}</div>`;
     const latest = (s.latest || []).length
       ? `<ol class="mt-1 divide-y divide-white/[0.06]">${s.latest.map(x => `<li><a href="/sightings${city}" class="flex items-center gap-3 min-h-[56px] py-1.5 -mx-2 px-2 rounded-lg hover:bg-white/[0.03]">
-          <img src="${esc(x.image_url)}" alt="" loading="lazy" decoding="async" class="w-14 h-10 shrink-0 rounded-md object-cover bg-panel border border-white/[0.06]">
+          <img src="${esc(x.image_url)}" alt="${esc(`Tesla Cybercab spotted ${x.location ? `at ${x.location}` : `in ${x.city || d.name}`}${x.spotted_at ? `, ${when(x.spotted_at, x.time_zone)}` : ''}`)}" loading="lazy" decoding="async" class="w-14 h-10 shrink-0 rounded-md object-cover bg-panel border border-white/[0.06]">
           <span class="flex-1 min-w-0"><span class="block text-sm text-slate-100 truncate max-sm:text-xs">Cybercab seen ${x.location ? `at ${esc(x.location)}` : `in ${esc(x.city || d.name)}`}</span><span class="block text-[11px] text-slate-500 truncate">${esc([x.plate, when(x.spotted_at, x.time_zone)].filter(Boolean).join(' · '))}</span></span>
           <span class="shrink-0 text-xs text-slate-400 stat-value">${esc(ago(x.spotted_at))}</span>
         </a></li>`).join('')}</ol>`

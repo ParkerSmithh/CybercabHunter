@@ -32,7 +32,7 @@ console.log('2. Nothing private is published');
 check('the only key material under public/ is the Tesla PUBLIC key', publicFiles.filter(f => /\.pem$/i.test(f)).join() === '.well-known/appspecific/com.tesla.3p.public-key.pem');
 check('no private key, env file, wrangler config or source is under public/', !publicFiles.some(f => /private|\.env|wrangler|\.dev\.vars|package(-lock)?\.json|^worker\/|^migrations\/|^tests\//i.test(f)));
 check('the private key lives outside public/ and is git-ignored', !fs.existsSync(`${PUBLIC}private-key.pem`) && /^keys\/private-key\.pem$/m.test(fs.readFileSync(`${ROOT}.gitignore`, 'utf8')));
-check('public/ has no documents, notes or videos (docs/ is not published)', !publicFiles.some(f => /\.(md|mp4|mov|txt)$/i.test(f)));
+check('public/ has no documents, notes or videos (docs/ is not published; robots.txt is the one text file)', !publicFiles.some(f => /\.(md|mp4|mov|txt)$/i.test(f) && f !== 'robots.txt'));
 
 console.log('3. Every file the pages point at exists');
 const missing = [];

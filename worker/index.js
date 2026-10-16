@@ -34,6 +34,7 @@ import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
 import { gmail } from './gmail.js';
 import { serveVideo } from './videos.js';
+import { sitemap } from './sitemap.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -64,6 +65,10 @@ const worker = {
         });
       }
       return new Response(null, { status: 204 });
+    }
+
+    if (url.pathname === '/sitemap.xml' && (request.method === 'GET' || request.method === 'HEAD')) {
+      return sitemap(request, env, ctx);
     }
 
     if (url.pathname === '/health') {

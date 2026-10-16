@@ -1113,6 +1113,10 @@ export async function socialPostMeta(request, env) {
     .on('meta[property="og:description"]', set(m.description))
     .on('meta[property="og:image"]', set(m.image))
     .on('meta[property="og:url"]', set(m.url))
+    .on('link[rel="canonical"]', { element(el) { el.setAttribute('href', m.url); } })
+    .on('meta[name="twitter:title"]', set(m.title))
+    .on('meta[name="twitter:description"]', set(m.description))
+    .on('meta[name="twitter:image"]', set(m.image))
     .on('meta[name="twitter:card"]', set(post.photos && post.photos.length ? 'summary_large_image' : 'summary'))
     .transform(asset);
 }

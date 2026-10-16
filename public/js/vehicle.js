@@ -95,6 +95,42 @@
       ? `Recorded in: ${h.service_areas.split(',').join(', ')}.`
       : 'No service area recorded for these rides yet.';
 
+    setSearchMeta(v, heroCity, approvedCybercab);
+  }
+
+  // Search and link-preview tags for this vehicle (the tab title stays
+  // "Cybercab Hunter"). Only facts the page itself shows: plate, city, VIN,
+  // colour, and "Tesla Cybercab" only for an approved Cybercab.
+  function setSearchMeta(v, city, approvedCybercab) {
+    const url = 'https://cybercabhunter.com/vehicle/' + encodeURIComponent(v.id);
+    const kind = approvedCybercab ? 'Cybercab' : 'Robotaxi';
+    const name = v.license_plate ? `${kind} ${v.license_plate}` : kind;
+    const title = `${name} | Tesla Cybercab Registry`;
+    const desc = `Tesla ${name}${v.vin ? ` (VIN ${v.vin})` : ''}${city ? ` operating in ${city}` : ''}: rides, sightings and details on Cybercab Hunter.`;
+    const head = document.head;
+    const tag = (sel, make) => head.querySelector(sel) || head.appendChild(make());
+    const meta = (attr, key, value) => tag(`meta[${attr}="${key}"]`, () => {
+      const m = document.createElement('meta'); m.setAttribute(attr, key); return m;
+    }).setAttribute('content', value);
+    tag('link[rel="canonical"]', () => {
+      const l = document.createElement('link'); l.rel = 'canonical'; return l;
+    }).setAttribute('href', url);
+    meta('name', 'description', desc);
+    meta('property', 'og:title', title);
+    meta('property', 'og:description', desc);
+    meta('property', 'og:url', url);
+    meta('name', 'twitter:title', title);
+    meta('name', 'twitter:description', desc);
+    const ld = head.querySelector('script[type="application/ld+json"]');
+    if (!ld || !approvedCybercab) return;
+    try {
+      const data = JSON.parse(ld.textContent);
+      const car = { '@type': 'Car', name: `Tesla ${name}`, url, manufacturer: { '@type': 'Organization', name: 'Tesla' }, model: 'Cybercab' };
+      if (v.vin) car.vehicleIdentificationNumber = v.vin;
+      if (v.color) car.color = v.color;
+      data['@graph'] = (data['@graph'] || []).filter(n => n['@type'] !== 'Car').concat(car);
+      ld.textContent = JSON.stringify(data);
+    } catch (e) { /* the Organization/WebSite data stays as served */ }
   }
 
   async function load(vehicleId) {
