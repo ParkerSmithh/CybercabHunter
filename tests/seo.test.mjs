@@ -81,6 +81,7 @@ async function run() {
   {
     const robots = read('robots.txt');
     check('allows everything and points at the sitemap', /^User-agent: \*$/m.test(robots) && /^Allow: \/$/m.test(robots) && /^Sitemap: https:\/\/cybercabhunter\.com\/sitemap\.xml$/m.test(robots));
+    check('keeps the owner\'s content-signals block (Cloudflare does not add it once the site serves its own file)', robots.startsWith('# As a condition of accessing this website') && robots.includes('ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790'));
     check('blocks nothing (internal pages rely on noindex, which crawlers must be able to read)', !/Disallow/.test(robots));
   }
 
