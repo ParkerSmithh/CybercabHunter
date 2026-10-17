@@ -315,12 +315,16 @@
   <form id="sightingForm" class="space-y-5">
     <div>
       <span class="text-[13px] font-medium text-slate-300">Photo</span>
-      <label for="sightingPhoto" class="mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(250,224,48,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center">
+      <!-- The dropzone IS the file input: the real <input type="file"> covers
+           the whole box, transparent, so a click, a tap, Tab + Enter/Space, a
+           dropped image and automated file selection all reach the input
+           itself (it used to be a clipped 1px input behind the label). -->
+      <label for="sightingPhoto" class="relative mt-2 flex flex-col items-center justify-center gap-1.5 w-full min-h-[140px] p-3 rounded-lg border border-dashed border-[rgba(250,224,48,0.35)] bg-panel cursor-pointer hover:border-gold transition-colors text-center has-[:focus-visible]:border-gold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold/60">
         <img id="sightingPhotoPreview" alt="Selected photo" class="hidden w-full max-h-56 object-contain rounded-md">
         <span id="sightingPhotoPrompt" class="text-sm font-semibold text-gold">Upload Photo</span>
-        <span class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
+        <span id="sightingPhotoHint" class="text-xs text-slate-500">JPEG, PNG or WebP &middot; up to 10 MB</span>
+        <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="sightingPhotoHint sightingPhotoError" class="absolute inset-0 z-10 w-full h-full opacity-0 cursor-pointer [&::file-selector-button]:cursor-pointer">
       </label>
-      <input id="sightingPhoto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
       <p id="sightingPhotoError" class="hidden text-xs text-red-300 mt-1.5" role="alert"></p>
     </div>
     <div>
@@ -411,7 +415,7 @@
 </footer>
 
 <script src="js/calc.js?v=8"></script>
-<script src="js/main.js?v=32"></script>
+<script src="js/main.js?v=33"></script>
 <script>
   CCC.init();
 

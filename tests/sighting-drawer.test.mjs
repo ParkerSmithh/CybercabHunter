@@ -145,6 +145,14 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
+    // The upload control (Oct 17): the real file input covers the dropzone,
+    // transparent, inside its label; not a clipped 1px input behind it.
+    check('every page: the file input sits inside the dropzone label, full size and transparent, described by the hint and error', pages.every(f => {
+      const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
+      const zone = s.slice(s.indexOf('<label for="sightingPhoto"'), s.indexOf('</label>', s.indexOf('<label for="sightingPhoto"')));
+      return /<input id="sightingPhoto" type="file"[^>]*aria-describedby="sightingPhotoHint sightingPhotoError"[^>]*class="absolute inset-0 z-10 w-full h-full opacity-0/.test(zone) && !/id="sightingPhoto"[^>]*sr-only/.test(s);
+    }));
+    check('the dropzone shows a gold ring when the input has keyboard focus', pages.every(f => /<label for="sightingPhoto" class="relative [^"]*has-\[:focus-visible\]:ring-2/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
     check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A SIGHTING') && s.includes('id="sightingSuccess"'); }));
   }
 

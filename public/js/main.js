@@ -944,6 +944,20 @@ const CCC = (() => {
       photoPrompt.textContent = 'Change Photo';
     });
 
+    // Drag and drop: an image dropped anywhere on the dropzone becomes the
+    // input's file and goes through the same check and preview as a pick.
+    const dropzone = photoField.closest('label');
+    if (dropzone) {
+      dropzone.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+      dropzone.addEventListener('drop', e => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files.length) return;
+        e.preventDefault();
+        try { photoField.files = files; } catch (err) { return; }
+        photoField.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+
     if (success) {
       document.getElementById('sightingAnother').addEventListener('click', () => {
         success.classList.add('hidden');
