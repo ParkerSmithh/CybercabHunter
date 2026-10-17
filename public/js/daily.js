@@ -1,5 +1,8 @@
 /* Cybercab Daily refreshes its small, same-origin endpoint every five minutes.
-   A local-date rollover fetches immediately; hidden tabs do not poll. */
+   A local-date rollover fetches immediately; hidden tabs do not poll.
+   The request carries the Central date (?day=), so a response the browser
+   cached before midnight is never reused for the new day; if the server is
+   still on the previous day for a moment, it retries shortly (no error). */
 (function () {
   'use strict';
   const card = document.getElementById('cybercabDaily');
@@ -42,7 +45,8 @@
     }
     return dl;
   }
-  let data, lastDay = today(), fetched = 0, sequence = 0;
+  let data, lastDay = today(), fetched = 0, sequence = 0, behind = 0;
+  const BEHIND_RETRY_MS = 15000, BEHIND_TRIES = 8;
   async function load() {
     const token = ++sequence;
     fetched = Date.now();
@@ -50,17 +54,26 @@
     $('dailyDate').textContent = readable(lastDay);
     if (!data || data.today !== lastDay) $('dailyStats').replaceChildren(stats(null));
     try {
-      const response = await fetch('/api/daily');
+      const response = await fetch(`/api/daily?day=${lastDay}`);
       if (!response.ok) throw new Error('Daily unavailable');
       const body = await response.json();
       if (token !== sequence) return;
-      if (body.today !== lastDay || !body.day) throw new Error('Daily date mismatch');
+      if (body.today !== lastDay || !body.day) throw Object.assign(new Error('Daily date mismatch'), { behind: body.today < lastDay });
       data = body;
+      behind = 0;
       fetched = Date.now();
       $('dailyStats').replaceChildren(stats(data.day));
       $('dailyUpdated').textContent = Object.keys(data.errors || {}).length ? 'Some data unavailable' : `Updated ${new Date(data.generated_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT`;
-    } catch {
+    } catch (error) {
       if (token !== sequence) return;
+      // Just past midnight the server can still answer for yesterday: try
+      // again in a few seconds instead of showing an error.
+      if (error && error.behind && ++behind <= BEHIND_TRIES) {
+        fetched = Date.now() - 300000 + BEHIND_RETRY_MS;
+        $('dailyUpdated').textContent = 'Updating for the new day';
+        return;
+      }
+      behind = 0;
       data = null;
       $('dailyUpdated').textContent = 'Refresh pending';
       $('dailyStats').replaceChildren(stats(null), el('p', 'Activity could not be retrieved. Automatic refresh will retry.', 'activity-muted'));
