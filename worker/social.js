@@ -21,6 +21,7 @@
 //   PUT    /api/social/posts/:id/pin                   moderators; at most MAX_PINS (DELETE unpins)
 //   GET    /api/social/notifications?count_only=1      signed in; the rider's own notifications
 //   POST   /api/social/notifications/read              signed in; JSON { ids: [...] } or { all: true }
+//   GET    /api/moderation/social/overview             moderators: counts + the pinned posts (the Social tab)
 //   GET    /api/moderation/social/reports              moderators: open reports, grouped per item
 //   POST   /api/moderation/social/resolve              moderators: { target_type, target_id, action: remove|dismiss, reason? }
 //   PUT    /api/moderation/social/announcement         moderators: { body, link_url?, notify? }
@@ -1026,6 +1027,40 @@ export async function apiModerationSocialReports(request, env) {
     });
   }
   return Response.json({ success: true, reports: out }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+// The moderation Social tab's overview: posts and comments as the public sees
+// them (shown posts; visible comments on shown posts), open reports (reported
+// items, as the queue lists them, and individual reports), and the pinned
+// posts in feed order (the same MAX_PINS rule). Moderators only; small counts.
+export async function apiModerationSocialOverview(request, env) {
+  const { res } = await requireMod(request, env);
+  if (res) return res;
+  const sql = env.cybercabhunter_db;
+  const FROM = `social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id`;
+  const [counts, pinned] = await Promise.all([
+    sql.prepare(`SELECT
+        (SELECT COUNT(*) FROM ${FROM} WHERE ${SHOWN}) AS posts,
+        (SELECT COUNT(*) FROM social_comments c JOIN social_posts p ON p.id = c.post_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE c.status = 'visible' AND ${SHOWN}) AS comments,
+        (SELECT COUNT(*) FROM (SELECT 1 FROM social_reports WHERE status = 'open' GROUP BY target_type, target_id)) AS open_items,
+        (SELECT COUNT(*) FROM social_reports WHERE status = 'open') AS open_reports`).first(),
+    sql.prepare(`SELECT p.id, p.body, p.created_at, p.pinned_at, p.has_photos, p.has_review, u.display_name, u.handle
+        FROM ${FROM} LEFT JOIN users u ON u.id = p.user_id
+        WHERE p.pinned = 1 AND ${SHOWN} ORDER BY p.pinned_at DESC, p.id DESC LIMIT ${MAX_PINS}`).all()
+  ]);
+  const n = v => Number(v) || 0;
+  const pins = (pinned.results || []).map(r => ({
+    id: r.id, body: r.body || '', created_at: r.created_at, pinned_at: r.pinned_at,
+    has_photos: Number(r.has_photos) === 1, has_review: Number(r.has_review) === 1,
+    author: { name: r.display_name || null, handle: r.handle || null },
+    url: `/community?post=${r.id}`
+  }));
+  return Response.json({
+    success: true,
+    stats: { posts: n(counts && counts.posts), comments: n(counts && counts.comments), open_report_items: n(counts && counts.open_items), open_reports: n(counts && counts.open_reports), pinned: pins.length },
+    max_pins: MAX_PINS,
+    pinned: pins
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function apiModerationSocialResolve(request, env) {

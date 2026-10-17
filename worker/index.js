@@ -20,7 +20,7 @@ import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiListReviewComments, apiGetReviewPhoto } from './reviews.js';
-import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta } from './social.js';
+import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialOverview, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta } from './social.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
@@ -548,6 +548,9 @@ const worker = {
     const socialPhoto = url.pathname.match(/^\/api\/social\/photos\/([^/]+)$/);
     if (socialPhoto && (request.method === 'GET' || request.method === 'HEAD')) {
       return withCors(await apiGetSocialPhoto(request, env, socialPhoto[1]), request);
+    }
+    if (url.pathname === '/api/moderation/social/overview' && request.method === 'GET') {
+      return withCors(await apiModerationSocialOverview(request, env), request);
     }
     if (url.pathname === '/api/moderation/social/reports' && request.method === 'GET') {
       return withCors(await apiModerationSocialReports(request, env), request);

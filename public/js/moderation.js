@@ -289,20 +289,26 @@
     loadPhotos();
   }
 
-  // Vehicles | Images | News section buttons. The choice is remembered per
-  // browser. Opening News tells js/moderation-news.js to load its panel.
-  const TABS = ['vehicles', 'images', 'news'];
+  // Vehicles | Images | News | Social section buttons. The choice is
+  // remembered per browser; a #social-reports link (the Social menu's
+  // "Review reports") opens Social. Opening News or Social tells
+  // js/moderation-news.js / js/moderation-social.js to load its panel.
+  const TABS = ['vehicles', 'images', 'news', 'social'];
   let activeTab = 'vehicles';
   try { const saved = localStorage.getItem('moderationTab'); if (TABS.includes(saved)) activeTab = saved; } catch (e) { /* default */ }
+  if (/^#social/.test(location.hash)) activeTab = 'social';
   function setTab(tab) {
     activeTab = TABS.includes(tab) ? tab : 'vehicles';
     $('modTabVehicles').setAttribute('aria-selected', String(activeTab === 'vehicles'));
     $('modTabImages').setAttribute('aria-selected', String(activeTab === 'images'));
     if ($('modTabNews')) $('modTabNews').setAttribute('aria-selected', String(activeTab === 'news'));
+    if ($('modTabSocial')) $('modTabSocial').setAttribute('aria-selected', String(activeTab === 'social'));
     show('modPanelVehicles', activeTab === 'vehicles');
     show('modPanelImages', activeTab === 'images');
     if ($('modPanelNews')) show('modPanelNews', activeTab === 'news');
+    if ($('modPanelSocial')) show('modPanelSocial', activeTab === 'social');
     if (activeTab === 'news') document.dispatchEvent(new CustomEvent('cch:moderation-news'));
+    if (activeTab === 'social') document.dispatchEvent(new CustomEvent('cch:moderation-social'));
     try { localStorage.setItem('moderationTab', activeTab); } catch (e) { /* not essential */ }
   }
 
@@ -486,7 +492,7 @@
   }
 
   function setupActions() {
-    ['modTabVehicles', 'modTabImages', 'modTabNews'].filter(id => $(id)).forEach(id => $(id).addEventListener('click', () => setTab($(id).dataset.tab)));
+    ['modTabVehicles', 'modTabImages', 'modTabNews', 'modTabSocial'].filter(id => $(id)).forEach(id => $(id).addEventListener('click', () => setTab($(id).dataset.tab)));
     setTab(activeTab);
     const onQueueClick = e => {
       const btn = e.target.closest('button[data-action]');

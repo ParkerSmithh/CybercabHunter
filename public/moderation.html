@@ -138,39 +138,15 @@
         <ul id="modFareReportsList" class="mt-4 space-y-3"></ul>
       </section>
 
-      <!-- Community Social reports and the pinned announcement
-           (js/moderation-social.js; worker/social.js). One entry per reported
-           post or comment, with every reason, the reporters' notes and the
-           author's moderation history. Remove hides it for everyone (kept for
-           the audit log); Dismiss closes the reports and leaves it up. -->
-      <section id="social-reports" aria-labelledby="modSocialHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5 hidden">
-        <h2 id="modSocialHeading" class="font-display font-bold text-xl">Social reports</h2>
-        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Posts and comments riders reported on Community &rarr; Social, oldest first. Removing never gives or takes XP.</p>
-        <p id="modSocialStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
-        <ul id="modSocialList" class="mt-4 space-y-3"></ul>
-        <form id="modSocialAnnouncement" class="mt-6 pt-5 border-t border-white/10">
-          <h3 class="font-display font-bold text-base">Pinned announcement</h3>
-          <p class="text-xs text-slate-400 mt-1">Shown at the top of the Social sidebar for everyone. Up to 280 characters.</p>
-          <label for="modSocialAnnBody" class="sr-only">Announcement</label>
-          <textarea id="modSocialAnnBody" maxlength="280" rows="2" class="mt-3 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm"></textarea>
-          <label for="modSocialAnnLink" class="sr-only">Link (optional)</label>
-          <input id="modSocialAnnLink" type="url" maxlength="500" placeholder="Link (optional), https://" class="mt-2 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm">
-          <label class="mt-3 flex items-center gap-2 text-sm text-slate-300"><input id="modSocialAnnNotify" type="checkbox" class="w-4 h-4 accent-[#FAE030]"> Also send it as a notification (the bell) to signed-in riders</label>
-          <div class="mt-3 flex gap-2 flex-wrap items-center">
-            <button type="submit" class="min-h-[44px] px-4 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Publish announcement</button>
-            <button type="button" id="modSocialAnnClear" class="min-h-[44px] px-4 rounded-lg text-sm font-semibold border border-white/15 text-slate-100 hover:bg-white/5">Clear</button>
-            <span id="modSocialAnnStatus" role="status" class="text-xs text-slate-400"></span>
-          </div>
-        </form>
-      </section>
-
-      <!-- Two review sections, switched with these buttons (js/moderation.js):
+      <!-- Review sections, switched with these buttons (js/moderation.js):
            Vehicles = sightings without a photo + the registry below;
-           Images = photo sightings, as a compact grid. -->
+           Images = photo sightings, as a compact grid; News; Social = every
+           Community Social tool (js/moderation-social.js). -->
       <div id="modTabs" role="tablist" aria-label="Moderation sections" class="flex flex-wrap gap-2 mb-8 max-sm:mb-5">
         <button id="modTabVehicles" type="button" role="tab" data-tab="vehicles" aria-selected="true" aria-controls="modPanelVehicles" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">VEHICLES <span id="modCountVehicles" class="text-xs opacity-70"></span></button>
         <button id="modTabImages" type="button" role="tab" data-tab="images" aria-selected="false" aria-controls="modPanelImages" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">IMAGES <span id="modCountImages" class="text-xs opacity-70"></span></button>
         <button id="modTabNews" type="button" role="tab" data-tab="news" aria-selected="false" aria-controls="modPanelNews" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">NEWS</button>
+        <button id="modTabSocial" type="button" role="tab" data-tab="social" aria-selected="false" aria-controls="modPanelSocial" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">SOCIAL <span id="modCountSocial" class="text-xs opacity-70"></span></button>
       </div>
 
       <div id="modPanelVehicles" role="tabpanel" aria-labelledby="modTabVehicles">
@@ -264,6 +240,56 @@
           </div>
         </form>
       </div>
+
+      <!-- Social (js/moderation-social.js; worker/social.js): every Community
+           Social moderation tool in one place. The overview counts what the
+           public sees; the reports queue has one entry per reported post or
+           comment, with every reason, the reporters' notes and the author's
+           moderation history. Remove hides it for everyone (kept for the
+           audit log); Dismiss closes the reports and leaves it up. Pins are
+           the feed's own (at most three); the announcement tops the sidebar. -->
+      <div id="modPanelSocial" role="tabpanel" aria-labelledby="modTabSocial" class="hidden">
+        <section aria-labelledby="modSocialOverviewHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modSocialOverviewHeading" class="font-display font-bold text-xl">Social overview</h2>
+          <dl id="modSocialStats" aria-live="polite" class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
+            <div class="min-w-0"><dt class="text-xs text-slate-400">Posts</dt><dd data-social-stat="posts" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd></div>
+            <div class="min-w-0"><dt class="text-xs text-slate-400">Comments</dt><dd data-social-stat="comments" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd></div>
+            <div class="min-w-0"><dt class="text-xs text-slate-400">Pending reports</dt><dd data-social-stat="open_report_items" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd><p id="modSocialReportDetail" class="text-[11px] text-slate-500 mt-0.5"></p></div>
+            <div class="min-w-0"><dt class="text-xs text-slate-400">Pinned posts</dt><dd data-social-stat="pinned" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd></div>
+          </dl>
+          <p id="modSocialStatsNote" class="text-[11px] text-slate-500 mt-3">Posts and comments as the public sees them (removed ones are not counted).</p>
+        </section>
+        <section id="social-reports" aria-labelledby="modSocialHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modSocialHeading" class="font-display font-bold text-xl">Social reports</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">Posts and comments riders reported on Community &rarr; Social, oldest first. Removing never gives or takes XP.</p>
+          <p id="modSocialStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
+          <ul id="modSocialList" class="mt-4 space-y-3"></ul>
+        </section>
+        <section id="social-announcement" aria-labelledby="modSocialAnnHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modSocialAnnHeading" class="font-display font-bold text-xl">Pinned announcement</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">Shown at the top of the Social sidebar for everyone. Up to 280 characters.</p>
+          <p id="modSocialAnnCurrent" class="text-sm text-slate-300 mt-3 break-words">Current: loading</p>
+          <form id="modSocialAnnouncement" class="mt-1">
+            <label for="modSocialAnnBody" class="sr-only">Announcement</label>
+            <textarea id="modSocialAnnBody" maxlength="280" rows="2" class="mt-3 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm"></textarea>
+            <label for="modSocialAnnLink" class="sr-only">Link (optional)</label>
+            <input id="modSocialAnnLink" type="url" maxlength="500" placeholder="Link (optional), https://" class="mt-2 w-full bg-panel border border-white/15 rounded-lg px-3 py-2 text-sm">
+            <label class="mt-3 flex items-center gap-2 text-sm text-slate-300"><input id="modSocialAnnNotify" type="checkbox" class="w-4 h-4 accent-[#FAE030]"> Also send it as a notification (the bell) to signed-in riders</label>
+            <div class="mt-3 flex gap-2 flex-wrap items-center">
+              <button type="submit" class="min-h-[44px] px-4 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Publish announcement</button>
+              <button type="button" id="modSocialAnnClear" class="min-h-[44px] px-4 rounded-lg text-sm font-semibold border border-white/15 text-slate-100 hover:bg-white/5">Clear</button>
+              <span id="modSocialAnnStatus" role="status" class="text-xs text-slate-400"></span>
+            </div>
+          </form>
+        </section>
+
+        <section id="social-pins" aria-labelledby="modSocialPinsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modSocialPinsHeading" class="font-display font-bold text-xl">Pinned posts</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">Shown at the top of the Social feed, newest pin first. Pin a post from its menu on Community &rarr; Social (up to three at once).</p>
+          <p id="modSocialPinsStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
+          <ul id="modSocialPins" class="mt-4 space-y-3"></ul>
+        </section>
+      </div>
     </div>
 
   </div>
@@ -293,9 +319,9 @@
   </form>
 </dialog>
 
-<script src="js/moderation.js?v=16"></script>
+<script src="js/moderation.js?v=17"></script>
 <script src="js/moderation-news.js?v=6"></script>
 <script src="js/moderation-fare-reports.js?v=1"></script>
-<script src="js/moderation-social.js?v=2"></script>
+<script src="js/moderation-social.js?v=3"></script>
 </body>
 </html>

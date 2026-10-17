@@ -1,14 +1,18 @@
-/* Moderation: Community Social reports and the pinned announcement
-   (moderation.html #social-reports; worker/social.js). Lists open reports, one
-   entry per reported post or comment, with the reasons, the reporters' notes,
-   a preview of what was reported and the author's history (removals so far,
-   posts in the last 24 hours), and Remove / Dismiss. Every call is
-   moderator-gated server-side; a non-moderator just gets nothing and the
-   section stays hidden. Text goes in through textContent. */
+/* Moderation: the Social tab (moderation.html #modPanelSocial; worker/social.js).
+   - Overview: posts, comments, pending reports, pinned posts (loaded when the
+     tab opens; refreshed after every action here).
+   - Reports: open reports, one entry per reported post or comment, with the
+     reasons, the reporters' notes, a preview of what was reported and the
+     author's history (removals so far, posts in the last 24 hours), and
+     Remove / Dismiss. Loaded with the page, for the tab's count.
+   - Pinned announcement: the current one, publish, clear.
+   - Pinned posts: the feed's pins (the same pin route Social uses), Open, Unpin.
+   Every call is moderator-gated server-side; the page itself only shows to
+   moderators. Text goes in through textContent. */
 (function () {
   const WORKER = (typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev';
   const $ = id => document.getElementById(id);
-  if (!$('social-reports')) return;
+  if (!$('modPanelSocial')) return;
   let sessionId = null;
   try { sessionId = localStorage.getItem('teslaSessionId'); } catch (e) { sessionId = null; }
   const REASON = { spam: 'Spam', harassment: 'Harassment', off_topic: 'Off-topic', misleading: 'Misleading', privacy: 'Privacy', other: 'Other' };
@@ -31,7 +35,7 @@
     }
     li.querySelectorAll('button').forEach(b => { b.disabled = true; });
     const res = await api('/api/moderation/social/resolve', { method: 'POST', body: JSON.stringify({ target_type: r.target_type, target_id: r.target_id, action, reason }) });
-    if (res.ok) { li.remove(); if (!$('modSocialList').children.length) status('No open reports.'); }
+    if (res.ok) { li.remove(); setCount($('modSocialList').children.length); if (!$('modSocialList').children.length) status('No open reports.'); loadOverview(); }
     else { li.querySelectorAll('button').forEach(b => { b.disabled = false; }); status('That action failed. Try again.'); }
   }
 
@@ -86,19 +90,64 @@
     return li;
   }
 
+  const setCount = n => { if ($('modCountSocial')) $('modCountSocial').textContent = n ? String(n) : ''; };
+
   async function load() {
     if (!sessionId) return;
     const res = await api('/api/moderation/social/reports');
     if (res.status === 401 || res.status === 403) return;
-    $('social-reports').classList.remove('hidden');
     const list = $('modSocialList');
     list.textContent = '';
     if (!res.ok || !res.json) { status('Couldn\'t load reports.'); return; }
     const reports = res.json.reports || [];
+    setCount(reports.length);
     status(reports.length ? `${reports.length} reported ${reports.length === 1 ? 'item' : 'items'} (oldest first).` : 'No open reports.');
     for (const r of reports) list.append(item(r));
     if (location.hash === '#social-reports') $('social-reports').scrollIntoView();
   }
+
+  // ---- Overview and pinned posts (GET /api/moderation/social/overview) ----
+  const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+  function pinItem(p) {
+    const li = el('li', 'rounded-xl border border-white/10 p-4 flex flex-wrap items-start justify-between gap-3');
+    const text = el('div', 'min-w-0 flex-1');
+    const who = (p.author.name || 'Unnamed') + (p.author.handle ? ` (@${p.author.handle})` : '');
+    text.append(el('p', 'text-sm font-semibold text-slate-100', who));
+    const body = p.body.length > 200 ? p.body.slice(0, 199).trimEnd() + '…' : p.body;
+    text.append(el('p', 'text-sm text-slate-300 mt-1 whitespace-pre-wrap break-words', body || (p.has_review ? 'Ride review' : p.has_photos ? 'Photo post' : '')));
+    text.append(el('p', 'text-xs text-slate-500 mt-1', `Pinned ${when(p.pinned_at)}`));
+    const btns = el('div', 'flex gap-2 flex-wrap');
+    const open = el('a', 'min-h-[44px] inline-flex items-center px-4 rounded-lg text-sm font-semibold border border-white/15 text-slate-100 hover:bg-white/5', 'Open');
+    open.href = p.url; open.target = '_blank'; open.rel = 'noopener';
+    const unpin = el('button', 'min-h-[44px] px-4 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-gold hover:bg-white/5', 'Unpin');
+    unpin.type = 'button';
+    unpin.addEventListener('click', async () => {
+      unpin.disabled = true;
+      const res = await api(`/api/social/posts/${encodeURIComponent(p.id)}/pin`, { method: 'DELETE' });
+      if (res.ok) loadOverview();
+      else { unpin.disabled = false; $('modSocialPinsStatus').textContent = 'Couldn\'t unpin. Try again.'; }
+    });
+    btns.append(open, unpin);
+    li.append(text, btns);
+    return li;
+  }
+  let overviewLoaded = false;
+  async function loadOverview() {
+    if (!sessionId) return;
+    overviewLoaded = true;
+    const res = await api('/api/moderation/social/overview');
+    if (res.status === 401 || res.status === 403) return;
+    if (!res.ok || !res.json) { $('modSocialStatsNote').textContent = 'Couldn\'t load the overview.'; $('modSocialPinsStatus').textContent = 'Couldn\'t load pinned posts.'; return; }
+    const { stats, pinned, max_pins: maxPins } = res.json;
+    document.querySelectorAll('[data-social-stat]').forEach(dd => { dd.textContent = Number(stats[dd.dataset.socialStat] || 0).toLocaleString('en-US'); });
+    $('modSocialReportDetail').textContent = stats.open_reports !== stats.open_report_items ? `${plural(stats.open_reports, 'report', 'reports')} in all` : '';
+    $('modSocialStatsNote').textContent = 'Posts and comments as the public sees them (removed ones are not counted).';
+    const list = $('modSocialPins');
+    list.textContent = '';
+    $('modSocialPinsStatus').textContent = pinned.length ? `${pinned.length} of ${maxPins} pins in use.` : 'No pinned posts.';
+    for (const p of pinned) list.append(pinItem(p));
+  }
+  document.addEventListener('cch:moderation-social', () => { if (!overviewLoaded) loadOverview(); });
 
   $('modSocialAnnouncement').addEventListener('submit', async e => {
     e.preventDefault();
@@ -106,17 +155,24 @@
     if (!body) { $('modSocialAnnStatus').textContent = 'Write the announcement first.'; return; }
     const res = await api('/api/moderation/social/announcement', { method: 'PUT', body: JSON.stringify({ body, link_url: $('modSocialAnnLink').value.trim() || null, notify: $('modSocialAnnNotify').checked }) });
     $('modSocialAnnStatus').textContent = res.ok ? 'Published. It can take up to 2 minutes to show everywhere.' : (res.json && res.json.error === 'invalid_link' ? 'That link doesn\'t look right.' : 'Couldn\'t publish. Try again.');
+    if (res.ok) showCurrent({ body, link_url: $('modSocialAnnLink').value.trim() || null });
   });
   $('modSocialAnnClear').addEventListener('click', async () => {
     if (!window.confirm('Remove the pinned announcement?')) return;
     const res = await api('/api/moderation/social/announcement', { method: 'DELETE' });
-    if (res.ok) { $('modSocialAnnBody').value = ''; $('modSocialAnnLink').value = ''; }
+    if (res.ok) { $('modSocialAnnBody').value = ''; $('modSocialAnnLink').value = ''; showCurrent(null); }
     $('modSocialAnnStatus').textContent = res.ok ? 'Cleared.' : 'Couldn\'t clear. Try again.';
   });
+  function showCurrent(a) {
+    $('modSocialAnnCurrent').textContent = a ? `Current: “${a.body}”${a.link_url ? ` (${a.link_url})` : ''}` : 'Current: none';
+  }
   // Pre-fill the form with the current announcement (the public sidebar data).
   fetch(WORKER + '/api/social/sidebar').then(r => (r.ok ? r.json() : null)).then(d => {
     const a = d && d.announcement;
+    showCurrent(a || null);
     if (a && !$('modSocialAnnBody').value) { $('modSocialAnnBody').value = a.body; $('modSocialAnnLink').value = a.link_url || ''; }
-  }).catch(() => {});
+  }).catch(() => { $('modSocialAnnCurrent').textContent = 'Current: couldn\'t load'; });
   load();
+  // js/moderation.js may have reopened the Social tab before this script loaded.
+  if (!$('modPanelSocial').classList.contains('hidden')) loadOverview();
 })();
