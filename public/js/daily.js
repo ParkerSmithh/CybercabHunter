@@ -37,8 +37,10 @@
         note.title = change === null ? descriptions[key] : 'Today’s activity so far compared with the previous full day';
         detail = note;
       }
-      const value = el('dd', undefined, n == null ? 'activity-unavailable' : '');
-      value.append(el('span', n == null ? 'Unavailable' : `${key === 'registry' || key === 'dmv' ? '+' : ''}${number(n)}`, 'daily-value'));
+      // A value not in yet (loading, before the day's DMV snapshot, a failed
+      // fetch) shows 0 until it updates (owner request, Oct 17).
+      const value = el('dd');
+      value.append(el('span', `${key === 'registry' || key === 'dmv' ? '+' : ''}${number(n ?? 0)}`, 'daily-value'));
       if (detail) value.append(detail);
       item.append(label, value);
       dl.append(item);

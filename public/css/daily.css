@@ -14,7 +14,6 @@
 #cybercabDaily .activity-stats{gap:12px;margin:0}
 #cybercabDaily .activity-stats dt{font-size:11px;line-height:1.3}
 #cybercabDaily .activity-stats dd{font-size:22px;margin-top:3px}
-#cybercabDaily .activity-stats dd.activity-unavailable{font-size:12px}
 @media(max-width:1023px){
   #cybercabDaily{grid-template-columns:minmax(0,1fr);gap:12px 20px}
   #cybercabDaily #dailyStats{grid-column:1 / -1;grid-row:2}
@@ -25,12 +24,11 @@
   #cybercabDaily .activity-date{font-size:11px}
   #cybercabDaily .activity-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   #cybercabDaily .activity-stats dd{font-size:20px}
-  #cybercabDaily .activity-stats dd.activity-unavailable{font-size:11px;overflow-wrap:anywhere}
 }
 
 /* Reuse the dashboard’s shared soft-panel gold wash and theme-aware text. */
 #cybercabDaily h2{color:rgb(var(--ink))}
-#cybercabDaily .activity-muted,#cybercabDaily .activity-stats dt,#cybercabDaily .activity-stats dd.activity-unavailable{color:rgb(var(--n-400))}
+#cybercabDaily .activity-muted,#cybercabDaily .activity-stats dt{color:rgb(var(--n-400))}
 #cybercabDaily .activity-stats dd{color:rgb(var(--gold-ink))}
 
 /* A compact daily briefing, using the dashboard's existing gold wash. */

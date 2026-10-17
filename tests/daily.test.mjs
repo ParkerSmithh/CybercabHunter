@@ -82,10 +82,19 @@ clock += 5000; tick(); await new Promise(r => setTimeout(r, 20)); assert.equal(r
 lagMs = 0; clock += 10001; tick(); await new Promise(r => setTimeout(r, 50));
 assert.equal(requests, 4, 'retries 15 s later');
 assert.equal(doc.querySelector('#dailyStats .daily-value').textContent, '+0');
+{
+  // A day the DMV snapshot hasn't reported yet (dmv: null): 0, not "Unavailable".
+  const body = await buildDaily(d1, clock);
+  rollover.window.fetch = async () => { requests++; return Response.json({ ...body, day: { ...body.day, dmv: null } }); };
+  clock += 300001; tick(); await new Promise(r => setTimeout(r, 50));
+  assert.equal(doc.querySelectorAll('#dailyStats .daily-value')[1].textContent, '+0');
+  assert(!/Unavailable/.test(doc.getElementById('dailyStats').textContent));
+}
 assert(/^Updated /.test(doc.getElementById('dailyUpdated').textContent));
 rollover.window.fetch = async () => { requests++; throw new Error('offline'); };
 clock += 300001; tick(); await new Promise(r => setTimeout(r, 50));
-assert([...rollover.window.document.querySelectorAll('#dailyStats .daily-value')].every(n => n.textContent === 'Unavailable'));
+assert.deepEqual([...rollover.window.document.querySelectorAll('#dailyStats .daily-value')].map(n => n.textContent), ['+0', '+0', '0', '0'], 'values not in yet show 0, never "Unavailable"');
+assert(!/Unavailable/.test(rollover.window.document.getElementById('dailyStats').textContent));
 rollover.window.close();
 // Cache variants cannot make the client trigger an annual scan or bypass TTL.
 const savedCaches = globalThis.caches, store = new Map(); let queries = 0;
