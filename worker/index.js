@@ -11,7 +11,7 @@ import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
-import { apiModerationForwardingStats, apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto, apiListApprovedPhotoSightings, apiAddSightingToMap } from './moderation.js';
+import { apiModerationForwardingStats, apiModerationForwardingDetail, apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto, apiListApprovedPhotoSightings, apiAddSightingToMap } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiSearchPlaces, apiSearchMapPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
@@ -206,6 +206,9 @@ const worker = {
     // are both checked inside these handlers via requireModerator, not
     // here, since a 401-vs-403 split doesn't fit the plain "if (!userId)"
     // shape every other inline check above uses.
+    if (url.pathname === '/api/moderation/forwarding-detail' && request.method === 'GET') {
+      return withCors(await apiModerationForwardingDetail(request, env), request);
+    }
     if (url.pathname === '/api/moderation/forwarding-stats' && request.method === 'GET') {
       return withCors(await apiModerationForwardingStats(request, env), request);
     }

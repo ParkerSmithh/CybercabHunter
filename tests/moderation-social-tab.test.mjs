@@ -116,7 +116,7 @@ async function run() {
     const page = await openPage(ctx, 's-mod');
     const d = page.d;
     const tabs = [...d.querySelectorAll('#modTabs [role="tab"]')];
-    check('buttons: VEHICLES | IMAGES | NEWS | SOCIAL, same style', tabs.map(b => b.textContent.trim().split(/\s+/)[0]).join(' | ') === 'VEHICLES | IMAGES | NEWS | SOCIAL'
+    check('buttons: VEHICLES | IMAGES | NEWS | SOCIAL | GMAIL LINK, same style', tabs.map(b => b.textContent.trim().replace(/\s+\d+$/, '')).join(' | ') === 'VEHICLES | IMAGES | NEWS | SOCIAL | GMAIL LINK'
       && new Set(tabs.map(b => b.className)).size === 1);
     check('Social starts hidden; Vehicles is selected', !page.visible('modPanelSocial') && page.visible('modPanelVehicles') && d.getElementById('modTabSocial').getAttribute('aria-selected') === 'false');
     check('no Social section outside the Social tab', ['social-reports', 'social-announcement', 'social-pins', 'modSocialAnnouncement'].every(id => d.getElementById(id).closest('#modPanelSocial')));
@@ -199,8 +199,8 @@ async function run() {
   console.log('5. Mobile');
   {
     const tabs = HTML.slice(HTML.indexOf('id="modTabs"'), HTML.indexOf('</div>', HTML.indexOf('id="modTabs"')));
-    check('the buttons wrap (flex-wrap) and keep 44px touch targets', /flex-wrap/.test(tabs) && (tabs.match(/min-h-\[44px\]/g) || []).length === 4);
-    const panel = HTML.slice(HTML.indexOf('id="modPanelSocial"'));
+    check('the buttons wrap (flex-wrap) and keep 44px touch targets', /flex-wrap/.test(tabs) && (tabs.match(/min-h-\[44px\]/g) || []).length === 5);
+    const panel = HTML.slice(HTML.indexOf('id="modPanelSocial"'), HTML.indexOf('id="modPanelGmail"'));
     check('the Social cards use the page\'s card style and phone padding; stats are 2 across on phones', (panel.match(/glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5/g) || []).length === 4 && /grid-cols-2 lg:grid-cols-4/.test(panel));
   }
 

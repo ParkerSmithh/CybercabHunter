@@ -84,69 +84,17 @@
         <a id="modImportReceipt" href="/moderation/import-receipt" class="text-xs font-semibold px-3 py-2 max-sm:shrink-0 max-sm:whitespace-nowrap max-sm:min-h-[40px] max-sm:inline-flex max-sm:items-center rounded-lg border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Import Receipt</a>
       </div>
 
-      <section id="modForwardingStats" aria-labelledby="modForwardingStatsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-        <h2 id="modForwardingStatsHeading" class="font-display font-bold text-xl">Rider Gmail linking</h2>
-        <p class="mt-1 text-xs text-slate-400 leading-relaxed">Linked means setup completed. Actively receiving means at least one forwarded receipt has arrived.</p>
-        <div id="modForwardingStatsLoading" role="status" class="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <span class="sr-only">Loading rider Gmail linking counts.</span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-          <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
-        </div>
-        <dl id="modForwardingStatsValues" aria-live="polite" class="hidden mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-5">
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Addresses issued</dt>
-            <dd data-forwarding-stat="addresses_issued" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Setup completed</dt>
-            <dd data-forwarding-stat="setup_completed" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Actively receiving</dt>
-            <dd data-forwarding-stat="actively_receiving" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Receiving (7d)</dt>
-            <dd data-forwarding-stat="receiving_7d" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Linked (30d)</dt>
-            <dd data-forwarding-stat="linked_30d" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-          <div class="min-w-0">
-            <dt class="text-xs text-slate-400">Receipts processed</dt>
-            <dd data-forwarding-stat="receipts_processed" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
-          </div>
-        </dl>
-        <div id="modForwardingStatsError" role="status" class="hidden mt-4 flex flex-wrap items-center gap-3">
-          <p class="text-sm text-slate-300">Couldn't load linking counts.</p>
-          <button id="modForwardingStatsRetry" type="button" class="min-h-[44px] px-3 py-2 text-sm font-semibold border border-white/15 rounded-lg text-slate-100 hover:bg-white/5">Retry</button>
-        </div>
-      </section>
-
-      <!-- Fleet ETA rider reports (js/moderation-fare-reports.js; worker/fleet-eta.js):
-           quotes, fares and pickup waits riders sent from the Fleet ETA page.
-           Only approved reports feed the daily estimates. -->
-      <section id="modFareReports" aria-labelledby="modFareReportsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-        <h2 id="modFareReportsHeading" class="font-display font-bold text-xl">Fare &amp; wait reports</h2>
-        <p class="text-xs text-slate-400 mt-1 max-w-2xl">Unverified rider reports from Fleet ETA. Approve only plausible ones; approved reports feed the next daily estimate update. No screenshots or addresses are collected.</p>
-        <p id="modFareReportsStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
-        <ul id="modFareReportsList" class="mt-4 space-y-3"></ul>
-      </section>
-
       <!-- Review sections, switched with these buttons (js/moderation.js):
            Vehicles = sightings without a photo + the registry below;
            Images = photo sightings, as a compact grid; News; Social = every
-           Community Social tool (js/moderation-social.js). -->
+           Community Social tool (js/moderation-social.js); Gmail Link = rider
+           Gmail receipt forwarding, aggregate counts only. -->
       <div id="modTabs" role="tablist" aria-label="Moderation sections" class="flex flex-wrap gap-2 mb-8 max-sm:mb-5">
         <button id="modTabVehicles" type="button" role="tab" data-tab="vehicles" aria-selected="true" aria-controls="modPanelVehicles" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">VEHICLES <span id="modCountVehicles" class="text-xs opacity-70"></span></button>
         <button id="modTabImages" type="button" role="tab" data-tab="images" aria-selected="false" aria-controls="modPanelImages" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">IMAGES <span id="modCountImages" class="text-xs opacity-70"></span></button>
         <button id="modTabNews" type="button" role="tab" data-tab="news" aria-selected="false" aria-controls="modPanelNews" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">NEWS</button>
         <button id="modTabSocial" type="button" role="tab" data-tab="social" aria-selected="false" aria-controls="modPanelSocial" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">SOCIAL <span id="modCountSocial" class="text-xs opacity-70"></span></button>
+        <button id="modTabGmail" type="button" role="tab" data-tab="gmail" aria-selected="false" aria-controls="modPanelGmail" class="city-filter inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors">GMAIL LINK</button>
       </div>
 
       <div id="modPanelVehicles" role="tabpanel" aria-labelledby="modTabVehicles">
@@ -186,7 +134,7 @@
              photo goes on the Zones map when it is approved; one approved
              without a camera can be added with "Add to map". -->
         <div id="modApproved" class="hidden mt-16">
-          <h2 data-split class="font-display font-bold text-2xl tracking-tight mb-2 max-sm:text-xl">Approved images</h2>
+          <h2 data-split class="font-display font-bold text-2xl tracking-tight mb-2 max-sm:text-xl">APPROVED IMAGES</h2>
           <p class="text-xs text-slate-500 leading-relaxed mb-5 max-w-2xl">Photos from a traffic camera go on the Zones map when you approve them. If an approved photo is a traffic-camera capture but has no camera, use Add to map. The map shows the last 24 hours. Deleting a photo removes it from the public Sightings page and the Zones map.</p>
           <div id="modApprovedList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
         </div>
@@ -250,7 +198,7 @@
            the feed's own (at most three); the announcement tops the sidebar. -->
       <div id="modPanelSocial" role="tabpanel" aria-labelledby="modTabSocial" class="hidden">
         <section aria-labelledby="modSocialOverviewHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-          <h2 id="modSocialOverviewHeading" class="font-display font-bold text-xl">Social overview</h2>
+          <h2 id="modSocialOverviewHeading" class="font-display font-bold text-xl">SOCIAL OVERVIEW</h2>
           <dl id="modSocialStats" aria-live="polite" class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
             <div class="min-w-0"><dt class="text-xs text-slate-400">Posts</dt><dd data-social-stat="posts" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd></div>
             <div class="min-w-0"><dt class="text-xs text-slate-400">Comments</dt><dd data-social-stat="comments" class="mt-1 text-2xl font-semibold text-white tabular-nums">—</dd></div>
@@ -260,13 +208,13 @@
           <p id="modSocialStatsNote" class="text-[11px] text-slate-500 mt-3">Posts and comments as the public sees them (removed ones are not counted).</p>
         </section>
         <section id="social-reports" aria-labelledby="modSocialHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-          <h2 id="modSocialHeading" class="font-display font-bold text-xl">Social reports</h2>
+          <h2 id="modSocialHeading" class="font-display font-bold text-xl">SOCIAL REPORTS</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-2xl">Posts and comments riders reported on Community &rarr; Social, oldest first. Removing never gives or takes XP.</p>
           <p id="modSocialStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
           <ul id="modSocialList" class="mt-4 space-y-3"></ul>
         </section>
         <section id="social-announcement" aria-labelledby="modSocialAnnHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-          <h2 id="modSocialAnnHeading" class="font-display font-bold text-xl">Pinned announcement</h2>
+          <h2 id="modSocialAnnHeading" class="font-display font-bold text-xl">PINNED ANNOUNCEMENT</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-2xl">Shown at the top of the Social sidebar for everyone. Up to 280 characters.</p>
           <p id="modSocialAnnCurrent" class="text-sm text-slate-300 mt-3 break-words">Current: loading</p>
           <form id="modSocialAnnouncement" class="mt-1">
@@ -284,11 +232,93 @@
         </section>
 
         <section id="social-pins" aria-labelledby="modSocialPinsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
-          <h2 id="modSocialPinsHeading" class="font-display font-bold text-xl">Pinned posts</h2>
+          <h2 id="modSocialPinsHeading" class="font-display font-bold text-xl">PINNED POSTS</h2>
           <p class="text-xs text-slate-400 mt-1 max-w-2xl">Shown at the top of the Social feed, newest pin first. Pin a post from its menu on Community &rarr; Social (up to three at once).</p>
           <p id="modSocialPinsStatus" role="status" class="text-sm text-slate-400 mt-4">Loading</p>
           <ul id="modSocialPins" class="mt-4 space-y-3"></ul>
         </section>
+      </div>
+
+      <!-- Gmail Link (js/moderation-gmail.js; worker/moderation.js): riders'
+           Gmail receipt forwarding. The headline counts load with the page
+           (GET /api/moderation/forwarding-stats); the detail below loads when
+           the tab opens (GET /api/moderation/forwarding-detail). Aggregate
+           counts only: no rider, address or email is ever listed. -->
+      <div id="modPanelGmail" role="tabpanel" aria-labelledby="modTabGmail" class="hidden">
+        <section id="modForwardingStats" aria-labelledby="modForwardingStatsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modForwardingStatsHeading" class="font-display font-bold text-xl">RIDER GMAIL LINKING</h2>
+          <p class="mt-1 text-xs text-slate-400 leading-relaxed">Linked means setup completed. Actively receiving means at least one forwarded receipt has arrived.</p>
+          <div id="modForwardingStatsLoading" role="status" class="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <span class="sr-only">Loading rider Gmail linking counts.</span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+            <span aria-hidden="true" class="block h-14 rounded-lg bg-white/5 motion-safe:animate-pulse"></span>
+          </div>
+          <dl id="modForwardingStatsValues" aria-live="polite" class="hidden mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-5">
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Addresses issued</dt>
+              <dd data-forwarding-stat="addresses_issued" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Setup completed</dt>
+              <dd data-forwarding-stat="setup_completed" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Actively receiving</dt>
+              <dd data-forwarding-stat="actively_receiving" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Receiving (7d)</dt>
+              <dd data-forwarding-stat="receiving_7d" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Linked (30d)</dt>
+              <dd data-forwarding-stat="linked_30d" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs text-slate-400">Receipts processed</dt>
+              <dd data-forwarding-stat="receipts_processed" class="mt-1 text-2xl font-semibold text-white tabular-nums"></dd>
+            </div>
+          </dl>
+          <div id="modForwardingStatsError" role="status" class="hidden mt-4 flex flex-wrap items-center gap-3">
+            <p class="text-sm text-slate-300">Couldn't load linking counts.</p>
+            <button id="modForwardingStatsRetry" type="button" class="min-h-[44px] px-3 py-2 text-sm font-semibold border border-white/15 rounded-lg text-slate-100 hover:bg-white/5">Retry</button>
+          </div>
+        </section>
+
+        <section aria-labelledby="modGmailFunnelHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modGmailFunnelHeading" class="font-display font-bold text-xl">SETUP FUNNEL</h2>
+          <p class="mt-1 text-xs text-slate-400 leading-relaxed">Each step as a share of the active forwarding addresses issued. Confirmation received means Gmail's forwarding-confirmation code or link reached Cybercab Hunter.</p>
+          <ol id="modGmailFunnel" class="mt-4 space-y-3"><li class="text-sm text-slate-400">Loading</li></ol>
+          <p id="modGmailRevoked" class="mt-3 text-[11px] text-slate-500"></p>
+        </section>
+
+        <section aria-labelledby="modGmailReceiptsHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modGmailReceiptsHeading" class="font-display font-bold text-xl">FORWARDED RECEIPTS</h2>
+          <p class="mt-1 text-xs text-slate-400 leading-relaxed">Every forwarded email the receipt pipeline processed, and what it decided.</p>
+          <dl id="modGmailReceipts" class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5"></dl>
+          <p id="modGmailLastReceipt" class="mt-3 text-[11px] text-slate-500"></p>
+          <h3 class="mt-6 text-xs font-semibold text-slate-300 uppercase tracking-[0.14em]">By outcome</h3>
+          <ul id="modGmailOutcomes" class="mt-3 space-y-2"></ul>
+        </section>
+
+        <section aria-labelledby="modGmailDailyHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modGmailDailyHeading" class="font-display font-bold text-xl">LAST 14 DAYS</h2>
+          <p class="mt-1 text-xs text-slate-400 leading-relaxed">Forwarded receipts per day (Central time).</p>
+          <div id="modGmailDaily" class="mt-4 flex items-end gap-1 h-28" role="img" aria-label="Forwarded receipts per day"></div>
+          <div id="modGmailDailyAxis" class="mt-1 flex justify-between text-[10px] text-slate-500 tabular-nums"></div>
+        </section>
+
+        <section aria-labelledby="modGmailApiHeading" class="glass rounded-2xl p-5 mb-8 max-sm:p-4 max-sm:mb-5">
+          <h2 id="modGmailApiHeading" class="font-display font-bold text-xl">GMAIL API CONNECTIONS</h2>
+          <p class="mt-1 text-xs text-slate-400 leading-relaxed">Riders who connected Gmail directly (read-only receipt sync), separate from forwarding.</p>
+          <dl id="modGmailApi" class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5"></dl>
+          <p id="modGmailApiLast" class="mt-3 text-[11px] text-slate-500"></p>
+        </section>
+        <p id="modGmailDetailError" role="status" class="hidden text-sm text-slate-300">Couldn't load the detail. <button id="modGmailDetailRetry" type="button" class="ml-1 text-gold hover:underline">Try again</button></p>
       </div>
     </div>
 
@@ -319,9 +349,9 @@
   </form>
 </dialog>
 
-<script src="js/moderation.js?v=17"></script>
+<script src="js/moderation.js?v=18"></script>
 <script src="js/moderation-news.js?v=6"></script>
-<script src="js/moderation-fare-reports.js?v=1"></script>
 <script src="js/moderation-social.js?v=3"></script>
+<script src="js/moderation-gmail.js?v=1"></script>
 </body>
 </html>

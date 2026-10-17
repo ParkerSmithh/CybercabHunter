@@ -77,6 +77,66 @@ export async function apiModerationForwardingStats(request, env) {
   return Response.json(stats, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
+// The Gmail Link tab's detail, aggregates only (no rider, address or email
+// records leave D1): the setup funnel, receipts by period and pipeline status
+// with a 14-day daily count (Central dates), and the Gmail API connections.
+const RECEIPT_STATUSES = ['accepted', 'needs_review', 'rejected', 'duplicate', 'parse_error'];
+const centralDate = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(ms));
+export async function apiModerationForwardingDetail(request, env, nowMs = Date.now()) {
+  const auth = await requireModerator(request, env);
+  if (auth.error) return authFailureResponse(auth);
+  const sql = env.cybercabhunter_db;
+  // Every window from one moment (stored times are 'YYYY-MM-DD HH:MM:SS' UTC).
+  const before = hours => new Date(nowMs - hours * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+  const [funnel, receipts, statuses, recent, gmail] = await Promise.all([
+    sql.prepare(`SELECT
+        COUNT(CASE WHEN status = 'active' THEN 1 END) AS issued,
+        COUNT(CASE WHEN status = 'active' AND (forwarding_code_received_at IS NOT NULL OR forwarding_link IS NOT NULL) THEN 1 END) AS confirmation_received,
+        COUNT(CASE WHEN status = 'active' AND setup_completed_at IS NOT NULL THEN 1 END) AS setup_completed,
+        COUNT(CASE WHEN status = 'active' AND last_received_at IS NOT NULL THEN 1 END) AS receiving,
+        COUNT(CASE WHEN status = 'active' AND last_received_at >= ? THEN 1 END) AS receiving_7d,
+        COUNT(CASE WHEN status = 'revoked' THEN 1 END) AS revoked
+      FROM receipt_ingestion_addresses`).bind(before(7 * 24)).first(),
+    sql.prepare(`SELECT COUNT(*) AS total,
+        COUNT(CASE WHEN received_at >= ? THEN 1 END) AS last_24h,
+        COUNT(CASE WHEN received_at >= ? THEN 1 END) AS last_7d,
+        COUNT(CASE WHEN received_at >= ? THEN 1 END) AS last_30d,
+        MAX(received_at) AS last_received_at
+      FROM receipt_ingestions`).bind(before(24), before(7 * 24), before(30 * 24)).first(),
+    sql.prepare(`SELECT status, COUNT(*) AS n FROM receipt_ingestions GROUP BY status`).all(),
+    sql.prepare(`SELECT received_at FROM receipt_ingestions WHERE received_at >= ?`).bind(before(15 * 24)).all(),
+    sql.prepare(`SELECT
+        COUNT(CASE WHEN status = 'active' THEN 1 END) AS active,
+        COUNT(CASE WHEN status = 'error' THEN 1 END) AS error,
+        COUNT(CASE WHEN status = 'revoked' THEN 1 END) AS revoked,
+        COUNT(CASE WHEN status = 'active' AND backfill_completed_at IS NOT NULL THEN 1 END) AS backfill_done,
+        MAX(last_success_at) AS last_success_at
+      FROM gmail_connections`).first()
+  ]);
+  const n = v => Number(v) || 0;
+  const byStatus = Object.fromEntries(RECEIPT_STATUSES.map(k => [k, 0]));
+  for (const r of statuses.results || []) if (r.status in byStatus) byStatus[r.status] = n(r.n);
+  // The last 14 Central days, oldest first, zeros included.
+  const days = [];
+  for (let i = 13; i >= 0; i--) days.push(centralDate(nowMs - i * 86400000));
+  const counts = new Map(days.map(d => [d, 0]));
+  for (const r of recent.results || []) {
+    const d = centralDate(Date.parse(String(r.received_at).replace(' ', 'T') + 'Z'));
+    if (counts.has(d)) counts.set(d, counts.get(d) + 1);
+  }
+  const iso = t => (t ? String(t).replace(' ', 'T') + 'Z' : null);
+  return Response.json({
+    funnel: Object.fromEntries(['issued', 'confirmation_received', 'setup_completed', 'receiving', 'receiving_7d', 'revoked'].map(k => [k, n(funnel && funnel[k])])),
+    receipts: {
+      total: n(receipts && receipts.total), last_24h: n(receipts && receipts.last_24h), last_7d: n(receipts && receipts.last_7d), last_30d: n(receipts && receipts.last_30d),
+      last_received_at: iso(receipts && receipts.last_received_at),
+      by_status: byStatus,
+      daily: days.map(date => ({ date, n: counts.get(date) }))
+    },
+    gmail_api: { active: n(gmail && gmail.active), error: n(gmail && gmail.error), revoked: n(gmail && gmail.revoked), backfill_done: n(gmail && gmail.backfill_done), last_success_at: iso(gmail && gmail.last_success_at) }
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
+}
+
 // Moderator-only: the reviewable vehicle-sighting queue. Deliberately does
 // NOT include submitter identity (display name, handle, email) — nothing
 // about the current review workflow needs it, so it's simply left out
