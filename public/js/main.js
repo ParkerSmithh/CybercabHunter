@@ -1058,7 +1058,7 @@ const CCC = (() => {
       resetForm();
       form.classList.add('hidden');
       if (success) success.classList.remove('hidden');
-      else { toast('Sighting submitted!', 'success'); close(); }
+      else { toast('SIGHTING SUBMITTED!', 'success'); close(); }
     });
   }
 

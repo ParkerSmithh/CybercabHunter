@@ -145,7 +145,7 @@ async function run() {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html')).filter(f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8').includes('id="openSightingDrawer"'));
     check('the submit button exists on several pages', pages.length >= 5);
     check('every page with the submit button loads js/main.js', pages.every(f => /src="js\/main\.js/.test(fs.readFileSync(`${ROOT}public/${f}`, 'utf8'))));
-    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('Submit a sighting') && s.includes('id="sightingSuccess"'); }));
+    check('every page has the photo form (identical drawer everywhere)', pages.every(f => { const s = fs.readFileSync(`${ROOT}public/${f}`, 'utf8'); return s.includes('id="sightingPhoto"') && s.includes('SUBMIT A SIGHTING') && s.includes('id="sightingSuccess"'); }));
   }
 
   console.log('2. The form: photo (required), then optional City, Location, Date spotted, Description, License plate');
@@ -212,7 +212,7 @@ async function run() {
     page.fill({ area: 'Austin', notes: 'Near the Domain' });
     page.submit();
     await page.waitFor(() => page.visible('sightingSuccess'), 'the confirmation');
-    check('shows "Sighting submitted!"', /Sighting submitted!/.test(page.d.getElementById('sightingSuccess').textContent));
+    check('shows "SIGHTING SUBMITTED!"', /SIGHTING SUBMITTED!/.test(page.d.getElementById('sightingSuccess').textContent));
     check('...and "Your photo has been received and is awaiting review."', /Your photo has been received and is awaiting review\./.test(page.d.getElementById('sightingSuccess').textContent));
     check('the form is hidden behind the confirmation and the drawer stays open (no redirect)', !page.visible('sightingForm') && page.drawerOpen() && page.navigations.length === 0);
     check('the form was reset for next time', page.val('sightingServiceArea') === '' && page.val('sightingNotes') === '' && page.d.getElementById('sightingPhotoPrompt').textContent === 'Upload Photo');

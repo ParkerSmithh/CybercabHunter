@@ -128,7 +128,9 @@ console.log('4. Where each effect is wired');
   const index = read('public/index.html'), sightings = read('public/sightings.html'), zones = read('public/infrastructure.html');
   check('BlurText: only the homepage headline', (index.match(/class="blur-word/g) || []).length === 5 && /<h1[^>]*>\s*<span class="blur-word"/.test(index) && ![sightings, zones].some(s => /blur-word/.test(s)));
   check('ShinyText: only the two gold Replay buttons', /id="sightingsReplay"[^>]*class="shine /.test(sightings) && /id="zonesReplay"[^>]*class="shine /.test(zones) && !/class="shine/.test(index));
-  check('Magnet: only the Submit button', (index.match(/data-magnet/g) || []).length === 1 && /id="openSightingDrawer" data-magnet/.test(index));
+  // The header Submit button is static (owner request, Oct 17): no magnet, no hover lift.
+  check('Magnet: not on the header Submit button, which stays still on hover', !/data-magnet/.test(index) && /<button id="openSightingDrawer" class="(?![^"]*btn-magnetic)/.test(index)
+    && ['sightings', 'infrastructure', 'news', 'community'].every(f => !/id="openSightingDrawer"[^>]*(data-magnet|btn-magnetic)/.test(read(`public/${f}.html`))));
   check('CountUp: Fleet & Fares on the Zones page', /CCC\.countUp\(el, value, \{ format: fmt \}\)/.test(zones));
 }
 
