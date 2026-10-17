@@ -498,7 +498,15 @@
     (b, c) => b.extend(c),
     new maplibregl.LngLatBounds(serviceZoneCoords[0], serviceZoneCoords[0])
   );
-  map.fitBounds(zoneBounds, { padding: 24, animate: false });
+  // Frames a city's zone centred in the visible map: on desktop the sidebar
+  // covers the map's left edge, so the padding reaches past it.
+  function zonePadding() {
+    const panel = document.getElementById('zonePanel');
+    return window.innerWidth >= 1024 && panel
+      ? { top: 48, right: 48, bottom: 48, left: panel.offsetLeft + panel.offsetWidth + 48 }
+      : 24;
+  }
+  map.fitBounds(zoneBounds, { padding: zonePadding(), animate: false });
 
   // The dark basemap and the gold service zone — the same as the homepage
   // minimap (js/austin-map.js).
@@ -548,19 +556,13 @@
     if (features && features.refreshChargingLocations) features.refreshChargingLocations();
     if (heat) heat.refresh();
     if (city === 'dallas') {
-      // On desktop the sidebar covers the map's left edge: pad past it so the
-      // zone is centred in the visible part of the map.
-      const panel = document.getElementById('zonePanel');
-      const padding = window.innerWidth >= 1024
-        ? { top: 48, right: 48, bottom: 48, left: panel.offsetLeft + panel.offsetWidth + 48 }
-        : 24;
-      map.fitBounds(dallasZoneBounds, { padding, animate: false });
+      map.fitBounds(dallasZoneBounds, { padding: zonePadding(), animate: false });
       if (!dallasStatsLoaded) {
         dallasStatsLoaded = true;
         loadFleetStats('dallas', { count: 'dalFleetCountOut', median: 'dalMedianFareOut', avg: 'dalAvgFareOut', perMile: 'dalPerMileOut', basis: 'dalFareBasis' });
       }
     } else {
-      map.fitBounds(zoneBounds, { padding: 24, animate: false });
+      map.fitBounds(zoneBounds, { padding: zonePadding(), animate: false });
     }
     requestAnimationFrame(() => map.resize());
   }
