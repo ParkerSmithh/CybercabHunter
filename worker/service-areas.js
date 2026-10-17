@@ -17,9 +17,9 @@
 // Dallas: Tesla's figure), first day of service, daily hours (America/Chicago,
 // js/calc.js), and one line describing the zone.
 const ZONE_FACTS = {
-  austin: { square_miles: 264, in_service_since: '2025-06-22', hours: { open: '06:00', close: '23:00' },
+  austin: { square_miles: 264, in_service_since: '2025-06-22', hours: { open: '06:00', close: '24:00' },
     description: 'First Robotaxi market. Launched as an invite pilot, now unsupervised.' },
-  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '06:00', close: '23:00' },
+  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '06:00', close: '24:00' },
     description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
 };
 

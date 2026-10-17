@@ -1,10 +1,10 @@
 /* Homepage service-status banner (index.html #serviceBanner), just below the
    stats bar. Pure client-side: no request.
-   HOURS: js/calc.js SERVICE_HOURS — 6:00 AM to 11:00 PM, America/Chicago,
+   HOURS: js/calc.js SERVICE_HOURS — 6:00 AM to 12:00 AM (midnight), America/Chicago,
    every day, for Austin and Dallas alike (the one place to change them).
    STATE: from the visitor's clock read in America/Chicago (Intl), never the
    visitor's own time zone. Open from openMinute:00 (6:00:00 → live) up to
-   but not including closeMinute:00 (23:00:00 → parked).
+   but not including closeMinute:00 (midnight, 24:00 → parked).
      live    green pulsing dot · "Cybercabs are on the road now" ·
              "Service ends in Xh Ym"
      parked  moon, cooler tone · "The fleet is parked for the night" ·
@@ -61,7 +61,7 @@
     const h = Math.floor(mins / 60), m = mins % 60;
     return h ? `${h}h ${m}m` : `${m}m`;
   }
-  const clock = minute => `${((Math.floor(minute / 60) + 11) % 12) + 1}:${String(minute % 60).padStart(2, '0')} ${minute < 720 ? 'AM' : 'PM'}`;
+  const clock = minute => { const m = minute % 1440; return `${((Math.floor(m / 60) + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')} ${m < 720 ? 'AM' : 'PM'}`; };   // 1440 (midnight) -> 12:00 AM
 
   const MOON = '<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></svg>';
   // The service day on a 24-hour track: the open window, the part already

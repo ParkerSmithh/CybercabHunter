@@ -24,9 +24,10 @@ const CCC_CALC = (() => {
   // Model, inputs and ranges: docs/fleet-eta-live-data-research.md §3.
 
   // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
-  const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 23 * 60, timeZone: 'America/Chicago' };
-  // Dallas (launched Apr 18, 2026): 6 AM to 11 PM daily (owner-confirmed, Oct 2026).
-  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 23 * 60, timeZone: 'America/Chicago' };
+  const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 24 * 60, timeZone: 'America/Chicago' };
+  // Dallas (launched Apr 18, 2026): 6 AM to 12 AM (midnight) daily (owner-confirmed, Oct 2026).
+  // closeMinute 24 * 60 = midnight at the end of the day (clockLabel shows 12:00 AM).
+  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 24 * 60, timeZone: 'America/Chicago' };
   // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
   // $3.25 base + $1.00 per mile. Not a published rate card.
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };

@@ -29,7 +29,7 @@ Two tools on one page (nav label "Simulation", URL `/simulation`), switched with
 Cybercab vs. Model Y in Austin; the model and its inputs are in `docs/fleet-eta-live-data-research.md`. Dallas shows a "not yet available" note.
 
 - Fares: the Cybercab median, average and $/mile from `GET /api/fleet-stats` (each with its sample size) beside Tesla's reported Austin rate; a trip-distance slider prices both, and an estimate far past the measured average trip is labelled an extrapolation. A Stale badge after 36 h; "Live data unavailable" when the request fails (no fallback numbers).
-- Operating hours (6:00 AM – 11:00 PM Central) with a live open/closed state and a 24-hour strip.
+- Operating hours (6:00 AM – 12:00 AM Central) with a live open/closed state and a 24-hour strip.
 - Pickup wait as a range (e.g. 6–16 min, most likely ~9) with Quiet / Typical / Busy scenarios; "How this is estimated" lists every input as Live, Measured or Assumed.
 - The live data refreshes every 5 minutes while the page is visible.
 

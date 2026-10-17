@@ -76,5 +76,5 @@ Remote, read-only check of the daily job's reads against a real database: `node 
 - Traffic, weather and events are not modeled: no free, reliable source with a demonstrated link to pickup times was available, and none was added.
 - Screenshot evidence for reports is not collected (needs an upload path with PII redaction; the R2 evidence bucket and the sighting upload flow are the starting point).
 - Vehicle type for logged rides is only known when the registry vehicle has a model; most receipts don't say.
-- Dallas service hours: the site shows 6 AM–11 PM (owner-confirmed); RobotaxiTracker lists 6 AM–10 PM.
+- Dallas service hours: the site shows 6 AM–12 AM (owner-confirmed, Oct 16, 2026); RobotaxiTracker lists 6 AM–10 PM.
 - The Austin/Dallas Model Y counts (114 / 65) on the fleet mix are still the owner's fixed figures; RobotaxiTracker lists ~170 / 67.

@@ -22,7 +22,7 @@
   const plural = (n, a, b) => `${int(n)} ${n === 1 ? a : b}`;
   const date = iso => (iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
   const shortDate = iso => date(iso).replace(/, \d{4}$/, '');
-  const clock = hhmm => { if (!hhmm) return '—'; const [h, m] = hhmm.split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'AM' : 'PM'}`; };
+  const clock = hhmm => { if (!hhmm) return '—'; const [hh, m] = hhmm.split(':').map(Number); const h = hh % 24; return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'AM' : 'PM'}`; };
   const hourLabel = h => `${((h + 11) % 12) + 1}${h < 12 ? 'AM' : 'PM'}`;
   const when = (iso, tz) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: tz || ZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
   function ago(iso) {
