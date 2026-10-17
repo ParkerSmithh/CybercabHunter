@@ -526,12 +526,12 @@
   const heat = window.CCCZonesHeat ? CCCZonesHeat.attach(map, { city: () => currentCity }) : null;
 
   // ---- The selected city: map view, camera markers, search, replay link, title ----
-  // Dallas: frame the service zone and the documented Irving fleet hub.
+  // Dallas: frame the service zone alone, centred in the map area beside the
+  // sidebar (the Irving hub, outside the zone, pulled it off-centre).
   const dallasZoneBounds = CCCAustinMap.DALLAS_SERVICE_ZONE.reduce(
     (b, c) => b.extend(c),
     new maplibregl.LngLatBounds(CCCAustinMap.DALLAS_SERVICE_ZONE[0], CCCAustinMap.DALLAS_SERVICE_ZONE[0])
   );
-  dallasChargingLocations.forEach(c => dallasZoneBounds.extend([c.lng, c.lat]));
   const CITY_META = {
     austin: { title: document.title, description: document.querySelector('meta[name="description"]').getAttribute('content'), replay: '/replay?range=month' },
     dallas: { title: 'Cybercab Hunter', description: 'The Dallas Cybercab service zone on a live map, with traffic-camera spots and fleet and fare stats.', replay: '/replay?range=month&city=dallas' }
@@ -548,10 +548,11 @@
     if (features && features.refreshChargingLocations) features.refreshChargingLocations();
     if (heat) heat.refresh();
     if (city === 'dallas') {
-      // Leave room for the western hub pin and its 240px popup beside the sidebar.
+      // On desktop the sidebar covers the map's left edge: pad past it so the
+      // zone is centred in the visible part of the map.
       const panel = document.getElementById('zonePanel');
       const padding = window.innerWidth >= 1024
-        ? { top: 24, right: 24, bottom: 24, left: panel.offsetLeft + panel.offsetWidth + 144 }
+        ? { top: 48, right: 48, bottom: 48, left: panel.offsetLeft + panel.offsetWidth + 48 }
         : 24;
       map.fitBounds(dallasZoneBounds, { padding, animate: false });
       if (!dallasStatsLoaded) {
