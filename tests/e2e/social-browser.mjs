@@ -366,6 +366,9 @@ try {
     const copy = mig.slice(mig.indexOf('-- ---- Existing reviews -> posts'));
     app.d1.exec(copy); app.d1.exec(copy);   // as on the live database, and repeatable
     check('the copy runs on a database with 0045 applied, once per review', count(`SELECT COUNT(*) AS n FROM social_posts WHERE legacy_review_id = ?`, rid) === 1 && count(`SELECT COUNT(*) AS n FROM cybercab_reviews WHERE id = ?`, rid) === 1);
+    // The sidebar's figures are stored and refreshed within a read budget
+    // (worker/summary-cache.js): expire them, as their lifetime would.
+    app.d1.exec(`UPDATE community_summary SET computed_at = '2000-01-01T00:00:00.000Z'`);
     const { ctx, page } = await open(null);
     await page.click('[data-filter="reviews"]'); await wait(page, 500);
     const el = postEl(rid);
@@ -389,6 +392,7 @@ try {
     app.d1.exec(`INSERT INTO user_xp (user_id, xp) VALUES ('nameless', 300), ('hidden', 99999)`);
     approveVehicle(app.d1, seedVehicle(app.d1, { id: 'c3d4e5f6-0000-4000-8000-000000000003', plate: 'NAM0001' }), { withRide: true, userId: 'nameless' });
     approveVehicle(app.d1, seedVehicle(app.d1, { id: 'd4e5f6a7-0000-4000-8000-000000000004', plate: 'HID0001' }), { withRide: true, userId: 'hidden' });
+    app.d1.exec(`UPDATE community_summary SET computed_at = '2000-01-01T00:00:00.000Z'`);   // as the stored figures' lifetime would
     const { ctx, page } = await open(null);
     const top = await page.textContent('#socialTop');
     const nameless = await page.evaluateHandle(() => [...document.querySelectorAll('#socialTop li')].find(li => li.querySelector('.social-name') && li.querySelector('.social-name').textContent.trim() === 'Spotter') || null);

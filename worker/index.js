@@ -17,10 +17,10 @@ import { apiSearchPlaces, apiSearchMapPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
 import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
-import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders } from './community.js';
+import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders, leaderboardData } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiListReviewComments, apiGetReviewPhoto } from './reviews.js';
-import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialOverview, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta } from './social.js';
+import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialOverview, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta, socialSidebarData } from './social.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
 import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
@@ -744,7 +744,11 @@ const worker = {
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
       // Spotter XP (worker/progression.js): the full reconcile (backfill,
       // discoveries, reversals), then the Community page's daily numbers.
-      ctx.waitUntil(reconcileAllXp(env).catch(() => {}).then(() => recomputeCommunitySummary(env)).catch(() => {}));
+      ctx.waitUntil(reconcileAllXp(env).catch(() => {}).then(() => recomputeCommunitySummary(env)).catch(() => {})
+        // The stored leaderboard figures and Social sidebar (D1 read budget,
+        // worker/summary-cache.js): refreshed here if stale, so views never aggregate.
+        .then(() => leaderboardData(env)).catch(() => {})
+        .then(() => socialSidebarData(env)).catch(() => {}));
       return;
     }
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js

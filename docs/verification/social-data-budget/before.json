@@ -1,0 +1,132 @@
+{
+  "repo": "/tmp/claude-0/main-wt",
+  "measured_at": "2026-10-18T18:03:49.873Z",
+  "results": {
+    "300": {
+      "sidebar": {
+        "cold": 1000,
+        "per_view": 1000,
+        "refresh": null
+      },
+      "for_you (signed out)": {
+        "cold": 346,
+        "per_view": 346,
+        "refresh": null
+      },
+      "for_you (signed in)": {
+        "cold": 347,
+        "per_view": 347,
+        "refresh": null
+      },
+      "photos popular": {
+        "cold": 135,
+        "per_view": 135,
+        "refresh": null
+      },
+      "latest (reference)": {
+        "cold": 66,
+        "per_view": 66,
+        "refresh": null
+      },
+      "top contributors": {
+        "cold": 16961,
+        "per_view": 16961,
+        "refresh": null
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 700,
+        "per_view": 700,
+        "refresh": null
+      },
+      "vehicle search \"\"": {
+        "cold": 1300,
+        "per_view": 1300,
+        "refresh": null
+      }
+    },
+    "1000": {
+      "sidebar": {
+        "cold": 3326,
+        "per_view": 3326,
+        "refresh": null
+      },
+      "for_you (signed out)": {
+        "cold": 344,
+        "per_view": 344,
+        "refresh": null
+      },
+      "for_you (signed in)": {
+        "cold": 345,
+        "per_view": 345,
+        "refresh": null
+      },
+      "photos popular": {
+        "cold": 275,
+        "per_view": 275,
+        "refresh": null
+      },
+      "latest (reference)": {
+        "cold": 61,
+        "per_view": 61,
+        "refresh": null
+      },
+      "top contributors": {
+        "cold": 16961,
+        "per_view": 16961,
+        "refresh": null
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 700,
+        "per_view": 700,
+        "refresh": null
+      },
+      "vehicle search \"\"": {
+        "cold": 1300,
+        "per_view": 1300,
+        "refresh": null
+      }
+    },
+    "3000": {
+      "sidebar": {
+        "cold": 9971,
+        "per_view": 9971,
+        "refresh": null
+      },
+      "for_you (signed out)": {
+        "cold": 343,
+        "per_view": 343,
+        "refresh": null
+      },
+      "for_you (signed in)": {
+        "cold": 344,
+        "per_view": 344,
+        "refresh": null
+      },
+      "photos popular": {
+        "cold": 375,
+        "per_view": 375,
+        "refresh": null
+      },
+      "latest (reference)": {
+        "cold": 61,
+        "per_view": 61,
+        "refresh": null
+      },
+      "top contributors": {
+        "cold": 16961,
+        "per_view": 16961,
+        "refresh": null
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 700,
+        "per_view": 700,
+        "refresh": null
+      },
+      "vehicle search \"\"": {
+        "cold": 1300,
+        "per_view": 1300,
+        "refresh": null
+      }
+    }
+  }
+}

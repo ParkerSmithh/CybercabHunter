@@ -58,6 +58,7 @@ import { sha256Hex } from './account.js';
 import { publicPerson } from './reviews.js';
 import { levelFor, rankFor } from './progression-levels.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
+import { budgetedSummary, rowsRead } from './summary-cache.js';
 
 export const MAX_POST_CHARS = 2000;
 export const MAX_COMMENT_CHARS = 1000;
@@ -197,9 +198,12 @@ function postJson(row, photos, me) {
   };
 }
 
-async function postsByIds(sql, ids, me) {
+// `shownOnly`: drop posts the public may no longer see (ids that came from a
+// stored ranking can be a few minutes old).
+async function postsByIds(sql, ids, me, { shownOnly = false } = {}) {
   if (!ids.length) return [];
-  const rows = (await sql.prepare(`${POST_SELECT} WHERE p.id IN (${ids.map(() => '?').join(',')})`).bind(me ? me.id : '', ...ids).all()).results || [];
+  let rows = (await sql.prepare(`${POST_SELECT} WHERE p.id IN (${ids.map(() => '?').join(',')})`).bind(me ? me.id : '', ...ids).all()).results || [];
+  if (shownOnly) rows = rows.filter(r => r.status === 'visible' && (!r.legacy_review_id || Number(r.vehicle_public) === 1));
   const byId = new Map(rows.map(r => [r.id, r]));
   const photos = await photosFor(sql, rows.filter(r => Number(r.has_photos)).map(r => r.id));
   return ids.map(id => byId.get(id)).filter(Boolean).map(r => postJson(r, photos.get(r.id), me));
@@ -218,6 +222,40 @@ const encodeCursor = obj => btoa(JSON.stringify(obj)).replace(/=+$/, '');
 function decodeCursor(raw) {
   if (!raw || raw.length > 300) return null;
   try { return JSON.parse(atob(raw)); } catch (e) { return null; }
+}
+
+// ---- Stored rankings (For You; Most popular on Photos and Reviews) ----
+// D1 budget: ranking reads the newest RANKED_WINDOW posts, so it is computed
+// into ONE stored row per feed (worker/summary-cache.js) rather than on every
+// view: at most every 2 minutes while cheap, slowing itself as posts grow
+// (RANK_BUDGET). A view reads that row, plus — on the first page — the posts
+// published since it was computed (an index range, at most FRESH_MAX), merged
+// in by the same score so a new post shows in For You at once.
+const RANK_BUDGET = {
+  foryou: { minTtlMs: 2 * 60e3, maxTtlMs: 6 * 3600e3, dailyRows: 1500 },
+  // Most popular moves slowly; new posts are merged in on page 1 regardless.
+  photos: { minTtlMs: 2 * 60e3, maxTtlMs: 24 * 3600e3, dailyRows: 300 },
+  reviews: { minTtlMs: 2 * 60e3, maxTtlMs: 24 * 3600e3, dailyRows: 300 }
+};
+const FRESH_MAX = 20;
+const RANK_EXTRA = { foryou: ' AND p.pinned = 0', photos: ' AND p.has_photos = 1', reviews: ' AND p.has_review = 1' };
+const rankGravity = filter => (filter === 'foryou' ? 1.5 : 0.8);
+const round6 = x => Math.round(x * 1e6) / 1e6;
+
+function computeRanking(filter) {
+  return async (env, now) => {
+    const res = await env.cybercabhunter_db.prepare(`SELECT p.id, p.created_at, p.like_count, p.comment_count
+        FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}${RANK_EXTRA[filter]}
+        ORDER BY p.created_at DESC, p.id DESC LIMIT ${RANKED_WINDOW}`).all();
+    const rows = res.results || [];
+    const g = rankGravity(filter);
+    const ranked = rows.map(r => ({ id: r.id, s: round6(postScore(r, now, g)), c: r.created_at }))
+      .sort((a, b) => b.s - a.s || (a.c < b.c ? 1 : -1));
+    return { value: { at: now, ids: ranked.map(r => r.id), scores: ranked.map(r => r.s) }, cost: rowsRead(res, rows.length * 2 + 2) };
+  };
+}
+export async function socialRanking(env, filter, { now = Date.now(), force = false } = {}) {
+  return (await budgetedSummary(env, `social_rank_${filter}`, computeRanking(filter), { ...RANK_BUDGET[filter], now, force })).value;
 }
 
 export async function apiSocialFeed(request, env) {
@@ -267,23 +305,39 @@ export async function apiSocialFeed(request, env) {
     ids = rows.slice(0, limit).map(r => r.id);
     if (rows.length > limit) { const last = rows[limit - 1]; next = encodeCursor({ t: last.created_at, id: last.id }); }
   } else {
-    // Rank the newest RANKED_WINDOW posts; the cursor keeps the moment the
-    // ranking was taken, so later pages continue the same order.
-    const at = cursor && Number.isFinite(cursor.at) ? cursor.at : Date.now();
+    // The stored ranking (see RANK_BUDGET); the cursor counts how far into it
+    // the reader has got, so later pages continue the same order.
+    const rank = await socialRanking(env, filter);
     const offset = cursor && Number.isInteger(cursor.o) && cursor.o >= 0 ? cursor.o : 0;
-    const rows = (await sql.prepare(`SELECT p.id, p.created_at, p.like_count, p.comment_count ${shownFrom}
-        ORDER BY p.created_at DESC, p.id DESC LIMIT ${RANKED_WINDOW}`).all()).results || [];
-    const gravity = sort === 'ranked' ? 1.5 : 0.8;
-    rows.sort((a, b) => postScore(b, at, gravity) - postScore(a, at, gravity) || (a.created_at < b.created_at ? 1 : -1));
-    ids = rows.slice(offset, offset + limit).map(r => r.id);
-    if (rows.length > offset + limit) next = encodeCursor({ at, o: offset + limit });
+    const cachedIds = rank.ids || [], scores = rank.scores || [];
+    if (!cursor) {
+      // Page 1: merge in posts published since the ranking was computed.
+      const fresh = (await sql.prepare(`SELECT p.id, p.created_at, p.like_count, p.comment_count ${shownFrom} AND p.created_at >= ?
+          ORDER BY p.created_at DESC, p.id DESC LIMIT ${FRESH_MAX}`).bind(sqlNow(rank.at)).all()).results || [];
+      const known = new Set(cachedIds);
+      const g = rankGravity(filter);
+      const candidates = [
+        ...fresh.filter(r => !known.has(r.id)).map(r => ({ id: r.id, s: postScore(r, rank.at, g), cached: false })),
+        ...cachedIds.slice(0, limit).map((id, i) => ({ id, s: scores[i], cached: true }))
+      ].sort((a, b) => b.s - a.s);
+      const page = candidates.slice(0, limit);
+      const used = page.filter(c => c.cached).length;
+      ids = page.map(c => c.id);
+      if (cachedIds.length > used) next = encodeCursor({ o: used, v: rank.at });
+    } else {
+      ids = cachedIds.slice(offset, offset + limit);
+      if (cachedIds.length > offset + limit) next = encodeCursor({ o: offset + limit, v: rank.at });
+    }
   }
+  // Pins (at most MAX_PINS, a small index): shown on the first page, and
+  // never again below — a stored ranking may predate a pin.
   let pinnedIds = [];
-  if (withPins && !cursor) {
+  if (withPins) {
     pinnedIds = ((await sql.prepare(`SELECT p.id FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
         WHERE p.pinned = 1 AND ${SHOWN} ORDER BY p.pinned_at DESC, p.id DESC LIMIT ${MAX_PINS}`).all()).results || []).map(r => r.id);
   }
-  const posts = await postsByIds(sql, [...pinnedIds, ...ids], me);
+  const pinned = new Set(pinnedIds);
+  const posts = await postsByIds(sql, [...(cursor ? [] : pinnedIds), ...ids.filter(id => !pinned.has(id))], me, { shownOnly: true });
   return Response.json({ filter, sort, posts, next_cursor: next, viewer: viewerJson }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
@@ -789,33 +843,68 @@ export async function apiGetSocialPhoto(request, env, photoId) {
 }
 
 // ---- Sidebar: trending, stats, announcement (the same for everyone; edge-cached) ----
+// D1 budget: the counts and the trending ranking are computed into ONE stored
+// row (worker/summary-cache.js) — never on a page view. They refresh at most
+// every 10 minutes while cheap and slow themselves (to once a day) as posts
+// grow (SIDEBAR_BUDGET); the daily cron keeps them warm. A view reads that row,
+// the announcement (1 row) and the ≤5 trending posts by id, so a deleted or
+// removed post leaves Trending at once and its counts are current.
+const SIDEBAR_KEY = 'social_sidebar';
+const SIDEBAR_BUDGET = { minTtlMs: 10 * 60e3, maxTtlMs: 24 * 3600e3, dailyRows: 1000 };
+const TRENDING_N = 5;
+
+async function computeSidebar(env, now) {
+  const sql = env.cybercabhunter_db;
+  const week = sqlNow(now - 7 * 86400000);
+  const shownFrom = `FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}`;
+  const [totals, weekRow, reviewRow, trendRows] = await Promise.all([
+    sql.prepare(`SELECT COUNT(*) AS posts, COUNT(DISTINCT p.user_id) AS contributors ${shownFrom}`).all(),
+    sql.prepare(`SELECT COUNT(*) AS n ${shownFrom} AND p.created_at >= ?`).bind(week).all(),
+    sql.prepare(`SELECT COUNT(*) AS n, AVG(r.rating) AS avg FROM social_post_reviews r JOIN social_posts p ON p.id = r.post_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}`).all(),
+    sql.prepare(`SELECT p.id ${shownFrom}
+        AND p.created_at >= ? AND (p.like_count + p.comment_count) > 0
+        ORDER BY (p.like_count + 2 * p.comment_count) DESC, p.created_at DESC LIMIT ${TRENDING_N}`).bind(week).all()
+  ]);
+  const t = (totals.results || [])[0] || {}, w = (weekRow.results || [])[0] || {}, r = (reviewRow.results || [])[0] || {};
+  const reviewsN = Number(r.n) || 0;
+  const stats = {
+    posts: Number(t.posts) || 0,
+    contributors: Number(t.contributors) || 0,
+    posts_this_week: Number(w.n) || 0,
+    reviews: reviewsN,
+    average_rating: reviewsN ? Math.round(Number(r.avg) * 10) / 10 : null
+  };
+  const estimate = 2 * stats.posts + 2 * stats.posts_this_week + 2 * reviewsN + 10;
+  return { value: { stats, trending: (trendRows.results || []).map(x => x.id) }, cost: rowsRead([totals, weekRow, reviewRow, trendRows], estimate) };
+}
+
+// The stored sidebar figures (also called by the daily cron to keep them warm).
+export async function socialSidebarData(env, { now = Date.now(), force = false } = {}) {
+  return (await budgetedSummary(env, SIDEBAR_KEY, computeSidebar, { ...SIDEBAR_BUDGET, now, force })).value;
+}
 
 export async function apiSocialSidebar(request, env, ctx) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const key = new Request('https://cybercabhunter.com/api/social/sidebar', { method: 'GET' });
   if (cache) { const hit = await cache.match(key); if (hit) return hit; }
   const sql = env.cybercabhunter_db;
-  const week = sqlNow(Date.now() - 7 * 86400000);
-  const shownFrom = `FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}`;
-  const [totals, weekRow, reviewRow, trendRows, ann] = await Promise.all([
-    sql.prepare(`SELECT COUNT(*) AS posts, COUNT(DISTINCT p.user_id) AS contributors ${shownFrom}`).first(),
-    sql.prepare(`SELECT COUNT(*) AS n ${shownFrom} AND p.created_at >= ?`).bind(week).first(),
-    sql.prepare(`SELECT COUNT(*) AS n, AVG(r.rating) AS avg FROM social_post_reviews r JOIN social_posts p ON p.id = r.post_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}`).first(),
-    sql.prepare(`SELECT p.id, p.body, p.category, p.like_count, p.comment_count, p.created_at ${shownFrom}
-        AND p.created_at >= ? AND (p.like_count + p.comment_count) > 0
-        ORDER BY (p.like_count + 2 * p.comment_count) DESC, p.created_at DESC LIMIT 5`).bind(week).all(),
+  const [data, ann] = await Promise.all([
+    socialSidebarData(env),
     sql.prepare(`SELECT body, link_url, updated_at FROM social_announcements WHERE id = 1`).first()
   ]);
-  const reviewsN = Number(reviewRow && reviewRow.n) || 0;
+  // The trending posts, by id: still shown, with their current text and counts.
+  const ids = (data.trending || []).filter(id => ID_RE.test(id)).slice(0, TRENDING_N);
+  // By primary key only (a status filter here makes SQLite walk the feed
+  // index instead); the "still shown" rule is applied below.
+  const rows = ids.length ? ((await sql.prepare(`SELECT p.id, p.body, p.category, p.like_count, p.comment_count, p.status, p.legacy_review_id,
+        CASE WHEN v.id IS NOT NULL AND ${ELIGIBLE_V} THEN 1 ELSE 0 END AS vehicle_public
+      FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+      WHERE p.id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results || [])
+      .filter(r => r.status === 'visible' && (!r.legacy_review_id || Number(r.vehicle_public) === 1)) : [];
+  const byId = new Map(rows.map(r => [r.id, r]));
   const response = Response.json({
-    stats: {
-      posts: Number(totals && totals.posts) || 0,
-      contributors: Number(totals && totals.contributors) || 0,
-      posts_this_week: Number(weekRow && weekRow.n) || 0,
-      reviews: reviewsN,
-      average_rating: reviewsN ? Math.round(Number(reviewRow.avg) * 10) / 10 : null
-    },
-    trending: (trendRows.results || []).map(r => ({
+    stats: data.stats,
+    trending: ids.map(id => byId.get(id)).filter(Boolean).map(r => ({
       id: r.id, category: r.category, excerpt: String(r.body || '').slice(0, 120),
       like_count: Number(r.like_count), comment_count: Number(r.comment_count), url: `/community?post=${r.id}`
     })),
@@ -953,31 +1042,74 @@ export async function apiReadSocialNotifications(request, env) {
 }
 
 // ---- Registry search for the composer's Cybercab picker ----
-// Public vehicles only (the registry's own rule), by license plate, VIN or the
-// vehicle's id (the one in its /vehicle/<id> link); partial and
-// case-insensitive. Only the public registry fields come back. With no query:
-// the most recently seen. Cheap: no per-vehicle ride statistics.
+// Public vehicles only (the registry's own rule), by license plate, VIN or
+// the vehicle's id (the one in its /vehicle/<id> link); partial and
+// case-insensitive; exact and prefix matches first, then the most recently
+// seen. With no query: the most recently seen.
+//
+// D1 budget: matching runs over a STORED index of the public vehicles (one
+// community_summary row, worker/summary-cache.js), never a registry scan per
+// keystroke. The index refreshes at most every 15 minutes, slower as the
+// registry grows, at least daily (VEHICLE_INDEX_BUDGET). A vehicle made public since then is
+// still found by its complete plate or id: when the index has no match, one
+// bounded, indexed lookup runs (plate index / primary-key range, ≤ 8 rows).
+const VEHICLE_INDEX_KEY = 'social_vehicle_index';
+const VEHICLE_INDEX_BUDGET = { minTtlMs: 15 * 60e3, maxTtlMs: 24 * 3600e3, dailyRows: 600 };
+
+async function computeVehicleIndex(env) {
+  const res = await env.cybercabhunter_db.prepare(`
+    SELECT v.id, v.license_plate, v.vin, v.service_area, v.approval_basis
+    FROM robotaxi_vehicles v WHERE ${ELIGIBLE_V}
+    ORDER BY COALESCE(v.last_seen_at, v.created_at) DESC, v.id`).all();
+  const rows = res.results || [];
+  return {
+    // Compact rows, newest first: [id, plate, vin, area, approval_basis].
+    value: rows.map(r => [r.id, r.license_plate || null, r.vin || null, r.service_area || null, r.approval_basis || null]),
+    cost: rowsRead(res, rows.length * 3 + 2)
+  };
+}
+
+// The same matching and order as the registry query it replaces.
+export function searchVehicleIndex(index, raw, limit = VEHICLE_SEARCH_LIMIT) {
+  const compact = normalizePlate(raw) || '';
+  const idLike = /^[0-9a-f-]{3,36}$/i.test(raw) ? raw.toLowerCase() : null;
+  const rows = index.map(([id, plate, vin, area, basis], i) => ({ id, license_plate: plate, vin, service_area: area, approval_basis: basis, i, np: normalizePlate(plate || ''), nv: String(vin || '').toUpperCase() }));
+  if (!raw) return rows.slice(0, limit);
+  if (!compact) return [];
+  const hits = rows.filter(r => r.np.includes(compact) || r.nv.includes(compact) || (idLike && r.id.startsWith(idLike)));
+  const rank = r => [r.np === compact ? 0 : 1, r.nv === compact ? 0 : 1, r.np.startsWith(compact) ? 0 : 1, r.i];
+  hits.sort((a, b) => { const x = rank(a), y = rank(b); for (let k = 0; k < x.length; k++) if (x[k] !== y[k]) return x[k] - y[k]; return a.id < b.id ? -1 : 1; });
+  return hits.slice(0, limit);
+}
+
 export async function apiSearchSocialVehicles(request, env) {
   const raw = (new URL(request.url).searchParams.get('q') || '').trim().slice(0, 40);
-  const compact = normalizePlate(raw) || '';   // A-Z0-9 only, the registry's own rule (worker/plate.js)
-  const idLike = /^[0-9a-f-]{3,36}$/i.test(raw) ? raw.toLowerCase() : null;
-  const norm = sqlNormalizedPlate('v.license_plate');
-  let where = '', binds = [], order = 'COALESCE(v.last_seen_at, v.created_at) DESC';
-  if (raw) {
-    if (!compact) return Response.json({ q: raw, vehicles: [] }, { headers: { 'Cache-Control': 'public, max-age=60' } });
-    where = ` AND (${norm} LIKE ? OR UPPER(COALESCE(v.vin, '')) LIKE ?${idLike ? ' OR v.id LIKE ?' : ''})`;
-    binds = [`%${compact}%`, `%${compact}%`, ...(idLike ? [`${idLike}%`] : [])];
-    // Exact and prefix matches first, then the most recently seen.
-    order = `(${norm} = ?) DESC, (UPPER(COALESCE(v.vin, '')) = ?) DESC, (${norm} LIKE ?) DESC, ${order}`;
-    binds.push(compact, compact, `${compact}%`);
+  const headers = { 'Cache-Control': 'public, max-age=60' };
+  const { value: index } = await budgetedSummary(env, VEHICLE_INDEX_KEY, computeVehicleIndex, { ...VEHICLE_INDEX_BUDGET, now: Date.now() });
+  const sql = env.cybercabhunter_db;
+  // The index only nominates: the ≤ 8 matches are re-read by primary key with
+  // the public rule, so a vehicle made private (or edited) since the index was
+  // stored is never shown and the fields are current.
+  const picks = searchVehicleIndex(index || [], raw).map(r => r.id);
+  let rows = [];
+  if (picks.length) {
+    const live = (await sql.prepare(`SELECT v.id, v.license_plate, v.vin, v.service_area, v.approval_basis FROM robotaxi_vehicles v
+        WHERE v.id IN (${picks.map(() => '?').join(',')}) AND ${ELIGIBLE_V}`).bind(...picks).all()).results || [];
+    const byId = new Map(live.map(r => [r.id, r]));
+    rows = picks.map(id => byId.get(id)).filter(Boolean);
   }
-  const rows = (await env.cybercabhunter_db.prepare(`
-    SELECT v.id, v.license_plate, v.vin, v.service_area, v.approval_basis
-    FROM robotaxi_vehicles v
-    WHERE ${ELIGIBLE_V}${where}
-    ORDER BY ${order}, v.id
-    LIMIT ${VEHICLE_SEARCH_LIMIT}`).bind(...binds).all()).results || [];
-  return Response.json({ q: raw, vehicles: rows.map(vehicleJson) }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+  const compact = normalizePlate(raw) || '';
+  if (!rows.length && compact.length >= 5) {
+    // Newer than the index? Exact plate (indexed) or id prefix (primary key range) only.
+    const idLike = /^[0-9a-f-]{3,36}$/i.test(raw) ? raw.toLowerCase() : null;
+    const plates = [...new Set([raw.toUpperCase(), compact])];
+    const live = (await sql.prepare(`
+      SELECT v.id, v.license_plate, v.vin, v.service_area, v.approval_basis FROM robotaxi_vehicles v
+      WHERE (v.license_plate IN (${plates.map(() => '?').join(',')})${idLike ? ' OR (v.id >= ? AND v.id < ?)' : ''}) AND ${ELIGIBLE_V}
+      LIMIT ${VEHICLE_SEARCH_LIMIT}`).bind(...plates, ...(idLike ? [idLike, idLike + '~'] : [])).all()).results || [];
+    rows = live;
+  }
+  return Response.json({ q: raw, vehicles: rows.map(vehicleJson) }, { headers });
 }
 
 // ---- Moderation ----

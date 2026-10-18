@@ -41,6 +41,7 @@
 
 import { tesla } from './tesla.js';
 import { gmail } from './gmail.js';
+import { leaderboardRiderChanged } from './community.js';
 
 export const ACCOUNT_TOMBSTONE_TTL_SECONDS = 60 * 60 * 24 * 90;   // the longest a session lives
 const CONFIRM = 'DELETE';
@@ -183,6 +184,9 @@ export async function apiDeleteAccount(request, env) {
   const sessionId = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (sessionId) { try { await kv.delete(`session:${sessionId}`); } catch (e) { /* best effort */ } }
   await kv.put(`deleted_user:${idHash}`, '1', { expirationTtl: ACCOUNT_TOMBSTONE_TTL_SECONDS });
+
+  // The stored leaderboard figures drop them at once (worker/community.js).
+  await leaderboardRiderChanged(env, userId, { deleted: true });
 
   // 5. Audit — time and id hash only.
   const at = new Date().toISOString();

@@ -23,6 +23,7 @@
 // key simply stops resolving. A new upload deletes the previous one's files.
 
 import { tesla } from './tesla.js';
+import { leaderboardRiderChanged } from './community.js';
 
 export const AVATAR_SIZES = [128, 512];
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -195,6 +196,7 @@ export async function apiUploadAvatar(request, env) {
   await sql.prepare(`UPDATE users SET avatar_url = ?, updated_at = datetime('now') WHERE id = ?`).bind(avatarUrl, userId).run();
   // The previous picture's files go (best effort; its key no longer resolves anyway).
   try { await deleteUserAvatarFiles(env.EVIDENCE_BUCKET, userId, key); } catch (e) { /* ignore */ }
+  await leaderboardRiderChanged(env, userId, { avatar_url: avatarUrl });
   return Response.json({ success: true, avatar_url: avatarUrl });
 }
 
@@ -204,6 +206,7 @@ export async function apiDeleteAvatar(request, env) {
   const sql = env.cybercabhunter_db;
   await sql.prepare(`UPDATE users SET avatar_url = NULL, updated_at = datetime('now') WHERE id = ?`).bind(userId).run();
   try { await deleteUserAvatarFiles(env.EVIDENCE_BUCKET, userId); } catch (e) { /* the url is already cleared */ }
+  await leaderboardRiderChanged(env, userId, { avatar_url: null });
   return Response.json({ success: true, avatar_url: null });
 }
 

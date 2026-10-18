@@ -43,6 +43,7 @@ import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './rid
 import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
 import { levelFor, rankFor } from './progression-levels.js';
+import { budgetedSummary, patchSummary, markSummaryStale, rowsRead } from './summary-cache.js';
 
 const CACHE_SECONDS = 60;               // public profiles
 const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
@@ -114,9 +115,15 @@ const systemUserId = env => env.MUSE_CONNECTOR_USER_ID || '\u0000';
 //   cities          distinct service_area values among those rides
 // Only opted-in riders with any activity (a credited discovery or a counted
 // ride); never the Muse connector's system account.
-async function riderMetrics(sql, env) {
+//
+// The same query also returns the discovery totals (every credited
+// discoverer, opted in or not: counts only — the "Spotters" tile and the
+// Discovered board's footer) on every row as t_spotters / t_vehicles, so the
+// expensive credit computation runs once, not twice (SQLite materializes a CTE
+// used more than once). Returns { metrics, totals }.
+async function riderMetrics(sql, env, cost = { rows: 0 }) {
   const sys = systemUserId(env);
-  const { results } = await sql.prepare(`
+  const res = await sql.prepare(`
     WITH ${discoveryCreditCte()},
     disc AS (
       SELECT uid, COUNT(*) AS n, MAX(at) AS reached_at FROM credit WHERE rn = 1 GROUP BY uid
@@ -128,7 +135,11 @@ async function riderMetrics(sql, env) {
       FROM ${RIDES_FROM}
       WHERE ${COUNTED_RIDES_WHERE}
       GROUP BY t.user_id
-    )
+    ),
+    tot AS (
+      SELECT COUNT(DISTINCT uid) AS spotters, COUNT(*) AS vehicles FROM credit WHERE rn = 1
+    ),
+    riders AS (
     SELECT u.id AS uid, u.display_name, u.handle, u.avatar_url,
            COALESCE(d.n, 0) AS discovered, d.reached_at,
            COALESCE(r.rides, 0) AS rides, COALESCE(r.miles, 0) AS miles,
@@ -140,14 +151,22 @@ async function riderMetrics(sql, env) {
     LEFT JOIN user_xp x ON x.user_id = u.id
     WHERE u.leaderboard_opt_in = 1 AND u.id <> ?
       AND (d.n IS NOT NULL OR r.rides IS NOT NULL OR x.xp > 0)
+    )
+    SELECT tot.spotters AS t_spotters, tot.vehicles AS t_vehicles, riders.* FROM tot LEFT JOIN riders ON 1 = 1
   `).bind(sys, sys, sys).all();
-  return (results || []).map(r => ({
+  const all = res.results || [];
+  cost.rows += rowsRead(res, all.length * 20);
+  const head = all[0] || {};
+  const totals = { spotters: Number(head.t_spotters) || 0, vehicles: Number(head.t_vehicles) || 0 };
+  const results = all.filter(r => r.uid != null);
+  const metrics = results.map(r => ({
     uid: r.uid, display_name: r.display_name, handle: r.handle, avatar_url: r.avatar_url,
     discovered: Number(r.discovered) || 0, reached_at: r.reached_at || null,
     rides: Number(r.rides) || 0, miles: Number(r.miles) || 0,
     unique_vehicles: Number(r.unique_vehicles) || 0, cities: Number(r.cities) || 0,
     xp: Math.max(0, Number(r.xp) || 0)
   }));
+  return { metrics, totals };
 }
 
 // Top Overall: 10 x discovered + 3 x rides + 2 x unique vehicles ridden +
@@ -233,17 +252,6 @@ export function rankBoard(metrics, board, limit = TOP_N) {
   return out;
 }
 
-// Every credited discoverer, opted in or not: counts only (the "Spotters"
-// tile and the Discovered board's footer).
-async function discoveryTotals(sql, env) {
-  const sys = systemUserId(env);
-  const row = await sql.prepare(`
-    WITH ${discoveryCreditCte()}
-    SELECT COUNT(DISTINCT uid) AS spotters, COUNT(*) AS vehicles FROM credit WHERE rn = 1
-  `).bind(sys, sys).first();
-  return { spotters: Number(row && row.spotters) || 0, vehicles: Number(row && row.vehicles) || 0 };
-}
-
 async function cached(request, ctx, build) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
@@ -259,13 +267,62 @@ async function cached(request, ctx, build) {
   return response;
 }
 
+// The figures behind every board (riderMetrics, with the discovery totals) are the
+// most expensive read on the site (a full aggregation over riders, rides and
+// discoveries), so they are computed into ONE community_summary row and every
+// board reads that row (worker/summary-cache.js). Budget: the aggregation runs
+// at most every 5 minutes while it is cheap, and slows itself to as rarely as
+// once a day as it grows (BOARD_BUDGET); the daily cron also keeps it warm.
+// Privacy stays immediate: leaderboardRiderChanged() below edits the stored
+// figures the moment a rider turns their public profile off, renames
+// themselves, changes their photo or deletes their account.
+export const LEADERBOARD_KEY = 'leaderboard';
+const BOARD_BUDGET = { minTtlMs: BOARD_CACHE_SECONDS * 1000, maxTtlMs: 24 * 3600e3, dailyRows: 1500 };
+async function computeLeaderboard(env) {
+  const sql = env.cybercabhunter_db;
+  const cost = { rows: 0 };
+  const { metrics, totals } = await riderMetrics(sql, env, cost);
+  return { value: { metrics, totals }, cost: cost.rows };
+}
+export async function leaderboardData(env, { now = Date.now(), force = false } = {}) {
+  return (await budgetedSummary(env, LEADERBOARD_KEY, computeLeaderboard, { ...BOARD_BUDGET, now, force })).value;
+}
+
+// A rider's public details changed: update the stored figures at once.
+// opt_in false or deleted -> they leave every board now; a new name, username
+// or photo shows now. (Turning the switch ON shows them at the next refresh.)
+export async function leaderboardRiderChanged(env, userId, change = {}) {
+  const apply = v => {
+    if (!v || !Array.isArray(v.metrics)) return undefined;
+    if (change.deleted || change.opt_in === false) {
+      const metrics = v.metrics.filter(m => m.uid !== userId);
+      return metrics.length === v.metrics.length ? undefined : { ...v, metrics };
+    }
+    let touched = false;
+    const metrics = v.metrics.map(m => {
+      if (m.uid !== userId) return m;
+      touched = true;
+      const next = { ...m };
+      for (const k of ['display_name', 'handle', 'avatar_url']) if (k in change) next[k] = change[k];
+      return next;
+    });
+    return touched ? { ...v, metrics } : undefined;
+  };
+  try {
+    // Retry once if a refresh replaced the row between our read and write.
+    if (!(await patchSummary(env, LEADERBOARD_KEY, apply))) await patchSummary(env, LEADERBOARD_KEY, apply);
+    // A deleted account also moves discovery credit to the next rider: have
+    // the next view recompute (rare, so the cost is negligible).
+    if (change.deleted) await markSummaryStale(env, LEADERBOARD_KEY);
+  } catch (e) { /* no stored row yet: the next computation reads the new settings */ }
+}
+
 export async function apiCommunityLeaderboard(request, env, ctx) {
   const boardId = new URL(request.url).searchParams.get('board') || DEFAULT_BOARD;
   const board = Object.prototype.hasOwnProperty.call(BOARDS, boardId) ? BOARDS[boardId] : null;
   if (!board) return Response.json({ success: false, error: 'invalid_board' }, { status: 400 });
   return cached(request, ctx, async () => {
-    const sql = env.cybercabhunter_db;
-    const [metrics, totals] = await Promise.all([riderMetrics(sql, env), discoveryTotals(sql, env)]);
+    const { metrics, totals } = await leaderboardData(env);
     return Response.json({
       board: boardId,
       label: board.label,

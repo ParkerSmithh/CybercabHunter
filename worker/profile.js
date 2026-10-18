@@ -7,6 +7,7 @@
 // the crowdsourced concept) are deliberately separate figures.
 
 import { db } from './db.js';
+import { leaderboardRiderChanged } from './community.js';
 
 export async function apiGetProfile(request, env, userId) {
   const user = await db.getUserById(env.cybercabhunter_db, userId);
@@ -93,6 +94,9 @@ export async function apiUpdateProfile(request, env, userId) {
     }
     throw err;
   }
+
+  // The stored leaderboard figures follow at once (worker/community.js).
+  await leaderboardRiderChanged(env, userId, { opt_in: leaderboardOptIn, display_name: displayName, handle });
 
   return Response.json({
     success: true,

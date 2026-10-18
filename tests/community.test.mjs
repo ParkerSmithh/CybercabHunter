@@ -68,7 +68,10 @@ const get = async (ctx, path, session) => {
   let json = null; try { json = JSON.parse(raw); } catch (e) { /* not JSON */ }
   return { status: r.status, json, raw };
 };
-const board = async (ctx, id = 'discovered') => (await get(ctx, `/api/community/leaderboard?board=${id}`)).json;
+// The boards' figures are stored for at least 5 minutes (worker/community.js,
+// as the edge cache did before); expire them so each read sees the latest data.
+const expireBoards = ctx => ctx.d1.prepare(`DELETE FROM community_summary WHERE key = 'leaderboard'`)._exec();
+const board = async (ctx, id = 'discovered') => { expireBoards(ctx); return (await get(ctx, `/api/community/leaderboard?board=${id}`)).json; };
 const counts = b => b.entries.map(e => `${e.rank}:${e.count}`).join(' ');
 
 async function run() {

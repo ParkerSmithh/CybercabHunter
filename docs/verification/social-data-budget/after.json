@@ -1,0 +1,132 @@
+{
+  "repo": "/home/user/CybercabHunter",
+  "measured_at": "2026-10-18T18:07:20.112Z",
+  "results": {
+    "300": {
+      "sidebar": {
+        "cold": 1011,
+        "per_view": 12,
+        "refresh": 1013
+      },
+      "for_you (signed out)": {
+        "cold": 356,
+        "per_view": 56,
+        "refresh": 350
+      },
+      "for_you (signed in)": {
+        "cold": 49,
+        "per_view": 49,
+        "refresh": 351
+      },
+      "photos popular": {
+        "cold": 137,
+        "per_view": 77,
+        "refresh": 139
+      },
+      "latest (reference)": {
+        "cold": 66,
+        "per_view": 66,
+        "refresh": 66
+      },
+      "top contributors": {
+        "cold": 12427,
+        "per_view": 1,
+        "refresh": 12429
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 1333,
+        "per_view": 33,
+        "refresh": 1335
+      },
+      "vehicle search \"\"": {
+        "cold": 33,
+        "per_view": 33,
+        "refresh": 1335
+      }
+    },
+    "1000": {
+      "sidebar": {
+        "cold": 3334,
+        "per_view": 12,
+        "refresh": 3336
+      },
+      "for_you (signed out)": {
+        "cold": 346,
+        "per_view": 46,
+        "refresh": 348
+      },
+      "for_you (signed in)": {
+        "cold": 47,
+        "per_view": 47,
+        "refresh": 349
+      },
+      "photos popular": {
+        "cold": 277,
+        "per_view": 77,
+        "refresh": 279
+      },
+      "latest (reference)": {
+        "cold": 61,
+        "per_view": 61,
+        "refresh": 61
+      },
+      "top contributors": {
+        "cold": 12427,
+        "per_view": 1,
+        "refresh": 12429
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 1333,
+        "per_view": 33,
+        "refresh": 1335
+      },
+      "vehicle search \"\"": {
+        "cold": 33,
+        "per_view": 33,
+        "refresh": 1335
+      }
+    },
+    "3000": {
+      "sidebar": {
+        "cold": 9982,
+        "per_view": 12,
+        "refresh": 9984
+      },
+      "for_you (signed out)": {
+        "cold": 345,
+        "per_view": 45,
+        "refresh": 347
+      },
+      "for_you (signed in)": {
+        "cold": 46,
+        "per_view": 46,
+        "refresh": 348
+      },
+      "photos popular": {
+        "cold": 377,
+        "per_view": 77,
+        "refresh": 379
+      },
+      "latest (reference)": {
+        "cold": 61,
+        "per_view": 61,
+        "refresh": 61
+      },
+      "top contributors": {
+        "cold": 12427,
+        "per_view": 1,
+        "refresh": 12429
+      },
+      "vehicle search \"xvf12\"": {
+        "cold": 1333,
+        "per_view": 33,
+        "refresh": 1335
+      },
+      "vehicle search \"\"": {
+        "cold": 33,
+        "per_view": 33,
+        "refresh": 1335
+      }
+    }
+  }
+}

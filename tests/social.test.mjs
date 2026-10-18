@@ -237,7 +237,12 @@ async function run() {
     check('no emails, user ids or private names in public responses', !/@example|"user_id"|carol_secret|Carol Secret|"alice"|"bob"/.test(anon));
     const single = await call(ctx, 'GET', `/api/social/posts/${old.id}`);
     check('a single post opens by its link', single.status === 200 && single.json.post.id === old.id);
+    // The sidebar's figures are stored and refreshed within a read budget
+    // (worker/summary-cache.js): served as stored until they expire.
+    const stored = (await call(ctx, 'GET', '/api/social/sidebar')).json;
+    ctx.d1.prepare(`UPDATE community_summary SET computed_at = '2000-01-01T00:00:00.000Z' WHERE key = 'social_sidebar'`)._exec();
     const side = (await call(ctx, 'GET', '/api/social/sidebar')).json;
+    check('...stored figures are refreshed once they expire', side.stats.posts >= stored.stats.posts && ctx.d1.query(`SELECT COUNT(*) AS n FROM community_summary WHERE key = 'social_sidebar' AND computed_at > '2001'`)[0].n === 1);
     check('sidebar statistics come from real rows', side.stats.posts === visible && side.stats.contributors >= 2 && side.stats.posts_this_week === visible && side.trending.length > 0 && side.trending.every((x, i, a) => i === 0 || (a[i - 1].like_count + 2 * a[i - 1].comment_count) >= (x.like_count + 2 * x.comment_count)) && side.trending.some(x => x.id === old.id));
   }
 
