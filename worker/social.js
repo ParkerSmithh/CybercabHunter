@@ -258,7 +258,37 @@ export async function socialRanking(env, filter, { now = Date.now(), force = fal
   return (await budgetedSummary(env, `social_rank_${filter}`, computeRanking(filter), { ...RANK_BUDGET[filter], now, force })).value;
 }
 
-export async function apiSocialFeed(request, env) {
+// Page 1 for signed-out visitors (no session at all): one shared copy per
+// feed, filter, sort and page size, kept at the edge for FEED_EDGE_SECONDS.
+// Owner-accepted tradeoff: a post a moderator removes can stay visible to
+// signed-out visitors for up to that long. Anyone with a session, later pages
+// and Saved are never cached, so moderation stays immediate for them; the
+// browser itself is always told not to store the response.
+const FEED_EDGE_SECONDS = 60;
+const hasSession = request => /^Bearer\s+\S/i.test(request.headers.get('Authorization') || '');
+
+export async function apiSocialFeed(request, env, ctx) {
+  const params = new URL(request.url).searchParams;
+  const f = params.get('filter'), cacheable = !hasSession(request) && !params.get('cursor') && f !== 'saved';
+  const cache = cacheable && typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  if (!cache) return socialFeed(request, env);
+  // The key holds only what shapes the page (unknown parameters can't bust it).
+  const filter = ['foryou', 'latest', 'photos', 'reviews'].includes(f) ? f : 'foryou';
+  const sort = params.get('sort') === 'popular' ? 'popular' : 'new';
+  const limit = Math.min(Math.max(Number(params.get('limit')) || FEED_DEFAULT, 1), FEED_MAX);
+  const key = new Request(`https://cybercabhunter.com/__edge/social-feed?filter=${filter}&sort=${sort}&limit=${limit}`, { method: 'GET' });
+  const toBrowser = r => new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
+  const hit = await cache.match(key);
+  if (hit) return toBrowser(hit);
+  const fresh = await socialFeed(request, env);
+  if (fresh.status !== 200) return fresh;
+  const body = await fresh.text();
+  const put = cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${FEED_EDGE_SECONDS}` } })).catch(() => {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put;
+  return toBrowser(new Response(body));
+}
+
+async function socialFeed(request, env) {
   const sql = env.cybercabhunter_db;
   const params = new URL(request.url).searchParams;
   const filter = ['foryou', 'latest', 'photos', 'reviews', 'saved'].includes(params.get('filter')) ? params.get('filter') : 'foryou';

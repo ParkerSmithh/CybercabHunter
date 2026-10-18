@@ -502,7 +502,7 @@ const worker = {
 
     // Community Social (worker/social.js).
     if (url.pathname === '/api/social/feed' && request.method === 'GET') {
-      return withCors(await apiSocialFeed(request, env), request);
+      return withCors(await apiSocialFeed(request, env, ctx), request);
     }
     if (url.pathname === '/api/social/sidebar' && request.method === 'GET') {
       return withCors(await apiSocialSidebar(request, env, ctx), request);

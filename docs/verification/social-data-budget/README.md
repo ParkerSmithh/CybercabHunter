@@ -155,3 +155,45 @@ Other visible effects of the stored results:
 - This environment has no Cloudflare credentials, and its network policy blocks Cloudflare, so no preview could be deployed or checked here.
 - **Caution:** `wrangler.jsonc` binds only the production D1 database. A branch preview built from it as-is would read (and write `community_summary` rows to) **production**. The Oct 10 preview used separate preview-only bindings (`docs/verification/d1-read-budget/README.md`), and that configuration is not in the repo.
 - **To preview safely:** deploy with those preview bindings from the owner's machine, for example `npx wrangler versions upload --preview-alias social-data-budget` with a config pointing at the preview D1, KV and R2. Then check the alias URL on a phone.
+
+## Addendum: 60-second edge cache for signed-out feed page 1 (owner-approved)
+
+### What's cached
+
+- **Cached:** page 1 of the feed for requests with **no session** (no `Authorization: Bearer` header). There is one shared copy per feed (filter, sort, page size) in each Cloudflare data centre's cache, kept for 60 seconds.
+- **Never cached:**
+  - anyone with a session;
+  - later pages (with a cursor);
+  - Saved.
+
+  Moderation stays immediate for signed-in visitors.
+- **The browser always receives `Cache-Control: private, no-store`.** So a visitor who then signs in never sees a stale signed-out page from their own browser.
+- **The cache key holds only filter, sort and page size**, so unknown URL parameters can't bypass it.
+
+**Accepted tradeoff:** a post a moderator removes can stay visible to signed-out visitors for up to 60 seconds.
+
+### Measured rows read
+
+The same harness, with `--edge=1` simulating one data centre's cache, and the same seeded data. "Before" is commit `648e760`; "after" is this change. Raw data: `edge-before.json` and `edge-after.json`.
+
+| Signed-out page-1 view, within 60 s of the last miss | 300 posts | 1,000 posts | 3,000 posts |
+|---|---:|---:|---:|
+| For You: before | 48 | 46 | 45 |
+| For You: **after** | **0** | **0** | **0** |
+| Latest: before / **after** | 66 / **0** | 61 / **0** | 61 / **0** |
+| Photos newest: before / **after** | 86 / **0** | 86 / **0** | 86 / **0** |
+| Photos, Most popular: before / **after** | 77 / **0** | 77 / **0** | 77 / **0** |
+| Signed-in views (For You / Latest): unchanged | 49 / 67 | 47 / 62 | 46 / 62 |
+
+**Cost of a miss.** A miss (the first signed-out view per feed per data centre per minute) costs the same as before: about 45–86 rows, plus the stored ranking's refresh when that is due.
+
+**Worst case per day.** Signed-out page-1 reads are at most `min(signed-out views, 1,440) × ~50` per feed and sort per data centre. In practice it is one miss per active minute rather than one per view: at 400 signed-out views a day it's at most about 20,000 rows, versus about 400 × 50 = 20,000 before. At busier traffic, the 1,440 misses a day per feed per data centre cap it, however many views there are.
+
+### Tests
+
+`tests/summary-cache.test.mjs` §4 (9 checks) covers:
+- served from the edge with 0 database reads;
+- `no-store` sent to the browser;
+- junk parameters sharing the same copy;
+- a removed post staying for signed-out visitors up to 60 s and gone after;
+- signed-in, cursor pages and Saved never cached.

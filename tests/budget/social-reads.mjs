@@ -25,6 +25,18 @@ const worker = (await import(path.join(REPO, 'worker', 'index.js'))).default;
 
 const USERS = 300, VEHICLES_PUBLIC = 300, VEHICLES_PRIVATE = 100;
 
+// --edge: simulate one Cloudflare data centre's cache (caches.default), so
+// edge-cached responses are measured as a visitor would get them. Entries
+// never expire within a run: "per view" is then a view within the TTL.
+if (args.edge) {
+  const store = new Map();
+  globalThis.caches = { default: {
+    async match(req) { const r = store.get(req.url); return r ? r.clone() : undefined; },
+    async put(req, res) { if (/max-age=\d+/.test(res.headers.get('Cache-Control') || '')) store.set(req.url, res.clone()); },
+    clear() { store.clear(); }
+  } };
+}
+
 // Counts rows_read across every statement the Worker runs.
 function meteredD1(db) {
   const meter = { rows: 0, queries: 0 };
@@ -116,6 +128,8 @@ const PATHS = [
   ['for_you (signed in)', '/api/social/feed?filter=foryou', 's-u1'],
   ['photos popular', '/api/social/feed?filter=photos&sort=popular', null],
   ['latest (reference)', '/api/social/feed?filter=latest', null],
+  ['latest (signed in)', '/api/social/feed?filter=latest', 's-u1'],
+  ['photos newest', '/api/social/feed?filter=photos', null],
   ['top contributors', '/api/community/leaderboard', null],
   ['vehicle search "xvf12"', '/api/social/vehicles?q=xvf12', null],
   ['vehicle search ""', '/api/social/vehicles?q=', null]
@@ -144,10 +158,15 @@ for (const n of POSTS) {
   const env = { cybercabhunter_db: d1, TESLA_SESSIONS: kv, EVIDENCE_BUCKET: fakeR2(), FRONTEND_URL: 'https://cybercabhunter.com/' };
   const res = {};
   for (const [name, p, session] of PATHS) {
+    if (globalThis.caches && globalThis.caches.default.clear) globalThis.caches.default.clear();
     const first = await request(env, d1, p, session);       // cold: a summary may be computed here
     const warm = await request(env, d1, p, session);        // steady state: what a normal view costs
     let refresh = null;
-    if (await hasSummary(db)) { await staleAll(db); refresh = await request(env, d1, p, session); await request(env, d1, p, session); }
+    if (await hasSummary(db)) {
+      await staleAll(db);
+      if (globalThis.caches && globalThis.caches.default.clear) globalThis.caches.default.clear();
+      refresh = await request(env, d1, p, session); await request(env, d1, p, session);
+    }
     res[name] = { cold: first.rows, per_view: warm.rows, refresh: refresh ? refresh.rows : null };
   }
   out.results[n] = res;

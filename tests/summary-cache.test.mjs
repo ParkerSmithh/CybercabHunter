@@ -132,6 +132,55 @@ async function run() {
       searchVehicleIndex(idx, 'xvf3').map(v => v.id).join() === 'a1,b2' && searchVehicleIndex(idx, 'XVF3210')[0].id === 'b2' && searchVehicleIndex(idx, '000999').map(v => v.id).join() === 'c3' && searchVehicleIndex(idx, '').length === 3 && searchVehicleIndex(idx, '%%').length === 0);
   }
 
+  console.log('4. Feed page 1 for signed-out visitors: a 60-second edge cache');
+  {
+    // A stand-in for Cloudflare's per-data-centre cache (caches.default),
+    // honouring Cache-Control max-age against a clock we control.
+    let clock = Date.now();
+    const store = new Map();
+    const realCaches = globalThis.caches;
+    globalThis.caches = { default: {
+      async match(req) { const e = store.get(req.url); return e && e.expires > clock ? e.res.clone() : undefined; },
+      async put(req, res) { const m = /max-age=(\d+)/.exec(res.headers.get('Cache-Control') || ''); if (m) store.set(req.url, { res: res.clone(), expires: clock + Number(m[1]) * 1000 }); }
+    } };
+    try {
+      const ctx = await app();
+      let reads = 0;
+      const prepare = ctx.d1.prepare.bind(ctx.d1);
+      ctx.env.cybercabhunter_db = { ...ctx.d1, prepare: q => { reads++; return prepare(q); }, batch: b => ctx.d1.batch(b) };
+      const p = (await call(ctx, 'POST', '/api/social/posts', { session: 's-alice', form: { body: 'Visible to everyone' } })).json.post;
+      const feed = async (qs = '', session) => {
+        const headers = session ? { Authorization: `Bearer ${session}` } : {};
+        const r = await worker.fetch(new Request(`https://cybercabhunter.com/api/social/feed${qs}`, { headers }), ctx.env, { waitUntil() {} });
+        return { json: await r.json(), cc: r.headers.get('Cache-Control') };
+      };
+      const first = await feed('?filter=foryou');
+      reads = 0;
+      const second = await feed('?filter=foryou');
+      check('signed out, page 1: the second view within 60 s is served from the edge (0 database reads)', second.json.posts.some(x => x.id === p.id) && reads === 0);
+      check('the browser is told not to store it (the edge copy is shared, never the browser\'s)', first.cc === 'private, no-store' && second.cc === 'private, no-store');
+      reads = 0;
+      await feed('?filter=foryou&utm_source=x&junk=1');
+      check('unknown query parameters share the same copy (they can\'t bypass the cache)', reads === 0);
+      await call(ctx, 'DELETE', `/api/social/posts/${p.id}`, { session: 's-mod', json: { reason: 'test' } });
+      check('accepted tradeoff: a removed post can stay on the signed-out page for up to 60 s', (await feed('?filter=foryou')).json.posts.some(x => x.id === p.id));
+      check('signed-in views are never cached: the removal shows at once', !(await feed('?filter=foryou', 's-bob')).json.posts.some(x => x.id === p.id));
+      clock += 61000;
+      check('after 60 s the signed-out page is rebuilt without it', !(await feed('?filter=foryou')).json.posts.some(x => x.id === p.id));
+      const p2 = (await call(ctx, 'POST', '/api/social/posts', { session: 's-bob', form: { body: 'Another one' } })).json.post;
+      await feed('?filter=latest');
+      reads = 0;
+      await feed('?filter=latest', 's-alice');
+      check('a request with a session never reads the shared copy', reads > 0);
+      reads = 0;
+      await feed('?filter=latest&cursor=eyJ0IjoiMjA5OS0wMS0wMSAwMDowMDowMCIsImlkIjoiZiJ9');
+      const r2 = reads; reads = 0;
+      await feed('?filter=latest&cursor=eyJ0IjoiMjA5OS0wMS0wMSAwMDowMDowMCIsImlkIjoiZiJ9');
+      check('later pages (with a cursor) are never cached', r2 > 0 && reads > 0);
+      check('Saved is never cached and still needs a session', (await worker.fetch(new Request('https://cybercabhunter.com/api/social/feed?filter=saved'), ctx.env, { waitUntil() {} })).status === 401 && !!p2);
+    } finally { globalThis.caches = realCaches; }
+  }
+
   t.finish();
 }
 
