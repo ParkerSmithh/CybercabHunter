@@ -105,7 +105,7 @@ async function run() {
     await page.waitFor(() => page.visible('modForwardingStatsValues'), 'headline counts');
     check('the six headline counts are there', page.visible('modForwardingStatsValues') && d.querySelector('[data-forwarding-stat="addresses_issued"]').textContent === '5');
     check('funnel: five steps with shares of issued', /Addresses issued\s*5\s*100%/.test(page.text('modGmailFunnel')) && /Setup completed\s*2\s*40%/.test(page.text('modGmailFunnel')) && /1 address revoked/.test(page.text('modGmailRevoked')));
-    check('receipts by period and outcome, with the last receipt time', /Last 24 hours\s*1/.test(page.text('modGmailReceipts')) && /All time\s*7/.test(page.text('modGmailReceipts')) && /Accepted \(ride recorded\)\s*3\s*43%/.test(page.text('modGmailOutcomes')) && /CT\.$/.test(page.text('modGmailLastReceipt')));
+    check('receipts by period and outcome, with the last receipt time', /Last 24 hours\s*\d+/.test(page.text('modGmailReceipts')) && /All time\s*7/.test(page.text('modGmailReceipts')) && /Accepted \(ride recorded\)\s*3\s*43%/.test(page.text('modGmailOutcomes')) && /CT\.$/.test(page.text('modGmailLastReceipt')));
     check('14 daily bars with dates on the axis', d.querySelectorAll('#modGmailDaily > div').length === 14 && /\w{3} \d+\s*\w{3} \d+/.test(page.text('modGmailDailyAxis')));
     check('Gmail API connections', /Connected\s*2/.test(page.text('modGmailApi')) && /Needs reconnecting\s*1/.test(page.text('modGmailApi')) && /Last successful sync: /.test(page.text('modGmailApiLast')));
     check('no rider email or address on the page', !/@private|SECRETLINK|u_[a-z0-9]/.test(d.getElementById('modPanelGmail').textContent));

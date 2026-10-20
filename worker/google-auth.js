@@ -17,6 +17,17 @@ const USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
 const SCOPES = 'openid email profile';
 
 const STATE_TTL_SECONDS = 600; // 10 minutes to complete the Google login
+// The iPhone app (app/, Capacitor) signs in through Apple's system sign-in
+// sheet, because Google refuses OAuth inside embedded web views. It starts
+// with ?app=ios&challenge=<base64url SHA-256 of a secret verifier it keeps>.
+// For that flow the callback returns a one-time code to the app's own URL
+// scheme instead of the website; the app redeems it with the verifier
+// (POST /oauth/app/exchange), so a code intercepted by another app claiming
+// the scheme is useless. The website's own flow is unchanged.
+const APP_CALLBACK = 'cybercabhunter://oauth/callback';
+const APP_CODE_TTL_SECONDS = 120;
+const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;      // base64url of 32 bytes (SHA-256)
+const VERIFIER_RE = /^[A-Za-z0-9_-]{43,128}$/;
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90; // ~3 months, matching Tesla sessions
 
 function randomToken() {
@@ -57,9 +68,15 @@ async function startOAuth(request, env) {
 
   // The requested return page is kept server-side with the single-use state
   // (never sent to Google, never trusted from the callback's own URL).
-  const returnTo = sanitizeReturnPath(new URL(request.url).searchParams.get('returnTo'));
+  const params = new URL(request.url).searchParams;
+  const returnTo = sanitizeReturnPath(params.get('returnTo'));
+  const app = params.get('app') === 'ios';
+  const challenge = params.get('challenge');
+  if (app && !CHALLENGE_RE.test(challenge || '')) return Response.json({ error: 'invalid_challenge' }, { status: 400 });
   const state = randomToken();
-  await env.TESLA_SESSIONS.put(`google_state:${state}`, returnTo || '1', { expirationTtl: STATE_TTL_SECONDS });
+  // The website's state value stays '1' or the return path; the app's is JSON.
+  const stateValue = app ? JSON.stringify({ app: 'ios', challenge, returnTo }) : (returnTo || '1');
+  await env.TESLA_SESSIONS.put(`google_state:${state}`, stateValue, { expirationTtl: STATE_TTL_SECONDS });
 
   const authorizeUrl = new URL(AUTHORIZE_URL);
   authorizeUrl.searchParams.set('response_type', 'code');
@@ -111,6 +128,19 @@ function successLocation(frontend, returnTo, sessionId) {
   return target.toString();
 }
 
+// The stored state: { returnTo, app } for either flow ('1' = website, no page).
+function readState(stored) {
+  if (typeof stored === 'string' && stored.startsWith('{')) {
+    try {
+      const v = JSON.parse(stored);
+      if (v && v.app === 'ios' && CHALLENGE_RE.test(v.challenge || '')) return { app: true, challenge: v.challenge, returnTo: sanitizeReturnPath(v.returnTo) };
+    } catch (e) { /* not ours */ }
+    return { app: false, returnTo: null };
+  }
+  return { app: false, returnTo: sanitizeReturnPath(stored) };   // '1' (no page requested) -> null
+}
+const appRedirect = query => new Response(null, { status: 302, headers: { Location: `${APP_CALLBACK}?${query}`, 'Cache-Control': 'no-store' } });
+
 async function handleCallback(request, env) {
   const url = new URL(request.url);
   const error = url.searchParams.get('error');
@@ -119,6 +149,11 @@ async function handleCallback(request, env) {
   const frontend = env.FRONTEND_URL;
 
   if (error) {
+    // A cancel inside the app's sign-in sheet goes back to the app (closing the sheet).
+    if (state && readState(await env.TESLA_SESSIONS.get(`google_state:${state}`)).app) {
+      await env.TESLA_SESSIONS.delete(`google_state:${state}`);
+      return appRedirect('signin=cancelled');
+    }
     return Response.redirect(`${frontend}?signin=cancelled`, 302);
   }
   if (!code || !state) {
@@ -129,7 +164,9 @@ async function handleCallback(request, env) {
   // hasn't already consumed — never trust a callback on `code` alone.
   const stateKey = `google_state:${state}`;
   const stateSeen = await env.TESLA_SESSIONS.get(stateKey);
-  const returnTo = sanitizeReturnPath(stateSeen);   // '1' (no page requested) -> null
+  const flow = readState(stateSeen);
+  const returnTo = flow.returnTo;
+  const fail = reason => (flow.app ? appRedirect(`signin=${reason}`) : Response.redirect(`${frontend}?signin=${reason}`, 302));
   if (!stateSeen) {
     return Response.redirect(`${frontend}?signin=invalid_state`, 302);
   }
@@ -139,17 +176,17 @@ async function handleCallback(request, env) {
   try {
     tokenResponse = await exchangeCodeForTokens(code, env);
   } catch (err) {
-    return Response.redirect(`${frontend}?signin=token_exchange_failed`, 302);
+    return fail('token_exchange_failed');
   }
 
   let profile;
   try {
     profile = await fetchGoogleProfile(tokenResponse.access_token);
   } catch (err) {
-    return Response.redirect(`${frontend}?signin=error`, 302);
+    return fail('error');
   }
   if (!profile.sub) {
-    return Response.redirect(`${frontend}?signin=error`, 302);
+    return fail('error');
   }
 
   const sql = env.cybercabhunter_db;
@@ -159,6 +196,14 @@ async function handleCallback(request, env) {
     name: profile.name,
     avatarUrl: profile.picture
   });
+
+  // The app: a one-time code for the verifier holder; the session is created
+  // only when the code is redeemed (POST /oauth/app/exchange).
+  if (flow.app) {
+    const appCode = randomToken();
+    await env.TESLA_SESSIONS.put(`google_app_code:${appCode}`, JSON.stringify({ user_id: userId, challenge: flow.challenge, returnTo }), { expirationTtl: APP_CODE_TTL_SECONDS });
+    return appRedirect(`code=${appCode}`);
+  }
 
   const sessionId = randomToken();
   await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: userId }), {
@@ -172,4 +217,30 @@ async function handleCallback(request, env) {
   return new Response(null, { status: 302, headers });
 }
 
-export const googleAuth = { startOAuth, handleCallback };
+// POST /oauth/app/exchange { code, verifier } -> { session, return_to }.
+// Called by the iPhone app (natively, not from a page). The code is single
+// use whatever happens, and only the verifier whose SHA-256 is the challenge
+// sent at the start redeems it.
+const base64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function exchangeAppCode(request, env) {
+  const fail = (error, status = 400) => Response.json({ error }, { status, headers: { 'Cache-Control': 'no-store' } });
+  let body = null;
+  try { body = await request.json(); } catch (e) { body = null; }
+  const code = body && typeof body.code === 'string' ? body.code : '';
+  const verifier = body && typeof body.verifier === 'string' ? body.verifier : '';
+  if (!/^[a-f0-9]{64}$/.test(code) || !VERIFIER_RE.test(verifier)) return fail('invalid_request');
+  const key = `google_app_code:${code}`;
+  const stored = await env.TESLA_SESSIONS.get(key);
+  if (!stored) return fail('invalid_code');
+  await env.TESLA_SESSIONS.delete(key);   // single use, even on a wrong verifier
+  let record = null;
+  try { record = JSON.parse(stored); } catch (e) { record = null; }
+  if (!record || !record.user_id) return fail('invalid_code');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  if (base64url(digest) !== record.challenge) return fail('invalid_verifier');
+  const sessionId = randomToken();
+  await env.TESLA_SESSIONS.put(`session:${sessionId}`, JSON.stringify({ user_id: record.user_id }), { expirationTtl: SESSION_TTL_SECONDS });
+  return Response.json({ session: sessionId, return_to: sanitizeReturnPath(record.returnTo) || '/' }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export const googleAuth = { startOAuth, handleCallback, exchangeAppCode };

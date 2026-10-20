@@ -92,6 +92,9 @@ const worker = {
     if (url.pathname === '/oauth/google/start') {
       return googleAuth.startOAuth(request, env);
     }
+    if (url.pathname === '/oauth/app/exchange' && request.method === 'POST') {
+      return googleAuth.exchangeAppCode(request, env);
+    }
     if (url.pathname === '/oauth/google/callback') {
       return googleAuth.handleCallback(request, env);
     }

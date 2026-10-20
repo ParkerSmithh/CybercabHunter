@@ -1,0 +1,21 @@
+{
+  "appId": "com.cybercabhunter.app",
+  "appName": "Cybercab Hunter",
+  "webDir": "www",
+  "server": {
+    "url": "https://cybercabhunter.com",
+    "allowNavigation": [
+      "cybercabhunter.com",
+      "cybercabhunter.contactjoeclos.workers.dev",
+      "*.tesla.com"
+    ],
+    "errorPath": "offline.html"
+  },
+  "backgroundColor": "#090B0F",
+  "appendUserAgent": "CybercabHunterApp/1.0",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#090B0F",
+    "allowsLinkPreview": false
+  }
+}
