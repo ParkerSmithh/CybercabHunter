@@ -1,0 +1,77 @@
+{
+  "rewards": [
+    {
+      "id": "verified_sighting",
+      "xp": 25,
+      "label": "Verified sighting"
+    },
+    {
+      "id": "first_discovery",
+      "xp": 100,
+      "label": "First discovery of an undocumented Cybercab"
+    },
+    {
+      "id": "daily_mission",
+      "xp": 30,
+      "label": "Daily mission completed"
+    },
+    {
+      "id": "weekly_mission",
+      "xp": 100,
+      "label": "Weekly mission completed"
+    }
+  ],
+  "ranks": [
+    {
+      "key": "bronze",
+      "name": "Bronze Spotter",
+      "xp": 0
+    },
+    {
+      "key": "silver",
+      "name": "Silver Spotter",
+      "xp": 1000
+    },
+    {
+      "key": "gold",
+      "name": "Gold Spotter",
+      "xp": 3000
+    },
+    {
+      "key": "platinum",
+      "name": "Platinum Spotter",
+      "xp": 8000
+    },
+    {
+      "key": "diamond",
+      "name": "Diamond Spotter",
+      "xp": 20000
+    }
+  ],
+  "missions": [
+    {
+      "id": "daily_contribution",
+      "period": "day",
+      "title": "Daily Contribution",
+      "description": "Submit 1 sighting that a moderator verifies.",
+      "required": 1,
+      "reward": 30
+    },
+    {
+      "id": "weekly_spotter",
+      "period": "week",
+      "title": "Weekly Spotter",
+      "description": "Submit 3 sightings that moderators verify this week.",
+      "required": 3,
+      "reward": 100
+    },
+    {
+      "id": "weekly_contributor",
+      "period": "week",
+      "title": "Community Contributor",
+      "description": "Complete 5 verified contributions this week (verified sightings count).",
+      "required": 5,
+      "reward": 100
+    }
+  ]
+}

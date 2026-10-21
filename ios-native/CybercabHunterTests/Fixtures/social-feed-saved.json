@@ -1,0 +1,60 @@
+{
+  "filter": "saved",
+  "sort": "new",
+  "posts": [
+    {
+      "id": "b2cdbf4228b078371c75ec5a714566e1",
+      "body": "Two Cybercabs charging side by side at the Domain this morning. @alice_a was right about the new stalls.",
+      "category": "sighting",
+      "link_url": null,
+      "created_at": "2026-10-20 23:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [
+        {
+          "id": "db3ad6cb12541b4f7b72945cff87be0b",
+          "url": "/api/social/photos/db3ad6cb12541b4f7b72945cff87be0b"
+        }
+      ],
+      "review": null,
+      "vehicle": {
+        "id": "a1b2c3d4-0000-4000-8000-000000000001",
+        "short_id": "a1b2c3d4",
+        "license_plate": "XVF-3582",
+        "vin": "7SAYGDEF5TA000123",
+        "service_area": "Austin",
+        "cybercab": true,
+        "image": "/images/dmv-cybercab.webp",
+        "verified": true,
+        "url": "/vehicle/a1b2c3d4-0000-4000-8000-000000000001"
+      },
+      "like_count": 1,
+      "comment_count": 1,
+      "liked": true,
+      "saved": true,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=b2cdbf4228b078371c75ec5a714566e1"
+    }
+  ],
+  "next_cursor": null,
+  "viewer": {
+    "signed_in": true,
+    "moderator": false
+  }
+}

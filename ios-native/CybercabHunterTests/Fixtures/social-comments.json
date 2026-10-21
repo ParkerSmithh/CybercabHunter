@@ -1,0 +1,74 @@
+{
+  "comments": [
+    {
+      "id": "03a05aba7a48f3dc6a89be5fd5b3c77a",
+      "parent_id": null,
+      "body": "How long was the ride?",
+      "removed": false,
+      "created_at": "2026-10-21 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "mine": true,
+      "can_edit": true,
+      "can_delete": true,
+      "replies": [
+        {
+          "id": "1520d6ce77393bca1f81b6aeeae4a1c9",
+          "parent_id": "03a05aba7a48f3dc6a89be5fd5b3c77a",
+          "body": "About 18 minutes, downtown to Zilker.",
+          "removed": false,
+          "created_at": "2026-10-21 02:52:00",
+          "edited_at": null,
+          "author": {
+            "name": "Alice A",
+            "handle": "alice_a",
+            "avatar_url": null,
+            "anonymous": false,
+            "rank": {
+              "key": "bronze",
+              "name": "Bronze Spotter"
+            },
+            "level": 5
+          },
+          "mine": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "id": "78e666714478c7a78c2d6b0fef043311",
+      "parent_id": null,
+      "body": "Thanks for the detailed review.",
+      "removed": false,
+      "created_at": "2026-10-21 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Owner",
+        "handle": "owner",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 1
+      },
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "replies": []
+    }
+  ],
+  "next_cursor": null
+}

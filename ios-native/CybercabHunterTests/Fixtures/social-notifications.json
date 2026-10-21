@@ -1,0 +1,96 @@
+{
+  "unread": 6,
+  "notifications": [
+    {
+      "id": "d9744044a38a50a7f98ce890ee247cb2",
+      "type": "like",
+      "actor": {
+        "name": "Owner",
+        "handle": "owner",
+        "avatar_url": null,
+        "anonymous": false
+      },
+      "text": "liked your post",
+      "excerpt": "First ride in a Cybercab: smooth, quiet, and the pickup was quicker than the app said.",
+      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    },
+    {
+      "id": "b8cd4df28e2ec7ca9a20c4c37ebbf3f4",
+      "type": "comment",
+      "actor": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false
+      },
+      "text": "commented on your post",
+      "excerpt": "How long was the ride?",
+      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8&comment=03a05aba7a48f3dc6a89be5fd5b3c77a",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    },
+    {
+      "id": "b8b3e5fe9ad05d2e08fad9adc393acbc",
+      "type": "comment",
+      "actor": {
+        "name": "Owner",
+        "handle": "owner",
+        "avatar_url": null,
+        "anonymous": false
+      },
+      "text": "commented on your post",
+      "excerpt": "Thanks for the detailed review.",
+      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8&comment=78e666714478c7a78c2d6b0fef043311",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    },
+    {
+      "id": "5ddc61c5f7afc69402106fa4f015440e",
+      "type": "mention",
+      "actor": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false
+      },
+      "text": "mentioned you",
+      "excerpt": "Two Cybercabs charging side by side at the Domain this morning. @alice_a was right about the new stalls.",
+      "url": "/community?post=b2cdbf4228b078371c75ec5a714566e1",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    },
+    {
+      "id": "48dede1d3dcc57936c45406dd03cdb51",
+      "type": "like",
+      "actor": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false
+      },
+      "text": "liked your post",
+      "excerpt": "First ride in a Cybercab: smooth, quiet, and the pickup was quicker than the app said.",
+      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    },
+    {
+      "id": "announcement",
+      "type": "announcement",
+      "actor": {
+        "name": "Cybercab Hunter",
+        "handle": null,
+        "avatar_url": null,
+        "anonymous": false,
+        "official": true
+      },
+      "text": "posted an announcement",
+      "excerpt": "Community Social is open. Keep it about Cybercabs and spot safely.",
+      "url": "/community",
+      "created_at": "2026-10-21 02:52:00",
+      "read": false
+    }
+  ]
+}

@@ -1,0 +1,412 @@
+{
+  "filter": "latest",
+  "sort": "new",
+  "posts": [
+    {
+      "id": "c50c0bb254f8e886d018e39823665eb8",
+      "body": "First ride in a Cybercab: smooth, quiet, and the pickup was quicker than the app said.",
+      "category": "review",
+      "link_url": null,
+      "created_at": "2026-10-20 21:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Alice A",
+        "handle": "alice_a",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 5
+      },
+      "photos": [],
+      "review": {
+        "rating": 5,
+        "vehicle_type": "cybercab",
+        "quoted_fare": 12.4,
+        "pickup_wait_minutes": 4,
+        "ride_date": "2026-10-20"
+      },
+      "vehicle": null,
+      "like_count": 2,
+      "comment_count": 3,
+      "liked": false,
+      "saved": false,
+      "pinned": true,
+      "can_pin": false,
+      "mine": true,
+      "can_edit": true,
+      "can_delete": true,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8"
+    },
+    {
+      "id": "b2cdbf4228b078371c75ec5a714566e1",
+      "body": "Two Cybercabs charging side by side at the Domain this morning. @alice_a was right about the new stalls.",
+      "category": "sighting",
+      "link_url": null,
+      "created_at": "2026-10-20 23:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [
+        {
+          "id": "db3ad6cb12541b4f7b72945cff87be0b",
+          "url": "/api/social/photos/db3ad6cb12541b4f7b72945cff87be0b"
+        }
+      ],
+      "review": null,
+      "vehicle": {
+        "id": "a1b2c3d4-0000-4000-8000-000000000001",
+        "short_id": "a1b2c3d4",
+        "license_plate": "XVF-3582",
+        "vin": "7SAYGDEF5TA000123",
+        "service_area": "Austin",
+        "cybercab": true,
+        "image": "/images/dmv-cybercab.webp",
+        "verified": true,
+        "url": "/vehicle/a1b2c3d4-0000-4000-8000-000000000001"
+      },
+      "like_count": 1,
+      "comment_count": 1,
+      "liked": true,
+      "saved": true,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=b2cdbf4228b078371c75ec5a714566e1"
+    },
+    {
+      "id": "159c1a99deed3a44fadd3df4ec9fe0a9",
+      "body": "Has anyone seen a Cybercab north of Parmer yet?",
+      "category": "question",
+      "link_url": "https://www.tesla.com/robotaxi",
+      "created_at": "2026-10-20 00:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Alice A",
+        "handle": "alice_a",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 5
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": true,
+      "can_edit": true,
+      "can_delete": true,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=159c1a99deed3a44fadd3df4ec9fe0a9"
+    },
+    {
+      "id": "0b913eaac521db4747d63180deffffed",
+      "body": "Saw one waiting at a light on Lamar. Quieter than I expected.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-19 20:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Anonymous",
+        "handle": null,
+        "avatar_url": null,
+        "anonymous": true,
+        "rank": null,
+        "level": null
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=0b913eaac521db4747d63180deffffed"
+    },
+    {
+      "id": "057ad86ca4bab86ec94d47d680d1f86f",
+      "body": "Same car from both sides.",
+      "category": "sighting",
+      "link_url": null,
+      "created_at": "2026-10-19 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [
+        {
+          "id": "b2aaae03f2191d859ee1bc47ddbda0a7",
+          "url": "/api/social/photos/b2aaae03f2191d859ee1bc47ddbda0a7"
+        },
+        {
+          "id": "cb4d85ee1120d0dfc099c43176e363b9",
+          "url": "/api/social/photos/cb4d85ee1120d0dfc099c43176e363b9"
+        }
+      ],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=057ad86ca4bab86ec94d47d680d1f86f"
+    },
+    {
+      "id": "c9566a4900099cd78f013f5db9d012e4",
+      "body": "Fleet note 1: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-18 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=c9566a4900099cd78f013f5db9d012e4"
+    },
+    {
+      "id": "6188829bd6e7b8628562e4f2f942bded",
+      "body": "Fleet note 2: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-17 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=6188829bd6e7b8628562e4f2f942bded"
+    },
+    {
+      "id": "e524946527e2cce7f664ab8adffe5e84",
+      "body": "Fleet note 3: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-16 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=e524946527e2cce7f664ab8adffe5e84"
+    },
+    {
+      "id": "ea18ad1cd2e379cbe292c7184137bf45",
+      "body": "Fleet note 4: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-15 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=ea18ad1cd2e379cbe292c7184137bf45"
+    },
+    {
+      "id": "58f3406987310e28545f7d9facb9babb",
+      "body": "Fleet note 5: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-14 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=58f3406987310e28545f7d9facb9babb"
+    },
+    {
+      "id": "9138617d61722202fe52e443fde6b206",
+      "body": "Fleet note 6: another plate for the registry list.",
+      "category": "general",
+      "link_url": null,
+      "created_at": "2026-10-13 02:52:00",
+      "edited_at": null,
+      "author": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "anonymous": false,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "photos": [],
+      "review": null,
+      "vehicle": null,
+      "like_count": 0,
+      "comment_count": 0,
+      "liked": false,
+      "saved": false,
+      "pinned": false,
+      "can_pin": false,
+      "mine": false,
+      "can_edit": false,
+      "can_delete": false,
+      "removed": false,
+      "legacy_review": false,
+      "url": "/community?post=9138617d61722202fe52e443fde6b206"
+    }
+  ],
+  "next_cursor": "eyJ0IjoiMjAyNi0xMC0xMyAwMjo1MjowMCIsImlkIjoiOTEzODYxN2Q2MTcyMjIwMmZlNTJlNDQzZmRlNmIyMDYifQ",
+  "viewer": {
+    "signed_in": true,
+    "moderator": false
+  }
+}

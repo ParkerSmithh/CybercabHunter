@@ -1,0 +1,77 @@
+{
+  "board": "xp",
+  "label": "Top XP",
+  "help": "Spotter XP from verified sightings, first discoveries and missions.",
+  "unit": [
+    "XP",
+    "XP"
+  ],
+  "boards": [
+    {
+      "id": "overall",
+      "label": "Top Overall"
+    },
+    {
+      "id": "discovered",
+      "label": "Most Vehicles Discovered"
+    },
+    {
+      "id": "miles",
+      "label": "Most Miles"
+    },
+    {
+      "id": "rides",
+      "label": "Most Rides"
+    },
+    {
+      "id": "vehicles",
+      "label": "Most Vehicles Ridden"
+    },
+    {
+      "id": "xp",
+      "label": "Top XP"
+    }
+  ],
+  "entries": [
+    {
+      "rank": 1,
+      "score": 740,
+      "count": 740,
+      "name": "Alice A",
+      "handle": "alice_a",
+      "avatar_url": null,
+      "profile": true,
+      "discovered": 2,
+      "rides": 2,
+      "miles": 5.6,
+      "unique_vehicles": 2,
+      "cities": 1,
+      "xp": 740,
+      "level": 5,
+      "spotter_rank": "Bronze Spotter",
+      "spotter_rank_key": "bronze"
+    },
+    {
+      "rank": 2,
+      "score": 110,
+      "count": 110,
+      "name": "Bob B",
+      "handle": "bob_b",
+      "avatar_url": null,
+      "profile": true,
+      "discovered": 0,
+      "rides": 0,
+      "miles": 0,
+      "unique_vehicles": 0,
+      "cities": 0,
+      "xp": 110,
+      "level": 2,
+      "spotter_rank": "Bronze Spotter",
+      "spotter_rank_key": "bronze"
+    }
+  ],
+  "totals": {
+    "spotters": 1,
+    "vehicles": 2
+  }
+}

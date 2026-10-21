@@ -1,0 +1,15 @@
+{
+  "q": "a",
+  "results": [
+    {
+      "name": "Alice A",
+      "handle": "alice_a",
+      "avatar_url": null
+    },
+    {
+      "name": "Dave D",
+      "handle": "dave_d",
+      "avatar_url": null
+    }
+  ]
+}

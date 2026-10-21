@@ -1,0 +1,81 @@
+{
+  "computed_at": "2026-10-21T02:52:00.336Z",
+  "timezone": "America/Chicago",
+  "sightings": {
+    "verified": 10,
+    "photos_submitted": 10,
+    "cities": 1,
+    "site_start": "2026-09-22",
+    "last_14_days": [
+      {
+        "date": "2026-10-07",
+        "n": 0
+      },
+      {
+        "date": "2026-10-08",
+        "n": 0
+      },
+      {
+        "date": "2026-10-09",
+        "n": 0
+      },
+      {
+        "date": "2026-10-10",
+        "n": 0
+      },
+      {
+        "date": "2026-10-11",
+        "n": 1
+      },
+      {
+        "date": "2026-10-12",
+        "n": 1
+      },
+      {
+        "date": "2026-10-13",
+        "n": 1
+      },
+      {
+        "date": "2026-10-14",
+        "n": 0
+      },
+      {
+        "date": "2026-10-15",
+        "n": 0
+      },
+      {
+        "date": "2026-10-16",
+        "n": 0
+      },
+      {
+        "date": "2026-10-17",
+        "n": 1
+      },
+      {
+        "date": "2026-10-18",
+        "n": 1
+      },
+      {
+        "date": "2026-10-19",
+        "n": 1
+      },
+      {
+        "date": "2026-10-20",
+        "n": 1
+      }
+    ]
+  },
+  "streaks": {
+    "active_daily": 1,
+    "active_weekly": 2,
+    "record_daily": 4,
+    "record_weekly": 5,
+    "verified_this_week": 2
+  },
+  "xp": {
+    "total": 850,
+    "spotters": 2,
+    "missions_this_week": 2,
+    "top_rank": "Bronze Spotter"
+  }
+}

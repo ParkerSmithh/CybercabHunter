@@ -1,0 +1,59 @@
+{
+  "board": "overall",
+  "label": "Top Overall",
+  "help": "",
+  "unit": [
+    "pt",
+    "pts"
+  ],
+  "boards": [
+    {
+      "id": "overall",
+      "label": "Top Overall"
+    },
+    {
+      "id": "discovered",
+      "label": "Most Vehicles Discovered"
+    },
+    {
+      "id": "miles",
+      "label": "Most Miles"
+    },
+    {
+      "id": "rides",
+      "label": "Most Rides"
+    },
+    {
+      "id": "vehicles",
+      "label": "Most Vehicles Ridden"
+    },
+    {
+      "id": "xp",
+      "label": "Top XP"
+    }
+  ],
+  "entries": [
+    {
+      "rank": 1,
+      "score": 36,
+      "count": 36,
+      "name": "Alice A",
+      "handle": "alice_a",
+      "avatar_url": null,
+      "profile": true,
+      "discovered": 2,
+      "rides": 2,
+      "miles": 5.6,
+      "unique_vehicles": 2,
+      "cities": 1,
+      "xp": 740,
+      "level": 5,
+      "spotter_rank": "Bronze Spotter",
+      "spotter_rank_key": "bronze"
+    }
+  ],
+  "totals": {
+    "spotters": 1,
+    "vehicles": 2
+  }
+}

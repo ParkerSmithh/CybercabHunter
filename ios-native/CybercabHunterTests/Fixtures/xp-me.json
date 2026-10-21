@@ -1,0 +1,163 @@
+{
+  "timezone": "America/Chicago",
+  "xp": 740,
+  "level": {
+    "n": 5,
+    "floor": 700,
+    "next": 1060,
+    "into": 40,
+    "span": 360
+  },
+  "rank": {
+    "key": "bronze",
+    "name": "Bronze Spotter",
+    "next": {
+      "key": "silver",
+      "name": "Silver Spotter",
+      "xp": 1000,
+      "needed": 260
+    }
+  },
+  "ranks": [
+    {
+      "key": "bronze",
+      "name": "Bronze Spotter",
+      "xp": 0
+    },
+    {
+      "key": "silver",
+      "name": "Silver Spotter",
+      "xp": 1000
+    },
+    {
+      "key": "gold",
+      "name": "Gold Spotter",
+      "xp": 3000
+    },
+    {
+      "key": "platinum",
+      "name": "Platinum Spotter",
+      "xp": 8000
+    },
+    {
+      "key": "diamond",
+      "name": "Diamond Spotter",
+      "xp": 20000
+    }
+  ],
+  "missions": {
+    "day": "2026-10-20",
+    "week": "2026-10-19",
+    "daily": [
+      {
+        "id": "daily_contribution",
+        "title": "Daily Contribution",
+        "description": "Submit 1 sighting that a moderator verifies.",
+        "reward": 30,
+        "required": 1,
+        "progress": 1,
+        "pending": 0,
+        "state": "completed",
+        "period": "2026-10-20"
+      }
+    ],
+    "weekly": [
+      {
+        "id": "weekly_spotter",
+        "title": "Weekly Spotter",
+        "description": "Submit 3 sightings that moderators verify this week.",
+        "reward": 100,
+        "required": 3,
+        "progress": 2,
+        "pending": 0,
+        "state": "in_progress",
+        "period": "2026-10-19"
+      },
+      {
+        "id": "weekly_contributor",
+        "title": "Community Contributor",
+        "description": "Complete 5 verified contributions this week (verified sightings count).",
+        "reward": 100,
+        "required": 5,
+        "progress": 2,
+        "pending": 0,
+        "state": "in_progress",
+        "period": "2026-10-19"
+      }
+    ]
+  },
+  "recent": [
+    {
+      "amount": 100,
+      "reason": "First discovery of an undocumented Cybercab",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 100,
+      "reason": "First discovery of an undocumented Cybercab",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 100,
+      "reason": "Mission completed: Weekly Spotter",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    },
+    {
+      "amount": 30,
+      "reason": "Mission completed: Daily Contribution",
+      "at": "2026-10-21 02:52:00"
+    }
+  ],
+  "rewards": [
+    {
+      "id": "verified_sighting",
+      "xp": 25,
+      "label": "Verified sighting"
+    },
+    {
+      "id": "first_discovery",
+      "xp": 100,
+      "label": "First discovery of an undocumented Cybercab"
+    },
+    {
+      "id": "daily_mission",
+      "xp": 30,
+      "label": "Daily mission completed"
+    },
+    {
+      "id": "weekly_mission",
+      "xp": 100,
+      "label": "Weekly mission completed"
+    }
+  ]
+}
