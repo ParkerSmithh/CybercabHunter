@@ -90,14 +90,30 @@ struct AccountToolbarItem: ToolbarContent {
     @Environment(SessionStore.self) private var session
 
     var body: some ToolbarContent {
+        // iOS 26 puts every toolbar item on a shared Liquid Glass bubble: hidden
+        // here, so the round picture itself is the button (other items keep theirs).
+        if #available(iOS 26.0, *) {
+            item.sharedBackgroundVisibility(.hidden)
+        } else {
+            item
+        }
+    }
+
+    private var item: ToolbarItem<Void, some View> {
         ToolbarItem(placement: .topBarTrailing) {
             Button { showingAccount = true } label: {
-                if let user = session.user {
-                    AvatarView(user: user, size: 30)
-                } else {
-                    Image(systemName: "person.crop.circle")
+                Group {
+                    if let user = session.user {
+                        AvatarView(user: user, size: 30)
+                    } else {
+                        Image(systemName: "person.crop.circle").font(.system(size: 22))
+                    }
                 }
+                // The visible picture stays 30 pt; the tap target is 44 pt.
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(session.user == nil ? "Sign in" : "Account")
             .accessibilityIdentifier("accountButton")
         }

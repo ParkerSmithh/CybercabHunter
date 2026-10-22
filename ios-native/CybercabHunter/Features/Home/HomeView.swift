@@ -61,10 +61,10 @@ private struct HomeHero: View {
                 .padding(.top, -40)
             Text("Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin and Dallas.")
                 .font(.inter(15, relativeTo: .body)).foregroundStyle(Color.chMist)
-            // Reserve the original labels’ widths to preserve both hero buttons’ footprints.
+            // Each button is as wide as its label and arrow (plus padding), arrows 10 pt from the text.
             HStack(spacing: 18) {
                 NavigationLink(value: ExploreRoute.news) {
-                    HStack(spacing: 6) { Text("Browse sightings").hidden().overlay(alignment: .leading) { Text("View News") }; Image(systemName: "arrow.right") }
+                    HStack(spacing: 10) { Text("View News"); Image(systemName: "arrow.right") }
                         .font(.inter(15, .semibold))
                         .fixedSize()
                         .padding(.horizontal, 16).frame(minHeight: 46)
@@ -74,8 +74,10 @@ private struct HomeHero: View {
                 .accessibilityLabel("View News")
                 .accessibilityIdentifier("homeViewNews")
                 NavigationLink(value: ExploreRoute.simulation(.roi)) {
-                    HStack(spacing: 6) { Text("Explore service zones").hidden().overlay(alignment: .leading) { Text("Explore") }; Image(systemName: "arrow.right") }
+                    HStack(spacing: 10) { Text("Explore"); Image(systemName: "arrow.right") }
                         .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
+                        .fixedSize()
+                        .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Explore")
