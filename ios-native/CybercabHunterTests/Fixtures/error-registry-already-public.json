@@ -1,0 +1,49 @@
+{
+  "status": 409,
+  "body": {
+    "success": false,
+    "error": "already_public",
+    "vehicle": {
+      "id": "c3d4e5f6-0000-4000-8000-000000000003",
+      "license_plate": "XVF5100",
+      "visibility": "public",
+      "origin": "sighting",
+      "vin": null,
+      "verification_status": "unverified",
+      "approval_basis": "manual",
+      "approval_basis_set_at": "2026-10-21 23:09:17",
+      "counted_ride_count": 0,
+      "needs_review_ride_count": 0,
+      "rejected_ride_count": 0,
+      "total_trip_count": 0,
+      "counted_rides_by_source": {
+        "receipt_email": 0,
+        "receipt_import": 0,
+        "other": 0
+      },
+      "first_counted_ride_date": null,
+      "last_counted_ride_date": null,
+      "first_seen_at": "2026-10-19 23:09:17",
+      "last_seen_at": "2026-10-20 23:09:17",
+      "created_at": "2026-10-21 23:09:17",
+      "publicly_eligible": true,
+      "plate_vehicle_count": 1,
+      "approval": {
+        "state": "public",
+        "can_approve": false,
+        "blocking_reasons": [],
+        "notes": [
+          "added_from_sighting"
+        ]
+      },
+      "can_approve_cybercab": false,
+      "can_verify_vin": false,
+      "latest_review": {
+        "action": "approved_public",
+        "created_at": "2026-10-21 23:09:17",
+        "moderator_user_id": "mod",
+        "moderator_display_name": "Owner"
+      }
+    }
+  }
+}

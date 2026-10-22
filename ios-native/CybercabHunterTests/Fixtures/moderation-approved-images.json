@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "sightings": [
+    {
+      "submission_id": "d7b9c6ea-1405-467e-bff1-685043326dcc",
+      "reviewed_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Dallas",
+      "approx_location": null,
+      "license_plate": null,
+      "camera_id": null,
+      "camera_name": null,
+      "on_map": false,
+      "visible_on_map": false
+    },
+    {
+      "submission_id": "91399c26-f4e2-4715-8937-72181e7d436e",
+      "reviewed_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Austin",
+      "approx_location": null,
+      "license_plate": "XVF3210",
+      "camera_id": null,
+      "camera_name": null,
+      "on_map": false,
+      "visible_on_map": false
+    },
+    {
+      "submission_id": "1cd9c370-9fcd-4f6f-89ed-99e7a636b294",
+      "reviewed_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Austin",
+      "approx_location": null,
+      "license_plate": "XVF3582",
+      "camera_id": null,
+      "camera_name": null,
+      "on_map": false,
+      "visible_on_map": false
+    }
+  ]
+}

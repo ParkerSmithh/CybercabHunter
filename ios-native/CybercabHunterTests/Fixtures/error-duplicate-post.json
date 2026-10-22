@@ -1,0 +1,8 @@
+{
+  "status": 409,
+  "body": {
+    "success": false,
+    "error": "duplicate_post",
+    "post_id": "d15d44e3cb4122f714991968f6868c55"
+  }
+}

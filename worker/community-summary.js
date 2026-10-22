@@ -10,22 +10,35 @@
 //          site_start, last_14_days: [{ date, n }] }, streaks: { active_daily,
 //          active_weekly, record_daily, record_weekly, verified_this_week } }
 //   GET /api/streaks/leaderboard?board=daily|weekly|longest   public, edge-cached 5 min
-//     -> { board, label, boards, entries, stats, computed_at }  (as of the daily run)
+//     -> { board, label, boards, entries, stats, computed_at }  (streaks as of the daily run)
 //
 // The rules are worker/streaks.js's, unchanged (approved vehicle sightings
 // only, on the Austin day submitted). Counts are over every spotter and name
 // no one; the rankings list only riders with leaderboard_opt_in = 1, with the
 // same public fields as the main leaderboard; the system account never counts.
 // The rider's own /api/streaks/me stays live (one rider's rows, by index).
+//
+// Who is shown, and as what, is CURRENT: the daily row stores only each
+// board's order (rider ids and streak numbers, never a name or photo, for
+// the top RANK_POOL riders whatever their privacy setting). Each response
+// reads those riders' name, username, photo and switch from users by primary
+// key (one query, at most RANK_POOL rows, once per edge-cache period) and
+// keeps the opted-in ones: a rename, a new photo or the privacy switch (off
+// or back on) shows on the next request, and a deleted account is gone. The
+// streak numbers and the order stay the daily run's; ranks are counted
+// among the riders shown, so a hidden rider leaves no gap.
 
 import { computeStreaks, austinDayIndex, dayKey, weekIndex, weekMonday, STREAK_TZ } from './streaks.js';
 import { safeAvatar } from './community.js';
+import { profileCached } from './profile-cache.js';
 import { rankFor } from './progression-levels.js';
 
 const KEY = 'community';
 const MAX_AGE_MS = 36 * 3600e3;
 const CACHE_SECONDS = 300;
 const TOP_N = 10;
+// Riders stored per board: enough that hiding some (privacy off) still fills the top 10.
+const RANK_POOL = 50;
 const SPARK_DAYS = 14;
 const BOARDS = { daily: 'Top daily streaks', weekly: 'Top weekly streaks', longest: 'Longest all-time streaks' };
 const APPROVED = `s.submission_type = 'vehicle_sighting' AND s.status = 'approved'`;
@@ -34,19 +47,44 @@ const displayName = u => (u.display_name && String(u.display_name).trim()) || (u
 // "austin, tx" / "Austin" -> "Austin": the city part, title case.
 const cityOf = raw => String(raw || '').split(',')[0].trim().toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
 
-// Ranks one board: same value, same rank (shown once, never duplicated).
-function rankBoard(riders, board) {
-  const key = { daily: r => [r.daily_current, r.longest_daily, r.weekly_current], weekly: r => [r.weekly_current, r.longest_weekly, r.daily_current], longest: r => [r.longest_daily, r.longest_weekly, r.daily_current] }[board];
+const BOARD_KEY = { daily: r => [r.daily_current, r.longest_daily, r.weekly_current], weekly: r => [r.weekly_current, r.longest_weekly, r.daily_current], longest: r => [r.longest_daily, r.longest_weekly, r.daily_current] };
+
+// One board's stored order (the daily run): the top RANK_POOL riders with a
+// streak, opted in or not, as { uid, streak numbers } only. Ties keep the
+// existing order (the name then, alphabetically).
+function orderBoard(riders, board) {
+  const key = BOARD_KEY[board];
   const cmp = (a, b) => { const ka = key(a), kb = key(b); for (let i = 0; i < ka.length; i++) if (kb[i] !== ka[i]) return kb[i] - ka[i]; return displayName(a.user).localeCompare(displayName(b.user)); };
-  const ranked = riders.filter(r => key(r)[0] > 0).sort(cmp).slice(0, TOP_N);
+  return riders.filter(r => key(r)[0] > 0).sort(cmp).slice(0, RANK_POOL)
+    .map(r => ({ uid: r.user.uid, daily_current: r.daily_current, weekly_current: r.weekly_current, longest_daily: r.longest_daily, longest_weekly: r.longest_weekly }));
+}
+
+// The public board: the stored order, kept to riders who are opted in NOW,
+// with their CURRENT name, username and photo (`users`: id -> row), top 10.
+// Same value, same rank (shown once, never duplicated).
+export function rankBoard(order, board, users) {
+  const key = BOARD_KEY[board];
+  const shown = (order || []).map(r => ({ r, u: users.get(r.uid) }))
+    .filter(x => x.u && Number(x.u.leaderboard_opt_in) === 1).slice(0, TOP_N);
   const out = [];
-  ranked.forEach((r, i) => {
-    const tied = (i > 0 && key(ranked[i - 1])[0] === key(r)[0]) || (i + 1 < ranked.length && key(ranked[i + 1])[0] === key(r)[0]);
-    const rank = i > 0 && key(ranked[i - 1])[0] === key(r)[0] ? out[i - 1].rank : i + 1;
-    out.push({ rank, tied, name: displayName(r.user), handle: r.user.handle || null, avatar_url: safeAvatar(r.user.avatar_url), profile: !!r.user.handle,
+  shown.forEach(({ r, u }, i) => {
+    const v = key(r)[0];
+    const tied = (i > 0 && key(shown[i - 1].r)[0] === v) || (i + 1 < shown.length && key(shown[i + 1].r)[0] === v);
+    const rank = i > 0 && key(shown[i - 1].r)[0] === v ? out[i - 1].rank : i + 1;
+    out.push({ rank, tied, name: displayName(u), handle: u.handle || null, avatar_url: safeAvatar(u.avatar_url), profile: !!u.handle,
       daily_current: r.daily_current, weekly_current: r.weekly_current, longest_daily: r.longest_daily, longest_weekly: r.longest_weekly });
   });
   return out;
+}
+
+// The current public fields of the riders on a stored board (one query by primary key).
+async function currentRiders(env, order) {
+  const ids = [...new Set((order || []).map(r => r.uid).filter(id => typeof id === 'string'))].slice(0, RANK_POOL);
+  if (!ids.length) return new Map();
+  const { results } = await env.cybercabhunter_db.prepare(
+    `SELECT id, display_name, handle, avatar_url, leaderboard_opt_in FROM users WHERE id IN (${ids.map(() => '?').join(',')})`
+  ).bind(...ids).all();
+  return new Map((results || []).map(u => [u.id, u]));
 }
 
 // The whole computation: three small queries over approved sightings.
@@ -92,7 +130,8 @@ export async function computeCommunitySummary(env, now = Date.now()) {
     const s = computeStreaks(counts, today);
     return { user, daily_current: s.daily.current, weekly_current: s.weekly.current, longest_daily: s.daily.longest, longest_weekly: s.weekly.longest };
   });
-  const listed = everyone.filter(r => Number(r.user.opt_in) === 1);
+  const order = { daily: orderBoard(everyone, 'daily'), weekly: orderBoard(everyone, 'weekly'), longest: orderBoard(everyone, 'longest') };
+  const snapshot = new Map(everyone.map(r => [r.user.uid, { ...r.user, leaderboard_opt_in: r.user.opt_in }]));
   const firstMs = totals && totals.first ? parseUtc(totals.first) : NaN;
   return {
     computed_at: new Date(now).toISOString(),
@@ -117,7 +156,12 @@ export async function computeCommunitySummary(env, now = Date.now()) {
       missions_this_week: Number(xpRow && xpRow.missions) || 0,
       top_rank: rankFor(Number(xpRow && xpRow.top) || 0).name
     },
-    boards: { daily: rankBoard(listed, 'daily'), weekly: rankBoard(listed, 'weekly'), longest: rankBoard(listed, 'longest') }
+    // Order only (ids and streak numbers): names, photos and privacy are read live (rankBoard).
+    board_order: order,
+    // The previous Worker's shape (named, as of this run). Read ONLY by that
+    // version, if production is ever rolled back to it: it serves s.boards
+    // and would fail without it. This version never serves it.
+    boards: { daily: rankBoard(order.daily, 'daily', snapshot), weekly: rankBoard(order.weekly, 'weekly', snapshot), longest: rankBoard(order.longest, 'longest', snapshot) }
   };
 }
 
@@ -132,8 +176,8 @@ export async function recomputeCommunitySummary(env, now = Date.now()) {
 export async function getCommunitySummary(env, now = Date.now()) {
   const row = await env.cybercabhunter_db.prepare(`SELECT value, computed_at FROM community_summary WHERE key = ?`).bind(KEY).first();
   if (row && now - Date.parse(row.computed_at) < MAX_AGE_MS) {
-    // A row written before a field existed (e.g. xp) is recomputed once.
-    try { const v = JSON.parse(row.value); if (v && v.xp) return v; } catch (e) { /* recompute below */ }
+    // A row written before a field existed (e.g. xp, board_order) is recomputed once.
+    try { const v = JSON.parse(row.value); if (v && v.xp && v.board_order) return v; } catch (e) { /* recompute below */ }
   }
   return recomputeCommunitySummary(env, now);
 }
@@ -158,10 +202,12 @@ export async function apiCommunitySummary(request, env, ctx, { now = Date.now() 
 export async function apiStreakLeaderboard(request, env, ctx, { now = Date.now() } = {}) {
   const board = new URL(request.url).searchParams.get('board') || 'daily';
   if (!Object.prototype.hasOwnProperty.call(BOARDS, board)) return Response.json({ success: false, error: 'invalid_board' }, { status: 400 });
-  return cached(request, ctx, async () => {
+  return profileCached(env, ctx, { name: 'streaks', params: { board }, ttl: CACHE_SECONDS }, async () => {
     const s = await getCommunitySummary(env, now);
+    const order = s.board_order[board];
+    const entries = rankBoard(order, board, await currentRiders(env, order));
     return Response.json({ board, label: BOARDS[board], timezone: s.timezone, computed_at: s.computed_at,
-      boards: Object.entries(BOARDS).map(([id, label]) => ({ id, label })), entries: s.boards[board], stats: s.streaks },
+      boards: Object.entries(BOARDS).map(([id, label]) => ({ id, label })), entries, stats: s.streaks },
       { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
   });
 }

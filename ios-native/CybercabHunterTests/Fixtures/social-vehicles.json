@@ -1,0 +1,27 @@
+{
+  "q": "XVF",
+  "vehicles": [
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "short_id": "a1b2c3d4",
+      "license_plate": "XVF-3582",
+      "vin": "7SAYGDEF5TA000123",
+      "service_area": "Austin",
+      "cybercab": true,
+      "image": "/images/dmv-cybercab.webp",
+      "verified": true,
+      "url": "/vehicle/a1b2c3d4-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "b2c3d4e5-0000-4000-8000-000000000002",
+      "short_id": "b2c3d4e5",
+      "license_plate": "XVF3210",
+      "vin": null,
+      "service_area": "Austin",
+      "cybercab": true,
+      "image": "/images/dmv-cybercab.webp",
+      "verified": true,
+      "url": "/vehicle/b2c3d4e5-0000-4000-8000-000000000002"
+    }
+  ]
+}

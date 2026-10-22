@@ -136,8 +136,10 @@ async function run() {
     const r = await remove(ctx, 'session-alice');
     check('Remove photo: 200, the avatar is cleared (-> initials placeholder) and its files deleted', r.status === 200 && avatarOf(ctx, 'alice') === null && files(ctx, 'alice').length === 0);
     check('...and its URL 404s', (await get(ctx, `${second}/512`)).status === 404);
-    ctx.d1.exec(`UPDATE users SET avatar_url = 'https://lh3.googleusercontent.com/a/x' WHERE id = 'alice'`);
-    check('removing a Google photo also reverts to the placeholder', (await remove(ctx, 'session-alice')).status === 200 && avatarOf(ctx, 'alice') === null);
+    // A Google picture is not an upload: Remove leaves it (it is the fallback; migrations/0046).
+    ctx.d1.exec(`UPDATE users SET avatar_url = 'https://lh3.googleusercontent.com/a/x', google_avatar_url = 'https://lh3.googleusercontent.com/a/x' WHERE id = 'alice'`);
+    const g = await remove(ctx, 'session-alice');
+    check('Remove with a Google picture shown: 200, the Google picture stays (only uploads are removed)', g.status === 200 && avatarOf(ctx, 'alice') === 'https://lh3.googleusercontent.com/a/x' && (await g.json()).avatar_source === 'google');
     check('remove without a session: 401', (await remove(ctx, null)).status === 401);
   }
 
@@ -252,6 +254,53 @@ async function run() {
     const main = read('public/js/main.js');
     check('one shared avatar component: the profile, Community and rider pages all use CCC.renderAvatar', /function renderAvatar/.test(main) &&
       ['public/profile.html', 'public/js/community.js', 'public/js/rider.js'].every(f => /CCC\.renderAvatar\(/.test(read(f))) && /avatarSrc\(avatarUrl, 128\)/.test(main));
+  }
+
+  console.log('7. The profile page with a Google picture (jsdom): only an upload is removable, Google comes back');
+  {
+    const ctx = await makeApp();
+    const G = 'https://lh3.googleusercontent.com/a/alice=s96-c';
+    ctx.d1.exec(`UPDATE users SET avatar_url = '${G}', google_avatar_url = '${G}' WHERE id = 'alice'`);
+    const html = read('public/profile.html');
+    const dom = new JSDOM(html.replace(/<script src="https?:[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/profile.html', pretendToBeVisual: true });
+    const w = dom.window;
+    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+    w.localStorage.setItem('teslaSessionId', 'session-alice');
+    w.fetch = async (url, init = {}) => {
+      const path = String(url).replace('https://cybercabhunter.contactjoeclos.workers.dev', '');
+      let body = init.body;
+      if (body instanceof w.FormData) {
+        const fd = new FormData();
+        for (const [k, v] of body.entries()) fd.append(k, typeof v === 'string' ? v : new File([new Uint8Array(await v.arrayBuffer())], v.name || 'f'));
+        body = fd;
+      }
+      return worker.fetch(new Request(`https://x${path}`, { ...init, body }), ctx.env, {});
+    };
+    w.createImageBitmap = async () => ({ width: 600, height: 600, close() {} });
+    w.URL.createObjectURL = () => 'blob:photo';
+    w.URL.revokeObjectURL = () => {};
+    w.HTMLCanvasElement.prototype.getContext = function () { return { drawImage() {}, set imageSmoothingQuality(v) {} }; };
+    w.HTMLCanvasElement.prototype.toBlob = function (cb) { cb(new w.Blob([webp(this.width, this.height)], { type: 'image/webp' })); };
+    const asked = [];
+    w.confirm = q => { asked.push(q); return true; };
+    const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(x => x.includes('initAvatarEditor')).join('\n');
+    w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\n${inline}`);
+    await new Promise(r => setTimeout(r, 80));
+    const d = w.document;
+    const shown = () => { const i = d.getElementById('profileAvatar').querySelector('img'); return i && i.getAttribute('src'); };
+    check('a Google picture is shown, and "Remove photo" is not offered (it is the fallback)', shown() === G && d.getElementById('avatarRemove').classList.contains('hidden'));
+    const input = d.getElementById('avatarFile');
+    Object.defineProperty(input, 'files', { configurable: true, value: [new w.File([new Uint8Array(100)], 'me.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new w.Event('change'));
+    await new Promise(r => setTimeout(r, 20));
+    d.getElementById('avatarSave').click();
+    await new Promise(r => setTimeout(r, 150));
+    check('after an upload: the upload is shown and "Remove photo" is offered', /^\/api\/avatars\/[a-f0-9]{32}\/512$/.test(shown() || '') && !d.getElementById('avatarRemove').classList.contains('hidden'));
+    d.getElementById('avatarRemove').click();
+    await new Promise(r => setTimeout(r, 80));
+    check('the confirmation says the Google photo will show instead', /Google photo will show instead/.test(asked[0] || ''));
+    check('Remove: the Google picture is back on the page and in the database, "Remove photo" hidden again', shown() === G && avatarOf(ctx, 'alice') === G && d.getElementById('avatarRemove').classList.contains('hidden'));
+    w.close();
   }
 
   t.finish();

@@ -1,0 +1,11 @@
+{
+  "status": 401,
+  "body": {
+    "authenticated": false,
+    "error": "sign_in_required",
+    "viewer": {
+      "signed_in": false,
+      "moderator": false
+    }
+  }
+}

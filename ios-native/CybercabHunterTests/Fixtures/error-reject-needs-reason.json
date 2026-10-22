@@ -1,0 +1,7 @@
+{
+  "status": 400,
+  "body": {
+    "success": false,
+    "error": "rejection_reason_required"
+  }
+}

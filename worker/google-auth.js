@@ -10,6 +10,7 @@
 // Google APIs later on the user's behalf. See migrations/0007_google_identity.sql.
 
 import { db } from './db.js';
+import { leaderboardRiderChanged } from './community.js';
 
 const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -195,6 +196,9 @@ async function handleCallback(request, env) {
     email: profile.email,
     name: profile.name,
     avatarUrl: profile.picture
+  }, {
+    // A rider without an upload shows their current Google picture everywhere.
+    onAvatarChange: (id, avatarUrl) => leaderboardRiderChanged(env, id, { avatar_url: avatarUrl })
   });
 
   // The app: a one-time code for the verifier holder; the session is created

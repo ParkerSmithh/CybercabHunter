@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "rider": {
+    "id": "dave",
+    "display_name": "Dave Spotter",
+    "handle": "dave_d"
+  },
+  "run": {
+    "processed": 2,
+    "added": 1,
+    "updated": 0,
+    "duplicates": 0,
+    "needs_review": 0,
+    "rejected": 1,
+    "errors": 0
+  },
+  "results": [
+    {
+      "index": 0,
+      "outcome": "created",
+      "review_status": "accepted",
+      "reason": "tesla_sender_and_structure_match",
+      "ride_date": "2026-06-09",
+      "ride": {
+        "ride_date": "2026-06-09",
+        "pickup_time": "13:04",
+        "distance": 2.8,
+        "distance_unit": "mi",
+        "fare_amount_cents": 692,
+        "currency": "USD",
+        "service_area": "Dallas",
+        "source": "receipt_import",
+        "review_state": "counted"
+      },
+      "vehicle": {
+        "id": "2fdcaafa-8281-4728-b360-bd4a1156acb7",
+        "license_plate": "XJR2195",
+        "created": true,
+        "visibility": "private",
+        "has_vin": false,
+        "publicly_eligible": false
+      }
+    },
+    {
+      "index": 1,
+      "outcome": "rejected",
+      "review_status": "rejected",
+      "reason": "not_recognized_as_tesla_receipt",
+      "ride_date": null,
+      "ride": null,
+      "vehicle": null
+    }
+  ]
+}

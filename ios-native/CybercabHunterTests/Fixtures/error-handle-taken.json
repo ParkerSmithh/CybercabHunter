@@ -1,0 +1,7 @@
+{
+  "status": 409,
+  "body": {
+    "success": false,
+    "error": "handle_taken"
+  }
+}

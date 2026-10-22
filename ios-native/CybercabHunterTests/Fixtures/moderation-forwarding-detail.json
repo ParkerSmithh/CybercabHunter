@@ -1,0 +1,89 @@
+{
+  "funnel": {
+    "issued": 5,
+    "confirmation_received": 1,
+    "setup_completed": 1,
+    "receiving": 1,
+    "receiving_7d": 1,
+    "revoked": 0
+  },
+  "receipts": {
+    "total": 3,
+    "last_24h": 1,
+    "last_7d": 3,
+    "last_30d": 3,
+    "last_received_at": "2026-10-21T21:09:17Z",
+    "by_status": {
+      "accepted": 1,
+      "needs_review": 0,
+      "rejected": 1,
+      "duplicate": 1,
+      "parse_error": 0
+    },
+    "daily": [
+      {
+        "date": "2026-10-08",
+        "n": 0
+      },
+      {
+        "date": "2026-10-09",
+        "n": 0
+      },
+      {
+        "date": "2026-10-10",
+        "n": 0
+      },
+      {
+        "date": "2026-10-11",
+        "n": 0
+      },
+      {
+        "date": "2026-10-12",
+        "n": 0
+      },
+      {
+        "date": "2026-10-13",
+        "n": 0
+      },
+      {
+        "date": "2026-10-14",
+        "n": 0
+      },
+      {
+        "date": "2026-10-15",
+        "n": 0
+      },
+      {
+        "date": "2026-10-16",
+        "n": 0
+      },
+      {
+        "date": "2026-10-17",
+        "n": 0
+      },
+      {
+        "date": "2026-10-18",
+        "n": 1
+      },
+      {
+        "date": "2026-10-19",
+        "n": 0
+      },
+      {
+        "date": "2026-10-20",
+        "n": 1
+      },
+      {
+        "date": "2026-10-21",
+        "n": 1
+      }
+    ]
+  },
+  "gmail_api": {
+    "active": 0,
+    "error": 0,
+    "revoked": 0,
+    "backfill_done": 0,
+    "last_success_at": null
+  }
+}

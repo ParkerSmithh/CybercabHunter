@@ -7,6 +7,7 @@ import { rideQueries } from './db-rides.js';
 import { gmailQueries } from './db-gmail.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, approvalEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
+import { googlePicture } from './avatars.js';
 
 // Registry visibility values. 'private' is the value this schema already
 // uses for non-public rows (see the personal `vehicles` table); the column
@@ -209,12 +210,19 @@ async function assignHandleFromName(sql, userId, name) {
 
 // Google Sign-In identity — a separate account-creation path from
 // findOrCreateUserByTeslaIdentifier above, keyed by google_connections
-// instead of tesla_connections. name/avatarUrl are only applied when the
+// instead of tesla_connections. The Google name is only applied when the
 // user is first created, so a later Google sign-in never clobbers a
-// display_name/avatar_url the user has since customized on Profile. A user
+// display_name the user has since customized on Profile. A user
 // without a username gets one from their Google name (assignHandleFromName) —
 // at account creation, and on a later sign-in if they still have none.
-async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, avatarUrl }) {
+//
+// The Google picture (worker/avatars.js has the whole rule) is recorded in
+// users.google_avatar_url at every sign-in, and is the picture SHOWN
+// (avatar_url) unless the rider uploaded their own: an upload is never
+// replaced. Returns the user id; `onAvatarChange(userId, shownUrl)` is called when the
+// shown picture changed, so the caller can refresh what shows riders.
+async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, avatarUrl }, { onAvatarChange } = {}) {
+  const picture = googlePicture(avatarUrl);
   const existing = await sql.prepare(
     `SELECT user_id FROM google_connections WHERE google_sub = ?`
   ).bind(googleSub).first();
@@ -225,13 +233,27 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
         if (user && !user.handle) await assignHandleFromName(sql, existing.user_id, name);
       } catch (err) { /* sign-in never fails over this */ }
     }
+    if (picture) {
+      try {
+        const before = await sql.prepare(`SELECT avatar_url, google_avatar_url FROM users WHERE id = ?`).bind(existing.user_id).first();
+        const custom = before && typeof before.avatar_url === 'string' && before.avatar_url.startsWith('/api/avatars/');
+        const shown = custom ? before.avatar_url : picture;
+        if (before && (before.google_avatar_url !== picture || before.avatar_url !== shown)) {
+          // Re-checked in SQL, so an upload that lands meanwhile is never overwritten.
+          await sql.prepare(`UPDATE users SET google_avatar_url = ?,
+              avatar_url = CASE WHEN avatar_url LIKE '/api/avatars/%' THEN avatar_url ELSE ? END,
+              updated_at = datetime('now') WHERE id = ?`).bind(picture, picture, existing.user_id).run();
+          if (before.avatar_url !== shown && onAvatarChange) await onAvatarChange(existing.user_id, shown);
+        }
+      } catch (err) { /* sign-in never fails over this */ }
+    }
     return existing.user_id;
   }
 
   const id = newId();
   await sql.prepare(
-    `INSERT INTO users (id, display_name, avatar_url, profile_visibility, leaderboard_opt_in) VALUES (?, ?, ?, 'public', 1)`
-  ).bind(id, name || null, avatarUrl || null).run();
+    `INSERT INTO users (id, display_name, avatar_url, google_avatar_url, profile_visibility, leaderboard_opt_in) VALUES (?, ?, ?, ?, 'public', 1)`
+  ).bind(id, name || null, picture, picture).run();
   await sql.prepare(
     `INSERT INTO google_connections (id, user_id, google_sub, email) VALUES (?, ?, ?, ?)`
   ).bind(newId(), id, googleSub, email || null).run();

@@ -18,14 +18,34 @@
 //
 // Storage (R2, the evidence bucket): avatars/<user_id>/<key>/512 and .../128,
 // where <key> is 32 random hex characters, new on every upload. users.avatar_url
-// becomes "/api/avatars/<key>" (a Google sign-in's own photo URL otherwise), so a
-// public avatar URL never contains a user id, and a replaced or removed picture's
-// key simply stops resolving. A new upload deletes the previous one's files.
+// becomes "/api/avatars/<key>", so a public avatar URL never contains a user
+// id, and a replaced or removed picture's key simply stops resolving. A new
+// upload deletes the previous one's files.
+//
+// Which picture is shown (users.avatar_url, read everywhere as before):
+//   1. the rider's upload ("/api/avatars/<key>"), if any;
+//   2. else their Google picture (users.google_avatar_url, migrations/0046,
+//      kept by Google sign-in and never touched by an upload);
+//   3. else none (initials).
+// So removing an upload brings the Google picture back; nothing else (a name
+// or privacy change, a sign-in) ever replaces an upload.
 
 import { tesla } from './tesla.js';
 import { leaderboardRiderChanged } from './community.js';
 
 export const AVATAR_SIZES = [128, 512];
+
+// Where the shown picture comes from: 'custom' (an upload), 'google', or null (initials).
+export function avatarSource(user) {
+  const url = user && user.avatar_url;
+  if (!url) return null;
+  return String(url).startsWith(PATH_PREFIX) ? 'custom' : 'google';
+}
+
+// A picture URL Google sent at sign-in that may be stored and shown (https only).
+export function googlePicture(url) {
+  return typeof url === 'string' && url.length <= 2048 && /^https:\/\/[^\s"'<>]+$/.test(url) ? url : null;
+}
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const KEY_RE = /^[a-f0-9]{32}$/;
 const PATH_PREFIX = '/api/avatars/';
@@ -193,21 +213,29 @@ export async function apiUploadAvatar(request, env) {
     });
   }
   const avatarUrl = `${PATH_PREFIX}${key}`;
-  await sql.prepare(`UPDATE users SET avatar_url = ?, updated_at = datetime('now') WHERE id = ?`).bind(avatarUrl, userId).run();
+  // The Google picture is kept for later (if it was shown and not yet recorded, it is recorded now).
+  await sql.prepare(`UPDATE users SET
+      google_avatar_url = COALESCE(google_avatar_url, CASE WHEN avatar_url LIKE 'https://%' THEN avatar_url END),
+      avatar_url = ?, updated_at = datetime('now') WHERE id = ?`).bind(avatarUrl, userId).run();
   // The previous picture's files go (best effort; its key no longer resolves anyway).
   try { await deleteUserAvatarFiles(env.EVIDENCE_BUCKET, userId, key); } catch (e) { /* ignore */ }
   await leaderboardRiderChanged(env, userId, { avatar_url: avatarUrl });
-  return Response.json({ success: true, avatar_url: avatarUrl });
+  return Response.json({ success: true, avatar_url: avatarUrl, avatar_source: 'custom' });
 }
 
 export async function apiDeleteAvatar(request, env) {
   const userId = await tesla.requireUserId(request, env);
   if (!userId) return Response.json({ authenticated: false }, { status: 401 });
   const sql = env.cybercabhunter_db;
-  await sql.prepare(`UPDATE users SET avatar_url = NULL, updated_at = datetime('now') WHERE id = ?`).bind(userId).run();
+  // Back to the Google picture when there is one (else initials). Only an
+  // upload is removed: a Google picture being shown is left as it is.
+  await sql.prepare(`UPDATE users SET avatar_url = google_avatar_url, updated_at = datetime('now')
+    WHERE id = ? AND (avatar_url IS NULL OR avatar_url LIKE '/api/avatars/%')`).bind(userId).run();
   try { await deleteUserAvatarFiles(env.EVIDENCE_BUCKET, userId); } catch (e) { /* the url is already cleared */ }
-  await leaderboardRiderChanged(env, userId, { avatar_url: null });
-  return Response.json({ success: true, avatar_url: null });
+  const row = await sql.prepare(`SELECT avatar_url, google_avatar_url FROM users WHERE id = ?`).bind(userId).first();
+  const avatarUrl = row ? row.avatar_url || null : null;
+  await leaderboardRiderChanged(env, userId, { avatar_url: avatarUrl });
+  return Response.json({ success: true, avatar_url: avatarUrl, avatar_source: avatarSource(row) });
 }
 
 export async function apiGetAvatar(request, env, key, size) {

@@ -1,0 +1,38 @@
+{
+  "seen": 3,
+  "sightings_all_time": 14,
+  "order": "asc",
+  "sightings": [
+    {
+      "id": "38d8c8cbabb04d5924b31efdd7bb40a5",
+      "image_url": "/api/sightings/38d8c8cbabb04d5924b31efdd7bb40a5/photo",
+      "city": "Dallas",
+      "location": null,
+      "plate": null,
+      "cybercab": false,
+      "spotted_at": "2026-10-21T17:42:51Z",
+      "time_zone": "America/Chicago"
+    },
+    {
+      "id": "b77f6bf4cdb1b1c597ad6f81089d90f9",
+      "image_url": "/api/sightings/b77f6bf4cdb1b1c597ad6f81089d90f9/photo",
+      "city": "Austin",
+      "location": null,
+      "plate": "XVF3210",
+      "cybercab": true,
+      "spotted_at": "2026-10-21T17:42:51Z",
+      "time_zone": "America/Chicago"
+    },
+    {
+      "id": "cbda3b8a6edf4184c2c4e6530b939666",
+      "image_url": "/api/sightings/cbda3b8a6edf4184c2c4e6530b939666/photo",
+      "city": "Austin",
+      "location": null,
+      "plate": "XVF-3582",
+      "cybercab": true,
+      "spotted_at": "2026-10-21T17:42:51Z",
+      "time_zone": "America/Chicago"
+    }
+  ],
+  "next_cursor": null
+}

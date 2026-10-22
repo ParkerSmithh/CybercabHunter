@@ -1,0 +1,53 @@
+{
+  "board": "weekly",
+  "label": "Top weekly streaks",
+  "timezone": "America/Chicago",
+  "computed_at": "2026-10-21T17:42:51.932Z",
+  "boards": [
+    {
+      "id": "daily",
+      "label": "Top daily streaks"
+    },
+    {
+      "id": "weekly",
+      "label": "Top weekly streaks"
+    },
+    {
+      "id": "longest",
+      "label": "Longest all-time streaks"
+    }
+  ],
+  "entries": [
+    {
+      "rank": 1,
+      "tied": false,
+      "name": "Alice A",
+      "handle": "alice_a",
+      "avatar_url": null,
+      "profile": true,
+      "daily_current": 4,
+      "weekly_current": 5,
+      "longest_daily": 4,
+      "longest_weekly": 5
+    },
+    {
+      "rank": 2,
+      "tied": false,
+      "name": "Bob B",
+      "handle": "bob_b",
+      "avatar_url": null,
+      "profile": true,
+      "daily_current": 0,
+      "weekly_current": 1,
+      "longest_daily": 2,
+      "longest_weekly": 1
+    }
+  ],
+  "stats": {
+    "active_daily": 1,
+    "active_weekly": 2,
+    "record_daily": 4,
+    "record_weekly": 5,
+    "verified_this_week": 3
+  }
+}

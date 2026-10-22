@@ -1,0 +1,28 @@
+{
+  "submissions": [
+    {
+      "id": "91399c26-f4e2-4715-8937-72181e7d436e",
+      "submission_type": "vehicle_sighting",
+      "evidence_type": "photo",
+      "status": "approved",
+      "submitted_at": "2026-10-21 17:42:51",
+      "reviewed_at": "2026-10-21 17:42:51"
+    },
+    {
+      "id": "e1726699-b92c-4f13-a057-9bf13ad53073",
+      "submission_type": "vehicle_sighting",
+      "evidence_type": null,
+      "status": "pending",
+      "submitted_at": "2026-10-21 17:42:51",
+      "reviewed_at": null
+    },
+    {
+      "id": "42caeb1c-87a9-40be-9af4-bde27174fabd",
+      "submission_type": "vehicle_sighting",
+      "evidence_type": "photo",
+      "status": "rejected",
+      "submitted_at": "2026-10-21 17:42:51",
+      "reviewed_at": "2026-10-21 17:42:51"
+    }
+  ]
+}

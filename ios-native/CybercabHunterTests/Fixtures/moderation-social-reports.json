@@ -1,0 +1,79 @@
+{
+  "success": true,
+  "reports": [
+    {
+      "target_type": "post",
+      "target_id": "0e15788554c738f57c3ecaedc56a2de1",
+      "report_count": 2,
+      "first_at": "2026-10-21 17:42:51",
+      "last_at": "2026-10-21 17:42:51",
+      "reasons": [
+        "off_topic",
+        "spam"
+      ],
+      "details": [
+        {
+          "reason": "off_topic",
+          "details": "Not about a Cybercab.",
+          "created_at": "2026-10-21 17:42:51"
+        },
+        {
+          "reason": "spam",
+          "details": null,
+          "created_at": "2026-10-21 17:42:51"
+        }
+      ],
+      "author": {
+        "name": "Carol Private",
+        "handle": "carol_c"
+      },
+      "author_history": {
+        "removals": 0,
+        "posts_24h": 0
+      },
+      "target": {
+        "body": "Saw one waiting at a light on Lamar. Quieter than I expected.",
+        "photos": [],
+        "link_url": null,
+        "created_at": "2026-10-20 11:42:51",
+        "review": null,
+        "url": "/community?post=0e15788554c738f57c3ecaedc56a2de1"
+      },
+      "target_missing": false
+    },
+    {
+      "target_type": "post",
+      "target_id": "e2346119c9d474a32626060bf30660a3",
+      "report_count": 1,
+      "first_at": "2026-10-21 17:42:51",
+      "last_at": "2026-10-21 17:42:51",
+      "reasons": [
+        "off_topic"
+      ],
+      "details": [
+        {
+          "reason": "off_topic",
+          "details": null,
+          "created_at": "2026-10-21 17:42:51"
+        }
+      ],
+      "author": {
+        "name": "Alice A",
+        "handle": "alice_a"
+      },
+      "author_history": {
+        "removals": 0,
+        "posts_24h": 1
+      },
+      "target": {
+        "body": "Has anyone seen a Cybercab north of Parmer yet?",
+        "photos": [],
+        "link_url": "https://www.tesla.com/robotaxi",
+        "created_at": "2026-10-20 15:42:51",
+        "review": null,
+        "url": "/community?post=e2346119c9d474a32626060bf30660a3"
+      },
+      "target_missing": false
+    }
+  ]
+}

@@ -11,6 +11,7 @@
 
 import { tokenCrypto } from './crypto.js';
 import { db } from './db.js';
+import { avatarSource } from './avatars.js';
 
 const AUTHORIZE_URL = 'https://auth.tesla.com/oauth2/v3/authorize';
 const TOKEN_URL = 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token';
@@ -344,7 +345,8 @@ async function apiMe(request, env) {
       id: user.id,
       created_at: user.created_at,
       display_name: user.display_name || null,
-      avatar_url: user.avatar_url || null
+      avatar_url: user.avatar_url || null,
+      avatar_source: avatarSource(user)
     },
     tesla: { connected: !!connection && connection.status === 'active' }
   });

@@ -8,6 +8,7 @@
 
 import { db } from './db.js';
 import { leaderboardRiderChanged } from './community.js';
+import { avatarSource } from './avatars.js';
 
 export async function apiGetProfile(request, env, userId) {
   const user = await db.getUserById(env.cybercabhunter_db, userId);
@@ -24,6 +25,11 @@ export async function apiGetProfile(request, env, userId) {
       // The Community leaderboard / public profile switch (worker/community.js).
       leaderboard_opt_in: Number(user.leaderboard_opt_in) === 1,
       avatar_url: user.avatar_url,
+      // What the shown picture is: 'custom' (an upload; "Remove photo" applies),
+      // 'google', or null (initials); and whether removing an upload brings a
+      // Google picture back (worker/avatars.js).
+      avatar_source: avatarSource(user),
+      has_google_avatar: !!user.google_avatar_url,
       joined_at: user.created_at
     },
     contributions: profile.contributionCount,
@@ -96,7 +102,11 @@ export async function apiUpdateProfile(request, env, userId) {
   }
 
   // The stored leaderboard figures follow at once (worker/community.js).
-  await leaderboardRiderChanged(env, userId, { opt_in: leaderboardOptIn, display_name: displayName, handle });
+  await leaderboardRiderChanged(env, userId, {
+    opt_in: leaderboardOptIn, display_name: displayName, handle,
+    // Off -> on: they were removed from the stored figures; list them again now.
+    reappeared: leaderboardOptIn && Number(user.leaderboard_opt_in) !== 1
+  });
 
   return Response.json({
     success: true,

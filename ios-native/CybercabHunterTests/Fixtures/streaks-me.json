@@ -1,0 +1,131 @@
+{
+  "timezone": "America/Chicago",
+  "today": "2026-10-21",
+  "week_start": "2026-10-19",
+  "daily": {
+    "current": 4,
+    "longest": 4,
+    "today_done": true
+  },
+  "weekly": {
+    "current": 5,
+    "longest": 5,
+    "week_done": true
+  },
+  "verified": {
+    "sightings": 8,
+    "days": 8
+  },
+  "calendar": {
+    "from": "2025-10-16",
+    "to": "2026-10-21",
+    "days": [
+      {
+        "date": "2026-09-23",
+        "count": 1
+      },
+      {
+        "date": "2026-09-30",
+        "count": 1
+      },
+      {
+        "date": "2026-10-07",
+        "count": 1
+      },
+      {
+        "date": "2026-10-14",
+        "count": 1
+      },
+      {
+        "date": "2026-10-18",
+        "count": 1
+      },
+      {
+        "date": "2026-10-19",
+        "count": 1
+      },
+      {
+        "date": "2026-10-20",
+        "count": 1
+      },
+      {
+        "date": "2026-10-21",
+        "count": 1
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "type": "daily",
+      "n": 3,
+      "unlocked": true,
+      "unlocked_on": "2026-10-20"
+    },
+    {
+      "type": "daily",
+      "n": 7,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "daily",
+      "n": 14,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "daily",
+      "n": 30,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "daily",
+      "n": 60,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "daily",
+      "n": 100,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "weekly",
+      "n": 2,
+      "unlocked": true,
+      "unlocked_on": "2026-09-28"
+    },
+    {
+      "type": "weekly",
+      "n": 4,
+      "unlocked": true,
+      "unlocked_on": "2026-10-12"
+    },
+    {
+      "type": "weekly",
+      "n": 8,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "weekly",
+      "n": 12,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "weekly",
+      "n": 26,
+      "unlocked": false,
+      "unlocked_on": null
+    },
+    {
+      "type": "weekly",
+      "n": 52,
+      "unlocked": false,
+      "unlocked_on": null
+    }
+  ]
+}
