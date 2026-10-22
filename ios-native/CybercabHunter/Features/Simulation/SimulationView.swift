@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 /// Simulation (the website's /simulation): Fleet ROI and Fleet ETA, reached
-/// from Home's Explore row. Every figure is an estimate or a simulation,
+/// from Home's Explore button. Every figure is an estimate or a simulation,
 /// labelled as such; nothing is a live Tesla price or fleet availability.
 struct SimulationView: View {
     @Environment(SessionStore.self) private var session

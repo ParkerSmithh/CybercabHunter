@@ -103,7 +103,8 @@ Cybercab Hunter") and the Shortcuts app work after the app has been opened once.
 With a free Apple ID it must be reinstalled from Xcode every 7 days.
 
 Phase 7 adds no target, capability or entitlement. Simulation, News and the
-Texas DMV roster are under Home › Explore; Rider data and Receipt sync (Gmail)
+Texas DMV roster open from Home: Explore, View News, and the DMV panel’s
+“Every VIN on the roster” link, respectively; Rider data and Receipt sync (Gmail)
 under Account › Your activity. Receipt sync is Gmail *forwarding*: the steps
 are done in Gmail on a computer; the app shows the address, Gmail's
 confirmation and whether receipts arrive, and never signs in to Gmail.
