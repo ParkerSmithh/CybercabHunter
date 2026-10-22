@@ -315,6 +315,10 @@ struct DMVSection: View {
                 modelCard("Model Y", value: snap.modelY, total: snap.total, added: dmv.new?.modelY30d, color: .chModelY, image: "ModelYRender", projected: fc.flatMap { Self.end($0.modelY) })
                 if fc != nil { Footnote(text: "Dashed: each model projected from its own history, the total as their sum, with the approximate early counts widening the range. Estimates, not registrations.") }
                 Footnote(text: "Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN Tesla Robotaxi, LLC lists under its SB 2807 automated-vehicle authorization. Before \(Format.day(dmv.trackingSince)), counts are approximate.")
+                NavigationLink(value: ExploreRoute.dmv) {
+                    Text("Every VIN on the roster →").font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
+                }
+                .accessibilityIdentifier("dmvEveryVin")
             } else if let error {
                 InlineMessage(text: error, systemImage: "wifi.exclamationmark")
             } else {

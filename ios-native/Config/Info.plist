@@ -4,6 +4,19 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Phase 6: the widgets' links (cybercabhunter-widget://<tab>, AppRouter.open(widgetURL:)).
+	     Only opens a tab. The sign-in callback scheme ("cybercabhunter") stays unregistered. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.cybercabhunter.native.widget-links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cybercabhunter-widget</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter-Variable.ttf</string>

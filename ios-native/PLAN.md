@@ -53,9 +53,10 @@ CybercabHunterTests/  unit tests (PKCE, model decoding, request building, Keycha
 2. **Core** — Home dashboard, fleet stats, vehicle registry, vehicle details. *(done)*
 3. **Maps** — Zones (MapKit polygons, markers, cameras), heatmap, city switch, Replay, predictions, Home maps. *(done)*
 4. **Community** — Social (feed, compose, photos, likes, comments, saves, reports, pins, notifications), Streaks, Leaderboard, Progress, profiles. *(done)*
-5. **Sightings, Account, Privacy, Moderation** — sighting gallery and submission, profile and privacy, account deletion, sighting and Social moderation. *(done)* Still to do: News, Simulation (Fleet ROI, Fleet ETA), DMV roster, Rider data / Gmail link.
+5. **Sightings, Account, Privacy, Moderation** — sighting gallery and submission, profile and privacy, account deletion, sighting and Social moderation. *(done)*
 5.1. **Device fixes** — every moderation section native, place autocomplete, profile pictures, Zones legend, minimaps, the name "Cybercab Hunter", display-name sync. *(app side done; Worker and website deployed and verified Oct 21, 2026)*
-6. **Native extras** — App Intents/Siri, widgets, Live Activities, push, Apple Intelligence.
+6. **Native extras** — App Intents/Siri, widgets, Live Activities, push, Apple Intelligence. *(App Intents/Siri/Shortcuts/Spotlight, widgets and the Apple Intelligence entities done; Live Activities and push blocked: they need a paid Apple Developer account (APNs key) and a new Worker endpoint, awaiting the owner's decision)*
+7. **Remaining website pages** — Simulation (Fleet ROI, Fleet ETA, fare reports), News, Texas DMV roster, Rider data, Receipt sync (Gmail forwarding), Tesla link status (moderators). *(done, uncommitted; see below)*
 
 Until a screen is native, its tab shows what is coming and opens that page of
 the website in Safari (an honest fallback, never a fake native screen).
@@ -468,6 +469,143 @@ No native app was deployed. Authenticated write tests remain unperformed.
 See [the production verification report](../docs/verification/phase-5-1-production.md)
 for exact results and limitations. The sections below record the earlier review.
 
+## Phase 7: Remaining native features (Oct 22, 2026)
+
+Uncommitted, on branch `claude/phase7-remaining-native` (from
+`claude/phase6-native-extras`, whose uncommitted work it keeps). No Worker,
+website, migration or production-data change; the only non-app change is the
+isolated test Worker's seed data (`scripts/community-test-server.mjs`: a test
+receipt domain, a waiting Gmail code for the test rider, four new fixtures).
+
+Navigation: the five tabs are unchanged. Home has a new **Explore** row
+(Simulation, News, Texas DMV roster); Home's Texas DMV panel links to the
+roster ("Every VIN on the roster →"); Account › Your activity has **Rider
+data** and **Receipt sync (Gmail)** (the "Rider data (website)" fallback is gone).
+
+- **Simulation** (`Features/Simulation/`): *Fleet ROI* (fleet size from the
+  lifetime registry count, capped at 100; electricity, miles, inductive loss;
+  the site's locked assumptions; results, break-even, cash-flow chart, PDF
+  prospectus via the share sheet) and *Fleet ETA* (Austin / Dallas from
+  `/api/fleet-eta`: per-vehicle fare and wait ranges with confidence, demand
+  scenario, distance and area, service hours, fleet mix, calibration, recent
+  reports, the methodology text) plus the **fare report form**
+  (`POST /api/fare-reports`, signed in; the site's error messages). The math is
+  `public/js/calc.js` ported line for line and unit-tested against values from
+  calc.js itself. Every number is labelled an estimate; where the API has no
+  model the screen says "Insufficient data", never a guess.
+- **News** (`Features/News/`): stats bar, Top stories, All / Major only, search
+  (300 ms debounce), day groups in Austin time, paging, pull to refresh,
+  thumbnails (the site's own `/news-img/`, else an https feed image, else the
+  outlet's initial), "Also covered by". A story opens the publisher's page in
+  Safari's in-app viewer (http links are never opened).
+- **Texas DMV roster** (`Features/DMV/`): `/api/dmv-registrations/vins`, All /
+  Cybercab / Model Y, VIN search, 100 at a time. Home keeps the registered
+  counts and labels predictions "Estimates, not registrations".
+- **Rider data** (`Features/Rider/`): the rider's own stats, ride summary,
+  spending, monthly chart, cities, rides (paged, remove with an inline
+  confirmation; a 404 counts as already removed), with the site's coverage
+  notes and "—" for missing values. Loading, error, signed-out and data states
+  stay separate, as on the site.
+- **Receipt sync (Gmail)**: what the website actually does is Gmail
+  *forwarding*, not Gmail sign-in: the forwarding address (copy, get a new one),
+  the four steps, Gmail's confirmation code or "Confirm in Gmail" link (only
+  https links on Google's mail-settings hosts open), live status (re-checked
+  every 8 s, 20 s while a confirmation waits, only while the screen is open and
+  the app active), Done (`/setup/complete`), Stop sync (rotates the address;
+  rides are kept). The app never signs in to Gmail and never holds a Google
+  token or password. The Worker's Gmail OAuth import (`worker/gmail.js`) is
+  dormant and has no button on the website; it is not wired into the app (it
+  would need broader Gmail permission, which needs the owner's approval).
+- **Tesla account**: the website offers linking to moderators only; so does the
+  app (Rider data › Tesla account). Status from `/api/me`; Link opens Tesla's
+  own sign-in page in Safari's in-app viewer with a one-time, two-minute link
+  token (`POST /oauth/tesla/link`; the session never goes in a URL); Unlink
+  (`POST /api/tesla/disconnect`) asks first. The app never sees a Tesla password
+  or token. Not tested end to end: Tesla's callback returns to the website (no
+  app callback), and no Tesla account was used. A fully in-app round trip would
+  need an app callback in the Worker (or Associated Domains), so it is left out.
+- **Fix found by the new tests**: the Fleet ETA demand slot read weekday names
+  from the device locale ("Sat"), so a weekend could be treated as a weekday;
+  now fixed English names, as calc.js.
+- **Design**: the existing system (site gold `#FAE030` as `brandGold`, thin
+  borders, no redundant navigation titles) was kept; the requested taxi-yellow
+  `#FFD60A` was not introduced so new screens match the rest of the app.
+- Tests: unit 122/122 (24 new, Phase7Tests); UI: Phase7UITests (Simulation,
+  News, DMV; live site, read only) and Phase7AccountUITests (Rider data,
+  Receipt sync, moderator Tesla status; test Worker). Destructive controls are
+  opened and cancelled in UI tests; the writes are unit-tested against stubs.
+
+### Deferred from Phase 6
+
+- Live Activities and push notifications: still blocked (paid Apple Developer
+  account for an APNs key, a device-token table and a Worker sender). Not
+  started in Phase 7, as instructed.
+- Siri voice phrases and the Home Screen widgets on a physical iPhone: verified
+  in the simulator only.
+- Fare-report moderation: the Worker has `/api/moderation/fare-reports*` but no
+  website page uses it, so there is nothing to match yet.
+
+## Phase 6: Native extras (Oct 22, 2026)
+
+Uncommitted, on branch `claude/phase6-native-extras` (from
+`claude/pre-phase6-refinements`, whose work it keeps). No backend change.
+
+- **App Intents** (`Features/Intents/CybercabIntents.swift`), with Siri phrases
+  (AppShortcutsProvider) and the Shortcuts app:
+  - *Cybercab Fleet Stats*: answers in Siri (dialog + card) without opening the
+    app: registered Cybercabs, rides, sightings and today's Cybercab Daily.
+  - *Open the Zones Map* (Austin / Dallas), *Submit a Cybercab Sighting* (the
+    form when signed in, sign-in first otherwise; waits for the stored session
+    on a cold launch), *Open a Cybercab* (by plate).
+- **Apple Intelligence / Spotlight**: Cybercabs are `IndexedEntity` App
+  Entities: the public registry is indexed in Spotlight at most once a day
+  (and replaced, so a vehicle that leaves the registry goes), Siri resolves a
+  plate through `/api/robotaxi-vehicles?q=`, and opening one shows its page.
+  Public endpoints only; no session is ever sent.
+- **Widgets** (new target `CybercabHunterWidgets`, bundle id
+  `com.cybercabhunter.native.widgets`): *Cybercab Fleet* (small, medium, Lock
+  Screen rectangular and inline) and *Cybercab Daily* (small, Lock Screen).
+  They read `/api/registry/stats` and `/api/daily` every 30 minutes (10 after a
+  failure), keep the last good answer ("As of …" when stale), and open the
+  matching tab (`cybercabhunter-widget://<tab>`, registered; the sign-in
+  callback scheme stays unregistered).
+- **Shared code**: `ios-native/Shared/` is compiled into both the app and the
+  widget (FleetSnapshot, WidgetLink), so Siri, the widget and the app read the
+  fleet the same way.
+- **Not built (blocked, needs the owner)**: Live Activities and push
+  notifications. The signing team is a free Personal Team (7-day profiles, no
+  push entitlement); push needs a paid Apple Developer account, an APNs key
+  stored as a Worker secret, a device-token table (migration) and a sender in
+  the Worker. Nothing was started.
+- Tests: unit 98/98 (9 new, Phase6Tests); UI: Phase6UITests 3/3 (widget
+  links, the submit-sighting shortcut, the widget added from the Home Screen
+  gallery showing live data).
+
+## Before Phase 6: UI refinements and moderator-only traffic cameras (Oct 22, 2026)
+
+Uncommitted, on branch `claude/pre-phase6-refinements`. Not deployed.
+
+- No navigation titles on the main tabs (Cars, Zones, Sightings, Community);
+  page headings, Home's logo and the Account button stay.
+- Zones: the map runs full screen (under the status bar, a see-through bar
+  holding only the Account button, and the tab bar), with a soft scrim for
+  the status bar. Top left: Austin / Dallas on glass. Top right: a circular
+  Liquid Glass Zone details button (its bottom edge level with the
+  selector's) and a circular Search button below it; Search opens the place
+  field beside it (the bottom controls step aside meanwhile). The zone
+  framing adds the safe area so the zone sits below the controls.
+- Zone outlines: 2.5 pt -> 1.25 pt (Zones, Replay), 1 pt (Home minimap), a
+  softer glow; colours and geometry unchanged (ZoneRenderer / ZonePolygon).
+- Tab bar: `tabBarMinimizeBehavior(.never)` (was `.onScrollDown`).
+- Traffic Camera (optional) on Submit a sighting: moderators only, website
+  and app. The client shows it only after GET /api/moderation/access says so
+  (any error: hidden); the Worker attaches a camera only for users.role =
+  'moderator' and otherwise stores the sighting without it
+  (`camera_ignored: true`). Searchable by name or number, filtered by City.
+  No schema change, no new endpoint.
+- Tests: unit 89/89; focused UI 10/10 (+ the Zones layout test rerun after a
+  fix); website/Worker 5,592 checks, the same 8 known failures.
+
 ## Phase 5.1 production-readiness review (Oct 21, 2026)
 
 Nothing deployed, committed or applied. Details and the deployment runbook:
@@ -564,14 +702,17 @@ Status: ✅ native · 🌐 website fallback in the app · ⏳ not started
 | Streaks, Leaderboard, Progress (XP, levels, ranks, missions) | `/api/streaks/*`, `/api/community/*`, `/api/xp/*` | ✅ | 4 |
 | Public rider profiles, Find riders | rider.html · `/api/riders/:handle`, `/api/rider-search` | ✅ | 4 |
 | Submit a sighting (photo, city, place, camera, plate), My sightings | drawer on every page · `/api/vehicle-sightings/photo`, `/api/places`, `/api/submissions` | ✅ | 5 |
-| News | news.html · `/api/news` | ⏳ | 5 |
-| Simulation: Fleet ROI, Fleet ETA, fare reports | simulation.html · `/api/fleet-eta`, `/api/fare-reports` | ⏳ | 5 |
-| Texas DMV roster | dmv.html · `/api/dmv-registrations` | ⏳ | 5 |
-| Rider data (rides, sync), Link Gmail | rider-data.html, link-gmail.html · `/api/trips`, `/api/receipt-ingestion/*`, `/api/rides/*` | 🌐 (Account link) | later |
+| News | news.html · `/api/news` | ✅ | 7 |
+| Simulation: Fleet ROI, Fleet ETA, fare reports | simulation.html · `/api/fleet-eta`, `/api/fare-reports`, `/api/registry/stats` | ✅ | 7 |
+| Texas DMV roster | dmv.html · `/api/dmv-registrations/vins` | ✅ | 7 |
+| Rider data (rides, remove a ride), Link Gmail (forwarding setup, stop sync) | rider-data.html, link-gmail.html · `/api/profile`, `/api/trips*`, `/api/receipt-ingestion/*`, `/api/rides/sync-status` | ✅ | 7 |
 | Profile settings, avatar, privacy switch, account deletion | profile.html · `/api/profile*`, `/api/account` | ✅ | 5 |
-| Tesla account link | `/oauth/tesla/*` | ⏳ | 5 |
+| Tesla account link (moderators, as on the website) | `/oauth/tesla/link`, `/oauth/tesla/start`, `/api/me`, `/api/tesla/disconnect` | ✅ status, link via Tesla's page, unlink (not tested end to end with a Tesla account) | 7 |
 | Moderation: sighting review, approved images and Zones map, Social reports, pins, announcement | moderation.html · `/api/moderation/vehicle-sightings*`, `/api/moderation/social/*` | ✅ | 5 |
 | Moderation: Registry Vehicles, News, Gmail Link, Import Receipt | moderation.html, moderation/import-receipt.html · `/api/moderation/robotaxi-vehicles*`, `…/news*`, `…/forwarding-*`, `…/riders`, `…/receipt-import` | ✅ | 5.1 |
-| Moderation: fare reports | simulation.html's moderator view · `/api/moderation/fare-reports*` (not on moderation.html) | ⏳ with Simulation | later |
+| Moderation: fare reports | `/api/moderation/fare-reports*` only: no website page uses it | — (nothing to match yet) | — |
 | Privacy policy | privacy.html | 🌐 (legal document, shown as published) | — |
-| Siri / App Intents, widgets, Live Activities, push, Apple Intelligence | — | ⏳ | 6 |
+| Siri / App Intents / Shortcuts / Spotlight (fleet stats, open Zones, submit a sighting, open a Cybercab) | `/api/registry/stats`, `/api/daily`, `/api/robotaxi-vehicles*` | ✅ | 6 |
+| Widgets: Cybercab Fleet, Cybercab Daily (Home Screen and Lock Screen) | `/api/registry/stats`, `/api/daily` | ✅ | 6 |
+| Apple Intelligence: Cybercabs as indexed App Entities (Siri / Spotlight find a plate) | `/api/robotaxi-vehicles*` | ✅ | 6 |
+| Live Activities, push notifications | needs APNs (paid account) + a Worker sender | ⛔ blocked: owner decision | 6 |

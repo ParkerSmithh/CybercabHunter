@@ -1,0 +1,32 @@
+{
+  "forwarding": {
+    "address_issued": true,
+    "setup_completed_at": null,
+    "address": "u_c5b2a5417a864e199df8c307e302f6f1@receipts.cch-test.invalid",
+    "local_part": "u_c5b2a5417a864e199df8c307e302f6f1",
+    "domain_configured": true,
+    "confirmation_code": "482915734",
+    "confirmation_link": null,
+    "confirmation_requested_by": null,
+    "confirmation_code_received_at": "2026-10-22 18:01:35",
+    "receiving": false,
+    "last_received_at": null
+  },
+  "receipt_sync": {
+    "last_run": null,
+    "last_ride_received_at": null,
+    "totals": {
+      "processed": 0,
+      "added": 0,
+      "updated": 0,
+      "duplicates": 0,
+      "needs_review": 0,
+      "rejected": 0,
+      "errors": 0
+    },
+    "not_added_unreadable": 0,
+    "rides_from_email": 0,
+    "rides_from_import": 0,
+    "under_review": 0
+  }
+}

@@ -9,6 +9,9 @@ enum AppConfig {
     /// sign-in (worker/google-auth.js APP_CALLBACK). Only the system sign-in
     /// sheet that started the flow receives it; the app does not register it.
     static let oauthCallbackScheme = "cybercabhunter"
+    /// Where the website starts Tesla linking (js/main.js TESLA_WORKER_URL):
+    /// the Worker's own host, whose callback is the one registered with Tesla.
+    static let teslaOAuthOrigin = DebugLaunch.apiBase ?? URL(string: "https://cybercabhunter.contactjoeclos.workers.dev")!
 
     /// A page of the website (the fallback for screens not yet native).
     static func webURL(_ path: String) -> URL {

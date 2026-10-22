@@ -151,6 +151,11 @@ await env.TESLA_SESSIONS.put('news:last_run', JSON.stringify({ at: new Date(now 
 d1.exec(`INSERT INTO receipt_ingestion_addresses (id, user_id, opaque_token, status, setup_completed_at, last_received_at, forwarding_code_received_at) VALUES
   ('addr-1', 'carol', 'tok-1', 'active', '${sqlTime(now - 3 * DAY)}', '${sqlTime(now - 2 * HOUR)}', '${sqlTime(now - 3 * DAY)}'),
   ('addr-2', 'dave', 'tok-2', 'active', NULL, NULL, NULL)`);
+// Phase 7 Receipt sync: alice's address with Gmail's confirmation code waiting
+// (the test domain is not a real mail domain; nothing is ever sent to it).
+env.RECEIPT_DOMAIN = 'receipts.cch-test.invalid';
+d1.exec(`INSERT OR IGNORE INTO receipt_ingestion_addresses (id, user_id, opaque_token, status) VALUES ('addr-3', 'alice', 'tok-alice', 'active')`);
+d1.exec(`UPDATE receipt_ingestion_addresses SET forwarding_code = '482915734', forwarding_code_received_at = '${sqlTime(now - 5 * 60e3)}' WHERE user_id = 'alice'`);
 d1.exec(`INSERT INTO receipt_ingestions (id, user_id, received_at, status) VALUES
   ('ing-1', 'alice', '${sqlTime(now - 2 * HOUR)}', 'accepted'),
   ('ing-2', 'alice', '${sqlTime(now - DAY - 2 * HOUR)}', 'duplicate'),
@@ -163,6 +168,11 @@ if (out) {
   fs.mkdirSync(out, { recursive: true });
   const save = (name, r) => fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify(r.json, null, 2) + '\n');
   const saveStatus = (name, r) => fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ status: r.status, body: r.json }, null, 2) + '\n');
+  // Phase 7: the rider's own Rider data and Receipt sync answers.
+  save('my-rider-data', await api('GET', '/api/profile', { session: 's-alice' }));
+  save('my-trips', await api('GET', '/api/trips?page=1&page_size=10', { session: 's-alice' }));
+  save('my-sync-status', await api('GET', '/api/rides/sync-status', { session: 's-alice' }));
+  save('my-receipt-address', await api('GET', '/api/receipt-ingestion/address', { session: 's-alice' }));
   const latest1 = await api('GET', '/api/social/feed?filter=latest&limit=10', { session: 's-alice' });
   save('social-feed-latest', latest1);
   save('social-feed-latest-page2', await api('GET', `/api/social/feed?filter=latest&limit=10&cursor=${encodeURIComponent(latest1.json.next_cursor)}`, { session: 's-alice' }));

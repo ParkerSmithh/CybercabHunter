@@ -11,6 +11,7 @@ struct SubmitSightingView: View {
     @State private var model = SubmitSightingModel()
     @State private var picked: PhotosPickerItem?
     @State private var signingIn = false
+    @State private var pickingCamera = false
     @FocusState private var locationFocused: Bool
 
     var body: some View {
@@ -34,6 +35,7 @@ struct SubmitSightingView: View {
                 }
             }
             .sheet(isPresented: $signingIn) { AccountView() }
+            .sheet(isPresented: $pickingCamera) { SightingCameraPicker(model: model) }
             .onChange(of: session.user?.id) { if session.user != nil { signingIn = false } }
         }
         .interactiveDismissDisabled(model.sending || model.photo != nil)
@@ -81,24 +83,7 @@ struct SubmitSightingView: View {
                     }
                     .inputBox()
                 }
-                field("Traffic Camera", optional: true,
-                      help: model.cameraCity == "dallas" ? "Only if this photo is a TxDOT (Dallas-area) traffic-camera capture. Once approved, it appears on the Zones map at that camera."
-                                                         : "Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.") {
-                    Menu {
-                        Picker("Traffic camera", selection: $model.cameraId) {
-                            Text("Not a traffic camera").tag("")
-                            ForEach(model.cityCameras) { Text("\($0.name) (#\($0.cameraId))").tag($0.cameraId) }
-                        }
-                    } label: {
-                        HStack {
-                            Text(model.cityCameras.first { $0.cameraId == model.cameraId }.map { "\($0.name) (#\($0.cameraId))" } ?? "Not a traffic camera")
-                                .foregroundStyle(model.cameraId.isEmpty ? Color.chCaption : Color.chInk).lineLimit(1)
-                            Spacer()
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)).foregroundStyle(Color.chFog)
-                        }
-                        .inputBox()
-                    }
-                }
+                if model.isModerator { cameraField }
                 field("Description", optional: true) {
                     TextField("What did you see?", text: $model.notes, axis: .vertical)
                         .lineLimit(3...6).inputBox()
@@ -167,6 +152,39 @@ struct SubmitSightingView: View {
             if let e = model.photoError { Text(e).font(.inter(12.5, .semibold)).foregroundStyle(Color(hex: 0xF08A84)).accessibilityIdentifier("sightingPhotoError") }
         }
         .id("photoField")
+    }
+
+    /// Traffic Camera (optional): moderators only. Riders never see it (not
+    /// disabled, not mentioned, no space): the form is exactly as before.
+    private var cameraField: some View {
+        field("Traffic Camera", optional: true,
+              help: model.cameraCity == "dallas" ? "Only if this photo is a TxDOT (Dallas-area) traffic-camera capture. Once approved, it appears on the Zones map at that camera."
+                                                 : "Only if this photo is a City of Austin traffic-camera capture. Once approved, it appears on the Zones map at that camera.") {
+            HStack(spacing: 8) {
+                Button { pickingCamera = true } label: {
+                    HStack {
+                        Image(systemName: "web.camera").foregroundStyle(model.cameraId.isEmpty ? Color.chCaption : Color.brandGold)
+                        Text(model.selectedCamera.map { "\($0.name) (#\($0.cameraId))" } ?? "Not a traffic camera")
+                            .foregroundStyle(model.cameraId.isEmpty ? Color.chCaption : Color.chInk).lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.chFog)
+                    }
+                    .inputBox()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Traffic camera: \(model.selectedCamera?.name ?? "none")")
+                .accessibilityIdentifier("sightingCamera")
+                if !model.cameraId.isEmpty {
+                    Button { model.cameraId = "" } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 20)).foregroundStyle(Color.chFog) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear the traffic camera")
+                        .accessibilityIdentifier("sightingCameraClear")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("sightingCameraField")
     }
 
     private var locationField: some View {
@@ -278,5 +296,71 @@ private extension View {
         self.padding(.horizontal, 12).frame(minHeight: 44)
             .background(Color.chBackground, in: .rect(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
+    }
+}
+
+/// The moderator's camera picker: the selected city's cameras from the camera
+/// registry, searchable by name or number, with loading, empty and error states.
+struct SightingCameraPicker: View {
+    let model: SubmitSightingModel
+    @Environment(SessionStore.self) private var session
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                switch model.cameraList {
+                case .idle, .loading:
+                    ProgressView("Loading cameras…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .failed:
+                    ContentUnavailableView {
+                        Label("Couldn't load the cameras", systemImage: "wifi.exclamationmark")
+                    } description: { Text("Check your connection and try again.") } actions: {
+                        Button("Try again") { Task { await model.loadCameras(api: session.api) } }
+                    }
+                    .accessibilityIdentifier("cameraPickerError")
+                case .loaded:
+                    let list = model.cityCameras(matching: query)
+                    List {
+                        Button { model.cameraId = ""; dismiss() } label: {
+                            row("Not a traffic camera", detail: nil, selected: model.cameraId.isEmpty)
+                        }
+                        .accessibilityIdentifier("cameraNone")
+                        ForEach(list) { c in
+                            Button { model.cameraId = c.cameraId; dismiss() } label: {
+                                row(c.name, detail: "#\(c.cameraId) · \(c.cityKey == "dallas" ? "Dallas (TxDOT)" : "Austin")", selected: c.cameraId == model.cameraId)
+                            }
+                            .accessibilityIdentifier("cameraOption")
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                    .overlay {
+                        if list.isEmpty && !query.isEmpty {
+                            ContentUnavailableView.search(text: query).accessibilityIdentifier("cameraPickerEmpty")
+                        }
+                    }
+                }
+            }
+            .background(Color.chSurface.ignoresSafeArea())
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name or camera number")
+            .navigationTitle(model.cameraCity == "dallas" ? "Dallas cameras" : "Austin cameras")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .task { if model.cameraList == .idle || model.cameraList == .failed { await model.loadCameras(api: session.api) } }
+        }
+        .tint(.brandGold)
+    }
+
+    private func row(_ title: String, detail: String?, selected: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.inter(14.5, .semibold)).foregroundStyle(Color.chInk)
+                if let detail { Text(detail).font(.inter(12)).foregroundStyle(Color.chCaption) }
+            }
+            Spacer()
+            if selected { Image(systemName: "checkmark").foregroundStyle(Color.brandGold) }
+        }
+        .contentShape(Rectangle())
     }
 }

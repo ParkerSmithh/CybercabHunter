@@ -2,10 +2,13 @@ import MapKit
 import UIKit
 
 /// The service zone as the website draws it (js/austin-map.js addServiceZone):
-/// a light gold wash, a wide soft glow, then a crisp gold outline.
+/// a light gold wash, a soft glow, then a crisp gold outline.
 final class ZonePolygon: MKPolygon {
     var cityKey = ""
     var dimmed = false   // Heatmap mode dims the wash (the outline stays)
+    /// The outline in points (constant on screen at any zoom): 1.25 on the
+    /// full maps (Zones, Replay), 1 on the small Home minimap.
+    var lineWeight: CGFloat = 1.25
 }
 
 final class ZoneRenderer: MKPolygonRenderer {
@@ -14,14 +17,14 @@ final class ZoneRenderer: MKPolygonRenderer {
         let gold = UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 1)
         fillColor = gold.withAlphaComponent(zone.dimmed ? 0.04 : 0.13)
         strokeColor = gold
-        lineWidth = 2.5
+        lineWidth = zone.lineWeight
         lineJoin = .round
     }
 
     override func strokePath(_ path: CGPath, in context: CGContext) {
         // The glow: a wide, blurred gold line under the outline.
         context.saveGState()
-        context.setShadow(offset: .zero, blur: 10 / contentScaleFactor, color: UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 0.6).cgColor)
+        context.setShadow(offset: .zero, blur: 6 / contentScaleFactor, color: UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 0.45).cgColor)
         super.strokePath(path, in: context)
         context.restoreGState()
         super.strokePath(path, in: context)

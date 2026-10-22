@@ -18,20 +18,28 @@ struct RootView: View {
                         screen(for: tab)
                             .toolbar { AccountToolbarItem(showingAccount: $showingAccount) }
                             // The website's header: a solid dark bar under the status bar,
-                            // so page content never shows behind it while scrolling.
+                            // so page content never shows behind it while scrolling. Zones
+                            // is the exception: its map runs full screen under a see-through
+                            // bar that holds only the Account button (no titles on main tabs).
                             .toolbarBackground(Color.chBackground, for: .navigationBar)
-                            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+                            .toolbarBackgroundVisibility(tab == .zones ? .hidden : .visible, for: .navigationBar)
                     }
                 }
             }
         }
-        .modifier(MinimizingTabBar())
+        .modifier(ExpandedTabBar())
         // Any screen can ask for sign-in (the account sheet holds Google sign-in).
         .environment(\.openSignIn, { [show = $showingAccount] in show.wrappedValue = true })
-        .task { if DebugLaunch.opensAccount { showingAccount = true } }
+        .task {
+            if DebugLaunch.opensAccount { showingAccount = true }
+            if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
+        }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
         // A cybercabhunter.com link handed to the app opens its native screen.
-        .onOpenURL { url in if let link = CommunityLink(url: url) { router.open(link) } }
+        .onOpenURL { url in
+            if router.open(widgetURL: url) { return }   // a Home Screen / Lock Screen widget
+            if let link = CommunityLink(url: url) { router.open(link) }
+        }
         // A saved name or photo: the signed-in account (the Account button) is fetched again.
         .onReceive(NotificationCenter.default.publisher(for: .profileChanged)) { _ in Task { await session.refreshAccount() } }
         .sheet(isPresented: $showingAccount) {
@@ -56,16 +64,19 @@ struct RootView: View {
     private func path(for tab: AppTab) -> Binding<NavigationPath> {
         if tab == .community { return Binding(get: { router.communityPath }, set: { router.communityPath = $0 }) }
         if tab == .sightings { return Binding(get: { router.sightingsPath }, set: { router.sightingsPath = $0 }) }
+        if tab == .registry { return Binding(get: { router.registryPath }, set: { router.registryPath = $0 }) }
         return Binding(get: { paths[tab] ?? NavigationPath() }, set: { paths[tab] = $0 })
     }
 }
 
 /// On iOS 26+, the Liquid Glass tab bar shrinks while scrolling down, as in
 /// Apple's apps. Earlier systems keep the standard bar.
-private struct MinimizingTabBar: ViewModifier {
+/// All five tabs stay visible: the Liquid Glass bar never collapses to one
+/// icon on scroll (iOS 26's minimize behaviour, set explicitly to never).
+private struct ExpandedTabBar: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.tabBarMinimizeBehavior(.onScrollDown)
+            content.tabBarMinimizeBehavior(.never)
         } else {
             content
         }
@@ -103,6 +114,8 @@ enum DebugLaunch {
         return AppTab(rawValue: args[i + 1])
     }
     static var opensAccount: Bool { ProcessInfo.processInfo.arguments.contains("-account") }
+    /// `-requestSubmitSighting`: what the Siri / Shortcuts "Submit a sighting" intent does (UI tests can't drive Siri).
+    static var requestsSubmitSighting: Bool { ProcessInfo.processInfo.arguments.contains("-requestSubmitSighting") }
     /// `-apiBase http://127.0.0.1:8799`: the UI tests' local Worker
     /// (scripts/community-test-server.mjs), never production data.
     static var apiBase: URL? { value("-apiBase").flatMap(URL.init(string:)) }
@@ -118,6 +131,7 @@ enum DebugLaunch {
     #else
     static let initialTab: AppTab? = nil
     static let opensAccount = false
+    static let requestsSubmitSighting = false
     static let apiBase: URL? = nil
     static let session: String? = nil
     static let usesTestSession = false

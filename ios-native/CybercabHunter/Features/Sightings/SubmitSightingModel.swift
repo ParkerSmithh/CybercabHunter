@@ -48,6 +48,12 @@ final class SubmitSightingModel {
 
     // The rest (all optional)
     var date: Date?
+    /// Traffic camera: MODERATORS ONLY (the server ignores a camera from anyone
+    /// else, worker/sightings.js). Unknown until /api/moderation/access answers;
+    /// any doubt keeps the field hidden.
+    private(set) var isModerator = false
+    enum CameraList: Equatable { case idle, loading, loaded, failed }
+    private(set) var cameraList: CameraList = .idle
     private(set) var cameras: [TrafficCamera] = []
     var cameraId = ""
     var notes = "" { didSet { if notes.count > Self.maxNotes { notes = String(notes.prefix(Self.maxNotes)) } } }
@@ -69,8 +75,30 @@ final class SubmitSightingModel {
 
     func load(api: APIClient) async {
         if areas.isEmpty, let r: ServiceAreasResponse = try? await api.get("/api/service-areas") { areas = r.areas }
-        if cameras.isEmpty, let list: [TrafficCamera] = try? await api.get("/data/traffic-cameras.json") { cameras = list }
+        let access: ModerationAccess? = try? await api.get("/api/moderation/access", authenticated: true, fresh: true)
+        isModerator = access?.moderator == true
+        if !isModerator { cameraId = "" }
+        if isModerator && cameras.isEmpty { await loadCameras(api: api) }
     }
+
+    /// The camera registry (the same list the server checks against).
+    func loadCameras(api: APIClient) async {
+        guard isModerator, cameraList != .loading else { return }
+        cameraList = .loading
+        if let list: [TrafficCamera] = try? await api.get("/data/traffic-cameras.json") {
+            cameras = list
+            cameraList = .loaded
+        } else {
+            cameraList = .failed
+        }
+    }
+
+    /// The selected city's cameras matching a search (name or number), sorted.
+    func cityCameras(matching query: String) -> [TrafficCamera] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        return cityCameras.filter { q.isEmpty || $0.name.lowercased().contains(q) || $0.cameraId.lowercased().contains(q) }
+    }
+    var selectedCamera: TrafficCamera? { cityCameras.first { $0.cameraId == cameraId } }
 
     private func cityChanged() {
         // A place belongs to one city: a new city clears it.
@@ -157,7 +185,7 @@ final class SubmitSightingModel {
             ("time_zone", timeZone.identifier),
             ("location_id", place?.id ?? ""),
             ("location_query", place == nil ? "" : placeQuery),
-            ("camera_id", cameraId)
+            ("camera_id", isModerator ? cameraId : "")
         ]
         for (k, v) in fields where !v.isEmpty { f.add(k, v) }
         return f
