@@ -12,6 +12,8 @@ final class AppRouter {
     /// The Community tab's navigation history, so notifications and the site's
     /// own links (a post, a rider, a vehicle) open native screens there.
     var communityPath = NavigationPath()
+    /// The Sightings tab's history (a sighting's plate opens its vehicle).
+    var sightingsPath = NavigationPath()
     /// The Community section to show (Home's links choose one).
     var communitySection: CommunitySection?
 

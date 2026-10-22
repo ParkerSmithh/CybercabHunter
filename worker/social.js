@@ -59,6 +59,7 @@ import { publicPerson } from './reviews.js';
 import { levelFor, rankFor } from './progression-levels.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 import { budgetedSummary, rowsRead } from './summary-cache.js';
+import { profileEpoch } from './profile-cache.js';
 
 export const MAX_POST_CHARS = 2000;
 export const MAX_COMMENT_CHARS = 1000;
@@ -276,7 +277,10 @@ export async function apiSocialFeed(request, env, ctx) {
   const filter = ['foryou', 'latest', 'photos', 'reviews'].includes(f) ? f : 'foryou';
   const sort = params.get('sort') === 'popular' ? 'popular' : 'new';
   const limit = Math.min(Math.max(Number(params.get('limit')) || FEED_DEFAULT, 1), FEED_MAX);
-  const key = new Request(`https://cybercabhunter.com/__edge/social-feed?filter=${filter}&sort=${sort}&limit=${limit}`, { method: 'GET' });
+  // The profile epoch (worker/profile-cache.js): a rename, new photo or privacy change replaces this copy everywhere.
+  const epoch = await profileEpoch(env);
+  if (epoch === null) return socialFeed(request, env);   // KV unreadable: fresh, never a shared copy
+  const key = new Request(`https://cybercabhunter.com/__edge/social-feed?filter=${filter}&sort=${sort}&limit=${limit}&pe=${epoch}`, { method: 'GET' });
   const toBrowser = r => new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
   const hit = await cache.match(key);
   if (hit) return toBrowser(hit);

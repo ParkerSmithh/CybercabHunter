@@ -28,25 +28,4 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         case .community: "person.2.fill"
         }
     }
-
-    /// The website page each tab opens until its native screen ships.
-    var webPath: String {
-        switch self {
-        case .home: "/"
-        case .zones: "/infrastructure"
-        case .registry: "/vehicles"
-        case .sightings: "/sightings"
-        case .community: "/community"
-        }
-    }
-
-    /// The migration phase that makes the tab native (ios-native/PLAN.md).
-    var nativePhase: Int {
-        switch self {
-        case .home, .registry: 2
-        case .zones: 3
-        case .sightings: 3
-        case .community: 4
-        }
-    }
 }

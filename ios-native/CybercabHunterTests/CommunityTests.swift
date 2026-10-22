@@ -11,10 +11,40 @@ import UniformTypeIdentifiers
 
 private struct Token: TokenProvider { let token: String?; func currentToken() -> String? { token } }
 
-/// Answers by "METHOD /path"; keeps the last request and its body.
-final class CommunityStub: URLProtocol, @unchecked Sendable {
-    nonisolated(unsafe) static var responses: [String: (Int, String)] = [:]
-    nonisolated(unsafe) static var requests: [(URLRequest, Data)] = []
+/// One test's own fake Worker: answers by "METHOD /path" and records each
+/// request with its body. Every StubServer has its own host, so tests running
+/// in parallel never share or overwrite each other's answers.
+final class StubServer: @unchecked Sendable {
+    let host = "s\(UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")).stub.test"
+    private let lock = NSLock()
+    private var _responses: [String: (Int, String)] = [:]
+    private var _requests: [(URLRequest, Data)] = []
+
+    init() { StubProtocol.register(self) }
+
+    var responses: [String: (Int, String)] {
+        get { lock.withLock { _responses } }
+        set { lock.withLock { _responses = newValue } }
+    }
+    var requests: [(URLRequest, Data)] {
+        get { lock.withLock { _requests } }
+        set { lock.withLock { _requests = newValue } }
+    }
+    fileprivate func record(_ r: URLRequest, _ body: Data) { lock.withLock { _requests.append((r, body)) } }
+
+    func api(token: String? = "s-test") -> APIClient {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        return APIClient(baseURL: URL(string: "https://\(host)")!, session: URLSession(configuration: config), tokens: Token(token: token))
+    }
+}
+
+/// Routes each request to the StubServer named by its host.
+final class StubProtocol: URLProtocol, @unchecked Sendable {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var servers: [String: StubServer] = [:]
+    static func register(_ s: StubServer) { lock.withLock { servers[s.host] = s } }
+    private static func server(_ host: String?) -> StubServer? { lock.withLock { host.flatMap { servers[$0] } } }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -26,21 +56,20 @@ final class CommunityStub: URLProtocol, @unchecked Sendable {
             while stream.hasBytesAvailable { let n = stream.read(&buffer, maxLength: buffer.count); if n <= 0 { break }; body.append(buffer, count: n) }
             stream.close()
         }
-        Self.requests.append((request, body))
+        let stub = Self.server(request.url?.host())
+        stub?.record(request, body)
         let key = "\(request.httpMethod ?? "GET") \(request.url?.path ?? "")"
-        let (status, text) = Self.responses[key] ?? (404, #"{"success":false,"error":"not_found"}"#)
+        let (status, text) = stub?.responses[key] ?? (404, #"{"success":false,"error":"not_found"}"#)
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(text.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+}
 
-    static func api(token: String? = "s-test") -> APIClient {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [CommunityStub.self]
-        return APIClient(session: URLSession(configuration: config), tokens: Token(token: token))
-    }
+/// The saved fixtures (real Worker responses) as stub answers.
+enum CommunityStub {
     static func fixture(_ name: String) -> String { String(decoding: (try? TestFixtures.data(name)) ?? Data(), as: UTF8.self) }
     /// An error fixture ({ status, body }) as a stub answer.
     static func errorFixture(_ name: String) -> (Int, String) {
@@ -96,7 +125,9 @@ struct SocialDecodingTests {
     @Test func commentsAndOneLevelOfReplies() throws {
         let page: SocialCommentsPage = try TestFixtures.decode("social-comments")
         #expect(page.comments.count == 2 && page.nextCursor == nil)
-        let first = page.comments[0]
+        try #require(page.comments.count == 2)
+        // Comments made in the same second have no fixed order: find it by its text.
+        let first = try #require(page.comments.first { $0.body == "How long was the ride?" })
         #expect(first.parentId == nil && first.body == "How long was the ride?" && first.mine && first.canEdit)
         let reply = try #require(first.replies?.first)
         #expect(reply.parentId == first.id && reply.replies == nil && !reply.canEdit && !reply.canDelete)
@@ -208,7 +239,15 @@ struct CommunityDecodingTests {
         #expect(me.rank.key == "bronze" && me.rank.next?.name == "Silver Spotter" && me.rank.next?.needed == 260)
         #expect(me.ranks.map(\.name) == ["Bronze Spotter", "Silver Spotter", "Gold Spotter", "Platinum Spotter", "Diamond Spotter"])
         #expect(me.ranks.map(\.xp) == [0, 1000, 3000, 8000, 20000], "the server's thresholds")
-        #expect(me.missions.daily.first?.state == "completed" && me.missions.weekly.first?.state == "in_progress")
+        // Each mission's state is the server's and agrees with its own progress
+        // (which state applies depends on the day the fixtures were made).
+        for m in me.missions.daily + me.missions.weekly {
+            #expect(m.progress <= m.required)
+            if m.progress >= m.required { #expect(["completed", "completing"].contains(m.state), "\(m.id)") }
+            else if m.progress > 0 { #expect(["in_progress"].contains(m.state), "\(m.id)") }
+            else { #expect(["not_started", "awaiting_verification"].contains(m.state), "\(m.id)") }
+        }
+        #expect(me.missions.daily.map(\.id) == ["daily_contribution"] && me.missions.weekly.map(\.id) == ["weekly_spotter", "weekly_contributor"])
         #expect(me.recent.allSatisfy { !$0.reason.lowercased().contains("post") && !$0.reason.lowercased().contains("like") }, "Social actions earn no XP")
         let rules: XPRules = try TestFixtures.decode("xp-rules")
         #expect(rules.rewards.map(\.id) == ["verified_sighting", "first_discovery", "daily_mission", "weekly_mission"])
@@ -231,82 +270,87 @@ struct CommunityDecodingTests {
 @MainActor
 struct SocialBehaviourTests {
     @Test func likeIsOptimisticAndRollsBackOnRateLimit() async throws {
+        let stub = StubServer()
         let posts = try TestFixtures.decode("social-feed-latest", as: SocialFeedPage.self).posts
         let target = try #require(posts.first { !$0.liked })
-        CommunityStub.responses = [
+        stub.responses = [
             "GET /api/social/feed": (200, CommunityStub.fixture("social-feed-latest")),
             "PUT /api/social/posts/\(target.id)/like": CommunityStub.errorFixture("error-rate-limited")
         ]
-        let model = SocialFeedModel(api: CommunityStub.api())
+        let model = SocialFeedModel(api: stub.api())
         await model.select(.latest)
         #expect(model.feed.count == 11)
         await model.toggleLike(target.id)
         #expect(model.posts[target.id]?.liked == false && model.posts[target.id]?.likeCount == target.likeCount, "rolled back")
         #expect(model.toast?.text == "You're going a bit fast. Try again in a few minutes." && model.toast?.isError == true)
 
-        CommunityStub.responses["PUT /api/social/posts/\(target.id)/like"] = (200, #"{"success":true,"liked":true,"like_count":\#(target.likeCount + 1)}"#)
+        stub.responses["PUT /api/social/posts/\(target.id)/like"] = (200, #"{"success":true,"liked":true,"like_count":\#(target.likeCount + 1)}"#)
         await model.toggleLike(target.id)
         #expect(model.posts[target.id]?.liked == true && model.posts[target.id]?.likeCount == target.likeCount + 1)
         #expect(model.feedIDs.count == 11, "a like changes one post, never reloads the feed")
     }
 
     @Test func pagingAppendsWithoutDuplicates() async throws {
+        let stub = StubServer()
         let page1 = CommunityStub.fixture("social-feed-latest")
-        CommunityStub.responses = ["GET /api/social/feed": (200, page1)]
-        let model = SocialFeedModel(api: CommunityStub.api())
+        stub.responses = ["GET /api/social/feed": (200, page1)]
+        let model = SocialFeedModel(api: stub.api())
         await model.select(.latest)
-        CommunityStub.requests = []
-        CommunityStub.responses["GET /api/social/feed"] = (200, CommunityStub.fixture("social-feed-latest-page2"))
+        stub.requests = []
+        stub.responses["GET /api/social/feed"] = (200, CommunityStub.fixture("social-feed-latest-page2"))
         await model.loadMore()
-        let query = CommunityStub.requests.last?.0.url?.query() ?? ""
+        let query = stub.requests.last?.0.url?.query() ?? ""
         #expect(query.contains("cursor=") && query.contains("filter=latest"))
         #expect(model.feedIDs.count == Set(model.feedIDs).count && model.feedIDs.count == 14)
         #expect(model.nextCursor == nil)
     }
 
     @Test func savedNeedsSignInAndSortIsSent() async throws {
-        CommunityStub.responses = ["GET /api/social/feed": CommunityStub.errorFixture("social-feed-saved-signed-out")]
-        let model = SocialFeedModel(api: CommunityStub.api(token: nil))
+        let stub = StubServer()
+        stub.responses = ["GET /api/social/feed": CommunityStub.errorFixture("social-feed-saved-signed-out")]
+        let model = SocialFeedModel(api: stub.api(token: nil))
         await model.select(.saved)
         #expect(model.phase == .signInRequired)
-        CommunityStub.responses = ["GET /api/social/feed": (200, CommunityStub.fixture("social-feed-latest"))]
-        CommunityStub.requests = []
+        stub.responses = ["GET /api/social/feed": (200, CommunityStub.fixture("social-feed-latest"))]
+        stub.requests = []
         await model.select(.popular)
-        let q = CommunityStub.requests.last?.0.url?.query() ?? ""
+        let q = stub.requests.last?.0.url?.query() ?? ""
         #expect(q.contains("sort=popular") && q.contains("filter=saved"))
         await model.select(.foryou)
-        let lastQuery = CommunityStub.requests.last?.0.url?.query() ?? ""
+        let lastQuery = stub.requests.last?.0.url?.query() ?? ""
         #expect(lastQuery == "filter=foryou&limit=10", "For You is an order in itself (no sort)")
         await model.select(.new)
     }
 
     @Test func errorsUseTheWebsitesWords() async throws {
-        let api = CommunityStub.api()
+        let stub = StubServer()
+        let api = stub.api()
         for (fixture, message) in [("error-duplicate-post", "You've already posted that."),
                                    ("error-rate-limited", "You're going a bit fast. Try again in a few minutes."),
                                    ("error-already-reported", "You've already reported this. Moderators will take a look."),
                                    ("error-cannot-report-own", "You can't report your own post."),
                                    ("error-invalid-rating", "Choose a rating from 1 to 5 stars."),
                                    ("error-forbidden-edit", "You can't change that.")] {
-            CommunityStub.responses = ["POST /x": CommunityStub.errorFixture(fixture)]
+            stub.responses = ["POST /x": CommunityStub.errorFixture(fixture)]
             do { let _: SocialOK = try await api.send("/x", method: "POST"); Issue.record("\(fixture) should fail") }
             catch { #expect(SocialText.message(for: error) == message, "\(fixture)") }
         }
-        CommunityStub.responses = ["POST /x": CommunityStub.errorFixture("error-signed-out-post")]
+        stub.responses = ["POST /x": CommunityStub.errorFixture("error-signed-out-post")]
         await #expect(throws: APIError.unauthorized) { let _: SocialOK = try await api.send("/x", method: "POST") }
     }
 
     @Test func reportsSendTheReasonAndDetails() async throws {
-        CommunityStub.responses = ["POST /api/social/reports": CommunityStub.errorFixture("social-report-created")]
-        CommunityStub.requests = []
-        let model = SocialFeedModel(api: CommunityStub.api())
+        let stub = StubServer()
+        stub.responses = ["POST /api/social/reports": CommunityStub.errorFixture("social-report-created")]
+        stub.requests = []
+        let model = SocialFeedModel(api: stub.api())
         let failure = await model.report("comment", id: "abc", reason: .offTopic, details: "  not about cars  ")
         #expect(failure == nil)
-        let body = try #require(CommunityStub.requests.last?.1)
+        let body = try #require(stub.requests.last?.1)
         let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: String])
         #expect(json == ["target_type": "comment", "target_id": "abc", "reason": "off_topic", "details": "not about cars"])
         #expect(ReportReason.allCases.map(\.rawValue) == ["spam", "harassment", "off_topic", "misleading", "privacy", "other"])
-        CommunityStub.responses = ["POST /api/social/reports": CommunityStub.errorFixture("error-already-reported")]
+        stub.responses = ["POST /api/social/reports": CommunityStub.errorFixture("error-already-reported")]
         #expect(await model.report("post", id: "abc", reason: .spam, details: "") == "You've already reported this. Moderators will take a look.")
     }
 }

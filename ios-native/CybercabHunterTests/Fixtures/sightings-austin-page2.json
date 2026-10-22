@@ -1,0 +1,18 @@
+{
+  "seen": 2,
+  "sightings_all_time": 14,
+  "order": "desc",
+  "sightings": [
+    {
+      "id": "b77f6bf4cdb1b1c597ad6f81089d90f9",
+      "image_url": "/api/sightings/b77f6bf4cdb1b1c597ad6f81089d90f9/photo",
+      "city": "Austin",
+      "location": null,
+      "plate": "XVF3210",
+      "cybercab": true,
+      "spotted_at": "2026-10-21T17:42:51Z",
+      "time_zone": "America/Chicago"
+    }
+  ],
+  "next_cursor": null
+}

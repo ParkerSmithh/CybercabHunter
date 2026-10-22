@@ -1,0 +1,8 @@
+{
+  "status": 409,
+  "body": {
+    "success": false,
+    "error": "last_moderator",
+    "message": "You are the last moderator — transfer the role before deleting your account."
+  }
+}

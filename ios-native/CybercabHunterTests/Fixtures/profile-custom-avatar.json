@@ -1,0 +1,47 @@
+{
+  "user": {
+    "display_name": "Gina G",
+    "handle": "gina_g",
+    "bio": null,
+    "profile_visibility": "public",
+    "leaderboard_opt_in": true,
+    "avatar_url": "/api/avatars/fedcba9876543210fedcba9876543210",
+    "avatar_source": "custom",
+    "has_google_avatar": true,
+    "joined_at": "2026-10-22 01:17:30"
+  },
+  "contributions": 0,
+  "rideSummary": {
+    "trip_count": 0,
+    "first_ride_date": null,
+    "last_ride_date": null,
+    "total_distance": null,
+    "avg_distance": null,
+    "rides_with_distance": 0,
+    "longest_ride_distance": null,
+    "unique_vehicles": 0,
+    "total_duration_minutes": null,
+    "avg_duration_minutes": null,
+    "rides_with_duration": 0,
+    "rides_with_derived_duration": null
+  },
+  "cities": [],
+  "providers": [],
+  "discoveredVehicles": [],
+  "spending": [],
+  "firstVehicleModel": null,
+  "monthlyActivity": [],
+  "coverage": {
+    "rides": 0,
+    "withFare": 0,
+    "withDistance": 0,
+    "withDuration": 0,
+    "withCity": 0,
+    "withDate": 0,
+    "withVehicle": 0
+  },
+  "vehicleStats": [],
+  "modelBreakdown": [],
+  "unknownModelVehicles": 0,
+  "underReview": 0
+}

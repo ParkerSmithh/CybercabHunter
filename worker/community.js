@@ -1,7 +1,7 @@
 // Community page: leaderboards and public rider profiles.
 //
 //   GET /api/community/leaderboard?board=overall|discovered|miles|rides|vehicles
-//     public, edge-cached (5 min). Default board: overall.
+//     public, edge-cached (5 min, per profile epoch: worker/profile-cache.js). Default board: overall.
 //     -> { board, label, help, unit, boards: [{ id, label }],
 //          entries: [{ rank, score, count, name, handle, avatar_url, profile,
 //                      discovered, rides, miles, unique_vehicles, cities }],
@@ -9,7 +9,7 @@
 //     (totals: every credited discoverer, counts only — the "Spotters" tile)
 //   GET /api/rider-search?q=bo                        public, rate limited, never cached
 //     -> { q, results: [{ name, handle, avatar_url }] }   (at most 8; see apiSearchRiders)
-//   GET /api/riders/:handle                           public, edge-cached
+//   GET /api/riders/:handle                           public, edge-cached (60 s, per profile epoch)
 //     -> { rider: { name, handle, avatar_url, bio, joined }, discovered: { count, vehicles: [...] },
 //          rides: { count, vehicles, cities: [{ name, rides }] },
 //          reviews: { count, average, recent: [...] } }
@@ -44,6 +44,7 @@ import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
 import { levelFor, rankFor } from './progression-levels.js';
 import { budgetedSummary, patchSummary, markSummaryStale, rowsRead } from './summary-cache.js';
+import { profileCached, bumpProfileEpoch } from './profile-cache.js';
 
 const CACHE_SECONDS = 60;               // public profiles
 const BOARD_CACHE_SECONDS = 300;         // leaderboards: read-heavy, 5 min
@@ -252,21 +253,6 @@ export function rankBoard(metrics, board, limit = TOP_N) {
   return out;
 }
 
-async function cached(request, ctx, build) {
-  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
-  if (cache) {
-    const hit = await cache.match(cacheKey);
-    if (hit) return hit;
-  }
-  const response = await build();
-  if (cache && response.status === 200) {
-    const stored = cache.put(cacheKey, response.clone()).catch(() => {});
-    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
-  }
-  return response;
-}
-
 // The figures behind every board (riderMetrics, with the discovery totals) are the
 // most expensive read on the site (a full aggregation over riders, rides and
 // discoveries), so they are computed into ONE community_summary row and every
@@ -290,7 +276,11 @@ export async function leaderboardData(env, { now = Date.now(), force = false } =
 
 // A rider's public details changed: update the stored figures at once.
 // opt_in false or deleted -> they leave every board now; a new name, username
-// or photo shows now. (Turning the switch ON shows them at the next refresh.)
+// or photo shows now. Turning the switch back ON (`reappeared`) has the next
+// view recompute the figures (they were removed), so they show at once; this
+// is the only case that triggers a recompute, and it is rare.
+// Every edge copy that shows riders (boards, streak boards, profiles, the
+// signed-out feed) is then replaced on its next request (worker/profile-cache.js).
 export async function leaderboardRiderChanged(env, userId, change = {}) {
   const apply = v => {
     if (!v || !Array.isArray(v.metrics)) return undefined;
@@ -313,15 +303,16 @@ export async function leaderboardRiderChanged(env, userId, change = {}) {
     if (!(await patchSummary(env, LEADERBOARD_KEY, apply))) await patchSummary(env, LEADERBOARD_KEY, apply);
     // A deleted account also moves discovery credit to the next rider: have
     // the next view recompute (rare, so the cost is negligible).
-    if (change.deleted) await markSummaryStale(env, LEADERBOARD_KEY);
+    if (change.deleted || change.reappeared) await markSummaryStale(env, LEADERBOARD_KEY);
   } catch (e) { /* no stored row yet: the next computation reads the new settings */ }
+  await bumpProfileEpoch(env);
 }
 
 export async function apiCommunityLeaderboard(request, env, ctx) {
   const boardId = new URL(request.url).searchParams.get('board') || DEFAULT_BOARD;
   const board = Object.prototype.hasOwnProperty.call(BOARDS, boardId) ? BOARDS[boardId] : null;
   if (!board) return Response.json({ success: false, error: 'invalid_board' }, { status: 400 });
-  return cached(request, ctx, async () => {
+  return profileCached(env, ctx, { name: 'leaderboard', params: { board: boardId }, ttl: BOARD_CACHE_SECONDS }, async () => {
     const { metrics, totals } = await leaderboardData(env);
     return Response.json({
       board: boardId,
@@ -340,7 +331,7 @@ export async function apiGetRiderProfile(request, env, ctx, rawHandle) {
   let handle = '';
   try { handle = decodeURIComponent(rawHandle).trim().toLowerCase(); } catch (e) { return notFound(); }
   if (!HANDLE_RE.test(handle)) return notFound();
-  return cached(request, ctx, async () => {
+  return profileCached(env, ctx, { name: 'rider', params: { handle }, ttl: CACHE_SECONDS }, async () => {
     const sql = env.cybercabhunter_db;
     const user = await sql.prepare(`
       SELECT id, display_name, handle, avatar_url, bio, created_at FROM users

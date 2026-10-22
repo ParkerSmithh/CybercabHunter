@@ -167,7 +167,7 @@ final class SocialFeedModel {
     /// Top contributors: the top five of the Top Overall board (social.js loadTop).
     func loadTop() async {
         do {
-            let board: Leaderboard = try await api.get("/api/community/leaderboard")
+            let board: Leaderboard = try await api.get("/api/community/leaderboard", fresh: true)
             topContributors = Array(board.entries.prefix(5)); topFailed = false
         } catch is CancellationError {} catch { topFailed = topContributors == nil }
     }

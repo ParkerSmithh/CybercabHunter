@@ -5,6 +5,7 @@ import SwiftUI
 /// tab keeps its own history.
 struct RootView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(SessionStore.self) private var session
     @State private var showingAccount = false
     @State private var paths: [AppTab: NavigationPath] = [:]
 
@@ -31,6 +32,8 @@ struct RootView: View {
         .sensoryFeedback(.selection, trigger: router.selectedTab)
         // A cybercabhunter.com link handed to the app opens its native screen.
         .onOpenURL { url in if let link = CommunityLink(url: url) { router.open(link) } }
+        // A saved name or photo: the signed-in account (the Account button) is fetched again.
+        .onReceive(NotificationCenter.default.publisher(for: .profileChanged)) { _ in Task { await session.refreshAccount() } }
         .sheet(isPresented: $showingAccount) {
             AccountView()
                 .presentationDragIndicator(.visible)
@@ -43,8 +46,8 @@ struct RootView: View {
         case .home: HomeView()
         case .registry: RegistryView()
         case .zones: ZonesView()
+        case .sightings: SightingsView()
         case .community: CommunityView()
-        default: NotNativeYetView(tab: tab)
         }
     }
 
@@ -52,6 +55,7 @@ struct RootView: View {
     /// other tabs keep their own.
     private func path(for tab: AppTab) -> Binding<NavigationPath> {
         if tab == .community { return Binding(get: { router.communityPath }, set: { router.communityPath = $0 }) }
+        if tab == .sightings { return Binding(get: { router.sightingsPath }, set: { router.sightingsPath = $0 }) }
         return Binding(get: { paths[tab] ?? NavigationPath() }, set: { paths[tab] = $0 })
     }
 }
@@ -84,6 +88,7 @@ struct AccountToolbarItem: ToolbarContent {
                 }
             }
             .accessibilityLabel(session.user == nil ? "Sign in" : "Account")
+            .accessibilityIdentifier("accountButton")
         }
     }
 }

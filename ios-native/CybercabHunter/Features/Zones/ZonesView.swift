@@ -105,16 +105,7 @@ struct ZonesView: View {
         VStack(alignment: .trailing, spacing: 8) {
             if model.mode == .heat { heatPanel }
             HStack(spacing: 8) {
-                if model.mode == .normal {
-                    HStack(spacing: 10) {
-                        Label { Text("Charging").font(.inter(11, .medium)) } icon: { Circle().fill(Color.brandGold).frame(width: 9, height: 9) }
-                        Label { Text("Cybercabs").font(.inter(11, .medium)) } icon: { Image("CybercabOverhead").resizable().frame(width: 15, height: 15) }
-                    }
-                    .labelStyle(.titleAndIcon).foregroundStyle(Color.chMist)
-                    .padding(.horizontal, 10).frame(minHeight: 34)
-                    .background(.ultraThinMaterial, in: .capsule)
-                    .accessibilityElement(children: .combine).accessibilityLabel("Map key: gold dots are charging locations, Cybercab icons are camera sightings in the last 24 hours")
-                }
+                // The map key lives in Zone details only (as on the website).
                 Spacer(minLength: 0)
                 NavigationLink(value: ReplayRoute(city: model.city)) {
                     Label("Replay", systemImage: "play.fill").font(.inter(13, .bold))
@@ -298,6 +289,8 @@ struct ZoneDetailsSheet: View {
                     Label { Text("Cybercabs") } icon: { Image("CybercabOverhead").resizable().frame(width: 18, height: 18) }
                 }
                 .font(.inter(13)).foregroundStyle(Color.chMist)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("zoneDetailsLegend")
                 Rectangle().fill(Color.chLine).frame(height: 1)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {

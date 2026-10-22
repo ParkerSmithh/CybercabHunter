@@ -1,0 +1,12 @@
+{
+  "areas": [
+    {
+      "key": "austin",
+      "name": "Austin"
+    },
+    {
+      "key": "dallas",
+      "name": "Dallas"
+    }
+  ]
+}

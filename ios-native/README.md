@@ -22,18 +22,36 @@ xcodebuild -scheme CybercabHunter -destination 'platform=iOS Simulator,name=iPho
 The unit tests run offline from saved fixtures. The Home, Cars and Zones UI
 tests use the live backend, read only.
 
-### Community tests (Phase 4)
+### Community, Sightings, Account and Moderation tests (Phases 4–5.1)
 
-Production has no Social posts yet, and the Community tests write (a like, a
-comment, a post), so they never run against production. They run against the
-**real Worker code over an isolated in-memory database**
+These tests write: likes, comments and posts, submitted sightings, profile
+edits and privacy changes, moderator reviews (sightings, registry vehicles,
+News, receipt import), and the deletion of a throwaway account. So they never run against production. They run against the **real
+Worker code over an isolated in-memory database**
 (`scripts/community-test-server.mjs`, built on the website's own browser-test
-harness in `tests/e2e/harness.mjs`), seeded through the Worker's own API by
-test riders:
+harness in `tests/e2e/harness.mjs`), seeded through the Worker's own API.
+
+The test accounts:
+- alice, bob, dave: riders.
+- mod: the moderator.
+- carol: a private rider.
+- erin: a throwaway account, deleted by the fixtures.
+- frank: a rider with a Google photo (served only; the avatar checks).
+- Any other token (e.g. `s-expired`): an ended session.
 
 ```sh
-ios-native/scripts/test-community.sh          # starts the test Worker on 127.0.0.1:8799, runs CommunityUITests
+# Starts the test Worker on 127.0.0.1:8799 and runs CommunityUITests, SightingsAccountUITests and Phase51UITests.
+ios-native/scripts/test-community.sh
+# One simulator, no parallel clones (what the reported runs used):
+DESTINATION="id=<iPhone 18 Pro udid>" ios-native/scripts/test-community.sh -parallel-testing-enabled NO
+# Everything (unit + every UI test; Home/Cars/Zones read production):
+ONLY="CybercabHunterTests CybercabHunterUITests" ios-native/scripts/test-community.sh -parallel-testing-enabled NO
 ```
+
+Run one test session at a time on one booted simulator. Parallel-testing
+clones, or a freshly created simulator still doing its first-boot work,
+overloaded the Mac (load average about 200) and made Apple's own simulator
+processes (PosterBoard, Calendar) crash.
 
 The app reaches it only in Debug builds, through launch arguments
 (`-apiBase http://127.0.0.1:8799 -session s-alice`); a Release build has no
@@ -69,7 +87,7 @@ node ios-native/scripts/sync-web-data.mjs
    Management** → your Apple ID → **Trust**. Developer Mode must be on
    (**Settings › Privacy & Security › Developer Mode**).
 
-The app is called **Cybercab β** on the Home Screen while the migration runs.
+The app is called **Cybercab Hunter** on the Home Screen (Debug and Release).
 With a free Apple ID it must be reinstalled from Xcode every 7 days.
 
 ## Profiling on a ProMotion iPhone

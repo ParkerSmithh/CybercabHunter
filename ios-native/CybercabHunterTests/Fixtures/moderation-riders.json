@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "riders": [
+    {
+      "id": "alice",
+      "display_name": "Alice A",
+      "handle": "alice_a",
+      "created_at": "2026-10-21 23:09:17"
+    }
+  ]
+}

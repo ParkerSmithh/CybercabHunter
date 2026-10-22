@@ -226,7 +226,7 @@ struct LinkedText: View {
             .textSelection(.enabled)
     }
 
-    static func attributed(_ text: String) -> AttributedString {
+    nonisolated static func attributed(_ text: String) -> AttributedString {
         var out = AttributedString()
         let ns = text as NSString
         let regex = try? NSRegularExpression(pattern: #"\bhttps?://[^\s<>"']+"#, options: [.caseInsensitive])

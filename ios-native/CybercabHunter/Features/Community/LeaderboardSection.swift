@@ -25,7 +25,7 @@ final class LeaderboardModel {
         if case .ready = boards[id] { return }
         boards[id] = .loading
         do {
-            let b: Leaderboard = try await api.get("/api/community/leaderboard", query: id == "overall" ? [] : [URLQueryItem(name: "board", value: id)])
+            let b: Leaderboard = try await api.get("/api/community/leaderboard", query: id == "overall" ? [] : [URLQueryItem(name: "board", value: id)], fresh: true)
             boards[id] = .ready(b)
             list = b.boards
         } catch is CancellationError { boards[id] = nil }

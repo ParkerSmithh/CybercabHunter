@@ -33,6 +33,9 @@ final class SessionStore {
         self.api = APIClient(session: session, tokens: KeychainTokenProvider(keychain: self.keychain))
     }
 
+    /// The current session token (moderator-only photos are fetched with it).
+    var token: String? { keychain.read(KeychainTokenProvider.account) }
+
     var user: MeResponse.User? {
         if case .signedIn(let user) = state { return user }
         return nil
@@ -47,7 +50,7 @@ final class SessionStore {
 
     func refreshAccount() async {
         do {
-            let me: MeResponse = try await api.get("/api/me", authenticated: true)
+            let me: MeResponse = try await api.get("/api/me", authenticated: true, fresh: true)
             if me.authenticated, let user = me.user { state = .signedIn(user) } else { signOut() }
         } catch APIError.unauthorized {
             signOut()
@@ -92,5 +95,6 @@ final class SessionStore {
     func signOut() {
         keychain.delete(KeychainTokenProvider.account)
         state = .signedOut
+        Task { await ImagePipeline.shared.removeAll() }
     }
 }

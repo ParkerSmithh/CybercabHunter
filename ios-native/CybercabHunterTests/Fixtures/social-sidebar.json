@@ -8,25 +8,25 @@
   },
   "trending": [
     {
-      "id": "c50c0bb254f8e886d018e39823665eb8",
+      "id": "8dd9ea0d6eb60d422bb32429a0ec8d5f",
       "category": "review",
       "excerpt": "First ride in a Cybercab: smooth, quiet, and the pickup was quicker than the app said.",
       "like_count": 2,
       "comment_count": 3,
-      "url": "/community?post=c50c0bb254f8e886d018e39823665eb8"
+      "url": "/community?post=8dd9ea0d6eb60d422bb32429a0ec8d5f"
     },
     {
-      "id": "b2cdbf4228b078371c75ec5a714566e1",
+      "id": "7a881751dbfbeae3d134ff6126019350",
       "category": "sighting",
       "excerpt": "Two Cybercabs charging side by side at the Domain this morning. @alice_a was right about the new stalls.",
       "like_count": 1,
       "comment_count": 1,
-      "url": "/community?post=b2cdbf4228b078371c75ec5a714566e1"
+      "url": "/community?post=7a881751dbfbeae3d134ff6126019350"
     }
   ],
   "announcement": {
     "body": "Community Social is open. Keep it about Cybercabs and spot safely.",
     "link_url": null,
-    "updated_at": "2026-10-21 02:52:00"
+    "updated_at": "2026-10-21 17:42:51"
   }
 }

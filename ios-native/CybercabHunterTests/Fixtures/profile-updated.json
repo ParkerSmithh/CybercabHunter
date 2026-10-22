@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "user": {
+    "display_name": "Dave Spotter",
+    "handle": "dave_d",
+    "bio": "Downtown Austin.",
+    "profile_visibility": "private",
+    "leaderboard_opt_in": false
+  }
+}

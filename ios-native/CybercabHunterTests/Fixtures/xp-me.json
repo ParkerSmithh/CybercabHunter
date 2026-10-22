@@ -46,7 +46,7 @@
     }
   ],
   "missions": {
-    "day": "2026-10-20",
+    "day": "2026-10-21",
     "week": "2026-10-19",
     "daily": [
       {
@@ -58,7 +58,7 @@
         "progress": 1,
         "pending": 0,
         "state": "completed",
-        "period": "2026-10-20"
+        "period": "2026-10-21"
       }
     ],
     "weekly": [
@@ -68,9 +68,9 @@
         "description": "Submit 3 sightings that moderators verify this week.",
         "reward": 100,
         "required": 3,
-        "progress": 2,
+        "progress": 3,
         "pending": 0,
-        "state": "in_progress",
+        "state": "completed",
         "period": "2026-10-19"
       },
       {
@@ -79,7 +79,7 @@
         "description": "Complete 5 verified contributions this week (verified sightings count).",
         "reward": 100,
         "required": 5,
-        "progress": 2,
+        "progress": 3,
         "pending": 0,
         "state": "in_progress",
         "period": "2026-10-19"
@@ -90,52 +90,52 @@
     {
       "amount": 100,
       "reason": "First discovery of an undocumented Cybercab",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 100,
       "reason": "First discovery of an undocumented Cybercab",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 100,
       "reason": "Mission completed: Weekly Spotter",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     },
     {
       "amount": 30,
       "reason": "Mission completed: Daily Contribution",
-      "at": "2026-10-21 02:52:00"
+      "at": "2026-10-21 17:42:51"
     }
   ],
   "rewards": [

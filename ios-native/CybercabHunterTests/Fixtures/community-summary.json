@@ -1,16 +1,12 @@
 {
-  "computed_at": "2026-10-21T02:52:00.336Z",
+  "computed_at": "2026-10-21T17:42:51.932Z",
   "timezone": "America/Chicago",
   "sightings": {
     "verified": 10,
     "photos_submitted": 10,
     "cities": 1,
-    "site_start": "2026-09-22",
+    "site_start": "2026-09-23",
     "last_14_days": [
-      {
-        "date": "2026-10-07",
-        "n": 0
-      },
       {
         "date": "2026-10-08",
         "n": 0
@@ -25,7 +21,7 @@
       },
       {
         "date": "2026-10-11",
-        "n": 1
+        "n": 0
       },
       {
         "date": "2026-10-12",
@@ -37,7 +33,7 @@
       },
       {
         "date": "2026-10-14",
-        "n": 0
+        "n": 1
       },
       {
         "date": "2026-10-15",
@@ -49,7 +45,7 @@
       },
       {
         "date": "2026-10-17",
-        "n": 1
+        "n": 0
       },
       {
         "date": "2026-10-18",
@@ -62,6 +58,10 @@
       {
         "date": "2026-10-20",
         "n": 1
+      },
+      {
+        "date": "2026-10-21",
+        "n": 1
       }
     ]
   },
@@ -70,12 +70,12 @@
     "active_weekly": 2,
     "record_daily": 4,
     "record_weekly": 5,
-    "verified_this_week": 2
+    "verified_this_week": 3
   },
   "xp": {
     "total": 850,
     "spotters": 2,
-    "missions_this_week": 2,
+    "missions_this_week": 4,
     "top_rank": "Bronze Spotter"
   }
 }

@@ -30,7 +30,7 @@ final class CommunityStatsModel {
         guard force || !loaded else { return }
         loaded = true
         async let s: CommunitySummary? = try? api.get("/api/community/summary")
-        async let b: Leaderboard? = try? api.get("/api/community/leaderboard")
+        async let b: Leaderboard? = try? api.get("/api/community/leaderboard", fresh: true)
         let (summary, board) = await (s, b)
         if let summary { self.summary = summary }
         if let board { totals = board.totals }
@@ -120,6 +120,19 @@ struct CommunityView: View {
             if visited.contains(.progress) { Task { await progress.load(api: session.api, signedIn: new != nil) } }
         }
         .onChange(of: router.communitySection) { _, s in if let s { select(s); router.communitySection = nil } }
+        // The rider renamed themselves, changed their photo or privacy: what
+        // Community shows about them reloads, past this device's HTTP cache.
+        // (The edge's own 5-minute leaderboard cache and the daily streak
+        // snapshot are the server's: PLAN.md, Phase 5.1.)
+        .onReceive(NotificationCenter.default.publisher(for: .profileChanged)) { _ in
+            Task {
+                async let s: Void? = social?.refreshAll()
+                async let b: Void = board.load(api: session.api, force: true)
+                async let t: Void = stats.load(api: session.api, force: true)
+                _ = await (s, b, t)
+                if visited.contains(.streaks) { await streaks.load(api: session.api, signedIn: session.user != nil, force: true) }
+            }
+        }
     }
 
     private var bell: some View {

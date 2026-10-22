@@ -148,7 +148,8 @@ async function run() {
     check('no board asked for: Top Overall', (await board(ctx, '')).board === 'overall');
     check('an unknown board: 400', (await get(ctx, '/api/community/leaderboard?board=nope')).status === 400);
     const r = await worker.fetch(new Request('https://x/api/community/leaderboard'), ctx.env, {});
-    check('edge-cacheable for 5 minutes', /public, max-age=300/.test(r.headers.get('Cache-Control')));
+    // Kept 5 minutes at the edge, per profile epoch (tests/profile-sync.test.mjs); never held by the browser.
+    check('never stored by the browser (the edge keeps it: worker/profile-cache.js)', r.headers.get('Cache-Control') === 'private, no-store');
     const many = Array.from({ length: 12 }, (_, i) => ({ uid: `u${String(i).padStart(2, '0')}`, handle: `u${i}`, discovered: 12 - i, rides: 0, miles: 0, unique_vehicles: 0, cities: 0, reached_at: '2026' }));
     const { rankBoard } = await import('../worker/community.js');
     check('only the top 10 are returned', rankBoard(many, { value: x => x.discovered, include: () => true, tie: () => 0 }).length === 10);

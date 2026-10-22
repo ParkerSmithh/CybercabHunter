@@ -11,12 +11,13 @@ struct MeResponse: Decodable, Sendable, Equatable {
         let createdAt: String?
         let displayName: String?
         let avatarUrl: String?
+        /// "custom", "google" or nil (a newer server; absent from an older one).
+        var avatarSource: String? = nil
 
-        /// The avatar as an absolute URL (the Worker returns site-relative paths).
-        var avatarURL: URL? {
-            guard let avatarUrl, !avatarUrl.isEmpty else { return nil }
-            return URL(string: avatarUrl, relativeTo: AppConfig.siteURL)?.absoluteURL
-        }
+        /// The avatar as a loadable URL: a Google https photo as is, or the
+        /// site's own picture ("/api/avatars/<key>") at its 128 px variant (the
+        /// bare path is not a file; the website's avatarSrc adds the size too).
+        var avatarURL: URL? { SocialAuthor.avatarURL(avatarUrl, size: 128) }
     }
 
     struct Tesla: Decodable, Sendable, Equatable {

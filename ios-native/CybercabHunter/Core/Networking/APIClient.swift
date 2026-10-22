@@ -67,8 +67,12 @@ struct APIClient: Sendable {
         return request
     }
 
-    func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = [], as type: T.Type = T.self, authenticated: Bool = false) async throws -> T {
-        try await perform(makeRequest(path, query: query, authenticated: authenticated))
+    /// `fresh`: skip this device's HTTP cache (the edge cache still answers),
+    /// for data that must show a rider's latest name, photo or privacy.
+    func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = [], as type: T.Type = T.self, authenticated: Bool = false, fresh: Bool = false) async throws -> T {
+        var request = makeRequest(path, query: query, authenticated: authenticated)
+        if fresh { request.cachePolicy = .reloadIgnoringLocalCacheData }
+        return try await perform(request)
     }
 
     func post<T: Decodable & Sendable>(_ path: String, json: [String: String], as type: T.Type = T.self, authenticated: Bool = false) async throws -> T {
@@ -77,6 +81,30 @@ struct APIClient: Sendable {
     }
 
     func perform<T: Decodable & Sendable>(_ request: URLRequest, upload body: Data? = nil, delegate: (any URLSessionTaskDelegate)? = nil) async throws -> T {
+        let (data, status) = try await exchange(request, upload: body, delegate: delegate)
+        return try result(data, status: status)
+    }
+
+    /// A 2xx body as `T`; anything else as the matching APIError.
+    func result<T: Decodable & Sendable>(_ data: Data, status: Int) throws -> T {
+        guard (200..<300).contains(status) else {
+            if status == 401 { throw APIError.unauthorized }
+            let code = (try? Self.makeDecoder().decode(ErrorBody.self, from: data))?.error
+            throw APIError.http(status: status, code: code)
+        }
+        return try decode(data)
+    }
+
+    func decode<T: Decodable & Sendable>(_ data: Data) throws -> T {
+        do {
+            return try Self.makeDecoder().decode(T.self, from: data)
+        } catch {
+            throw APIError.decoding(String(describing: error))
+        }
+    }
+
+    /// The response body and status, whatever the status (transport failures throw).
+    func exchange(_ request: URLRequest, upload body: Data? = nil, delegate: (any URLSessionTaskDelegate)? = nil) async throws -> (Data, Int) {
         let data: Data
         let response: URLResponse
         do {
@@ -92,17 +120,7 @@ struct APIClient: Sendable {
         } catch {
             throw APIError.transport(error.localizedDescription)
         }
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            if status == 401 { throw APIError.unauthorized }
-            let code = (try? Self.makeDecoder().decode(ErrorBody.self, from: data))?.error
-            throw APIError.http(status: status, code: code)
-        }
-        do {
-            return try Self.makeDecoder().decode(T.self, from: data)
-        } catch {
-            throw APIError.decoding(String(describing: error))
-        }
+        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     private struct ErrorBody: Decodable { let error: String? }

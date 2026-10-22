@@ -29,6 +29,9 @@ struct ZoneMapView: UIViewRepresentable {
     var showsMarkers = true
     var interactive = true
     var bottomInset: CGFloat = 0
+    /// The zone's framing padding; nil = the Zones page's. The Home minimap
+    /// passes the website's minimap fitBounds padding (top 70, bottom 54, sides 24).
+    var framePadding: UIEdgeInsets? = nil
     var onSelect: (MapSelection) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -104,7 +107,8 @@ struct ZoneMapView: UIViewRepresentable {
         func frame(_ key: String, on map: MKMapView, animated: Bool) {
             lastCity = key
             let pad: CGFloat = 24
-            map.setVisibleMapRect(WebData.city(key).zoneRect, edgePadding: UIEdgeInsets(top: pad + 56, left: pad, bottom: pad + parent.bottomInset, right: pad), animated: animated)
+            let insets = parent.framePadding ?? UIEdgeInsets(top: pad + 56, left: pad, bottom: pad + parent.bottomInset, right: pad)
+            map.setVisibleMapRect(WebData.city(key).zoneRect, edgePadding: insets, animated: animated)
         }
 
         func syncAnnotations(on map: MKMapView) {

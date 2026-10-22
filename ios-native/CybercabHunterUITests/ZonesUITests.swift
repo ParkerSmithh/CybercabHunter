@@ -99,4 +99,72 @@ final class ZonesUITests: XCTestCase {
         XCTAssertTrue(app.buttons["zoneDetailsButton"].waitForExistence(timeout: 10))
         assertNative(app)
     }
+
+    // MARK: Phase 5.1
+
+    /// The map key is only in Zone details (as on the website), never floating on the map.
+    func testZonesLegendOnlyInZoneDetails() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-tab", "zones"]
+        app.launch()
+        XCTAssertTrue(app.buttons["zoneDetailsButton"].waitForExistence(timeout: 20))
+        sleep(2)
+        let legend = app.descendants(matching: .any)["zoneDetailsLegend"]
+        let floating = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Map key'"))
+        XCTAssertFalse(legend.exists, "closed: no legend")
+        XCTAssertEqual(floating.count, 0, "closed: no floating map key")
+        XCTAssertFalse(app.staticTexts["Charging"].exists)
+        shot(app, "z8-zones-no-legend")
+
+        app.buttons["zoneDetailsButton"].tap()
+        XCTAssertTrue(legend.waitForExistence(timeout: 10), "open: the legend is in Zone details")
+        XCTAssertTrue(legend.label.contains("Charging Locations") && legend.label.contains("Cybercabs"))
+        shot(app, "z9-zone-details-legend")
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(legend.waitForNonExistence(timeout: 10), "closed again: gone")
+        XCTAssertEqual(floating.count, 0)
+        assertNative(app)
+    }
+
+    /// Home's minimap is the website's phone card: height 0.92 × width, Austin and Dallas.
+    func testHomeMinimapsMatchTheWebsite() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let scroll = app.scrollViews.firstMatch
+        XCTAssertTrue(scroll.waitForExistence(timeout: 20))
+        let minimap = app.buttons["zoneMiniMap"]
+        for _ in 0..<10 where !(minimap.exists && minimap.isHittable) { scroll.swipeUp(velocity: .slow) }
+        XCTAssertTrue(minimap.waitForExistence(timeout: 10))
+        func checkRatio(_ city: String) {
+            let title = app.staticTexts["\(city.uppercased()) MINIMAP"]
+            for _ in 0..<6 where !(title.exists && minimap.isHittable) { scroll.swipeUp(velocity: .slow); _ = title.waitForExistence(timeout: 3) }
+            XCTAssertTrue(title.waitForExistence(timeout: 15), "\(city)'s minimap")
+            let f = minimap.frame
+            XCTAssertGreaterThan(f.width, 200, city)
+            XCTAssertEqual(f.height / f.width, 0.92, accuracy: 0.02, "\(city): \(f)")
+            XCTAssertTrue(app.staticTexts["\(city.uppercased()) MINIMAP"].exists, city)
+            XCTAssertTrue(app.staticTexts["Explore map"].exists || minimap.label.contains("Explore map") || app.buttons.containing(NSPredicate(format: "label CONTAINS 'Explore map'")).firstMatch.exists)
+        }
+        sleep(3)   // the zone draws
+        // Back up a little so the whole card is on screen.
+        if minimap.frame.minY < 120 { scroll.swipeDown(velocity: .slow) }
+        checkRatio("Austin")
+        shot(app, "h4-minimap-austin")
+        let dallas = app.buttons["Dallas"].firstMatch
+        for _ in 0..<6 where !dallas.isHittable { scroll.swipeDown(velocity: .slow) }
+        // A tap while the list is still decelerating is dropped: tap until the city is selected.
+        for _ in 0..<3 where !dallas.isSelected {
+            sleep(1)
+            dallas.tap()
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: dallas)], timeout: 3)
+        }
+        XCTAssertTrue(dallas.isSelected, "Dallas chosen")
+        for _ in 0..<6 where !(minimap.exists && minimap.isHittable) { scroll.swipeUp(velocity: .slow) }
+        sleep(3)
+        checkRatio("Dallas")
+        shot(app, "h5-minimap-dallas")
+        minimap.tap()
+        XCTAssertTrue(app.buttons["zoneDetailsButton"].waitForExistence(timeout: 10), "Explore map opens Zones")
+        assertNative(app)
+    }
 }

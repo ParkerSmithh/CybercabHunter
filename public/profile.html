@@ -666,7 +666,10 @@
   function renderProfileAvatar() {
     if (!currentUser) return;
     CCC.renderAvatar(document.getElementById('profileAvatar'), { url: currentUser.avatar_url, name: currentUser.display_name || currentUser.handle, size: 512, textClass: 'text-xl' });
-    document.getElementById('avatarRemove').classList.toggle('hidden', !currentUser.avatar_url);
+    // Only an upload can be removed (worker/avatars.js); the Google picture is what it falls back to.
+    // (An older Worker without avatar_source: any picture, as before.)
+    const isCustom = currentUser.avatar_source !== undefined ? currentUser.avatar_source === 'custom' : !!currentUser.avatar_url;
+    document.getElementById('avatarRemove').classList.toggle('hidden', !isCustom);
     // The account button in the header shows it too.
     const navImg = document.getElementById('accountAvatarImg');
     const navIcon = document.getElementById('accountAvatarIcon');
@@ -779,6 +782,7 @@
       saveBtn.disabled = false; saveBtn.textContent = 'Save photo';
       if (resp && resp.ok && body.avatar_url) {
         currentUser.avatar_url = body.avatar_url;
+        currentUser.avatar_source = 'custom';
         renderProfileAvatar();
         close();
         CCC.toast('Profile photo updated.', 'success');
@@ -788,14 +792,18 @@
     });
 
     document.getElementById('avatarRemove').addEventListener('click', async () => {
-      if (!window.confirm('Remove your profile photo?')) return;
+      if (!window.confirm(currentUser.has_google_avatar ? 'Remove your uploaded photo? Your Google photo will show instead.' : 'Remove your profile photo? Your initials will show instead.')) return;
       showError('');
       let resp = null;
       try { resp = await fetch(TESLA_WORKER_URL + '/api/profile/avatar', { method: 'DELETE', headers: { Authorization: 'Bearer ' + sessionId } }); } catch (e) { resp = null; }
+      let removed = null;
+      try { removed = resp && resp.ok ? await resp.json() : null; } catch (e) { removed = null; }
       if (resp && resp.ok) {
-        currentUser.avatar_url = null;
+        // The server's fallback: the Google picture, or none.
+        currentUser.avatar_url = removed && removed.avatar_url ? removed.avatar_url : null;
+        currentUser.avatar_source = removed && removed.avatar_source !== undefined ? removed.avatar_source : null;
         renderProfileAvatar();
-        CCC.toast('Profile photo removed.', 'success');
+        CCC.toast(currentUser.avatar_url ? 'Uploaded photo removed. Your Google photo is back.' : 'Profile photo removed.', 'success');
       } else {
         showError("Couldn't remove your photo. Please try again.");
       }

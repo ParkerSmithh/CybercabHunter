@@ -9,6 +9,17 @@ extension APIClient {
         try await perform(makeRequest(path, method: method, jsonBody: body, authenticated: true))
     }
 
+    /// A write whose 409 carries facts the screen must show (the registry's
+    /// review answers with the vehicle as it is now): a 409 decodes as `C`
+    /// instead of throwing. Every other failure throws as `send` does.
+    func sendOrConflict<T: Decodable & Sendable, C: Decodable & Sendable>(_ path: String, method: String, body: Data? = nil,
+                                                                         as type: T.Type = T.self, conflict: C.Type = C.self) async throws -> WriteOutcome<T, C> {
+        let request = makeRequest(path, method: method, jsonBody: body, authenticated: true)
+        let (data, status) = try await exchange(request)
+        if status == 409, let c: C = try? decode(data) { return .conflict(c) }
+        return .done(try result(data, status: status))
+    }
+
     /// multipart/form-data upload with the rider's session; `progress` gets 0…1
     /// as the body is sent.
     func upload<T: Decodable & Sendable>(_ path: String, method: String, form: MultipartForm, as type: T.Type = T.self,
@@ -19,6 +30,8 @@ extension APIClient {
         return try await perform(request, upload: body, delegate: progress.map(UploadProgress.init))
     }
 }
+
+enum WriteOutcome<T, C> { case done(T), conflict(C) }
 
 /// A JSON object body from plain values (strings, numbers, booleans, arrays).
 enum JSONBody {

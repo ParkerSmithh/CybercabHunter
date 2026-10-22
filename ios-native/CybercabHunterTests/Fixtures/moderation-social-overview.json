@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "stats": {
+    "posts": 25,
+    "comments": 5,
+    "open_report_items": 2,
+    "open_reports": 3,
+    "pinned": 1
+  },
+  "max_pins": 3,
+  "pinned": [
+    {
+      "id": "8dd9ea0d6eb60d422bb32429a0ec8d5f",
+      "body": "First ride in a Cybercab: smooth, quiet, and the pickup was quicker than the app said.",
+      "created_at": "2026-10-21 12:42:51",
+      "pinned_at": "2026-10-21 17:42:51",
+      "has_photos": false,
+      "has_review": true,
+      "author": {
+        "name": "Alice A",
+        "handle": "alice_a"
+      },
+      "url": "/community?post=8dd9ea0d6eb60d422bb32429a0ec8d5f"
+    }
+  ]
+}

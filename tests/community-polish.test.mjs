@@ -57,10 +57,16 @@ async function run() {
     check('cities covered: distinct cities of verified sightings, "Austin, TX" = "austin" (Austin, Dallas, San Diego; never Houston from the system account)', s.sightings.cities === 3);
     check('the 14-day series and the site start (first sighting submitted)', s.sightings.last_14_days.length === 14 && s.sightings.last_14_days.at(-1).date === '2026-10-14' && s.sightings.last_14_days.at(-1).n === 3 && s.sightings.site_start === '2026-10-01');
     check('streak counts over every spotter, the opted-out one too (named nowhere)', s.streaks.active_daily === 2 && s.streaks.record_daily === 14);
-    const names = JSON.stringify(s.boards);
-    check('the opted-out rider is never named or ranked in any streak board (no name, no handle)', !/Private Person|privhandle|"priv"/.test(names) && s.boards.daily.length === 1 && s.boards.daily[0].handle === 'ann');
-    check('...and ranks are counted among the listed riders only (ann is #1, no gap)', s.boards.daily[0].rank === 1 && s.boards.longest[0].rank === 1);
-    check('no ids, emails or sighting details in the summary', !/"uid"|user_id|email|"s\d+"|submitted_at/.test(JSON.stringify(s)));
+    // The stored row keeps each board's ORDER only (ids and streak numbers): no name, handle or photo.
+    const order = s.board_order;
+    check('the stored boards hold rider ids and streak numbers only (no name, handle or photo)', !/Private Person|privhandle|ANN|avatar|handle|name/.test(JSON.stringify(order)) && order.daily.every(r => Object.keys(r).sort().join() === 'daily_current,longest_daily,longest_weekly,uid,weekly_current'));
+    const { board_order: _order, ...rest } = s;
+    check('no ids, emails or sighting details in the rest of the summary', !/"uid"|user_id|email|"s\d+"|submitted_at/.test(JSON.stringify(rest)));
+    const pub = await (await apiStreakLeaderboard(new Request('https://x/api/streaks/leaderboard?board=daily'), env, null, { now: NOW })).json();
+    const pubLongest = await (await apiStreakLeaderboard(new Request('https://x/api/streaks/leaderboard?board=longest'), env, null, { now: NOW })).json();
+    check('the opted-out rider is never named or ranked in any streak board (no name, no handle)', !/Private Person|privhandle|"priv"|"uid"/.test(JSON.stringify([pub, pubLongest])) && pub.entries.length === 1 && pub.entries[0].handle === 'ann');
+    check('...and ranks are counted among the listed riders only (ann is #1, no gap)', pub.entries[0].rank === 1 && pubLongest.entries[0].rank === 1);
+    d1.exec(`DELETE FROM community_summary`);   // the reads below start from no stored row
 
     const log = countQueries(env);
     const first = await getCommunitySummary(env, NOW);
@@ -74,7 +80,9 @@ async function run() {
     log.length = 0;
     const lb = await apiStreakLeaderboard(new Request('https://x/api/streaks/leaderboard?board=weekly'), env, null, { now: NOW + 37 * 3600e3 + 60e3 });
     const sm = await apiCommunitySummary(new Request('https://x/api/community/summary'), env, null, { now: NOW + 37 * 3600e3 + 60e3 });
-    check('/api/streaks/leaderboard and /api/community/summary read the stored row only, and are edge-cacheable 5 min', log.length === 2 && log.every(q => /FROM community_summary/.test(q)) && /max-age=300/.test(lb.headers.get('cache-control')) && /max-age=300/.test(sm.headers.get('cache-control')));
+    // The streak board also reads its listed riders' current name, photo and switch: one query by primary key.
+    check('/api/streaks/leaderboard reads the stored row plus one users lookup by id; /api/community/summary the row only', log.length === 3 && log.filter(q => /FROM community_summary/.test(q)).length === 2 && log.some(q => /FROM users WHERE id IN \(/.test(q)) && /max-age=300/.test(sm.headers.get('cache-control')));
+    check('the streak board is kept at the edge, never in the browser (worker/profile-cache.js)', lb.headers.get('cache-control') === 'private, no-store');
     const smj = await sm.json();
     check('the public summary carries totals only (no boards, no names)', !('boards' in smj) && !/ANN|Private/.test(JSON.stringify(smj)));
     d1.exec(`DELETE FROM community_summary`);

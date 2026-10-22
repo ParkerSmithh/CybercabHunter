@@ -1,0 +1,35 @@
+{
+  "seen": 2,
+  "sightings_all_time": 14,
+  "order": "desc",
+  "stats": {
+    "time_zone": "America/Chicago",
+    "total": 2,
+    "last_7_days": 2,
+    "today": 2,
+    "this_month": 2,
+    "peak_hour": {
+      "hour": 12,
+      "count": 2
+    },
+    "best_day": {
+      "date": "2026-10-21",
+      "count": 2
+    },
+    "first_day": "2026-10-21",
+    "sightings_all_time": 14
+  },
+  "sightings": [
+    {
+      "id": "cbda3b8a6edf4184c2c4e6530b939666",
+      "image_url": "/api/sightings/cbda3b8a6edf4184c2c4e6530b939666/photo",
+      "city": "Austin",
+      "location": null,
+      "plate": "XVF-3582",
+      "cybercab": true,
+      "spotted_at": "2026-10-21T17:42:51Z",
+      "time_zone": "America/Chicago"
+    }
+  ],
+  "next_cursor": "MjAyNi0xMC0yMSAxNzo0Mjo1MXxjYmRhM2I4YTZlZGY0MTg0YzJjNGU2NTMwYjkzOTY2NnxkZXNj"
+}

@@ -36,7 +36,7 @@ final class StreaksModel {
         board = id
         if case .ready = boards[id] { return }
         boards[id] = .loading
-        do { boards[id] = .ready(try await api.get("/api/streaks/leaderboard", query: [URLQueryItem(name: "board", value: id)])) }
+        do { boards[id] = .ready(try await api.get("/api/streaks/leaderboard", query: [URLQueryItem(name: "board", value: id)], fresh: true)) }
         catch is CancellationError { boards[id] = nil }
         catch { boards[id] = .failed }
     }

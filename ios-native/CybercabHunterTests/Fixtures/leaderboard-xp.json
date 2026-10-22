@@ -53,8 +53,8 @@
     },
     {
       "rank": 2,
-      "score": 110,
-      "count": 110,
+      "score": 190,
+      "count": 190,
       "name": "Bob B",
       "handle": "bob_b",
       "avatar_url": null,
@@ -64,8 +64,26 @@
       "miles": 0,
       "unique_vehicles": 0,
       "cities": 0,
-      "xp": 110,
+      "xp": 190,
       "level": 2,
+      "spotter_rank": "Bronze Spotter",
+      "spotter_rank_key": "bronze"
+    },
+    {
+      "rank": 3,
+      "score": 55,
+      "count": 55,
+      "name": "Dave D",
+      "handle": "dave_d",
+      "avatar_url": null,
+      "profile": true,
+      "discovered": 0,
+      "rides": 0,
+      "miles": 0,
+      "unique_vehicles": 0,
+      "cities": 0,
+      "xp": 55,
+      "level": 1,
       "spotter_rank": "Bronze Spotter",
       "spotter_rank_key": "bronze"
     }

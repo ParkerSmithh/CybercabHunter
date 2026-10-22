@@ -2,7 +2,7 @@
   "board": "weekly",
   "label": "Top weekly streaks",
   "timezone": "America/Chicago",
-  "computed_at": "2026-10-21T02:52:00.336Z",
+  "computed_at": "2026-10-21T17:42:51.932Z",
   "boards": [
     {
       "id": "daily",
@@ -38,9 +38,9 @@
       "avatar_url": null,
       "profile": true,
       "daily_current": 0,
-      "weekly_current": 2,
+      "weekly_current": 1,
       "longest_daily": 2,
-      "longest_weekly": 2
+      "longest_weekly": 1
     }
   ],
   "stats": {
@@ -48,6 +48,6 @@
     "active_weekly": 2,
     "record_daily": 4,
     "record_weekly": 5,
-    "verified_this_week": 2
+    "verified_this_week": 3
   }
 }

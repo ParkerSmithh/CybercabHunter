@@ -583,7 +583,8 @@ struct ZoneMiniMap: View {
     var body: some View {
         let city = WebData.city(cityKey)
         ZStack(alignment: .topLeading) {
-                ZoneMapView(cityKey: cityKey, showsMarkers: false, interactive: false)
+                ZoneMapView(cityKey: cityKey, showsMarkers: false, interactive: false,
+                            framePadding: UIEdgeInsets(top: 70, left: 24, bottom: 54, right: 24))
                     .allowsHitTesting(false)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(city.name.uppercased()) MINIMAP").font(.inter(12, .bold)).tracking(0.8).foregroundStyle(Color.chInk)
@@ -601,7 +602,9 @@ struct ZoneMiniMap: View {
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
-            .frame(height: 210)
+            // The website's phone card: height = 0.92 × width (home-overview.css), so the
+            // zone fills the card as it does there, on every iPhone width.
+            .aspectRatio(1 / 0.92, contentMode: .fit)
             .clipShape(.rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.chLine))
             .contentShape(.rect(cornerRadius: 14))

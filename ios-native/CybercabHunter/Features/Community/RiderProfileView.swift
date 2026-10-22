@@ -44,7 +44,7 @@ struct RiderProfileView: View {
 
     private func load() async {
         do {
-            profile = try await session.api.get("/api/riders/\(route.handle)")
+            profile = try await session.api.get("/api/riders/\(route.handle)", fresh: true)
             state = .loaded
         } catch is CancellationError {
         } catch APIError.http(let status, _) where status == 404 {

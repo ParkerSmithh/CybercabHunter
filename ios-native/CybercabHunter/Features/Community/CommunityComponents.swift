@@ -13,12 +13,21 @@ actor ImagePipeline {
 
     init() { cache.totalCostLimit = 64 << 20 }
 
-    func image(_ url: URL, maxPixel: Int) async -> UIImage? {
-        let key = "\(url.absoluteString)#\(maxPixel)" as NSString
+    /// Forgets every decoded image (on sign-out, so no private photo outlives the session).
+    func removeAll() { cache.removeAllObjects() }
+
+    /// `token`: a moderator-only photo, fetched with the session (never stored on disk).
+    func image(_ url: URL, maxPixel: Int, token: String? = nil) async -> UIImage? {
+        let key = "\(url.absoluteString)#\(maxPixel)\(token == nil ? "" : "#auth")" as NSString
         if let hit = cache.object(forKey: key) { return hit }
         if let task = inFlight[key as String] { return await task.value }
-        let task = Task<UIImage?, Never> {
-            guard let (data, response) = try? await URLSession.shared.data(from: url),
+        var request = URLRequest(url: url)
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+        }
+        let task = Task<UIImage?, Never> { [request] in
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
                   (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false else { return nil }
             return Self.downsample(data, maxPixel: maxPixel)
         }
@@ -46,6 +55,8 @@ struct RemoteImage: View {
     let url: URL?
     var points: CGFloat = 400
     var contentMode: ContentMode = .fill
+    /// The session token, for moderator-only photos.
+    var token: String? = nil
     @Environment(\.displayScale) private var scale
     @State private var image: UIImage?
     @State private var failed = false
@@ -61,7 +72,7 @@ struct RemoteImage: View {
         }
         .task(id: url) {
             guard let url else { failed = true; return }
-            image = await ImagePipeline.shared.image(url, maxPixel: Int(points * scale))
+            image = await ImagePipeline.shared.image(url, maxPixel: Int(points * scale), token: token)
             failed = image == nil
         }
     }
@@ -246,6 +257,25 @@ struct ToastBanner: View {
             .overlay(Capsule().strokeBorder(isError ? Color(hex: 0xF08A84, opacity: 0.4) : Color.brandGold.opacity(0.35)))
             .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
             .accessibilityIdentifier("toast")
+    }
+}
+
+/// A toast bound to any screen's state, shown briefly at the top.
+struct ToastHost: View {
+    @Binding var toast: SocialFeedModel.Toast?
+    var body: some View {
+        Group {
+            if let t = toast {
+                ToastBanner(text: t.text, isError: t.isError)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: t.id) {
+                        try? await Task.sleep(for: .seconds(2.6))
+                        if toast?.id == t.id { withAnimation { toast = nil } }
+                    }
+            }
+        }
+        .animation(.snappy, value: toast)
     }
 }
 

@@ -1,6 +1,6 @@
 {
   "timezone": "America/Chicago",
-  "today": "2026-10-20",
+  "today": "2026-10-21",
   "week_start": "2026-10-19",
   "daily": {
     "current": 0,
@@ -17,8 +17,8 @@
     "days": 0
   },
   "calendar": {
-    "from": "2025-10-15",
-    "to": "2026-10-20",
+    "from": "2025-10-16",
+    "to": "2026-10-21",
     "days": []
   },
   "milestones": [

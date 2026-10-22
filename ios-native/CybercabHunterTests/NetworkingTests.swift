@@ -54,7 +54,7 @@ struct NetworkingTests {
         StubURLProtocol.responses = [
             "/api/registry/stats": (200, #"{"public_vehicles":182,"recorded_rides":8,"sightings_all_time":483}"#),
             "/api/service-areas": (200, #"{"areas":[{"key":"austin","name":"Austin"},{"key":"dallas","name":"Dallas"}]}"#),
-            "/api/me": (200, #"{"authenticated":true,"user":{"id":"u1","created_at":"2026-06-01 12:00:00","display_name":"Parker","avatar_url":"/api/avatars/u1?v=3"},"tesla":{"connected":false}}"#)
+            "/api/me": (200, #"{"authenticated":true,"user":{"id":"u1","created_at":"2026-06-01 12:00:00","display_name":"Parker","avatar_url":"/api/avatars/0123456789abcdef0123456789abcdef"},"tesla":{"connected":false}}"#)
         ]
         let api = APIClient(session: StubURLProtocol.session(), tokens: FixedToken(token: "t"))
         let stats: RegistryStats = try await api.get("/api/registry/stats")
@@ -63,7 +63,7 @@ struct NetworkingTests {
         #expect(areas.areas.map(\.name) == ["Austin", "Dallas"])
         let me: MeResponse = try await api.get("/api/me", authenticated: true)
         #expect(me.user?.displayName == "Parker")
-        #expect(me.user?.avatarURL?.absoluteString == "https://cybercabhunter.com/api/avatars/u1?v=3")
+        #expect(me.user?.avatarURL?.absoluteString == "https://cybercabhunter.com/api/avatars/0123456789abcdef0123456789abcdef/128", "the site's own picture at its 128 px variant")
         #expect(me.tesla?.connected == false)
     }
 

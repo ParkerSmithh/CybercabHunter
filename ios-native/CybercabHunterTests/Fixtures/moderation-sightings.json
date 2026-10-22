@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "sightings": [
+    {
+      "submission_id": "bc3265ba-1b27-4954-b689-68adac8c5b51",
+      "observation_id": "017ff4d6-ee55-4c0a-8c49-87d78a128ee5",
+      "status": "pending",
+      "submitted_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Austin",
+      "approx_location": null,
+      "license_plate": "ZZZ1234",
+      "model": null,
+      "color": null,
+      "notes": "A plate I have not seen before.",
+      "evidence_ref": "evidence/bob/138503ce-2b47-436d-92ff-329543f5de59.jpg",
+      "robotaxi_vehicle_id": "1ec7af91-9a6f-4d8b-ac39-172791d793f8",
+      "camera_id": null,
+      "camera_name": null
+    },
+    {
+      "submission_id": "c907d8c8-4189-42a9-b517-c7fc95eb6fbd",
+      "observation_id": "518c24e3-6867-4915-ba8a-d0a1243efba4",
+      "status": "pending",
+      "submitted_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Austin",
+      "approx_location": null,
+      "license_plate": "XVF7777",
+      "model": null,
+      "color": null,
+      "notes": "Fixture sighting.",
+      "evidence_ref": "evidence/bob/5dd19e57-6f93-40cc-aa07-068a9495df43.jpg",
+      "robotaxi_vehicle_id": "b1732bbe-6a9a-47e7-80c3-4d299b95a9d2",
+      "camera_id": null,
+      "camera_name": null
+    },
+    {
+      "submission_id": "e1726699-b92c-4f13-a057-9bf13ad53073",
+      "observation_id": "32f402cd-50e1-4f98-9e51-8d41106805f3",
+      "status": "pending",
+      "submitted_at": "2026-10-21 17:42:51",
+      "observed_at": "2026-10-21 17:42:51",
+      "service_area": "Austin",
+      "approx_location": null,
+      "license_plate": "XVF9999",
+      "model": "Cybercab",
+      "color": "Gold",
+      "notes": null,
+      "evidence_ref": null,
+      "robotaxi_vehicle_id": null,
+      "camera_id": null,
+      "camera_name": null
+    }
+  ]
+}
