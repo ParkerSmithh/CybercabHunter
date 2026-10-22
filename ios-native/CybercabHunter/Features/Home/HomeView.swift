@@ -6,7 +6,6 @@ import SwiftUI
 /// one the server sent.
 struct HomeView: View {
     @Environment(SessionStore.self) private var session
-    @Environment(AppRouter.self) private var router
     @State private var model = HomeModel()
 
     var body: some View {
@@ -14,7 +13,6 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 HomeHero()
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
-                ExploreSection()
                 VStack(spacing: 14) {
                     ServiceStatusCard(hours: model.cityStats["austin"]?.area?.hours)
                     DailyCard(report: model.daily, error: model.errors["daily"])
@@ -45,7 +43,6 @@ struct HomeView: View {
 /// The website's hero: the Cybercab render, "TRACK THE FUTURE OF AUTONOMY"
 /// with FUTURE OF in gold, and the two calls to action.
 private struct HomeHero: View {
-    @Environment(AppRouter.self) private var router
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Image("HeroCybercab")
@@ -64,19 +61,25 @@ private struct HomeHero: View {
                 .padding(.top, -40)
             Text("Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin and Dallas.")
                 .font(.inter(15, relativeTo: .body)).foregroundStyle(Color.chMist)
+            // Reserve the original labels’ widths to preserve both hero buttons’ footprints.
             HStack(spacing: 18) {
-                Button { router.selectedTab = .sightings } label: {
-                    HStack(spacing: 6) { Text("Browse sightings"); Image(systemName: "arrow.right") }
+                NavigationLink(value: ExploreRoute.news) {
+                    HStack(spacing: 6) { Text("Browse sightings").hidden().overlay(alignment: .leading) { Text("View News") }; Image(systemName: "arrow.right") }
                         .font(.inter(15, .semibold))
                         .fixedSize()
                         .padding(.horizontal, 16).frame(minHeight: 46)
                         .background(Color.brandGold, in: .rect(cornerRadius: 10))
                         .foregroundStyle(Color(hex: 0x1A1204))
                 }
-                Button { router.selectedTab = .zones } label: {
-                    HStack(spacing: 6) { Text("Explore service zones"); Image(systemName: "arrow.right") }
+                .accessibilityLabel("View News")
+                .accessibilityIdentifier("homeViewNews")
+                NavigationLink(value: ExploreRoute.simulation(.roi)) {
+                    HStack(spacing: 6) { Text("Explore service zones").hidden().overlay(alignment: .leading) { Text("Explore") }; Image(systemName: "arrow.right") }
                         .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Explore")
+                .accessibilityIdentifier("homeExplore")
             }
             .buttonStyle(.plain)
         }

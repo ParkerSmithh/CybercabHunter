@@ -15,7 +15,7 @@ final class Phase7UITests: XCTestCase {
         var n = 0
         while !(e.exists && e.isHittable) && n < swipes { app.swipeUp(velocity: .slow); n += 1 }
     }
-    private func openExplore(_ app: XCUIApplication, _ id: String) {
+    private func openHomeLink(_ app: XCUIApplication, _ id: String) {
         let card = app.buttons[id]
         XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 20))
         reveal(card, in: app)
@@ -23,12 +23,37 @@ final class Phase7UITests: XCTestCase {
         card.tap()
     }
 
+    func testHomeNavigationAndBack() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["homeExplore"].isHittable)
+        XCTAssertEqual(app.buttons["homeViewNews"].label, "View News")
+        XCTAssertEqual(app.buttons["homeExplore"].label, "Explore")
+        XCTAssertFalse(app.buttons["exploreDMV"].exists)
+        for title in ["Home", "Zones", "Cars", "Sightings", "Community"] {
+            XCTAssertTrue(app.tabBars.buttons[title].exists)
+        }
+        shot(app, "home-navigation")
+        for (id, title) in [("homeViewNews", "newsTitle"), ("homeExplore", "roiTitle")] {
+            openHomeLink(app, id)
+            XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10))
+            XCTAssertEqual(app.webViews.count, 0)
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 10))
+        }
+        openHomeLink(app, "dmvEveryVin")
+        XCTAssertTrue(app.staticTexts["dmvTitle"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["dmvEveryVin"].waitForExistence(timeout: 10))
+    }
+
     // MARK: Simulation
 
     func testSimulationROIAndFleetEta() throws {
         let app = XCUIApplication()
         app.launch()
-        openExplore(app, "exploreSimulation")
+        openHomeLink(app, "homeExplore")
         XCTAssertTrue(app.staticTexts["roiTitle"].waitForExistence(timeout: 10))
         let note = app.staticTexts["roiStartNote"]
         expectation(for: NSPredicate(format: "label CONTAINS 'lifetime registry count'"), evaluatedWith: note)
@@ -87,7 +112,7 @@ final class Phase7UITests: XCTestCase {
     func testNewsFeedFiltersSearchAndOpensTheArticle() throws {
         let app = XCUIApplication()
         app.launch()
-        openExplore(app, "exploreNews")
+        openHomeLink(app, "homeViewNews")
         XCTAssertTrue(app.staticTexts["newsTitle"].waitForExistence(timeout: 10))
         let story = app.otherElements["newsStory"].firstMatch
         XCTAssertTrue(story.waitForExistence(timeout: 20), "live headlines")
@@ -124,7 +149,7 @@ final class Phase7UITests: XCTestCase {
     func testDMVRosterFiltersAndSearch() throws {
         let app = XCUIApplication()
         app.launch()
-        openExplore(app, "exploreDMV")
+        openHomeLink(app, "dmvEveryVin")
         XCTAssertTrue(app.staticTexts["dmvTitle"].waitForExistence(timeout: 10))
         let row = app.descendants(matching: .any).matching(identifier: "dmvRow").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 20), "the live TxDMV roster")
