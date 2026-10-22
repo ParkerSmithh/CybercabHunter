@@ -42,6 +42,7 @@ for (const [file, fn, id] of [
       const cameraField = document.getElementById('${id}');
       const cameraCityKey = () => chosenCity;
       const cameraHelp = null; const CAMERA_HELP = {}; const cameraHelpAustin = '';
+      const cameraSearch = null;   // the moderator's search box (empty: every camera of the city)
       const $ = id => document.getElementById(id);
       ${renderer}
       window.renderCity = city => { chosenCity = city; ${fn}(city); };`);

@@ -29,6 +29,8 @@ struct ZoneMapView: UIViewRepresentable {
     var showsMarkers = true
     var interactive = true
     var bottomInset: CGFloat = 0
+    /// Extra top padding when the map runs under the status bar and floating controls (Zones).
+    var topInset: CGFloat = 0
     /// The zone's framing padding; nil = the Zones page's. The Home minimap
     /// passes the website's minimap fitBounds padding (top 70, bottom 54, sides 24).
     var framePadding: UIEdgeInsets? = nil
@@ -98,6 +100,7 @@ struct ZoneMapView: UIViewRepresentable {
         func addZone(_ city: WebData.City, to map: MKMapView, dimmed: Bool) {
             var coords = city.polygon
             let zone = ZonePolygon(coordinates: &coords, count: coords.count)
+            zone.lineWeight = parent.interactive ? 1.25 : 1   // the minimap is small: a finer line
             zone.cityKey = city.key
             zone.dimmed = dimmed
             map.addOverlay(zone, level: .aboveRoads)
@@ -107,7 +110,7 @@ struct ZoneMapView: UIViewRepresentable {
         func frame(_ key: String, on map: MKMapView, animated: Bool) {
             lastCity = key
             let pad: CGFloat = 24
-            let insets = parent.framePadding ?? UIEdgeInsets(top: pad + 56, left: pad, bottom: pad + parent.bottomInset, right: pad)
+            let insets = parent.framePadding ?? UIEdgeInsets(top: pad + 56 + parent.topInset, left: pad, bottom: pad + parent.bottomInset, right: pad)
             map.setVisibleMapRect(WebData.city(key).zoneRect, edgePadding: insets, animated: animated)
         }
 

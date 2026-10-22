@@ -15,20 +15,35 @@ struct ZonesView: View {
     @State private var suggestions: [PlaceResults.Place] = []
     @State private var place: PlaceResults.Place?
     @FocusState private var searching: Bool
+    /// The place search, opened from its circular button (closed by default).
+    @State private var searchOpen = false
 
     private let areas = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
 
     var body: some View {
-        ZStack(alignment: .top) {
-            ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.live[model.city] ?? [],
-                        heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place, bottomInset: model.mode == .heat ? 170 : 90) { selection = $0 }
-                .ignoresSafeArea(edges: .bottom)
-                .accessibilityIdentifier("zonesMap")
-            topControls
+        // Full screen: the map runs under the status bar, the see-through
+        // navigation bar (only the Account button, no title; RootView) and the
+        // Liquid Glass tab bar. The controls stay inside the safe area.
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.live[model.city] ?? [],
+                            heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place,
+                            bottomInset: model.mode == .heat ? 170 : 90,
+                            topInset: geo.safeAreaInsets.top + 52) { selection = $0 }   // under the status bar, header and the Search button
+                    .ignoresSafeArea()
+                    .accessibilityIdentifier("zonesMap")
+                // A soft scrim so the status bar and the Account button stay readable over a bright map.
+                LinearGradient(colors: [Color.black.opacity(0.55), Color.black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: geo.safeAreaInsets.top + 16)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                topControls
+            }
         }
-        .overlay(alignment: .bottom) { bottomControls }
+        // While the place search is open, the bottom controls step aside so the suggestions stay clear.
+        .overlay(alignment: .bottom) { if !searchOpen { bottomControls.transition(.opacity) } }
         .background(Color.chBackground)
-        .navigationTitle("Zones")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ReplayRoute.self) { ReplayView(route: $0) }
         .sheet(item: $selection) { sel in MapSelectionSheet(selection: sel, model: model).presentationDetents([.medium]).presentationDragIndicator(.visible) }
@@ -49,40 +64,58 @@ struct ZonesView: View {
         }
         .onAppear { if let c = router.zonesCity { model.city = c; router.zonesCity = nil } }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
-        .onChange(of: model.city) { query = ""; suggestions = []; place = nil; selection = nil }
+        .onChange(of: model.city) { query = ""; suggestions = []; place = nil; selection = nil; searchOpen = false }
         .task(id: query) { await search() }
     }
 
     // MARK: controls
 
+    /// Top left: the Austin / Dallas selector. Top right: two circular Liquid
+    /// Glass buttons, Zone details (its bottom edge level with the selector's)
+    /// and Search right below it. Search opens a field beside its button.
     private var topControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .trailing, spacing: 10) {
+            HStack(alignment: .bottom, spacing: 8) {
                 CityPicker(cities: areas, selection: $model.city)
-                Spacer(minLength: 0)
-                Button { showingDetails = true } label: {
-                    Label("Zone details", systemImage: "line.3.horizontal.decrease")
-                        .font(.inter(13, .semibold)).foregroundStyle(Color.chInk)
-                        .padding(.horizontal, 12).frame(minHeight: 40)
-                        .background(.ultraThinMaterial, in: .capsule)
-                        .overlay(Capsule().strokeBorder(Color.chHair2))
-                }
-                .accessibilityIdentifier("zoneDetailsButton")
+                    .padding(4)
+                    .modifier(GlassBackground(shape: Capsule()))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("zonesCityPicker")
+                Spacer(minLength: 8)
+                MapGlassButton(systemImage: "line.3.horizontal.decrease", label: "Zone details") { showingDetails = true }
+                    .accessibilityIdentifier("zoneDetailsButton")
             }
+            HStack(alignment: .top, spacing: 8) {
+                if searchOpen { searchPanel.transition(.move(edge: .trailing).combined(with: .opacity)) }
+                MapGlassButton(systemImage: searchOpen ? "xmark" : "magnifyingglass", label: searchOpen ? "Close search" : "Search places",
+                               active: place != nil && !searchOpen) {
+                    withAnimation(.snappy) { searchOpen.toggle() }
+                    searching = searchOpen
+                    if !searchOpen { suggestions = [] }
+                }
+                .accessibilityIdentifier("zoneSearchButton")
+            }
+        }
+        .padding(.horizontal, 12).padding(.top, 8)
+    }
+
+    /// The place search (unchanged behaviour: 3+ letters, suggestions, pick to show it on the map).
+    private var searchPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Color.chFog)
                 TextField("Search \(model.cityData.name) places", text: $query)
                     .focused($searching).submitLabel(.search).autocorrectionDisabled()
                     .font(.inter(15)).foregroundStyle(Color.chInk)
                     .onSubmit { if let first = suggestions.first { pick(first) } }
+                    .accessibilityIdentifier("zoneSearchField")
                 if !query.isEmpty || place != nil {
                     Button { query = ""; suggestions = []; place = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color.chFog) }
                         .accessibilityLabel("Clear search")
                 }
             }
-            .padding(.horizontal, 12).frame(minHeight: 42)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.chHair2))
+            .padding(.horizontal, 12).frame(minHeight: 44)
+            .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: 22)))
             if searching && !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(suggestions) { p in
@@ -91,6 +124,7 @@ struct ZonesView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 10)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("zonePlaceSuggestion")
                         if p != suggestions.last { Divider().overlay(Color.chLine) }
                     }
                 }
@@ -98,7 +132,6 @@ struct ZonesView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.chHair2))
             }
         }
-        .padding(.horizontal, 12).padding(.top, 8)
     }
 
     private var bottomControls: some View {
@@ -201,6 +234,7 @@ struct ZonesView: View {
         query = p.label
         suggestions = []
         searching = false
+        withAnimation(.snappy) { searchOpen = false }   // the place is on the map; the button shows it in gold
     }
 }
 
@@ -325,5 +359,40 @@ struct ZoneDetailsSheet: View {
         guard let fares = f?.fares, let rides = fares.rides else { return "" }
         let updated = Format.instant(fares.computedAt).map { " · updated " + $0.formatted(Date.FormatStyle(timeZone: Format.central).month(.abbreviated).day().year()) } ?? ""
         return fares.medianFare == nil ? "No logged rides yet\(updated)" : "Based on \(Format.plural(rides, "ride", "rides"))\(updated)"
+    }
+}
+
+// MARK: - Floating map controls
+
+/// A circular Liquid Glass button for the map (iOS 26 glass; frosted material before).
+struct MapGlassButton: View {
+    let systemImage: String
+    let label: String
+    var active = false
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(active ? Color.brandGold : Color.chInk)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .modifier(GlassBackground(shape: Circle(), interactive: true))
+        .accessibilityLabel(label)
+    }
+}
+
+/// Liquid Glass behind a control on iOS 26 and later; frosted material with a hairline before.
+struct GlassBackground<S: Shape>: ViewModifier {
+    let shape: S
+    var interactive = false
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+        } else {
+            content.background(.ultraThinMaterial, in: shape).overlay(shape.stroke(Color.chHair2, lineWidth: 1))
+        }
     }
 }

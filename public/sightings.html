@@ -138,7 +138,7 @@
       </div>
       <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:250 224 48;border-color:#FAE03038;background:linear-gradient(135deg, #FAE03012, transparent 70%)">
         <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg>Peak hour</div>
-        <div id="statPeakHour" class="dmv-card-num mt-1.5 max-sm:mt-0.5 font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(9px,2.7vw,11px)] max-sm:whitespace-normal max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-nowrap text-white leading-snug tabular-nums">—</div>
+        <div id="statPeakHour" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-w-full font-display font-bold text-[clamp(11px,3.1vw,1rem)] max-sm:text-[clamp(11px,2.7vw,13px)] max-sm:leading-tight tracking-tight sm:text-base sm:leading-snug sm:tracking-normal whitespace-normal break-words text-white leading-snug tabular-nums">—</div>
         <div id="statPeakCount" class="text-xs text-slate-500 max-sm:text-[10px] max-sm:leading-tight"></div>
       </div>
       <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:250 224 48;border-color:#FAE03038;background:linear-gradient(135deg, #FAE03012, transparent 70%)">
@@ -148,11 +148,6 @@
       </div>
     </div>
 
-    <!-- The photos, under a Fleet ETA-style section header. -->
-    <div class="mb-4 max-sm:mb-3">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Photos · Approved by moderators</p>
-      <h2 class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Latest sightings</h2>
-    </div>
     <!-- Toolbar: city filter, how many sightings it holds, and the sort. -->
     <div class="glass rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-3 min-w-0">
@@ -278,8 +273,13 @@
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
-    <div>
+    <!-- Moderators only (js/main.js shows it once GET /api/moderation/access
+         says so; the server ignores a camera from anyone else). Hidden, it
+         takes no space. -->
+    <div id="sightingCameraWrap" class="hidden">
       <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingCameraSearch" class="sr-only">Search traffic cameras</label>
+      <input id="sightingCameraSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Search cameras by name or number" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2 text-sm placeholder:text-slate-600">
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>

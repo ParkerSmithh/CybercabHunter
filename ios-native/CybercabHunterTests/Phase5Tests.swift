@@ -1,8 +1,28 @@
 import Testing
+import SwiftUI
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 @testable import CybercabHunter
+
+@MainActor @Test func peakHourTileFitsCompactWidthsAndLargerText() throws {
+    var regularHeight: CGFloat = 0
+    for (width, size) in [(CGFloat(132), DynamicTypeSize.large), (CGFloat(148), .large), (CGFloat(132), .accessibility3)] {
+        let tile = StatTile(icon: "clock", label: "Peak hour", value: "NOT ENOUGH DATA YET", note: "", wrapValue: true)
+            .frame(width: width).environment(\.dynamicTypeSize, size)
+        let renderer = ImageRenderer(content: tile)
+        renderer.scale = 2
+        let image = try #require(renderer.uiImage)
+        #expect(abs(image.size.width - width) < 1)
+        if size == .accessibility3 {
+            #expect(image.size.height > regularHeight, "Larger text must grow the card vertically instead of truncating")
+        } else if width == 132 {
+            regularHeight = image.size.height
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("peak-hour-\(Int(width))-\(size).png")
+        try image.pngData()?.write(to: url)
+    }
+}
 
 // Phase 5: Sightings, Account, Privacy, Moderation. The fixtures are real
 // responses from the Worker's own code over an isolated database
@@ -132,7 +152,9 @@ struct SightingFlowTests {
         #expect(m.photo != nil && m.preview != nil)
         m.locationText = "Congress Ave"
         #expect(!m.validate() && m.locationError == "Choose a city from the list first.")
-        stub.responses = ["GET /api/service-areas": (200, CommunityStub.fixture("service-areas")), "GET /data/traffic-cameras.json": (200, CommunityStub.fixture("traffic-cameras"))]
+        // A moderator (only a moderator may attach a traffic camera).
+        stub.responses = ["GET /api/service-areas": (200, CommunityStub.fixture("service-areas")), "GET /data/traffic-cameras.json": (200, CommunityStub.fixture("traffic-cameras")),
+                          "GET /api/moderation/access": CommunityStub.errorFixture("moderation-access-moderator")]
         await m.load(api: stub.api())
         m.cityName = "Austin"
         #expect(m.locationText.isEmpty, "a new city clears the place")

@@ -910,8 +910,13 @@
       <input id="sightingDate" type="date" aria-describedby="sightingDateHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
       <p id="sightingDateHelp" class="text-xs text-slate-500 mt-1.5">Leave empty for today. The time is recorded automatically when you submit, in the area's local time.</p>
     </div>
-    <div>
+    <!-- Moderators only (js/main.js shows it once GET /api/moderation/access
+         says so; the server ignores a camera from anyone else). Hidden, it
+         takes no space. -->
+    <div id="sightingCameraWrap" class="hidden">
       <label for="sightingCamera" class="text-[13px] font-medium text-slate-300">Traffic Camera <span class="normal-case text-slate-500 font-normal">(optional)</span></label>
+      <label for="sightingCameraSearch" class="sr-only">Search traffic cameras</label>
+      <input id="sightingCameraSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Search cameras by name or number" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2 text-sm placeholder:text-slate-600">
       <!-- Options come from public/data/traffic-cameras.json (js/main.js). -->
       <select id="sightingCamera" aria-describedby="sightingCameraHelp" class="mt-2 w-full bg-panel border border-[rgba(250,224,48,0.25)] rounded-lg px-3 py-2.5 text-sm [color-scheme:dark]">
         <option value="">Not a traffic camera</option>

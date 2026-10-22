@@ -22,7 +22,7 @@ xcodebuild -scheme CybercabHunter -destination 'platform=iOS Simulator,name=iPho
 The unit tests run offline from saved fixtures. The Home, Cars and Zones UI
 tests use the live backend, read only.
 
-### Community, Sightings, Account and Moderation tests (Phases 4–5.1)
+### Community, Sightings, Account, Moderation and Rider data tests (Phases 4–7)
 
 These tests write: likes, comments and posts, submitted sightings, profile
 edits and privacy changes, moderator reviews (sightings, registry vehicles,
@@ -32,7 +32,9 @@ Worker code over an isolated in-memory database**
 harness in `tests/e2e/harness.mjs`), seeded through the Worker's own API.
 
 The test accounts:
-- alice, bob, dave: riders.
+- alice, bob, dave: riders. alice has two rides and a forwarding address with
+  Gmail's confirmation code waiting (receipt domain `receipts.cch-test.invalid`,
+  which is not a real mail domain).
 - mod: the moderator.
 - carol: a private rider.
 - erin: a throwaway account, deleted by the fixtures.
@@ -42,6 +44,8 @@ The test accounts:
 ```sh
 # Starts the test Worker on 127.0.0.1:8799 and runs CommunityUITests, SightingsAccountUITests and Phase51UITests.
 ios-native/scripts/test-community.sh
+# Phase 7 signed-in screens (Rider data, Receipt sync, Tesla status) plus Simulation, News and DMV (live, read only):
+ONLY="CybercabHunterUITests/Phase7AccountUITests CybercabHunterUITests/Phase7UITests" ios-native/scripts/test-community.sh -parallel-testing-enabled NO
 # One simulator, no parallel clones (what the reported runs used):
 DESTINATION="id=<iPhone 18 Pro udid>" ios-native/scripts/test-community.sh -parallel-testing-enabled NO
 # Everything (unit + every UI test; Home/Cars/Zones read production):
@@ -88,7 +92,21 @@ node ios-native/scripts/sync-web-data.mjs
    (**Settings › Privacy & Security › Developer Mode**).
 
 The app is called **Cybercab Hunter** on the Home Screen (Debug and Release).
+
+Phase 6 adds a widget extension (`CybercabHunterWidgets`, bundle id
+`com.cybercabhunter.native.widgets`). In **Signing & Capabilities**, select the
+same Team for it as for the app (Xcode creates its profile automatically). On
+the iPhone: long-press the Home Screen → **Edit → Add Widget** → Cybercab
+Hunter. Siri phrases ("Cybercab Hunter fleet stats", "Open the zone map in
+Cybercab Hunter", "Submit a sighting in Cybercab Hunter", "Look up XVF1524 in
+Cybercab Hunter") and the Shortcuts app work after the app has been opened once.
 With a free Apple ID it must be reinstalled from Xcode every 7 days.
+
+Phase 7 adds no target, capability or entitlement. Simulation, News and the
+Texas DMV roster are under Home › Explore; Rider data and Receipt sync (Gmail)
+under Account › Your activity. Receipt sync is Gmail *forwarding*: the steps
+are done in Gmail on a computer; the app shows the address, Gmail's
+confirmation and whether receipts arrive, and never signs in to Gmail.
 
 ## Profiling on a ProMotion iPhone
 

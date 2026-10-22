@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import MapKit
 @testable import CybercabHunter
 
 // Phase 5.1: moderation parity (Registry Vehicles, News, Gmail Link, Import
@@ -353,5 +354,86 @@ struct AccountConsistencyTests {
     @Test func theAppIsCalledCybercabHunter() {
         #expect(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String == "Cybercab Hunter")
         #expect(Bundle.main.bundleIdentifier == "com.cybercabhunter.native")
+    }
+}
+
+// MARK: - Before Phase 6: moderator-only traffic cameras, thinner zone borders
+
+@MainActor
+struct TrafficCameraFieldTests {
+    private func model(access: (Int, String)?) async -> (SubmitSightingModel, StubServer) {
+        let stub = StubServer()
+        stub.responses = ["GET /api/service-areas": (200, CommunityStub.fixture("service-areas")),
+                          "GET /data/traffic-cameras.json": (200, CommunityStub.fixture("traffic-cameras"))]
+        if let access { stub.responses["GET /api/moderation/access"] = access }
+        let m = SubmitSightingModel()
+        await m.load(api: stub.api())
+        return (m, stub)
+    }
+
+    @Test func aModeratorGetsTheSearchablePicker() async throws {
+        let (m, stub) = await model(access: CommunityStub.errorFixture("moderation-access-moderator"))
+        #expect(m.isModerator && m.cameraList == .loaded && !m.cameras.isEmpty)
+        #expect(stub.requests.contains { $0.0.url?.path == "/api/moderation/access" && $0.0.cachePolicy == .reloadIgnoringLocalCacheData }, "asked fresh, every time the form opens")
+        m.cityName = "Austin"
+        let austin = m.cityCameras(matching: "")
+        #expect(austin.count == 70 && austin.allSatisfy { $0.cityKey == "austin" })
+        let trinity = m.cityCameras(matching: "  TRINITY ")
+        #expect(!trinity.isEmpty && trinity.count < 70 && trinity.allSatisfy { $0.name.lowercased().contains("trinity") }, "search by name, any case")
+        #expect(m.cityCameras(matching: "1356").map(\.cameraId) == ["1356"], "search by number")
+        #expect(m.cityCameras(matching: "zzzz-none").isEmpty)
+        // Optional: no camera, no field.
+        #expect(Dictionary(m.form().fields, uniquingKeysWith: { a, _ in a })["camera_id"] == nil)
+        m.cameraId = "65"
+        m.notes = "Edited another field"
+        #expect(m.selectedCamera?.cameraId == "65", "kept while other fields change")
+        #expect(Dictionary(m.form().fields, uniquingKeysWith: { a, _ in a })["camera_id"] == "65")
+        // Dallas: an Austin camera is dropped; the list follows the city.
+        m.cityName = "Dallas"
+        #expect(m.cameraId.isEmpty && m.cityCameras(matching: "").count == 50 && m.cityCameras(matching: "").allSatisfy { $0.cameraId.hasPrefix("txdot-dal-") })
+        m.cameraId = "txdot-dal-755"
+        m.cameraId = ""
+        #expect(m.selectedCamera == nil && Dictionary(m.form().fields, uniquingKeysWith: { a, _ in a })["camera_id"] == nil, "cleared")
+    }
+
+    @Test func aRiderNeverSeesOrSendsACamera() async throws {
+        let (m, stub) = await model(access: CommunityStub.errorFixture("moderation-access-rider"))
+        #expect(!m.isModerator && m.cameraList == .idle && m.cameras.isEmpty, "the camera list isn't even loaded")
+        #expect(!stub.requests.contains { $0.0.url?.path == "/data/traffic-cameras.json" })
+        m.cityName = "Austin"
+        m.cameraId = "65"   // even if set somehow
+        #expect(Dictionary(m.form().fields, uniquingKeysWith: { a, _ in a })["camera_id"] == nil)
+    }
+
+    @Test func noAnswerMeansNoCameraField() async throws {
+        let (signedOut, _) = await model(access: CommunityStub.errorFixture("moderation-access-signed-out"))
+        #expect(!signedOut.isModerator && signedOut.cameras.isEmpty)
+        let (failed, _) = await model(access: (500, "{}"))
+        #expect(!failed.isModerator, "an error keeps the field hidden (fails closed)")
+    }
+
+    @Test func cameraListErrorAndRetry() async throws {
+        let stub = StubServer()
+        stub.responses = ["GET /api/service-areas": (200, CommunityStub.fixture("service-areas")),
+                          "GET /api/moderation/access": CommunityStub.errorFixture("moderation-access-moderator"),
+                          "GET /data/traffic-cameras.json": (500, "oops")]
+        let m = SubmitSightingModel()
+        await m.load(api: stub.api())
+        #expect(m.isModerator && m.cameraList == .failed)
+        stub.responses["GET /data/traffic-cameras.json"] = (200, CommunityStub.fixture("traffic-cameras"))
+        await m.loadCameras(api: stub.api())
+        #expect(m.cameraList == .loaded && m.cameras.count == 120)
+    }
+}
+
+struct ZoneBorderTests {
+    @Test func outlinesAreThinOnEveryMap() {
+        var coords = [CLLocationCoordinate2D(latitude: 30.2, longitude: -97.7), CLLocationCoordinate2D(latitude: 30.3, longitude: -97.7), CLLocationCoordinate2D(latitude: 30.3, longitude: -97.8)]
+        let zone = ZonePolygon(coordinates: &coords, count: coords.count)
+        #expect(ZoneRenderer(zone: zone).lineWidth == 1.25, "Zones and Replay (was 2.5)")
+        zone.lineWeight = 1
+        #expect(ZoneRenderer(zone: zone).lineWidth == 1, "the Home minimap")
+        let r = ZoneRenderer(zone: zone)
+        #expect(r.strokeColor != nil && r.fillColor != nil, "same colours as before")
     }
 }

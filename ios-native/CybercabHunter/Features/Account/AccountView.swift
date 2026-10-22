@@ -48,6 +48,12 @@ struct AccountView: View {
                 case .rider(let handle): RiderProfileView(route: RiderRoute(handle: handle))
                 }
             }
+            .navigationDestination(for: RiderDataRoute.self) { route in
+                switch route {
+                case .data: RiderDataView()
+                case .gmail: GmailForwardingView()
+                }
+            }
             .navigationDestination(for: VehicleRoute.self) { VehicleDetailView(route: $0) }
             .navigationDestination(for: RegistryPlateRoute.self) { ModerationView(initialPlate: $0.plate) }
             .fullScreenCover(item: $webPage) { page in
@@ -136,10 +142,10 @@ struct AccountView: View {
             if let s = model.settings, s.leaderboardOptIn, let handle = s.handle {
                 NavigationLink(value: AccountRoute.rider(handle)) { Label("Your public profile", systemImage: "person.text.rectangle") }
             }
-            // Ride receipts, Gmail link and ride history aren't part of the native app yet.
-            Button { webPage = WebPage(title: "Rider data", path: "/rider-data", systemImage: "list.bullet") } label: {
-                Label("Rider data (website)", systemImage: "list.bullet.rectangle")
-            }
+            NavigationLink(value: RiderDataRoute.data) { Label("Rider data", systemImage: "list.bullet.rectangle") }
+                .accessibilityIdentifier("riderData")
+            NavigationLink(value: RiderDataRoute.gmail) { Label("Receipt sync (Gmail)", systemImage: "envelope.arrow.triangle.branch") }
+                .accessibilityIdentifier("receiptSync")
         }
         if model.isModerator {
             Section {

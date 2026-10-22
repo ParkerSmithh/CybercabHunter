@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct CybercabHunterApp: App {
     @State private var session = SessionStore()
-    @State private var router = AppRouter()
+    @State private var router = AppRouter.shared
 
     init() {
         // Photos and API responses honour the Worker's Cache-Control; a larger
@@ -26,6 +26,9 @@ struct CybercabHunterApp: App {
                 .tint(.brandGold)
                 .preferredColorScheme(.dark)
                 .task { await session.restore() }
+                // Spotlight / Siri / Apple Intelligence: the public registry as
+                // searchable Cybercabs (CybercabIntents.swift), at most once a day.
+                .task(priority: .background) { if !DebugLaunch.usesTestSession { await VehicleDirectory.indexInSpotlight() } }
         }
     }
 }

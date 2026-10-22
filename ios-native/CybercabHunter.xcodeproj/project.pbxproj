@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CC0DE00000000000000000AC /* CybercabHunterWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CC0DE00000000000000000A0 /* CybercabHunterWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CC0DE0000000000000000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +25,34 @@
 			remoteGlobalIDString = CC0DE0000000000000000003;
 			remoteInfo = CybercabHunter;
 		};
+		CC0DE00000000000000000AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC0DE0000000000000000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC0DE00000000000000000A6;
+			remoteInfo = CybercabHunterWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CC0DE00000000000000000AD /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CC0DE00000000000000000AC /* CybercabHunterWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CC0DE0000000000000000004 /* CybercabHunter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CybercabHunter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC0DE0000000000000000005 /* CybercabHunterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CybercabHunterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC0DE0000000000000000065 /* CybercabHunterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CybercabHunterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC0DE00000000000000000A0 /* CybercabHunterWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CybercabHunterWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -43,6 +69,16 @@
 		CC0DE0000000000000000066 /* CybercabHunterUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CybercabHunterUITests;
+			sourceTree = "<group>";
+		};
+		CC0DE00000000000000000A1 /* CybercabHunterWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CybercabHunterWidgets;
+			sourceTree = "<group>";
+		};
+		CC0DE00000000000000000A2 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +105,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0DE00000000000000000A3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +121,8 @@
 				CC0DE0000000000000000006 /* CybercabHunter */,
 				CC0DE0000000000000000007 /* CybercabHunterTests */,
 				CC0DE0000000000000000066 /* CybercabHunterUITests */,
+				CC0DE00000000000000000A1 /* CybercabHunterWidgets */,
+				CC0DE00000000000000000A2 /* Shared */,
 				CC0DE000000000000000000B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +133,7 @@
 				CC0DE0000000000000000004 /* CybercabHunter.app */,
 				CC0DE0000000000000000005 /* CybercabHunterTests.xctest */,
 				CC0DE0000000000000000065 /* CybercabHunterUITests.xctest */,
+				CC0DE00000000000000000A0 /* CybercabHunterWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,13 +148,16 @@
 				CC0DE000000000000000000D /* Sources */,
 				CC0DE0000000000000000008 /* Frameworks */,
 				CC0DE000000000000000000E /* Resources */,
+				CC0DE00000000000000000AD /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CC0DE00000000000000000AB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CC0DE0000000000000000006 /* CybercabHunter */,
+				CC0DE00000000000000000A2 /* Shared */,
 			);
 			name = CybercabHunter;
 			packageProductDependencies = (
@@ -163,6 +212,29 @@
 			productReference = CC0DE0000000000000000065 /* CybercabHunterUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		CC0DE00000000000000000A6 /* CybercabHunterWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC0DE00000000000000000A7 /* Build configuration list for PBXNativeTarget "CybercabHunterWidgets" */;
+			buildPhases = (
+				CC0DE00000000000000000A4 /* Sources */,
+				CC0DE00000000000000000A3 /* Frameworks */,
+				CC0DE00000000000000000A5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CC0DE00000000000000000A1 /* CybercabHunterWidgets */,
+				CC0DE00000000000000000A2 /* Shared */,
+			);
+			name = CybercabHunterWidgets;
+			packageProductDependencies = (
+			);
+			productName = CybercabHunterWidgets;
+			productReference = CC0DE00000000000000000A0 /* CybercabHunterWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +256,9 @@
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = CC0DE0000000000000000003;
 					};
+					CC0DE00000000000000000A6 = {
+						CreatedOnToolsVersion = 27.0;
+					};
 				};
 			};
 			buildConfigurationList = CC0DE0000000000000000014 /* Build configuration list for PBXProject "CybercabHunter" */;
@@ -203,6 +278,7 @@
 				CC0DE0000000000000000003 /* CybercabHunter */,
 				CC0DE000000000000000000F /* CybercabHunterTests */,
 				CC0DE0000000000000000068 /* CybercabHunterUITests */,
+				CC0DE00000000000000000A6 /* CybercabHunterWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +299,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CC0DE000000000000000006A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0DE00000000000000000A5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +336,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0DE00000000000000000A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +355,11 @@
 			isa = PBXTargetDependency;
 			target = CC0DE0000000000000000003 /* CybercabHunter */;
 			targetProxy = CC0DE0000000000000000064 /* PBXContainerItemProxy */;
+		};
+		CC0DE00000000000000000AB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC0DE00000000000000000A6 /* CybercabHunterWidgets */;
+			targetProxy = CC0DE00000000000000000AA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -462,6 +557,56 @@
 			};
 			name = Release;
 		};
+		CC0DE00000000000000000A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JC2HZNJ623;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/WidgetInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Cybercab Hunter";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cybercabhunter.native.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CC0DE00000000000000000A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JC2HZNJ623;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/WidgetInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Cybercab Hunter";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cybercabhunter.native.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -497,6 +642,15 @@
 			buildConfigurations = (
 				CC0DE000000000000000006D /* Debug */,
 				CC0DE000000000000000006E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC0DE00000000000000000A7 /* Build configuration list for PBXNativeTarget "CybercabHunterWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC0DE00000000000000000A8 /* Debug */,
+				CC0DE00000000000000000A9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

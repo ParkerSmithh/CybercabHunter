@@ -66,7 +66,6 @@ struct CommunityView: View {
             }
         }
         .appBackground()
-        .navigationTitle("Community")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

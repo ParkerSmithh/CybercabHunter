@@ -86,6 +86,8 @@ final class SightingsAccountUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["sightingCard"].firstMatch.waitForExistence(timeout: 20) || app.buttons["sightingPhoto"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(text(app, "SIGHTINGS").exists)
         XCTAssertTrue(text(app, "Approved sightings").exists, "the stat cards")
+        XCTAssertFalse(text(app, "Photos · Approved by moderators").exists)
+        XCTAssertFalse(text(app, "Latest sightings").exists)
         XCTAssertTrue(app.staticTexts["feedCount"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["feedCount"].label, "2 sightings in Austin", "the server's count")
         shot(app, "s01-sightings")

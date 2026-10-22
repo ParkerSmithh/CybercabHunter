@@ -1,0 +1,44 @@
+{
+  "trips": [
+    {
+      "id": "trip-2",
+      "ride_date": "2026-06-09",
+      "city": "Dallas",
+      "distance": 2.8,
+      "distance_unit": "mi",
+      "duration_minutes": null,
+      "duration_derived": false,
+      "fare_amount_cents": 692,
+      "currency": "USD",
+      "currency_source": "assumed",
+      "vehicle_plate": "XVF3210",
+      "source": "receipt_email",
+      "revision": 1,
+      "corrected": false,
+      "status": "counted"
+    },
+    {
+      "id": "trip-1",
+      "ride_date": "2026-06-09",
+      "city": "Dallas",
+      "distance": 2.8,
+      "distance_unit": "mi",
+      "duration_minutes": null,
+      "duration_derived": false,
+      "fare_amount_cents": 692,
+      "currency": "USD",
+      "currency_source": "assumed",
+      "vehicle_plate": "XVF-3582",
+      "source": "receipt_email",
+      "revision": 1,
+      "corrected": false,
+      "status": "counted"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 10,
+    "total": 2,
+    "total_pages": 1
+  }
+}

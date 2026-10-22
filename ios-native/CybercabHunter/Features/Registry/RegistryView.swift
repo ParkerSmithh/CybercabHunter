@@ -29,7 +29,6 @@ struct RegistryView: View {
             .padding(.bottom, 24)
         }
         .appBackground()
-        .navigationTitle("Cars")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $model.query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Plate or VIN")
         .textInputAutocapitalization(.characters)

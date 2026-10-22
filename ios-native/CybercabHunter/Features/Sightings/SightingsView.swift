@@ -19,10 +19,6 @@ struct SightingsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
                 statsGrid
-                VStack(alignment: .leading, spacing: 6) {
-                    Eyebrow(text: "Photos · Approved by moderators")
-                    Text("Latest sightings").displayTitle(22)
-                }
                 toolbar
                 gallery
             }
@@ -30,7 +26,6 @@ struct SightingsView: View {
             .padding(.bottom, 28)
         }
         .appBackground()
-        .navigationTitle("Sightings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -53,11 +48,23 @@ struct SightingsView: View {
             }
         }
         .sheet(isPresented: $submitting) { SubmitSightingView() }
+        // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
+        .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
+        .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
         .fullScreenCover(item: $viewing) { SightingViewer(sighting: $0) }
         .confirmationDialog("Delete this photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
             Button("Delete photo", role: .destructive) { if let s = deleting { Task { await model.deletePhoto(s, api: session.api) } } }
         } message: { Text("It is removed permanently and can't be undone.") }
         .overlay(alignment: .top) { ToastHost(toast: $model.toast) }
+    }
+
+    /// The shortcut's request: the form when signed in, sign-in otherwise. While
+    /// the stored session is still being checked (a cold launch), it waits.
+    private func handleSubmitRequest() {
+        guard router.submitSightingRequested else { return }
+        if case .restoring = session.state { return }
+        router.submitSightingRequested = false
+        if session.user != nil { submitting = true } else { openSignIn() }
     }
 
     // MARK: Header
@@ -91,7 +98,7 @@ struct SightingsView: View {
             StatTile(icon: "calendar", label: "Last 7 days", value: Format.int(s?.last7Days), note: "Seen in the last 7 days")
             StatTile(icon: "sun.max", label: "Today", value: Format.int(s?.today), note: s?.today == 1 ? "Cybercab spotted today" : "Cybercabs spotted today")
             StatTile(icon: "calendar.badge.clock", label: "This month", value: Format.int(s?.thisMonth), note: monthNote(s))
-            StatTile(icon: "clock", label: "Peak hour", value: peakValue(s), note: peakNote(s))
+            StatTile(icon: "clock", label: "Peak hour", value: peakValue(s), note: peakNote(s), wrapValue: true)
             StatTile(icon: "trophy", label: "Best day", value: bestValue(s), note: s?.bestDay.map { Format.plural($0.count, "sighting", "sightings") } ?? "")
         }
         .accessibilityIdentifier("sightingStats")
@@ -104,7 +111,7 @@ struct SightingsView: View {
     private func peakValue(_ s: SightingStats?) -> String {
         guard let s else { return "—" }
         if let p = s.peakHour { return "\(Format.hourLabel(p.hour)) - \(Format.hourLabel(p.hour + 1))" }
-        return s.total == 0 ? "None yet" : "Not enough data yet"
+        return s.total == 0 ? "None yet" : "NOT ENOUGH DATA YET"
     }
     private func peakNote(_ s: SightingStats?) -> String {
         guard let s, let p = s.peakHour else { return "" }
@@ -183,12 +190,15 @@ struct StatTile: View {
     let value: String
     let note: String
     var strong = false
+    var wrapValue = false
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(label.uppercased(), systemImage: icon)
                 .font(.inter(10, .semibold)).tracking(0.4).foregroundStyle(Color.brandGold.opacity(0.9))
                 .lineLimit(1).minimumScaleFactor(0.8)
-            Text(value).statNumber(value.count > 8 ? 17 : 24).lineLimit(1).minimumScaleFactor(0.6)
+            Text(value).statNumber(value.count > 8 ? 17 : 24)
+                .lineLimit(wrapValue ? nil : 1).minimumScaleFactor(wrapValue ? 1 : 0.6)
+                .fixedSize(horizontal: false, vertical: wrapValue)
             Text(note).font(.inter(11)).foregroundStyle(Color.chCaption).lineLimit(2).fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)

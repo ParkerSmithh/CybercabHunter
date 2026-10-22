@@ -14,6 +14,7 @@ struct HomeView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 HomeHero()
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
+                ExploreSection()
                 VStack(spacing: 14) {
                     ServiceStatusCard(hours: model.cityStats["austin"]?.area?.hours)
                     DailyCard(report: model.daily, error: model.errors["daily"])
@@ -30,6 +31,7 @@ struct HomeView: View {
         .appBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { BrandToolbarItem() }
+        .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
         .task { await model.loadAll(using: session.api) }
         .refreshable { await model.loadAll(using: session.api) }
         .onChange(of: model.city) { _, city in
