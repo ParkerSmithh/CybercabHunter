@@ -47,7 +47,9 @@ const call = async (ctx, path, { method = 'GET', session = 'session-mod', body, 
   let out = null; try { out = await r.clone().json(); } catch (e) { /* not JSON */ }
   return { status: r.status, json: out, r };
 };
-async function submit(ctx, fields = {}, { session = 'session-rider' } = {}) {
+// Only a moderator may attach a traffic camera (worker/sightings.js), so a
+// sighting WITH a camera is submitted by the moderator; one without, by a rider.
+async function submit(ctx, fields = {}, { session = fields.camera_id ? 'session-mod' : 'session-rider' } = {}) {
   const fd = new FormData();
   fd.append('photo', new File([JPEG], 'cam.jpg', { type: 'image/jpeg' }));
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
@@ -78,7 +80,7 @@ async function run() {
     check('the Worker uses the same file (a backup camera is valid server-side too)', TRAFFIC_CAMERAS.length === 120 && trafficCameraFor('txdot-dal-1011').name === 'Spur 366 @ EB Tunnel Cam 2' && trafficCameraFor('txdot-dal-1011').city === 'dallas' && trafficCameraFor('1444').name === 'GUADALUPE ST / 17TH ST' && trafficCameraFor('65').name === 'MARTIN LUTHER KING JR BLVD / TRINITY ST' && trafficCameraFor(65) && !trafficCameraFor('nope'));
   }
 
-  console.log('2. Submit: camera_id is saved; omitting it changes nothing');
+  console.log('2. Submit: a moderator\'s camera_id is saved; a rider\'s is ignored; omitting it changes nothing');
   {
     const ctx = await makeApp();
     const withCam = await submit(ctx, { service_area: 'Austin', camera_id: CAM });
@@ -98,6 +100,18 @@ async function run() {
     check('an Austin camera with Dallas as the city: 400 invalid_traffic_camera', dallas.status === 400 && dallas.json.error === 'invalid_traffic_camera');
     check('rejected submissions store nothing', ctx.d1.query('SELECT COUNT(*) n FROM submissions')[0].n === before);
     check('submitting never creates a map row (only approval does)', rows(ctx).length === 0);
+    // A rider (not a moderator) sending a camera, e.g. from an older page or a hand-made request.
+    const rider = await submit(ctx, { service_area: 'Austin', camera_id: CAM }, { session: 'session-rider' });
+    check('a rider\'s camera is ignored: the sighting is stored WITHOUT it (201, camera_ignored)', rider.status === 201 && rider.json.camera_ignored === true && obs(ctx, rider.json.submission_id).camera_id === null);
+    const riderBad = await submit(ctx, { service_area: 'Dallas', camera_id: '99999' }, { session: 'session-rider' });
+    check('...even an invalid one is never looked at for a rider (ignored, not an error that reveals the list)', riderBad.status === 201 && riderBad.json.camera_ignored === true && obs(ctx, riderBad.json.submission_id).camera_id === null);
+    const riderNone = await submit(ctx, { service_area: 'Austin' }, { session: 'session-rider' });
+    check('a rider without a camera: as before (no camera_ignored flag)', riderNone.status === 201 && !('camera_ignored' in riderNone.json));
+    const modNone = await submit(ctx, { service_area: 'Austin' }, { session: 'session-mod' });
+    check('a moderator can submit without a camera (it is optional for them too)', modNone.status === 201 && obs(ctx, modNone.json.submission_id).camera_id === null);
+    check('a moderator\'s camera sighting is ONE submission and ONE observation (no duplicates), and no map row yet', ctx.d1.query('SELECT COUNT(*) n FROM vehicle_observations WHERE submission_id = ?', withCam.json.submission_id)[0].n === 1 && rows(ctx).length === 0);
+    const unauth = await call(ctx, '/api/vehicle-sightings/photo', { method: 'POST', session: null, body: (() => { const fd = new FormData(); fd.append('photo', new File([JPEG], 'c.jpg', { type: 'image/jpeg' })); fd.append('camera_id', CAM); return fd; })() });
+    check('signed out: 401, nothing stored', unauth.status === 401);
   }
 
   console.log('3. Approve a camera sighting -> automatically on the Zones map');
@@ -226,42 +240,84 @@ async function run() {
     check('the 30-day photo expiry removes the map copy too', rows(ctx).length === 0 && !ctx.env.EVIDENCE_BUCKET._objects.has(copy2));
   }
 
-  console.log('10. Submit drawer: the Traffic Camera picker');
+  console.log('10. Submit drawer: the Traffic Camera picker, for moderators only');
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(`public/${f}`).includes('id="sightingForm"'));
     check('every page with the drawer has the optional picker, defaulting to "Not a traffic camera"',
       pages.length === 14 && pages.every(f => /<select id="sightingCamera"[^>]*>\s*<option value="">Not a traffic camera<\/option>/.test(read(`public/${f}`)) && !/id="sightingCamera"[^>]*required/.test(read(`public/${f}`))));
+    check('...inside a block that starts HIDDEN on every page (no space, no placeholder, no mention for riders)',
+      pages.every(f => /<div id="sightingCameraWrap" class="hidden">/.test(read(`public/${f}`)) && /id="sightingCameraSearch" type="search"/.test(read(`public/${f}`))));
     const ctx = await makeApp();
-    const dom = new JSDOM(read('public/sightings.html').replace(/<script src="[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/sightings', pretendToBeVisual: true });
-    const w = dom.window;
-    w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
-    w.localStorage.setItem('teslaSessionId', 'session-rider');
-    const sent = [];
-    w.fetch = async (url, init = {}) => {
-      const u = String(url);
-      if (u === 'data/traffic-cameras.json') return new Response(read('public/data/traffic-cameras.json'));
-      if (u.includes('/api/vehicle-sightings/photo')) { sent.push(init.body); return Response.json({ success: true, submission_id: 'x', status: 'pending' }); }
-      // Everything else (the account menu's /api/me, service areas) goes to the real Worker.
-      return worker.fetch(new Request(`https://x${u.replace(WORKER_ORIGIN, '')}`, init), ctx.env, {});
-    };
-    w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();`);
-    const d = w.document;
-    d.getElementById('openSightingDrawer').click();
-    await new Promise(r => setTimeout(r, 50));
-    const sel = d.getElementById('sightingCamera');
-    check('opening the drawer fills the picker with all 70 cameras (plus "Not a traffic camera")', sel.options.length === 71 && sel.options[0].value === '' && [...sel.options].some(o => o.value === CAM && o.textContent === 'MARTIN LUTHER KING JR BLVD / TRINITY ST (#65)'));
-    const photo = d.getElementById('sightingPhoto');
-    const file = new w.File([JPEG], 'x.jpg', { type: 'image/jpeg' });
-    Object.defineProperty(photo, 'files', { value: [file], configurable: true });
-    d.getElementById('sightingForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
-    for (let i = 0; i < 100 && !sent.length; i++) await new Promise(r => setTimeout(r, 10));
-    check('submitted without a camera: no camera_id field is sent', sent.length === 1 && !sent[0].has('camera_id'));
-    sel.value = CAM;
-    Object.defineProperty(photo, 'files', { value: [file], configurable: true });
-    d.getElementById('sightingForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
-    for (let i = 0; i < 100 && sent.length < 2; i++) await new Promise(r => setTimeout(r, 10));
-    check('with a camera picked: camera_id is sent', sent.length === 2 && sent[1].get('camera_id') === CAM);
-    w.close();
+    async function openDrawer(session, { accessFails = false } = {}) {
+      const dom = new JSDOM(read('public/sightings.html').replace(/<script src="[^"]*"><\/script>/g, ''), { runScripts: 'outside-only', url: 'https://cybercabhunter.com/sightings', pretendToBeVisual: true });
+      const w = dom.window;
+      w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+      if (session) w.localStorage.setItem('teslaSessionId', session);
+      const sent = [];
+      w.fetch = async (url, init = {}) => {
+        const u = String(url);
+        if (u === 'data/traffic-cameras.json') return new Response(read('public/data/traffic-cameras.json'));
+        if (u.includes('/api/vehicle-sightings/photo')) { sent.push(init.body); return Response.json({ success: true, submission_id: 'x', status: 'pending' }); }
+        if (accessFails && u.includes('/api/moderation/access')) throw new TypeError('network');
+        // Everything else (moderation access, the account menu's /api/me, service areas) goes to the real Worker.
+        return worker.fetch(new Request(`https://x${u.replace(WORKER_ORIGIN, '')}`, init), ctx.env, {});
+      };
+      w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();`);
+      const d = w.document;
+      d.getElementById('openSightingDrawer').click();
+      await new Promise(r => setTimeout(r, 80));
+      const submitWith = async () => {
+        const photo = d.getElementById('sightingPhoto');
+        Object.defineProperty(photo, 'files', { value: [new w.File([JPEG], 'x.jpg', { type: 'image/jpeg' })], configurable: true });
+        const n = sent.length;
+        d.getElementById('sightingForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
+        for (let i = 0; i < 100 && sent.length === n; i++) await new Promise(r => setTimeout(r, 10));
+        return sent[sent.length - 1];
+      };
+      return { w, d, sent, submitWith, wrap: d.getElementById('sightingCameraWrap'), sel: d.getElementById('sightingCamera') };
+    }
+
+    // A rider: exactly the form as before, no camera field at all.
+    const r = await openDrawer('session-rider');
+    check('rider: the camera block stays hidden (and the camera list is never even loaded)', r.wrap.classList.contains('hidden') && r.sel.options.length === 1);
+    check('rider: submits without a camera as before', !(await r.submitWith()).has('camera_id'));
+    // A hand-forced value in the hidden select is still never sent (the server would ignore it anyway).
+    const forced = r.d.createElement('option'); forced.value = CAM; r.sel.appendChild(forced); r.sel.value = CAM;
+    check('rider: even a value forced into the hidden picker is not sent', !(await r.submitWith()).has('camera_id'));
+    r.w.close();
+
+    // Moderator access can't be confirmed (network error): hidden, never guessed.
+    const e = await openDrawer('session-mod', { accessFails: true });
+    check('moderator, but the access check fails: hidden (fails closed)', e.wrap.classList.contains('hidden'));
+    e.w.close();
+
+    // A moderator: the picker, search, city filter, optional.
+    const m = await openDrawer('session-mod');
+    check('moderator: the camera block is shown once the server confirms it', !m.wrap.classList.contains('hidden'));
+    check('moderator: the picker lists all 70 Austin cameras (plus "Not a traffic camera")', m.sel.options.length === 71 && m.sel.options[0].value === '' && [...m.sel.options].some(o => o.value === CAM && o.textContent === 'MARTIN LUTHER KING JR BLVD / TRINITY ST (#65)'));
+    check('moderator: submits WITHOUT a camera (optional for moderators too)', !(await m.submitWith()).has('camera_id'));
+    const search = m.d.getElementById('sightingCameraSearch');
+    search.value = 'trinity'; search.dispatchEvent(new m.w.Event('input'));
+    check('search narrows by name (case-insensitive)', m.sel.options.length > 1 && m.sel.options.length < 71 && [...m.sel.options].slice(1).every(o => /trinity/i.test(o.textContent)));
+    search.value = '1356'; search.dispatchEvent(new m.w.Event('input'));
+    check('search by camera number', [...m.sel.options].slice(1).map(o => o.value).join() === '1356');
+    search.value = 'zzzz-no-such'; search.dispatchEvent(new m.w.Event('input'));
+    check('no match: only "Not a traffic camera", and the help says so', m.sel.options.length === 1 && /No camera matches/.test(m.d.getElementById('sightingCameraHelp').textContent));
+    search.value = ''; search.dispatchEvent(new m.w.Event('input'));
+    m.sel.value = CAM;
+    search.value = 'cardinal'; search.dispatchEvent(new m.w.Event('input'));
+    check('the chosen camera stays chosen while searching for others', m.sel.value === CAM && [...m.sel.options].some(o => o.value === CAM));
+    search.value = ''; search.dispatchEvent(new m.w.Event('input'));
+    check('moderator: with a camera picked, camera_id is sent', (await m.submitWith()).get('camera_id') === CAM);
+    // Changing the City: Dallas lists only Dallas cameras and drops the Austin choice.
+    m.sel.value = CAM;
+    const city = m.d.getElementById('sightingServiceArea');
+    if (![...city.options].some(o => o.value === 'Dallas')) { const o = m.d.createElement('option'); o.value = 'Dallas'; o.textContent = 'Dallas'; city.appendChild(o); }
+    city.value = 'Dallas'; city.dispatchEvent(new m.w.Event('change'));
+    check('City -> Dallas: the 50 Dallas cameras, and the Austin camera is cleared', m.sel.options.length === 51 && m.sel.value === '' && [...m.sel.options].slice(1).every(o => o.value.startsWith('txdot-dal-')));
+    m.sel.value = '';
+    check('...and clearing the selection is just "Not a traffic camera"', !(await m.submitWith()).has('camera_id'));
+    m.w.close();
   }
 
   console.log('11. Moderation page: approved list, map status, Add to map dialog');

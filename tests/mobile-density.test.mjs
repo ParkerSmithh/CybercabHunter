@@ -22,7 +22,7 @@ check('Sightings header: description and Replay Map stay on one row on phones', 
 const replay = classOf(sightings, /<a id="sightingsReplay" href="[^"]*" class="([^"]*)"/);
 check('the phone Replay Map button keeps a 40px tap height', has(replay, 'max-sm:min-h-[40px]', 'max-sm:whitespace-nowrap'));
 const peak = classOf(sightings, /<div id="statPeakHour" class="([^"]*)"/);
-check('Peak hour keeps its sm+ one-line sizing (fit fix 3)', has(peak, 'whitespace-nowrap', 'sm:text-base', 'text-[clamp(11px,3.1vw,1rem)]'));
+check('Peak hour wraps within its card at every breakpoint while keeping responsive sizing', has(peak, 'whitespace-normal', 'break-words', 'max-w-full', 'sm:text-base', 'text-[clamp(11px,3.1vw,1rem)]') && !peak.includes('whitespace-nowrap'));
 const sjs = fs.readFileSync(`${ROOT}public/js/sightings.js`, 'utf8');
 check('phones hide only the ":00" of each peak hour, so the text itself is unchanged', /el\('span', 'max-sm:hidden', ':00'\)/.test(sjs));
 

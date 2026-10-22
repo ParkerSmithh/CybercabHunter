@@ -680,6 +680,8 @@ const CCC = (() => {
     const locOptions = document.getElementById('sightingLocOptions');
     const locError = document.getElementById('sightingLocError');
     const cameraField = document.getElementById('sightingCamera');
+    const cameraWrap = document.getElementById('sightingCameraWrap');
+    const cameraSearch = document.getElementById('sightingCameraSearch');
     let inFlight = false;
     let previewUrl = null;
 
@@ -713,6 +715,7 @@ const CCC = (() => {
       showLocError('');
       closeLocOptions();
       syncLocationToCity();
+      renderTrafficCameras();   // the search box was cleared: the full list again
     }
 
     // ---- City first: the City dropdown is built from the supported service
@@ -755,11 +758,36 @@ const CCC = (() => {
       } catch (e) { /* retried the next time the drawer opens */ }
     }
 
-    // ---- Traffic camera (optional): the selected city's cameras, from the same
-    // list the server checks against (public/data/traffic-cameras.json, each
-    // entry tagged with its city; an untagged one is Austin). With no city or
-    // Austin chosen, exactly the Austin cameras; with Dallas, the TxDOT Dallas
-    // cameras. Left at "Not a traffic camera", nothing about the sighting changes.
+    // ---- Traffic camera (optional, MODERATORS ONLY): the selected city's
+    // cameras, from the same list the server checks against
+    // (public/data/traffic-cameras.json, each entry tagged with its city; an
+    // untagged one is Austin). With no city or Austin chosen, exactly the
+    // Austin cameras; with Dallas, the TxDOT Dallas cameras. Left at "Not a
+    // traffic camera", nothing about the sighting changes.
+    // The field starts hidden (taking no space) and is shown only once the
+    // server says this session is a moderator's (GET /api/moderation/access);
+    // any doubt (signed out, an error) keeps it hidden. The server enforces it
+    // too: a camera from anyone else is ignored (worker/sightings.js).
+    let cameraAllowed = false;
+    let cameraAccessFor = null;   // the session the answer is for
+    async function checkCameraAccess() {
+      const session = localStorage.getItem(TESLA_SESSION_KEY);
+      if (session === cameraAccessFor) return;
+      cameraAccessFor = session;
+      let allowed = false;
+      if (session) {
+        try {
+          const resp = await fetch(TESLA_WORKER_URL + '/api/moderation/access', { headers: { Authorization: 'Bearer ' + session } });
+          const access = resp.ok ? await resp.json() : null;
+          allowed = !!(access && access.moderator === true);
+        } catch (e) { allowed = false; cameraAccessFor = null; }   // asked again at the next opening
+      }
+      if (localStorage.getItem(TESLA_SESSION_KEY) !== session) return;   // signed in/out meanwhile
+      cameraAllowed = allowed;
+      if (cameraWrap) cameraWrap.classList.toggle('hidden', !allowed);
+      if (!allowed && cameraField) cameraField.value = '';
+      if (allowed) loadTrafficCameras();
+    }
     let camerasLoaded = false;
     let allCameras = [];
     const cameraHelp = document.getElementById('sightingCameraHelp');
@@ -772,8 +800,11 @@ const CCC = (() => {
       if (!cameraField) return;
       const city = cameraCityKey();
       const current = cameraField.value;
+      // The search box narrows the list by name or number; the chosen camera always stays listed.
+      const q = cameraSearch ? cameraSearch.value.trim().toLowerCase() : '';
       [...cameraField.options].slice(1).forEach(o => o.remove());   // keep "Not a traffic camera"
       allCameras.filter(c => (c.city || 'austin') === city)
+        .filter(c => !q || c.camera_id === current || c.name.toLowerCase().includes(q) || String(c.camera_id).toLowerCase().includes(q))
         .sort((a, b) => a.name.localeCompare(b.name) || a.camera_id.localeCompare(b.camera_id, undefined, { numeric: true })).forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.camera_id;
@@ -782,18 +813,22 @@ const CCC = (() => {
         });
       // A camera from the other city is not kept.
       cameraField.value = current && [...cameraField.options].some(o => o.value === current) ? current : '';
-      if (cameraHelp) cameraHelp.textContent = CAMERA_HELP[city] || cameraHelpAustin;
+      if (cameraHelp) cameraHelp.textContent = camerasFailed ? "Couldn't load the camera list. Close and reopen this form to try again."
+        : q && cameraField.options.length === 1 ? 'No camera matches that search.' : (CAMERA_HELP[city] || cameraHelpAustin);
     }
+    let camerasFailed = false;
+    if (cameraSearch) cameraSearch.addEventListener('input', renderTrafficCameras);
     async function loadTrafficCameras() {
       if (camerasLoaded || !cameraField) return;
       try {
         const resp = await fetch('data/traffic-cameras.json');
         const cameras = resp.ok ? await resp.json() : null;
-        if (!Array.isArray(cameras)) return;
+        if (!Array.isArray(cameras)) throw new Error('camera list');
         allCameras = cameras;
+        camerasFailed = false;
         renderTrafficCameras();
         camerasLoaded = true;
-      } catch (e) { /* retried the next time the drawer opens */ }
+      } catch (e) { camerasFailed = true; renderTrafficCameras(); /* retried the next time the drawer opens */ }
     }
 
     serviceAreaField.addEventListener('change', () => {
@@ -918,7 +953,7 @@ const CCC = (() => {
         dateField.max = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       }
       loadServiceAreas();
-      loadTrafficCameras();
+      checkCameraAccess();
       drawer.classList.add('is-open'); backdrop.classList.add('is-open');
     }
     function close() { drawer.classList.remove('is-open'); backdrop.classList.remove('is-open'); }
@@ -1017,7 +1052,7 @@ const CCC = (() => {
       if (dateField && dateField.value) fields.observed_date = dateField.value;
       try { fields.time_zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* optional */ }
       if (fields.approx_location && locIdField) { fields.location_id = locIdField.value; fields.location_query = pickedQuery; }
-      if (cameraField && cameraField.value) fields.camera_id = cameraField.value;
+      if (cameraAllowed && cameraField && cameraField.value) fields.camera_id = cameraField.value;
       Object.entries(fields).forEach(([k, v]) => { if (v) body.append(k, v); });
 
       let resp;

@@ -299,19 +299,30 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     observedAt = resolved.observedAt;
   }
 
-  // Traffic camera (optional): only one of the listed cameras
-  // (public/data/traffic-cameras.json) of the sighting's own city. Most photos
-  // have none. When one is given, approving the sighting also puts it on the
-  // Zones map (worker/moderation.js).
+  const sql = env.cybercabhunter_db;
+
+  // Traffic camera (optional, MODERATORS ONLY): one of the listed cameras
+  // (public/data/traffic-cameras.json) of the sighting's own city. When one is
+  // given, approving the sighting also puts it on the Zones map
+  // (worker/moderation.js), so only a moderator may attach one. The role is
+  // the server's (users.role, as requireModerator reads it), never the
+  // client's. A camera sent by anyone else is ignored, not an error: the
+  // sighting is stored without it (an older page or app showed the field to
+  // everyone), and the response says so (camera_ignored).
   let cameraId = null;
+  let cameraIgnored = false;
   const cameraField = form.get('camera_id');
   if (typeof cameraField === 'string' && cameraField.trim()) {
-    const camera = trafficCameraFor(cameraField);
-    if (!camera || (area && area.key !== cameraCity(camera))) return bad('invalid_traffic_camera');
-    cameraId = camera.camera_id;
+    const submitter = await db.getUserById(sql, userId);
+    if (!submitter || submitter.role !== 'moderator') {
+      cameraIgnored = true;
+    } else {
+      const camera = trafficCameraFor(cameraField);
+      if (!camera || (area && area.key !== cameraCity(camera))) return bad('invalid_traffic_camera');
+      cameraId = camera.camera_id;
+    }
   }
 
-  const sql = env.cybercabhunter_db;
   const robotaxiVehicleId = licensePlate ? await db.findRobotaxiVehicleByPlate(sql, licensePlate) : null;
 
   // Same accidental-double-submit guard as the JSON endpoint — checked
@@ -364,6 +375,7 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     duplicate: false,
     submission_id: result.submissionId,
     observation_id: result.observationId,
-    status: 'pending'
+    status: 'pending',
+    ...(cameraIgnored ? { camera_ignored: true } : {})
   }, { status: 201 });
 }
