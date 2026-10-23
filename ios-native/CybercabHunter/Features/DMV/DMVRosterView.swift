@@ -68,6 +68,10 @@ struct DMVRosterView: View {
             .presentationDragIndicator(.visible)
         }
         .navigationDestination(for: DMVHistoryRoute.self) { _ in DMVHistoryView() }
+        // Siri / Apple Intelligence: this screen shows the latest Texas DMV snapshot,
+        // and the rider checked DMV updates (a donation, once per launch).
+        .modifier(OnscreenEntity(DMVSnapshotEntity.self, id: tracker.overview?.latest?.date))
+        .onAppear { SiriDonations.donate("dmv", CheckDMVIntent()) }
     }
 
     // MARK: Header and the four numbers

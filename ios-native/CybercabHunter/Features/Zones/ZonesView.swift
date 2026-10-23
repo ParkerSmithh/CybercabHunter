@@ -75,6 +75,11 @@ struct ZonesView: View {
             if model.mode == .heat { await model.loadHeat(using: session.api) }
         }
         .onAppear { if let c = router.zonesCity { model.city = c; router.zonesCity = nil } }
+        // Siri / Apple Intelligence: the map shows this city's service zone ("how big is this service area?").
+        .modifier(OnscreenEntity(ServiceZoneEntity.self, id: model.city))
+        .onChange(of: model.city, initial: true) {
+            if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("zone-\(c.rawValue)", ServiceZoneIntent(city: c)) }
+        }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
         .onChange(of: model.city) { place = nil; selection = nil }
     }

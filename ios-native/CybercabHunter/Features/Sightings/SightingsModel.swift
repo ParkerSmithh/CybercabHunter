@@ -82,6 +82,8 @@ final class SightingsModel {
             nextCursor = page.nextCursor
             stats = page.stats
             phase = .loaded
+            // Spotlight / Siri: this city's newest approved sightings (already loaded).
+            if order == .desc { SiriIndex.later { await SiriIndex.sightings(page.sightings, city: self.city) } }
         } catch is CancellationError {
             if gen == generation, phase == .loading { phase = .idle }
         } catch {

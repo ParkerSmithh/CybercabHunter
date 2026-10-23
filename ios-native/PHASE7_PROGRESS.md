@@ -241,3 +241,15 @@ VehicleEntity, 3 enums, 10 App Shortcuts (Apple's maximum), 35 phrases.
   Delivery NOT available: needs APNs (paid Apple Developer Program), a push key and a Worker sender job.
 - Tests: SiriTests 19/19, AppIntentTests 5/5, SiriUITests 4/4, full unit suite 143 + fixed SimulationCalc expectation
   (Austin 272 mi² changed one ETA bound: 19 → 20, as calc.js).
+
+## Siri AI data integration (Oct 23, 2026) — local only: not committed, not installed
+iPhone 16 Pro runs iOS 27.0.1; SDK iOS 27.1. Registered: 19 actions, 5 entities, 10 App Shortcuts / 41 phrases.
+- Entities (public data only, IndexedEntity + Transferable text + OpenIntent): VehicleEntity (existing),
+  SightingEntity, DMVSnapshotEntity, ServiceZoneEntity (with last-24h activity), FleetSummaryEntity (UniqueAppEntity).
+- Schema: SearchCybercabsIntent adopts `.system.searchInApp` (iOS 27) → Cars search. `.system.open` not adopted
+  (one OpenIntent per entity; VehicleEntity's is needed back to iOS 18). No other domain fits.
+- Spotlight (SiriIndex): indexed only from data screens already loaded (Home, DMV tracker, Sightings, vehicle page);
+  bounded (6 DMV snapshots, 12 sightings per city, 2 zones, 1 fleet, 30 vehicles); stale items removed; one Clear.
+- Donations (SiriDonations, once per action per launch): vehicle viewed, DMV tracker, a city's sightings, a zone, fleet.
+- Onscreen entities: vehicle page, DMV tracker (latest snapshot), Zones map (city's zone), sighting viewer.
+- Answers: sightings lead with the count; reports in review are named as not public.

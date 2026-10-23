@@ -51,6 +51,7 @@ struct HomeView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { BrandToolbarItem() }
         .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
+        .onAppear { SiriDonations.donate("fleet", FleetStatsIntent()) }   // the rider checked the fleet
         .task { await model.loadAll(using: session.api) }
         .refreshable { await model.loadAll(using: session.api) }
         .onChange(of: model.city) { _, city in

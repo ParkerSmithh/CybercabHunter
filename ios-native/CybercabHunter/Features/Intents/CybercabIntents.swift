@@ -273,6 +273,7 @@ struct CybercabShortcuts: AppShortcutsProvider {
             "How many Cybercabs are tracked in \(.applicationName)",
             "\(.applicationName) fleet stats",
             "How many Cybercabs are in \(\.$city) in \(.applicationName)",
+            "How many Cybercabs were spotted today in \(.applicationName)",
             "Cybercab activity in \(\.$city) in \(.applicationName)"
         ], shortTitle: "Check Fleet", systemImageName: "chart.bar.fill")
         AppShortcut(intent: CheckDMVIntent(), phrases: [
@@ -288,7 +289,8 @@ struct CybercabShortcuts: AppShortcutsProvider {
         AppShortcut(intent: RecentSightingsIntent(), phrases: [
             "Show the latest Cybercab sightings in \(.applicationName)",
             "Check Cybercab sightings in \(\.$city) in \(.applicationName)",
-            "\(.applicationName) sightings in \(\.$city)"
+            "\(.applicationName) sightings in \(\.$city)",
+            "How many Cybercabs were spotted in \(\.$city) today in \(.applicationName)"
         ], shortTitle: "Recent Sightings", systemImageName: "camera.viewfinder")
         AppShortcut(intent: OpenScreenIntent(), phrases: [
             "Open \(\.$destination) in \(.applicationName)",
@@ -301,7 +303,8 @@ struct CybercabShortcuts: AppShortcutsProvider {
             "\(.applicationName) daily report",
             "What's new with Cybercabs today in \(.applicationName)",
             "Give me a quick Cybercab status in \(.applicationName)",
-            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)"
+            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)",
+            "What happened with Cybercabs in \(\.$city) in \(.applicationName)"
         ], shortTitle: "Daily Briefing", systemImageName: "newspaper")
         AppShortcut(intent: NearbySightingsIntent(), phrases: [
             "Find Cybercab sightings near me in \(.applicationName)",
@@ -311,17 +314,20 @@ struct CybercabShortcuts: AppShortcutsProvider {
         AppShortcut(intent: FleetGrowthIntent(), phrases: [
             "How much has the Cybercab fleet grown in \(.applicationName)",
             "Check Cybercab fleet growth in \(.applicationName)",
-            "Cybercab growth \(\.$period) in \(.applicationName)"
+            "Cybercab growth \(\.$period) in \(.applicationName)",
+            "How many Cybercab VINs were first detected \(\.$period) in \(.applicationName)"
         ], shortTitle: "Fleet Growth", systemImageName: "chart.line.uptrend.xyaxis")
         AppShortcut(intent: VehicleHistoryIntent(), phrases: [
             "Show the history of \(\.$vehicle) in \(.applicationName)",
             "When was \(\.$vehicle) last spotted in \(.applicationName)",
-            "Get Cybercab history in \(.applicationName)"
+            "Get Cybercab history in \(.applicationName)",
+            "When was \(\.$vehicle) first spotted in \(.applicationName)"
         ], shortTitle: "Vehicle History", systemImageName: "clock.arrow.circlepath")
         AppShortcut(intent: ServiceZoneIntent(), phrases: [
             "How big is the \(\.$city) Cybercab service area in \(.applicationName)",
             "Check the \(\.$city) service zone in \(.applicationName)",
-            "Is \(.applicationName) tracking \(\.$city)"
+            "Is \(.applicationName) tracking \(\.$city)",
+            "How large is the \(\.$city) service zone in \(.applicationName)"
         ], shortTitle: "Service Zone", systemImageName: "map")
     }
 }

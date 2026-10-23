@@ -70,13 +70,12 @@ struct SiriSettingsView: View {
 
             Section {
                 LabeledContent("Recently viewed Cybercabs") { Text("\(recents)").foregroundStyle(Color.chFog) }
-                Button("Clear from Spotlight", role: .destructive) {
-                    Task { await SpotlightRecents.clear(); recents = 0 }
+                Button("Clear Cybercab Hunter from Spotlight", role: .destructive) {
+                    Task { await SiriIndex.clearAll(); recents = 0 }
                 }
-                .disabled(recents == 0)
                 .accessibilityIdentifier("siriClearSpotlight")
-            } header: { Text("Spotlight") } footer: {
-                Text("Only public vehicles you opened are added to Spotlight, on this iPhone.")
+            } header: { Text("Spotlight & Apple Intelligence") } footer: {
+                Text("Spotlight, and Apple Intelligence through it, can find public Cybercab Hunter content you've seen on this iPhone: vehicles you opened, each city's zone and recent sightings, recent Texas DMV snapshots and the fleet totals. Nothing private, and nothing fetched just for Spotlight.")
             }
 
             Section {

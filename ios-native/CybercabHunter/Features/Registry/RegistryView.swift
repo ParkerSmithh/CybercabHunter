@@ -3,6 +3,7 @@ import SwiftUI
 /// Cars: the public vehicle registry (the website's /vehicles).
 struct RegistryView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(AppRouter.self) private var router
     @State private var model = RegistryModel()
     @State private var areas: [ServiceArea] = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
     @State private var searchTask: Task<Void, Never>?
@@ -81,6 +82,12 @@ struct RegistryView: View {
         .onChange(of: model.city) { reloadSoon(delay: 0) }
         .onChange(of: model.sort) { reloadSoon(delay: 0) }
         .onChange(of: model.query) { reloadSoon(delay: 0.3) }   // debounce typing
+        // Siri's in-app search ("search Cybercab Hunter for XVF1524") fills the same field.
+        .onChange(of: router.registryQuery, initial: true) {
+            guard let q = router.registryQuery else { return }
+            router.registryQuery = nil
+            model.query = q
+        }
         .task {
             if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas }
         }

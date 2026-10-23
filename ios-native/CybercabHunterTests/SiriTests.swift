@@ -31,6 +31,10 @@ private func city(_ key: String, sq: Double, vehicles: Int = 193, added7d: Int =
      "sightings": ["total": 257, "last_24h": s24], "cameras": ["detections_24h": c24, "monitored": 70]]
 }
 
+/// Both Siri suites share SiriData's cache and its test stub, so they never run at the same time.
+@Suite(.serialized) enum SiriSerial {}
+
+extension SiriSerial {
 @MainActor
 @Suite(.serialized)
 struct SiriTests {
@@ -272,4 +276,5 @@ struct SiriTests {
         #expect(!ActivityAlertPolicy.shouldNotify(AlertEvent(key: "d2", category: .dmvVINs, city: nil, at: night, magnitude: 5), settings: s, delivered: [], now: night), "quiet hours")
         #expect(!ActivityAlertPolicy.lockScreenTitle(sighting).contains("XVF"), "no plate or person on the lock screen")
     }
+}
 }

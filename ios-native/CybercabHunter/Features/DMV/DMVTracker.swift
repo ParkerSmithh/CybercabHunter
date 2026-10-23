@@ -265,6 +265,7 @@ final class DMVTrackerModel {
             async let g: DMVGrowth? = try? cache.fetch(api, "/api/dmv/growth", query: [URLQueryItem(name: "range", value: range.rawValue)], force: force)
             overview = try await o
             growth = await g
+            if let g = growth { let processed = (overview?.processingPending ?? 0) == 0; SiriIndex.later { await SiriIndex.dmv(g, processed: processed) } }   // Spotlight / Siri
             state = .ready
         } catch is CancellationError {
         } catch { if overview == nil { state = .failed } }

@@ -49,7 +49,11 @@ struct VehicleDetailView: View {
             detail = loaded
             sightings = (try? await s)?.sightings
             failure = nil
-            await SpotlightRecents.record(VehicleEntity(loaded))   // Spotlight: vehicles you opened
+            let entity = VehicleEntity(loaded)
+            await SpotlightRecents.record(entity)   // Spotlight: vehicles you opened
+            let open = OpenVehicleIntent()
+            open.target = entity
+            SiriDonations.donate("vehicle-\(entity.id)", open)   // the rider viewed this Cybercab
         } catch is CancellationError {
         } catch APIError.http(let status, _) where status == 404 {
             failure = "This vehicle isn't in the public registry (or no longer is)."

@@ -99,6 +99,9 @@ struct RecentSightingsIntent: AppIntent {
     @Parameter(title: "City", default: .austin) var city: ServiceCity
     static var parameterSummary: some ParameterSummary { Summary("Recent sightings in \(\.$city)") }
 
+    init() {}
+    init(city: ServiceCity) { self.city = city }
+
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         let data = SiriData.shared
         let a: SiriAnswer
@@ -316,6 +319,9 @@ struct ServiceZoneIntent: AppIntent {
     @Parameter(title: "Compare Austin and Dallas", default: false) var compare: Bool
 
     static var parameterSummary: some ParameterSummary { Summary("Service zone for \(\.$city)") { \.$compare } }
+
+    init() {}
+    init(city: ServiceCity) { self.city = city }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         let data = SiriData.shared

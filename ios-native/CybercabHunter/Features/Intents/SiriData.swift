@@ -261,16 +261,21 @@ enum SiriSpeech {
 
     static func sightings(city: HomepageStats?, latest: [PublicSighting], cityName: String?, now: Date = .now) -> SiriAnswer {
         var parts: [String] = []
+        // The counts first: that's what "how many were spotted…" asks.
+        if let city, let a = city.sightings?.last24h {
+            var line = "In \(city.name), Cybercab Hunter recorded \(plural(a, "approved sighting", "approved sightings"))"
+            if let c = city.cameras?.detections24h { line += " and \(plural(c, "traffic-camera detection", "traffic-camera detections"))" }
+            parts.append(line + " in the last 24 hours.")
+        }
         if let s = latest.first, let at = instant(s.spottedAt) {
             var line = "The latest approved sighting\(cityName.map { " in \($0)" } ?? "") was \(ago(at, now: now))"
             if let loc = s.location, !loc.isEmpty { line += ", near \(loc)" }
             if let plate = s.plate { line += ", plate \(spell(plate))" }
             parts.append(line + ".")
         }
-        if let city, let line = recentSightingsSentence(city) { parts.append(line) }
         if parts.isEmpty { parts.append("There are no approved sightings\(cityName.map { " in \($0)" } ?? "") in the last 30 days.") }
         return SiriAnswer(spoken: parts.joined(separator: " "),
-                          footnote: "Approved sightings are photos reviewed by moderators. Camera detections come from public traffic cameras.")
+                          footnote: "Approved sightings are photos reviewed by moderators; reports still in review aren't public. Camera detections come from public traffic cameras.")
     }
 
     /// A plate read character by character ("X V F 1 5 2 4"), as Siri should say it.
