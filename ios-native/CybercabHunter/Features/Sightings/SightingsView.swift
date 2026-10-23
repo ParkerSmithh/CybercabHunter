@@ -50,6 +50,12 @@ struct SightingsView: View {
         .sheet(isPresented: $submitting) { SubmitSightingView() }
         // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
         .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
+        // Siri / Shortcuts asked for a city's sightings.
+        .onChange(of: router.sightingsCity, initial: true) {
+            guard let c = router.sightingsCity else { return }
+            router.sightingsCity = nil
+            Task { await model.select(city: c, api: session.api) }
+        }
         .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
         .fullScreenCover(item: $viewing) { SightingViewer(sighting: $0) }
         .confirmationDialog("Delete this photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {

@@ -31,7 +31,11 @@ struct RootView: View {
         .task {
             if DebugLaunch.opensAccount { showingAccount = true }
             if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
+            if let d = DebugLaunch.destination { router.open(d) }
         }
+        // Siri / Shortcuts asked for an Account screen (Activity Alerts, Siri & Shortcuts),
+        // also on a cold launch.
+        .onChange(of: router.accountRequest, initial: true) { if router.accountRequest != nil { showingAccount = true } }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
         // Changing tabs always puts the keyboard away (a tab left behind stays alive,
         // so its own field can't do it).
@@ -68,6 +72,7 @@ struct RootView: View {
         if tab == .community { return Binding(get: { router.communityPath }, set: { router.communityPath = $0 }) }
         if tab == .sightings { return Binding(get: { router.sightingsPath }, set: { router.sightingsPath = $0 }) }
         if tab == .registry { return Binding(get: { router.registryPath }, set: { router.registryPath = $0 }) }
+        if tab == .home { return Binding(get: { router.homePath }, set: { router.homePath = $0 }) }
         return Binding(get: { paths[tab] ?? NavigationPath() }, set: { paths[tab] = $0 })
     }
 }
@@ -133,6 +138,9 @@ enum DebugLaunch {
         return AppTab(rawValue: args[i + 1])
     }
     static var opensAccount: Bool { ProcessInfo.processInfo.arguments.contains("-account") }
+    /// `-open dmvTracker`: what a Siri / Shortcuts "Open …" does (UI tests can't drive Siri).
+    static var destination: AppDestination? { value("-open").flatMap(AppDestination.init(rawValue:)) }
+    static var resetsSiriState: Bool { ProcessInfo.processInfo.arguments.contains("-resetSiriState") }
     /// `-requestSubmitSighting`: what the Siri / Shortcuts "Submit a sighting" intent does (UI tests can't drive Siri).
     static var requestsSubmitSighting: Bool { ProcessInfo.processInfo.arguments.contains("-requestSubmitSighting") }
     /// `-apiBase http://127.0.0.1:8799`: the UI tests' local Worker
@@ -151,6 +159,8 @@ enum DebugLaunch {
     static let initialTab: AppTab? = nil
     static let opensAccount = false
     static let requestsSubmitSighting = false
+    static let destination: AppDestination? = nil
+    static let resetsSiriState = false
     static let apiBase: URL? = nil
     static let session: String? = nil
     static let usesTestSession = false

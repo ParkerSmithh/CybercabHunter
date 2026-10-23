@@ -26,7 +26,7 @@ struct SimulationCalcTests {
 
     @Test func geometryMatchesCalcJsEtaRange() {
         #expect(SimulationCalc.geometry(fleetSize: 196, tier: "typical", city: "austin") == .ok(low: 3, likely: 5, high: 9, highCapped: false))
-        #expect(SimulationCalc.geometry(fleetSize: 196, tier: "busy", city: "austin") == .ok(low: 4, likely: 8, high: 19, highCapped: false))
+        #expect(SimulationCalc.geometry(fleetSize: 196, tier: "busy", city: "austin") == .ok(low: 4, likely: 8, high: 20, highCapped: false), "272 mi² Austin zone (Oct 23, 2026); calc.js gives the same")
         #expect(SimulationCalc.geometry(fleetSize: 30, tier: "quiet", city: "dallas") == .ok(low: 4, likely: 6, high: 9, highCapped: false))
         #expect(SimulationCalc.geometry(fleetSize: 1000, tier: "quiet", city: "austin") == .ok(low: 2, likely: 3, high: 4, highCapped: false))
         #expect(SimulationCalc.geometry(fleetSize: 3, tier: "typical", city: "dallas") == .fewCars)

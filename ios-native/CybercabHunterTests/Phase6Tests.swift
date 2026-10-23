@@ -62,6 +62,7 @@ struct WidgetLinkTests {
 }
 
 @MainActor
+@Suite(.serialized)   // the Spotlight test swaps SpotlightRecents' store
 struct AppIntentTests {
     @Test func openZonesAndSubmitRouteNatively() async throws {
         let r = AppRouter.shared
@@ -100,27 +101,25 @@ struct AppIntentTests {
         #expect(byId.map(\.plate) == ["XVF1524"], "an id that isn't public is simply left out")
         let e = byId[0]
         #expect(e.city == "Austin" && e.attributeSet.keywords?.contains("Cybercab") == true && e.attributeSet.keywords?.contains("XVF1524") == true)
+        SpotlightRecents.defaults = UserDefaults(suiteName: "phase6-\(UUID().uuidString)")!
+        defer { SpotlightRecents.defaults = .standard }
         let suggested = try await VehicleQuery().suggestedEntities()
-        #expect(suggested.count == 3)
+        #expect(suggested.count == 3, "no recently viewed vehicles: the registry's most recent (bounded)")
     }
 
-    @Test func spotlightIndexAtMostOnceADay() async throws {
-        let s = StubServer()
-        s.responses = ["GET /api/robotaxi-vehicles": (200, CommunityStub.fixture("vehicles"))]
+    /// Spotlight holds only the vehicles you opened (never the whole registry):
+    /// newest first, at most 30, cleared on request.
+    @Test func spotlightHoldsRecentlyViewedVehiclesOnly() async throws {
         let defaults = UserDefaults(suiteName: "phase6-\(UUID().uuidString)")!
-        let now = Date()
-        await VehicleDirectory.indexInSpotlight(api: s.api(token: nil), now: now, defaults: defaults)
-        let first = s.requests.count
-        #expect(first >= 1)
-        await VehicleDirectory.indexInSpotlight(api: s.api(token: nil), now: now.addingTimeInterval(3600), defaults: defaults)
-        #expect(s.requests.count == first, "not again within a day")
-        await VehicleDirectory.indexInSpotlight(api: s.api(token: nil), now: now.addingTimeInterval(25 * 3600), defaults: defaults)
-        #expect(s.requests.count > first, "again the next day")
-        let failing = StubServer()
-        failing.responses = ["GET /api/robotaxi-vehicles": (500, "{}")]
-        let d2 = UserDefaults(suiteName: "phase6-\(UUID().uuidString)")!
-        await VehicleDirectory.indexInSpotlight(api: failing.api(token: nil), now: now, defaults: d2)
-        #expect(d2.object(forKey: "spotlightIndexedAt") == nil, "a failed fetch is tried again next launch")
+        SpotlightRecents.defaults = defaults
+        SpotlightRecents.indexing = false
+        defer { SpotlightRecents.defaults = .standard; SpotlightRecents.indexing = true }
+        for i in 0..<35 { await SpotlightRecents.record(VehicleEntity(id: "v\(i)", plate: "P\(i)", city: "Austin", rides: nil)) }
+        await SpotlightRecents.record(VehicleEntity(id: "v3", plate: "P3", city: "Austin", rides: nil))
+        let items = SpotlightRecents.items()
+        #expect(items.count == SpotlightRecents.limit && items.first?.id == "v3" && items.filter { $0.id == "v3" }.count == 1, "newest first, no duplicates, capped")
+        await SpotlightRecents.clear()
+        #expect(SpotlightRecents.items().isEmpty)
     }
 
     @Test func intentFailuresReadWell() {

@@ -1,5 +1,6 @@
 import AppIntents
 import CoreSpotlight
+import CoreTransferable
 import SwiftUI
 
 // Phase 6: App Intents. Siri, Shortcuts, Spotlight and Apple Intelligence
@@ -43,25 +44,30 @@ struct SubmitSightingIntent: AppIntent {
 }
 
 struct FleetStatsIntent: AppIntent {
-    static let title: LocalizedStringResource = "Cybercab Fleet Stats"
-    static let description = IntentDescription("Tells you how many Cybercabs are registered, how many rides and sightings are recorded, and today's Cybercab Daily.")
+    static let title: LocalizedStringResource = "Check the Cybercab Fleet"
+    static let description = IntentDescription("Tells you how many vehicles Cybercab Hunter's public registry documents and how many Tesla robotaxi VINs the Texas DMV roster lists (kept apart: neither is the number in service right now). With a city: that city's registry and the last 24 hours of sightings.")
+
+    @Parameter(title: "City") var city: ServiceCity?
+    static var parameterSummary: some ParameterSummary { Summary("Cybercab fleet in \(\.$city)") }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
-        let snapshot: FleetSnapshot
-        do { snapshot = try await FleetSnapshot.load(base: AppConfig.siteURL) } catch {
-            throw IntentFailure.unavailable
-        }
-        return .result(value: snapshot.spokenSummary, dialog: IntentDialog(stringLiteral: snapshot.spokenSummary), view: FleetSnippetView(snapshot: snapshot))
+        let a = try await Self.answer(city: city)
+        return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.cars), openTitle: "Open Cars"))
     }
 }
 
 /// What Siri says when the data can't be reached.
 enum IntentFailure: Error, CustomLocalizedStringResourceConvertible {
     case unavailable, notFound
+    case locationNotAllowedYet, locationDenied, locationUnavailable, outsideServiceAreas
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .unavailable: "Cybercab Hunter couldn't be reached. Check your connection and try again."
         case .notFound: "That Cybercab isn't in the public registry."
+        case .locationNotAllowedYet: "To check near you, open Cybercab Hunter, then Account, Siri & Shortcuts, and allow location. Or ask for Austin or Dallas sightings."
+        case .locationDenied: "Location is off for Cybercab Hunter. You can allow it in Settings, or ask for Austin or Dallas sightings instead."
+        case .locationUnavailable: "Your location isn't available right now. Try again, or ask for Austin or Dallas sightings."
+        case .outsideServiceAreas: "Cybercab Hunter tracks Austin and Dallas, and you're not near either. Ask for Austin or Dallas sightings instead."
         }
     }
 }
@@ -94,24 +100,49 @@ struct FleetSnippetView: View {
 
 /// A Cybercab in the public registry. Indexed in Spotlight, so searching a
 /// plate (or asking Siri) finds it and opens its page in the app.
-struct VehicleEntity: AppEntity, IndexedEntity {
+///
+/// Public fields only (what the vehicle's public page shows): never a
+/// submitter, a moderation note or an exact place. Shared with other apps
+/// and Apple Intelligence as a short text and the public page's link.
+struct VehicleEntity: AppEntity, IndexedEntity, Transferable {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: "Cybercab", numericFormat: "\(placeholder: .int) Cybercabs")
     static let defaultQuery = VehicleQuery()
 
     let id: String
-    let plate: String?
-    let city: String?
-    let rides: Int?
+    @Property(title: "Plate") var plate: String?
+    @Property(title: "City") var city: String?
+    @Property(title: "Recorded rides") var rides: Int?
+    @Property(title: "Model") var model: String?
+    @Property(title: "VIN") var vin: String?
+    @Property(title: "First reported") var firstReported: Date?
+    @Property(title: "Last reported") var lastReported: Date?
 
     var displayRepresentation: DisplayRepresentation {
-        let subtitle = [city, rides.map { "\($0) \($0 == 1 ? "ride" : "rides") recorded" }].compactMap { $0 }.joined(separator: " · ")
+        let subtitle = [model, city, rides.map { "\($0) \($0 == 1 ? "ride" : "rides") recorded" }].compactMap { $0 }.joined(separator: " · ")
         return DisplayRepresentation(title: "\(plate ?? "Cybercab")", subtitle: subtitle.isEmpty ? "Cybercab" : "\(subtitle)", image: .init(systemName: "car.fill"))
     }
 
-    init(id: String, plate: String?, city: String?, rides: Int?) {
-        self.id = id; self.plate = plate; self.city = city; self.rides = rides
+    init(id: String, plate: String?, city: String?, rides: Int?, model: String? = nil, vin: String? = nil, firstReported: Date? = nil, lastReported: Date? = nil) {
+        self.id = id
+        self.plate = plate; self.city = city; self.rides = rides
+        self.model = model; self.vin = vin; self.firstReported = firstReported; self.lastReported = lastReported
     }
-    init(_ v: RegistryVehicle) { self.init(id: v.id, plate: v.licensePlate, city: v.city, rides: v.tripCount) }
+    init(_ v: RegistryVehicle) {
+        self.init(id: v.id, plate: v.licensePlate, city: v.city, rides: v.tripCount, model: v.model, vin: v.vin,
+                  firstReported: SiriSpeech.instant(v.firstSeenAt), lastReported: SiriSpeech.instant(v.lastSeenAt))
+    }
+    init(_ d: VehicleDetail) {
+        self.init(id: d.vehicle.id, plate: d.vehicle.licensePlate, city: d.vehicle.serviceArea ?? d.history.cities.first, rides: d.history.tripCount,
+                  model: d.vehicle.model, vin: d.vehicle.vin, firstReported: SiriSpeech.instant(d.vehicle.firstSeenAt), lastReported: SiriSpeech.instant(d.vehicle.lastSeenAt))
+    }
+
+    /// What it becomes in another app or an Apple Intelligence request.
+    var shareText: String {
+        ["Cybercab \(plate ?? id)", model, city, vin.map { "VIN \($0)" }, AppConfig.webURL("/vehicle/\(id)").absoluteString].compactMap { $0 }.joined(separator: " · ")
+    }
+    static var transferRepresentation: some TransferRepresentation {
+        ProxyRepresentation(exporting: \.shareText)
+    }
 
     /// Extra words Spotlight matches on.
     var attributeSet: CSSearchableItemAttributeSet {
@@ -126,7 +157,7 @@ struct VehicleQuery: EntityStringQuery {
         var out: [VehicleEntity] = []
         for id in identifiers.prefix(20) {
             guard let d: VehicleDetail = try? await VehicleDirectory.api.get("/api/robotaxi-vehicles/\(id)") else { continue }
-            out.append(VehicleEntity(id: d.vehicle.id, plate: d.vehicle.licensePlate, city: d.vehicle.serviceArea ?? d.history.cities.first, rides: d.history.tripCount))
+            out.append(VehicleEntity(d))
         }
         return out
     }
@@ -134,8 +165,12 @@ struct VehicleQuery: EntityStringQuery {
     func entities(matching string: String) async throws -> [VehicleEntity] {
         try await VehicleDirectory.search(string).map(VehicleEntity.init)
     }
+    /// The vehicles you looked at recently first, then the registry's most recent (10 at most).
     func suggestedEntities() async throws -> [VehicleEntity] {
-        try await VehicleDirectory.search("").map(VehicleEntity.init)
+        let recent = await SpotlightRecents.entities()
+        if recent.count >= 5 { return Array(recent.prefix(10)) }
+        let more = (try? await VehicleDirectory.search("").map(VehicleEntity.init)) ?? []
+        return Array((recent + more.filter { m in !recent.contains { $0.id == m.id } }).prefix(10))
     }
 }
 
@@ -167,49 +202,126 @@ enum VehicleDirectory {
         return list.vehicles
     }
 
-    /// Indexes the whole public registry in Spotlight, at most once a day (and
-    /// replaces the previous index, so a vehicle that left the registry goes).
-    static func indexInSpotlight(api: APIClient = VehicleDirectory.api, now: Date = .now, defaults: UserDefaults = .standard) async {
-        let key = "spotlightIndexedAt"
-        if let last = defaults.object(forKey: key) as? Date, now.timeIntervalSince(last) < 24 * 3600 { return }
-        var all: [RegistryVehicle] = []
-        var offset = 0
-        while offset < 2000 {
-            guard let page: VehicleList = try? await api.get("/api/robotaxi-vehicles", query: [URLQueryItem(name: "limit", value: "100"), URLQueryItem(name: "offset", value: String(offset))]) else { return }
-            all += page.vehicles
-            offset += page.vehicles.count
-            if page.vehicles.isEmpty || offset >= page.total { break }
-        }
+    /// Earlier versions indexed the whole public registry in Spotlight once a
+    /// day; now only the vehicles you open are (SpotlightRecents). This removes
+    /// that old index once, on the first launch after the update.
+    static func retireFullRegistryIndex(defaults: UserDefaults = .standard) async {
+        let key = "spotlightFullIndexRetired"
+        guard !defaults.bool(forKey: key) else { return }
         do {
             try await CSSearchableIndex.default().deleteAppEntities(ofType: VehicleEntity.self)
-            try await CSSearchableIndex.default().indexAppEntities(all.map(VehicleEntity.init))
-            defaults.set(now, forKey: key)
+            defaults.removeObject(forKey: "spotlightIndexedAt")
+            defaults.set(true, forKey: key)
+            await SpotlightRecents.reindex()
         } catch { /* tried again next launch */ }
+    }
+}
+
+/// Spotlight and Siri suggestions: the vehicles you opened recently (at most
+/// 30, newest first), on this iPhone only. Public records only; clearing them
+/// (Siri & Shortcuts settings) removes them from Spotlight too.
+enum SpotlightRecents {
+    static let limit = 30
+    static let key = "spotlightRecentVehicles"
+    nonisolated(unsafe) static var defaults: UserDefaults = .standard
+    nonisolated(unsafe) static var indexing = true   // tests turn the system index off
+
+    struct Item: Codable, Equatable, Sendable { let id: String; let plate: String?; let city: String?; let model: String? }
+
+    static func items() -> [Item] {
+        (defaults.data(forKey: key)).flatMap { try? JSONDecoder().decode([Item].self, from: $0) } ?? []
+    }
+
+    static func entities() async -> [VehicleEntity] {
+        items().map { VehicleEntity(id: $0.id, plate: $0.plate, city: $0.city, rides: nil, model: $0.model) }
+    }
+
+    /// Remembers a vehicle you opened and adds it to Spotlight (dropping the oldest past `limit`).
+    static func record(_ e: VehicleEntity) async {
+        var list = items().filter { $0.id != e.id }
+        list.insert(Item(id: e.id, plate: e.plate, city: e.city, model: e.model), at: 0)
+        let dropped = list.count > limit ? Array(list[limit...]) : []
+        list = Array(list.prefix(limit))
+        defaults.set(try? JSONEncoder().encode(list), forKey: key)
+        guard indexing else { return }
+        try? await CSSearchableIndex.default().indexAppEntities([e])
+        if !dropped.isEmpty { try? await CSSearchableIndex.default().deleteAppEntities(identifiedBy: dropped.map(\.id), ofType: VehicleEntity.self) }
+    }
+
+    static func reindex() async {
+        guard indexing else { return }
+        try? await CSSearchableIndex.default().indexAppEntities(await entities())
+    }
+
+    static func clear() async {
+        defaults.removeObject(forKey: key)
+        guard indexing else { return }
+        try? await CSSearchableIndex.default().deleteAppEntities(ofType: VehicleEntity.self)
     }
 }
 
 // MARK: - Siri phrases and the Shortcuts app
 
+/// Ten App Shortcuts (Apple's limit per app). Every other action
+/// (Quick Status, Open Sightings for a city, Submit a Sighting, Open a Cybercab)
+/// is still in the Shortcuts app and Siri can run it by name. Siri matches
+/// these phrases loosely, not word for word.
 struct CybercabShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: FleetStatsIntent(), phrases: [
-            "How many Cybercabs are on \(.applicationName)",
+            "Check the Cybercab fleet in \(.applicationName)",
+            "How many Cybercabs are tracked in \(.applicationName)",
             "\(.applicationName) fleet stats",
-            "Cybercab stats in \(.applicationName)"
-        ], shortTitle: "Fleet Stats", systemImageName: "chart.bar.fill")
-        AppShortcut(intent: OpenZonesIntent(), phrases: [
-            "Open the zone map in \(.applicationName)",
-            "Show the \(\.$city) zone in \(.applicationName)",
-            "Where are the Cybercabs in \(.applicationName)"
-        ], shortTitle: "Zones Map", systemImageName: "map.fill")
-        AppShortcut(intent: SubmitSightingIntent(), phrases: [
-            "Submit a sighting in \(.applicationName)",
-            "I spotted a Cybercab in \(.applicationName)",
-            "Report a Cybercab sighting in \(.applicationName)"
-        ], shortTitle: "Submit Sighting", systemImageName: "camera.fill")
+            "How many Cybercabs are in \(\.$city) in \(.applicationName)",
+            "Cybercab activity in \(\.$city) in \(.applicationName)"
+        ], shortTitle: "Check Fleet", systemImageName: "chart.bar.fill")
+        AppShortcut(intent: CheckDMVIntent(), phrases: [
+            "Check Cybercab DMV updates in \(.applicationName)",
+            "What's new in the \(.applicationName) DMV tracker",
+            "How many Cybercabs are in the Texas DMV dataset in \(.applicationName)"
+        ], shortTitle: "DMV Updates", systemImageName: "doc.text.magnifyingglass")
         AppShortcut(intent: OpenVehicleIntent(), phrases: [
-            "Open a Cybercab in \(.applicationName)",
+            "Find a Cybercab in \(.applicationName)",
+            "Find \(\.$target) in \(.applicationName)",
             "Look up \(\.$target) in \(.applicationName)"
-        ], shortTitle: "Find a Cybercab", systemImageName: "car.fill")
+        ], shortTitle: "Find a Cybercab", systemImageName: "magnifyingglass")
+        AppShortcut(intent: RecentSightingsIntent(), phrases: [
+            "Show the latest Cybercab sightings in \(.applicationName)",
+            "Check Cybercab sightings in \(\.$city) in \(.applicationName)",
+            "\(.applicationName) sightings in \(\.$city)"
+        ], shortTitle: "Recent Sightings", systemImageName: "camera.viewfinder")
+        AppShortcut(intent: OpenScreenIntent(), phrases: [
+            "Open \(\.$destination) in \(.applicationName)",
+            "Show \(\.$destination) in \(.applicationName)",
+            "Show the Cybercab map in \(.applicationName)",
+            "Open \(.applicationName) alert settings"
+        ], shortTitle: "Open a Screen", systemImageName: "rectangle.stack")
+        AppShortcut(intent: DailyBriefingIntent(), phrases: [
+            "Give me my Cybercab briefing in \(.applicationName)",
+            "\(.applicationName) daily report",
+            "What's new with Cybercabs today in \(.applicationName)",
+            "Give me a quick Cybercab status in \(.applicationName)",
+            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)"
+        ], shortTitle: "Daily Briefing", systemImageName: "newspaper")
+        AppShortcut(intent: NearbySightingsIntent(), phrases: [
+            "Find Cybercab sightings near me in \(.applicationName)",
+            "Have any Cybercabs been spotted near me in \(.applicationName)",
+            "\(.applicationName) sightings nearby"
+        ], shortTitle: "Nearby Sightings", systemImageName: "location.circle")
+        AppShortcut(intent: FleetGrowthIntent(), phrases: [
+            "How much has the Cybercab fleet grown in \(.applicationName)",
+            "Check Cybercab fleet growth in \(.applicationName)",
+            "Cybercab growth \(\.$period) in \(.applicationName)"
+        ], shortTitle: "Fleet Growth", systemImageName: "chart.line.uptrend.xyaxis")
+        AppShortcut(intent: VehicleHistoryIntent(), phrases: [
+            "Show the history of \(\.$vehicle) in \(.applicationName)",
+            "When was \(\.$vehicle) last spotted in \(.applicationName)",
+            "Get Cybercab history in \(.applicationName)"
+        ], shortTitle: "Vehicle History", systemImageName: "clock.arrow.circlepath")
+        AppShortcut(intent: ServiceZoneIntent(), phrases: [
+            "How big is the \(\.$city) Cybercab service area in \(.applicationName)",
+            "Check the \(\.$city) service zone in \(.applicationName)",
+            "Is \(.applicationName) tracking \(\.$city)"
+        ], shortTitle: "Service Zone", systemImageName: "map")
     }
 }

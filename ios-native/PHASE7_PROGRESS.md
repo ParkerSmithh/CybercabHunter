@@ -225,3 +225,19 @@ written per day; 5 cron triggers per account; KV 100k reads / 1k writes per day.
 - `txdmv:activity:mode` = backfill at 17:20 UTC. First step 17:25 UTC: Oct 9 baseline 739, Oct 10–11 unchanged
   (10 subrequests). News kept running (17:45 UTC tick). Backlog expected done ≈ 03:30 UTC Oct 24, then mode → on.
 - iOS: Release build OK; installed on iPhone 16 Pro (in place). Live DMV UI test passed against production.
+
+## Siri & Apple Intelligence (Oct 23, 2026) — local only: not committed, not installed
+SDK: Xcode 27.1 / iOS 27.1 SDK, Swift 6.4; deployment target iOS 18.0. Registered (Metadata.appintents): 15 actions,
+VehicleEntity, 3 enums, 10 App Shortcuts (Apple's maximum), 35 phrases.
+- New: CheckDMV, RecentSightings, DailyBriefing, QuickStatus, NearbySightings, FleetGrowth, VehicleHistory, FindVehicle,
+  ServiceZone, OpenScreen (Home/Map/Cars/Sightings/Community/DMV Tracker/Alert Settings/Siri Settings), OpenSightings.
+  Fleet Stats gained a city and keeps the registry and the DMV roster apart. Submit Sighting / Open Zones / Open a
+  Cybercab kept (Submit Sighting is no longer an App Shortcut phrase: 10-shortcut limit; still in Shortcuts).
+- Data: SiriData (public endpoints, 2-minute shared cache, no session); sentences: SiriSpeech (pure, tested).
+- VehicleEntity: richer public properties, Transferable; vehicle page annotated with appEntityIdentifier (iOS 18.4+;
+  NSUserActivity on 18.2–18.3) for onscreen context. Spotlight: recently viewed vehicles only (≤30); the old
+  whole-registry daily index is removed once.
+- Activity Alerts (Account › Activity Alerts): OFF by default, saved on device, permission asked only on enabling.
+  Delivery NOT available: needs APNs (paid Apple Developer Program), a push key and a Worker sender job.
+- Tests: SiriTests 19/19, AppIntentTests 5/5, SiriUITests 4/4, full unit suite 143 + fixed SimulationCalc expectation
+  (Austin 272 mi² changed one ETA bound: 19 → 20, as calc.js).
