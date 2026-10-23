@@ -267,7 +267,7 @@ struct VehicleHistoryIntent: AppIntent {
         }
         let a = SiriSpeech.vehicleHistory(detail, sightings: (await s)?.sightings ?? [], dmvFirst: dmvFirst.map { (date: $0.0, baseline: $0.1) })
         await SpotlightRecents.record(vehicle)
-        var open = OpenVehicleIntent()
+        let open = OpenVehicleIntent()
         open.target = vehicle
         return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: open, openTitle: "Open Vehicle"))
     }
@@ -300,7 +300,7 @@ struct FindVehicleIntent: AppIntent {
             pick = match
         }
         await SpotlightRecents.record(pick)
-        var open = OpenVehicleIntent()
+        let open = OpenVehicleIntent()
         open.target = pick
         return .result(value: pick, opensIntent: open, dialog: "Opening \(pick.plate.map(SiriSpeech.spell) ?? "that Cybercab").")
     }
