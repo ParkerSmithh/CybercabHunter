@@ -257,6 +257,10 @@
   function render() {
     els.forEach(el => {
       const d = data;
+      // On the DMV tracker itself the panel is the growth chart: no link back to the page.
+      const tracker = el.dataset.dmvPanel === 'tracker';
+      // Home: the latest update's additions (in /api/dmv-registrations as latest_update), when known.
+      const latest = data && data.latest_update;
       const head = `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div class="min-w-0"><h2 class="font-display font-bold text-xl text-white uppercase tracking-wide max-sm:text-base">Texas DMV registrations · Tesla</h2>
           <p class="text-xs text-slate-500 mt-0.5">Every automated vehicle Tesla lists with the state</p></div>
@@ -350,13 +354,13 @@
         <p class="flex-1 min-w-0 text-[11px] text-slate-500 leading-relaxed max-sm:text-[10px]">Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN ${esc(d.source.company)} lists under its SB 2807 automated-vehicle authorization ${esc(d.source.authorization)}. Last polled ${esc(centralTime(s.polled_at))} CT.${hist
           ? ` Before ${esc(longDate(hist.until))}, counts are approximate.${fc ? ' Projected values are estimates, not official TxDMV numbers.' : ''}`
           : ` TxDMV publishes no registration dates, so “new” counts VINs that first appeared after Cybercab Hunter began polling on ${esc(longDate(d.tracking_since))}.`}${failed ? ` <span class="text-amber-300">The latest check (${esc(centralTime(d.last_attempt.at))} CT) couldn't reach TxDMV; showing the last good poll.</span>` : ''}</p>
-        <a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(250,224,48,0.75)] max-sm:justify-between">
+        ${tracker ? '' : `<a href="/dmv" data-magnet class="dmv-registry-btn btn-magnetic group shrink-0 inline-flex items-center gap-3.5 pl-3.5 pr-4 py-3 rounded-xl text-[#1a1204] bg-gradient-to-r from-goldsoft to-gold shadow-[0_10px_24px_-14px_rgba(250,224,48,0.75)] max-sm:justify-between">
           <span class="flex items-center gap-3">
             <span class="grid place-items-center w-10 h-10 rounded-lg bg-black/[0.12]" aria-hidden="true"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
-            <span class="text-left leading-tight"><span class="block text-base font-bold tracking-tight">View Registry</span><span class="block text-xs font-semibold opacity-70 stat-value">${int(s.total)} VINs · <span class="max-sm:hidden">straight </span>from TxDMV</span></span>
+            <span class="text-left leading-tight"><span class="block text-base font-bold tracking-tight">View DMV Tracker</span><span class="block text-xs font-semibold opacity-70 stat-value">${latest ? `+${int(latest.added)} newly detected · ${esc(shortDate(latest.date))}` : `${int(s.total)} VINs · <span class="max-sm:hidden">straight </span>from TxDMV`}</span></span>
           </span>
           <span class="grid place-items-center w-8 h-8 rounded-full bg-black/[0.14] transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-        </a>
+        </a>`}
         </div>`;
       draw(el);
     });

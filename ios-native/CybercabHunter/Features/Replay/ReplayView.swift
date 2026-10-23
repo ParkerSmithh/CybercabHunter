@@ -10,6 +10,8 @@ struct ReplayView: View {
     @State private var model: ReplayModel
     @State private var projection = MapProjection()
     @State private var pickingDate = false
+    @AppStorage("replayAppearance") private var appearanceRaw = ReplayAppearance.auto.rawValue
+    private var appearance: ReplayAppearance { ReplayAppearance(rawValue: appearanceRaw) ?? .auto }
 
     init(route: ReplayRoute) {
         self.route = route
@@ -24,7 +26,11 @@ struct ReplayView: View {
             VStack(spacing: 0) {
                 header(city: city, t: t, shown: shown)
                 ZStack {
-                    ReplayMapView(cityKey: city.key, projection: $projection)
+                    ReplayMapView(cityKey: city.key, dark: appearance.darkMap, projection: $projection)
+                    // The sky over the map (under every mark), by the replay's time or the chosen look.
+                    ReplaySky.gradient(appearance.fixedHour ?? ReplayModel.hour(t))
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                     ReplayLayer(model: model, t: t, shown: shown, projection: projection)
                         .allowsHitTesting(false)
                     overlayMessage
@@ -61,9 +67,12 @@ struct ReplayView: View {
             HStack(spacing: 8) {
                 Text(t.formatted(Date.FormatStyle(timeZone: Format.central).month(.abbreviated).day().hour().minute()))
                     .font(.geistMono(13)).foregroundStyle(Color.chInk)
-                Text(ReplayModel.dayPart(t).uppercased()).font(.inter(9, .bold)).tracking(1)
-                    .padding(.horizontal, 8).padding(.vertical, 3).foregroundStyle(Color.brandGold)
-                    .overlay(Capsule().strokeBorder(Color.brandGold.opacity(0.4)))
+                let phase = ReplayModel.dayPart(t)
+                Text(phase.uppercased()).font(.inter(9, .bold)).tracking(1)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .foregroundStyle(ReplaySky.chip(phase).text)
+                    .background(ReplaySky.chip(phase).fill, in: .capsule)
+                    .accessibilityIdentifier("replayPhase")
                 Spacer()
                 Text("CT").font(.inter(11)).foregroundStyle(Color.chFog)
             }
@@ -155,6 +164,24 @@ struct ReplayView: View {
                     }
                 }
             }
+            // The map's look: Auto follows the replay's clock (the website's sky).
+            HStack(spacing: 6) {
+                Text("Map").font(.inter(12, .semibold)).foregroundStyle(Color.chFog)
+                ForEach(ReplayAppearance.allCases) { a in
+                    let on = appearance == a
+                    Button { withAnimation(.easeInOut(duration: 0.25)) { appearanceRaw = a.rawValue } } label: {
+                        Text(a.title).font(.inter(12, .semibold)).lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: 32)
+                            .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
+                            .background(on ? Color.brandGold : Color.chSurface2, in: .rect(cornerRadius: 8))
+                            .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(a == .auto ? "Map look: automatic, follows the replay's time" : "Map look: \(a.title)")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                    .accessibilityIdentifier("replayLook-\(a.rawValue)")
+                }
+            }
             HStack(spacing: 8) {
                 Picker("Window", selection: $model.range) { ForEach(ReplayModel.Range.allCases) { Text($0.description).tag($0) } }
                     .pickerStyle(.segmented)
@@ -199,18 +226,20 @@ struct MapProjection: Equatable {
 /// The Replay's map: the quiet zone, no markers (the Canvas draws them).
 struct ReplayMapView: UIViewRepresentable {
     let cityKey: String
+    /// The dark map (with the Dark Matter dimming) or the light one.
+    var dark = true
     @Binding var projection: MapProjection
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.overrideUserInterfaceStyle = .dark
+        map.overrideUserInterfaceStyle = dark ? .dark : .light
         let config = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
         config.pointOfInterestFilter = .excludingAll
         map.preferredConfiguration = config
         map.isRotateEnabled = false; map.isPitchEnabled = false; map.showsCompass = false
-        map.addOverlay(DarkMatterOverlay(), level: .aboveRoads)
+        if dark { map.addOverlay(DarkMatterOverlay(), level: .aboveRoads) }
         var coords = WebData.city(cityKey).polygon
         let zone = ZonePolygon(coordinates: &coords, count: coords.count)
         zone.cityKey = cityKey; zone.dimmed = true
@@ -218,7 +247,15 @@ struct ReplayMapView: UIViewRepresentable {
         map.setVisibleMapRect(WebData.city(cityKey).zoneRect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20), animated: false)
         return map
     }
-    func updateUIView(_ map: MKMapView, context: Context) { context.coordinator.parent = self }
+    func updateUIView(_ map: MKMapView, context: Context) {
+        context.coordinator.parent = self
+        // Day / Dusk / Night: switch the map's look in place (the zone and the view stay).
+        let style: UIUserInterfaceStyle = dark ? .dark : .light
+        if map.overrideUserInterfaceStyle != style { map.overrideUserInterfaceStyle = style }
+        let dimming = map.overlays.filter { $0 is DarkMatterOverlay }
+        if dark && dimming.isEmpty { map.insertOverlay(DarkMatterOverlay(), at: 0, level: .aboveRoads) }
+        if !dark && !dimming.isEmpty { map.removeOverlays(dimming) }
+    }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: ReplayMapView

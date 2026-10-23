@@ -86,7 +86,7 @@ struct SubmitSightingView: View {
                 if model.isModerator { cameraField }
                 field("Description", optional: true) {
                     TextField("What did you see?", text: $model.notes, axis: .vertical)
-                        .lineLimit(3...6).inputBox()
+                        .lineLimit(3...6).inputBox(multiline: true)
                         .accessibilityIdentifier("sightingNotes")
                 }
                 field("License Plate", optional: true) {
@@ -292,8 +292,11 @@ private struct PhotoDropzone: View {
 
 private extension View {
     /// The form's input box (dark field, graphite border).
-    func inputBox() -> some View {
-        self.padding(.horizontal, 12).frame(minHeight: 44)
+    /// A multi-line field gets the same inset on every side, so the placeholder
+    /// and the typed text start at the top-left, 12 pt in.
+    func inputBox(multiline: Bool = false) -> some View {
+        self.padding(.horizontal, 12).padding(.vertical, multiline ? 12 : 0)
+            .frame(minHeight: 44, alignment: multiline ? .topLeading : .leading)
             .background(Color.chBackground, in: .rect(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
     }

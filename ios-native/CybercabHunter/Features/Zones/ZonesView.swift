@@ -11,12 +11,11 @@ struct ZonesView: View {
     @State private var model = ZonesModel()
     @State private var selection: MapSelection?
     @State private var showingDetails = false
-    @State private var query = ""
-    @State private var suggestions: [PlaceResults.Place] = []
     @State private var place: PlaceResults.Place?
-    @FocusState private var searching: Bool
     /// The place search, opened from its circular button (closed by default).
     @State private var searchOpen = false
+    @State private var searchDetent: PresentationDetent = .medium
+    @State private var heatExpanded = false
 
     private let areas = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
 
@@ -28,8 +27,8 @@ struct ZonesView: View {
             ZStack(alignment: .top) {
                 ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.live[model.city] ?? [],
                             heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place,
-                            bottomInset: model.mode == .heat ? 170 : 90,
-                            topInset: geo.safeAreaInsets.top + 52) { selection = $0 }   // under the status bar, header and the Search button
+                            bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 90,
+                            topInset: geo.safeAreaInsets.top + 52, selectionActive: selection != nil) { selection = $0 }   // under the status bar, header and the Search button
                     .ignoresSafeArea()
                     .accessibilityIdentifier("zonesMap")
                 // A soft scrim so the status bar and the Account button stay readable over a bright map.
@@ -41,8 +40,21 @@ struct ZonesView: View {
                 topControls
             }
         }
-        // While the place search is open, the bottom controls step aside so the suggestions stay clear.
-        .overlay(alignment: .bottom) { if !searchOpen { bottomControls.transition(.opacity) } }
+        .overlay(alignment: .bottom) { bottomControls }
+        // The place search: an Apple Maps-style sheet over the live map (medium, drag up for more).
+        .sheet(isPresented: $searchOpen) {
+            ZoneSearchSheet(city: model.cityData, api: session.api,
+                            onPick: { p in place = p },
+                            onCity: { c in place = nil; model.city = c },
+                            pinned: place?.id.hasPrefix("spot:") == true ? nil : place,
+                            onClearPin: { place = nil },
+                            detent: $searchDetent)
+                .presentationDetents([.medium, .large], selection: $searchDetent)
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                .modifier(SearchSheetBackground())
+                .onAppear { searchDetent = .medium }
+        }
         .background(Color.chBackground)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ReplayRoute.self) { ReplayView(route: $0) }
@@ -64,8 +76,7 @@ struct ZonesView: View {
         }
         .onAppear { if let c = router.zonesCity { model.city = c; router.zonesCity = nil } }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
-        .onChange(of: model.city) { query = ""; suggestions = []; place = nil; selection = nil; searchOpen = false }
-        .task(id: query) { await search() }
+        .onChange(of: model.city) { place = nil; selection = nil }
     }
 
     // MARK: controls
@@ -76,7 +87,7 @@ struct ZonesView: View {
     private var topControls: some View {
         VStack(alignment: .trailing, spacing: 10) {
             HStack(alignment: .bottom, spacing: 8) {
-                CityPicker(cities: areas, selection: $model.city)
+                CityPicker(cities: areas, selection: $model.city, bordered: false)
                     .padding(4)
                     .modifier(GlassBackground(shape: Capsule()))
                     .accessibilityElement(children: .contain)
@@ -86,12 +97,8 @@ struct ZonesView: View {
                     .accessibilityIdentifier("zoneDetailsButton")
             }
             HStack(alignment: .top, spacing: 8) {
-                if searchOpen { searchPanel.transition(.move(edge: .trailing).combined(with: .opacity)) }
-                MapGlassButton(systemImage: searchOpen ? "xmark" : "magnifyingglass", label: searchOpen ? "Close search" : "Search places",
-                               active: place != nil && !searchOpen) {
-                    withAnimation(.snappy) { searchOpen.toggle() }
-                    searching = searchOpen
-                    if !searchOpen { suggestions = [] }
+                MapGlassButton(systemImage: "magnifyingglass", label: "Search places", active: place != nil) {
+                    searchOpen = true
                 }
                 .accessibilityIdentifier("zoneSearchButton")
             }
@@ -99,51 +106,17 @@ struct ZonesView: View {
         .padding(.horizontal, 12).padding(.top, 8)
     }
 
-    /// The place search (unchanged behaviour: 3+ letters, suggestions, pick to show it on the map).
-    private var searchPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Color.chFog)
-                TextField("Search \(model.cityData.name) places", text: $query)
-                    .focused($searching).submitLabel(.search).autocorrectionDisabled()
-                    .font(.inter(15)).foregroundStyle(Color.chInk)
-                    .onSubmit { if let first = suggestions.first { pick(first) } }
-                    .accessibilityIdentifier("zoneSearchField")
-                if !query.isEmpty || place != nil {
-                    Button { query = ""; suggestions = []; place = nil } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Color.chFog) }
-                        .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 12).frame(minHeight: 44)
-            .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: 22)))
-            if searching && !suggestions.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(suggestions) { p in
-                        Button { pick(p) } label: {
-                            Text(p.label).font(.inter(14)).foregroundStyle(Color.chInk).lineLimit(1)
-                                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 10)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("zonePlaceSuggestion")
-                        if p != suggestions.last { Divider().overlay(Color.chLine) }
-                    }
-                }
-                .background(Color.chSurface.opacity(0.96), in: .rect(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.chHair2))
-            }
-        }
-    }
-
     private var bottomControls: some View {
-        VStack(alignment: .trailing, spacing: 8) {
+        VStack(alignment: .trailing, spacing: 10) {
             if model.mode == .heat { heatPanel }
             HStack(spacing: 8) {
                 // The map key lives in Zone details only (as on the website).
                 Spacer(minLength: 0)
                 NavigationLink(value: ReplayRoute(city: model.city)) {
-                    Label("Replay", systemImage: "play.fill").font(.inter(13, .bold))
-                        .padding(.horizontal, 14).frame(minHeight: 40)
-                        .background(Color.brandGold, in: .rect(cornerRadius: 12))
+                    Label("Replay", systemImage: "play.fill").font(.inter(14, .bold))
+                        .padding(.horizontal, 16).frame(height: MapControl.height)
+                        .background(Color.brandGold, in: .rect(cornerRadius: MapControl.radius))
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
                         .foregroundStyle(Color(hex: 0x1A1204))
                 }
                 .accessibilityIdentifier("replayButton")
@@ -152,10 +125,11 @@ struct ZonesView: View {
                 ForEach(ZonesModel.Mode.allCases) { m in
                     let on = model.mode == m
                     Button { withAnimation(.snappy) { model.mode = m } } label: {
-                        Text(m == .normal ? "Normal Map" : "Heatmap").font(.inter(13, .semibold))
-                            .padding(.horizontal, 14).frame(minHeight: 38)
+                        Text(m == .normal ? "Normal Map" : "Heatmap").font(.inter(13.5, .semibold))
+                            .padding(.horizontal, 14).frame(height: MapControl.height - 8)
                             .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
-                            .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: 10))
+                            .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: MapControl.radius - 4))
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(on ? .isSelected : [])
@@ -163,16 +137,55 @@ struct ZonesView: View {
                 }
             }
             .padding(4)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.chHair2))
+            .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
             .sensoryFeedback(.selection, trigger: model.mode)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 64)   // above the Liquid Glass tab bar
     }
 
-    private var heatPanel: some View {
+    /// Heatmap details, like Zone details: a compact bar by default (what the map
+    /// shows), expanding to the filters, hour, key and explanation. Collapsing
+    /// only hides the panel; the heatmap and its filters stay as they are.
+    @ViewBuilder private var heatPanel: some View {
+        if heatExpanded { heatPanelFull } else { heatPanelCompact }
+    }
+
+    private var heatPanelCompact: some View {
+        Button { withAnimation(.snappy) { heatExpanded = true } } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "flame.fill").font(.system(size: 14)).foregroundStyle(Color(hex: 0xF97316))
+                Text(model.heatStatus).font(.inter(12.5, .medium)).foregroundStyle(Color.chInk)
+                    .lineLimit(2).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.up").font(.system(size: 12, weight: .bold)).foregroundStyle(Color.chMist)
+                    .frame(width: 30, height: 30).background(Color.chSurface2, in: .circle)
+            }
+            .padding(.leading, 14).padding(.trailing, 9).frame(minHeight: MapControl.height)
+            .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Heatmap details. \(model.heatStatus)")
+        .accessibilityHint("Shows the time range, hour and key")
+        .accessibilityIdentifier("heatPanelExpand")
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private var heatPanelFull: some View {
         VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("HEATMAP").font(.inter(11, .bold)).tracking(1.4).foregroundStyle(Color.chFog)
+                Spacer()
+                Button { withAnimation(.snappy) { heatExpanded = false } } label: {
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .bold)).foregroundStyle(Color.chMist)
+                        .frame(width: 30, height: 30).background(Color.chSurface2, in: .circle)
+                        .frame(width: 44, height: 36).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Hide heatmap details")
+                .accessibilityIdentifier("heatPanelCollapse")
+            }
             HStack(spacing: 6) {
                 ForEach(HeatRange.allCases) { r in
                     let on = model.heatRange == r
@@ -212,30 +225,10 @@ struct ZonesView: View {
             Text("Where traffic cameras recorded Cybercabs. History, not live positions.").font(.inter(10)).foregroundStyle(Color.chFog)
         }
         .padding(12)
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.chHair2))
+        .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    // MARK: search (GET /api/places/map, 3+ letters, debounced)
-
-    private func search() async {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 3, place?.label != query else { suggestions = []; return }
-        try? await Task.sleep(for: .milliseconds(250))
-        guard !Task.isCancelled else { return }
-        var items = [URLQueryItem(name: "v", value: "2"), URLQueryItem(name: "q", value: q)]
-        if model.city != "austin" { items.append(URLQueryItem(name: "area", value: model.city)) }
-        if let r: PlaceResults = try? await session.api.get("/api/places/map", query: items) { suggestions = Array(r.places.prefix(6)) }
-    }
-
-    private func pick(_ p: PlaceResults.Place) {
-        place = p
-        query = p.label
-        suggestions = []
-        searching = false
-        withAnimation(.snappy) { searchOpen = false }   // the place is on the map; the button shows it in gold
-    }
 }
 
 struct ReplayRoute: Hashable { let city: String }
@@ -258,14 +251,24 @@ struct MapSelectionSheet: View {
                     Text(c.note).font(.inter(14)).foregroundStyle(Color.chMist)
                 case .liveCamera(let d):
                     Eyebrow(text: "Cybercab spotted")
+                    // The whole capture, aspect-fit and centred on a dark panel (never
+                    // filled-and-cropped: in a scroll view that zoomed into its middle).
                     AsyncImage(url: d.imageURL) { phase in
-                        if let image = phase.image { image.resizable().scaledToFill() }
-                        else if phase.error != nil || d.imageURL == nil { Text("Capture image pending").font(.inter(12)).foregroundStyle(Color.chFog) }
-                        else { ProgressView().tint(Color.chFog) }
+                        if let image = phase.image {
+                            image.resizable().aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity, maxHeight: 420)
+                        } else if phase.error != nil || d.imageURL == nil {
+                            Text("Capture image pending").font(.inter(12)).foregroundStyle(Color.chFog)
+                                .frame(maxWidth: .infinity, minHeight: 180)
+                        } else {
+                            ProgressView().tint(Color.chFog).frame(maxWidth: .infinity, minHeight: 180)
+                        }
                     }
-                    .frame(maxWidth: .infinity).aspectRatio(16 / 9, contentMode: .fit)
                     .background(Color(hex: 0x0C1119)).clipShape(.rect(cornerRadius: 10))
+                    .accessibilityElement()
+                    .accessibilityAddTraits(.isImage)
                     .accessibilityLabel("Traffic camera capture of a Cybercab at \(d.cameraName)")
+                    .accessibilityIdentifier("cameraCaptureImage")
                     Text(d.cameraName).font(.inter(17, .bold)).foregroundStyle(Color.chInk)
                     Text(Format.instant(d.observedAt).map { $0.formatted(Date.FormatStyle(timeZone: Format.central).month(.abbreviated).day().hour().minute().timeZone()) } ?? "")
                         .font(.inter(13)).foregroundStyle(Color.chMist)
@@ -365,6 +368,13 @@ struct ZoneDetailsSheet: View {
 // MARK: - Floating map controls
 
 /// A circular Liquid Glass button for the map (iOS 26 glass; frosted material before).
+/// One size for every floating map control: 48 pt tall (the city selector's
+/// height), 14 pt corners on the rounded ones.
+enum MapControl {
+    static let height: CGFloat = 48
+    static let radius: CGFloat = 14
+}
+
 struct MapGlassButton: View {
     let systemImage: String
     let label: String
@@ -375,7 +385,7 @@ struct MapGlassButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(active ? Color.brandGold : Color.chInk)
-                .frame(width: 44, height: 44)
+                .frame(width: MapControl.height, height: MapControl.height)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -394,5 +404,13 @@ struct GlassBackground<S: Shape>: ViewModifier {
         } else {
             content.background(.ultraThinMaterial, in: shape).overlay(shape.stroke(Color.chHair2, lineWidth: 1))
         }
+    }
+}
+
+/// The search sheet's glass: iOS 26 gives partial sheets Liquid Glass on its own;
+/// earlier systems get a dark translucent material.
+private struct SearchSheetBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) { content } else { content.presentationBackground(.ultraThinMaterial) }
     }
 }

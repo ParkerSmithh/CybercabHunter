@@ -430,10 +430,13 @@ struct ZoneBorderTests {
     @Test func outlinesAreThinOnEveryMap() {
         var coords = [CLLocationCoordinate2D(latitude: 30.2, longitude: -97.7), CLLocationCoordinate2D(latitude: 30.3, longitude: -97.7), CLLocationCoordinate2D(latitude: 30.3, longitude: -97.8)]
         let zone = ZonePolygon(coordinates: &coords, count: coords.count)
-        #expect(ZoneRenderer(zone: zone).lineWidth == 1.25, "Zones and Replay (was 2.5)")
-        zone.lineWeight = 1
-        #expect(ZoneRenderer(zone: zone).lineWidth == 1, "the Home minimap")
+        #expect(ZoneRenderer(zone: zone).lineWidth == 1.1, "Zones and Replay (was 2.5, then 1.25)")
+        zone.lineWeight = 0.8
+        #expect(ZoneRenderer(zone: zone).lineWidth == 0.8, "the Home minimap")
         let r = ZoneRenderer(zone: zone)
-        #expect(r.strokeColor != nil && r.fillColor != nil, "same colours as before")
+        #expect(r.strokeColor != nil && r.fillColor != nil, "gold outline and wash")
+        var alpha: CGFloat = 0
+        r.fillColor?.getRed(nil, green: nil, blue: nil, alpha: &alpha)
+        #expect(abs(alpha - 0.05) < 0.001, "a faint wash (was 0.13), so streets and labels read through")
     }
 }

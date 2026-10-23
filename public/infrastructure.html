@@ -136,7 +136,7 @@
 
         <!-- Map key, right under the zone name -->
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-xs text-slate-400">
-          <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#FAE030;box-shadow:0 0 0 2px rgba(8,10,16,0.55)"></span>Charging Locations</span>
+          <span class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px]" style="background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85)" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="#FAE030" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Locations</span>
           <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
         </div>
 
@@ -192,7 +192,7 @@
 
         <!-- Map key, right under the zone name -->
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-xs text-slate-400">
-          <span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:#FAE030;box-shadow:0 0 0 2px rgba(8,10,16,0.55)"></span>Charging Locations</span>
+          <span class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px]" style="background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85)" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="#FAE030" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Locations</span>
           <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
         </div>
 
@@ -399,16 +399,16 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
-<script src="js/calc.js?v=8"></script>
+<script src="js/calc.js?v=9"></script>
 <script src="js/main.js?v=33"></script>
-<script src="js/austin-map.js?v=10"></script>
+<script src="js/austin-map.js?v=11"></script>
 <script src="js/map-search.js?v=3"></script>
 <script src="js/zones-heatmap.js?v=3"></script>
 <script>
   CCC.init();
 
   // Count up the zone stats once they are in view, like the homepage stats bar.
-  CCC.countUp(document.getElementById('coverageOut'), 264);
+  CCC.countUp(document.getElementById('coverageOut'), 272);
   CCC.countUp(document.getElementById('dalCoverageOut'), 81);   // counts when Dallas is first shown
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
@@ -495,7 +495,9 @@
   const serviceZoneCoords = [
     [-97.8089523, 30.2478867], [-97.8237839, 30.2382717], [-97.8376999, 30.2433796], [-97.8522568, 30.2236824],
     [-97.8609161, 30.2139397], [-97.8681335, 30.2005615], [-97.8598862, 30.1848412], [-97.8251724, 30.1692181],
-    [-97.768898, 30.1522579], [-97.731102, 30.1427193], [-97.6521378, 30.1459084], [-97.5534668, 30.2621021],
+    [-97.768898, 30.1522579], [-97.731102, 30.1427193], [-97.6760012, 30.1441684], [-97.6507314, 30.1318432],
+    [-97.6334954, 30.1175531], [-97.6251908, 30.1246453], [-97.6132018, 30.1443017], [-97.6104786, 30.1619166],
+    [-97.6033216, 30.1787465], [-97.6149125, 30.1892561], [-97.5534668, 30.2621021],
     [-97.5766525, 30.3470936], [-97.6152802, 30.3756886], [-97.6323395, 30.4018478], [-97.6431885, 30.4222393],
     [-97.6465302, 30.4300823], [-97.6558075, 30.4385662], [-97.6959686, 30.4513607], [-97.7225876, 30.4516335],
     [-97.7416763, 30.4467773], [-97.778038, 30.4356804], [-97.770607, 30.4302769], [-97.7579498, 30.423193],

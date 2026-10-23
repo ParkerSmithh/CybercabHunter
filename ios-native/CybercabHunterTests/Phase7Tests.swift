@@ -182,27 +182,96 @@ struct DMVRosterTests {
 
     @Test func pagesAndCounts() async {
         let s = StubServer(), api = s.api()
-        let rows = (0..<2).map { ["vin": "7SAYGDEF5TA00000\($0)", "make": "Tesla", "model": "Cybercab", "model_year": 2026] as [String: Any] }
-        s.responses["GET /api/dmv-registrations/vins"] = (200, json(["total": 3, "limit": 100, "offset": 0, "vehicles": rows]))
+        let row: (String, Bool) -> [String: Any] = { vin, new in ["vin": vin, "model": "Cybercab", "model_year": 2026, "model_class": "cybercab", "decode_status": "verified", "first_detected": "2026-10-22", "last_confirmed": "2026-10-23", "baseline": false, "is_new": new, "listed": true] }
+        s.responses["GET /api/dmv/vins"] = (200, json(["total": 3, "limit": 50, "offset": 0, "new_date": "2026-10-22", "years": [2026], "vehicles": [row("7SAYGDEF5TA000000", true), row("7SAYGDEF5TA000001", false)]]))
         let m = DMVRosterModel()
+        m.cache = DMVResponseCache()
         m.model = "cybercab"
+        m.year = 2026
         await m.reload(api: api)
-        #expect(m.countLine == "2 of 3 VINs" && m.vehicles.first?.modelYear == 2026)
+        #expect(m.countLine == "2 of 3 VINs" && m.vehicles.first?.modelYear == 2026 && m.vehicles.first?.isNew == true && m.years == [2026])
         let q = s.requests.last?.0.url?.query() ?? ""
-        #expect(q.contains("model=cybercab") && q.contains("limit=100") && q.contains("offset=0") && !q.contains("q="))
-        s.responses["GET /api/dmv-registrations/vins"] = (200, json(["total": 3, "limit": 100, "offset": 2, "vehicles": [["vin": "7SAYGDEF5TA000009", "make": "Tesla", "model": "Cybercab", "model_year": 2026]]]))
+        #expect(q.contains("model=cybercab") && q.contains("year=2026") && q.contains("sort=first_seen") && q.contains("limit=50") && q.contains("offset=0") && !q.contains("q="))
+        s.responses["GET /api/dmv/vins"] = (200, json(["total": NSNull(), "limit": 50, "offset": 2, "vehicles": [row("7SAYGDEF5TA000009", false)]]))
         await m.loadMore(api: api)
-        #expect(m.vehicles.count == 3 && (s.requests.last?.0.url?.query() ?? "").contains("offset=2"))
+        #expect(m.vehicles.count == 3 && m.total == 3 && (s.requests.last?.0.url?.query() ?? "").contains("offset=2"), "later pages carry no total; the first page's is kept")
+        m.model = "recent"
+        m.sort = .vin
         m.query = "zz"
-        s.responses["GET /api/dmv-registrations/vins"] = (200, json(["total": 0, "limit": 100, "offset": 0, "vehicles": []]))
+        s.responses["GET /api/dmv/vins"] = (200, json(["total": 0, "limit": 50, "offset": 0, "vehicles": []]))
         await m.reload(api: api)
-        #expect(m.countLine == "No VIN matches that search.")
+        let q2 = s.requests.last?.0.url?.query() ?? ""
+        #expect(m.countLine == "No VIN matches that search." && q2.contains("recent=1") && !q2.contains("model=") && q2.contains("sort=vin"))
         m.query = ""
         await m.reload(api: api)
-        #expect(m.countLine == "No roster snapshot yet.")
-        s.responses["GET /api/dmv-registrations/vins"] = (503, "{}")
-        await m.reload(api: api)
+        #expect(m.countLine == "No VINs match.")
+        s.responses["GET /api/dmv/vins"] = (503, "{}")
+        await m.reload(api: api, force: true)
         #expect(m.state == .failed && m.countLine == "Couldn't load the roster right now.")
+    }
+}
+
+@MainActor
+struct DMVTrackerTests {
+    static let event: [String: Any] = ["date": "2026-10-22", "processed_at": "2026-10-22T11:31:00Z", "previous_date": "2026-10-21", "status": "ok", "added": 55, "returned": 0, "missing": 0, "net": 55, "total": 858, "added_by_model": ["cybercab": 2, "model_y": 53, "other_tesla": 0, "unknown": 0]]
+    static let overview: [String: Any] = [
+        "source": ["name": "TxDMV", "company": "Tesla Robotaxi, LLC", "authorization": "AV1", "law": "SB 2807", "url": "https://txmccs.txdmv.gov", "fields": ["VIN"], "schedule": "Daily", "decoder": ["name": "NHTSA vPIC", "url": "https://vpic.nhtsa.dot.gov"]],
+        "latest": ["date": "2026-10-23", "polled_at": "2026-10-23T11:30:00Z"],
+        "totals": ["cybercab": 351, "model_y": 507, "other_tesla": 0, "unknown": 0, "total": 858],
+        "latest_update": event, "previous_snapshot": ["date": "2026-10-22", "total": 858, "net": 0],
+        "freshness": ["status": "current", "last_success": "2026-10-23T11:30:00Z"],
+        "milestones": [["metric": "total_listed", "threshold": 800, "date": "2026-10-17", "value": 803, "label": "800 vehicles on the roster"]],
+        "insights": [["key": "latest_update", "text": "55 new VINs detected on Oct 22."]],
+        "tracking_since": "2026-10-09", "recent_updates": [event], "update_count": 3]
+
+    @Test func overviewAndGrowthDecode() async {
+        let s = StubServer(), api = s.api()
+        s.responses["GET /api/dmv/overview"] = (200, json(Self.overview))
+        s.responses["GET /api/dmv/growth"] = (200, json(["range": "all", "enough_history": true, "points": [
+            ["date": "2026-10-09", "total": 739, "cybercab": 319, "model_y": 420, "baseline": true, "added": NSNull()],
+            ["date": "2026-10-22", "total": 858, "cybercab": 351, "model_y": 507, "baseline": false, "added": ["cybercab": 2, "model_y": 53, "other_tesla": 0, "unknown": 0]]]]))
+        let m = DMVTrackerModel()
+        m.cache = DMVResponseCache()
+        await m.reload(api: api)
+        #expect(m.state == .ready)
+        #expect(m.overview?.totals?.cybercab == 351 && m.overview?.latestUpdate?.added == 55 && m.overview?.recentUpdates?.count == 1)
+        #expect(m.additions.count == 1, "the baseline is never counted as new")
+        #expect(DMVText.breakdown(m.overview?.latestUpdate?.addedByModel) == "2 Cybercab · 53 Model Y")
+        // Back on the screen within 5 minutes: no new requests. Pull-to-refresh: fetched again.
+        let before = s.requests.count
+        await m.reload(api: api)
+        #expect(s.requests.count == before, "cached for 5 minutes (no polling, no refetch on reappear)")
+        await m.reload(api: api, force: true)
+        #expect(s.requests.count == before + 2, "pull-to-refresh fetches the overview and the chart")
+        s.responses["GET /api/dmv/overview"] = (503, "{}")
+        let fresh = DMVTrackerModel()
+        fresh.cache = DMVResponseCache()
+        await fresh.reload(api: api)
+        #expect(fresh.state == .failed)
+    }
+
+    @Test func classesAndFreshnessText() {
+        #expect(DMVClass("model_y") == .modelY && DMVClass(nil) == .unknown && DMVClass("conflict") == .unknown)
+        #expect(DMVText.freshness("current").label == "Current" && !DMVText.freshness("current").warn)
+        #expect(DMVText.freshness("import_failed").warn && DMVText.freshness("source_unavailable").label == "Source unavailable")
+        #expect(DMVText.decodeStatus("conflict").contains("unknown"))
+    }
+
+    @Test func historyFiltersAndVinDetail() async throws {
+        let s = StubServer(), api = s.api()
+        s.responses["GET /api/dmv/activity"] = (200, json(["total": 1, "limit": 20, "offset": 0, "baseline": ["date": "2026-10-09", "total": 739], "events": [Self.event]]))
+        let h = DMVHistoryModel()
+        h.cache = DMVResponseCache()
+        h.kind = "additions"; h.model = "cybercab"
+        await h.reload(api: api)
+        let q = s.requests.last?.0.url?.query() ?? ""
+        #expect(h.events.count == 1 && h.baseline?.total == 739 && q.contains("kind=additions") && q.contains("model=cybercab"))
+        s.responses["GET /api/dmv/vins/7SAYGDEF5TA000000"] = (200, json(["vin": "7SAYGDEF5TA000000", "source": ["make": "Tesla", "model": "Model Y", "model_year": 2026],
+            "decode": ["model_class": "model_y", "status": "verified", "plant": "FREMONT, CALIFORNIA", "check_digit_ok": true],
+            "tracking": ["first_detected": "2026-10-09", "last_confirmed": "2026-10-23", "in_baseline": true, "listed": true, "latest_snapshot": "2026-10-23", "history": []],
+            "registry": ["id": 42, "plate": "ABC1234", "approved_sightings": 3]]))
+        let v: DMVVinDetail = try await api.get("/api/dmv/vins/7SAYGDEF5TA000000")
+        #expect(v.registry?.id == "42" && v.decode?.checkDigitOk == true && v.tracking.inBaseline)
     }
 }
 

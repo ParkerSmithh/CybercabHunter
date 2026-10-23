@@ -42,15 +42,27 @@ final class ZonesUITests: XCTestCase {
 
         // Heatmap: real detections (or the honest empty line).
         app.buttons["heatmapButton"].tap()
-        let status = app.staticTexts["heatStatus"]
-        XCTAssertTrue(status.waitForExistence(timeout: 10))
-        expectation(for: NSPredicate(format: "label CONTAINS 'detection' AND NOT (label BEGINSWITH 'Loading')"), evaluatedWith: status)
+        // Collapsed by default: a compact bar with the summary, like Zone details.
+        let expand = app.buttons["heatPanelExpand"]
+        XCTAssertTrue(expand.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "label CONTAINS 'detection' AND NOT (label CONTAINS 'Loading')"), evaluatedWith: expand)
         waitForExpectations(timeout: 25)
-        sleep(2)
+        XCTAssertFalse(app.buttons["heatRange-all"].exists, "the filters are tucked away until expanded")
+        shot(app, "z4-heatmap-collapsed")
+        expand.tap()
+        let status = app.staticTexts["heatStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        sleep(1)
         shot(app, "z4-heatmap-7d")
         app.buttons["heatRange-all"].tap()
         sleep(3)
+        XCTAssertTrue(status.label.contains("all"), status.label)
         shot(app, "z5-heatmap-all")
+        // Collapsing keeps the heatmap and its range.
+        app.buttons["heatPanelCollapse"].tap()
+        XCTAssertTrue(expand.waitForExistence(timeout: 3))
+        XCTAssertTrue(expand.label.contains("all"), "still the All range: \(expand.label)")
+        XCTAssertTrue(app.buttons["heatmapButton"].isSelected)
         assertNative(app)
         app.buttons["normalMapButton"].tap()
 
@@ -76,12 +88,12 @@ final class ZonesUITests: XCTestCase {
         let scroll = app.scrollViews.firstMatch
         XCTAssertTrue(scroll.waitForExistence(timeout: 20))
 
-        // Fleet growth: Actual + Predictions shows the forecast tiles.
-        let predictions = app.buttons["Actual + Predictions"].firstMatch
-        for _ in 0..<8 where !predictions.isHittable { scroll.swipeUp(velocity: .slow) }
+        // Fleet growth: Predict shows the forecast tiles.
+        let predictions = app.buttons.matching(identifier: "predictToggle").firstMatch
+        for _ in 0..<10 where !predictions.isHittable { scroll.swipeUp(velocity: .slow) }
         XCTAssertTrue(predictions.waitForExistence(timeout: 20))
         predictions.tap()
-        XCTAssertTrue(app.otherElements["fleetForecastTiles"].waitForExistence(timeout: 10) || app.staticTexts["CURRENT DOCUMENTED FLEET"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["fleetForecastTiles"].waitForExistence(timeout: 10))
         sleep(1)
         shot(app, "h1-fleet-predictions")
 

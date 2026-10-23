@@ -7,25 +7,46 @@ import SwiftUI
 struct HomeView: View {
     @Environment(SessionStore.self) private var session
     @State private var model = HomeModel()
+    @State private var scroll: CGFloat = 0
+    /// Debug builds: the page's measured heights, for layout tests.
+    @State private var contentHeight: CGFloat = 0
+    @State private var belowMinimapHeight: CGFloat = 0
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                HomeHero()
+                // No pin and no reserved space: the doors open as the hero scrolls out
+                // (the site's flow mode, js/hero-video.js), so the stats follow the hero.
+                HomeHero(scroll: scroll)
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
                 VStack(spacing: 14) {
                     ServiceStatusCard(hours: model.cityStats["austin"]?.area?.hours)
                     DailyCard(report: model.daily, error: model.errors["daily"])
                 }
                 ServiceZonesSection(model: model)
-                FleetGrowthSection(model: model)
-                DMVSection(dmv: model.dmv, error: model.errors["dmv"])
-                USSightingsSection()
-                CityRowsSection(model: model)
+                // Everything below the Austin minimap: compact dashboard cards.
+                VStack(alignment: .leading, spacing: 20) {
+                    FleetGrowthSection(model: model)
+                    DMVSection(dmv: model.dmv, error: model.errors["dmv"])
+                    USSightingsSection()
+                    CityRowsSection(model: model)
+                }
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { belowMinimapHeight = $0 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 32)
         }
+        // The hero's door frames follow the scroll position (js/hero-video.js).
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in let c = min(max(y, 0), HomeHeroMedia.openDistance); if c != scroll { scroll = c } }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.height } action: { _, h in contentHeight = h }
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            Color.clear.frame(width: 1, height: 1)
+                .accessibilityElement()
+                .accessibilityLabel("\(Int(contentHeight)) \(Int(belowMinimapHeight))")
+                .accessibilityIdentifier("homeHeights")
+        }
+        #endif
         .appBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { BrandToolbarItem() }
@@ -43,10 +64,10 @@ struct HomeView: View {
 /// The website's hero: the Cybercab render, "TRACK THE FUTURE OF AUTONOMY"
 /// with FUTURE OF in gold, and the two calls to action.
 private struct HomeHero: View {
+    let scroll: CGFloat
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Image("HeroCybercab")
-                .resizable().scaledToFill()
+            HomeHeroMedia(scroll: scroll)
                 .frame(height: 220)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -148,7 +169,7 @@ struct ServiceStatusCard: View {
                             .contentTransition(.numericText())
                     }
                     Spacer(minLength: 0)
-                    Image("CybercabRender").resizable().scaledToFit().frame(width: 120).accessibilityHidden(true)
+                    LiveCar(live: s.live).frame(width: 130).padding(.trailing, -10)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -283,17 +304,57 @@ struct BrandToolbarItem: ToolbarContent {
     }
 
     private var item: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            HStack(spacing: 8) {
-                Image("BrandMark").resizable().frame(width: 30, height: 30)
+        // Centred on the screen (the bar's principal place), a little larger than before.
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 10) {
+                Image("BrandMark").resizable().frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: -1) {
-                    Text("CYBERCAB").font(.inter(14, .bold)).tracking(0.7).foregroundStyle(Color.chInk)
-                    Text("HUNTER").font(.inter(9, .semibold)).tracking(2.2).foregroundStyle(Color.chFog)
+                    Text("CYBERCAB").font(.inter(17, .bold)).tracking(0.9).foregroundStyle(Color.chInk)
+                    Text("HUNTER").font(.inter(10.5, .semibold)).tracking(2.8).foregroundStyle(Color.chFog)
                 }
             }
             .fixedSize()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Cybercab Hunter")
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("homeBrand")
         }
+    }
+}
+
+/// The "Live now" card's car (css/style.css .sb-car): while the fleet runs it
+/// bobs 1.5 pt every 2.6 s over a gold dashed road scrolling at 26 pt per
+/// 0.8 s; parked, it is greyed out with no road. Reduce Motion: still.
+private struct LiveCar: View {
+    let live: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(paused: !live || reduceMotion)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            let bob = (live && !reduceMotion) ? -1.5 * (1 - cos(t / 2.6 * 2 * .pi)) / 2 : 0
+            let shift = (live && !reduceMotion) ? (t / 0.8).truncatingRemainder(dividingBy: 1) * 26 : 0
+            ZStack(alignment: .bottom) {
+                if live {
+                    Canvas { ctx, size in
+                        var x = -26 + shift
+                        while x < size.width {
+                            ctx.fill(Path(CGRect(x: x, y: 0, width: 12, height: 2)), with: .color(Color.brandGold.opacity(0.55)))
+                            x += 26
+                        }
+                    }
+                    .frame(height: 2)
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.35), .init(color: .black, location: 0.85), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                    .padding(.horizontal, -20)
+                    .offset(y: -4)
+                }
+                Image("CybercabRender").resizable().scaledToFit()
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22)], startPoint: .leading, endPoint: .trailing))
+                    .shadow(color: .black.opacity(0.5), radius: 7, y: 10)
+                    .grayscale(live ? 0 : 1).brightness(live ? 0 : -0.45).opacity(live ? 1 : 0.65)
+                    .offset(y: bob)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

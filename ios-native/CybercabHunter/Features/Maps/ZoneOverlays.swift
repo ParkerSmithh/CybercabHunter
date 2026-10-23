@@ -2,29 +2,31 @@ import MapKit
 import UIKit
 
 /// The service zone as the website draws it (js/austin-map.js addServiceZone):
-/// a light gold wash, a soft glow, then a crisp gold outline.
+/// a faint gold wash (the streets and labels read through it), a barely-there
+/// halo, then a thin crisp gold outline.
 final class ZonePolygon: MKPolygon {
     var cityKey = ""
     var dimmed = false   // Heatmap mode dims the wash (the outline stays)
-    /// The outline in points (constant on screen at any zoom): 1.25 on the
-    /// full maps (Zones, Replay), 1 on the small Home minimap.
-    var lineWeight: CGFloat = 1.25
+    /// The outline in points (constant on screen at any zoom): 1.1 on the
+    /// full maps (Zones, Replay), 0.8 on the small Home minimap.
+    var lineWeight: CGFloat = 1.1
 }
 
 final class ZoneRenderer: MKPolygonRenderer {
+    static let washAlpha: CGFloat = 0.05
     init(zone: ZonePolygon) {
         super.init(polygon: zone)
         let gold = UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 1)
-        fillColor = gold.withAlphaComponent(zone.dimmed ? 0.04 : 0.13)
-        strokeColor = gold
+        fillColor = gold.withAlphaComponent(zone.dimmed ? 0.02 : Self.washAlpha)
+        strokeColor = gold.withAlphaComponent(0.95)
         lineWidth = zone.lineWeight
         lineJoin = .round
     }
 
     override func strokePath(_ path: CGPath, in context: CGContext) {
-        // The glow: a wide, blurred gold line under the outline.
+        // A faint halo (a short blur, low alpha) so the line holds on busy streets; no neon.
         context.saveGState()
-        context.setShadow(offset: .zero, blur: 6 / contentScaleFactor, color: UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 0.45).cgColor)
+        context.setShadow(offset: .zero, blur: 2 / contentScaleFactor, color: UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 0.15).cgColor)
         super.strokePath(path, in: context)
         context.restoreGState()
         super.strokePath(path, in: context)
@@ -80,41 +82,32 @@ final class PlaceAnnotation: NSObject, MKAnnotation {
 enum MarkerViews {
     static let gold = UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 1)
 
-    /// A gold charging pin: 18pt dot with a dark ring (the site's addPin).
+    /// A charging location: a compact dark tile with a gold bolt (distinct from
+    /// the round Cybercab markers), a 44pt tap target.
     static func charging(_ view: MKAnnotationView) {
         view.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
         view.subviews.forEach { $0.removeFromSuperview() }
-        let dot = UIView(frame: CGRect(x: 13, y: 13, width: 18, height: 18))
-        dot.backgroundColor = gold
-        dot.layer.cornerRadius = 9
-        dot.layer.borderColor = UIColor(red: 8 / 255, green: 10 / 255, blue: 16 / 255, alpha: 0.55).cgColor
-        dot.layer.borderWidth = 2
-        dot.layer.shadowColor = gold.cgColor
-        dot.layer.shadowOpacity = 0.6
-        dot.layer.shadowRadius = 6
-        dot.layer.shadowOffset = .zero
-        view.addSubview(dot)
+        let tile = UIView(frame: CGRect(x: 11, y: 11, width: 22, height: 22))
+        tile.backgroundColor = UIColor(red: 15 / 255, green: 16 / 255, blue: 17 / 255, alpha: 0.94)
+        tile.layer.cornerRadius = 6.5
+        tile.layer.cornerCurve = .continuous
+        tile.layer.borderColor = gold.withAlphaComponent(0.85).cgColor
+        tile.layer.borderWidth = 1
+        shadow(tile)
+        let bolt = UIImageView(image: UIImage(systemName: "bolt.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)))
+        bolt.tintColor = gold
+        bolt.contentMode = .center
+        bolt.frame = tile.bounds
+        tile.addSubview(bolt)
+        view.addSubview(tile)
     }
 
-    /// The camera-spotted Cybercab: the site's overhead icon in a dark disc with
-    /// a gold ring and glow, a 44pt tap target.
-    static func liveCamera(_ view: MKAnnotationView) {
-        view.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
-        view.subviews.forEach { $0.removeFromSuperview() }
-        let disc = UIView(frame: CGRect(x: 5, y: 5, width: 34, height: 34))
-        disc.backgroundColor = UIColor(red: 8 / 255, green: 10 / 255, blue: 16 / 255, alpha: 0.8)
-        disc.layer.cornerRadius = 17
-        disc.layer.borderColor = gold.withAlphaComponent(0.7).cgColor
-        disc.layer.borderWidth = 1.5
-        disc.layer.shadowColor = gold.cgColor
-        disc.layer.shadowOpacity = 0.45
-        disc.layer.shadowRadius = 6
-        disc.layer.shadowOffset = .zero
-        let icon = UIImageView(image: UIImage(named: "CybercabOverhead"))
-        icon.frame = CGRect(x: 2, y: 2, width: 30, height: 30)
-        icon.contentMode = .scaleAspectFit
-        disc.addSubview(icon)
-        view.addSubview(disc)
+    /// A soft dark drop shadow: lifts a marker off the map without a glow.
+    static func shadow(_ v: UIView) {
+        v.layer.shadowColor = UIColor.black.cgColor
+        v.layer.shadowOpacity = 0.55
+        v.layer.shadowRadius = 3
+        v.layer.shadowOffset = CGSize(width: 0, height: 1.5)
     }
 
     /// A camera in Heatmap mode: white when it has detections, slate otherwise.
@@ -128,5 +121,90 @@ enum MarkerViews {
         dot.layer.borderColor = UIColor(red: 8 / 255, green: 10 / 255, blue: 16 / 255, alpha: 0.7).cgColor
         dot.layer.borderWidth = 0.75
         view.addSubview(dot)
+    }
+}
+
+/// A camera-spotted Cybercab: the site's overhead icon in a 26pt dark disc
+/// with a thin gold ring and a soft shadow (no glow), a 44pt tap target.
+/// Markers that would overlap merge into a cluster (`CybercabClusterView`).
+final class CybercabMarkerView: MKAnnotationView {
+    static let clusterID = "cybercab"
+    private let disc = UIView()
+    private let icon = UIImageView(image: UIImage(named: "CybercabOverhead"))
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+        disc.frame = CGRect(x: 9, y: 9, width: 26, height: 26)
+        disc.backgroundColor = UIColor(red: 15 / 255, green: 16 / 255, blue: 17 / 255, alpha: 0.94)
+        disc.layer.cornerRadius = 13
+        disc.layer.borderWidth = 1
+        disc.layer.borderColor = MarkerViews.gold.withAlphaComponent(0.85).cgColor
+        MarkerViews.shadow(disc)
+        icon.frame = disc.bounds.insetBy(dx: 3, dy: 3)
+        icon.contentMode = .scaleAspectFit
+        disc.addSubview(icon)
+        addSubview(disc)
+        clusteringIdentifier = Self.clusterID
+        collisionMode = .circle
+        displayPriority = .required
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func prepareForDisplay() {
+        super.prepareForDisplay()
+        clusteringIdentifier = Self.clusterID
+    }
+
+    /// Selected: a brighter, slightly thicker ring and a small lift.
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        UIView.animate(withDuration: animated ? 0.18 : 0) {
+            self.disc.transform = selected ? CGAffineTransform(scaleX: 1.15, y: 1.15) : .identity
+            self.disc.layer.borderWidth = selected ? 2 : 1
+            self.disc.layer.borderColor = MarkerViews.gold.withAlphaComponent(selected ? 1 : 0.85).cgColor
+        }
+    }
+}
+
+/// Several Cybercabs too close to show apart: one marker with the count. A tap
+/// zooms in until they separate (each vehicle stays reachable; nothing moves).
+final class CybercabClusterView: MKAnnotationView {
+    private let disc = UIView()
+    private let icon = UIImageView(image: UIImage(named: "CybercabOverhead"))
+    private let badge = UILabel()
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+        disc.frame = CGRect(x: 7, y: 7, width: 30, height: 30)
+        disc.backgroundColor = UIColor(red: 15 / 255, green: 16 / 255, blue: 17 / 255, alpha: 0.94)
+        disc.layer.cornerRadius = 15
+        disc.layer.borderWidth = 1.25
+        disc.layer.borderColor = MarkerViews.gold.cgColor
+        MarkerViews.shadow(disc)
+        icon.frame = disc.bounds.insetBy(dx: 4, dy: 4)
+        icon.contentMode = .scaleAspectFit
+        disc.addSubview(icon)
+        addSubview(disc)
+        badge.font = .systemFont(ofSize: 10.5, weight: .bold)
+        badge.textColor = UIColor(red: 26 / 255, green: 18 / 255, blue: 4 / 255, alpha: 1)
+        badge.backgroundColor = MarkerViews.gold
+        badge.textAlignment = .center
+        badge.layer.cornerRadius = 8
+        badge.layer.masksToBounds = true
+        addSubview(badge)
+        collisionMode = .circle
+        displayPriority = .required
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func prepareForDisplay() {
+        super.prepareForDisplay()
+        let n = (annotation as? MKClusterAnnotation)?.memberAnnotations.count ?? 0
+        badge.text = "\(n)"
+        let w = max(16, badge.intrinsicContentSize.width + 8)
+        badge.frame = CGRect(x: 44 - w + 2, y: 2, width: w, height: 16)
+        accessibilityLabel = "\(n) Cybercabs seen by nearby traffic cameras. Double-tap to zoom in."
     }
 }

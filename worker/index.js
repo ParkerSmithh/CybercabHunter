@@ -26,6 +26,7 @@ import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-st
 import { apiFleetEta, recomputeFleetEta, apiCreateFareReport, apiListFareReports, apiReviewFareReport } from './fleet-eta.js';
 import { apiHomepageStats } from './homepage-stats.js';
 import { apiDmvRegistrations, apiDmvVins, runTxdmvPoll, TXDMV_CRON } from './txdmv.js';
+import { runDmvStep, MODE_KEY as DMV_MODE_KEY, INVOCATION_SUBREQUESTS, SAFETY_MARGIN, apiDmvOverview, apiDmvActivity, apiDmvActivityDetail, apiDmvDirectory, apiDmvVin, apiDmvGrowth } from './txdmv-activity.js';
 import { apiNews, apiNewsImage, modListNews, modUpdateNews, modUpdateNewsConfig, modRunNews, runNewsTick, NEWS_CRON } from './news.js';
 import { requireModerator } from './moderation.js';
 import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSighting, apiCameraSightingsHistory, apiCameraSightingsHeat } from './camera-sightings.js';
@@ -446,6 +447,19 @@ const worker = {
     if (url.pathname === '/api/dmv-registrations/vins' && request.method === 'GET') {
       return withCors(await apiDmvVins(request, env), request);
     }
+    // The DMV tracker (worker/txdmv-activity.js): registration activity between
+    // our daily snapshots, decoded VINs. Public, read-only, edge-cached.
+    if (url.pathname.startsWith('/api/dmv/') && request.method === 'GET') {
+      if (url.pathname === '/api/dmv/overview') return withCors(await apiDmvOverview(request, env, ctx), request);
+      if (url.pathname === '/api/dmv/activity') return withCors(await apiDmvActivity(request, env, ctx), request);
+      if (url.pathname === '/api/dmv/growth') return withCors(await apiDmvGrowth(request, env, ctx), request);
+      if (url.pathname === '/api/dmv/vins') return withCors(await apiDmvDirectory(request, env, ctx), request);
+      const update = url.pathname.match(/^\/api\/dmv\/activity\/(\d{4}-\d\d-\d\d)$/);
+      if (update) return withCors(await apiDmvActivityDetail(request, env, ctx, update[1]), request);
+      const one = url.pathname.match(/^\/api\/dmv\/vins\/([A-Za-z0-9]{17})$/);
+      if (one) return withCors(await apiDmvVin(request, env, ctx, one[1]), request);
+      return withCors(Response.json({ success: false, error: 'not_found' }, { status: 404 }), request);
+    }
     // The homepage's city rows and hero numbers (worker/homepage-stats.js): public, edge-cached.
     if (url.pathname === '/api/daily' && request.method === 'GET') {
       return withCors(await apiDaily(request, env, ctx), request);
@@ -757,12 +771,34 @@ const worker = {
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js
     // runNewsTick: the next feed, a few thumbnails, the daily prune).
     if (controller && controller.cron === NEWS_CRON) {
-      ctx.waitUntil(runNewsTick(env).catch(() => {}));
+      // Texas DMV backfill (worker/txdmv-activity.js), only while the owner has set
+      // the mode to "backfill": at :25 and :55 this tick does one bounded DMV step
+      // instead of the news step (each gets the whole invocation's budget). With
+      // no backlog left it switches the mode back to "on" and news carries on.
+      const minute = new Date(controller.scheduledTime || Date.now()).getUTCMinutes();
+      ctx.waitUntil((async () => {
+        if (minute === 25 || minute === 55) {
+          const mode = await env.TESLA_SESSIONS.get(DMV_MODE_KEY).catch(() => null);
+          if (mode === 'backfill') {
+            const r = await runDmvStep(env, { source: 'backfill', budget: INVOCATION_SUBREQUESTS - SAFETY_MARGIN - 1 }).catch(() => null);
+            if (r && r.worked) return;
+            if (r && !r.error && !r.decode_error && r.pending_snapshots === 0 && r.decode_queue_empty) await env.TESLA_SESSIONS.put(DMV_MODE_KEY, 'on').catch(() => {});
+          }
+        }
+        await runNewsTick(env);
+      })().catch(() => {}));
       return;
     }
     // Daily: the TxDMV automated-vehicle roster snapshot (worker/txdmv.js).
     if (controller && controller.cron === TXDMV_CRON) {
-      ctx.waitUntil(runTxdmvPoll(env).catch(() => {}));
+      // The poll, then ONE bounded DMV activity step (worker/txdmv-activity.js) in
+      // whatever subrequest budget the poll left (Workers Free: 50 per invocation,
+      // D1 + KV + fetch together). The poll uses ~1 + pages (100 VINs each) + 4.
+      ctx.waitUntil(runTxdmvPoll(env).catch(() => null).then(p => {
+        const pollUsed = p && p.total ? Math.ceil(p.total / 100) + 5 : 5;
+        const budget = INVOCATION_SUBREQUESTS - SAFETY_MARGIN - pollUsed - 7;   // -7: the Dallas Fleet ETA below (measured)
+        return budget >= 6 ? runDmvStep(env, { source: 'daily', budget }) : null;
+      }).catch(() => {}));
       ctx.waitUntil(recomputeFleetEta(env, Date.now(), ['dallas']).catch(() => {}));
       return;
     }

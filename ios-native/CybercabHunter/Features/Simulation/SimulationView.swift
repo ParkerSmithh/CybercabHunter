@@ -44,77 +44,112 @@ struct FleetROIView: View {
 
     var body: some View {
         let r = model.financials
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Eyebrow(text: "Investor tools")
-                Text("FLEET ROI").displayTitle(30).accessibilityIdentifier("roiTitle")
-                Text("Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.")
-                    .font(.inter(14)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
-            }
+        VStack(alignment: .leading, spacing: 18) {
+            SimHero(eyebrow: "Investor tools", title: "FLEET ROI", titleID: "roiTitle",
+                    text: "Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.")
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("INPUTS").font(.inter(11, .bold)).tracking(1).foregroundStyle(Color.brandGold)
+            SimSectionHead(eyebrow: "Inputs · Results · Breakeven", title: "Fleet economics").padding(.top, 8)
+
+            // Inputs: one gold card with the Cybercab.
+            TintCard(car: "CybercabRender") {
+                CardHeading(dotLabel: "Cybercab fleet", title: "Inputs")
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.trailing, TintCard<EmptyView>.headingInset).frame(minHeight: 66, alignment: .topLeading)
                 Text(model.startNote).font(.inter(12)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
                     .accessibilityIdentifier("roiStartNote")
-                MetricGrid(columns: 3) {
-                    Metric(label: "Tesla network cut", value: "\(Int(SimulationCalc.ROI.networkCutPct))%", size: 17)
-                    Metric(label: "Cost per unit", value: "$" + Format.int(Int(SimulationCalc.ROI.costPerCab)), size: 17)
-                    Metric(label: "Passenger fare", value: String(format: "$%.2f + $%.2f/mi", SimulationCalc.ROI.baseFare, SimulationCalc.ROI.perMileRate), note: "~5 mi avg trip", size: 13)
+                inputGroup("Network & fare", icon: "dollarsign") {
+                    ValueRow(label: "Tesla Network Cut", value: "\(Int(SimulationCalc.ROI.networkCutPct))%")
+                    Divider().overlay(Color.white.opacity(0.07))
+                    ValueRow(label: "Cost per Unit", value: "$" + Format.int(Int(SimulationCalc.ROI.costPerCab)))
+                    Divider().overlay(Color.white.opacity(0.07))
+                    ValueRow(label: "Passenger Fare", value: String(format: "$%.2f + $%.2f/mi", SimulationCalc.ROI.baseFare, SimulationCalc.ROI.perMileRate),
+                             note: "Base fare per trip, plus per-mile rate (~5 mi avg trip)")
                 }
-                Divider().overlay(Color.chLine)
-                SliderRow(label: "Fleet size", value: Binding(get: { Double(model.fleetSize) }, set: { model.setFleetSize(Int($0)) }),
-                          range: 0...Double(SimulationCalc.ROI.fleetMax), step: 1, format: { "\(Int($0))" }, unit: "Cybercabs", id: "roiFleet")
-                SliderRow(label: "Electricity rate", value: $model.electricityRate, range: 0...SimulationCalc.ROI.electricityMax, step: 0.01,
-                          format: { String(format: "$%.2f", $0) }, unit: "/kWh", id: "roiElectricity")
-                SliderRow(label: "Daily miles / cab", value: Binding(get: { Double(model.dailyMiles) }, set: { model.dailyMiles = Int($0) }),
-                          range: 0...Double(SimulationCalc.ROI.milesMax), step: 1, format: { "\(Int($0))" }, unit: "mi", id: "roiMiles")
-                Toggle(isOn: $model.lossOn) {
-                    Text("Inductive loss factor (\(model.lossOn ? "8" : "0")%)").font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
+                inputGroup("Fleet", icon: "car.fill") {
+                    SliderRow(label: "Fleet Size", value: Binding(get: { Double(model.fleetSize) }, set: { model.setFleetSize(Int($0)) }),
+                              range: 0...Double(SimulationCalc.ROI.fleetMax), step: 1, format: { "\(Int($0))" }, unit: "", id: "roiFleet")
                 }
-                .tint(.brandGold)
-                .accessibilityIdentifier("roiLoss")
+                inputGroup("Energy", icon: "bolt") {
+                    SliderRow(label: "Electricity Rate", value: $model.electricityRate, range: 0...SimulationCalc.ROI.electricityMax, step: 0.01,
+                              format: { String(format: "$%.2f", $0) }, unit: "/kWh", id: "roiElectricity")
+                    SliderRow(label: "Daily Miles / Cab", value: Binding(get: { Double(model.dailyMiles) }, set: { model.dailyMiles = Int($0) }),
+                              range: 0...Double(SimulationCalc.ROI.milesMax), step: 1, format: { "\(Int($0))" }, unit: "mi", id: "roiMiles")
+                        .padding(.top, 10)
+                    Toggle(isOn: $model.lossOn) {
+                        Text("Inductive Loss Factor (\(model.lossOn ? "8" : "0")%)").font(.inter(14, .medium)).foregroundStyle(Color.chMist)
+                    }
+                    .tint(.brandGold)
+                    .padding(.top, 12)
+                    .accessibilityIdentifier("roiLoss")
+                }
+                exportButton.padding(.top, 16)
             }
-            .glassCard()
 
-            MetricGrid(columns: 3) {
-                Metric(label: "Monthly energy overhead", value: "$" + Format.int(Int(r.monthlyEnergyOverhead.rounded())), size: 18)
-                Metric(label: "Gross fleet revenue", value: "$" + Format.int(Int(r.grossRevenue.rounded())), size: 18)
-                Metric(label: "Net operating income", value: signedDollars(r.netOperatingIncome), valueColor: .brandGold, size: 18)
+            // Results: three glowing tiles, net operating income the bright one.
+            HStack(spacing: 8) {
+                ResultTile(icon: "bolt.fill", label: "Monthly energy overhead", value: "$" + Format.int(Int(r.monthlyEnergyOverhead.rounded())))
+                ResultTile(icon: "chart.bar.fill", label: "Gross fleet revenue", value: "$" + Format.int(Int(r.grossRevenue.rounded())))
+                ResultTile(icon: "chart.line.uptrend.xyaxis", label: "Net operating income", value: signedDollars(r.netOperatingIncome), highlight: true)
             }
-            .dataPanel()
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("roiResults")
 
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("BREAKEVEN").font(.inter(11, .bold)).tracking(1).foregroundStyle(Color.brandGold)
-                        Text("Cumulative cash flow").font(.inter(12)).foregroundStyle(Color.chFog)
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        IconLabel(icon: "waveform.path.ecg", text: "Breakeven")
+                        Text("CUMULATIVE CASH FLOW").font(.inter(17, .bold)).tracking(0.3).foregroundStyle(Color.chInk)
                     }
                     Spacer()
-                    Text(r.breakevenMonths.map { "\(Format.one($0)) mo" } ?? "—").statNumber(24, color: .chInk)
+                    Text(r.breakevenMonths.map { "\(Format.one($0)) mo" } ?? "— mo").statNumber(24, color: .brandGold)
+                        .shadow(color: Color.brandGold.opacity(0.4), radius: 8)
                         .accessibilityIdentifier("roiBreakeven")
                 }
                 CashFlowChart(capital: Double(model.fleetSize) * SimulationCalc.ROI.costPerCab, noi: r.netOperatingIncome, breakeven: r.breakevenMonths)
                     .frame(height: 190)
                 Footnote(text: "Projected net cash position from initial fleet capital outlay through recovery.")
             }
-            .glassCard()
+            .padding(16)
+            .background(Color.chSurface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.brandGold.opacity(0.25)))
 
-            HStack {
-                Text("Not affiliated with Tesla, Inc. Figures are simulated estimates for planning purposes only, not real prices or earnings.")
-                    .font(.inter(11.5)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                if let pdfURL {
-                    ShareLink(item: pdfURL) { Label("Export", systemImage: "square.and.arrow.up").font(.inter(13, .semibold)) }
-                        .accessibilityIdentifier("roiExport")
-                }
-            }
+            Text("Not affiliated with Tesla, Inc. Figures are simulated estimates for planning purposes only, not real prices or earnings.")
+                .font(.inter(11.5)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
         }
         .task(id: "\(model.fleetSize)|\(model.electricityRate)|\(model.dailyMiles)|\(model.lossOn)") {
             // Rewritten once the inputs settle (a slider drag changes them many times).
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
             pdfURL = ProspectusPDF.write(model: model)
+        }
+    }
+
+    /// A group of inputs under an icon label, separated from the previous one by a hairline.
+    private func inputGroup<C: View>(_ title: String, icon: String, @ViewBuilder _ content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            IconLabel(icon: icon, text: title).padding(.top, 14)
+            content()
+        }
+        .padding(.bottom, 4)
+        .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+        .padding(.top, 12)
+    }
+
+    /// The website's full-width gold Export button (the prospectus PDF, via the share sheet).
+    @ViewBuilder private var exportButton: some View {
+        if let pdfURL {
+            ShareLink(item: pdfURL) {
+                Label("Export", systemImage: "square.and.arrow.down").font(.inter(16, .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Color.brandGold, in: .rect(cornerRadius: 12))
+                    .foregroundStyle(Color(hex: 0x1A1204))
+            }
+            .accessibilityIdentifier("roiExport")
+        } else {
+            Label("Export", systemImage: "square.and.arrow.down").font(.inter(16, .semibold))
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(Color.brandGold.opacity(0.5), in: .rect(cornerRadius: 12))
+                .foregroundStyle(Color(hex: 0x1A1204))
         }
     }
 
@@ -137,19 +172,21 @@ struct SliderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(label).font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
+                Text(label).font(.inter(14, .medium)).foregroundStyle(Color.chMist)
                 Spacer()
+                // A currency value shows its "$" in grey before the number, as on the site.
+                if format(value).hasPrefix("$") { Text("$").font(.inter(14)).foregroundStyle(Color.chFog) }
                 TextField("", text: $text)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
-                    .font(.inter(15, .bold)).monospacedDigit().foregroundStyle(Color.brandGold)
-                    .frame(width: 80)
+                    .font(.inter(18, .semibold)).monospacedDigit().foregroundStyle(Color.chInk)
+                    .fixedSize()
                     .focused($focused)
                     .onSubmit(commit)
                     .onChange(of: focused) { _, f in if !f { commit() } }
                     .accessibilityLabel("\(label), exact value")
                     .accessibilityIdentifier("\(id)Field")
-                Text(unit).font(.inter(12)).foregroundStyle(Color.chFog)
+                if !unit.isEmpty { Text(unit).font(.inter(14)).foregroundStyle(Color.chFog) }
             }
             Slider(value: $value, in: range, step: step)
                 .tint(.brandGold)

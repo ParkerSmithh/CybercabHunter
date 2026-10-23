@@ -81,4 +81,12 @@ enum RegistrySort: String, CaseIterable, Identifiable, Sendable {
         case .mostRides: "Most Rides"
         }
     }
+    var symbol: String {
+        switch self {
+        case .recent: "clock"
+        case .leastRecent: "clock.arrow.circlepath"
+        case .mostMiles: "road.lanes"
+        case .mostRides: "car.2"
+        }
+    }
 }

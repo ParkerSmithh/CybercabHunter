@@ -8,6 +8,11 @@ struct DMVRegistrations: Decodable, Sendable, Equatable {
     let series: [Point]?
     let new: NewCounts?
     let matched: Matched?
+    /// The DMV tracker's latest roster change (worker/txdmv.js latest_update):
+    /// Home's "+N newly detected" line, with no second request.
+    var latestUpdate: LatestUpdate? = nil
+
+    struct LatestUpdate: Decodable, Sendable, Equatable { let date: String; let added: Int }
 
     struct Snapshot: Decodable, Sendable, Equatable {
         let date: String

@@ -155,7 +155,9 @@ const daysBefore = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) - n * 8
 //   -> { source, snapshot: { date, polled_at, total, cybercab, model_y, other } | null,
 //        tracking_since, series: [{ date, total, cybercab, model_y }],
 //        new: { d30, d7, cybercab_30d, model_y_30d, window_start_30d, window_start_7d },
-//        matched: { count, spotted_30d }, last_attempt: { at, ok } | null }
+//        matched: { count, spotted_30d }, last_attempt: { at, ok } | null,
+//        latest_update: { date, added } | null }   (the DMV tracker's latest roster change,
+//        worker/txdmv-activity.js; here so Home's DMV button needs no second request)
 export async function apiDmvRegistrations(request, env, ctx) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
@@ -209,8 +211,14 @@ export async function apiDmvRegistrations(request, env, ctx) {
           model_y_30d: byCount30 ? delta(d30, 'model_y') : Number(f.model_y_30d) || 0,
           approx: byCount30
         },
-        matched: { count: Number(m.n) || 0, spotted_30d: Number(m.spotted) || 0 }
+        matched: { count: Number(m.n) || 0, spotted_30d: Number(m.spotted) || 0 },
+        latest_update: null
       };
+      // Its own query, so the panel still works if the tracker's tables are missing.
+      try {
+        const u = await sql.prepare(`SELECT snapshot_date AS date, added FROM dmv_events WHERE status = 'ok' AND added > 0 ORDER BY snapshot_date DESC LIMIT 1`).first();
+        if (u) body.latest_update = { date: u.date, added: u.added };
+      } catch (e) { /* tracker not migrated yet */ }
     }
     const response = Response.json(body, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
     if (cache) { const stored = cache.put(cacheKey, response.clone()).catch(() => {}); if (ctx && ctx.waitUntil) ctx.waitUntil(stored); }

@@ -17,13 +17,11 @@ struct RootView: View {
                     NavigationStack(path: path(for: tab)) {
                         screen(for: tab)
                             .toolbar { AccountToolbarItem(showingAccount: $showingAccount) }
-                            // The website's header: a solid dark bar under the status bar,
-                            // so page content never shows behind it while scrolling. Zones
-                            // is the exception: its map runs full screen under a see-through
-                            // bar that holds only the Account button (no titles on main tabs).
-                            .toolbarBackground(Color.chBackground, for: .navigationBar)
-                            .toolbarBackgroundVisibility(tab == .zones ? .hidden : .visible, for: .navigationBar)
+                            .modifier(TopBarStyle(tab: tab))
                     }
+                    // Pages fade softly under the bar as they scroll (iOS 26's scroll edge effect);
+                    // the Zones map runs full screen with no edge effect at all.
+                    .modifier(SoftTopEdge(enabled: tab != .zones))
                 }
             }
         }
@@ -35,6 +33,11 @@ struct RootView: View {
             if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
         }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
+        // Changing tabs always puts the keyboard away (a tab left behind stays alive,
+        // so its own field can't do it).
+        .onChange(of: router.selectedTab) {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         // A cybercabhunter.com link handed to the app opens its native screen.
         .onOpenURL { url in
             if router.open(widgetURL: url) { return }   // a Home Screen / Lock Screen widget
@@ -152,4 +155,42 @@ enum DebugLaunch {
     static let session: String? = nil
     static let usesTestSession = false
     #endif
+}
+
+/// The bar over each tab. iOS 26: no painted bar, so content fades softly under
+/// it (`SoftTopEdge`); the controls float in Liquid Glass. Earlier systems keep the
+/// website's solid dark header (content never shows behind it). Zones is always
+/// see-through: its map runs full screen.
+private struct TopBarStyle: ViewModifier {
+    let tab: AppTab
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+        } else {
+            content
+                .toolbarBackground(Color.chBackground, for: .navigationBar)
+                .toolbarBackgroundVisibility(tab == .zones ? .hidden : .visible, for: .navigationBar)
+        }
+    }
+}
+
+/// A soft fade at the top edge of every scrolling page in the stack (pushed
+/// screens too): content dissolves into the background under the bar instead of
+/// being cut off. Fixed controls (the bar's buttons, a floating search, the tab
+/// bar) aren't part of the scroll content, so they never fade. The Zones map isn't
+/// a scroll view, so it is unaffected.
+private struct SoftTopEdge: ViewModifier {
+    var enabled = true
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if enabled {
+                content.scrollEdgeEffectStyle(.soft, for: .top)
+            } else {
+                // The map isn't scrolling content: no dimmed band under the bar.
+                content.scrollEdgeEffectHidden(true, for: .top)
+            }
+        } else {
+            content
+        }
+    }
 }

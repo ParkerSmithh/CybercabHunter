@@ -17,47 +17,82 @@ struct USSightingsSection: View {
         let sighted = Set(map.sighted)
         let byState = Dictionary(grouping: map.cities, by: \.st).mapValues { $0.sorted { ($0.n ?? 0, $1.name) > ($1.n ?? 0, $0.name) } }
         let stateOrder = byState.keys.sorted { (byState[$0]!.count, total(byState[$0]!)) > (byState[$1]!.count, total(byState[$1]!)) }
-        let shownStates = showAll ? stateOrder : Array(stateOrder.prefix(6))
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeading(city: nil, title: "Cybercab sightings across the US")
-            Text("Every state and city where a Cybercab has been reported").font(.inter(12)).foregroundStyle(Color.chFog)
-            MetricGrid(columns: 2) {
-                Metric(label: "States", value: "\(sighted.subtracting(["DC"]).count)", unit: sighted.contains("DC") ? "+ DC" : nil, valueColor: .brandGold)
-                Metric(label: "Cities", value: Format.int(map.cities.count))
-            }
-            HStack(spacing: 0) {
-                ForEach(View2.allCases) { m in
-                    Button(m.rawValue) { withAnimation(.snappy) { mode = m } }.buttonStyle(PillButtonStyle(on: mode == m))
+        VStack(alignment: .leading, spacing: 12) {
+            CompactHeading(title: "Cybercab sightings across the US",
+                           info: "Every state and city where a Cybercab has been reported. Community-reported sightings, credited below the list; not verified by Cybercab Hunter. Map: US Census state boundaries.")
+            // The two totals and the Dots / Heatmap switch on one row.
+            HStack(alignment: .bottom, spacing: 18) {
+                Metric(label: "States", value: "\(sighted.subtracting(["DC"]).count)", unit: sighted.contains("DC") ? "+ DC" : nil, valueColor: .brandGold, size: 22)
+                    .fixedSize()
+                Metric(label: "Cities", value: Format.int(map.cities.count), size: 22).fixedSize()
+                Spacer(minLength: 0)
+                HStack(spacing: 0) {
+                    ForEach(View2.allCases) { m in
+                        Button(m.rawValue) { withAnimation(.snappy) { mode = m } }.buttonStyle(PillButtonStyle(on: mode == m))
+                    }
                 }
             }
             Canvas { ctx, size in draw(&ctx, size: size, sighted: sighted) }
                 .aspectRatio(975.0 / 610.0, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: 190)
                 .accessibilityLabel("Map of the US: \(sighted.count) states and \(map.cities.count) cities with reported Cybercab sightings")
             legend
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(shownStates, id: \.self) { st in
-                    let cities = byState[st]!
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(map.states.first { $0.id == st }?.name ?? st).font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
-                            Spacer()
-                            Text(Format.plural(cities.count, "city", "cities")).font(.inter(12)).foregroundStyle(Color.chFog)
-                        }
-                        let names = cities.prefix(4).map(\.name).joined(separator: " · ")
-                        (Text(names).foregroundStyle(Color.chFog) + Text(cities.count > 4 ? " +\(cities.count - 4) more" : "").foregroundStyle(Color.brandGold))
-                            .font(.inter(12))
-                    }
-                }
-                if stateOrder.count > 6 {
-                    Button(showAll ? "Show fewer states" : "Show all \(stateOrder.count) states") { withAnimation(.snappy) { showAll.toggle() } }
-                        .font(.inter(13, .semibold)).foregroundStyle(Color.chInk)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
+            // The busiest three states; the full list opens in a sheet.
+            VStack(spacing: 0) {
+                ForEach(Array(stateOrder.prefix(3).enumerated()), id: \.element) { i, st in
+                    if i > 0 { Rectangle().fill(Color.chInk.opacity(0.06)).frame(height: 1) }
+                    stateRow(st, cities: byState[st]!)
                 }
             }
-            sources
+            if stateOrder.count > 3 {
+                Button { showAll = true } label: {
+                    HStack(spacing: 4) { Text("All \(stateOrder.count) states and \(map.cities.count) cities"); Image(systemName: "chevron.right").font(.caption.weight(.semibold)) }
+                        .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("usAllStates")
+            }
         }
-        .dataPanel()
+        .dataPanel(padding: 14)
+        .sheet(isPresented: $showAll) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(stateOrder.enumerated()), id: \.element) { i, st in
+                            if i > 0 { Rectangle().fill(Color.chInk.opacity(0.06)).frame(height: 1) }
+                            stateRow(st, cities: byState[st]!, all: true)
+                        }
+                        sources.padding(.top, 16)
+                    }
+                    .padding(16)
+                }
+                .appBackground()
+                .navigationTitle("Sightings by state")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAll = false } } }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// A state: name, city count, and its busiest cities (all of them in the sheet).
+    private func stateRow(_ st: String, cities: [WebData.USMap.USCity], all: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(map.states.first { $0.id == st }?.name ?? st).font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
+                Spacer()
+                Text(Format.plural(cities.count, "city", "cities")).font(.inter(12)).monospacedDigit().foregroundStyle(Color.chFog)
+            }
+            let shown = all ? cities.count : 3
+            let names = cities.prefix(shown).map(\.name).joined(separator: " · ")
+            (Text(names).foregroundStyle(Color.chFog) + Text(cities.count > shown ? " +\(cities.count - shown) more" : "").foregroundStyle(Color.brandGold))
+                .font(.inter(11.5)).lineLimit(all ? nil : 1)
+        }
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
     }
 
     private func total(_ cities: [WebData.USMap.USCity]) -> Int { cities.reduce(0) { $0 + ($1.n ?? 0) } }
@@ -95,7 +130,7 @@ struct USSightingsSection: View {
 
     @ViewBuilder private var legend: some View {
         if mode == .dots {
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 Label { Text("Sightings reported") } icon: { RoundedRectangle(cornerRadius: 2).fill(Color.brandGold.opacity(0.4)).frame(width: 12, height: 10) }
                 Label { Text("None reported") } icon: { RoundedRectangle(cornerRadius: 2).fill(Color.chSurface2).frame(width: 12, height: 10) }
                 Label { Text("City (larger: more)") } icon: { Circle().fill(Color.brandGold).frame(width: 8, height: 8) }

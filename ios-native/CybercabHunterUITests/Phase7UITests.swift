@@ -144,30 +144,5 @@ final class Phase7UITests: XCTestCase {
         shot(app, "p7-news-article")
     }
 
-    // MARK: Texas DMV
-
-    func testDMVRosterFiltersAndSearch() throws {
-        let app = XCUIApplication()
-        app.launch()
-        openHomeLink(app, "dmvEveryVin")
-        XCTAssertTrue(app.staticTexts["dmvTitle"].waitForExistence(timeout: 10))
-        let row = app.descendants(matching: .any).matching(identifier: "dmvRow").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 20), "the live TxDMV roster")
-        let count = app.staticTexts["dmvCount"]
-        XCTAssertTrue(count.label.contains(" of ") && count.label.hasSuffix("VINs"), count.label)
-        shot(app, "p7-dmv")
-        // Cybercab only: every row on screen is a Cybercab.
-        app.buttons["dmvModel-cybercab"].tap()
-        sleep(3)
-        let rows = app.descendants(matching: .any).matching(identifier: "dmvRow")
-        if rows.count > 0 { XCTAssertTrue(rows.firstMatch.label.localizedCaseInsensitiveContains("cybercab"), rows.firstMatch.label) }
-        shot(app, "p7-dmv-cybercab")
-        // A VIN that can't exist: the site's no-match line.
-        let search = app.textFields["dmvSearch"]
-        search.tap()
-        search.typeText("ZZZZZZZZZZ")
-        expectation(for: NSPredicate(format: "label == 'No VIN matches that search.'"), evaluatedWith: app.staticTexts["dmvCount"])
-        waitForExpectations(timeout: 15)
-        XCTAssertEqual(app.webViews.count, 0)
-    }
+    // Texas DMV: DMVTrackerUITests (the local dev server; the tracker's endpoints aren't live yet).
 }

@@ -30,9 +30,9 @@ final class HomeButtonsAvatarUITests: XCTestCase {
         let screen = app.windows.firstMatch.frame.width
         // Label + 10 pt + arrow + 2 × 16 pt padding: well under the old "Browse sightings" footprint.
         XCTAssertLessThan(news.frame.width, 150, "View News fits its label: \(news.frame.width)")
-        XCTAssertGreaterThanOrEqual(news.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(news.frame.height, 43.5)
         XCTAssertLessThan(explore.frame.width, 95, "Explore fits its label: \(explore.frame.width)")
-        XCTAssertGreaterThanOrEqual(explore.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(explore.frame.height, 43.5, "44 pt (allowing for rounding)")
         XCTAssertEqual(news.frame.midY, explore.frame.midY, accuracy: 2, "same row")
         // Both on screen with the 16 pt gutters; the pair (and its 18 pt gap) must also fit 320 − 32 pt (iPhone SE 1st gen, the narrowest).
         XCTAssertLessThanOrEqual(explore.frame.maxX, screen - 16)

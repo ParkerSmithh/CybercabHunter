@@ -64,9 +64,10 @@ struct Metric: View {
 /// A grid of metrics, three across like the website on phones.
 struct MetricGrid<Content: View>: View {
     var columns = 3
+    var rowSpacing: CGFloat = 16
     @ViewBuilder var content: () -> Content
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), alignment: .leading, spacing: 16, content: content)
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: columns), alignment: .leading, spacing: rowSpacing, content: content)
     }
 }
 
@@ -121,6 +122,8 @@ struct SeeAllButton: View {
 struct CityPicker: View {
     let cities: [ServiceArea]
     @Binding var selection: String
+    /// Outlines on the unselected city (off on a glass map control, where one edge is enough).
+    var bordered = true
     var body: some View {
         HStack(spacing: 8) {
             ForEach(cities) { city in
@@ -133,7 +136,7 @@ struct CityPicker: View {
                         .padding(.horizontal, 18).frame(minHeight: 40)
                         .foregroundStyle(on ? Color.chBackground : Color.chMist)
                         .background(on ? Color.chInk : Color.clear, in: .capsule)
-                        .overlay(Capsule().strokeBorder(on ? Color.clear : Color.chHair2))
+                        .overlay(Capsule().strokeBorder(on || !bordered ? Color.clear : Color.chHair2))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
@@ -173,6 +176,7 @@ struct LicensePlate: View {
         Text(plate ?? "Plate unknown")
             .font(.inter(size, .bold))
             .tracking(size * 0.18)
+            .lineLimit(1).minimumScaleFactor(0.7)   // a plate never wraps; it shrinks a little if it must
             .foregroundStyle(Color(hex: 0x141008))
             .padding(.vertical, size * 0.32).padding(.leading, size * 0.5).padding(.trailing, size * 0.32)
             .background(Color(hex: 0xF4EFE3), in: .rect(cornerRadius: 5))
