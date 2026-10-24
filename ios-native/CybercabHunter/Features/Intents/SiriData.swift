@@ -215,33 +215,51 @@ enum SiriSpeech {
 
     // MARK: briefing and quick status
 
-    /// The daily briefing: only what today's data supports, shortest first.
+    /// The briefing ("rundown"): the public registry's total, today's approved
+    /// sightings and camera detections (or one city's last 24 hours), and the
+    /// latest Texas DMV snapshot with what was first detected recently. Each
+    /// source named; a part whose data didn't load is left out, never guessed.
     /// `quick` (hands-free status) keeps it to two sentences.
-    static func briefing(daily: DailyReport?, dmv: DMVOverview?, city: HomepageStats?, quick: Bool = false, now: Date = .now) -> SiriAnswer {
+    static func briefing(stats: RegistryStats? = nil, daily: DailyReport?, dmv: DMVOverview?, city: HomepageStats?, quick: Bool = false, now: Date = .now) -> SiriAnswer {
         var parts: [String] = []
+        if !quick {
+            if let city, let v = city.area?.vehicles {
+                parts.append("In \(city.name), Cybercab Hunter's public registry has \(plural(v, "vehicle", "vehicles"))\((city.area?.vehiclesAdded7d).map { $0 > 0 ? ", \(n($0)) added this week" : "" } ?? "").")
+            } else if let stats {
+                parts.append("Cybercab Hunter's public registry has \(plural(stats.publicVehicles, "vehicle", "vehicles")) documented by riders and spotters.")
+            }
+        }
         if let city {
             if let s = recentSightingsSentence(city) { parts.append(s.replacingOccurrences(of: "In the last 24 hours:", with: "In \(city.name), in the last 24 hours:")) }
-            if !quick, let w = city.area?.vehiclesAdded7d, w > 0 { parts.append("\(plural(w, "vehicle was", "vehicles were")) added to the \(city.name) registry this week.") }
         } else if let d = daily?.day, let today = todaySentence(d) {
             parts.append(today)
         }
-        if let o = dmv {
-            if let u = o.latestUpdate, let date = calendarDate(u.date), now.timeIntervalSince(date) < 8 * 86400 {
-                parts.append("The \(day(u.date, now: now)) Texas DMV dataset added \(plural(u.added, "newly detected VIN", "newly detected VINs"))\(u.addedByModel.map { $0.cybercab > 0 ? ", \(n($0.cybercab)) of them Cybercabs" : "" } ?? "").")
-            } else if o.latestUpdate == nil, (o.processingPending ?? 0) > 0, !quick {
-                parts.append("Texas DMV changes are still being processed.")
-            } else if !quick, let latest = o.latest {
-                parts.append("No new Texas DMV VINs in the last week; the latest dataset is from \(day(latest.date, now: now)).")
+        if let o = dmv, let latest = o.latest, let t = o.totals {
+            let recent = o.latestUpdate.flatMap { u in calendarDate(u.date).map { now.timeIntervalSince($0) < 8 * 86400 } } ?? false
+            if quick {
+                if recent, let u = o.latestUpdate {
+                    parts.append("The \(day(u.date, now: now)) Texas DMV dataset added \(plural(u.added, "newly detected VIN", "newly detected VINs"))\(u.addedByModel.map { $0.cybercab > 0 ? ", \(n($0.cybercab)) of them Cybercabs" : "" } ?? "").")
+                }
+            } else {
+                var line = "The latest Texas DMV snapshot, \(day(latest.date, now: now)), lists \(plural(t.total ?? t.sum, "VIN", "VINs")): \(n(t.cybercab)) Cybercab and \(n(t.modelY)) Model Y"
+                if recent, let u = o.latestUpdate {
+                    line += "; Cybercab Hunter first detected \(plural(u.added, "additional VIN", "additional VINs")) in the \(day(u.date, now: now)) dataset"
+                } else if o.latestUpdate == nil, (o.processingPending ?? 0) > 0 {
+                    line += "; recent changes are still being processed"
+                }
+                parts.append(line + ".")
             }
         }
         if quick { parts = Array(parts.prefix(2)) }
         if parts.isEmpty { return SiriAnswer(spoken: "Cybercab Hunter has no new activity to report right now.") }
         let opener = quick ? "" : "Here's your Cybercab Hunter briefing. "
         var figures: [SiriAnswer.Figure] = []
+        if !quick, city == nil, let stats { figures.append(.init(value: n(stats.publicVehicles), label: "Registry")) }
         if let c = city { if let a = c.sightings?.last24h { figures.append(.init(value: n(a), label: "Sightings 24h")) } }
         else if let s = daily?.day.sightings { figures.append(.init(value: n(s), label: "Sightings today")) }
-        if let u = dmv?.latestUpdate { figures.append(.init(value: "+\(n(u.added))", label: "DMV \(shortDay(u.date))")) }
-        return SiriAnswer(spoken: opener + parts.joined(separator: " "), figures: figures, footnote: stale(daily: daily, now: now))
+        if let t = dmv?.totals { figures.append(.init(value: n(t.total ?? t.sum), label: "DMV VINs")) }
+        return SiriAnswer(spoken: opener + parts.joined(separator: " "), figures: figures,
+                          footnote: stale(daily: daily, now: now) ?? "Registry: vehicles riders and spotters documented. Sightings: moderator-approved photos. DMV: VINs Tesla lists with the state.")
     }
 
     /// A warning when the day's report isn't today's (Central time).

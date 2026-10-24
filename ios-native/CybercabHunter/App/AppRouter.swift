@@ -30,8 +30,6 @@ final class AppRouter {
     var sightingsCity: String?
     /// An Account screen to open (Siri: Activity Alerts, Siri & Shortcuts).
     var accountRequest: AccountRoute?
-    /// A plate / VIN for the Cars search (Siri: "search Cybercab Hunter for …").
-    var registryQuery: String?
 
     func openZones(_ city: String) {
         zonesCity = city
@@ -83,13 +81,6 @@ final class AppRouter {
         homePath = NavigationPath()
         homePath.append(ExploreRoute.dmv)
         selectedTab = .home
-    }
-
-    /// The Cars tab searching for `term` (the system search schema).
-    func searchRegistry(_ term: String) {
-        registryPath = NavigationPath()
-        registryQuery = term
-        selectedTab = .registry
     }
 
     /// The Sightings tab, on a city when one is given.

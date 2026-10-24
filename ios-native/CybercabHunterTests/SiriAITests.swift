@@ -92,16 +92,36 @@ struct SiriAITests {
         await SiriData.shared.reset()
     }
 
-    // MARK: the in-app search schema and donations
+    // MARK: donations and the briefing
 
-    @Test func searchSchemaFillsTheCarsSearch() async throws {
-        guard #available(iOS 27.0, *) else { return }
-        var intent = SearchCybercabsIntent()
-        intent.criteria = StringSearchCriteria(term: "XVF1524")
-        _ = try await intent.perform()
+    /// The briefing's whole data path: public API → the exact spoken text, in
+    /// three requests, the app left alone.
+    @Test func briefingRetrievesDataAndSpeaksIt() async throws {
+        let today = SiriSpeech.iso(.now)
+        let s = StubServer()
+        s.responses = [
+            "GET /api/registry/stats": (200, json(["public_vehicles": 193, "recorded_rides": 8, "sightings_all_time": 535])),
+            "GET /api/daily": (200, json(["today": today, "day": ["date": today, "registry": 3, "sightings": 2, "cameras": 1]])),
+            "GET /api/dmv/overview": (200, json([
+                "source": ["name": "TxDMV", "company": "Tesla Robotaxi, LLC", "authorization": "AV1", "law": "SB 2807", "url": "https://txmccs.txdmv.gov", "fields": ["VIN"], "schedule": "Daily", "decoder": ["name": "NHTSA vPIC", "url": "https://vpic.nhtsa.dot.gov"]],
+                "latest": ["date": today], "totals": ["cybercab": 351, "model_y": 507, "other_tesla": 0, "unknown": 0, "total": 858],
+                "freshness": ["status": "current"], "latest_update": NSNull(), "processing_pending": 0]))
+        ]
+        SiriData.testAPI = s.api(token: nil)
+        defer { SiriData.testAPI = nil }
+        await SiriData.shared.reset()
         let r = AppRouter.shared
-        #expect(r.selectedTab == .registry && r.registryQuery == "XVF1524")
-        r.registryQuery = nil
+        r.selectedTab = .home
+        let a = try await DailyBriefingIntent.compose(city: nil, quick: false)
+        #expect(a.spoken.hasPrefix("Here's your Cybercab Hunter briefing. Cybercab Hunter's public registry has 193 vehicles documented by riders and spotters. Today so far: 3 new registry vehicles, 2 approved sightings, and 1 camera detection. The latest Texas DMV snapshot,"))
+        #expect(a.spoken.hasSuffix("lists 858 VINs: 351 Cybercab and 507 Model Y."))
+        #expect(s.requests.count == 3 && r.selectedTab == .home, "three public requests; no screen opened")
+        await SiriData.shared.reset()
+    }
+
+    @Test func briefingHasTheRundownPhrases() {
+        #expect(DailyBriefingIntent.openAppWhenRun == false, "the briefing answers in Siri")
+        #expect(CybercabShortcuts.appShortcuts.count == 10, "Apple's limit")
     }
 
     @Test func donationsHappenOncePerActionPerLaunch() {

@@ -300,6 +300,12 @@ struct CybercabShortcuts: AppShortcutsProvider {
         ], shortTitle: "Open a Screen", systemImageName: "rectangle.stack")
         AppShortcut(intent: DailyBriefingIntent(), phrases: [
             "Give me my Cybercab briefing in \(.applicationName)",
+            "Give me my \(.applicationName) rundown",
+            "Give me a \(.applicationName) data summary",
+            "Give me a rundown of \(.applicationName) data",
+            "Give me a rundown of the \(.applicationName) data",
+            "Summarize \(.applicationName)",
+            "\(.applicationName) rundown",
             "\(.applicationName) daily report",
             "What's new with Cybercabs today in \(.applicationName)",
             "Give me a quick Cybercab status in \(.applicationName)",

@@ -87,12 +87,22 @@ struct SiriTests {
 
     @Test func briefingOnlyIncludesWhatTheDataSupports() {
         let b = SiriSpeech.briefing(daily: decode(daily), dmv: decode(overview()), city: nil, now: now)
-        #expect(b.spoken == "Here's your Cybercab Hunter briefing. Today so far: 3 new registry vehicles, 2 approved sightings, and 1 camera detection. The October 22 Texas DMV dataset added 55 newly detected VINs, 2 of them Cybercabs.")
-        #expect(b.footnote == nil, "today's report: not stale")
+        #expect(b.spoken == "Here's your Cybercab Hunter briefing. Today so far: 3 new registry vehicles, 2 approved sightings, and 1 camera detection. The latest Texas DMV snapshot, October 23, lists 858 VINs: 351 Cybercab and 507 Model Y; Cybercab Hunter first detected 55 additional VINs in the October 22 dataset.")
+        #expect(b.footnote?.contains("not today") == false, "today's report: not stale")
         let austin = SiriSpeech.briefing(daily: decode(daily), dmv: decode(overview()), city: decode(city("austin", sq: 272)), now: now)
-        #expect(austin.spoken.contains("In Austin, in the last 24 hours: 8 approved sightings and 8 traffic-camera detections.") && austin.spoken.contains("15 vehicles were added to the Austin registry this week."))
+        #expect(austin.spoken.contains("In Austin, Cybercab Hunter's public registry has 193 vehicles, 15 added this week.") && austin.spoken.contains("In Austin, in the last 24 hours: 8 approved sightings and 8 traffic-camera detections."))
         let empty = SiriSpeech.briefing(daily: nil, dmv: nil, city: nil, now: now)
         #expect(empty.spoken == "Cybercab Hunter has no new activity to report right now.", "nothing invented")
+    }
+
+    /// "Give me a rundown of the Cybercab Hunter data": fleet totals, today's
+    /// sightings and camera detections, the latest DMV snapshot — each source named.
+    @Test func rundownCoversEveryDataSourceWithActualNumbers() {
+        let r = SiriSpeech.briefing(stats: decode(registry), daily: decode(daily), dmv: decode(overview()), city: nil, now: now)
+        #expect(r.spoken == "Here's your Cybercab Hunter briefing. Cybercab Hunter's public registry has 193 vehicles documented by riders and spotters. Today so far: 3 new registry vehicles, 2 approved sightings, and 1 camera detection. The latest Texas DMV snapshot, October 23, lists 858 VINs: 351 Cybercab and 507 Model Y; Cybercab Hunter first detected 55 additional VINs in the October 22 dataset.")
+        #expect(r.figures.map(\.label) == ["Registry", "Sightings today", "DMV VINs"])
+        let processing = SiriSpeech.briefing(stats: decode(registry), daily: nil, dmv: decode(overview(update: nil, pending: 9)), city: nil, now: now)
+        #expect(processing.spoken.hasSuffix("recent changes are still being processed.") && !processing.spoken.contains("0 additional"), "processing: said so, no misleading zero")
     }
 
     @Test func quickStatusIsTwoSentencesAndStaleDataIsFlagged() {
@@ -101,7 +111,8 @@ struct SiriTests {
         var old = daily; old["today"] = "2026-10-21"
         #expect(SiriSpeech.briefing(daily: decode(old), dmv: nil, city: nil, now: now).footnote == "Figures are from October 21, not today.")
         var oldUpdate = dmvEvent; oldUpdate["date"] = "2026-10-01"
-        #expect(!SiriSpeech.briefing(daily: nil, dmv: decode(overview(update: oldUpdate)), city: nil, now: now).spoken.contains("added"), "a DMV change over a week old isn't today's news")
+        let old2 = SiriSpeech.briefing(daily: nil, dmv: decode(overview(update: oldUpdate)), city: nil, now: now).spoken
+        #expect(old2.contains("lists 858 VINs") && !old2.contains("first detected"), "the snapshot yes; a change over a week old isn't today's news")
     }
 
     // MARK: near me

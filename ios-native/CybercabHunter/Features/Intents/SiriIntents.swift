@@ -117,8 +117,8 @@ struct RecentSightingsIntent: AppIntent {
 // MARK: - Briefing and hands-free status
 
 struct DailyBriefingIntent: AppIntent {
-    static let title: LocalizedStringResource = "Cybercab Daily Briefing"
-    static let description = IntentDescription("A short summary of today's Cybercab activity: sightings, newly detected Texas DMV VINs, and registry growth. Only what today's data supports.")
+    static let title: LocalizedStringResource = "Cybercab Hunter Briefing"
+    static let description = IntentDescription("A spoken rundown of Cybercab Hunter's data: the public registry, today's approved sightings and camera detections, and the latest Texas DMV snapshot. Answers in Siri without opening the app.")
 
     @Parameter(title: "City") var city: ServiceCity?
     static var parameterSummary: some ParameterSummary { Summary("Cybercab briefing for \(\.$city)") }
@@ -133,10 +133,11 @@ struct DailyBriefingIntent: AppIntent {
         let data = SiriData.shared
         async let daily: DailyReport? = try? data.get("/api/daily")
         async let dmv: DMVOverview? = try? data.get("/api/dmv/overview")
+        async let registry: RegistryStats? = (quick || city != nil) ? nil : try? data.get("/api/registry/stats")
         async let stats: HomepageStats? = city == nil ? nil : try? data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city!.rawValue)])
-        let (d, o, s) = await (daily, dmv, stats)
-        if d == nil && o == nil && s == nil { throw IntentFailure.unavailable }
-        return SiriSpeech.briefing(daily: d, dmv: o, city: s, quick: quick)
+        let (d, o, r, s) = await (daily, dmv, registry, stats)
+        if d == nil && o == nil && r == nil && s == nil { throw IntentFailure.unavailable }
+        return SiriSpeech.briefing(stats: r, daily: d, dmv: o, city: s, quick: quick)
     }
 }
 
