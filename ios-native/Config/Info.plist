@@ -17,8 +17,9 @@
 			</array>
 		</dict>
 	</array>
-	<!-- Siri: names people say (or Siri hears) for the app; App Shortcut phrases
-	     use the app's name, so "Cyber Cab Hunter" must still find it. At most three. -->
+	<!-- Siri: a name Siri may hear for the app ("Cyber Cab Hunter"). Not "Cybercab":
+	     that's a common word in requests, so Siri took any "Cybercabs" question as
+	     aimed at this app. At most three. -->
 	<key>INAlternativeAppNames</key>
 	<array>
 		<dict>
@@ -26,12 +27,6 @@
 			<string>Cyber Cab Hunter</string>
 			<key>INAlternativeAppNamePronunciationHint</key>
 			<string>sigh ber cab hunter</string>
-		</dict>
-		<dict>
-			<key>INAlternativeAppName</key>
-			<string>Cybercab</string>
-			<key>INAlternativeAppNamePronunciationHint</key>
-			<string>sigh ber cab</string>
 		</dict>
 	</array>
 	<key>UIAppFonts</key>
