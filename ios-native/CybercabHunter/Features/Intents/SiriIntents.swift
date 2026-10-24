@@ -83,6 +83,9 @@ extension FleetStatsIntent {
 struct CheckDMVIntent: AppIntent {
     static let title: LocalizedStringResource = "Check Texas DMV Updates"
     static let description = IntentDescription("Tells you how many Tesla robotaxi VINs the Texas DMV roster lists, how many are Cybercabs, and what Cybercab Hunter newly detected in the latest dataset.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         let o: DMVOverview
@@ -95,6 +98,9 @@ struct CheckDMVIntent: AppIntent {
 struct RecentSightingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Show Recent Cybercab Sightings"
     static let description = IntentDescription("Tells you about the latest approved Cybercab sightings and the last 24 hours, for Austin or Dallas.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "City", default: .austin) var city: ServiceCity
     static var parameterSummary: some ParameterSummary { Summary("Recent sightings in \(\.$city)") }
@@ -119,6 +125,9 @@ struct RecentSightingsIntent: AppIntent {
 struct DailyBriefingIntent: AppIntent {
     static let title: LocalizedStringResource = "Cybercab Hunter Briefing"
     static let description = IntentDescription("A spoken rundown of Cybercab Hunter's data: the public registry, today's approved sightings and camera detections, and the latest Texas DMV snapshot. Answers in Siri without opening the app.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "City") var city: ServiceCity?
     static var parameterSummary: some ParameterSummary { Summary("Cybercab briefing for \(\.$city)") }
@@ -146,6 +155,9 @@ struct DailyBriefingIntent: AppIntent {
 struct QuickStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Quick Cybercab Status"
     static let description = IntentDescription("A two-sentence Cybercab update for hands-free use: recent sightings and the latest Texas DMV change.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "City") var city: ServiceCity?
 
@@ -160,6 +172,9 @@ struct QuickStatusIntent: AppIntent {
 struct NearbySightingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Find Cybercab Sightings Near Me"
     static let description = IntentDescription("Uses your location, once, to tell you about Cybercab traffic-camera detections near you in the last 24 hours. Your location isn't stored or sent anywhere else.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     static let radiusMiles = 3.0
     static let window: TimeInterval = 24 * 3600
@@ -213,6 +228,9 @@ enum GrowthPeriod: String, AppEnum {
 struct FleetGrowthIntent: AppIntent {
     static let title: LocalizedStringResource = "Check Cybercab Fleet Growth"
     static let description = IntentDescription("Compares the Texas DMV roster between two actual daily snapshots: start and end VIN counts, net change, percentage, and newly detected VINs. Optional custom dates.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "Period", default: .week) var period: GrowthPeriod
     @Parameter(title: "From", description: "Overrides the period: the first date to compare (an actual snapshot on or after it).") var from: Date?
@@ -249,6 +267,9 @@ struct FleetGrowthIntent: AppIntent {
 struct VehicleHistoryIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Cybercab History"
     static let description = IntentDescription("Tells you when a Cybercab was first and last reported, its approved public sightings and recorded rides, and when its VIN first appeared on the Texas DMV roster.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "Cybercab", requestValueDialog: "Which Cybercab? Say its plate.") var vehicle: VehicleEntity
 
@@ -315,6 +336,9 @@ struct FindVehicleIntent: AppIntent {
 struct ServiceZoneIntent: AppIntent {
     static let title: LocalizedStringResource = "Check a Cybercab Service Zone"
     static let description = IntentDescription("Tells you how big a city's Cybercab service area is (and where that figure comes from), or compares Austin and Dallas.")
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "City", default: .austin) var city: ServiceCity
     @Parameter(title: "Compare Austin and Dallas", default: false) var compare: Bool
@@ -354,31 +378,47 @@ extension OpenZonesIntent {
 
 // MARK: - The card
 
-/// The small card Siri shows under a spoken answer: the figures, a footnote
-/// and one button that opens the matching screen. Plain SwiftUI in the app's
-/// colours; Siri draws its own chrome around it.
+/// The small card Siri and Shortcuts show under a spoken answer: the figures,
+/// a footnote and one button that opens the matching screen. It draws its own
+/// near-black surface with white / light-gray text and gold figures, so it reads
+/// the same whatever background Siri or Shortcuts puts behind it (light or dark);
+/// hierarchical styles (.secondary) came out nearly invisible there.
 struct SiriAnswerCard<Open: AppIntent>: View {
     let answer: SiriAnswer
     let open: Open
     let openTitle: LocalizedStringResource
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             if !answer.figures.isEmpty {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(answer.figures, id: \.self) { f in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(f.value).font(.title3.bold()).monospacedDigit().foregroundStyle(Color.brandGold).lineLimit(1).minimumScaleFactor(0.7)
-                            Text(f.label.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(f.value).font(.title3.bold()).monospacedDigit().foregroundStyle(SiriCardPalette.figure).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(f.label.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(SiriCardPalette.label).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
             }
-            if let note = answer.footnote { Text(note).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-            Button(intent: open) { Label(openTitle, systemImage: "arrow.up.right") }
+            if let note = answer.footnote {
+                Text(note).font(.footnote).foregroundStyle(SiriCardPalette.note).fixedSize(horizontal: false, vertical: true)
+            }
+            Button(intent: open) { Label(openTitle, systemImage: "arrow.up.right").font(.subheadline.weight(.semibold)) }
                 .buttonStyle(.bordered)
-                .tint(Color.brandGold)
+                .tint(SiriCardPalette.figure)
         }
-        .padding()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SiriCardPalette.surface, in: .rect(cornerRadius: 16))
+        .environment(\.colorScheme, .dark)
     }
 }
+
+/// The card's colours (WCAG contrast against `surface`: gold 14.4:1, labels 13.2:1, notes 10.0:1).
+enum SiriCardPalette {
+    static let surface = Color(red: 0x0E / 255, green: 0x0F / 255, blue: 0x11 / 255)
+    static let figure = Color.brandGold                               // #FAE030
+    static let label = Color(red: 0xD4 / 255, green: 0xD6 / 255, blue: 0xDA / 255)
+    static let note = Color(red: 0xB8 / 255, green: 0xBB / 255, blue: 0xC1 / 255)
+}
+

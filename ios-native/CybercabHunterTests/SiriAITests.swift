@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import AppIntents
+import SwiftUI
+import UIKit
 @testable import CybercabHunter
 
 // Siri AI: the entities Apple Intelligence and Spotlight see (what they say,
@@ -117,6 +119,33 @@ struct SiriAITests {
         #expect(a.spoken.hasSuffix("lists 858 VINs: 351 Cybercab and 507 Model Y."))
         #expect(s.requests.count == 3 && r.selectedTab == .home, "three public requests; no screen opened")
         await SiriData.shared.reset()
+    }
+
+    /// The answer card reads in Siri and Shortcuts, light or dark: WCAG contrast
+    /// of its own colours, and a rendering of each appearance for review.
+    @Test func answerCardTextHasHighContrast() throws {
+        func lum(_ c: Color) -> Double {
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            UIColor(c).getRed(&r, green: &g, blue: &b, alpha: &a)
+            let f = { (x: CGFloat) -> Double in let v = Double(x); return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+        }
+        func ratio(_ a: Color, _ b: Color) -> Double { let (x, y) = (lum(a), lum(b)); return (max(x, y) + 0.05) / (min(x, y) + 0.05) }
+        typealias P = SiriCardPalette
+        #expect(ratio(P.figure, P.surface) >= 7 && ratio(P.label, P.surface) >= 7 && ratio(P.note, P.surface) >= 7, "WCAG AAA (7:1) for every text colour")
+        let answer = SiriSpeech.briefing(stats: decode(["public_vehicles": 193, "recorded_rides": 8, "sightings_all_time": 535]),
+                                         daily: decode(["today": "2026-10-23", "day": ["date": "2026-10-23", "registry": 3, "sightings": 2, "cameras": 1]]),
+                                         dmv: nil, city: nil, now: now)
+        try? FileManager.default.createDirectory(atPath: "/tmp/cch-shots", withIntermediateDirectories: true)
+        for scheme in [ColorScheme.light, .dark] {
+            let card = SiriAnswerCard(answer: answer, open: OpenScreenIntent(.home), openTitle: "Open Cybercab Hunter")
+                .frame(width: 370).padding(12)
+                .background(scheme == .light ? Color.white : Color.black)
+                .environment(\.colorScheme, scheme)
+            let r = ImageRenderer(content: card); r.scale = 3
+            let png = try #require(r.uiImage?.pngData())
+            try png.write(to: URL(fileURLWithPath: "/tmp/cch-shots/siri-card-\(scheme == .light ? "light" : "dark").png"))
+        }
     }
 
     @Test func briefingHasTheRundownPhrases() {

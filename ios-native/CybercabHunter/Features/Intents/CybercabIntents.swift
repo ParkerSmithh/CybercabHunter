@@ -47,6 +47,9 @@ struct FleetStatsIntent: AppIntent {
     static let title: LocalizedStringResource = "Check the Cybercab Fleet"
     static let description = IntentDescription("Tells you how many vehicles Cybercab Hunter's public registry documents and how many Tesla robotaxi VINs the Texas DMV roster lists (kept apart: neither is the number in service right now). With a city: that city's registry and the last 24 hours of sightings.")
 
+    /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
     @Parameter(title: "City") var city: ServiceCity?
     static var parameterSummary: some ParameterSummary { Summary("Cybercab fleet in \(\.$city)") }
 
@@ -271,6 +274,7 @@ struct CybercabShortcuts: AppShortcutsProvider {
         AppShortcut(intent: FleetStatsIntent(), phrases: [
             "Check the Cybercab fleet in \(.applicationName)",
             "How many Cybercabs are tracked in \(.applicationName)",
+            "How many Cybercabs is \(.applicationName) tracking",
             "\(.applicationName) fleet stats",
             "How many Cybercabs are in \(\.$city) in \(.applicationName)",
             "How many Cybercabs were spotted today in \(.applicationName)",
@@ -299,18 +303,20 @@ struct CybercabShortcuts: AppShortcutsProvider {
             "Open \(.applicationName) alert settings"
         ], shortTitle: "Open a Screen", systemImageName: "rectangle.stack")
         AppShortcut(intent: DailyBriefingIntent(), phrases: [
-            "Give me my Cybercab briefing in \(.applicationName)",
+            "\(.applicationName) briefing",
+            "Give me my \(.applicationName) briefing",
+            "\(.applicationName) rundown",
             "Give me my \(.applicationName) rundown",
+            "Summarize \(.applicationName)",
+            "\(.applicationName) summary",
             "Give me a \(.applicationName) data summary",
             "Give me a rundown of \(.applicationName) data",
             "Give me a rundown of the \(.applicationName) data",
-            "Summarize \(.applicationName)",
-            "\(.applicationName) rundown",
+            "What's new in \(.applicationName)",
+            "What's happening in \(.applicationName) today",
             "\(.applicationName) daily report",
-            "What's new with Cybercabs today in \(.applicationName)",
             "Give me a quick Cybercab status in \(.applicationName)",
-            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)",
-            "What happened with Cybercabs in \(\.$city) in \(.applicationName)"
+            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)"
         ], shortTitle: "Daily Briefing", systemImageName: "newspaper")
         AppShortcut(intent: NearbySightingsIntent(), phrases: [
             "Find Cybercab sightings near me in \(.applicationName)",
