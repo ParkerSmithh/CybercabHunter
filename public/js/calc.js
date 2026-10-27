@@ -24,10 +24,11 @@ const CCC_CALC = (() => {
   // Model, inputs and ranges: docs/fleet-eta-live-data-research.md §3.
 
   // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
-  const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 24 * 60, timeZone: 'America/Chicago' };
-  // Dallas (launched Apr 18, 2026): 6 AM to 12 AM (midnight) daily (owner-confirmed, Oct 2026).
-  // closeMinute 24 * 60 = midnight at the end of the day (clockLabel shows 12:00 AM).
-  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 24 * 60, timeZone: 'America/Chicago' };
+  // 6 AM to 1 AM: the service day runs past midnight, so closeMinute (1 AM =
+  // 60) is smaller than openMinute; serviceStatus and serviceSegments handle that.
+  const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 1 * 60, timeZone: 'America/Chicago' };
+  // Dallas (launched Apr 18, 2026): 6 AM to 1 AM daily, the same as Austin (owner-confirmed, Oct 2026).
+  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 1 * 60, timeZone: 'America/Chicago' };
   // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
   // $3.25 base + $1.00 per mile. Not a published rate card.
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
@@ -138,6 +139,15 @@ const CCC_CALC = (() => {
     return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
   }
 
+  // The service window on a 24-hour track (12 AM to 12 AM), as minute ranges:
+  // one piece, or two when it runs past midnight (6 AM–12 AM and 12 AM–1 AM).
+  function serviceSegments(hours = SERVICE_HOURS) {
+    const close = hours.closeMinute === 0 ? 1440 : hours.closeMinute;
+    return close > hours.openMinute
+      ? [{ start: hours.openMinute, end: close }]
+      : [{ start: hours.openMinute, end: 1440 }, { start: 0, end: close }];
+  }
+
   // Whether the service is running at `date`, by the clock in the service's
   // time zone (never the visitor's): { open, minuteOfDay, label }.
   function serviceStatus(date = new Date(), hours = SERVICE_HOURS) {
@@ -210,7 +220,7 @@ const CCC_CALC = (() => {
   return {
     ETA_TIERS, etaFareRange, etaWaitRange, dollarRange, minuteRange, etaSlot, assumedTier,
     fleetFinancials,
-    SERVICE_HOURS, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
+    SERVICE_HOURS, serviceSegments, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
     DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET, DALLAS_AREA_SQ_MI,
     etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus
   };

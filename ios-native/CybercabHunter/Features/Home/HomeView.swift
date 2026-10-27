@@ -187,12 +187,14 @@ struct ServiceStatusCard: View {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color.chSmoke).frame(height: 6)
-                            Capsule().fill(Color.brandGold.opacity(0.35))
-                                .frame(width: geo.size.width * s.windowWidth, height: 6)
-                                .offset(x: geo.size.width * s.windowStart)
-                            Capsule().fill(Color.brandGold)
-                                .frame(width: geo.size.width * s.runWidth, height: 6)
-                                .offset(x: geo.size.width * s.windowStart)
+                            ForEach(Array(s.pieces.enumerated()), id: \.offset) { _, piece in
+                                Capsule().fill(Color.brandGold.opacity(0.35))
+                                    .frame(width: geo.size.width * piece.width, height: 6)
+                                    .offset(x: geo.size.width * piece.start)
+                                Capsule().fill(Color.brandGold)
+                                    .frame(width: geo.size.width * piece.run, height: 6)
+                                    .offset(x: geo.size.width * piece.start)
+                            }
                             Circle().fill(Color.chInk).frame(width: 14, height: 14)
                                 .overlay(Circle().strokeBorder(Color.brandGold, lineWidth: 2))
                                 .offset(x: geo.size.width * s.nowPosition - 7)
@@ -270,9 +272,10 @@ struct ServiceClock {
     let live: Bool
     let countdown: String
     let nowLabel: String
-    let windowStart: CGFloat
-    let windowWidth: CGFloat
-    let runWidth: CGFloat
+    /// The service window on the 24-hour track: one piece, or two when service
+    /// runs past midnight (6 AM–12 AM, then 12 AM–1 AM), each with the share run so far.
+    struct Piece: Equatable { let start: CGFloat; let width: CGFloat; let run: CGFloat }
+    let pieces: [Piece]
     let nowPosition: CGFloat
 
     init(hours: HomepageStats.Hours?, now: Date) {
@@ -284,14 +287,18 @@ struct ServiceClock {
         // logic the Dynamic Island Live Activity uses (wall-clock Central, DST-safe).
         let schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
         let status = schedule.status(at: now)
-        let open = schedule.openMinute * 60
-        let close = schedule.closeMinute * 60
+        let open = schedule.openMinute, close = schedule.closeMinute
         live = status.live
         countdown = ServiceSchedule.countdown(from: now, to: status.until)
         nowLabel = now.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())
-        windowStart = CGFloat(open) / 86400
-        windowWidth = CGFloat(close - open) / 86400
-        runWidth = live ? CGFloat(sec - open) / 86400 : 0
+        // Minutes of service run so far fill the pieces in order.
+        var ran = live ? now.timeIntervalSince(status.since) / 60 : 0
+        let spans = close > 1440 ? [(open, 1440), (0, close - 1440)] : [(open, close)]
+        pieces = spans.map { a, b in
+            let len = Double(b - a), fill = min(max(ran, 0), len)
+            ran -= len
+            return Piece(start: CGFloat(a) / 1440, width: CGFloat(len) / 1440, run: CGFloat(fill) / 1440)
+        }
         nowPosition = CGFloat(sec) / 86400
     }
 

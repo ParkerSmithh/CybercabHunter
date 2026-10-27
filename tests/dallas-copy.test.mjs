@@ -54,7 +54,7 @@ function run() {
     check('index.html: the service-area facts sit at the top of SERVICE ZONES (one block for both cities)', /<div id="rowArea" data-row="area"/.test(zones) && !/homeZone(Austin|Dallas)Info/.test(html));
     const areas = fs.readFileSync(new URL('../worker/service-areas.js', import.meta.url), 'utf8');
     const strip = areas.slice(areas.indexOf('dallas: {'), areas.indexOf('};', areas.indexOf('dallas: {')));
-    check('the Dallas facts: hours 6AM - 12AM (06:00-24:00), 81 mi², launched 2026-04-18', /open: '06:00', close: '24:00'/.test(strip) && /square_miles: 81/.test(strip) && /in_service_since: '2026-04-18'/.test(strip));
+    check('the Dallas facts: hours 6AM - 1AM (06:00-01:00), 81 mi², launched 2026-04-18', /open: '06:00', close: '01:00'/.test(strip) && /square_miles: 81/.test(strip) && /in_service_since: '2026-04-18'/.test(strip));
     check('index.html: the Dallas minimap draws the Dallas service zone', /initZoneMap\('zoneMap-dallas', 'Dallas', \[[^\]]+\], CCCAustinMap\.DALLAS_SERVICE_ZONE\)/.test(html));
     for (const claim of LAUNCH_CLAIMS) {
       check(`the Dallas facts make no unsourced launch claim (${claim})`, !claim.test(strip));
@@ -63,7 +63,7 @@ function run() {
   }
 
   // The Dallas service zone (js/austin-map.js): a closed ring inside the Dallas
-  // metro, about Tesla's 81 mi²; Fleet ETA shows 6 AM - 12 AM.
+  // metro, about Tesla's 81 mi²; Fleet ETA shows 6 AM - 1 AM.
   {
     const src = fs.readFileSync(new URL('../public/js/austin-map.js', import.meta.url), 'utf8');
     const ring = JSON.parse(src.match(/const DALLAS_SERVICE_ZONE = (\[[\s\S]*?\]);/)[1].replace(/\s/g, ''));
@@ -89,7 +89,7 @@ function run() {
     }
     const sim = read('simulation.html');
     const dal = sim.slice(sim.indexOf('<div id="dallasContent"'), sim.indexOf('<div id="accountBackdrop"'));
-    check('simulation.html: Dallas hours are 6:00 AM - 12:00 AM; no 2 AM, "not published" or TxDOT cameras', /6:00 AM - 12:00 AM/.test(dal) && !/11:00 PM/.test(dal) && !/\b2:00 AM|\b2 AM|not published|TxDOT cameras|hasn't published/i.test(dal));
+    check('simulation.html: Dallas hours are 6:00 AM - 1:00 AM; no 2 AM, "not published" or TxDOT cameras', /6:00 AM - 1:00 AM/.test(dal) && !/11:00 PM/.test(dal) && !/\b2:00 AM|\b2 AM|not published|TxDOT cameras|hasn't published/i.test(dal));
   }
 
   t.finish();
