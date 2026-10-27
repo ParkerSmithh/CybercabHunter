@@ -157,17 +157,22 @@ struct ServiceStatusCard: View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let s = ServiceClock(hours: hours, now: context.date)
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top) {
+                // The car (and its road) centered on the headline and countdown,
+                // not the top of the card.
+                HStack(alignment: .liveCarRow) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
                             Circle().fill(s.live ? Color.chOK : Color(hex: 0x7DD3FC)).frame(width: 7, height: 7)
                             Text(s.live ? "LIVE NOW" : "PARKED").font(.inter(10, .bold)).tracking(1.6).foregroundStyle(s.live ? Color.chOK : Color(hex: 0x7DD3FC))
                         }
-                        Text(s.live ? "CYBERCABS ARE ON THE ROAD NOW" : "THE FLEET IS PARKED FOR THE NIGHT")
-                            .font(.inter(16, .bold)).foregroundStyle(Color.chInk).fixedSize(horizontal: false, vertical: true)
-                        Text(s.live ? "Service ends in \(s.countdown)" : "Back on the road at \(Format.clock(hours?.open)) · in \(s.countdown)")
-                            .font(.inter(13, .semibold)).foregroundStyle(s.live ? Color.brandGold : Color.chFog)
-                            .contentTransition(.numericText())
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(s.live ? "CYBERCABS ARE ON THE ROAD NOW" : "THE FLEET IS PARKED FOR THE NIGHT")
+                                .font(.inter(16, .bold)).foregroundStyle(Color.chInk).fixedSize(horizontal: false, vertical: true)
+                            Text(s.live ? "Service ends in \(s.countdown)" : "Back on the road at \(Format.clock(hours?.open)) · in \(s.countdown)")
+                                .font(.inter(13, .semibold)).foregroundStyle(s.live ? Color.brandGold : Color.chFog)
+                                .contentTransition(.numericText())
+                        }
+                        .alignmentGuide(.liveCarRow) { $0[VerticalAlignment.center] }
                     }
                     Spacer(minLength: 0)
                     LiveCar(live: s.live).frame(width: 130).padding(.trailing, -10)
@@ -371,6 +376,14 @@ struct BrandToolbarItem: ToolbarContent {
 /// The "Live now" card's car (css/style.css .sb-car): while the fleet runs it
 /// bobs 1.5 pt every 2.6 s over a gold dashed road scrolling at 26 pt per
 /// 0.8 s; parked, it is greyed out with no road. Reduce Motion: still.
+private extension VerticalAlignment {
+    /// The middle of the Live now card's headline and countdown, which the car lines up with.
+    enum LiveCarRow: AlignmentID {
+        static func defaultValue(in d: ViewDimensions) -> CGFloat { d[VerticalAlignment.center] }
+    }
+    static let liveCarRow = VerticalAlignment(LiveCarRow.self)
+}
+
 private struct LiveCar: View {
     let live: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

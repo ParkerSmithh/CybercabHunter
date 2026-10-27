@@ -15,6 +15,9 @@ export async function apiGetProfile(request, env, userId) {
   if (!user) return Response.json({ authenticated: false }, { status: 401 });
 
   const profile = await db.getUserProfile(env.cybercabhunter_db, userId);
+  // Signed in with Google: a Google picture can be (re)recorded by signing in
+  // with Google again, when none is on record (worker/avatars.js).
+  const google = await env.cybercabhunter_db.prepare(`SELECT 1 AS linked FROM google_connections WHERE user_id = ?`).bind(userId).first();
 
   return Response.json({
     user: {
@@ -30,6 +33,7 @@ export async function apiGetProfile(request, env, userId) {
       // Google picture back (worker/avatars.js).
       avatar_source: avatarSource(user),
       has_google_avatar: !!user.google_avatar_url,
+      google_linked: !!google,
       joined_at: user.created_at
     },
     contributions: profile.contributionCount,

@@ -21,10 +21,15 @@ struct ProfileSettings: Decodable, Sendable, Equatable {
     var avatarSource: String?
     /// Whether removing an upload brings a Google picture back.
     var hasGoogleAvatar: Bool?
+    /// Signed in with Google: a Google sign-in can record the Google picture
+    /// when none is on record yet (an upload made before it was kept).
+    var googleLinked: Bool?
     var joinedAt: String?
 
     /// "Remove photo" applies only to an upload (the server keeps a Google picture as the fallback).
     var canRemovePhoto: Bool { avatarSource.map { $0 == "custom" } ?? (avatarUrl != nil) }
+    /// No picture showing, but one can come back from Google by signing in with it again.
+    var canRestoreGooglePhoto: Bool { avatarUrl == nil && googleLinked == true && hasGoogleAvatar != true }
 
     static let handlePattern = #"^[a-z0-9_]{3,20}$"#
     static let maxDisplayName = 60

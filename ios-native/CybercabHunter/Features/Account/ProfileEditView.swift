@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import AuthenticationServices
 
 /// Edit profile (the website's Settings › Profile): photo, display name,
 /// username and bio. Saving sends the full set, as the website does; the
@@ -8,6 +9,7 @@ struct ProfileEditView: View {
     let model: AccountModel
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
     @State private var name = ""
     @State private var handle = ""
     @State private var bio = ""
@@ -47,6 +49,12 @@ struct ProfileEditView: View {
                         .buttonStyle(.borderless)
                         .disabled(avatarBusy)
                         .accessibilityIdentifier("removePhoto")
+                }
+                if original?.canRestoreGooglePhoto == true {
+                    Button("Use Google photo", systemImage: "person.crop.circle") { Task { await restoreGooglePhoto() } }
+                        .buttonStyle(.borderless)
+                        .disabled(avatarBusy)
+                        .accessibilityIdentifier("restoreGooglePhoto")
                 }
                 if let avatarError { Text(avatarError).font(.inter(12.5, .semibold)).foregroundStyle(Color(hex: 0xF08A84)) }
             } header: { Text("Photo") } footer: { Text("JPEG, PNG or WebP. You'll crop it to a square before it's saved.") }
@@ -96,7 +104,7 @@ struct ProfileEditView: View {
         .confirmationDialog("Remove your profile photo?", isPresented: $confirmRemove, titleVisibility: .visible) {
             Button("Remove photo", role: .destructive) { Task { await removePhoto() } }
         } message: {
-            Text(original?.hasGoogleAvatar == true ? "Your uploaded photo is removed and your Google photo shows instead." : "Your profile shows your initials instead.")
+            Text(original?.hasGoogleAvatar == true || original?.googleLinked == true ? "Your uploaded photo is removed and your Google photo shows instead." : "Your profile shows your initials instead.")
         }
         .onAppear(perform: fill)
         .onChange(of: model.settings) { if !loaded { fill() } }
@@ -154,7 +162,23 @@ struct ProfileEditView: View {
         avatarBusy = true
         defer { avatarBusy = false }
         avatarError = await model.removeAvatar(api: session.api)
-        if avatarError == nil { await session.refreshAccount() }
+        guard avatarError == nil else { return }
+        // No Google picture on record yet: a Google sign-in records it and shows it.
+        if model.settings?.canRestoreGooglePhoto == true { await restoreGooglePhoto(); return }
+        await session.refreshAccount()
+    }
+
+    /// Google sign-in (Apple's sheet, as on the Account tab): the server records
+    /// the Google picture and shows it, since no upload is in place.
+    private func restoreGooglePhoto() async {
+        avatarBusy = true
+        defer { avatarBusy = false }
+        await session.signIn { url, scheme in
+            try await webAuthenticationSession.authenticate(using: url, callbackURLScheme: scheme, preferredBrowserSession: .shared)
+        }
+        if let problem = session.signInError { avatarError = problem; return }
+        await model.load(api: session.api)
+        NotificationCenter.default.post(name: .profileChanged, object: nil)
     }
 }
 
