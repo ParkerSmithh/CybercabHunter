@@ -13,7 +13,8 @@ import ActivityKit
 final class FakeActivityBackend: ServiceActivityBackend {
     var isSupported = true
     var isAuthorized = true
-    var running: [ServiceActivityAttributes.ContentState] = []
+    var running: [ServiceActivityAttributes.ContentState] = [] { didSet { if running.isEmpty { runningAttributes = [] } } }
+    var runningAttributes: [ServiceActivityAttributes] = []
     var started: [(ServiceActivityAttributes, ServiceActivityAttributes.ContentState, Date)] = []
     var updates: [(ServiceActivityAttributes.ContentState, Date)] = []
     var endAllCalls = 0
@@ -21,10 +22,10 @@ final class FakeActivityBackend: ServiceActivityBackend {
 
     func start(_ attributes: ServiceActivityAttributes, _ state: ServiceActivityAttributes.ContentState, staleDate: Date) throws {
         if failStart { throw CancellationError() }
-        started.append((attributes, state, staleDate)); running.append(state)
+        started.append((attributes, state, staleDate)); running.append(state); runningAttributes.append(attributes)
     }
     func update(_ state: ServiceActivityAttributes.ContentState, staleDate: Date) async {
-        updates.append((state, staleDate)); running = [state]
+        updates.append((state, staleDate)); running = [state]; runningAttributes = Array(runningAttributes.prefix(1))
     }
     func endAll() async { endAllCalls += 1; running = [] }
 }
@@ -173,6 +174,20 @@ struct LiveActivityTests {
         #expect(stale.headline == "Status needs updating" && stale.badge == "NOT UPDATED", "past its change with no update: says so instead of a wrong 'live'")
         let parked = ServiceActivityDisplay(live: false, since: central("2026-10-27 00:00:00"), until: central("2026-10-27 06:00:00"), stale: false, openLabel: "6:00 AM", closeLabel: "1:00 AM")
         #expect(parked.badge == "PARKED" && parked.countdownLead == "Back on the road in")
+    }
+
+    // New hours: an activity started with the old ones (its details can't be
+    // updated) is replaced by one with the new hours, once.
+    @Test func newHoursReplaceAnActivityShowingTheOldOnes() async {
+        let (c, fake, _) = make()
+        c.schedule = ServiceSchedule(open: "06:00", close: "24:00")
+        await c.setEnabled(true, now: central("2026-10-26 12:00:00"))
+        #expect(fake.started.count == 1 && fake.started[0].0.closeLabel == "12:00 AM")
+        c.schedule = .standard
+        await c.reconcile(now: central("2026-10-26 12:05:00"))
+        #expect(fake.endAllCalls == 1 && fake.started.count == 2 && fake.started[1].0.closeLabel == "1:00 AM" && fake.running.count == 1, "ended and started again with 6:00 AM – 1:00 AM")
+        await c.reconcile(now: central("2026-10-26 12:10:00"))
+        #expect(fake.started.count == 2 && fake.endAllCalls == 1, "the same hours: left alone")
     }
 
     // The 24-hour track: the service window (two pieces past midnight) and the stretches the system fills.

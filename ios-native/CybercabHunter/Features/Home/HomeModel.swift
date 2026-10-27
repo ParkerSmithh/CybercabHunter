@@ -50,7 +50,9 @@ final class HomeModel {
     func loadCity(_ key: String, using api: APIClient, force: Bool = false) async {
         if !force, cityStats[key] != nil { return }
         do {
-            let stats: HomepageStats = try await api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)])
+            // First open and pull-to-refresh skip the phone's HTTP cache, so a change
+            // to the service hours or the zone shows at once (not up to 5 minutes later).
+            let stats: HomepageStats = try await api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)], fresh: force)
             cityStats[key] = stats
             SiriIndex.later { await SiriIndex.zone(stats) }   // Spotlight / Siri: that city's zone and its last 24 hours
             cityErrors[key] = nil

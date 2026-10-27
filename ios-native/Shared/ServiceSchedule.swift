@@ -95,7 +95,7 @@ struct ServiceSchedule: Codable, Hashable, Sendable {
 /// The Dynamic Island / Lock Screen Live Activity's data. The status is fixed
 /// until the next change (`until`): the system draws the countdown and the
 /// progress bar from these dates itself, so nothing runs or polls meanwhile.
-struct ServiceActivityAttributes: ActivityAttributes {
+struct ServiceActivityAttributes: ActivityAttributes, Hashable {
     struct ContentState: Codable, Hashable, Sendable {
         var live: Bool
         var since: Date
