@@ -56,28 +56,41 @@ struct ServiceActivityDisplay {
     /// The countdown and the run go from `since` to `until` (never a reversed range).
     var window: ClosedRange<Date> { since...max(until, since.addingTimeInterval(60)) }
 
-    /// Where the service hours sit on the 24-hour track (0 = 12 AM, 1 = the next 12 AM).
-    var serviceSpan: ClosedRange<CGFloat> { live ? Self.span(since, until) : Self.span(until, since) }
-    /// The stretch the system fills up to now: the service window while live; the
-    /// night while parked, when it doesn't run past midnight; nothing while stale.
-    var runSpan: ClosedRange<CGFloat>? {
-        if stale { return nil }
-        if live { return serviceSpan }
+    /// Where the service hours sit on the 24-hour track (0 = 12 AM, 1 = the next
+    /// 12 AM): one piece, or two when service runs past midnight (6 AM–12 AM, 12 AM–1 AM).
+    var servicePieces: [ClosedRange<CGFloat>] { live ? Self.pieces(since, until) : Self.pieces(until, since) }
+
+    /// One stretch the system fills up to now: where it sits, and its times.
+    struct Run { let span: ClosedRange<CGFloat>; let time: ClosedRange<Date> }
+    /// The service window while live (split at midnight when it runs past it, so
+    /// each piece fills in its own time); the night while parked, when it doesn't
+    /// cross midnight; nothing while stale.
+    var runs: [Run] {
+        if stale { return [] }
         let a = Self.fraction(since), b = Self.fraction(until)
-        return b > a ? a...b : nil
+        if !live { return b > a ? [Run(span: a...b, time: window)] : [] }
+        let midnight = Self.calendar.startOfDay(for: until)
+        guard midnight > since, midnight < until, b > 0 else { return [Run(span: a...(b > a ? b : 1), time: window)] }
+        return [Run(span: a...1, time: since...midnight), Run(span: 0...b, time: midnight...until)]
+    }
+
+    private static var calendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = ServiceSchedule.timeZone
+        return cal
     }
 
     /// The share of the Central day at `date`.
     static func fraction(_ date: Date) -> CGFloat {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = ServiceSchedule.timeZone
-        let c = cal.dateComponents([.hour, .minute], from: date)
+        let c = calendar.dateComponents([.hour, .minute], from: date)
         return CGFloat((c.hour ?? 0) * 60 + (c.minute ?? 0)) / 1440
     }
-    /// From `start` to `end` on the track; an end at midnight is the right edge.
-    static func span(_ start: Date, _ end: Date) -> ClosedRange<CGFloat> {
+    /// From `start` to `end` on the track: an end at midnight is the right edge;
+    /// an end past midnight is a second piece from the left edge.
+    static func pieces(_ start: Date, _ end: Date) -> [ClosedRange<CGFloat>] {
         let a = fraction(start), b = fraction(end)
-        return a...(b > a ? b : 1)
+        if b > a { return [a...b] }
+        return b > 0 ? [a...1, 0...b] : [a...1]
     }
 }
 
@@ -176,21 +189,23 @@ struct ServiceDayTrack: View {
     var body: some View {
         VStack(spacing: 5) {
             GeometryReader { g in
-                let w = g.size.width, span = d.serviceSpan
+                let w = g.size.width, runs = d.runs
                 ZStack(alignment: .leading) {
                     Capsule().fill(ServiceActivityPalette.ink.opacity(0.09))
-                    Capsule()
-                        .fill(d.lit ? ServiceActivityPalette.gold.opacity(0.28) : ServiceActivityPalette.slate.opacity(0.22))
-                        .frame(width: w * (span.upperBound - span.lowerBound))
-                        .offset(x: w * span.lowerBound)
-                    if let run = d.runSpan {
-                        ProgressView(timerInterval: d.window, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                    ForEach(Array(d.servicePieces.enumerated()), id: \.offset) { _, span in
+                        Capsule()
+                            .fill(d.lit ? ServiceActivityPalette.gold.opacity(0.28) : ServiceActivityPalette.slate.opacity(0.22))
+                            .frame(width: w * (span.upperBound - span.lowerBound))
+                            .offset(x: w * span.lowerBound)
+                    }
+                    ForEach(runs.indices, id: \.self) { i in
+                        ProgressView(timerInterval: runs[i].time, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
                             .progressViewStyle(.linear)
                             .labelsHidden()
                             .tint(d.live ? ServiceActivityPalette.gold : ServiceActivityPalette.parked.opacity(0.75))
                             .scaleEffect(x: 1, y: height / 4, anchor: .center)
-                            .frame(width: w * (run.upperBound - run.lowerBound))
-                            .offset(x: w * run.lowerBound)
+                            .frame(width: w * (runs[i].span.upperBound - runs[i].span.lowerBound))
+                            .offset(x: w * runs[i].span.lowerBound)
                             .shadow(color: (d.live ? ServiceActivityPalette.gold : ServiceActivityPalette.parked).opacity(0.55), radius: 4)
                     }
                 }

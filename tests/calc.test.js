@@ -82,7 +82,7 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
   assert.strictEqual(Math.round(CCC_CALC.ageHours('2026-10-03T09:00:00Z', now)), 3);
 }
 
-// Service hours: 6:00 AM - 12:00 AM (midnight) by the clock in America/Chicago, never the visitor's.
+// Service hours: 6:00 AM - 1:00 AM (past midnight) by the clock in America/Chicago, never the visitor's.
 {
   const at = iso => CCC_CALC.serviceStatus(new Date(iso));
   assert.strictEqual(at('2026-10-03T10:59:00Z').open, false);   // 5:59 AM CDT
@@ -90,25 +90,31 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
   assert.strictEqual(at('2026-10-04T03:59:00Z').open, true);    // 10:59 PM CDT
   assert.strictEqual(at('2026-10-04T04:00:00Z').open, true);    // 11:00 PM CDT
   assert.strictEqual(at('2026-10-04T04:59:00Z').open, true);    // 11:59 PM CDT
-  assert.strictEqual(at('2026-10-04T05:00:00Z').open, false);   // 12:00 AM CDT (midnight)
+  assert.strictEqual(at('2026-10-04T05:00:00Z').open, true);    // 12:00 AM CDT (midnight): still running
+  assert.strictEqual(at('2026-10-04T05:59:00Z').open, true);    // 12:59 AM CDT
+  assert.strictEqual(at('2026-10-04T06:00:00Z').open, false);   // 1:00 AM CDT: parked
   assert.strictEqual(at('2026-12-15T12:00:00Z').open, true);    // 6:00 AM CST (UTC-6 in winter)
   assert.strictEqual(at('2026-12-15T11:59:00Z').open, false);   // 5:59 AM CST
   assert.strictEqual(at('2026-10-03T08:00:00Z').label, 'Opens 6:00 AM');
   assert.strictEqual(at('2026-10-03T18:00:00Z').label, 'Operating now');
-  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.SERVICE_HOURS.closeMinute), '12:00 AM');
+  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.SERVICE_HOURS.closeMinute), '1:00 AM');
+  // The 24-hour track: two pieces, 6 AM–12 AM then 12 AM–1 AM; a same-day window stays one.
+  assert.deepStrictEqual(CCC_CALC.serviceSegments(), [{ start: 360, end: 1440 }, { start: 0, end: 60 }]);
+  assert.deepStrictEqual(CCC_CALC.serviceSegments({ openMinute: 360, closeMinute: 1440 }), [{ start: 360, end: 1440 }]);
+  assert.deepStrictEqual(CCC_CALC.serviceSegments({ openMinute: 360, closeMinute: 0 }), [{ start: 360, end: 1440 }]);
 }
 
-// Dallas (launched Apr 18, 2026): 6 AM to 12 AM, the same as Austin. A window
+// Dallas (launched Apr 18, 2026): 6 AM to 1 AM, the same as Austin. A window
 // that crosses midnight is still handled (open after opening OR before closing).
 {
   const cdt = (h, m) => new Date(Date.UTC(2026, 9, 7, h + 5, m));   // Oct 7, 2026 is CDT (UTC-5)
   const dal = (h, m) => CCC_CALC.serviceStatus(cdt(h, m), CCC_CALC.DALLAS_SERVICE_HOURS).open;
   const aus = (h, m) => CCC_CALC.serviceStatus(cdt(h, m)).open;
-  assert.deepStrictEqual([dal(0, 0), dal(1, 30), dal(5, 59), dal(6, 0), dal(22, 59), dal(23, 0), dal(23, 59)], [false, false, false, true, true, true, true]);
-  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.DALLAS_SERVICE_HOURS.closeMinute), '12:00 AM');
+  assert.deepStrictEqual([dal(0, 0), dal(0, 59), dal(1, 0), dal(1, 30), dal(5, 59), dal(6, 0), dal(22, 59), dal(23, 0), dal(23, 59)], [true, true, false, false, false, true, true, true, true]);
+  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.DALLAS_SERVICE_HOURS.closeMinute), '1:00 AM');
   const late = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
   assert.deepStrictEqual([1, 2, 5, 6, 23].map(h => CCC_CALC.serviceStatus(cdt(h, 30), late).open), [true, false, false, true, true]);
-  assert.deepStrictEqual([aus(0, 0), aus(1, 30), aus(6, 0), aus(22, 59), aus(23, 0), aus(23, 59)], [false, false, true, true, true, true]);
+  assert.deepStrictEqual([aus(0, 0), aus(0, 59), aus(1, 0), aus(1, 30), aus(6, 0), aus(22, 59), aus(23, 0), aus(23, 59)], [true, true, false, false, true, true, true, true]);
   assert.strictEqual(CCC_CALC.reportedFare(5, CCC_CALC.DALLAS_REPORTED_RATE), 8.25);
   assert.strictEqual(CCC_CALC.DALLAS_MODEL_Y_FLEET, 65);
 }
@@ -138,7 +144,7 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
   'DALLAS_AREA_SQ_MI', 'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
   'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'ETA_TIERS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
-  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceStatus'
+  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceSegments', 'serviceStatus'
 ]);
 
 console.log('calc.test.js: all assertions passed');

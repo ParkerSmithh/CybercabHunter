@@ -110,8 +110,14 @@
   const H = C.SERVICE_HOURS;
   const hoursText = `${C.clockLabel(H.openMinute)} - ${C.clockLabel(H.closeMinute)}`;
   qa('[data-hours]').forEach(el => { el.textContent = hoursText; });
-  $('hoursWindow').style.left = `${(H.openMinute / 1440) * 100}%`;
-  $('hoursWindow').style.width = `${((H.closeMinute - H.openMinute) / 1440) * 100}%`;
+  // The window's pieces on the 24-hour track: 6 AM–12 AM, then 12 AM–1 AM (past midnight).
+  C.serviceSegments(H).forEach((g, i) => {
+    const w = $(i ? 'hoursWindowLate' : 'hoursWindow');
+    if (!w) return;
+    w.style.left = `${(g.start / 1440) * 100}%`;
+    w.style.width = `${((g.end - g.start) / 1440) * 100}%`;
+    w.classList.remove('hidden');
+  });
   function renderHours() {
     const s = C.serviceStatus(new Date(), H);
     qa('[data-service-status]').forEach(el => {

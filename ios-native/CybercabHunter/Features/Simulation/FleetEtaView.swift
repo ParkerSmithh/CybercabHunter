@@ -342,9 +342,11 @@ struct FleetEtaView: View {
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.06))
-                    Capsule().fill(Color.brandGold.opacity(0.5))
-                        .frame(width: g.size.width * CGFloat(SimulationCalc.closeMinute - SimulationCalc.openMinute) / 1440)
-                        .offset(x: g.size.width * CGFloat(SimulationCalc.openMinute) / 1440)
+                    ForEach(SimulationCalc.hourPieces, id: \.start) { piece in
+                        Capsule().fill(Color.brandGold.opacity(0.5))
+                            .frame(width: g.size.width * CGFloat(piece.end - piece.start) / 1440)
+                            .offset(x: g.size.width * CGFloat(piece.start) / 1440)
+                    }
                     Rectangle().fill(Color.chInk).frame(width: 2, height: 14)
                         .offset(x: g.size.width * CGFloat(s.minuteOfDay) / 1440 - 1)
                 }
