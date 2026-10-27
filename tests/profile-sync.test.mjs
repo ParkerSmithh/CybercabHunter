@@ -262,6 +262,16 @@ async function run() {
     const me = (await call(ctx, 'GET', '/api/me', { session: 's-carl' })).json.user;
     check('GET /api/me: the same fields as before, plus avatar_source', me.id === 'carl' && me.avatar_url === '/api/avatars/0123456789abcdef0123456789abcdef' && me.avatar_source === 'custom' && 'display_name' in me);
     check('GET /api/me never exposes the stored Google URL field', !('google_avatar_url' in me) && !('google_avatar_url' in p));
+    check('GET /api/profile says whether the account is signed in with Google', typeof p.google_linked === 'boolean');
+
+    // An upload from before the Google picture was kept (carl: nothing on record), on a Google account.
+    ctx.d1.exec(`INSERT INTO google_connections (id, user_id, google_sub, email) VALUES ('gc-carl', 'carl', 'g-carl', NULL)`);
+    const removed = await call(ctx, 'DELETE', '/api/profile/avatar', { session: 's-carl' });
+    const after = (await call(ctx, 'GET', '/api/profile', { session: 's-carl' })).json.user;
+    check('removing it: initials for now, and the clients are told a Google sign-in brings the Google picture back', removed.status === 200 && after.avatar_url === null && after.has_google_avatar === false && after.google_linked === true);
+    await db.findOrCreateUserByGoogleIdentity(ctx.env.cybercabhunter_db, { googleSub: 'g-carl', name: 'Carl', avatarUrl: 'https://lh3.googleusercontent.com/a/carl=s96-c' }, {});
+    const restored = (await call(ctx, 'GET', '/api/profile', { session: 's-carl' })).json.user;
+    check('…and that Google sign-in shows the Google picture', restored.avatar_url === 'https://lh3.googleusercontent.com/a/carl=s96-c' && restored.avatar_source === 'google' && restored.has_google_avatar === true);
   }
 
   console.log('9. The epoch reaches every profile-bearing cache key');

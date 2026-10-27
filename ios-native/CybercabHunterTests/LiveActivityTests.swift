@@ -187,6 +187,19 @@ struct LiveActivityTests {
         #expect(live.headline == "Cybercabs are on the road now" && night.headline == "The fleet is parked for the night", "the website's words")
     }
 
+    // The Home screen's Live now card (with its animated car and road) at each
+    // iPhone width, for review: the car sits center-right beside the headline.
+    @Test func homeCardRendersAtEachWidth() throws {
+        for (name, w) in [("se", 343.0), ("16", 361.0), ("max", 408.0)] {
+            let card = ServiceStatusCard(hours: nil).frame(width: w).padding(16)
+                .background(Color(red: 8 / 255, green: 9 / 255, blue: 10 / 255)).environment(\.colorScheme, .dark)
+            let r = ImageRenderer(content: card); r.scale = 3
+            let image = try #require(r.uiImage, "the card renders at \(name)")
+            #expect(image.size.height > 200)
+            try image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/cch-shots/home-live-card-\(name).png"))
+        }
+    }
+
     // 9–12: every presentation renders, live, parked and stale, at each iPhone
     // width, in light and dark, inside the Dynamic Island's limits.
     @Test func presentationsRender() throws {

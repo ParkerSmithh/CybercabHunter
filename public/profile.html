@@ -157,6 +157,7 @@
                   <label for="avatarFile" id="avatarChange" class="settings-btn cursor-pointer">Change photo</label>
                   <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
                   <button id="avatarRemove" type="button" class="hidden settings-btn settings-btn-quiet">Remove photo</button>
+                  <a id="avatarRestoreGoogle" href="#" class="hidden settings-btn settings-btn-quiet">Use Google photo</a>
                 </div>
               </div>
               <p class="settings-help">JPEG, PNG or WebP. You'll crop it to a square before it's saved.</p>
@@ -675,6 +676,12 @@
     // (An older Worker without avatar_source: any picture, as before.)
     const isCustom = currentUser.avatar_source !== undefined ? currentUser.avatar_source === 'custom' : !!currentUser.avatar_url;
     document.getElementById('avatarRemove').classList.toggle('hidden', !isCustom);
+    // No picture, signed in with Google, and no Google picture on record (an
+    // upload made before it was kept): signing in with Google again records it
+    // and shows it, back on this page.
+    const restore = document.getElementById('avatarRestoreGoogle');
+    restore.href = TESLA_WORKER_URL + '/oauth/google/start?returnTo=' + encodeURIComponent('/profile');
+    restore.classList.toggle('hidden', !(!currentUser.avatar_url && currentUser.google_linked && !currentUser.has_google_avatar));
     // The account button in the header shows it too.
     const navImg = document.getElementById('accountAvatarImg');
     const navIcon = document.getElementById('accountAvatarIcon');
@@ -797,7 +804,9 @@
     });
 
     document.getElementById('avatarRemove').addEventListener('click', async () => {
-      if (!window.confirm(currentUser.has_google_avatar ? 'Remove your uploaded photo? Your Google photo will show instead.' : 'Remove your profile photo? Your initials will show instead.')) return;
+      if (!window.confirm(currentUser.has_google_avatar ? 'Remove your uploaded photo? Your Google photo will show instead.'
+        : currentUser.google_linked ? 'Remove your uploaded photo? Your Google photo will show instead (Google may ask you to confirm your account).'
+        : 'Remove your profile photo? Your initials will show instead.')) return;
       showError('');
       let resp = null;
       try { resp = await fetch(TESLA_WORKER_URL + '/api/profile/avatar', { method: 'DELETE', headers: { Authorization: 'Bearer ' + sessionId } }); } catch (e) { resp = null; }
@@ -808,6 +817,13 @@
         currentUser.avatar_url = removed && removed.avatar_url ? removed.avatar_url : null;
         currentUser.avatar_source = removed && removed.avatar_source !== undefined ? removed.avatar_source : null;
         renderProfileAvatar();
+        // Signed in with Google but no Google picture on record yet: a Google
+        // sign-in records it and brings it back here.
+        if (!currentUser.avatar_url && currentUser.google_linked) {
+          CCC.toast('Uploaded photo removed. Getting your Google photo…', 'success');
+          location.href = document.getElementById('avatarRestoreGoogle').href;
+          return;
+        }
         CCC.toast(currentUser.avatar_url ? 'Uploaded photo removed. Your Google photo is back.' : 'Profile photo removed.', 'success');
       } else {
         showError("Couldn't remove your photo. Please try again.");

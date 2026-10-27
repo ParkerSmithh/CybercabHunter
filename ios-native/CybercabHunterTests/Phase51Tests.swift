@@ -351,6 +351,25 @@ struct AccountConsistencyTests {
         #expect(model.settings?.displayName == "Gina G", "nothing else changes")
     }
 
+    @Test func aGoogleAccountWithoutAGooglePictureOnRecordCanGetItBack() async throws {
+        // An upload from before the Google picture was kept: removing it leaves initials,
+        // and the editor offers (and, after a removal, runs) a Google sign-in to record it.
+        let stub = StubServer()
+        stub.responses = [
+            "GET /api/profile": (200, CommunityStub.fixture("profile-custom-avatar-no-google")),
+            "DELETE /api/profile/avatar": (200, CommunityStub.fixture("avatar-removed-initials"))
+        ]
+        let model = AccountModel()
+        await model.load(api: stub.api())
+        #expect(model.settings?.googleLinked == true && model.settings?.canRestoreGooglePhoto == false, "an upload is showing: nothing to restore yet")
+        #expect(await model.removeAvatar(api: stub.api()) == nil)
+        #expect(model.settings?.avatarUrl == nil && model.settings?.canRestoreGooglePhoto == true)
+        let google: ProfileResponse = try TestFixtures.decode("profile-google-avatar")
+        #expect(!google.user.canRestoreGooglePhoto, "a Google picture showing: nothing to restore")
+        let older: ProfileResponse = try TestFixtures.decode("profile")
+        #expect(!older.user.canRestoreGooglePhoto, "an older server (no google_linked): as before")
+    }
+
     @Test func theAppIsCalledCybercabHunter() {
         #expect(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String == "Cybercab Hunter")
         #expect(Bundle.main.bundleIdentifier == "com.cybercabhunter.native")

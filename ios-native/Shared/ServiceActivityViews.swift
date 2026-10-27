@@ -6,15 +6,16 @@ import SwiftUI
 // the green LIVE NOW eyebrow, the white uppercase headline, the gold
 // "Service ends in" line, the service day on a 24-hour track (the window, the
 // part already run, now), and the gold Cybercab (CybercabLive, from
-// public/images/CybercabLive.png) over a soft gold light and a dashed road. Parked: sky blue,
-// the car greyed and dimmed, no road, no light.
+// public/images/CybercabLive.png) over a soft gold light (no road: the
+// banner's dashed road is left to the website and the app's Home card).
+// Parked: sky blue, the car greyed and dimmed, no light.
 //
 // Motion: Live Activities can't run the banner's continuous animations (the
 // bobbing car, the streaming road, the pinging dot). What moves here is what
 // the system draws itself: the countdown (Text(timerInterval:)) and the gold
 // run filling the service window up to now (ProgressView(timerInterval:)),
-// whose leading edge stands in for the banner's "now" marker. The road and
-// the dot's ring are drawn still; the car slides in when the state changes.
+// whose leading edge stands in for the banner's "now" marker. The dot's
+// ring is drawn still; the car slides in when the state changes.
 // Shared so the app's tests can render each presentation.
 
 enum ServiceActivityPalette {
@@ -44,7 +45,7 @@ struct ServiceActivityDisplay {
     let openLabel: String
     let closeLabel: String
 
-    /// Live and up to date: the gold car, the road, the light.
+    /// Live and up to date: the gold car and the light.
     var lit: Bool { live && !stale }
     var accent: Color { stale ? ServiceActivityPalette.fog : (live ? ServiceActivityPalette.live : ServiceActivityPalette.parked) }
     var badge: String { stale ? "NOT UPDATED" : (live ? "LIVE NOW" : "PARKED") }
@@ -211,60 +212,26 @@ struct ServiceDayTrack: View {
     }
 }
 
-/// The dashed gold road the banner's car drives on: the banner's 12 px dashes,
-/// 14 px gaps and 2 px line at the Live Activity's scale, gold at 55%, fading at
-/// both ends. Drawn still: the banner scrolls it (26 px every 0.8 s), and a
-/// Live Activity has no way to run that motion (see the note at the top).
-struct ServiceRoad: View {
-    var body: some View {
-        GeometryReader { g in
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: g.size.height / 2))
-                p.addLine(to: CGPoint(x: g.size.width, y: g.size.height / 2))
-            }
-            .stroke(ServiceActivityPalette.gold.opacity(0.55), style: StrokeStyle(lineWidth: g.size.height, dash: [6, 7]))
-        }
-        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.35),
-                                     .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
-                             startPoint: .leading, endPoint: .trailing))
-    }
-}
-
 /// The gold Cybercab (CybercabLive.png, its own proportions and transparency),
-/// optionally as the banner's scene: the soft gold light behind it and the road
-/// directly under its wheels, both inside its own frame, so neither reaches
-/// the text beside it or the service-day track below. Parked or stale: grey
-/// and dim, no road, no light, as on the banner.
+/// optionally with the soft gold light behind it, kept inside its own frame so
+/// it never reaches the text beside it or the service-day track below. Parked
+/// or stale: grey and dim, no light, as on the banner.
 struct ServiceCarArt: View {
     let d: ServiceActivityDisplay
     var width: CGFloat
     var scene = false
     /// The trimmed image's width over height.
     static let aspect: CGFloat = 1406 / 567
-    /// The road's line and the gap above it.
-    static let road: CGFloat = 1.5, roadGap: CGFloat = 1.5
-
-    /// The height the art takes: the car, plus the road's row in a scene.
-    static func height(width: CGFloat, scene: Bool) -> CGFloat {
-        width / aspect + (scene ? roadGap + road : 0)
-    }
-
     var body: some View {
         let h = width / Self.aspect
         ZStack {
             if scene && d.lit {
                 EllipticalGradient(colors: [ServiceActivityPalette.gold.opacity(0.22), .clear], center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5)
-                    .frame(width: width * 1.4, height: Self.height(width: width, scene: true))
+                    .frame(width: width * 1.4, height: h)
             }
-            VStack(spacing: Self.roadGap) {
-                car(h)
-                if scene {
-                    ServiceRoad().frame(width: width, height: Self.road)
-                        .opacity(d.lit ? 1 : 0)
-                }
-            }
+            car(h)
         }
-        .frame(width: width, height: Self.height(width: width, scene: scene))
+        .frame(width: width, height: h)
         .accessibilityHidden(true)
     }
 
@@ -328,7 +295,7 @@ struct ServiceExpandedLeading: View {
     var body: some View { ServiceEyebrow(d: d, size: 11).padding(.leading, 6) }
 }
 
-/// Expanded, bottom: the headline and countdown, with the car on its road
+/// Expanded, bottom: the headline and countdown, with the car
 /// center-right beside them; then, in rows of their own, the service-day
 /// track and the hours.
 struct ServiceExpandedBottom: View {
