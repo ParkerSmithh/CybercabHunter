@@ -1,0 +1,22 @@
+{
+ "city": "dallas",
+ "name": "Dallas",
+ "generated_at": "2026-10-27T21:02:43.330Z",
+ "hero": {
+  "city": {
+   "vehicles": 0,
+   "rides": 0,
+   "sightings": 55
+  }
+ },
+ "area": {
+  "vehicles": 0,
+  "vehicles_added_7d": 0,
+  "vehicles_added_prev_7d": 0
+ },
+ "sightings": {
+  "total": 55,
+  "last_7_days": 8,
+  "prev_7_days": 3
+ }
+}

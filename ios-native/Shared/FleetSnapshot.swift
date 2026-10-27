@@ -70,11 +70,21 @@ struct FleetSnapshot: Codable, Equatable, Sendable {
     }
 }
 
-/// Links a widget opens in the app: `cybercabhunter-widget://<tab>[?city=…]`
+/// Links a widget opens in the app: `cybercabhunter-widget://<tab>[?city=…]`,
+/// `…://community?section=leaderboard|progress|social` and `…://post?id=…`
 /// (AppRouter.open(widgetURL:)). Separate from the sign-in callback scheme.
 enum WidgetLink {
     static let scheme = "cybercabhunter-widget"
     static func url(_ tab: String, city: String? = nil) -> URL {
-        URL(string: "\(scheme)://\(tab)\(city.map { "?city=\($0)" } ?? "")")!
+        url(tab, query: city.map { ["city": $0] } ?? [:])
     }
+    static func url(_ tab: String, query: [String: String]) -> URL {
+        var c = URLComponents()
+        c.scheme = scheme
+        c.host = tab
+        if !query.isEmpty { c.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
+        return c.url!
+    }
+    static func community(_ section: String) -> URL { url("community", query: ["section": section]) }
+    static func post(_ id: String) -> URL { url("post", query: ["id": id]) }
 }

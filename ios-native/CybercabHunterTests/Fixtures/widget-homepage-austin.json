@@ -1,0 +1,22 @@
+{
+ "city": "austin",
+ "name": "Austin",
+ "generated_at": "2026-10-27T21:02:43.062Z",
+ "hero": {
+  "city": {
+   "vehicles": 214,
+   "rides": 8,
+   "sightings": 327
+  }
+ },
+ "area": {
+  "vehicles": 214,
+  "vehicles_added_7d": 32,
+  "vehicles_added_prev_7d": 18
+ },
+ "sightings": {
+  "total": 327,
+  "last_7_days": 110,
+  "prev_7_days": 73
+ }
+}

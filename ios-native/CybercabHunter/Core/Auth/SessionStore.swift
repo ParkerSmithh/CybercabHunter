@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AuthenticationServices
+import WidgetKit
 
 /// The signed-in rider, app-wide. The session is the website's own 90-day
 /// bearer token (the same account and the same sessions as the website),
@@ -51,7 +52,10 @@ final class SessionStore {
     func refreshAccount() async {
         do {
             let me: MeResponse = try await api.get("/api/me", authenticated: true, fresh: true)
-            if me.authenticated, let user = me.user { state = .signedIn(user) } else { signOut() }
+            if me.authenticated, let user = me.user {
+                state = .signedIn(user)
+                shareWithWidgets(token)
+            } else { signOut() }
         } catch APIError.unauthorized {
             signOut()
         } catch is CancellationError {
@@ -100,8 +104,21 @@ final class SessionStore {
             Task { await PushCoordinator.shared.unregister(api: snapshot) }
         }
         keychain.delete(KeychainTokenProvider.account)
+        shareWithWidgets(nil)
         state = .signedOut
         Task { await ImagePipeline.shared.removeAll() }
+    }
+}
+
+extension SessionStore {
+    /// My Spotting Progress and the leaderboard widget read the rider's own data
+    /// with this session (Shared/Widgets/WidgetSession.swift): a confirmed
+    /// session is shared, a signed-out one removed, and those widgets refresh.
+    /// UI tests' sessions are never shared.
+    fileprivate func shareWithWidgets(_ token: String?) {
+        guard !DebugLaunch.usesTestSession, WidgetSession.write(token) else { return }
+        WidgetCenter.shared.reloadTimelines(ofKind: "CybercabSpottingProgress")
+        WidgetCenter.shared.reloadTimelines(ofKind: "CybercabLeaderboard")
     }
 }
 
