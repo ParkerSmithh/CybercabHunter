@@ -1,0 +1,25 @@
+Full unit suite
+✔ Test run with 221 tests in 45 suites passed after 7.895 seconds.
+** TEST SUCCEEDED **
+
+Initial three focused UI cases
+Test Case '-[CybercabHunterUITests.LocationUITests testCompactOutsideStatusKeepsNearestBoundaryAction]' passed (32.224 seconds).
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:12: error: -[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras] : XCTAssertTrue failed
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras]' failed (41.485 seconds).
+	 Executed 2 tests, with 1 failure (0 unexpected) in 73.708 (73.770) seconds
+Test Case '-[CybercabHunterUITests.ZonesUITests testZonesHeatmapAndReplayAreNative]' passed (70.634 seconds).
+	 Executed 3 tests, with 1 failure (0 unexpected) in 144.342 (144.424) seconds
+	 Executed 3 tests, with 1 failure (0 unexpected) in 144.342 (144.427) seconds
+** BUILD INTERRUPTED **
+
+Predicate-readiness retry
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:14: error: -[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras] : XCTAssertEqual failed: ("XCTWaiterResult(rawValue: 2)") is not equal to ("XCTWaiterResult(rawValue: 1)")
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras]' failed (63.402 seconds).
+** TEST FAILED **
+
+Final direct-readiness retry
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras]' passed (22.582 seconds).
+** TEST SUCCEEDED **
+
+Final Simulator build
+** BUILD SUCCEEDED **

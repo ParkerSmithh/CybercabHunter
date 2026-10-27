@@ -1,0 +1,34 @@
+{
+  "native_unit_tests_passed": 177,
+  "native_unit_tests_failed": 0,
+  "release_build": "passed (unsigned; not installed)",
+  "existing_intents": 19,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 23,
+  "exact_compiled_command_expansions": [
+    "Cybercab Hunter sightings in Austin today",
+    "Cybercab Hunter Dallas weekly sightings",
+    "Cybercab Hunter Weekly sightings comparison"
+  ],
+  "captured_public_data_Central_date": "2026-10-23",
+  "direct_historical_response_replay": {
+    "Austin today": 12,
+    "Austin this week": 68,
+    "Dallas today": 1,
+    "Dallas this week": 4,
+    "weekly comparison": "68 vs 4; difference 64"
+  },
+  "physical_device_manual_Dallas_weekly": "owner reported 4; entered and answer_ready observed",
+  "physical_device_Austin_voice_control": "entered and answer_ready observed",
+  "failing_voice_attempts": "no matching invocation events observed in filtered capture; not conclusive proof of absence",
+  "most_likely_failure_stage": "before intended intent execution: Siri matching/routing/parameter resolution",
+  "exact_internal_Siri_root_cause": "not confirmed",
+  "new_short_phrase_voice_recognition": "unverified pending separately approved installation and owner repetition",
+  "public_endpoint_requests": 2,
+  "physical_device_installed_or_reset": false,
+  "backend_modified": false,
+  "committed_pushed_merged_deployed": false,
+  "native_unit_tests_skipped": 0,
+  "training_corpus": "Apple training processor explicitly run against completed unsigned Release metadata; generated and archived successfully",
+  "exact_metadata_and_corpus_check": "passed"
+}

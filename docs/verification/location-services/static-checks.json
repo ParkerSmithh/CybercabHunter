@@ -1,0 +1,9 @@
+{
+  "newLocationSourceChecks": "passed",
+  "backendAndSubmissionPayload": "unchanged",
+  "intentCount": 22,
+  "alwaysAuthorization": false,
+  "backgroundLocation": false,
+  "continuousUpdates": false,
+  "coordinateNetworkingInNewServices": false
+}

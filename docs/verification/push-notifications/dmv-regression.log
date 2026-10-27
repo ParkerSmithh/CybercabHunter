@@ -1,0 +1,43 @@
+(node:3754) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+1. Model split and dates
+  ok — TxDMV's model field decides
+  ok — the VIN only fills in a blank model (5YJA = Cybercab, 7SAY = Model Y)
+  ok — snapshot dates are Central dates
+2. The first poll: the baseline
+  ok — a snapshot with the true counts
+  ok — it read every page, sorted by VIN, 100 at a time
+  ok — one row: date, counts, authorization, the roster (source fields only), poll time
+  ok — every VIN recorded as baseline (its real registration date is unknown)
+  ok — the panel: total 5 (3 / 2), nothing counted as new on day one
+3. Same day again: never overwritten
+  ok — a second run the same day is skipped, the row unchanged
+4. Later days: new VINs, a removed VIN
+  ok — day three: 7 (5 Cybercabs, 2 Model Ys)
+  ok — new in the window = first listed after the baseline and still listed: 3 (2 Cybercabs, 1 Model Y)
+  ok — new in the last 7 days counts from the latest snapshot
+  ok — the chart's points are exactly the snapshot rows
+  ok — history is kept: three rows, oldest untouched
+5. A failed or partial pull writes nothing
+  ok — TxDMV down: no row, the error recorded
+  ok — pages that don't add up to the source's total: no row
+  ok — the panel still shows the last good snapshot with its real poll time, and says the latest check failed
+6. Matched to tracked plates
+  ok — exact VIN match (case / spaces ignored) on publicly eligible vehicles only: 1
+  ok — ...of which spotted (approved sighting) in the last 30 days: 1
+7. Every VIN
+  ok — today's roster only (the removed Model Y is gone), sorted by VIN
+  ok — exactly the source's fields: VIN, make, model, model year — nothing else
+  ok — filter by model and search by VIN
+8. The imported history (before our first snapshot only, approximate)
+  ok — imported points come first, flagged approx, and stop before our first snapshot
+  ok — our own points are exactly the snapshot rows, untouched
+  ok — the source is named and credited, up to the day polling began
+  ok — a 30-day window reaching into it counts the change: 7 - 2 = +5 (+4 Cybercab, +1 Model Y), approx
+  ok — a 7-day window inside our own polling still counts by VIN (3), as before
+  ok — the snapshot itself is always our own latest pull
+  ok — the shipped history ends before our first real snapshot (2026-10-09) and never decreases
+
+29 passed, 0 failed

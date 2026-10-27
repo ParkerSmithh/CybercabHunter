@@ -1,0 +1,104 @@
+{
+  "update": "Siri Natural Language Update",
+  "version": "0.1",
+  "build": "4",
+  "configuration": "signed Release",
+  "bundle_id": "com.cybercabhunter.native",
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 38,
+  "finite_expansions_with_synonyms": 365,
+  "unique_finite_phrases": 365,
+  "dynamic_entity_templates": 1,
+  "budget_with_ten_suggested_vehicles": 375,
+  "collisions": {},
+  "existing_phrase_templates_preserved": 22,
+  "cross_intent_structural_collisions": 0,
+  "sightings_and_dmv_background_and_authentication": "validated",
+  "voice_recognition": "partial owner-reported results: Round 1 5/6 worked; Round 2 3 worked, 2 wrong results, 6 failed, 1 not tested",
+  "unit_tests_passed": 206,
+  "unit_test_suites": 42,
+  "unit_result_bundle": "/tmp/cch-natural-final-tests.xcresult",
+  "unit_log": "/tmp/cch-natural-final-tests.log",
+  "metadata_regression_tests_passed": 15,
+  "release_build": "passed",
+  "release_log": "/tmp/cch-natural-build4.log",
+  "signature_deep_strict": "passed using macOS trust services (sandboxed trust lookup unavailable)",
+  "entitlement_identity_checks": {
+    "app": {
+      "application_identifier": "JC2HZNJ623.com.cybercabhunter.native",
+      "team_identifier": "JC2HZNJ623",
+      "get_task_allow": true,
+      "entitlement_keys": [
+        "application-identifier",
+        "com.apple.developer.team-identifier",
+        "get-task-allow"
+      ]
+    },
+    "widget": {
+      "application_identifier": "JC2HZNJ623.com.cybercabhunter.native.widgets",
+      "team_identifier": "JC2HZNJ623",
+      "get_task_allow": true,
+      "entitlement_keys": [
+        "application-identifier",
+        "com.apple.developer.team-identifier",
+        "get-task-allow"
+      ]
+    }
+  },
+  "executable_uuid": "D67B4F0E-C163-3C93-AA7A-AD79A63B1BC7",
+  "executable_sha256": "e9983eba3f64fa26add2237fc9e144add9809b739805e2f11e3dd91328d3a860",
+  "metadata_sha256": "dfc4d2b6ea3b151b8ba2af5442ff563b171b7fe79a01cfec779e134e4976480f",
+  "training_corpus_sha256": "fb7d5ad783fd0515337f6e8e2dd6418926d5443424d756e30efd3202849cbe46",
+  "unchanged_growth_source_checks": {
+    "FleetGrowthIntent": {
+      "file": "SiriIntents.swift",
+      "kind": "struct",
+      "sha256": "d531f60d78f50ab00a993e96d3d97662d9a1a219a8da86aaf1630ca4c19d1edf"
+    },
+    "GrowthPeriod": {
+      "file": "SiriIntents.swift",
+      "kind": "enum",
+      "sha256": "05e0dc8cbaef87bb066fc70ae5b7c652db4abae9f1f612518f18ca1d434a15df"
+    },
+    "GrowthModel": {
+      "file": "SiriQuestions.swift",
+      "kind": "enum",
+      "sha256": "3d7e7730cf978bac3e2957308dff835936cbbc10be3ecb0e3bdf8030bdf3830e"
+    }
+  },
+  "growth_discovery": "unresolved; separate investigation; source/vocabulary/phrases unchanged",
+  "artifact_path": "/tmp/cch-natural-release/Build/Products/Release-iphoneos/CybercabHunter.app",
+  "physical_device_test_cases": 40,
+  "physical_device_tests_run": 17,
+  "installed_on_iphone": true,
+  "git_diff_check": "passed",
+  "backend_api_calculations": "unchanged",
+  "committed_pushed_merged_deployed": false,
+  "limitations": [
+    "Siri routing and semantic recognition are not proven by metadata tests.",
+    "App-name-free requests are experimental.",
+    "The app cannot recover city/metric/period information Siri discards before invocation. The existing global action remains and explicitly labels global scope.",
+    "Dynamic arbitrary vehicle names are not exhaustively enumerable; budget uses the current maximum of ten suggested vehicles.",
+    "Growth discovery and calendar-week Growth requests are not fixed by this update."
+  ],
+  "installation_record": "iphone-installation.json",
+  "installed_startup_identifiers_match_validated_artifact": true,
+  "physical_device_tests_passed_owner_reported": 8,
+  "physical_device_tests_did_not_invoke": 1,
+  "physical_device_results_record": "round-1-results.md",
+  "physical_device_evidence": "owner report; runtime intent parameters/transcripts not captured",
+  "round_2_plan": "round-2-test-plan.md",
+  "round_2_tests_run": 11,
+  "physical_device_count_basis": "attempts across rounds, not unique cases from the 40-case master matrix",
+  "round_2_results": {
+    "worked": 3,
+    "wrong_result": 2,
+    "failed": 6,
+    "not_tested": 1,
+    "personal_shortcut_case_13": "not reported"
+  },
+  "round_2_picker_clarification": "owner: gave me every shortcut",
+  "reliability_investigation": "siri-reliability-investigation.md",
+  "reliability_source_changes": "not implemented; awaiting owner approval"
+}

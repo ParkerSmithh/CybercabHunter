@@ -1,0 +1,21 @@
+{
+  "device_model": "iPhone 16 Pro",
+  "bundle_identifier": "com.cybercabhunter.native",
+  "version": "0.1 (2)",
+  "signed_release_build": "passed",
+  "signed_metadata": {
+    "app_intents": 19,
+    "advertised_shortcuts": 10,
+    "phrase_templates": 54
+  },
+  "installation": "in-place update succeeded",
+  "uninstall_performed": false,
+  "reset_performed": false,
+  "bundle_id_changed": false,
+  "container_path_changed_by_ios": true,
+  "existing_preferences_file_last_modified": "2026-10-24T01:40:48.000Z",
+  "normal_app_launch": "succeeded; startup requests App Shortcuts parameter refresh",
+  "on_device_shortcuts_visibility": "verified from iPhone screenshot: new Austin/Dallas city-and-period choices visible, including Austin today and Dallas this week",
+  "siri_voice_recognition": "unverified; awaiting user tests",
+  "committed_pushed_merged_deployed": false
+}

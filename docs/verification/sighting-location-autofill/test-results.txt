@@ -1,0 +1,17 @@
+Final unit suite
+✔ Test run with 231 tests in 46 suites passed after 8.375 seconds.
+** TEST SUCCEEDED **
+
+Targeted iPhone 16 Pro UI checks
+Test Case '-[CybercabHunterUITests.LocationUITests testCompactOutsideStatusKeepsNearestBoundaryAction]' passed (29.892 seconds).
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementWithoutCameras]' passed (18.375 seconds).
+	 Executed 2 tests, with 0 failures (0 unexpected) in 48.267 (48.288) seconds
+Test Case '-[CybercabHunterUITests.SightingAutofillUITests testDisclosureAndCancelPreserveManualForm]' passed (24.198 seconds).
+Test Case '-[CybercabHunterUITests.SightingAutofillUITests testManualFallbackStaysEditableWithoutLocationPermission]' passed (55.378 seconds).
+	 Executed 2 tests, with 0 failures (0 unexpected) in 79.576 (79.614) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 127.843 (127.962) seconds
+	 Executed 4 tests, with 0 failures (0 unexpected) in 127.843 (128.068) seconds
+** TEST SUCCEEDED **
+
+Final Simulator build
+** BUILD SUCCEEDED **

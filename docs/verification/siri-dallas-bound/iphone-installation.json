@@ -1,0 +1,26 @@
+{
+  "installed_at_utc": "2026-10-24T04:39:21.114003+00:00",
+  "device": "connected iPhone 16 Pro",
+  "bundle_id": "com.cybercabhunter.native",
+  "configuration": "signed Release",
+  "version": "0.1",
+  "build": "2",
+  "installation": "successful in-place update",
+  "installation_bundle_path": "/private/var/containers/Bundle/Application/B81182D9-8D9B-4E57-843E-4C2132CDA4BA/CybercabHunter.app/",
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 22,
+  "parameter_free_dallas_actions": [
+    "DallasFleetSummaryIntent",
+    "DallasServiceZoneIntent"
+  ],
+  "metadata_sha256": "f3ed18b84bd949e18542e0a9a0c684abbbfff54e4c88c454790b939cf70ed91b",
+  "metadata_verification": "exact signed source bundle installed; Apple training corpus and guard passed",
+  "launch": "successful; startup requests updateAppShortcutParameters",
+  "private_siri_registry_readback": "not available",
+  "uninstall_or_reset": false,
+  "permissions_changed": false,
+  "backend_modified": false,
+  "committed_pushed_merged_deployed": false,
+  "voice_recognition": "unverified pending owner testing"
+}

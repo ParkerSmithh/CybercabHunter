@@ -1,0 +1,90 @@
+{
+  "news": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] Major Cybercab News",
+        "body": "Synthetic major story for the approved test device."
+      },
+      "sound": "default",
+      "thread-id": "news"
+    },
+    "link": "/news?article=sandbox-news"
+  },
+  "dmv": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] 2 New DMV Entries",
+        "body": "2 synthetic Tesla/Cybercab DMV records."
+      },
+      "sound": "default",
+      "thread-id": "dmv"
+    },
+    "link": "/dmv"
+  },
+  "daily": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] Your Cybercab Daily Report",
+        "body": "Synthetic report: 1 new Cybercabs, 2 DMV additions, 3 sightings, 4 camera detections."
+      },
+      "sound": "default",
+      "thread-id": "daily"
+    },
+    "link": "/?daily=2026-10-24"
+  },
+  "registry": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] New Cybercab Identified",
+        "body": "1 synthetic public Cybercab."
+      },
+      "sound": "default",
+      "thread-id": "registry"
+    },
+    "link": "/vehicles/a1b2c3d4-0000-4000-8000-000000000001"
+  },
+  "sightings": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] New Cybercab Sighting",
+        "body": "1 synthetic approved public sighting."
+      },
+      "sound": "default",
+      "thread-id": "sightings"
+    },
+    "link": "/sightings?sighting=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "cameras": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] New Cybercab Detection",
+        "body": "1 synthetic camera detection."
+      },
+      "sound": "default",
+      "thread-id": "cameras"
+    },
+    "link": "/heatmap?city=austin"
+  },
+  "community": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] Community Interaction",
+        "body": "Synthetic interaction with the test account content."
+      },
+      "sound": "default",
+      "thread-id": "community"
+    },
+    "link": "/community?post=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "weekly": {
+    "aps": {
+      "alert": {
+        "title": "[SANDBOX] Your Weekly Cybercab Recap",
+        "body": "Synthetic seven-day recap: 7 new Cybercabs, 14 DMV additions, 21 sightings, 28 camera detections."
+      },
+      "sound": "default",
+      "thread-id": "weekly"
+    },
+    "link": "/?daily=2026-10-24&days=7"
+  }
+}

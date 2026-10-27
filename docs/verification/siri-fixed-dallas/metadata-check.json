@@ -1,0 +1,8 @@
+{
+  "advertised_shortcuts": 10,
+  "phrase_templates": 22,
+  "cross_intent_structural_collisions": 0,
+  "sightings_and_dmv_background_and_authentication": "validated",
+  "voice_recognition": "not tested",
+  "exact_short_commands_and_training_values": "validated (not voice recognition)"
+}

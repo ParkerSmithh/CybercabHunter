@@ -1,0 +1,26 @@
+
+ ⛅️ wrangler 4.133.0
+────────────────────
+✨ Read 469 files from the assets directory /Users/parkersmith/Downloads/Website/public
+Total Upload: 853.01 KiB / gzip: 205.06 KiB
+Your Worker has access to the following bindings:
+Binding                                                                        Resource                  
+env.TESLA_SESSIONS (3b4c90b3fd1b40efbc5722fea72d90c0)                          KV Namespace              
+env.cybercabhunter_db (cybercabhunter-db)                                      D1 Database               
+env.EVIDENCE_BUCKET (cybercabhunter-evidence)                                  R2 Bucket                 
+env.NEWS_THUMBS (cybercabhunter-news-thumbs)                                   R2 Bucket                 
+env.AI                                                                         AI                        
+env.MUSE_RIDES_LIMITER (30 requests/60s)                                       Rate Limit                
+env.ACCOUNT_DELETE_LIMITER (5 requests/60s)                                    Rate Limit                
+env.REVIEWS_LIMITER (20 requests/60s)                                          Rate Limit                
+env.SEARCH_LIMITER (60 requests/60s)                                           Rate Limit                
+env.ASSETS                                                                     Assets                    
+env.FRONTEND_URL ("https://cybercabhunter.com/")                               Environment Variable      
+env.RECEIPT_DOMAIN ("cybercabhunter.com")                                      Environment Variable      
+env.TESLA_RIDES_REDIRECT_URI ("https://cybercabhunter.com/api/tesla/...")      Environment Variable      
+env.TESLA_RIDES_AUDIENCE ("https://fleet-api.prd.na.vn.cloud.tes...")          Environment Variable      
+env.TESLA_RIDES_SCOPES ("openid offline_access")                               Environment Variable      
+env.GOOGLE_REDIRECT_URI ("https://cybercabhunter.com/oauth/goog...")           Environment Variable      
+env.GMAIL_REDIRECT_URI ("https://cybercabhunter.com/api/gmail/...")            Environment Variable      
+
+--dry-run: exiting now.

@@ -20,12 +20,15 @@ struct OpenZonesIntent: AppIntent {
     static let description = IntentDescription("Shows the Cybercab service zone map, with live camera sightings, for Austin or Dallas.")
     static let openAppWhenRun = true
 
-    @Parameter(title: "City", default: .austin) var city: ServiceCity
+    @Parameter(title: "City", requestValueDialog: "Which city, Austin or Dallas?") var city: ServiceCity
 
     static var parameterSummary: some ParameterSummary { Summary("Open the Zones map for \(\.$city)") }
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        guard $city.diagnosticPresence != .unset else {
+            throw $city.needsValueError("Which city, Austin or Dallas?")
+        }
         AppRouter.shared.openZones(city.rawValue)
         return .result()
     }
@@ -45,26 +48,121 @@ struct SubmitSightingIntent: AppIntent {
 
 struct FleetStatsIntent: AppIntent {
     static let title: LocalizedStringResource = "Check the Cybercab Fleet"
-    static let description = IntentDescription("Tells you how many vehicles Cybercab Hunter's public registry documents and how many Tesla robotaxi VINs the Texas DMV roster lists (kept apart: neither is the number in service right now). With a city: that city's registry and the last 24 hours of sightings.")
+    static let description = IntentDescription("Tells you how many vehicles Cybercab Hunter's public registry documents and how many Tesla robotaxi VINs the Texas DMV roster lists (kept apart: neither is the number in service right now). With a city: that city's registry and the last 24 hours of sightings.", searchKeywords: ["fleet", "public registry", "vehicles", "city statistics"])
 
     /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
     @Parameter(title: "City") var city: ServiceCity?
-    static var parameterSummary: some ParameterSummary { Summary("Cybercab fleet in \(\.$city)") }
+    @Parameter(title: "Statistic", default: .overview) var metric: FleetMetric
+    @Parameter(title: "City activity question") var activity: CityActivityQuestion?
+    @Parameter(title: "Camera city and period") var cameraQuestion: CameraCityPeriod?
+    @Parameter(title: "Public registry city") var registryCity: ServiceCity?
+    @Parameter(title: "Approved sightings comparison period") var comparisonPeriod: ActivityPeriod?
+    @Parameter(title: "Activity metric") var activityMetric: CityMetric?
+    @Parameter(title: "Activity period") var activityPeriod: ActivityPeriod?
+    static var parameterSummary: some ParameterSummary {
+        Summary("Check \(\.$activity)") { \.$cameraQuestion; \.$registryCity; \.$comparisonPeriod; \.$city; \.$metric; \.$activityMetric; \.$activityPeriod }
+    }
+
+    func resolvedActivity(traceID: String = UUID().uuidString, diagnosticIntent: String = "FleetStatsIntent") throws -> ActivitySelection? {
+        func clarify(_ reason: String) {
+            SiriDiagnostics.record(intent: diagnosticIntent, phase: "clarification_requested", id: traceID, selection: reason)
+        }
+        var candidates: [ActivitySelection] = []
+        if let cameraQuestion { candidates.append(.init(city: cameraQuestion.city, metric: .cameras, period: cameraQuestion.period)) }
+        if let registryCity { candidates.append(.init(city: registryCity, metric: .registry, period: .allTime)) }
+        if let comparisonPeriod { candidates.append(.init(city: nil, metric: .sightings, period: comparisonPeriod)) }
+        if let activity {
+            if activity.requiresClarification {
+                if activity == .clarifyActivity {
+                    clarify("unknown_activity")
+                    throw $activity.needsValueError("Which city, metric, and period?")
+                }
+                if activity == .clarifyCamerasThisWeek {
+                    guard activityMetric == nil || activityMetric == .cameras, activityPeriod == nil || activityPeriod == .thisWeek else {
+                        clarify("conflicting_context")
+                        throw $activity.needsValueError("This question is camera detections this week. Choose a matching activity.")
+                    }
+                    guard let city else { clarify("missing_city"); throw $city.needsValueError("Which city, Austin or Dallas?") }
+                    candidates.append(.init(city: city, metric: .cameras, period: .thisWeek))
+                } else {
+                    guard city == nil else { clarify("comparison_city_conflict"); throw $city.needsValueError("This compares both Austin and Dallas. Clear the single city or choose a single-city activity.") }
+                    guard let activityMetric else { clarify("missing_metric"); throw $activityMetric.needsValueError("Which metric: approved sightings, camera detections, public registry vehicles, recorded rides, or service area?") }
+                    let fixedPeriod: ActivityPeriod? = activity == .clarifyComparisonToday ? .today : nil
+                    if let fixedPeriod, let activityPeriod, fixedPeriod != activityPeriod {
+                        clarify("conflicting_period"); throw $activityPeriod.needsValueError("This comparison requests today. Choose today or a different activity.")
+                    }
+                    let timed = activityMetric == .sightings || activityMetric == .cameras
+                    if timed && fixedPeriod == nil && activityPeriod == nil {
+                        clarify("missing_period"); throw $activityPeriod.needsValueError("Which period: today, yesterday, this week, last seven days, last 24 hours, or all time?")
+                    }
+                    candidates.append(.init(city: nil, metric: activityMetric, period: timed ? (fixedPeriod ?? activityPeriod!) : .allTime))
+                }
+            } else { candidates.append(.init(city: activity.comparesCities ? nil : activity.city, metric: activity.metric, period: activity.period)) }
+        }
+        guard let selected = candidates.first else {
+            if activityMetric != nil || activityPeriod != nil {
+                clarify("missing_activity"); throw $activity.needsValueError("Which city activity or comparison do you want?")
+            }
+            return nil
+        }
+        let metricMatches = metric == .overview || (metric == .registry && selected.metric == .registry) || (metric == .rides && selected.metric == .rides)
+        guard candidates.allSatisfy({ $0 == selected }), city == nil || city == selected.city,
+              metricMatches, activityMetric == nil || activityMetric == selected.metric,
+              activityPeriod == nil || activityPeriod == selected.period else {
+            clarify("conflicting_values")
+            throw $activity.needsValueError("The supplied city, metric, or period selections disagree. Choose matching values.")
+        }
+        return selected
+    }
+
+    var diagnosticParameters: SiriDiagnostics.Parameters {
+        var p = SiriDiagnostics.Parameters()
+        p.cityState = $city.diagnosticPresence; p.metricState = $metric.diagnosticPresence
+        p.activityState = $activity.diagnosticPresence
+        p.city = city?.rawValue ?? "missing"; p.metric = metric.rawValue
+        p.activity = activity?.rawValue ?? "missing"
+        p.period = activity?.requiresClarification == true ? "unresolved" : (activity?.period.rawValue ?? "not_applicable")
+        p.selection = "activity=\(activity?.rawValue ?? "missing"),camera=\(cameraQuestion?.rawValue ?? "missing"),registry=\(registryCity?.rawValue ?? "missing"),comparison=\(comparisonPeriod?.rawValue ?? "missing"),metric=\(activityMetric?.rawValue ?? "missing"),period=\(activityPeriod?.rawValue ?? "missing")"
+        return p
+    }
+
+    /// Defaults remain valid for the existing global overview. A phrase-bound
+    /// city activity must never silently override contradictory saved inputs.
+    func validateSelection() throws {
+        _ = try resolvedActivity()
+    }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
-        let a = try await Self.answer(city: city)
-        return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.cars), openTitle: "Open Cars"))
+        var trace = SiriDiagnostics.Invocation("FleetStatsIntent", parameters: diagnosticParameters)
+        do {
+            trace.emit("parameters_received")
+            let selected = try resolvedActivity(traceID: trace.id)
+            let a: SiriAnswer
+            if let selected {
+                trace.parameters.city = selected.city?.rawValue ?? "austin,dallas"
+                trace.parameters.metric = selected.metric.rawValue; trace.parameters.period = selected.period.rawValue
+                trace.emit("parameters_resolved")
+                trace.emit("delegating_CityActivityIntent")
+                a = try await CityActivityIntent.answer(selected, selection: activity?.rawValue ?? "domain_binding", presence: activity == nil ? .derived : trace.parameters.activityState, traceID: trace.id)
+            }
+            else { a = try await Self.answer(city: city, metric: metric, diagnostics: trace) }
+            trace.complete(a.figures.isEmpty ? "no_count_available" : "answer_composed")
+            return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.cars), openTitle: "Open Cars"))
+        } catch { trace.fail(error); throw error }
     }
 }
 
 /// What Siri says when the data can't be reached.
 enum IntentFailure: Error, CustomLocalizedStringResourceConvertible {
-    case unavailable, notFound
+    case unavailable, notFound, cityRequired, cityMismatch, activityRequired
     case locationNotAllowedYet, locationDenied, locationUnavailable, outsideServiceAreas
     var localizedStringResource: LocalizedStringResource {
         switch self {
+        case .activityRequired: "Choose a city, metric, and period for Cybercab activity."
+        case .cityRequired: "Choose Austin or Dallas for the sightings action in Shortcuts, then try again."
+        case .cityMismatch: "Cybercab Hunter could not verify the requested city. Please try again."
         case .unavailable: "Cybercab Hunter couldn't be reached. Check your connection and try again."
         case .notFound: "That Cybercab isn't in the public registry."
         case .locationNotAllowedYet: "To check near you, open Cybercab Hunter, then Account, Siri & Shortcuts, and allow location. Or ask for Austin or Dallas sightings."
@@ -265,81 +363,73 @@ enum SpotlightRecents {
 
 // MARK: - Siri phrases and the Shortcuts app
 
-/// Ten App Shortcuts (Apple's limit per app). Every other action
-/// (Quick Status, Open Sightings for a city, Submit a Sighting, Open a Cybercab)
-/// is still in the Shortcuts app and Siri can run it by name. Siri matches
-/// these phrases loosely, not word for word.
+/// Ten advertised App Shortcuts. Check Fleet also exposes city activity
+/// questions through a finite parameter. Fixed Dallas sightings/fleet actions
+/// take the former Open a Screen/Find a Cybercab slots; both original intents
+/// remain in the Shortcuts editor.
 struct CybercabShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: FleetStatsIntent(), phrases: [
-            "Check the Cybercab fleet in \(.applicationName)",
-            "How many Cybercabs are tracked in \(.applicationName)",
-            "How many Cybercabs is \(.applicationName) tracking",
             "\(.applicationName) fleet stats",
-            "How many Cybercabs are in \(\.$city) in \(.applicationName)",
-            "How many Cybercabs were spotted today in \(.applicationName)",
-            "Cybercab activity in \(\.$city) in \(.applicationName)"
+            "Fleet statistic \(\.$metric) in \(.applicationName)",
+            "City activity \(\.$activity) in \(.applicationName)",
+            "\(.applicationName) \(\.$activity)",
+            "Compare \(\.$activity) in \(.applicationName)",
+            "\(\.$activity) in \(.applicationName)",
+            "Give me \(\.$activity) in \(.applicationName)",
+            "Read Cybercab camera detections for \(\.$cameraQuestion) in \(.applicationName)",
+            "Read public registry fleet data for \(\.$registryCity) in \(.applicationName)",
+            "Compare approved Cybercab sightings in Austin and Dallas \(\.$comparisonPeriod) in \(.applicationName)"
         ], shortTitle: "Check Fleet", systemImageName: "chart.bar.fill")
         AppShortcut(intent: CheckDMVIntent(), phrases: [
-            "Check Cybercab DMV updates in \(.applicationName)",
-            "What's new in the \(.applicationName) DMV tracker",
-            "How many Cybercabs are in the Texas DMV dataset in \(.applicationName)"
+            "Read DMV data in \(.applicationName)",
+            "Read DMV statistic \(\.$question) in \(.applicationName)",
+            "Tell me \(\.$question) in \(.applicationName)"
         ], shortTitle: "DMV Updates", systemImageName: "doc.text.magnifyingglass")
-        AppShortcut(intent: OpenVehicleIntent(), phrases: [
-            "Find a Cybercab in \(.applicationName)",
-            "Find \(\.$target) in \(.applicationName)",
-            "Look up \(\.$target) in \(.applicationName)"
-        ], shortTitle: "Find a Cybercab", systemImageName: "magnifyingglass")
+        AppShortcut(intent: DallasFleetSummaryIntent(), phrases: [
+            "\(.applicationName) Dallas fleet summary",
+            "Fleet summary for Dallas in \(.applicationName)",
+            "How many Cybercabs are documented in Dallas in \(.applicationName)",
+            "Give me Dallas Cybercab fleet stats in \(.applicationName)",
+            "How many Cybercabs are in Dallas in \(.applicationName)"
+        ], shortTitle: "Dallas Fleet", systemImageName: "chart.bar.fill")
         AppShortcut(intent: RecentSightingsIntent(), phrases: [
+            "\(.applicationName) sightings in \(\.$question)",
             "Show the latest Cybercab sightings in \(.applicationName)",
-            "Check Cybercab sightings in \(\.$city) in \(.applicationName)",
-            "\(.applicationName) sightings in \(\.$city)",
-            "How many Cybercabs were spotted in \(\.$city) today in \(.applicationName)"
+            "Any Cybercabs spotted in \(\.$question) in \(.applicationName)",
+            "How many Cybercabs were spotted in \(\.$question) in \(.applicationName)",
+            "Approved Cybercab sightings in \(\.$question) in \(.applicationName)",
+            "Count approved Cybercab sightings for \(\.$question) in \(.applicationName)"
         ], shortTitle: "Recent Sightings", systemImageName: "camera.viewfinder")
-        AppShortcut(intent: OpenScreenIntent(), phrases: [
-            "Open \(\.$destination) in \(.applicationName)",
-            "Show \(\.$destination) in \(.applicationName)",
-            "Show the Cybercab map in \(.applicationName)",
-            "Open \(.applicationName) alert settings"
-        ], shortTitle: "Open a Screen", systemImageName: "rectangle.stack")
+        AppShortcut(intent: DallasWeeklySightingsIntent(), phrases: [
+            "\(.applicationName) Dallas weekly sightings",
+            "Dallas Cybercab sightings this week in \(.applicationName)"
+        ], shortTitle: "Dallas Weekly", systemImageName: "camera.viewfinder")
         AppShortcut(intent: DailyBriefingIntent(), phrases: [
             "\(.applicationName) briefing",
             "Give me my \(.applicationName) briefing",
-            "\(.applicationName) rundown",
-            "Give me my \(.applicationName) rundown",
-            "Summarize \(.applicationName)",
-            "\(.applicationName) summary",
-            "Give me a \(.applicationName) data summary",
-            "Give me a rundown of \(.applicationName) data",
             "Give me a rundown of the \(.applicationName) data",
-            "What's new in \(.applicationName)",
-            "What's happening in \(.applicationName) today",
-            "\(.applicationName) daily report",
-            "Give me a quick Cybercab status in \(.applicationName)",
-            "What's happening with Cybercabs in \(\.$city) in \(.applicationName)"
+            "What is happening with Cybercabs today in \(.applicationName)",
+            "Give me today's Cybercab briefing in \(.applicationName)",
+            "What is new with the Cybercab fleet in \(.applicationName)"
         ], shortTitle: "Daily Briefing", systemImageName: "newspaper")
         AppShortcut(intent: NearbySightingsIntent(), phrases: [
-            "Find Cybercab sightings near me in \(.applicationName)",
-            "Have any Cybercabs been spotted near me in \(.applicationName)",
-            "\(.applicationName) sightings nearby"
+            "Find Cybercab sightings near me in \(.applicationName)"
         ], shortTitle: "Nearby Sightings", systemImageName: "location.circle")
         AppShortcut(intent: FleetGrowthIntent(), phrases: [
-            "How much has the Cybercab fleet grown in \(.applicationName)",
-            "Check Cybercab fleet growth in \(.applicationName)",
             "Cybercab growth \(\.$period) in \(.applicationName)",
-            "How many Cybercab VINs were first detected \(\.$period) in \(.applicationName)"
+            "Check \(\.$model) growth in \(.applicationName)"
         ], shortTitle: "Fleet Growth", systemImageName: "chart.line.uptrend.xyaxis")
         AppShortcut(intent: VehicleHistoryIntent(), phrases: [
             "Show the history of \(\.$vehicle) in \(.applicationName)",
-            "When was \(\.$vehicle) last spotted in \(.applicationName)",
-            "Get Cybercab history in \(.applicationName)",
-            "When was \(\.$vehicle) first spotted in \(.applicationName)"
+            "Get Cybercab history in \(.applicationName)"
         ], shortTitle: "Vehicle History", systemImageName: "clock.arrow.circlepath")
-        AppShortcut(intent: ServiceZoneIntent(), phrases: [
-            "How big is the \(\.$city) Cybercab service area in \(.applicationName)",
-            "Check the \(\.$city) service zone in \(.applicationName)",
-            "Is \(.applicationName) tracking \(\.$city)",
-            "How large is the \(\.$city) service zone in \(.applicationName)"
-        ], shortTitle: "Service Zone", systemImageName: "map")
+        AppShortcut(intent: DallasServiceZoneIntent(), phrases: [
+            "How big is the Dallas Cybercab service area in \(.applicationName)",
+            "\(.applicationName) Dallas service area",
+            "How big is the Dallas Cybercab zone in \(.applicationName)",
+            "What is the Cybercab service area in Dallas in \(.applicationName)",
+            "How many square miles is the Dallas Cybercab service zone in \(.applicationName)"
+        ], shortTitle: "Dallas Zone", systemImageName: "map")
     }
 }

@@ -126,7 +126,18 @@ export async function runTxdmvPoll(env, { fetchImpl = fetch, nowMs = Date.now() 
     const first = !(await sql.prepare('SELECT 1 FROM dmv_snapshots LIMIT 1').first());
     const polledAt = new Date().toISOString();
     const raw = JSON.stringify(roster.vehicles);
+    // Push event is part of the same atomic D1 batch, before the VIN upsert:
+    // corrections/reimports cannot count as discoveries. No baseline alert.
+    const pushWrites = env.PUSH_ENABLED === 'true' ? [sql.prepare(`
+      INSERT OR IGNORE INTO push_events(id,category,recipient,payload,created_at)
+      SELECT ?, 'dmv', NULL,
+        json_object('title','New DMV Entries','link','/dmv','source',?,'count',COUNT(*)), ?
+      FROM json_each(?) j LEFT JOIN dmv_av_vehicles v ON v.vin=json_extract(j.value,'$.vin')
+      WHERE v.vin IS NULL AND lower(json_extract(j.value,'$.model')) IN ('cybercab','model y')
+      HAVING COUNT(*)>0 AND ?=0
+    `).bind('dmv:'+date,date,nowMs,raw,first?1:0)] : [];
     await sql.batch([
+      ...pushWrites,
       sql.prepare(`INSERT OR IGNORE INTO dmv_snapshots (snapshot_date, total, cybercab_count, model_y_count, other_count, authorization_number, raw_json, polled_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(date, roster.total, counts.cybercab, counts.model_y, counts.other, roster.company.authorization, raw, polledAt),

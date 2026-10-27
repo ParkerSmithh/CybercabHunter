@@ -1,0 +1,63 @@
+{
+  "phrase_templates": {
+    "FleetStatsIntent": [
+      "${applicationName} fleet stats",
+      "Fleet statistic ${metric} in ${applicationName}",
+      "City activity ${activity} in ${applicationName}",
+      "${applicationName} ${activity}",
+      "Compare ${activity} in ${applicationName}"
+    ],
+    "CheckDMVIntent": [
+      "Read DMV data in ${applicationName}",
+      "Read DMV statistic ${question} in ${applicationName}"
+    ],
+    "DallasFleetSummaryIntent": [
+      "${applicationName} Dallas fleet summary",
+      "Fleet summary for Dallas in ${applicationName}"
+    ],
+    "RecentSightingsIntent": [
+      "${applicationName} sightings in ${question}",
+      "Show the latest Cybercab sightings in ${applicationName}"
+    ],
+    "DallasWeeklySightingsIntent": [
+      "${applicationName} Dallas weekly sightings"
+    ],
+    "DailyBriefingIntent": [
+      "${applicationName} briefing",
+      "Give me my ${applicationName} briefing",
+      "Give me a rundown of the ${applicationName} data"
+    ],
+    "NearbySightingsIntent": [
+      "Find Cybercab sightings near me in ${applicationName}"
+    ],
+    "FleetGrowthIntent": [
+      "Cybercab growth ${period} in ${applicationName}",
+      "Check ${model} growth in ${applicationName}"
+    ],
+    "VehicleHistoryIntent": [
+      "Show the history of ${vehicle} in ${applicationName}",
+      "Get Cybercab history in ${applicationName}"
+    ],
+    "DallasServiceZoneIntent": [
+      "How big is the Dallas Cybercab service area in ${applicationName}",
+      "${applicationName} Dallas service area"
+    ]
+  },
+  "unchanged_growth_source": {
+    "FleetGrowthIntent": {
+      "file": "SiriIntents.swift",
+      "kind": "struct",
+      "sha256": "d531f60d78f50ab00a993e96d3d97662d9a1a219a8da86aaf1630ca4c19d1edf"
+    },
+    "GrowthPeriod": {
+      "file": "SiriIntents.swift",
+      "kind": "enum",
+      "sha256": "05e0dc8cbaef87bb066fc70ae5b7c652db4abae9f1f612518f18ca1d434a15df"
+    },
+    "GrowthModel": {
+      "file": "SiriQuestions.swift",
+      "kind": "enum",
+      "sha256": "3d7e7730cf978bac3e2957308dff835936cbbc10be3ecb0e3bdf8030bdf3830e"
+    }
+  }
+}

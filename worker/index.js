@@ -1,3 +1,4 @@
+import { apiPush, runPushTick, PUSH_CRON } from './push.js';
 import { apiMyStreaks } from './streaks.js';
 import { apiMyXp, apiXpRules, reconcileAllXp } from './progression.js';
 import { apiStreakLeaderboard, apiCommunitySummary, recomputeCommunitySummary } from './community-summary.js';
@@ -71,6 +72,8 @@ const worker = {
     if (url.pathname === '/sitemap.xml' && (request.method === 'GET' || request.method === 'HEAD')) {
       return sitemap(request, env, ctx);
     }
+
+    if (url.pathname.startsWith('/api/push/')) return withCors(await apiPush(request, env), request);
 
     if (url.pathname === '/health') {
       return Response.json({
@@ -753,6 +756,12 @@ const worker = {
   // configured (GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET /
   // GMAIL_TOKEN_ENCRYPTION_KEY), so it is harmless before then.
   async scheduled(controller, env, ctx) {
+    // Dedicated draft trigger: preserve Gmail's external-subrequest budget.
+    // Not added to wrangler.jsonc; requires separate production approval.
+    if (controller?.cron === PUSH_CRON) {
+      if (env.PUSH_ENABLED === 'true') ctx.waitUntil(runPushTick(env));
+      return;
+    }
     // Daily: recompute the stored Fleet & Fares model (worker/fleet-stats.js).
     // The same daily run then precomputes Austin's Fleet ETA summary
     // (worker/fleet-eta.js; Dallas's runs with TXDMV_CRON below), so that

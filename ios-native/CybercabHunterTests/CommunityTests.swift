@@ -59,7 +59,9 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
         let stub = Self.server(request.url?.host())
         stub?.record(request, body)
         let key = "\(request.httpMethod ?? "GET") \(request.url?.path ?? "")"
-        let (status, text) = stub?.responses[key] ?? (404, #"{"success":false,"error":"not_found"}"#)
+        // Query-specific stubs allow city-isolation tests; existing path stubs still work.
+        let queryKey = key + (request.url?.query.map { "?" + $0 } ?? "")
+        let (status, text) = stub?.responses[queryKey] ?? stub?.responses[key] ?? (404, #"{"success":false,"error":"not_found"}"#)
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(text.utf8))

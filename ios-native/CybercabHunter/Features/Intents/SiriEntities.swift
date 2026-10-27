@@ -125,7 +125,7 @@ struct DMVSnapshotQuery: EntityQuery {
     private func load() async throws -> [DMVSnapshotEntity] {
         async let g: DMVGrowth = SiriData.shared.get("/api/dmv/growth", query: [URLQueryItem(name: "range", value: "all")])
         async let o: DMVOverview? = try? SiriData.shared.get("/api/dmv/overview")
-        let processed = (await o).map { ($0.processingPending ?? 0) == 0 } ?? false
+        let processed = (await o).map { $0.processingPending == 0 } ?? false
         return DMVSnapshotEntity.all(try await g, processed: processed)
     }
     func entities(for identifiers: [String]) async throws -> [DMVSnapshotEntity] {

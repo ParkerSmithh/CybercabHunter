@@ -1,0 +1,22 @@
+{
+  // PREPARATION TEMPLATE ONLY. NOT the production config. Do not deploy yet.
+  "name": "cybercabhunter-apns-sandbox",
+  "main": "../../worker/push-sandbox.js",
+  "compatibility_date": "2024-09-23",
+  "workers_dev": false,
+  "vars": {
+    "SANDBOX_ONLY": "true",
+    "SANDBOX_SEND_ARMED": "false",
+    "PUSH_ENABLED": "false",
+    "PUSH_DELIVERY_ENABLED": "false",
+    "SANDBOX_RUN_ID": "UNCONFIGURED",
+    "SANDBOX_ACCOUNT_ID": "",
+    "SANDBOX_DEVICE_ID": "",
+    "SANDBOX_TOKEN_SHA256": "",
+    "APNS_TOPIC": "com.cybercabhunter.native"
+  },
+  "d1_databases": [{"binding":"cybercabhunter_db","database_name":"UNCONFIGURED-ISOLATED-ONLY","database_id":"UNCONFIGURED","migrations_dir":"../../migrations"}],
+  "kv_namespaces": [{"binding":"TESLA_SESSIONS","id":"UNCONFIGURED-ISOLATED-ONLY"}]
+  // No routes, assets, cron, production resource IDs, R2, AI or secrets.
+  // Supply APNS_* and SANDBOX_APPROVAL_SECRET only after separate approval.
+}

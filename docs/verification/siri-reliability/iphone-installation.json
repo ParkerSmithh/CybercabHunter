@@ -1,0 +1,50 @@
+{
+  "update": "Siri Reliability Update",
+  "installation": "successful in-place update",
+  "device": "connected iPhone 16 Pro",
+  "previous_version": "0.1",
+  "previous_build": "4",
+  "installed_version": "0.1",
+  "installed_build": "5",
+  "bundle_id": "com.cybercabhunter.native",
+  "launched": true,
+  "startup_observed_local": "2026-10-24 13:07:41 CDT",
+  "archive_used": "/Users/parkersmith/Downloads/Website/docs/verification/siri-reliability/signed-release-build5.tar.gz",
+  "archive_sha256": "add9faae0ce4dd5b3c2bcdf67c78be6ea37eb617d73b6a69152a6ab19376d802",
+  "validated_artifact_hashes_verified_before_installation": true,
+  "signature_deep_strict_before_installation": "passed",
+  "executable_uuid": "5C1C4A61-7DED-3860-B533-B05CAFB755CC",
+  "metadata_sha256": "9710dd073513e178062ab1acabc5521b397ce1f83b88715ab4cbe6fbe6861f57",
+  "installed_startup_identifiers_match_validated_artifact": true,
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 42,
+  "metadata_verification": "On-device readable metadata reports 22 actions and SHA-256 equal to the validated signed archive; that exact metadata validates 10 shortcut slots and 42 templates.",
+  "FleetGrowthIntent": "present; source fingerprints unchanged",
+  "registration_diagnostics": {
+    "refresh_requested": "observed",
+    "refresh_call_returned": "observed",
+    "system_completion": "unobservable",
+    "error_channel": "not_provided",
+    "duplicate_rows": "Two copies of each of the three startup event types were visible; no cause inferred."
+  },
+  "data_preservation": {
+    "method": "in-place install; same bundle identifier; no uninstall/reset",
+    "preferences_file_metadata_identical": true,
+    "preference_or_account_values_read_or_exported": false,
+    "keychain_or_account_changes_performed": false,
+    "permissions_changed_by_agent": false,
+    "limits": "File metadata equality and in-place install are preservation evidence; account/settings contents and system permission database were not read."
+  },
+  "source_fingerprints_unchanged_since_validation": true,
+  "backend_modified": false,
+  "uninstalled_reset_or_cleared_caches": false,
+  "committed_pushed_merged_deployed": false,
+  "installation_or_launch_errors": [],
+  "warnings": [
+    "Registration refresh returned, but system indexing completion and Siri voice recognition are not observable from this API.",
+    "Console capture was filtered to SiriRegistration; it is not a complete system-log audit."
+  ],
+  "physical_siri_tests_run": 0,
+  "waiting_for": "owner physical-device test results"
+}

@@ -198,6 +198,7 @@ struct ServiceStatusCard: View {
                         .font(.inter(9, .medium)).foregroundStyle(Color.chCaption)
                     Text("All times central time (CT) · every day").font(.inter(10)).foregroundStyle(Color.chCaption)
                 }
+                LiveActivitySwitch(hours: hours, live: s.live)
             }
             .padding(16)
             .background {
@@ -208,6 +209,54 @@ struct ServiceStatusCard: View {
             .accessibilityElement(children: .combine)
         }
         .opacity(hours == nil ? 0.6 : 1)
+    }
+}
+
+/// The Live now card's switch for the Dynamic Island / Lock Screen Live
+/// Activity (ServiceLiveActivityController): off until the rider turns it on.
+struct LiveActivitySwitch: View {
+    let hours: HomepageStats.Hours?
+    let live: Bool
+    @State private var controller = ServiceLiveActivityController.shared
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Divider().overlay(Color.chLine)
+            Toggle(isOn: Binding(get: { controller.enabled }, set: { on in
+                busy = true
+                Task { await controller.setEnabled(on); busy = false }
+            })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dynamic Island Live Activity").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
+                    Text("Show Cybercab service status in the Dynamic Island and on your Lock Screen.")
+                        .font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .tint(Color.brandGold)
+            .disabled(!controller.isSupported || busy)
+            .accessibilityIdentifier("liveActivityToggle")
+            Text(statusLine).font(.inter(11)).foregroundStyle(controller.problem == nil ? Color.chCaption : Color(hex: 0xFCD34D))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("liveActivityStatus")
+            if controller.problem == .notAuthorized {
+                Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
+                    .font(.inter(12, .semibold)).tint(Color.brandGold)
+            }
+        }
+        // The hours (when they load) and each change of service while the app is open.
+        .task(id: "\(hours?.open ?? "")-\(hours?.close ?? "")-\(live)") {
+            controller.schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
+            await controller.reconcile()
+        }
+    }
+
+    private var statusLine: String {
+        if let p = controller.problem { return p.message }
+        if controller.enabled {
+            return "On · in the Dynamic Island, or on the Lock Screen on iPhones without one. Follows the published service hours; iOS ends it after about 8 hours, and opening the app starts it again."
+        }
+        return "Off · on iPhones without a Dynamic Island it appears on the Lock Screen."
     }
 }
 
@@ -226,15 +275,14 @@ struct ServiceClock {
         cal.timeZone = Format.central
         let parts = cal.dateComponents([.hour, .minute, .second], from: now)
         let sec = (parts.hour ?? 0) * 3600 + (parts.minute ?? 0) * 60 + (parts.second ?? 0)
-        let open = Self.minutes(hours?.open ?? "06:00") * 60
-        let close = Self.minutes(hours?.close ?? "24:00") * 60
-        live = sec >= open && sec < close
-        let startOfDay = cal.startOfDay(for: now)
-        let target: Date = live
-            ? startOfDay.addingTimeInterval(TimeInterval(close))
-            : cal.date(byAdding: .day, value: sec >= close ? 1 : 0, to: startOfDay)!.addingTimeInterval(TimeInterval(open))
-        let mins = max(1, Int(ceil(target.timeIntervalSince(now) / 60)))
-        countdown = mins >= 60 ? "\(mins / 60)h \(mins % 60)m" : "\(mins)m"
+        // Live / parked and the next change: Shared/ServiceSchedule.swift, the same
+        // logic the Dynamic Island Live Activity uses (wall-clock Central, DST-safe).
+        let schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
+        let status = schedule.status(at: now)
+        let open = schedule.openMinute * 60
+        let close = schedule.closeMinute * 60
+        live = status.live
+        countdown = ServiceSchedule.countdown(from: now, to: status.until)
         nowLabel = now.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())
         windowStart = CGFloat(open) / 86400
         windowWidth = CGFloat(close - open) / 86400
@@ -242,10 +290,7 @@ struct ServiceClock {
         nowPosition = CGFloat(sec) / 86400
     }
 
-    static func minutes(_ hhmm: String) -> Int {
-        let p = hhmm.split(separator: ":").compactMap { Int($0) }
-        return (p.first ?? 0) * 60 + (p.count > 1 ? p[1] : 0)
-    }
+    static func minutes(_ hhmm: String) -> Int { ServiceSchedule.minutes(hhmm) }
 }
 
 // MARK: - Cybercab Daily
@@ -349,7 +394,7 @@ private struct LiveCar: View {
                     .padding(.horizontal, -20)
                     .offset(y: -4)
                 }
-                Image("CybercabRender").resizable().scaledToFit()
+                Image("CybercabLive").resizable().scaledToFit()
                     .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22)], startPoint: .leading, endPoint: .trailing))
                     .shadow(color: .black.opacity(0.5), radius: 7, y: 10)
                     .grayscale(live ? 0 : 1).brightness(live ? 0 : -0.45).opacity(live ? 1 : 0.65)

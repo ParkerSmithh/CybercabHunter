@@ -5,10 +5,17 @@ import MapKit
 /// Dallas with charging locations, camera-spotted Cybercabs, place search,
 /// Normal Map / Heatmap, zone details with Fleet & Fares, and the Replay.
 struct ZonesView: View {
+    var initialHeat = false
+    var initialCity: String? = nil
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @State private var model = ZonesModel()
+    @State private var location = LocationService.shared
+    @State private var recenterID = 0
+    @State private var locationTarget: CLLocationCoordinate2D?
+    @State private var proximity: ZoneProximity.Result?
+    @State private var statusOpen = false
     @State private var selection: MapSelection?
     @State private var showingDetails = false
     @State private var place: PlaceResults.Place?
@@ -26,7 +33,7 @@ struct ZonesView: View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.live[model.city] ?? [],
-                            heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place,
+                            heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place, locationFix: location.location, recenterID: recenterID, locationTarget: locationTarget,
                             bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 90,
                             topInset: geo.safeAreaInsets.top + 52, selectionActive: selection != nil) { selection = $0 }   // under the status bar, header and the Search button
                     .ignoresSafeArea()
@@ -55,12 +62,21 @@ struct ZonesView: View {
                 .modifier(SearchSheetBackground())
                 .onAppear { searchDetent = .medium }
         }
+        .onChange(of: location.location?.timestamp) {
+            guard let fix = location.location else { proximity = nil; return }
+            locationTarget = fix.coordinate; recenterID += 1
+            proximity = ZoneProximity.evaluate(fix, zones: WebData.zones.cities.map { .init(name: $0.name, polygons: [[$0.polygon]]) })
+        }
         .background(Color.chBackground)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ReplayRoute.self) { ReplayView(route: $0) }
         .sheet(item: $selection) { sel in MapSelectionSheet(selection: sel, model: model).presentationDetents([.medium]).presentationDragIndicator(.visible) }
         .sheet(isPresented: $showingDetails) { ZoneDetailsSheet(model: model).presentationDetents([.medium, .large]).presentationDragIndicator(.visible) }
         // Live markers: now, then every 60 s while Zones is showing (as the site), per city.
+        .task {
+            if let initialCity, ["austin", "dallas"].contains(initialCity) { model.city = initialCity }
+            if initialHeat { model.mode = .heat }
+        }
         .task(id: model.city) {
             await model.loadPanel(using: session.api)
         }
@@ -74,7 +90,28 @@ struct ZonesView: View {
         .task(id: model.mode == .heat ? model.heatKey : "normal") {
             if model.mode == .heat { await model.loadHeat(using: session.api) }
         }
+        .onChange(of: scenePhase) {
+            if scenePhase == .background { location.cancel() }
+            if scenePhase == .active { location.authorizationChanged() }
+        }
+        .onDisappear { location.cancel() }
         .onAppear { if let c = router.zonesCity { model.city = c; router.zonesCity = nil } }
+        #if DEBUG
+        .onAppear {
+            let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "-zoneStatusFixture"), i + 1 < args.count {
+                let fixture = args[i + 1]
+                if fixture == "unavailable" { proximity = .init(text: "Location unavailable", nearest: nil) }
+                else if ["dallas", "austin", "outside"].contains(fixture) {
+                    model.city = fixture == "austin" ? "austin" : "dallas"
+                    let fix = fixture == "dallas" ? CLLocation(latitude: 32.80, longitude: -96.80)
+                        : fixture == "austin" ? CLLocation(latitude: 30.27, longitude: -97.75)
+                        : CLLocation(latitude: 31, longitude: -100)
+                    proximity = ZoneProximity.evaluate(fix, zones: WebData.zones.cities.map { .init(name: $0.name, polygons: [[$0.polygon]]) })
+                }
+            }
+        }
+        #endif
         // Siri / Apple Intelligence: the map shows this city's service zone ("how big is this service area?").
         .modifier(OnscreenEntity(ServiceZoneEntity.self, id: model.city))
         .onChange(of: model.city, initial: true) {
@@ -101,14 +138,57 @@ struct ZonesView: View {
                 MapGlassButton(systemImage: "line.3.horizontal.decrease", label: "Zone details") { showingDetails = true }
                     .accessibilityIdentifier("zoneDetailsButton")
             }
-            HStack(alignment: .top, spacing: 8) {
-                MapGlassButton(systemImage: "magnifyingglass", label: "Search places", active: place != nil) {
-                    searchOpen = true
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
+                    if location.requesting || location.message != nil || proximity != nil {
+                        zoneStatus
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: 10) {
+                    MapGlassButton(systemImage: "magnifyingglass", label: "Search places", active: place != nil) {
+                        searchOpen = true
+                    }.accessibilityIdentifier("zoneSearchButton")
+                    MapGlassButton(systemImage: "location.fill", label: "My Location", active: location.location != nil) {
+                        location.request()
+                    }.accessibilityIdentifier("zoneMyLocationButton")
                 }
-                .accessibilityIdentifier("zoneSearchButton")
             }
         }
         .padding(.horizontal, 12).padding(.top, 8)
+    }
+
+    private var zoneStatus: some View {
+        Button { statusOpen = true } label: {
+            Text(ZoneStatusText.headline(proximity, requesting: location.requesting))
+                .font(.system(.caption2, design: .default, weight: .semibold))
+                .tracking(0.3)
+                .foregroundStyle(Color.brandGold)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 9).padding(.vertical, 7)
+                .background(Color.chBackground.opacity(0.96), in: .rect(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.chHair2, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("zoneStatusBadge")
+        .accessibilityHint("Shows zone details, distance and location options")
+        .popover(isPresented: $statusOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 12) {
+                if let proximity {
+                    Text(proximity.text.uppercased()).font(.caption).foregroundStyle(Color.brandGold)
+                    if let point = proximity.nearest {
+                        Button("View Nearest Zone") {
+                            locationTarget = point; recenterID += 1; statusOpen = false
+                        }.accessibilityIdentifier("viewNearestZone")
+                    }
+                    Text("Mapped coverage does not guarantee ride availability.").font(.caption).foregroundStyle(Color.chMist)
+                }
+                LocationFeedback(service: location)
+            }
+            .padding(16).frame(idealWidth: 290, maxWidth: 320)
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(Color.chBackground)
+        }
     }
 
     private var bottomControls: some View {

@@ -1,0 +1,111 @@
+1. Cybercab search and attachments
+  ok — by license plate: partial, case-insensitive, dashes and spaces ignored
+  ok — by plate prefix: both XVF cars, best match first
+  ok — by VIN (partial, any case)
+  ok — by the vehicle id (its /vehicle/<id> link)
+  ok — a vehicle without a plate is found by its VIN
+  ok — a private / unlisted vehicle never appears, even by exact VIN
+  ok — no match: an empty list (the page shows its empty state)
+  ok — no query: the public vehicles, at most 8
+  ok — only public registry fields: id, plate, VIN, city, Cybercab image, page link
+  ok — a vehicle that is not an approved Cybercab gets no Cybercab image
+  ok — attaching a Cybercab: the post carries its card (plate, VIN, city, link)
+  ok — the card links to the existing vehicle page, which opens
+  ok — a private vehicle cannot be attached (server-side)
+  ok — attaching is optional: a plain post, a photo post and a review post need no vehicle
+  ok — changing the attached Cybercab
+  ok — removing it
+  ok — a vehicle made private: the post stays, its card simply goes
+  ok — attaching is not a sighting: no submission or XP was created
+2. Saved posts
+  ok — saving needs a session
+  ok — save: idempotent, one row
+  ok — the Saved feed: the rider's bookmarks, most recently saved first, marked saved
+  ok — the feed shows whether a post is saved, for that rider only
+  ok — Saved is private: another rider sees their own (empty) list, signed out is 401
+  ok — saving notifies nobody and earns no XP
+  ok — unsave
+  ok — a removed post drops out of Saved
+  ok — a deleted post: its saves are gone too
+  ok — Saved pages with a cursor, nothing twice
+  ok — Saved · Most popular: the most-liked saved post first, paged without repeats
+  ok — Latest ignores ?sort (it is newest-first by definition)
+3. Notifications
+  ok — the author hears about a like and a comment (not her own like or reply)
+  ok — each says who, what, when, and links to the post
+  ok — a comment notice links to the comment and quotes it
+  ok — a reply notifies the person replied to
+  ok — unliking takes back the unread like notice
+  ok — no duplicates: one like notice however often it is toggled
+  ok — mention parsing: real @handles only, not emails, at most 5
+  ok — a mention notifies a real account; unknown handles and yourself are ignored
+  ok — a private author shows as Anonymous in the notice
+  ok — editing does not repeat a mention notice
+  ok — notifications need a session and are only the rider's own
+  ok — the unread count alone (for the bell)
+  ok — someone else cannot mark your notifications read
+  ok — mark one read
+  ok — mark all read
+  ok — a deleted comment takes its notices (and its replies') with it
+  ok — a removed post's notices are no longer shown
+  ok — a deleted post leaves no notification rows
+  ok — an announcement with "notify" reaches everyone (no row per rider)
+  ok — ...read per rider
+  ok — an announcement without "notify" is not a notification
+  ok — notifications never award XP
+4. Community pins
+  ok — only moderators pin
+  ok — at most 3 pins: a 4th is refused (409)
+  ok — pinning is audited
+  ok — pinned posts lead Latest, marked pinned
+  ok — ...and are not repeated below
+  ok — pins only on the first page; the regular order continues beneath them
+  ok — For You also starts with the pins
+  ok — Photos / Reviews / Saved are filters, not pinned lists
+  ok — unpin
+  ok — a removed post is unpinned and out of the feed
+  ok — moderators see can_pin; riders do not
+5. Filters and sorting
+  ok — Latest: newest first
+  ok — Photos: only posts with photos
+  ok — Reviews: only posts with a ride review
+  ok — Photos · Newest vs Most popular: engagement outranks recency
+  ok — For You ranks real engagement (the liked, commented post first)
+  ok — ranked pages continue without repeats
+6. Editing keeps attachments; deleting leaves nothing behind
+  ok — editing the text keeps the photos, vehicle and review the page sends back
+  ok — someone else cannot edit or delete it
+  ok — someone else cannot edit or delete a comment
+  ok — the author's delete removes comments, likes, saves, notifications, photos (and files) and the review
+  ok — ...the vehicle record itself is untouched; the audit log is kept
+  ok — its shared link now answers 404 post_unavailable (the page says so)
+7. Link previews; account deletion; no XP
+  ok — a shared post's preview: who, the text (no quotes or tags), its photo, its link
+  ok — an anonymous author is never named; no photo → the site image
+  ok — /community is served through the Worker (the page itself when no rewriter is available)
+  ok — wrangler runs the Worker first for /community only
+  ok — the page has default Open Graph tags for the rewriter to fill
+{"event":"account_deleted","at":"2026-10-25T18:35:36.293Z","user_hash":"81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9"}
+  ok — deleting an account clears their saves, their notifications and notices they caused, and saves of their posts
+  ok — no XP from saves, likes, comments, pins or notifications
+8. The page (jsdom)
+  ok — signed out: no bell; Saved asks to sign in
+  ok — the filters are For You | Latest | Photos | Reviews | Saved
+  ok — the pinned post leads the feed with a Pinned label
+  ok — post headers show the Spotter rank and level
+  ok — the bell shows the unread count (a comment and a mention)
+  ok — the panel lists who did what, unread first-class
+  ok — opening a notification shows the post with that comment highlighted, and marks it read
+  ok — the bookmark saves the post (and shows it)
+  ok — the Saved filter lists it
+  ok — unsaving takes it off Saved, with the empty message
+  ok — typing a VIN finds the Cybercab (debounced search), showing plate, VIN and city
+  ok — no match: a helpful empty state
+  ok — Enter picks it: a preview card with Change and Remove
+  FAIL — the published post shows the Cybercab card, linking to its vehicle page
+  ok — a shared link opens Social on that post, with its comments, for anyone
+  ok — a deleted or unknown post says it is not available
+  ok — Share uses the native share sheet where supported, copy link otherwise
+  ok — the navigation is still Social | Streaks | Leaderboard | Progress, and there is no /social page
+
+99 passed, 1 failed

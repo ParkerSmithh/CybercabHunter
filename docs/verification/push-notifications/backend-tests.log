@@ -1,0 +1,13 @@
+(node:3650) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ok defaults
+ok strict validation
+ok DST and quiet hours
+ok metrics unavailable and comparison
+ok independent settings
+28 push checks passed; no real network deliveries
+36 total push checks passed, including scheduled delivery integration
+37 total push checks passed, including DMV baseline/import grouping
+40 total push checks passed, including privacy revalidation and DST summary boundaries

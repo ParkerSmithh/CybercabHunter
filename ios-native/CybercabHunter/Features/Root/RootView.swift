@@ -6,8 +6,11 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(SessionStore.self) private var session
+    @State private var pushCoordinator = PushCoordinator.shared
+    @State private var pushDestination: PushDestination?
     @State private var showingAccount = false
     @State private var paths: [AppTab: NavigationPath] = [:]
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var router = router
@@ -29,14 +32,18 @@ struct RootView: View {
         // Any screen can ask for sign-in (the account sheet holds Google sign-in).
         .environment(\.openSignIn, { [show = $showingAccount] in show.wrappedValue = true })
         .task {
+            if ProcessInfo.processInfo.arguments.contains("-pushSettings") { router.accountRequest = .notifications }
             if DebugLaunch.opensAccount { showingAccount = true }
             if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
             if let d = DebugLaunch.destination { router.open(d) }
+            if DebugLaunch.enablesLiveActivity { await ServiceLiveActivityController.shared.setEnabled(true) }
         }
         // Siri / Shortcuts asked for an Account screen (Activity Alerts, Siri & Shortcuts),
         // also on a cold launch.
         .onChange(of: router.accountRequest, initial: true) { if router.accountRequest != nil { showingAccount = true } }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
+        // The Live Activity follows the switch and the service day each time the app is opened.
+        .onChange(of: scenePhase, initial: true) { if scenePhase == .active { Task { await ServiceLiveActivityController.shared.reconcile() } } }
         // Changing tabs always puts the keyboard away (a tab left behind stays alive,
         // so its own field can't do it).
         .onChange(of: router.selectedTab) {
@@ -49,6 +56,16 @@ struct RootView: View {
         }
         // A saved name or photo: the signed-in account (the Account button) is fetched again.
         .onReceive(NotificationCenter.default.publisher(for: .profileChanged)) { _ in Task { await session.refreshAccount() } }
+        .onChange(of: pushCoordinator.pendingURL, initial: true) {
+            guard let url = pushCoordinator.pendingURL else { return }
+            pushCoordinator.pendingURL = nil
+            if url.path == "/community", let link = CommunityLink(url: url) { router.open(link) }
+            else if url.path.hasPrefix("/vehicles/") { router.openVehicle(id: String(url.path.dropFirst("/vehicles/".count)), plate: nil) }
+            else { pushDestination = PushDestination(url: url) }
+        }
+        .sheet(item: $pushDestination) { destination in
+            NavigationStack { PushDestinationView(destination: destination) }
+        }
         .sheet(isPresented: $showingAccount) {
             AccountView()
                 .presentationDragIndicator(.visible)
@@ -141,6 +158,9 @@ enum DebugLaunch {
     /// `-open dmvTracker`: what a Siri / Shortcuts "Open …" does (UI tests can't drive Siri).
     static var destination: AppDestination? { value("-open").flatMap(AppDestination.init(rawValue:)) }
     static var resetsSiriState: Bool { ProcessInfo.processInfo.arguments.contains("-resetSiriState") }
+    static var resetsLiveActivity: Bool { ProcessInfo.processInfo.arguments.contains("-resetLiveActivity") }
+    /// `-enableLiveActivity`: what turning the Live now switch on does (simulator checks without UI taps).
+    static var enablesLiveActivity: Bool { ProcessInfo.processInfo.arguments.contains("-enableLiveActivity") }
     /// `-requestSubmitSighting`: what the Siri / Shortcuts "Submit a sighting" intent does (UI tests can't drive Siri).
     static var requestsSubmitSighting: Bool { ProcessInfo.processInfo.arguments.contains("-requestSubmitSighting") }
     /// `-apiBase http://127.0.0.1:8799`: the UI tests' local Worker
@@ -161,6 +181,8 @@ enum DebugLaunch {
     static let requestsSubmitSighting = false
     static let destination: AppDestination? = nil
     static let resetsSiriState = false
+    static let resetsLiveActivity = false
+    static let enablesLiveActivity = false
     static let apiBase: URL? = nil
     static let session: String? = nil
     static let usesTestSession = false

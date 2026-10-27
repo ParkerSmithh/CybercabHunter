@@ -1,0 +1,382 @@
+[
+  {
+    "suite": "account-delete.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "app-signin.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "avatars.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "camera-sighting-approval.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "camera-sightings.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "community-polish.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "community.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "cybercab-doors.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "daily.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "dallas-camera-plan.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "dallas-copy.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "fleet-eta.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "fleet-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "fleet-timelapse.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "gmail-onboarding.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "gmail-sync.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "google-auth.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "heatmap-forecast.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "homepage-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "link-gmail-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "map-search.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "migration-0046.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "mobile-density.test.mjs",
+    "exit": 1
+  },
+  {
+    "suite": "moderation-access.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-forwarding-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-gmail-tab.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-social-tab.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderation-vehicles-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderator-log-ride.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "moderator-receipt-import.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "motion.test.mjs",
+    "exit": 1
+  },
+  {
+    "suite": "muse-connector.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "muse-ride-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "news.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-canonical.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-hardening.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-ingest.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-revisions.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "phase2-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "photo-sightings-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "preview-auth-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "profile-sync.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "profile.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "progression.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "public-sightings.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "push-blockers.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "push.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "receipt-address.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "receipt-backend-completion.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "receipt-pipeline.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-review-approval.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-review-tooling.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-ride-aggregation.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-sort.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "registry-trust.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "replay.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "reviews.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "rider-data-ui.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "rider-search.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "seo.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "service-banner.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sighting-drawer.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sighting-location.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sighting-promotion.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sighting-time.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sightings-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sightings-gallery.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "sightings-stats.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "simulation-page.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "site-layout.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "site-stat-counters.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "social-v2.test.mjs",
+    "exit": 1
+  },
+  {
+    "suite": "social.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "streaks.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "summary-cache.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "tesla-oauth.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "tesla-rides.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "theme.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "trips-query.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "txdmv-activity.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "txdmv.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "ui-effects.test.mjs",
+    "exit": 1
+  },
+  {
+    "suite": "us-sightings-map.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "user-roles.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "vehicle-approval-basis.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "vehicle-identity.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "vehicle-page.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "vehicle-registry.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "vehicles-api.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "videos.test.mjs",
+    "exit": 0
+  },
+  {
+    "suite": "worker-errors.test.mjs",
+    "exit": 0
+  }
+]

@@ -1,0 +1,5 @@
+Physical iPhone 16 Pro startup; Console category:SiriRegistration; transcribed from live accessibility table. Streaming stopped after these three messages.
+2026-10-24 11:45:27.946234-0500 CybercabHunter event=refresh_requested marker=siri-growth-diagnostics-v3
+2026-10-24 11:45:27.946244-0500 CybercabHunter event=refresh_call_returned marker=siri-growth-diagnostics-v3 system_completion=unobservable error_channel=not_provided
+2026-10-24 11:45:27.963622-0500 CybercabHunter event=startup_artifact marker=siri-growth-diagnostics-v3 version=0.1 build=4 executable_uuid=D67B4F0E-C163-3C93-AA7A-AD79A63B1BC7 metadata_status=readable metadata_sha256=dfc4d2b6ea3b151b8ba2af5442ff563b171b7fe79a01cfec779e134e4976480f FleetGrowthIntent=present action_count=22
+No voice recognition, Shortcuts editor discovery, or private Siri registration acceptance was tested.

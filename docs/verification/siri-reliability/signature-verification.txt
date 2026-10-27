@@ -1,0 +1,2 @@
+/tmp/cch-reliability-release/Build/Products/Release-iphoneos/CybercabHunter.app: valid on disk
+/tmp/cch-reliability-release/Build/Products/Release-iphoneos/CybercabHunter.app: satisfies its Designated Requirement

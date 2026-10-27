@@ -1,0 +1,23 @@
+Unchanged baseline: 669f642931203cba2e39ccda6f57fd01488af5cd
+Isolated baseline: /private/tmp/cch-notification-runtime-20261025/baseline
+
+mobile-density
+FAIL — Community: the four stats in one row on phones (2 / 4 from sm up as before)
+FAIL — Fleet ETA: one "Ride, hours & wait" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones
+FAIL — Zones: the details panel is a side drawer below lg, with a close button
+FAIL — Replay: the details panel is a side drawer below lg, with a close button
+34 passed, 4 failed
+
+motion
+FAIL — wired to the six eyebrows that sit above a heading, and nothing else
+62 passed, 1 failed
+
+social-v2
+FAIL — the published post shows the Cybercab card, linking to its vehicle page
+99 passed, 1 failed
+
+ui-effects
+FAIL — Community: the four stat tiles only (not Reviews, not the leaderboard)
+FAIL — Fleet ETA: the eight model cards only, red on Model Y
+11 passed, 2 failed
+

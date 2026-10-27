@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-23",
+  "release_build": "passed (unsigned generic iOS device target)",
+  "native_unit_tests": {
+    "passed": 165,
+    "suites": 38,
+    "simulator": "iPhone 18 Pro / iOS 27.0",
+    "signing": "local ad hoc"
+  },
+  "backend_test_files_passed": 5,
+  "advertised_shortcuts": 10,
+  "registered_phrase_templates": 54,
+  "all_phrases_include_application_name": true,
+  "maximum_dynamic_parameters_per_phrase": 1,
+  "physical_device_siri_recognition": "not tested",
+  "physical_device_installed": true,
+  "deployed": false,
+  "physical_device_model": "iPhone 16 Pro",
+  "on_device_shortcuts_visibility": "new city-and-period choices verified"
+}

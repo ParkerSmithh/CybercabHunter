@@ -1,0 +1,34 @@
+ M README.md
+ D docs/SpikeTest.mp4
+ M ios-native/CybercabHunter.xcodeproj/project.pbxproj
+ M ios-native/CybercabHunter/App/CybercabHunterApp.swift
+ M ios-native/CybercabHunter/Core/Models/HomepageStats.swift
+ M ios-native/CybercabHunter/Features/Intents/CybercabIntents.swift
+ M ios-native/CybercabHunter/Features/Intents/SiriData.swift
+ M ios-native/CybercabHunter/Features/Intents/SiriEntities.swift
+ M ios-native/CybercabHunter/Features/Intents/SiriIntents.swift
+ M ios-native/CybercabHunter/Features/Intents/SiriSettingsView.swift
+ M ios-native/CybercabHunterTests/CommunityTests.swift
+ M ios-native/CybercabHunterTests/SiriTests.swift
+?? docs/verification/siri-dallas-bound/
+?? docs/verification/siri-dallas-comparison/
+?? docs/verification/siri-diagnostics/
+?? docs/verification/siri-discovery/
+?? docs/verification/siri-fixed-dallas/
+?? docs/verification/siri-growth-build3/
+?? docs/verification/siri-natural-language/
+?? docs/verification/siri-reliability/
+?? docs/verification/siri-routing/
+?? docs/verification/siri-upgrade/
+?? ios-native/CybercabHunter/Features/Intents/SiriDiagnostics.swift
+?? ios-native/CybercabHunter/Features/Intents/SiriQuestions.swift
+?? ios-native/CybercabHunterTests/Fixtures/siri-city-austin-2026-10-23.json
+?? ios-native/CybercabHunterTests/Fixtures/siri-city-dallas-2026-10-23.json
+?? ios-native/CybercabHunterTests/SiriCityExecutionTests.swift
+?? ios-native/CybercabHunterTests/SiriDiagnosticsTests.swift
+?? ios-native/CybercabHunterTests/SiriNaturalLanguageTests.swift
+?? ios-native/CybercabHunterTests/SiriQuestionsTests.swift
+?? ios-native/CybercabHunterTests/SiriRoutingTests.swift
+?? ios-native/scripts/check-siri-metadata.py
+?? ios-native/scripts/siri-natural-baseline.json
+?? ios-native/scripts/test_siri_metadata.py

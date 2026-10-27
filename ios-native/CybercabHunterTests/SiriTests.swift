@@ -184,7 +184,7 @@ struct SiriTests {
         #expect(none.spoken.contains("Cybercab Hunter doesn't have a public sighting history for it yet."))
         let s: [VehicleSightings.Entry] = decode([["date": "2026-10-11", "service_area": "Austin"], ["date": "2026-10-02", "service_area": "Austin"]])
         let with = SiriSpeech.vehicleHistory(d, sightings: s, dmvFirst: (date: "2026-10-09", baseline: true), now: now)
-        #expect(with.spoken.contains("2 approved public sightings, the latest on October 11 in Austin."))
+        #expect(with.spoken.contains("2 approved sighting day and area entries, the latest on October 11 in Austin."))
         #expect(with.spoken.contains("already on the Texas DMV roster when tracking began on October 9"))
         #expect(with.footnote?.contains("not continuous operation") == true)
     }
@@ -197,7 +197,7 @@ struct SiriTests {
         let other = SiriSpeech.zone(decode(city("austin", sq: 300)), now: now)
         #expect(other.spoken.contains("about 300 square miles"), "read from the data, not hard-coded")
         let both = SiriSpeech.compareZones(decode(city("austin", sq: 272)), decode(city("dallas", sq: 81, since: "2026-04-18")))
-        #expect(both.spoken.hasPrefix("Austin covers about 272 square miles and Dallas about 81, so Austin's area is about 3.4 times larger.") && both.spoken.contains("Dallas's is Tesla's own figure"))
+        #expect(both.spoken.hasPrefix("Austin covers about 272 square miles and Dallas about 81, so Austin's area is about 3.4 times larger.") && both.spoken.contains("Dallas's is Cybercab Hunter's currently listed coverage figure") && !both.spoken.contains("Tesla's own figure"))
     }
 
     // MARK: the data layer: cached, bounded, never signed in

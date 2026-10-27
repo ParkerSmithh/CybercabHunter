@@ -1,0 +1,55 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "files",
+      "--device",
+      "00008140-000C39512813C01C",
+      "--domain-type",
+      "appDataContainer",
+      "--domain-identifier",
+      "com.cybercabhunter.native",
+      "--subdirectory",
+      "Library/Preferences",
+      "--json-output",
+      "/tmp/cch-install5-before-prefs.json"
+    ],
+    "commandType" : "devicectl.device.info.files",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "651.13.5"
+  },
+  "result" : {
+    "deviceIdentifier" : "3386B7C8-52DD-5A8F-BD1F-461068D9ED91",
+    "domain" : "appDataContainer",
+    "domainIdentifier" : "com.cybercabhunter.native",
+    "files" : [
+      {
+        "metadata" : {
+          "extendedAttributes" : {
+            "com.apple.dataprotection.policy.exception-applied-by" : "com.apple.containermanagerd"
+          },
+          "lastModDate" : "2026-10-24T16:01:26.000Z",
+          "ownerGid" : 501,
+          "ownerUid" : 501,
+          "permissions" : 384,
+          "size" : 1281
+        },
+        "name" : "com.cybercabhunter.native.plist",
+        "relativePath" : "com.cybercabhunter.native.plist",
+        "resources" : {
+          "isDirectory" : false,
+          "isHidden" : false,
+          "isReadable" : true,
+          "isSymbolicLink" : false,
+          "isWritable" : true
+        }
+      }
+    ]
+  }
+}

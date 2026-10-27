@@ -1,0 +1,1503 @@
+{
+  "shortcuts": [
+    {
+      "actionIdentifier": "FleetStatsIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "${applicationName} fleet stats"
+        },
+        {
+          "alternatives": [],
+          "key": "Fleet statistic ${metric} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "City activity ${activity} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "${applicationName} ${activity}"
+        },
+        {
+          "alternatives": [],
+          "key": "Compare ${activity} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "${activity} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Give me ${activity} in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Check Fleet"
+      },
+      "systemImageName": "chart.bar.fill"
+    },
+    {
+      "actionIdentifier": "CheckDMVIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "Read DMV data in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Read DMV statistic ${question} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Tell me ${question} in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "DMV Updates"
+      },
+      "systemImageName": "doc.text.magnifyingglass"
+    },
+    {
+      "actionIdentifier": "DallasFleetSummaryIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "${applicationName} Dallas fleet summary"
+        },
+        {
+          "alternatives": [],
+          "key": "Fleet summary for Dallas in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "How many Cybercabs are documented in Dallas in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Give me Dallas Cybercab fleet stats in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "How many Cybercabs are in Dallas in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Dallas Fleet"
+      },
+      "systemImageName": "chart.bar.fill"
+    },
+    {
+      "actionIdentifier": "RecentSightingsIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "${applicationName} sightings in ${question}"
+        },
+        {
+          "alternatives": [],
+          "key": "Show the latest Cybercab sightings in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Any Cybercabs spotted in ${question} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "How many Cybercabs were spotted in ${question} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Approved Cybercab sightings in ${question} in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Recent Sightings"
+      },
+      "systemImageName": "camera.viewfinder"
+    },
+    {
+      "actionIdentifier": "DallasWeeklySightingsIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "${applicationName} Dallas weekly sightings"
+        },
+        {
+          "alternatives": [],
+          "key": "Dallas Cybercab sightings this week in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Dallas Weekly"
+      },
+      "systemImageName": "camera.viewfinder"
+    },
+    {
+      "actionIdentifier": "DailyBriefingIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "${applicationName} briefing"
+        },
+        {
+          "alternatives": [],
+          "key": "Give me my ${applicationName} briefing"
+        },
+        {
+          "alternatives": [],
+          "key": "Give me a rundown of the ${applicationName} data"
+        },
+        {
+          "alternatives": [],
+          "key": "What is happening with Cybercabs today in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Give me today's Cybercab briefing in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "What is new with the Cybercab fleet in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Daily Briefing"
+      },
+      "systemImageName": "newspaper"
+    },
+    {
+      "actionIdentifier": "NearbySightingsIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "Find Cybercab sightings near me in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Nearby Sightings"
+      },
+      "systemImageName": "location.circle"
+    },
+    {
+      "actionIdentifier": "FleetGrowthIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "Cybercab growth ${period} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Check ${model} growth in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Fleet Growth"
+      },
+      "systemImageName": "chart.line.uptrend.xyaxis"
+    },
+    {
+      "actionIdentifier": "VehicleHistoryIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "Show the history of ${vehicle} in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "Get Cybercab history in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Vehicle History"
+      },
+      "systemImageName": "clock.arrow.circlepath"
+    },
+    {
+      "actionIdentifier": "DallasServiceZoneIntent",
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "phraseTemplates": [
+        {
+          "alternatives": [],
+          "key": "How big is the Dallas Cybercab service area in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "${applicationName} Dallas service area"
+        },
+        {
+          "alternatives": [],
+          "key": "How big is the Dallas Cybercab zone in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "What is the Cybercab service area in Dallas in ${applicationName}"
+        },
+        {
+          "alternatives": [],
+          "key": "How many square miles is the Dallas Cybercab service zone in ${applicationName}"
+        }
+      ],
+      "shortTitle": {
+        "alternatives": [],
+        "key": "Dallas Zone"
+      },
+      "systemImageName": "map"
+    }
+  ],
+  "actions": [
+    "CheckDMVIntent",
+    "CityActivityIntent",
+    "DailyBriefingIntent",
+    "DallasFleetSummaryIntent",
+    "DallasServiceZoneIntent",
+    "DallasWeeklySightingsIntent",
+    "FindVehicleIntent",
+    "FleetGrowthIntent",
+    "FleetStatsIntent",
+    "NearbySightingsIntent",
+    "OpenDMVSnapshotIntent",
+    "OpenScreenIntent",
+    "OpenServiceZoneIntent",
+    "OpenSightingIntent",
+    "OpenSightingsIntent",
+    "OpenVehicleIntent",
+    "OpenZonesIntent",
+    "QuickStatusIntent",
+    "RecentSightingsIntent",
+    "ServiceZoneIntent",
+    "SubmitSightingIntent",
+    "VehicleHistoryIntent"
+  ],
+  "enums": [
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "All time"
+            }
+          },
+          "identifier": "allTime"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Today"
+            }
+          },
+          "identifier": "today"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Yesterday"
+            }
+          },
+          "identifier": "yesterday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "This week"
+            }
+          },
+          "identifier": "thisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Last seven days"
+            }
+          },
+          "identifier": "last7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Last 24 hours"
+            }
+          },
+          "identifier": "last24Hours"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "Activity period"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.ActivityPeriod",
+      "identifier": "ActivityPeriod",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter14ActivityPeriodO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "the home screen"
+              },
+              {
+                "alternatives": [],
+                "key": "Cybercab Hunter"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Home"
+            }
+          },
+          "identifier": "home"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "the map"
+              },
+              {
+                "alternatives": [],
+                "key": "the Cybercab map"
+              },
+              {
+                "alternatives": [],
+                "key": "Zones"
+              },
+              {
+                "alternatives": [],
+                "key": "the zone map"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Map"
+            }
+          },
+          "identifier": "map"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "the registry"
+              },
+              {
+                "alternatives": [],
+                "key": "vehicles"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Cars"
+            }
+          },
+          "identifier": "cars"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Cybercab sightings"
+              },
+              {
+                "alternatives": [],
+                "key": "the sightings map"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Sightings"
+            }
+          },
+          "identifier": "sightings"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "the community"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Community"
+            }
+          },
+          "identifier": "community"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "the Texas DMV tracker"
+              },
+              {
+                "alternatives": [],
+                "key": "the DMV tracker"
+              },
+              {
+                "alternatives": [],
+                "key": "DMV updates"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "DMV Tracker"
+            }
+          },
+          "identifier": "dmvTracker"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Activity Alerts"
+              },
+              {
+                "alternatives": [],
+                "key": "alerts"
+              },
+              {
+                "alternatives": [],
+                "key": "notifications"
+              },
+              {
+                "alternatives": [],
+                "key": "alert settings"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Alert Settings"
+            }
+          },
+          "identifier": "alertSettings"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Siri and Shortcuts"
+              },
+              {
+                "alternatives": [],
+                "key": "Shortcuts settings"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Siri Settings"
+            }
+          },
+          "identifier": "siriSettings"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "Screen"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.AppDestination",
+      "identifier": "AppDestination",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter14AppDestinationO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections all time"
+            }
+          },
+          "identifier": "austinCamerasTotal"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections today"
+            }
+          },
+          "identifier": "austinCamerasToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections yesterday"
+            }
+          },
+          "identifier": "austinCamerasYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections this week"
+            }
+          },
+          "identifier": "austinCamerasThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections in the last seven days"
+            }
+          },
+          "identifier": "austinCamerasLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin camera detections in the last 24 hours"
+            }
+          },
+          "identifier": "austinCamerasLast24Hours"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections all time"
+            }
+          },
+          "identifier": "dallasCamerasTotal"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "How many Cybercabs did Dallas cameras detect today"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections today"
+            }
+          },
+          "identifier": "dallasCamerasToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections yesterday"
+            }
+          },
+          "identifier": "dallasCamerasYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections this week"
+            }
+          },
+          "identifier": "dallasCamerasThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections in the last seven days"
+            }
+          },
+          "identifier": "dallasCamerasLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas camera detections in the last 24 hours"
+            }
+          },
+          "identifier": "dallasCamerasLast24Hours"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas sightings all time"
+            }
+          },
+          "identifier": "compareSightings"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Which city has more Cybercab sightings today"
+              },
+              {
+                "alternatives": [],
+                "key": "Compare Austin and Dallas Cybercab sightings today"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas sightings today"
+            }
+          },
+          "identifier": "compareSightingsToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas sightings yesterday"
+            }
+          },
+          "identifier": "compareSightingsYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin and Dallas sightings this week"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Weekly sightings comparison"
+            }
+          },
+          "identifier": "compareSightingsThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas sightings in the last seven days"
+            }
+          },
+          "identifier": "compareSightingsLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas sightings in the last 24 hours"
+            }
+          },
+          "identifier": "compareSightingsLast24Hours"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections all time"
+            }
+          },
+          "identifier": "compareCameras"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections today"
+            }
+          },
+          "identifier": "compareCamerasToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections yesterday"
+            }
+          },
+          "identifier": "compareCamerasYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections this week"
+            }
+          },
+          "identifier": "compareCamerasThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections in the last seven days"
+            }
+          },
+          "identifier": "compareCamerasLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas camera detections in the last 24 hours"
+            }
+          },
+          "identifier": "compareCamerasLast24Hours"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas registry vehicles"
+            }
+          },
+          "identifier": "compareRegistry"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas recorded rides"
+            }
+          },
+          "identifier": "compareRides"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin and Dallas service zones"
+            }
+          },
+          "identifier": "compareZones"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin Cybercab fleet size"
+              },
+              {
+                "alternatives": [],
+                "key": "Austin Cybercab fleet stats"
+              },
+              {
+                "alternatives": [],
+                "key": "How many Cybercabs are in Austin"
+              },
+              {
+                "alternatives": [],
+                "key": "What is the Austin Cybercab fleet size"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin public registry vehicles"
+            }
+          },
+          "identifier": "austinRegistry"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin Cybercab zone"
+              },
+              {
+                "alternatives": [],
+                "key": "How big is the Austin Cybercab zone"
+              },
+              {
+                "alternatives": [],
+                "key": "What is the Cybercab service area in Austin"
+              },
+              {
+                "alternatives": [],
+                "key": "How many square miles is the Austin Cybercab service zone"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin Cybercab service area"
+            }
+          },
+          "identifier": "austinZone"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Compare Austin and Dallas Cybercab activity"
+              },
+              {
+                "alternatives": [],
+                "key": "How do Dallas and Austin compare today"
+              },
+              {
+                "alternatives": [],
+                "key": "Cybercab camera detections this week"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Unspecified Cybercab activity"
+            }
+          },
+          "identifier": "clarifyActivity"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "City activity question"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.CityActivityQuestion",
+      "identifier": "CityActivityQuestion",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter20CityActivityQuestionO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin all time"
+              },
+              {
+                "alternatives": [],
+                "key": "Austin total"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin"
+            }
+          },
+          "identifier": "austin"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin today"
+            }
+          },
+          "identifier": "austinToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin yesterday"
+            }
+          },
+          "identifier": "austinYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin this week"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin weekly"
+            }
+          },
+          "identifier": "austinThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Austin in the last 7 days"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Austin in the last seven days"
+            }
+          },
+          "identifier": "austinLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin in the last 24 hours"
+            }
+          },
+          "identifier": "austinLast24Hours"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Dallas all time"
+              },
+              {
+                "alternatives": [],
+                "key": "Dallas total"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Dallas"
+            }
+          },
+          "identifier": "dallas"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas today"
+            }
+          },
+          "identifier": "dallasToday"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas yesterday"
+            }
+          },
+          "identifier": "dallasYesterday"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Dallas this week"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Dallas weekly"
+            }
+          },
+          "identifier": "dallasThisWeek"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "Dallas in the last 7 days"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Dallas in the last seven days"
+            }
+          },
+          "identifier": "dallasLast7Days"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas in the last 24 hours"
+            }
+          },
+          "identifier": "dallasLast24Hours"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "City and period"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.CitySightingsQuestion",
+      "identifier": "CitySightingsQuestion",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter21CitySightingsQuestionO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Texas DMV overview"
+            }
+          },
+          "identifier": "overview"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Texas DMV total VINs"
+            }
+          },
+          "identifier": "total"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "How many Cybercab VINs are registered in Texas"
+              },
+              {
+                "alternatives": [],
+                "key": "Texas DMV Cybercab registrations"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Texas DMV Cybercab VINs"
+            }
+          },
+          "identifier": "cybercab"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Texas DMV Model Y VINs"
+            }
+          },
+          "identifier": "modelY"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Latest newly detected DMV VINs"
+            }
+          },
+          "identifier": "additions"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Latest newly detected DMV Cybercab VINs"
+            }
+          },
+          "identifier": "cybercabAdditions"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Latest newly detected DMV Model Y VINs"
+            }
+          },
+          "identifier": "modelYAdditions"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "Texas DMV statistic"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.DMVQuestion",
+      "identifier": "DMVQuestion",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter11DMVQuestionO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Fleet overview"
+            }
+          },
+          "identifier": "overview"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Public registry vehicles"
+            }
+          },
+          "identifier": "registry"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Recorded rides"
+            }
+          },
+          "identifier": "rides"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Lifetime approved sightings"
+            }
+          },
+          "identifier": "lifetimeSightings"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "Fleet statistic"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.FleetMetric",
+      "identifier": "FleetMetric",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter11FleetMetricO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Tesla robotaxi VIN"
+            }
+          },
+          "identifier": "all"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Cybercab VIN"
+            }
+          },
+          "identifier": "cybercab"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Model Y VIN"
+            }
+          },
+          "identifier": "modelY"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "DMV growth model"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.GrowthModel",
+      "identifier": "GrowthModel",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter11GrowthModelO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "latest day"
+              },
+              {
+                "alternatives": [],
+                "key": "daily"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Latest snapshots"
+            }
+          },
+          "identifier": "day"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "week"
+              },
+              {
+                "alternatives": [],
+                "key": "weekly"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Last seven days"
+            }
+          },
+          "identifier": "week"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "month"
+              },
+              {
+                "alternatives": [],
+                "key": "monthly"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Last thirty days"
+            }
+          },
+          "identifier": "month"
+        },
+        {
+          "displayRepresentation": {
+            "synonyms": [
+              {
+                "alternatives": [],
+                "key": "all time"
+              },
+              {
+                "alternatives": [],
+                "key": "since the start"
+              }
+            ],
+            "title": {
+              "alternatives": [],
+              "key": "Since tracking began"
+            }
+          },
+          "identifier": "all"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "Period"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.GrowthPeriod",
+      "identifier": "GrowthPeriod",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter12GrowthPeriodO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    },
+    {
+      "assistantDefinedSchemas": [],
+      "availabilityAnnotations": {
+        "LNPlatformNameWildcard": {
+          "introducedVersion": "*"
+        }
+      },
+      "cases": [
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Austin"
+            }
+          },
+          "identifier": "austin"
+        },
+        {
+          "displayRepresentation": {
+            "title": {
+              "alternatives": [],
+              "key": "Dallas"
+            }
+          },
+          "identifier": "dallas"
+        }
+      ],
+      "displayTypeName": {
+        "alternatives": [],
+        "key": "City"
+      },
+      "effectiveBundleIdentifiers": [],
+      "fullyQualifiedTypeName": "CybercabHunter.ServiceCity",
+      "identifier": "ServiceCity",
+      "isSystem": false,
+      "mangledTypeName": "14CybercabHunter11ServiceCityO",
+      "mangledTypeNameByBundleIdentifier": {},
+      "systemProtocolMetadata": [],
+      "visibilityMetadata": {
+        "assistantOnly": false,
+        "isDiscoverable": true
+      }
+    }
+  ]
+}

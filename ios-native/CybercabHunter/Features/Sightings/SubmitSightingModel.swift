@@ -151,9 +151,9 @@ final class SubmitSightingModel {
         }
     }
 
-    func pick(_ p: PlaceSearch.Place) {
+    func pick(_ p: PlaceSearch.Place, query: String? = nil) {
         place = p
-        placeQuery = locationText.trimmingCharacters(in: .whitespaces)
+        placeQuery = (query ?? locationText).trimmingCharacters(in: .whitespaces)
         locationText = p.label
         places = []
         placesMessage = nil

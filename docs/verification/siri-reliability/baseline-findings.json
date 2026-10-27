@@ -1,0 +1,17 @@
+{
+  "owner_confirmed_request_order": true,
+  "camera": {
+    "supplied": "austinCamerasToday",
+    "requested": "Dallas cameras today",
+    "execution": "FleetStatsIntent -> CityActivityIntent; Austin/cameras/today; answer_composed",
+    "confirmed": "wrong supplied city activity; execution followed supplied selection",
+    "unknown": "why Siri supplied Austin; earlier zone response not reproduced"
+  },
+  "sightings": {
+    "requested": "Austin last seven days",
+    "supplied": "city=austin; question=nil; period=nil",
+    "execution": "RecentSightingsIntent -> last24Hours -> answer_ready",
+    "confirmed": "missing-period fallback executed"
+  },
+  "spoken_answer_text": "not provided"
+}

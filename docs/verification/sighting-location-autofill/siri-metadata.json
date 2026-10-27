@@ -1,0 +1,14 @@
+{
+  "advertised_shortcuts": 10,
+  "phrase_templates": 42,
+  "finite_expansions_with_synonyms": 405,
+  "unique_finite_phrases": 405,
+  "dynamic_entity_templates": 1,
+  "budget_with_ten_suggested_vehicles": 415,
+  "collisions": {},
+  "existing_phrase_templates_preserved": 38,
+  "cross_intent_structural_collisions": 0,
+  "sightings_and_dmv_background_and_authentication": "validated",
+  "voice_recognition": "not tested",
+  "app_intents": 22
+}

@@ -357,23 +357,30 @@ enum SiriSpeech {
 
     /// The change between the first snapshot on or after `start` and the last on
     /// or before `end` — actual snapshots only, never interpolated.
-    static func growth(_ g: DMVGrowth, start: String?, end: String?, processed: Bool) -> Growth? {
+    static func growth(_ g: DMVGrowth, start: String?, end: String?, processed: Bool, model: GrowthModel = .all) -> Growth? {
         let pts = g.points.sorted { $0.date < $1.date }
         guard let first = pts.first else { return nil }
         let endPoint = pts.last { end == nil || $0.date <= end! }
         let startPoint = pts.first { start == nil || $0.date >= start! }
         guard let a = startPoint, let b = endPoint, a.date < b.date else { return nil }
         let between = pts.filter { $0.date > a.date && $0.date <= b.date && !$0.baseline }
-        let newly = processed ? between.reduce(0) { $0 + ($1.added.map { $0.sum } ?? 0) } : nil
-        return Growth(from: a.date, to: b.date, startTotal: a.total, endTotal: b.total, startCybercab: a.cybercab, endCybercab: b.cybercab,
+        let newly = processed ? between.reduce(0) { sum, point in
+            sum + (point.added.map { counts in
+                switch model { case .all: counts.sum; case .cybercab: counts.cybercab; case .modelY: counts.modelY }
+            } ?? 0)
+        } : nil
+        let count: (DMVGrowth.Point) -> Int = { p in
+            switch model { case .all: p.total; case .cybercab: p.cybercab; case .modelY: p.modelY }
+        }
+        return Growth(from: a.date, to: b.date, startTotal: count(a), endTotal: count(b), startCybercab: model == .all ? a.cybercab : 0, endCybercab: model == .all ? b.cybercab : 0,
                       newlyDetected: newly, clampedStart: start.map { $0 < first.date } ?? false)
     }
 
-    static func growthAnswer(_ g: Growth?, now: Date = .now) -> SiriAnswer {
+    static func growthAnswer(_ g: Growth?, now: Date = .now, model: GrowthModel = .all) -> SiriAnswer {
         guard let g else {
             return SiriAnswer(spoken: "Cybercab Hunter doesn't have two Texas DMV snapshots in that period to compare.")
         }
-        var line = "Between the \(day(g.from, now: now)) and \(day(g.to, now: now)) Texas DMV snapshots, the roster went from \(n(g.startTotal)) to \(n(g.endTotal)) VINs"
+        var line = "Between the \(day(g.from, now: now)) and \(day(g.to, now: now)) Texas DMV snapshots, the \(model == .all ? "roster" : model.label + " roster") went from \(n(g.startTotal)) to \(n(g.endTotal)) VINs"
         if let p = g.percent, g.net != 0 { line += ", \(g.net > 0 ? "up" : "down") \(n(abs(g.net))), or \(String(format: "%.1f", abs(p))) percent" }
         else if g.net == 0 { line += ", no net change" }
         line += "."
@@ -390,7 +397,7 @@ enum SiriSpeech {
 
     // MARK: one vehicle's history
 
-    static func vehicleHistory(_ d: VehicleDetail, sightings: [VehicleSightings.Entry], dmvFirst: (date: String, baseline: Bool)?, now: Date = .now) -> SiriAnswer {
+    static func vehicleHistory(_ d: VehicleDetail, sightings: [VehicleSightings.Entry]?, dmvFirst: (date: String, baseline: Bool)?, now: Date = .now) -> SiriAnswer {
         let v = d.vehicle
         let name = v.licensePlate.map { "Plate \(spell($0))" } ?? "This vehicle"
         let kind = v.isApprovedCybercab ? "a verified Cybercab" : (v.model.map { "a \($0)" } ?? "a vehicle")
@@ -401,9 +408,11 @@ enum SiriSpeech {
             if let last = v.lastSeenAt.flatMap(instant), iso(last) != iso(first) { line += " and most recently on \(day(iso(last), now: now))" }
             parts.append(line + ".")
         }
-        let sorted = sightings.sorted { $0.date > $1.date }
+        let sorted = (sightings ?? []).sorted { $0.date > $1.date }
         if let latest = sorted.first {
-            parts.append("It has \(plural(sightings.count, "approved public sighting", "approved public sightings")), the latest on \(day(latest.date, now: now))\(latest.serviceArea.map { " in \($0)" } ?? "").")
+            parts.append("The available history includes \(plural(sorted.count, "approved sighting day and area entry", "approved sighting day and area entries"))\(sorted.count >= 50 ? " (the latest 50, not a lifetime count)" : ""), the latest on \(day(latest.date, now: now))\(latest.serviceArea.map { " in \($0)" } ?? "").")
+        } else if sightings == nil {
+            parts.append("Its public sighting history is temporarily unavailable.")
         } else {
             parts.append("Cybercab Hunter doesn't have a public sighting history for it yet.")
         }
@@ -413,10 +422,10 @@ enum SiriSpeech {
                 ? "Its VIN was already on the Texas DMV roster when tracking began on \(day(dmvFirst.date, now: now))."
                 : "Its VIN first appeared in the \(day(dmvFirst.date, now: now)) Texas DMV dataset.")
         }
-        var figures = [SiriAnswer.Figure(value: n(sightings.count), label: "Sightings")]
+        var figures: [SiriAnswer.Figure] = sightings == nil ? [] : [.init(value: n(sorted.count), label: "History entries")]
         if let r = d.history.tripCount { figures.append(.init(value: n(r), label: "Rides")) }
         return SiriAnswer(spoken: parts.joined(separator: " "), figures: figures,
-                          footnote: "Reports are individual moments, not continuous operation between them.")
+                          footnote: "Reports are individual moments, not continuous operation between them. History entries group approved reports by submission day and service area; they are not individual sighting counts.")
     }
 
     static func iso(_ d: Date) -> String {
@@ -430,7 +439,7 @@ enum SiriSpeech {
     static func zoneSource(_ key: String) -> String {
         switch key {
         case "austin": "Cybercab Hunter's mapped boundary, traced from Tesla's in-app map, not an official Tesla figure"
-        case "dallas": "Tesla's own figure"
+        case "dallas": "Cybercab Hunter's currently listed coverage figure"
         default: "an approximate figure"
         }
     }
@@ -467,10 +476,23 @@ final class OneShotLocation: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocation, any Error>?
 
-    static var status: CLAuthorizationStatus { CLLocationManager().authorizationStatus }
+    #if DEBUG
+    // Local tests simulate errors without requesting/changing system permission.
+    static var testCurrent: (() async throws -> CLLocation)?
+    static var testAuthorization: CLAuthorizationStatus?
+    #endif
+    static var status: CLAuthorizationStatus {
+        #if DEBUG
+        if let testAuthorization { return testAuthorization }
+        #endif
+        return CLLocationManager().authorizationStatus
+    }
     static var isPrecise: Bool { CLLocationManager().accuracyAuthorization == .fullAccuracy }
 
     static func current(timeout: Duration = .seconds(10)) async throws -> CLLocation {
+        #if DEBUG
+        if let testCurrent { return try await testCurrent() }
+        #endif
         let finder = OneShotLocation()
         return try await finder.fetch(timeout: timeout)
     }

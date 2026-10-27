@@ -93,8 +93,16 @@ final class SessionStore {
 
     /// Forgets the session on this device, as signing out on the website does.
     func signOut() {
+        // Capture the credential before the Keychain is cleared, so the device
+        // removal request cannot accidentally use the next signed-in account.
+        if let credential = token {
+            let snapshot = APIClient(baseURL: api.baseURL, session: api.session, tokens: PushSignOutToken(value: credential))
+            Task { await PushCoordinator.shared.unregister(api: snapshot) }
+        }
         keychain.delete(KeychainTokenProvider.account)
         state = .signedOut
         Task { await ImagePipeline.shared.removeAll() }
     }
 }
+
+private struct PushSignOutToken: TokenProvider { let value: String; func currentToken() -> String? { value } }

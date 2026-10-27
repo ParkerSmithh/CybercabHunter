@@ -1,0 +1,55 @@
+{
+  "bundle_id": "com.cybercabhunter.native",
+  "version": "0.1",
+  "build": "3",
+  "diagnostic_marker": "siri-growth-diagnostics-v3",
+  "executable_uuid": "F80509A6-E71D-3158-98AB-FE96D42282DB",
+  "metadata_sha256": "b93b26aba38d73757430be5a41cc604fe9b119eb65311afa039a1f0a6d413182",
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 22,
+  "installation": "successful in-place update",
+  "device": "connected iPhone 16 Pro",
+  "installed_bundle_path": "/private/var/containers/Bundle/Application/31F5A53A-DF93-4AB9-8B57-FE967007C75F/CybercabHunter.app/",
+  "launched": true,
+  "startup_observed_local": "2026-10-24 00:13:41 CDT",
+  "refresh_requested_at": "00:13:41.389853-0500",
+  "refresh_call_returned_at": "00:13:41.389956-0500",
+  "artifact_event_at": "00:13:41.499682-0500",
+  "installed_startup_identifiers_match_expected": true,
+  "metadata_status": "readable",
+  "FleetGrowthIntent": "present",
+  "action_count_observed": 22,
+  "shortcut_and_phrase_verification": "22/10/22 extracted metadata validated; on-device metadata SHA256 exactly matches installed artifact",
+  "registration_completion": "unobservable; synchronous call returned, not proof of system indexing",
+  "signature_verified": true,
+  "signing_entitlements_unchanged": true,
+  "system_log_observations": [
+    {
+      "time": "00:13:38.616954-0500",
+      "process": "assistantd",
+      "summary": "Vocabulary manager ignores installation path; all installed instances share vocabulary. No Growth-specific rejection established."
+    },
+    {
+      "time": "00:13:41.301934-0500",
+      "process": "runningboardd",
+      "summary": "Multiple running-reason attributes; no Growth-specific connection established."
+    },
+    {
+      "time": "00:13:41.328861-0500",
+      "process": "SpringBoard",
+      "summary": "Transient invalid scene PID during launch; launch succeeded."
+    },
+    {
+      "time": "00:13:41.609133-0500",
+      "process": "runningboardd",
+      "summary": "Client not entitled to private process-state lookup; no entitlement or permission changes attempted."
+    }
+  ],
+  "uninstall_reset_or_data_clear": false,
+  "permissions_changed": false,
+  "backend_modified": false,
+  "committed_pushed_merged_deployed": false,
+  "Growth_discovery": "unverified pending owner Shortcuts test",
+  "voice_recognition": "not tested"
+}

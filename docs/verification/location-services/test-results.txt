@@ -1,0 +1,29 @@
+Final unit run
+✔ Test settingsAccuracyChangeInvalidatesOldFixWithoutRequestingGPS() passed after 0.001 seconds.
+✔ Test run with 219 tests in 44 suites passed after 10.006 seconds.
+** TEST SUCCEEDED **
+
+Initial focused UI run
+✔ Test run with 218 tests in 44 suites passed after 15.428 seconds.
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementAndCameraDiscovery]' passed (36.609 seconds).
+Test Case '-[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters]' passed (34.819 seconds).
+	 Executed 2 tests, with 0 failures (0 unexpected) in 71.428 (71.446) seconds
+Test Case '-[CybercabHunterUITests.NavigationUITests testHomeCarsAndVehicleDetailAreNative]' passed (83.654 seconds).
+Test Case '-[CybercabHunterUITests.ZoneSearchUITests testSearchSheet]' failed (66.779 seconds).
+Test Case '-[CybercabHunterUITests.ZonesUITests testHomeMinimapsMatchTheWebsite]' passed (60.073 seconds).
+Test Case '-[CybercabHunterUITests.ZonesUITests testHomePredictionsAndMinimap]' passed (96.759 seconds).
+Test Case '-[CybercabHunterUITests.ZonesUITests testZonesHeatmapAndReplayAreNative]' passed (56.197 seconds).
+Test Case '-[CybercabHunterUITests.ZonesUITests testZonesLegendOnlyInZoneDetails]' passed (16.069 seconds).
+	 Executed 4 tests, with 0 failures (0 unexpected) in 229.098 (229.107) seconds
+	 Executed 8 tests, with 1 failure (0 unexpected) in 450.959 (451.019) seconds
+	 Executed 8 tests, with 1 failure (0 unexpected) in 450.959 (451.025) seconds
+** TEST FAILED **
+
+Confirmation UI run: cases passed, bundle finalization stalled
+✔ Test run with 218 tests in 44 suites passed after 8.401 seconds.
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementAndCameraDiscovery]' passed (23.287 seconds).
+Test Case '-[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters]' passed (17.805 seconds).
+	 Executed 2 tests, with 0 failures (0 unexpected) in 41.092 (41.192) seconds
+Test Case '-[CybercabHunterUITests.ZoneSearchUITests testSearchSheet]' passed (64.738 seconds).
+	 Executed 3 tests, with 0 failures (0 unexpected) in 105.830 (105.943) seconds
+	 Executed 3 tests, with 0 failures (0 unexpected) in 105.830 (105.946) seconds

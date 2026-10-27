@@ -1,0 +1,68 @@
+{
+  "device_model": "iPhone 16 Pro",
+  "signed_release_build": "passed",
+  "installation": "in-place update succeeded",
+  "bundle_identifier": "com.cybercabhunter.native",
+  "version": "0.1 (2)",
+  "signing_entitlements_unchanged": true,
+  "app_intents": 19,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 21,
+  "installed_source_metadata_sha256": "65674991bfd3e3e247deb5139b74730a06339ec5ce148f8f42a0db4e5a352dd4",
+  "verified_templates": {
+    "FleetStatsIntent": [
+      "${applicationName} fleet stats",
+      "Fleet summary for ${city} in ${applicationName}",
+      "Fleet statistic ${metric} in ${applicationName}",
+      "City activity ${activity} in ${applicationName}",
+      "Compare ${activity} in ${applicationName}"
+    ],
+    "CheckDMVIntent": [
+      "Read DMV data in ${applicationName}",
+      "Read DMV statistic ${question} in ${applicationName}"
+    ],
+    "OpenVehicleIntent": [
+      "Find a Cybercab in ${applicationName}",
+      "Find ${target} in ${applicationName}"
+    ],
+    "RecentSightingsIntent": [
+      "${applicationName} sightings in ${question}",
+      "Show the latest Cybercab sightings in ${applicationName}"
+    ],
+    "OpenScreenIntent": [
+      "Open ${destination} in ${applicationName}"
+    ],
+    "DailyBriefingIntent": [
+      "${applicationName} briefing",
+      "Give me my ${applicationName} briefing",
+      "Give me a rundown of the ${applicationName} data"
+    ],
+    "NearbySightingsIntent": [
+      "Find Cybercab sightings near me in ${applicationName}"
+    ],
+    "FleetGrowthIntent": [
+      "Cybercab growth ${period} in ${applicationName}",
+      "Check ${model} growth in ${applicationName}"
+    ],
+    "VehicleHistoryIntent": [
+      "Show the history of ${vehicle} in ${applicationName}",
+      "Get Cybercab history in ${applicationName}"
+    ],
+    "ServiceZoneIntent": [
+      "How big is the ${city} Cybercab service area in ${applicationName}"
+    ]
+  },
+  "preservation_checks": {
+    "preferences_metadata_unchanged": true,
+    "documents_metadata_unchanged": true,
+    "bundle_id_unchanged": true,
+    "data_container_path_unchanged": false
+  },
+  "preservation_check_scope": "file metadata only; no preference values exported or compared",
+  "uninstalled_or_reset": false,
+  "permissions_changed_by_agent": false,
+  "normal_launch_and_registration_refresh_requested": true,
+  "backend_modified": false,
+  "new_configuration_voice_recognition": "unverified pending owner repeated tests",
+  "committed_pushed_merged_deployed": false
+}

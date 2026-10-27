@@ -26,6 +26,10 @@ struct AccountView: View {
                 case .signedIn(let user):
                     signedIn(user)
                 }
+                Section("Notifications") {
+                    NavigationLink("Notifications", value: AccountRoute.notifications)
+                        .accessibilityIdentifier("pushSettingsLink")
+                }
                 // Siri, Shortcuts and Activity Alerts live on this iPhone: signed in or not.
                 Section {
                     NavigationLink(value: AccountRoute.siri) { Label("Siri & Shortcuts", systemImage: "mic.circle") }
@@ -59,6 +63,7 @@ struct AccountView: View {
                 case .rider(let handle): RiderProfileView(route: RiderRoute(handle: handle))
                 case .siri: SiriSettingsView()
                 case .alerts: ActivityAlertsView()
+                case .notifications: PushSettingsView()
                 }
             }
             .navigationDestination(for: RiderDataRoute.self) { route in
@@ -211,7 +216,7 @@ enum AccountRoute: Hashable {
     case profile, sightings, moderation, importReceipt, delete
     case rider(String)
     /// Siri & Shortcuts, Activity Alerts: on this iPhone, signed in or not.
-    case siri, alerts
+    case siri, alerts, notifications
 }
 
 /// The rider's own sightings and where each one is in review (GET /api/submissions).

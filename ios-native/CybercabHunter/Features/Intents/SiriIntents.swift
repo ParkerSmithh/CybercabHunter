@@ -48,11 +48,14 @@ struct OpenSightingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Cybercab Sightings"
     static let description = IntentDescription("Opens approved Cybercab sightings, for Austin or Dallas.")
     static let openAppWhenRun = true
-    @Parameter(title: "City", default: .austin) var city: ServiceCity
+    @Parameter(title: "City", requestValueDialog: "Which city, Austin or Dallas?") var city: ServiceCity
     init() {}
     init(city: ServiceCity) { self.city = city }
     @MainActor
     func perform() async throws -> some IntentResult {
+        guard $city.diagnosticPresence != .unset else {
+            throw $city.needsValueError("Which city, Austin or Dallas?")
+        }
         AppRouter.shared.openSightings(city: city.rawValue)
         return .result()
     }
@@ -65,58 +68,179 @@ struct OpenSightingsIntent: AppIntent {
 /// Replaces Phase 6's FleetStatsIntent answer (same type, so existing
 /// shortcuts keep working).
 extension FleetStatsIntent {
-    static func answer(city: ServiceCity?) async throws -> SiriAnswer {
+    static func answer(city: ServiceCity?, metric: FleetMetric = .overview, diagnostics: SiriDiagnostics.Invocation? = nil) async throws -> SiriAnswer {
         let data = SiriData.shared
         do {
             if let city {
                 let s: HomepageStats = try await data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city.rawValue)])
-                return SiriSpeech.cityFleet(s)
+                try SiriCityResponse.validate(s, for: city)
+                if metric == .overview { return SiriSpeech.cityFleet(s) }
+                if metric == .lifetimeSightings { return SiriAnswer(spoken: "A permanent lifetime sighting count isn't available for individual cities. Ask for Austin or Dallas sightings across the available public records instead.") }
+                return CityActivitySpeech.answer(s, metric: metric == .rides ? .rides : .registry, period: .allTime)
+            }
+            if metric != .overview {
+                let s: RegistryStats = try await data.get("/api/registry/stats")
+                let n = metric == .registry ? s.publicVehicles : metric == .rides ? s.recordedRides : s.sightingsAllTime
+                let label = metric == .registry ? "public registry vehicles" : metric == .rides ? "recorded rides" : "approved sightings in its lifetime counter"
+                return SiriAnswer(spoken: "Across the global public records, Cybercab Hunter has \(SiriSpeech.n(n)) \(label).", figures: [.init(value: SiriSpeech.n(n), label: metric == .registry ? "Registry" : metric == .rides ? "Rides" : "Lifetime sightings")])
             }
             async let stats: RegistryStats = data.get("/api/registry/stats")
             async let daily: DailyReport? = try? data.get("/api/daily")
             async let dmv: DMVOverview? = try? data.get("/api/dmv/overview")
-            return SiriSpeech.fleet(stats: try await stats, daily: await daily, dmv: await dmv)
-        } catch { throw IntentFailure.unavailable }
+            var answer = SiriSpeech.fleet(stats: try await stats, daily: await daily, dmv: await dmv)
+            answer.spoken = "This is the global fleet overview. " + answer.spoken
+            return answer
+        } catch {
+            diagnostics?.emit("data_failed", outcome: "error", error: error)
+            throw IntentFailure.unavailable
+        }
+    }
+}
+
+/// No city/metric parameters for Siri to omit or substitute. The global Fleet
+/// intent retains its legitimate nil-city overview behavior.
+struct DallasFleetSummaryIntent: AppIntent {
+    static let title: LocalizedStringResource = "Dallas Fleet Summary"
+    static let description = IntentDescription("Dallas-specific public registry and recent activity overview. Always Dallas, including when its registry count is zero.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+        var p = SiriDiagnostics.Parameters()
+        p.city = ServiceCity.dallas.rawValue; p.cityState = .derived
+        p.metric = FleetMetric.overview.rawValue; p.metricState = .derived
+        var trace = SiriDiagnostics.Invocation("DallasFleetSummaryIntent", parameters: p)
+        do {
+            let a = try await FleetStatsIntent.answer(city: .dallas, metric: .overview, diagnostics: trace)
+            trace.complete(a.figures.isEmpty ? "no_count_available" : "answer_composed")
+            return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.cars), openTitle: "Open Cars"))
+        } catch { trace.fail(error); throw error }
+    }
+}
+
+/// Fail closed on misrouted/mislabeled city payloads; never relabel another
+/// city's or global response as a Dallas answer.
+enum SiriCityResponse {
+    static func validate(_ stats: HomepageStats, for city: ServiceCity) throws {
+        guard stats.city.lowercased() == city.rawValue,
+              stats.name.lowercased() == city.rawValue else { throw IntentFailure.cityMismatch }
     }
 }
 
 struct CheckDMVIntent: AppIntent {
     static let title: LocalizedStringResource = "Check Texas DMV Updates"
-    static let description = IntentDescription("Tells you how many Tesla robotaxi VINs the Texas DMV roster lists, how many are Cybercabs, and what Cybercab Hunter newly detected in the latest dataset.")
+    static let description = IntentDescription("Tells you how many Tesla robotaxi VINs the Texas DMV roster lists, how many are Cybercabs, and what Cybercab Hunter newly detected in the latest dataset. VIN counts do not establish active service.", searchKeywords: ["DMV", "Texas", "VIN", "registration"])
     /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
 
-    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let o: DMVOverview
-        do { o = try await SiriData.shared.get("/api/dmv/overview") } catch { throw IntentFailure.unavailable }
-        let a = SiriSpeech.dmv(o)
-        return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.dmvTracker), openTitle: "Open DMV Tracker"))
+    @Parameter(title: "Statistic", default: .overview) var question: DMVQuestion
+    static var parameterSummary: some ParameterSummary { Summary("Check \(\.$question)") }
+
+    static func answer(question: DMVQuestion, traceID: String = UUID().uuidString) async throws -> SiriAnswer {
+        SiriDiagnostics.record(intent: "CheckDMVIntent", phase: "entered", id: traceID, selection: question.rawValue)
+        do {
+            let o: DMVOverview = try await SiriData.shared.get("/api/dmv/overview")
+            let a = SiriSpeech.dmv(o, question: question)
+            SiriDiagnostics.record(intent: "CheckDMVIntent", phase: "answer_ready", id: traceID, selection: question.rawValue)
+            return a
+        } catch {
+            SiriDiagnostics.record(intent: "CheckDMVIntent", phase: "data_failed", id: traceID, selection: question.rawValue, error: error)
+            throw IntentFailure.unavailable
+        }
+    }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+        let a = try await Self.answer(question: question)
+        return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.dmvTracker), openTitle: "Open DMV Tracker"))
     }
 }
 
 struct RecentSightingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Show Recent Cybercab Sightings"
-    static let description = IntentDescription("Tells you about the latest approved Cybercab sightings and the last 24 hours, for Austin or Dallas.")
+    static let description = IntentDescription("Counts approved public Cybercab sightings in Austin or Dallas: today, yesterday, this week since Monday, the last seven days, the last 24 hours, or all available public records. City lifetime totals are unavailable.")
     /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
 
-    @Parameter(title: "City", default: .austin) var city: ServiceCity
-    static var parameterSummary: some ParameterSummary { Summary("Recent sightings in \(\.$city)") }
+    @Parameter(title: "City") var city: ServiceCity?
+    @Parameter(title: "Period") var period: ActivityPeriod?
+    @Parameter(title: "City and period") var question: CitySightingsQuestion?
+    static var parameterSummary: some ParameterSummary { Summary("Approved sightings for \(\.$question)") { \.$city; \.$period } }
 
     init() {}
     init(city: ServiceCity) { self.city = city }
 
-    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let data = SiriData.shared
-        let a: SiriAnswer
+    static func answer(city: ServiceCity, period: ActivityPeriod, now: Date = .now, traceID: String = UUID().uuidString, selection: String = "legacy-city-period") async throws -> SiriAnswer {
+        var p = SiriDiagnostics.Parameters()
+        p.city = city.rawValue; p.metric = "sightings"; p.period = period.rawValue
+        p.cityState = .derived; p.metricState = .derived; p.periodState = .derived
+        var trace = SiriDiagnostics.Invocation("RecentSightingsIntent", parameters: p, id: traceID)
+        trace.emit("parameters_resolved")
         do {
-            async let page: PublicSightingsPage = data.get("/api/sightings", query: [URLQueryItem(name: "city", value: city.rawValue), URLQueryItem(name: "limit", value: "3")])
-            async let stats: HomepageStats? = try? data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city.rawValue)])
-            a = SiriSpeech.sightings(city: await stats, latest: try await page.sightings, cityName: city.title)
-        } catch { throw IntentFailure.unavailable }
-        return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenSightingsIntent(city: city), openTitle: "Open Sightings"))
+            let s: HomepageStats = try await SiriData.shared.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city.rawValue)])
+            try SiriCityResponse.validate(s, for: city)
+            var answer = CityActivitySpeech.answer(s, metric: .sightings, period: period, now: now)
+            if let latest = s.sightings?.latest?.first, let at = SiriSpeech.instant(latest.spottedAt) {
+                answer.spoken += " The latest approved sighting in \(s.name) was on \(SiriSpeech.day(SiriSpeech.iso(at), now: now))\(latest.location.map { ", near \($0)" } ?? "")."
+            }
+            trace.complete(answer.figures.isEmpty ? "no_count_available" : "answer_composed")
+            return answer
+        } catch {
+            trace.fail(error)
+            throw IntentFailure.unavailable
+        }
+    }
+
+    /// A missing Siri parameter must never silently become Austin.
+    func resolvedSelection(traceID: String = UUID().uuidString) throws -> (city: ServiceCity, period: ActivityPeriod) {
+        if let question {
+            if let city, city != question.city {
+                throw $question.needsValueError("The city selections disagree. Which city and period do you want?")
+            }
+            if let period, period != question.period {
+                throw $question.needsValueError("The periods disagree. Which city and period do you want?")
+            }
+            return (question.city, question.period)
+        }
+        guard let city else { throw $city.needsValueError("Which city, Austin or Dallas?") }
+        guard let period else {
+            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "clarification_requested", id: traceID, city: city.rawValue, selection: "missing_period")
+            throw $period.needsValueError("Which period: today, yesterday, this week, last seven days, last 24 hours, or all time?")
+        }
+        return (city, period)
+    }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+        let id = UUID().uuidString
+        SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "parameters_received", id: id,
+                               city: city?.rawValue ?? "missing", period: period?.rawValue ?? "missing",
+                               selection: question?.rawValue ?? "missing")
+        let selected: (city: ServiceCity, period: ActivityPeriod)
+        do { selected = try resolvedSelection(traceID: id) }
+        catch {
+            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "clarification_requested", id: id, selection: "missing_or_conflicting_parameters", outcome: "needs_value")
+            throw error
+        }
+        let selectedCity = selected.city
+        let a = try await Self.answer(city: selectedCity, period: selected.period, traceID: id, selection: question?.rawValue ?? "explicit-city-period")
+        return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenSightingsIntent(city: selectedCity), openTitle: "Open Sightings"))
+    }
+}
+
+/// A literal, parameter-free route: Siri cannot omit or substitute its city.
+/// Reuses the same public endpoint, cache, period logic, and answer rendering.
+struct DallasWeeklySightingsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Dallas Weekly Sightings"
+    static let description = IntentDescription("Approved public Cybercab sightings in Dallas this week since Monday. Always Dallas; no city parameter.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+        let a = try await SiriDiagnostics.traceAnswer(intent: "DallasWeeklySightingsIntent", selection: "dallasThisWeek") {
+            try await RecentSightingsIntent.answer(city: .dallas, period: .thisWeek, selection: "fixed-dallasThisWeek")
+        }
+        return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenSightingsIntent(city: .dallas), openTitle: "Open Dallas Sightings"))
     }
 }
 
@@ -124,7 +248,7 @@ struct RecentSightingsIntent: AppIntent {
 
 struct DailyBriefingIntent: AppIntent {
     static let title: LocalizedStringResource = "Cybercab Hunter Briefing"
-    static let description = IntentDescription("A spoken rundown of Cybercab Hunter's data: the public registry, today's approved sightings and camera detections, and the latest Texas DMV snapshot. Answers in Siri without opening the app.")
+    static let description = IntentDescription("A spoken rundown of Cybercab Hunter's data: the public registry, today's approved sightings and camera detections, and the latest Texas DMV snapshot. Answers in Siri without opening the app.", searchKeywords: ["briefing", "today", "rundown", "Cybercab news"])
     /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
@@ -133,7 +257,9 @@ struct DailyBriefingIntent: AppIntent {
     static var parameterSummary: some ParameterSummary { Summary("Cybercab briefing for \(\.$city)") }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let a = try await Self.compose(city: city, quick: false)
+        let a = try await SiriDiagnostics.traceAnswer(intent: "DailyBriefingIntent", selection: city?.rawValue ?? "all") {
+            try await Self.compose(city: city, quick: false)
+        }
         return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.home), openTitle: "Open Cybercab Hunter"))
     }
 
@@ -145,6 +271,10 @@ struct DailyBriefingIntent: AppIntent {
         async let registry: RegistryStats? = (quick || city != nil) ? nil : try? data.get("/api/registry/stats")
         async let stats: HomepageStats? = city == nil ? nil : try? data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city!.rawValue)])
         let (d, o, r, s) = await (daily, dmv, registry, stats)
+        if let city {
+            guard let s else { throw IntentFailure.unavailable }
+            try SiriCityResponse.validate(s, for: city)
+        }
         if d == nil && o == nil && r == nil && s == nil { throw IntentFailure.unavailable }
         return SiriSpeech.briefing(stats: r, daily: d, dmv: o, city: s, quick: quick)
     }
@@ -162,7 +292,9 @@ struct QuickStatusIntent: AppIntent {
     @Parameter(title: "City") var city: ServiceCity?
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let a = try await DailyBriefingIntent.compose(city: city, quick: true)
+        let a = try await SiriDiagnostics.traceAnswer(intent: "QuickStatusIntent", selection: city?.rawValue ?? "all") {
+            try await DailyBriefingIntent.compose(city: city, quick: true)
+        }
         return .result(dialog: IntentDialog(stringLiteral: a.spoken))
     }
 }
@@ -180,23 +312,41 @@ struct NearbySightingsIntent: AppIntent {
     static let window: TimeInterval = 24 * 3600
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let location: CLLocation
-        do { location = try await OneShotLocation.current() }
-        catch LocationFailure.notDetermined { throw IntentFailure.locationNotAllowedYet }
-        catch LocationFailure.denied { throw IntentFailure.locationDenied }
-        catch { throw IntentFailure.locationUnavailable }
-        let precise = await OneShotLocation.isPrecise
-        let city = Self.nearestCity(to: location)
-        guard let city else { throw IntentFailure.outsideServiceAreas }
-        let list: [CameraDetection]
-        do { list = try await SiriData.shared.get("/api/camera-sightings", query: city == .austin ? [] : [URLQueryItem(name: "city", value: city.rawValue)]) }
-        catch { throw IntentFailure.unavailable }
-        // Approximate location: a wider circle, and no exact distance.
-        let radius = precise ? Self.radiusMiles : max(Self.radiusMiles, location.horizontalAccuracy / 1609.344)
-        let hits = SiriSpeech.nearby(list, from: location, radiusMiles: radius, window: Self.window)
-        let latest = list.compactMap { d in SiriSpeech.instant(d.observedAt).map { SiriSpeech.NearbyHit(camera: SiriSpeech.titleCase(d.cameraName), miles: 0, at: $0) } }.max { $0.at < $1.at }
-        let a = SiriSpeech.nearbyAnswer(hits: hits, radiusMiles: radius, precise: precise, cityName: city.title, latestInCity: latest)
-        return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenZonesIntent(city: city), openTitle: "Open Map"))
+        var p = SiriDiagnostics.Parameters()
+        p.city = "not_resolved"; p.cityState = .derived
+        p.metric = "cameras"; p.metricState = .derived
+        p.period = "last24Hours"; p.periodState = .derived
+        switch await OneShotLocation.status {
+        case .notDetermined: p.locationAuthorization = "not_configured"
+        case .denied: p.locationAuthorization = "denied"
+        case .restricted: p.locationAuthorization = "restricted"
+        case .authorizedWhenInUse: p.locationAuthorization = "when_in_use"
+        case .authorizedAlways: p.locationAuthorization = "always"
+        @unknown default: p.locationAuthorization = "unknown"
+        }
+        var trace = SiriDiagnostics.Invocation("NearbySightingsIntent", parameters: p)
+        do {
+            let location: CLLocation
+            do { location = try await OneShotLocation.current() }
+            catch LocationFailure.notDetermined { throw IntentFailure.locationNotAllowedYet }
+            catch LocationFailure.denied { throw IntentFailure.locationDenied }
+            catch { throw IntentFailure.locationUnavailable }
+            let precise = await OneShotLocation.isPrecise
+            let city = Self.nearestCity(to: location)
+            guard let city else { throw IntentFailure.outsideServiceAreas }
+            trace.parameters.city = city.rawValue
+            trace.emit("parameters_resolved")
+            let list: [CameraDetection]
+            do { list = try await SiriData.shared.get("/api/camera-sightings", query: city == .austin ? [] : [URLQueryItem(name: "city", value: city.rawValue)]) }
+            catch { trace.fail(error); throw IntentFailure.unavailable }
+            // Approximate location: a wider circle, and no exact distance.
+            let radius = precise ? Self.radiusMiles : max(Self.radiusMiles, location.horizontalAccuracy / 1609.344)
+            let hits = SiriSpeech.nearby(list, from: location, radiusMiles: radius, window: Self.window)
+            let latest = list.compactMap { d in SiriSpeech.instant(d.observedAt).map { SiriSpeech.NearbyHit(camera: SiriSpeech.titleCase(d.cameraName), miles: 0, at: $0) } }.max { $0.at < $1.at }
+            let a = SiriSpeech.nearbyAnswer(hits: hits, radiusMiles: radius, precise: precise, cityName: city.title, latestInCity: latest)
+            trace.complete(hits.isEmpty ? "no_nearby_detections" : "answer_composed")
+            return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenZonesIntent(city: city), openTitle: "Open Map"))
+        } catch { trace.fail(error); throw error }
     }
 
     /// The service area whose zone centre is within 60 miles, nearest first.
@@ -217,9 +367,9 @@ enum GrowthPeriod: String, AppEnum {
     case day, week, month, all
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Period"
     static let caseDisplayRepresentations: [GrowthPeriod: DisplayRepresentation] = [
-        .day: DisplayRepresentation(title: "Latest day", synonyms: ["today", "daily", "yesterday"]),
-        .week: DisplayRepresentation(title: "This week", synonyms: ["week", "weekly", "last week"]),
-        .month: DisplayRepresentation(title: "This month", synonyms: ["month", "monthly", "last month"]),
+        .day: DisplayRepresentation(title: "Latest snapshots", synonyms: ["latest day", "daily"]),
+        .week: DisplayRepresentation(title: "Last seven days", synonyms: ["week", "weekly"]),
+        .month: DisplayRepresentation(title: "Last thirty days", synonyms: ["month", "monthly"]),
         .all: DisplayRepresentation(title: "Since tracking began", synonyms: ["all time", "since the start"])
     ]
     var days: Int? { switch self { case .day: 1; case .week: 7; case .month: 30; case .all: nil } }
@@ -227,28 +377,46 @@ enum GrowthPeriod: String, AppEnum {
 
 struct FleetGrowthIntent: AppIntent {
     static let title: LocalizedStringResource = "Check Cybercab Fleet Growth"
-    static let description = IntentDescription("Compares the Texas DMV roster between two actual daily snapshots: start and end VIN counts, net change, percentage, and newly detected VINs. Optional custom dates.")
+    static let description = IntentDescription("Compares the Texas DMV roster between two actual daily snapshots: start and end VIN counts, net change, percentage, and newly detected VINs. Optional custom dates.", searchKeywords: ["growth", "Cybercab", "VIN", "DMV"])
+    static let isDiscoverable = true
     /// iOS 26+: answers in Siri / Shortcuts without opening the app (replaces openAppWhenRun = false).
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "Period", default: .week) var period: GrowthPeriod
+    @Parameter(title: "Model", default: .all) var model: GrowthModel
     @Parameter(title: "From", description: "Overrides the period: the first date to compare (an actual snapshot on or after it).") var from: Date?
     @Parameter(title: "To", description: "The last date to compare (an actual snapshot on or before it).") var to: Date?
 
-    static var parameterSummary: some ParameterSummary { Summary("Fleet growth for \(\.$period)") { \.$from; \.$to } }
+    static var parameterSummary: some ParameterSummary { Summary("Fleet growth for \(\.$period)") { \.$model; \.$from; \.$to } }
+
+    var diagnosticParameters: SiriDiagnostics.Parameters {
+        var p = SiriDiagnostics.Parameters()
+        p.modelState = $model.diagnosticPresence; p.periodState = $period.diagnosticPresence
+        p.fromState = $from.diagnosticPresence; p.toState = $to.diagnosticPresence
+        p.model = model.rawValue; p.period = period.rawValue
+        p.customFrom = from != nil; p.customTo = to != nil
+        return p
+    }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        var trace = SiriDiagnostics.Invocation("FleetGrowthIntent", parameters: diagnosticParameters)
         let data = SiriData.shared
         let g: DMVGrowth, o: DMVOverview?
         do {
             async let growth: DMVGrowth = data.get("/api/dmv/growth", query: [URLQueryItem(name: "range", value: "all")])
             async let overview: DMVOverview? = try? data.get("/api/dmv/overview")
             (g, o) = (try await growth, await overview)
-        } catch { throw IntentFailure.unavailable }
-        let (start, end) = Self.window(period: period, from: from, to: to, latest: g.points.map(\.date).max())
-        let processed = o.map { ($0.processingPending ?? 0) == 0 } ?? false
-        let a = SiriSpeech.growthAnswer(SiriSpeech.growth(g, start: start, end: end, processed: processed))
+        } catch { trace.fail(error); throw IntentFailure.unavailable }
+        var (start, end) = Self.window(period: period, from: from, to: to, latest: g.points.map(\.date).max())
+        if period == .day && from == nil && to == nil {
+            let dates = Array(Set(g.points.map(\.date))).sorted()
+            start = dates.dropLast().last; end = dates.last
+        }
+        let processed = o.map { $0.processingPending == 0 } ?? false
+        let comparison = SiriSpeech.growth(g, start: start, end: end, processed: processed, model: model)
+        let a = SiriSpeech.growthAnswer(comparison, model: model)
+        trace.complete(comparison == nil ? "insufficient_history" : "answer_composed")
         return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.dmvTracker), openTitle: "Open Growth Chart"))
     }
 
@@ -258,7 +426,7 @@ struct FleetGrowthIntent: AppIntent {
         let iso = { (d: Date) in SiriSpeech.iso(d) }
         if from != nil || to != nil { return (from.map(iso), to.map(iso)) }
         guard let latest, let end = SiriSpeech.calendarDate(latest), let days = period.days else { return (nil, latest) }
-        return (iso(end.addingTimeInterval(-Double(days) * 86400)), latest)
+        return (iso(CityActivitySpeech.calendar.date(byAdding: .day, value: -days, to: end)!), latest)
     }
 }
 
@@ -290,7 +458,7 @@ struct VehicleHistoryIntent: AppIntent {
            let d: DMVVinDetail = try? await data.get("/api/dmv/vins/\(VehicleSearchText.normalized(vin))") {
             dmvFirst = (d.tracking.firstDetected, d.tracking.inBaseline)
         }
-        let a = SiriSpeech.vehicleHistory(detail, sightings: (await s)?.sightings ?? [], dmvFirst: dmvFirst.map { (date: $0.0, baseline: $0.1) })
+        let a = SiriSpeech.vehicleHistory(detail, sightings: (await s)?.sightings, dmvFirst: dmvFirst.map { (date: $0.0, baseline: $0.1) })
         await SpotlightRecents.record(vehicle)
         let open = OpenVehicleIntent()
         open.target = vehicle
@@ -340,7 +508,7 @@ struct ServiceZoneIntent: AppIntent {
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }
 
-    @Parameter(title: "City", default: .austin) var city: ServiceCity
+    @Parameter(title: "City") var city: ServiceCity
     @Parameter(title: "Compare Austin and Dallas", default: false) var compare: Bool
 
     static var parameterSummary: some ParameterSummary { Summary("Service zone for \(\.$city)") { \.$compare } }
@@ -348,23 +516,76 @@ struct ServiceZoneIntent: AppIntent {
     init() {}
     init(city: ServiceCity) { self.city = city }
 
+    var diagnosticParameters: SiriDiagnostics.Parameters {
+        var p = SiriDiagnostics.Parameters()
+        p.cityState = $city.diagnosticPresence; p.compareState = $compare.diagnosticPresence
+        p.city = p.cityState == .unset ? "missing" : city.rawValue; p.compare = compare ? "true" : "false"
+        p.metric = "zone"; p.metricState = .derived
+        return p
+    }
+
+    /// Required in metadata, with an explicit restart/clarification error as
+    /// a safety net. Never read an unset, nonoptional parameter's wrapped value.
+    func resolvedCity() throws -> ServiceCity {
+        guard $city.diagnosticPresence != .unset else {
+            throw $city.needsValueError("Which city, Austin or Dallas?")
+        }
+        return city
+    }
+
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        var trace = SiriDiagnostics.Invocation("ServiceZoneIntent", parameters: diagnosticParameters)
+        let selectedCity: ServiceCity
+        do { selectedCity = try resolvedCity() }
+        catch {
+            trace.emit("clarification_requested", outcome: "city_required")
+            throw error
+        }
         let data = SiriData.shared
         let a: SiriAnswer
         do {
             let areas: ServiceAreasResponse = try await data.get("/api/service-areas")
-            guard areas.areas.contains(where: { $0.key == city.rawValue }) else {
-                return .result(dialog: "Cybercab Hunter isn't tracking \(city.title) right now.", view: SiriAnswerCard(answer: SiriAnswer(spoken: ""), open: OpenScreenIntent(.map), openTitle: "Open Map"))
+            guard areas.areas.contains(where: { $0.key == selectedCity.rawValue }) else {
+                trace.complete("city_not_tracked")
+                return .result(dialog: "Cybercab Hunter isn't tracking \(selectedCity.title) right now.", view: SiriAnswerCard(answer: SiriAnswer(spoken: ""), open: OpenScreenIntent(.map), openTitle: "Open Map"))
             }
             if compare {
                 async let austin: HomepageStats = data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: "austin")])
                 async let dallas: HomepageStats = data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: "dallas")])
-                a = SiriSpeech.compareZones(try await austin, try await dallas)
+                let (austinStats, dallasStats) = try await (austin, dallas)
+                try SiriCityResponse.validate(austinStats, for: .austin)
+                try SiriCityResponse.validate(dallasStats, for: .dallas)
+                a = SiriSpeech.compareZones(austinStats, dallasStats)
             } else {
-                a = SiriSpeech.zone(try await data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city.rawValue)]))
+                let stats: HomepageStats = try await data.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: selectedCity.rawValue)])
+                try SiriCityResponse.validate(stats, for: selectedCity)
+                a = SiriSpeech.zone(stats)
             }
-        } catch { throw IntentFailure.unavailable }
-        return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenZonesIntent(city: city), openTitle: "Open \(city.title) Zone"))
+        } catch { trace.fail(error); throw IntentFailure.unavailable }
+        trace.complete(a.figures.isEmpty ? "no_count_available" : "answer_composed")
+        return .result(dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenZonesIntent(city: selectedCity), openTitle: "Open \(selectedCity.title) Zone"))
+    }
+}
+
+/// Fixed Dallas route: Siri has no city or comparison parameter to replace.
+/// The original action remains available for manually configured city queries.
+struct DallasServiceZoneIntent: AppIntent {
+    static let title: LocalizedStringResource = "Dallas Service Area"
+    static let description = IntentDescription("Reads Dallas's current service-area figure from Cybercab Hunter. Always Dallas; never Austin.")
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { .background }
+
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        var p = SiriDiagnostics.Parameters()
+        p.city = "dallas"; p.cityState = .derived
+        p.metric = "zone"; p.metricState = .derived
+        p.compare = "false"; p.compareState = .derived
+        var trace = SiriDiagnostics.Invocation("DallasServiceZoneIntent", parameters: p)
+        do {
+            let result = try await ServiceZoneIntent(city: .dallas).perform()
+            trace.complete("delegated_answer")
+            return result
+        } catch { trace.fail(error); throw error }
     }
 }
 

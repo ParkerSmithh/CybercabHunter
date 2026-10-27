@@ -1,0 +1,2171 @@
+--- build4/ios-native/CybercabHunter/Features/Intents/CybercabIntents.swift
++++ build5/ios-native/CybercabHunter/Features/Intents/CybercabIntents.swift
+@@ -56,7 +56,66 @@
+     @Parameter(title: "City") var city: ServiceCity?
+     @Parameter(title: "Statistic", default: .overview) var metric: FleetMetric
+     @Parameter(title: "City activity question") var activity: CityActivityQuestion?
+-    static var parameterSummary: some ParameterSummary { Summary("\(\.$metric) in \(\.$city)") { \.$activity } }
++    @Parameter(title: "Camera city and period") var cameraQuestion: CameraCityPeriod?
++    @Parameter(title: "Public registry city") var registryCity: ServiceCity?
++    @Parameter(title: "Approved sightings comparison period") var comparisonPeriod: ActivityPeriod?
++    @Parameter(title: "Activity metric") var activityMetric: CityMetric?
++    @Parameter(title: "Activity period") var activityPeriod: ActivityPeriod?
++    static var parameterSummary: some ParameterSummary {
++        Summary("Check \(\.$activity)") { \.$cameraQuestion; \.$registryCity; \.$comparisonPeriod; \.$city; \.$metric; \.$activityMetric; \.$activityPeriod }
++    }
++
++    func resolvedActivity(traceID: String = UUID().uuidString, diagnosticIntent: String = "FleetStatsIntent") throws -> ActivitySelection? {
++        func clarify(_ reason: String) {
++            SiriDiagnostics.record(intent: diagnosticIntent, phase: "clarification_requested", id: traceID, selection: reason)
++        }
++        var candidates: [ActivitySelection] = []
++        if let cameraQuestion { candidates.append(.init(city: cameraQuestion.city, metric: .cameras, period: cameraQuestion.period)) }
++        if let registryCity { candidates.append(.init(city: registryCity, metric: .registry, period: .allTime)) }
++        if let comparisonPeriod { candidates.append(.init(city: nil, metric: .sightings, period: comparisonPeriod)) }
++        if let activity {
++            if activity.requiresClarification {
++                if activity == .clarifyActivity {
++                    clarify("unknown_activity")
++                    throw $activity.needsValueError("Which city, metric, and period?")
++                }
++                if activity == .clarifyCamerasThisWeek {
++                    guard activityMetric == nil || activityMetric == .cameras, activityPeriod == nil || activityPeriod == .thisWeek else {
++                        clarify("conflicting_context")
++                        throw $activity.needsValueError("This question is camera detections this week. Choose a matching activity.")
++                    }
++                    guard let city else { clarify("missing_city"); throw $city.needsValueError("Which city, Austin or Dallas?") }
++                    candidates.append(.init(city: city, metric: .cameras, period: .thisWeek))
++                } else {
++                    guard city == nil else { clarify("comparison_city_conflict"); throw $city.needsValueError("This compares both Austin and Dallas. Clear the single city or choose a single-city activity.") }
++                    guard let activityMetric else { clarify("missing_metric"); throw $activityMetric.needsValueError("Which metric: approved sightings, camera detections, public registry vehicles, recorded rides, or service area?") }
++                    let fixedPeriod: ActivityPeriod? = activity == .clarifyComparisonToday ? .today : nil
++                    if let fixedPeriod, let activityPeriod, fixedPeriod != activityPeriod {
++                        clarify("conflicting_period"); throw $activityPeriod.needsValueError("This comparison requests today. Choose today or a different activity.")
++                    }
++                    let timed = activityMetric == .sightings || activityMetric == .cameras
++                    if timed && fixedPeriod == nil && activityPeriod == nil {
++                        clarify("missing_period"); throw $activityPeriod.needsValueError("Which period: today, yesterday, this week, last seven days, last 24 hours, or all time?")
++                    }
++                    candidates.append(.init(city: nil, metric: activityMetric, period: timed ? (fixedPeriod ?? activityPeriod!) : .allTime))
++                }
++            } else { candidates.append(.init(city: activity.comparesCities ? nil : activity.city, metric: activity.metric, period: activity.period)) }
++        }
++        guard let selected = candidates.first else {
++            if activityMetric != nil || activityPeriod != nil {
++                clarify("missing_activity"); throw $activity.needsValueError("Which city activity or comparison do you want?")
++            }
++            return nil
++        }
++        let metricMatches = metric == .overview || (metric == .registry && selected.metric == .registry) || (metric == .rides && selected.metric == .rides)
++        guard candidates.allSatisfy({ $0 == selected }), city == nil || city == selected.city,
++              metricMatches, activityMetric == nil || activityMetric == selected.metric,
++              activityPeriod == nil || activityPeriod == selected.period else {
++            clarify("conflicting_values")
++            throw $activity.needsValueError("The supplied city, metric, or period selections disagree. Choose matching values.")
++        }
++        return selected
++    }
+ 
+     var diagnosticParameters: SiriDiagnostics.Parameters {
+         var p = SiriDiagnostics.Parameters()
+@@ -64,34 +123,30 @@
+         p.activityState = $activity.diagnosticPresence
+         p.city = city?.rawValue ?? "missing"; p.metric = metric.rawValue
+         p.activity = activity?.rawValue ?? "missing"
+-        p.period = activity?.period.rawValue ?? "not_applicable"
++        p.period = activity?.requiresClarification == true ? "unresolved" : (activity?.period.rawValue ?? "not_applicable")
++        p.selection = "activity=\(activity?.rawValue ?? "missing"),camera=\(cameraQuestion?.rawValue ?? "missing"),registry=\(registryCity?.rawValue ?? "missing"),comparison=\(comparisonPeriod?.rawValue ?? "missing"),metric=\(activityMetric?.rawValue ?? "missing"),period=\(activityPeriod?.rawValue ?? "missing")"
+         return p
+     }
+ 
+     /// Defaults remain valid for the existing global overview. A phrase-bound
+     /// city activity must never silently override contradictory saved inputs.
+     func validateSelection() throws {
+-        guard let activity else { return }
+-        if activity.requiresClarification {
+-            throw $activity.needsValueError("Which city, metric, and period? Choose approved sightings, camera detections, registry vehicles, or service area.")
+-        }
+-        if let city, activity.comparesCities || city != activity.city {
+-            throw $activity.needsValueError("The city and activity disagree. Which complete city activity do you want?")
+-        }
+-        if $metric.diagnosticPresence == .set || metric != .overview {
+-            let matches = metric == .overview || (metric == .registry && activity.metric == .registry) || (metric == .rides && activity.metric == .rides)
+-            guard matches else {
+-                throw $activity.needsValueError("The statistic and activity disagree. Choose a matching activity and statistic, or use Fleet overview.")
+-            }
+-        }
++        _ = try resolvedActivity()
+     }
+ 
+     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+         var trace = SiriDiagnostics.Invocation("FleetStatsIntent", parameters: diagnosticParameters)
+         do {
+-            try validateSelection()
++            trace.emit("parameters_received")
++            let selected = try resolvedActivity(traceID: trace.id)
+             let a: SiriAnswer
+-            if let activity { a = try await CityActivityIntent.answer(activity, presence: trace.parameters.activityState) }
++            if let selected {
++                trace.parameters.city = selected.city?.rawValue ?? "austin,dallas"
++                trace.parameters.metric = selected.metric.rawValue; trace.parameters.period = selected.period.rawValue
++                trace.emit("parameters_resolved")
++                trace.emit("delegating_CityActivityIntent")
++                a = try await CityActivityIntent.answer(selected, selection: activity?.rawValue ?? "domain_binding", presence: activity == nil ? .derived : trace.parameters.activityState, traceID: trace.id)
++            }
+             else { a = try await Self.answer(city: city, metric: metric, diagnostics: trace) }
+             trace.complete(a.figures.isEmpty ? "no_count_available" : "answer_composed")
+             return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.cars), openTitle: "Open Cars"))
+@@ -321,7 +376,10 @@
+             "\(.applicationName) \(\.$activity)",
+             "Compare \(\.$activity) in \(.applicationName)",
+             "\(\.$activity) in \(.applicationName)",
+-            "Give me \(\.$activity) in \(.applicationName)"
++            "Give me \(\.$activity) in \(.applicationName)",
++            "Read Cybercab camera detections for \(\.$cameraQuestion) in \(.applicationName)",
++            "Read public registry fleet data for \(\.$registryCity) in \(.applicationName)",
++            "Compare approved Cybercab sightings in Austin and Dallas \(\.$comparisonPeriod) in \(.applicationName)"
+         ], shortTitle: "Check Fleet", systemImageName: "chart.bar.fill")
+         AppShortcut(intent: CheckDMVIntent(), phrases: [
+             "Read DMV data in \(.applicationName)",
+@@ -340,7 +398,8 @@
+             "Show the latest Cybercab sightings in \(.applicationName)",
+             "Any Cybercabs spotted in \(\.$question) in \(.applicationName)",
+             "How many Cybercabs were spotted in \(\.$question) in \(.applicationName)",
+-            "Approved Cybercab sightings in \(\.$question) in \(.applicationName)"
++            "Approved Cybercab sightings in \(\.$question) in \(.applicationName)",
++            "Count approved Cybercab sightings for \(\.$question) in \(.applicationName)"
+         ], shortTitle: "Recent Sightings", systemImageName: "camera.viewfinder")
+         AppShortcut(intent: DallasWeeklySightingsIntent(), phrases: [
+             "\(.applicationName) Dallas weekly sightings",
+--- build4/ios-native/CybercabHunter/Features/Intents/SiriDiagnostics.swift
++++ build5/ios-native/CybercabHunter/Features/Intents/SiriDiagnostics.swift
+@@ -16,6 +16,7 @@
+     /// Only finite public parameter values and presence flags. Never dates,
+     /// coordinates, entity identifiers, answer text, or arbitrary user input.
+     struct Parameters: Equatable, Sendable {
++        var selection = "-"
+         var city = "not_applicable", metric = "not_applicable", activity = "not_applicable"
+         var model = "not_applicable", period = "not_applicable", compare = "not_applicable"
+         var cityState = Presence.unavailable, metricState = Presence.unavailable
+@@ -31,7 +32,7 @@
+         let selection: String, outcome: String, error: String
+         var line: String {
+             let p = parameters
+-            return "intent=\(intent) phase=\(phase) id=\(id) city=\(p.city) metric=\(p.metric) activity=\(p.activity) model=\(p.model) period=\(p.period) compare=\(p.compare) city_state=\(p.cityState.rawValue) metric_state=\(p.metricState.rawValue) activity_state=\(p.activityState.rawValue) model_state=\(p.modelState.rawValue) period_state=\(p.periodState.rawValue) compare_state=\(p.compareState.rawValue) from_state=\(p.fromState.rawValue) to_state=\(p.toState.rawValue) custom_from=\(p.customFrom) custom_to=\(p.customTo) location_authorization=\(p.locationAuthorization) selection=\(selection) outcome=\(outcome) error=\(error)"
++            return "intent=\(intent) phase=\(phase) id=\(id) city=\(p.city) metric=\(p.metric) activity=\(p.activity) model=\(p.model) period=\(p.period) compare=\(p.compare) city_state=\(p.cityState.rawValue) metric_state=\(p.metricState.rawValue) activity_state=\(p.activityState.rawValue) model_state=\(p.modelState.rawValue) period_state=\(p.periodState.rawValue) compare_state=\(p.compareState.rawValue) from_state=\(p.fromState.rawValue) to_state=\(p.toState.rawValue) custom_from=\(p.customFrom) custom_to=\(p.customTo) location_authorization=\(p.locationAuthorization) selection=\(selection == "-" ? p.selection : selection) outcome=\(outcome) error=\(error)"
+         }
+     }
+ 
+@@ -42,11 +43,12 @@
+ 
+     struct Invocation: Sendable {
+         let intent: String
+-        let id = UUID().uuidString
++        let id: String
+         var parameters: Parameters
+         private var finished = false
+ 
+-        init(_ intent: String, parameters: Parameters) {
++        init(_ intent: String, parameters: Parameters, id: String = UUID().uuidString) {
++            self.id = id
+             self.intent = intent; self.parameters = parameters
+             emit("entered")
+         }
+--- build4/ios-native/CybercabHunter/Features/Intents/SiriIntents.swift
++++ build5/ios-native/CybercabHunter/Features/Intents/SiriIntents.swift
+@@ -166,13 +166,17 @@
+     @Parameter(title: "City") var city: ServiceCity?
+     @Parameter(title: "Period") var period: ActivityPeriod?
+     @Parameter(title: "City and period") var question: CitySightingsQuestion?
+-    static var parameterSummary: some ParameterSummary { Summary("Sightings in \(\.$city) for \(\.$period)") { \.$question } }
++    static var parameterSummary: some ParameterSummary { Summary("Approved sightings for \(\.$question)") { \.$city; \.$period } }
+ 
+     init() {}
+     init(city: ServiceCity) { self.city = city }
+ 
+     static func answer(city: ServiceCity, period: ActivityPeriod, now: Date = .now, traceID: String = UUID().uuidString, selection: String = "legacy-city-period") async throws -> SiriAnswer {
+-        SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "entered", id: traceID, city: city.rawValue, period: period.rawValue, selection: selection)
++        var p = SiriDiagnostics.Parameters()
++        p.city = city.rawValue; p.metric = "sightings"; p.period = period.rawValue
++        p.cityState = .derived; p.metricState = .derived; p.periodState = .derived
++        var trace = SiriDiagnostics.Invocation("RecentSightingsIntent", parameters: p, id: traceID)
++        trace.emit("parameters_resolved")
+         do {
+             let s: HomepageStats = try await SiriData.shared.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: city.rawValue)])
+             try SiriCityResponse.validate(s, for: city)
+@@ -180,16 +184,16 @@
+             if let latest = s.sightings?.latest?.first, let at = SiriSpeech.instant(latest.spottedAt) {
+                 answer.spoken += " The latest approved sighting in \(s.name) was on \(SiriSpeech.day(SiriSpeech.iso(at), now: now))\(latest.location.map { ", near \($0)" } ?? "")."
+             }
+-            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "answer_ready", id: traceID, city: city.rawValue, period: period.rawValue, selection: selection)
++            trace.complete(answer.figures.isEmpty ? "no_count_available" : "answer_composed")
+             return answer
+         } catch {
+-            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "data_failed", id: traceID, city: city.rawValue, period: period.rawValue, selection: selection, error: error)
++            trace.fail(error)
+             throw IntentFailure.unavailable
+         }
+     }
+ 
+     /// A missing Siri parameter must never silently become Austin.
+-    func resolvedSelection() throws -> (city: ServiceCity, period: ActivityPeriod) {
++    func resolvedSelection(traceID: String = UUID().uuidString) throws -> (city: ServiceCity, period: ActivityPeriod) {
+         if let question {
+             if let city, city != question.city {
+                 throw $question.needsValueError("The city selections disagree. Which city and period do you want?")
+@@ -200,7 +204,11 @@
+             return (question.city, question.period)
+         }
+         guard let city else { throw $city.needsValueError("Which city, Austin or Dallas?") }
+-        return (city, period ?? .last24Hours)
++        guard let period else {
++            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "clarification_requested", id: traceID, city: city.rawValue, selection: "missing_period")
++            throw $period.needsValueError("Which period: today, yesterday, this week, last seven days, last 24 hours, or all time?")
++        }
++        return (city, period)
+     }
+ 
+     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+@@ -208,7 +216,12 @@
+         SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "parameters_received", id: id,
+                                city: city?.rawValue ?? "missing", period: period?.rawValue ?? "missing",
+                                selection: question?.rawValue ?? "missing")
+-        let selected = try resolvedSelection()
++        let selected: (city: ServiceCity, period: ActivityPeriod)
++        do { selected = try resolvedSelection(traceID: id) }
++        catch {
++            SiriDiagnostics.record(intent: "RecentSightingsIntent", phase: "clarification_requested", id: id, selection: "missing_or_conflicting_parameters", outcome: "needs_value")
++            throw error
++        }
+         let selectedCity = selected.city
+         let a = try await Self.answer(city: selectedCity, period: selected.period, traceID: id, selection: question?.rawValue ?? "explicit-city-period")
+         return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenSightingsIntent(city: selectedCity), openTitle: "Open Sightings"))
+--- build4/ios-native/CybercabHunter/Features/Intents/SiriQuestions.swift
++++ build5/ios-native/CybercabHunter/Features/Intents/SiriQuestions.swift
+@@ -57,7 +57,43 @@
+     }
+ }
+ 
+-enum CityMetric: String, Sendable { case sightings, cameras, registry, rides, zone }
++enum CityMetric: String, AppEnum, CaseIterable, Sendable {
++    case sightings, cameras, registry, rides, zone
++    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Activity metric"
++    static let caseDisplayRepresentations: [CityMetric: DisplayRepresentation] = [
++        .sightings: "Approved sightings", .cameras: "Camera detections", .registry: "Public registry vehicles",
++        .rides: "Recorded rides", .zone: "Service area"
++    ]
++}
++
++/// Finite camera-only binding: neither registry nor zone can be selected here.
++enum CameraCityPeriod: String, AppEnum, CaseIterable {
++    case austinAllTime, austinToday, austinYesterday, austinThisWeek, austinLast7Days, austinLast24Hours
++    case dallasAllTime, dallasToday, dallasYesterday, dallasThisWeek, dallasLast7Days, dallasLast24Hours
++    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Camera city and period"
++    static let caseDisplayRepresentations: [CameraCityPeriod: DisplayRepresentation] = [
++        .austinAllTime: "Austin all time", .austinToday: "Austin today", .austinYesterday: "Austin yesterday",
++        .austinThisWeek: "Austin this week", .austinLast7Days: "Austin in the last seven days", .austinLast24Hours: "Austin in the last 24 hours",
++        .dallasAllTime: "Dallas all time", .dallasToday: "Dallas today", .dallasYesterday: "Dallas yesterday",
++        .dallasThisWeek: "Dallas this week", .dallasLast7Days: "Dallas in the last seven days", .dallasLast24Hours: "Dallas in the last 24 hours"
++    ]
++    var city: ServiceCity { rawValue.hasPrefix("austin") ? .austin : .dallas }
++    var period: ActivityPeriod {
++        if rawValue.hasSuffix("Today") { return .today }
++        if rawValue.hasSuffix("Yesterday") { return .yesterday }
++        if rawValue.hasSuffix("ThisWeek") { return .thisWeek }
++        if rawValue.hasSuffix("Last7Days") { return .last7Days }
++        if rawValue.hasSuffix("Last24Hours") { return .last24Hours }
++        return .allTime
++    }
++}
++
++struct ActivitySelection: Equatable {
++    let city: ServiceCity?
++    let metric: CityMetric
++    let period: ActivityPeriod
++    var comparesCities: Bool { city == nil }
++}
+ 
+ /// Camera questions and city comparisons are also exposed through Check Fleet,
+ /// preserving all ten existing advertised shortcut slots.
+@@ -67,7 +103,7 @@
+     case compareSightings, compareSightingsToday, compareSightingsYesterday, compareSightingsThisWeek, compareSightingsLast7Days, compareSightingsLast24Hours
+     case compareCameras, compareCamerasToday, compareCamerasYesterday, compareCamerasThisWeek, compareCamerasLast7Days, compareCamerasLast24Hours
+     case compareRegistry, compareRides, compareZones
+-    case austinRegistry, austinZone, clarifyActivity
++    case austinRegistry, austinZone, clarifyActivity, clarifyComparison, clarifyComparisonToday, clarifyCamerasThisWeek
+     static let typeDisplayRepresentation: TypeDisplayRepresentation = "City activity question"
+     static let caseDisplayRepresentations: [CityActivityQuestion: DisplayRepresentation] = [
+         .austinCamerasTotal: "Austin camera detections all time",
+@@ -99,9 +135,12 @@
+         .compareZones: "Austin and Dallas service zones",
+         .austinRegistry: DisplayRepresentation(title: "Austin public registry vehicles", synonyms: ["Austin Cybercab fleet size", "Austin Cybercab fleet stats", "How many Cybercabs are in Austin", "What is the Austin Cybercab fleet size"]),
+         .austinZone: DisplayRepresentation(title: "Austin Cybercab service area", synonyms: ["Austin Cybercab zone", "How big is the Austin Cybercab zone", "What is the Cybercab service area in Austin", "How many square miles is the Austin Cybercab service zone"]),
+-        .clarifyActivity: DisplayRepresentation(title: "Unspecified Cybercab activity", synonyms: ["Compare Austin and Dallas Cybercab activity", "How do Dallas and Austin compare today", "Cybercab camera detections this week"])
+-    ]
+-    var requiresClarification: Bool { self == .clarifyActivity }
++        .clarifyActivity: "Unspecified Cybercab activity",
++        .clarifyComparison: "Compare Austin and Dallas Cybercab activity",
++        .clarifyComparisonToday: "How do Dallas and Austin compare today",
++        .clarifyCamerasThisWeek: "Cybercab camera detections this week"
++    ]
++    var requiresClarification: Bool { [.clarifyActivity, .clarifyComparison, .clarifyComparisonToday, .clarifyCamerasThisWeek].contains(self) }
+     var comparesCities: Bool { rawValue.hasPrefix("compare") }
+     var city: ServiceCity { rawValue.hasPrefix("dallas") ? .dallas : .austin }
+     var metric: CityMetric {
+@@ -127,28 +166,71 @@
+     @available(iOS 26.0, *)
+     static var supportedModes: IntentModes { .background }
+     @Parameter(title: "Question", requestValueDialog: "Which city, metric, and period? For example, Dallas camera detections today.") var question: CityActivityQuestion
+-    static var parameterSummary: some ParameterSummary { Summary("Check \(\.$question)") }
++    @Parameter(title: "City") var city: ServiceCity?
++    @Parameter(title: "Activity metric") var activityMetric: CityMetric?
++    @Parameter(title: "Activity period") var activityPeriod: ActivityPeriod?
++    static var parameterSummary: some ParameterSummary { Summary("Check \(\.$question)") { \.$city; \.$activityMetric; \.$activityPeriod } }
++
++    func resolvedActivity(traceID: String = UUID().uuidString) throws -> ActivitySelection {
++        // Reuse Fleet's validation, translating prompts to THIS intent's parameters
++        // so a Shortcuts/Siri restart retains the user's known context.
++        let resolver = FleetStatsIntent()
++        resolver.activity = question; resolver.city = city
++        resolver.activityMetric = activityMetric; resolver.activityPeriod = activityPeriod
++        if question == .clarifyCamerasThisWeek && city == nil {
++            SiriDiagnostics.record(intent: "CityActivityIntent", phase: "clarification_requested", id: traceID, selection: "missing_city")
++            throw $city.needsValueError("Which city, Austin or Dallas?")
++        }
++        if question == .clarifyComparison || question == .clarifyComparisonToday {
++            if activityMetric == nil {
++                SiriDiagnostics.record(intent: "CityActivityIntent", phase: "clarification_requested", id: traceID, selection: "missing_metric")
++                throw $activityMetric.needsValueError("Which metric: approved sightings, camera detections, public registry vehicles, recorded rides, or service area?")
++            }
++            if question == .clarifyComparison && (activityMetric == .sightings || activityMetric == .cameras) && activityPeriod == nil {
++                SiriDiagnostics.record(intent: "CityActivityIntent", phase: "clarification_requested", id: traceID, selection: "missing_period")
++                throw $activityPeriod.needsValueError("Which period: today, yesterday, this week, last seven days, last 24 hours, or all time?")
++            }
++        }
++        do {
++            guard let selection = try resolver.resolvedActivity(traceID: traceID, diagnosticIntent: "CityActivityIntent") else { throw IntentFailure.activityRequired }
++            return selection
++        } catch {
++            SiriDiagnostics.record(intent: "CityActivityIntent", phase: "clarification_requested", id: traceID, selection: "conflicting_or_incomplete_activity")
++            throw $question.needsValueError("Choose matching city, metric, and period values for this activity.")
++        }
++    }
+ 
+     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView & ReturnsValue<String> {
+         let presence = $question.diagnosticPresence
+         guard presence != .unset else {
+             throw $question.needsValueError("Which city, metric, and period? For example, Dallas camera detections today.")
+         }
+-        guard !question.requiresClarification else {
++        guard question != .clarifyActivity else {
+             throw $question.needsValueError("Which city, metric, and period? Choose approved sightings, camera detections, registry vehicles, or service area.")
+         }
+-        let a = try await Self.answer(question, presence: presence)
++        let id = UUID().uuidString
++        var supplied = SiriDiagnostics.Parameters()
++        supplied.city = city?.rawValue ?? "missing"; supplied.activity = question.rawValue
++        supplied.metric = activityMetric?.rawValue ?? "missing"; supplied.period = activityPeriod?.rawValue ?? "missing"
++        SiriDiagnostics.record(intent: "CityActivityIntent", phase: "parameters_received", id: id, parameters: supplied)
++        let selected = try resolvedActivity(traceID: id)
++        let a = try await Self.answer(selected, selection: question.rawValue, presence: presence, traceID: id)
+         return .result(value: a.spoken, dialog: IntentDialog(stringLiteral: a.spoken), view: SiriAnswerCard(answer: a, open: OpenScreenIntent(.home), openTitle: "Open Cybercab Hunter"))
+     }
+ 
+     static func answer(_ question: CityActivityQuestion, now: Date = .now, presence: SiriDiagnostics.Presence = .derived) async throws -> SiriAnswer {
+         guard !question.requiresClarification else { throw IntentFailure.activityRequired }
++        return try await answer(ActivitySelection(city: question.comparesCities ? nil : question.city, metric: question.metric, period: question.period), now: now, selection: question.rawValue, presence: presence)
++    }
++
++    static func answer(_ resolved: ActivitySelection, now: Date = .now, selection: String, presence: SiriDiagnostics.Presence = .derived, traceID: String = UUID().uuidString) async throws -> SiriAnswer {
++        let question = resolved
+         var p = SiriDiagnostics.Parameters()
+-        p.city = question.comparesCities ? "austin,dallas" : question.city.rawValue
++        p.city = question.city?.rawValue ?? "austin,dallas"
+         p.cityState = .derived; p.metric = question.metric.rawValue; p.metricState = .derived
+-        p.activity = question.rawValue; p.activityState = presence
++        p.activity = selection; p.activityState = presence
+         p.period = question.period.rawValue; p.periodState = .derived
+-        var trace = SiriDiagnostics.Invocation("CityActivityIntent", parameters: p)
++        var trace = SiriDiagnostics.Invocation("CityActivityIntent", parameters: p, id: traceID)
+         do {
+             if question.comparesCities {
+                 async let a: HomepageStats = SiriData.shared.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: "austin")])
+@@ -160,8 +242,8 @@
+                 trace.complete(answer.figures.isEmpty ? "no_count_available" : "answer_composed")
+                 return answer
+             }
+-            let s: HomepageStats = try await SiriData.shared.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: question.city.rawValue)])
+-            try SiriCityResponse.validate(s, for: question.city)
++            let s: HomepageStats = try await SiriData.shared.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: question.city!.rawValue)])
++            try SiriCityResponse.validate(s, for: question.city!)
+             let answer = question.metric == .zone ? SiriSpeech.zone(s) : CityActivitySpeech.answer(s, metric: question.metric, period: question.period, now: now)
+             trace.complete(answer.figures.isEmpty ? "no_count_available" : "answer_composed")
+             return answer
+--- build4/ios-native/CybercabHunter.xcodeproj/project.pbxproj
++++ build5/ios-native/CybercabHunter.xcodeproj/project.pbxproj
+@@ -429,7 +429,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = JC2HZNJ623;
+ 				ENABLE_PREVIEWS = YES;
+ 				GENERATE_INFOPLIST_FILE = YES;
+@@ -464,7 +464,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = JC2HZNJ623;
+ 				ENABLE_PREVIEWS = YES;
+ 				GENERATE_INFOPLIST_FILE = YES;
+@@ -498,7 +498,7 @@
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				MARKETING_VERSION = 0.1;
+@@ -515,7 +515,7 @@
+ 			buildSettings = {
+ 				BUNDLE_LOADER = "$(TEST_HOST)";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				MARKETING_VERSION = 0.1;
+@@ -531,7 +531,7 @@
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				MARKETING_VERSION = 0.1;
+@@ -547,7 +547,7 @@
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				MARKETING_VERSION = 0.1;
+@@ -563,7 +563,7 @@
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = JC2HZNJ623;
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				INFOPLIST_FILE = Config/WidgetInfo.plist;
+@@ -588,7 +588,7 @@
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 5;
+ 				DEVELOPMENT_TEAM = JC2HZNJ623;
+ 				GENERATE_INFOPLIST_FILE = YES;
+ 				INFOPLIST_FILE = Config/WidgetInfo.plist;
+--- build4/ios-native/CybercabHunterTests/SiriNaturalLanguageTests.swift
++++ build5/ios-native/CybercabHunterTests/SiriNaturalLanguageTests.swift
+@@ -43,10 +43,13 @@
+         #expect(stub.requests.isEmpty)
+     }
+ 
+-    @Test func omittedPeriodPreservesLegacy24HoursWithoutHidingExplicitConflicts() throws {
++    @Test func omittedPeriodClarifiesWithoutHidingExplicitConflicts() throws {
+         let legacy = RecentSightingsIntent(); legacy.city = .dallas
+         #expect(legacy.period == nil)
++        #expect(throws: (any Error).self) { try legacy.resolvedSelection() }
++        legacy.period = .last24Hours
+         #expect(try legacy.resolvedSelection().period == .last24Hours)
++        legacy.period = nil
+         legacy.question = .dallasToday
+         #expect(try legacy.resolvedSelection().period == .today)
+         legacy.period = .last24Hours
+--- build4/ios-native/scripts/check-siri-metadata.py
++++ build5/ios-native/scripts/check-siri-metadata.py
+@@ -165,7 +165,13 @@
+         assert p["valueType"]["linkEnumeration"]["wrapper"]["identifier"] == enum
+         assert p["typeSpecificMetadata"] == ["LNValueTypeSpecificMetadataKeyDefaultValue", {"string": {"wrapper": default}}]
+     assert parameters["from"]["isOptional"] and parameters["to"]["isOptional"]
+-    assert count == 38, "Unexpected phrase inventory"
++    assert count == 42, "Unexpected phrase inventory"
++    protected = json.loads(Path(__file__).with_name("siri-build4-contract.json").read_text())
++    assert set(actions) == set(protected["actions"])
++    for prior in protected["shortcuts"]:
++        current = next(s for s in shortcuts if s["actionIdentifier"] == prior["actionIdentifier"])
++        assert {p["key"] for p in prior["phraseTemplates"]} <= {p["key"] for p in current["phraseTemplates"]}
++        assert current["shortTitle"] == prior["shortTitle"]
+     baseline = json.loads(Path(__file__).with_name("siri-natural-baseline.json").read_text())
+     for owner, phrases in baseline["phrase_templates"].items():
+         actual = next(x for x in shortcuts if x["actionIdentifier"] == owner)
+@@ -196,7 +202,7 @@
+     assert any(x["key"] == "Give me my ${applicationName} briefing" for x in briefing["phraseTemplates"])
+     return {"advertised_shortcuts": len(shortcuts), "phrase_templates": count,
+             **expanded,
+-            "existing_phrase_templates_preserved": 22,
++            "existing_phrase_templates_preserved": 38,
+             "cross_intent_structural_collisions": 0,
+             "sightings_and_dmv_background_and_authentication": "validated",
+             "voice_recognition": "not tested"}
+@@ -211,7 +217,11 @@
+                      "${+applicationName} Dallas weekly sightings",
+                      "${+applicationName} ${CityActivityQuestion}",
+                      "- Austin today", "- Dallas weekly", "- Weekly sightings comparison",
+-                     "${+applicationName} Dallas fleet summary", "${+applicationName} Dallas service area"]:
++                     "${+applicationName} Dallas fleet summary", "${+applicationName} Dallas service area",
++                     "Read Cybercab camera detections for ${CameraCityPeriod} in ${+applicationName}",
++                     "Read public registry fleet data for ${ServiceCity} in ${+applicationName}",
++                     "Compare approved Cybercab sightings in Austin and Dallas ${ActivityPeriod} in ${+applicationName}",
++                     "Count approved Cybercab sightings for ${CitySightingsQuestion} in ${+applicationName}"]:
+         assert required in corpus, ("Missing trained template/value", required)
+     result["exact_short_commands_and_training_values"] = "validated (not voice recognition)"
+     print(json.dumps(result, indent=2))
+--- build4/ios-native/scripts/test_siri_metadata.py
++++ build5/ios-native/scripts/test_siri_metadata.py
+@@ -108,6 +108,31 @@
+             owner = row["intended_intent"].split(" -> ")[0]
+             self.assertEqual(guard.exact_phrase_owners(metadata, phrase), {owner}, row["case"])
+ 
++    def test_working_enum_bindings_are_preserved(self):
++        prior = json.loads(Path(__file__).with_name("siri-build4-contract.json").read_text())
++        for old_enum in prior["enums"]:
++            current = next(e for e in metadata["enums"] if e["identifier"] == old_enum["identifier"])
++            for old_case in old_enum["cases"]:
++                if old_enum["identifier"] == "CityActivityQuestion" and old_case["identifier"] == "clarifyActivity": continue
++                new_case = next(c for c in current["cases"] if c["identifier"] == old_case["identifier"])
++                self.assertEqual(new_case["displayRepresentation"], old_case["displayRepresentation"])
++
++    def test_domain_bindings_and_context_aliases(self):
++        fleet = {p["name"]: p for p in metadata["actions"]["FleetStatsIntent"]["parameters"]}
++        for name, enum_id in [("cameraQuestion", "CameraCityPeriod"), ("registryCity", "ServiceCity"), ("comparisonPeriod", "ActivityPeriod")]:
++            self.assertTrue(fleet[name]["isOptional"])
++            self.assertEqual(fleet[name]["valueType"]["linkEnumeration"]["wrapper"]["identifier"], enum_id)
++            self.assertNotIn("LNValueTypeSpecificMetadataKeyDefaultValue", fleet[name].get("typeSpecificMetadata", []))
++        contexts = next(e for e in metadata["enums"] if e["identifier"] == "CityActivityQuestion")
++        for case_id, wording in [("clarifyComparison", "Compare Austin and Dallas Cybercab activity"),
++                                 ("clarifyComparisonToday", "How do Dallas and Austin compare today"),
++                                 ("clarifyCamerasThisWeek", "Cybercab camera detections this week")]:
++            case = next(c for c in contexts["cases"] if c["identifier"] == case_id)
++            self.assertEqual(case["displayRepresentation"]["title"]["key"], wording)
++        camera = next(e for e in metadata["enums"] if e["identifier"] == "CameraCityPeriod")
++        self.assertEqual(len(camera["cases"]), 12)
++        self.assertTrue(all(c["identifier"].startswith(("austin", "dallas")) for c in camera["cases"]))
++
+     def test_arbitrary_questions_are_not_literal_registered_commands(self):
+         self.assertEqual(guard.exact_phrase_owners(metadata, "How many Cybercab sightings are there in Austin today in ${applicationName}?"), set())
+         # This does not imply Siri cannot recognize a semantic variation.
+--- build4/ios-native/CybercabHunterTests/SiriReliabilityTests.swift
++++ build5/ios-native/CybercabHunterTests/SiriReliabilityTests.swift
+@@ -0,0 +1,95 @@
++import Testing
++import AppIntents
++import Foundation
++@testable import CybercabHunter
++
++extension SiriSerial {
++@MainActor
++@Suite(.serialized)
++struct SiriReliabilityTests {
++    @Test func cameraBindingsCannotSelectZoneOrAnotherCity() throws {
++        for q in CameraCityPeriod.allCases {
++            let fleet = FleetStatsIntent(); fleet.cameraQuestion = q
++            let selected = try #require(try fleet.resolvedActivity())
++            #expect(selected.city == q.city && selected.metric == .cameras && selected.period == q.period)
++            fleet.city = q.city == .austin ? .dallas : .austin
++            #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        }
++        let fleet = FleetStatsIntent(); fleet.cameraQuestion = .dallasToday; fleet.activity = .austinZone
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++    }
++
++    @Test func additiveBindingsRejectConflictsAndPreserveAllPeriods() throws {
++        for period in ActivityPeriod.allCases {
++            let fleet = FleetStatsIntent(); fleet.comparisonPeriod = period
++            #expect(try fleet.resolvedActivity() == ActivitySelection(city: nil, metric: .sightings, period: period))
++            fleet.activityPeriod = period == .today ? .yesterday : .today
++            #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        }
++        for city in [ServiceCity.austin, .dallas] {
++            let fleet = FleetStatsIntent(); fleet.registryCity = city
++            #expect(try fleet.resolvedActivity() == ActivitySelection(city: city, metric: .registry, period: .allTime))
++            fleet.metric = .rides
++            #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++            let sightings = RecentSightingsIntent(); sightings.city = city
++            #expect(throws: (any Error).self) { try sightings.resolvedSelection() }
++            for period in ActivityPeriod.allCases {
++                sightings.period = period
++                #expect(try sightings.resolvedSelection().period == period)
++            }
++        }
++    }
++
++    @Test func contextSpecificClarificationPreservesKnownValues() throws {
++        var events: [SiriDiagnostics.Event] = []
++        SiriDiagnostics.testObserver = { events.append($0) }
++        defer { SiriDiagnostics.testObserver = nil }
++        let fleet = FleetStatsIntent(); fleet.activity = .clarifyCamerasThisWeek
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        #expect(events.last?.selection == "missing_city")
++        fleet.city = .dallas
++        #expect(try fleet.resolvedActivity() == ActivitySelection(city: .dallas, metric: .cameras, period: .thisWeek))
++        fleet.activityPeriod = .last7Days
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        fleet.city = nil; fleet.activityPeriod = nil; fleet.activity = .clarifyComparison
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        #expect(events.last?.selection == "missing_metric")
++        fleet.activityMetric = .sightings
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++        #expect(events.last?.selection == "missing_period")
++        fleet.activityPeriod = .last7Days
++        #expect(try fleet.resolvedActivity() == ActivitySelection(city: nil, metric: .sightings, period: .last7Days))
++        fleet.activity = .clarifyComparisonToday; fleet.activityPeriod = nil
++        #expect(try fleet.resolvedActivity()?.period == .today)
++        fleet.activityPeriod = .thisWeek
++        #expect(throws: (any Error).self) { try fleet.resolvedActivity() }
++    }
++
++    @Test func directCityActivityRetainsClarificationContext() throws {
++        let direct = CityActivityIntent(); direct.question = .clarifyCamerasThisWeek
++        #expect(throws: (any Error).self) { try direct.resolvedActivity() }
++        direct.city = .dallas
++        #expect(try direct.resolvedActivity() == ActivitySelection(city: .dallas, metric: .cameras, period: .thisWeek))
++        direct.city = nil; direct.question = .clarifyComparison
++        #expect(throws: (any Error).self) { try direct.resolvedActivity() }
++        direct.activityMetric = .sightings
++        #expect(throws: (any Error).self) { try direct.resolvedActivity() }
++        direct.activityPeriod = .last7Days
++        #expect(try direct.resolvedActivity() == ActivitySelection(city: nil, metric: .sightings, period: .last7Days))
++        direct.question = .dallasCamerasToday
++        #expect(throws: (any Error).self) { try direct.resolvedActivity() }
++    }
++
++    @Test func allExistingCompleteActivityMappingsRemainIdentical() throws {
++        for q in CityActivityQuestion.allCases where !q.requiresClarification {
++            let fleet = FleetStatsIntent(); fleet.activity = q
++            #expect(try fleet.resolvedActivity() == ActivitySelection(city: q.comparesCities ? nil : q.city, metric: q.metric, period: q.period))
++        }
++        for q in CitySightingsQuestion.allCases {
++            let sightings = RecentSightingsIntent(); sightings.question = q
++            #expect(try sightings.resolvedSelection().city == q.city)
++            #expect(try sightings.resolvedSelection().period == q.period)
++        }
++    }
++}
++}
+--- build4/ios-native/scripts/siri-build4-contract.json
++++ build5/ios-native/scripts/siri-build4-contract.json
+@@ -0,0 +1,1503 @@
++{
++  "shortcuts": [
++    {
++      "actionIdentifier": "FleetStatsIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "${applicationName} fleet stats"
++        },
++        {
++          "alternatives": [],
++          "key": "Fleet statistic ${metric} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "City activity ${activity} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "${applicationName} ${activity}"
++        },
++        {
++          "alternatives": [],
++          "key": "Compare ${activity} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "${activity} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Give me ${activity} in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Check Fleet"
++      },
++      "systemImageName": "chart.bar.fill"
++    },
++    {
++      "actionIdentifier": "CheckDMVIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "Read DMV data in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Read DMV statistic ${question} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Tell me ${question} in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "DMV Updates"
++      },
++      "systemImageName": "doc.text.magnifyingglass"
++    },
++    {
++      "actionIdentifier": "DallasFleetSummaryIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "${applicationName} Dallas fleet summary"
++        },
++        {
++          "alternatives": [],
++          "key": "Fleet summary for Dallas in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "How many Cybercabs are documented in Dallas in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Give me Dallas Cybercab fleet stats in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "How many Cybercabs are in Dallas in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Dallas Fleet"
++      },
++      "systemImageName": "chart.bar.fill"
++    },
++    {
++      "actionIdentifier": "RecentSightingsIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "${applicationName} sightings in ${question}"
++        },
++        {
++          "alternatives": [],
++          "key": "Show the latest Cybercab sightings in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Any Cybercabs spotted in ${question} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "How many Cybercabs were spotted in ${question} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Approved Cybercab sightings in ${question} in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Recent Sightings"
++      },
++      "systemImageName": "camera.viewfinder"
++    },
++    {
++      "actionIdentifier": "DallasWeeklySightingsIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "${applicationName} Dallas weekly sightings"
++        },
++        {
++          "alternatives": [],
++          "key": "Dallas Cybercab sightings this week in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Dallas Weekly"
++      },
++      "systemImageName": "camera.viewfinder"
++    },
++    {
++      "actionIdentifier": "DailyBriefingIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "${applicationName} briefing"
++        },
++        {
++          "alternatives": [],
++          "key": "Give me my ${applicationName} briefing"
++        },
++        {
++          "alternatives": [],
++          "key": "Give me a rundown of the ${applicationName} data"
++        },
++        {
++          "alternatives": [],
++          "key": "What is happening with Cybercabs today in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Give me today's Cybercab briefing in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "What is new with the Cybercab fleet in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Daily Briefing"
++      },
++      "systemImageName": "newspaper"
++    },
++    {
++      "actionIdentifier": "NearbySightingsIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "Find Cybercab sightings near me in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Nearby Sightings"
++      },
++      "systemImageName": "location.circle"
++    },
++    {
++      "actionIdentifier": "FleetGrowthIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "Cybercab growth ${period} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Check ${model} growth in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Fleet Growth"
++      },
++      "systemImageName": "chart.line.uptrend.xyaxis"
++    },
++    {
++      "actionIdentifier": "VehicleHistoryIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "Show the history of ${vehicle} in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "Get Cybercab history in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Vehicle History"
++      },
++      "systemImageName": "clock.arrow.circlepath"
++    },
++    {
++      "actionIdentifier": "DallasServiceZoneIntent",
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "phraseTemplates": [
++        {
++          "alternatives": [],
++          "key": "How big is the Dallas Cybercab service area in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "${applicationName} Dallas service area"
++        },
++        {
++          "alternatives": [],
++          "key": "How big is the Dallas Cybercab zone in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "What is the Cybercab service area in Dallas in ${applicationName}"
++        },
++        {
++          "alternatives": [],
++          "key": "How many square miles is the Dallas Cybercab service zone in ${applicationName}"
++        }
++      ],
++      "shortTitle": {
++        "alternatives": [],
++        "key": "Dallas Zone"
++      },
++      "systemImageName": "map"
++    }
++  ],
++  "actions": [
++    "CheckDMVIntent",
++    "CityActivityIntent",
++    "DailyBriefingIntent",
++    "DallasFleetSummaryIntent",
++    "DallasServiceZoneIntent",
++    "DallasWeeklySightingsIntent",
++    "FindVehicleIntent",
++    "FleetGrowthIntent",
++    "FleetStatsIntent",
++    "NearbySightingsIntent",
++    "OpenDMVSnapshotIntent",
++    "OpenScreenIntent",
++    "OpenServiceZoneIntent",
++    "OpenSightingIntent",
++    "OpenSightingsIntent",
++    "OpenVehicleIntent",
++    "OpenZonesIntent",
++    "QuickStatusIntent",
++    "RecentSightingsIntent",
++    "ServiceZoneIntent",
++    "SubmitSightingIntent",
++    "VehicleHistoryIntent"
++  ],
++  "enums": [
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "All time"
++            }
++          },
++          "identifier": "allTime"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Today"
++            }
++          },
++          "identifier": "today"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Yesterday"
++            }
++          },
++          "identifier": "yesterday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "This week"
++            }
++          },
++          "identifier": "thisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Last seven days"
++            }
++          },
++          "identifier": "last7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Last 24 hours"
++            }
++          },
++          "identifier": "last24Hours"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "Activity period"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.ActivityPeriod",
++      "identifier": "ActivityPeriod",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter14ActivityPeriodO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "the home screen"
++              },
++              {
++                "alternatives": [],
++                "key": "Cybercab Hunter"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Home"
++            }
++          },
++          "identifier": "home"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "the map"
++              },
++              {
++                "alternatives": [],
++                "key": "the Cybercab map"
++              },
++              {
++                "alternatives": [],
++                "key": "Zones"
++              },
++              {
++                "alternatives": [],
++                "key": "the zone map"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Map"
++            }
++          },
++          "identifier": "map"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "the registry"
++              },
++              {
++                "alternatives": [],
++                "key": "vehicles"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Cars"
++            }
++          },
++          "identifier": "cars"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Cybercab sightings"
++              },
++              {
++                "alternatives": [],
++                "key": "the sightings map"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Sightings"
++            }
++          },
++          "identifier": "sightings"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "the community"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Community"
++            }
++          },
++          "identifier": "community"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "the Texas DMV tracker"
++              },
++              {
++                "alternatives": [],
++                "key": "the DMV tracker"
++              },
++              {
++                "alternatives": [],
++                "key": "DMV updates"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "DMV Tracker"
++            }
++          },
++          "identifier": "dmvTracker"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Activity Alerts"
++              },
++              {
++                "alternatives": [],
++                "key": "alerts"
++              },
++              {
++                "alternatives": [],
++                "key": "notifications"
++              },
++              {
++                "alternatives": [],
++                "key": "alert settings"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Alert Settings"
++            }
++          },
++          "identifier": "alertSettings"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Siri and Shortcuts"
++              },
++              {
++                "alternatives": [],
++                "key": "Shortcuts settings"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Siri Settings"
++            }
++          },
++          "identifier": "siriSettings"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "Screen"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.AppDestination",
++      "identifier": "AppDestination",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter14AppDestinationO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections all time"
++            }
++          },
++          "identifier": "austinCamerasTotal"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections today"
++            }
++          },
++          "identifier": "austinCamerasToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections yesterday"
++            }
++          },
++          "identifier": "austinCamerasYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections this week"
++            }
++          },
++          "identifier": "austinCamerasThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections in the last seven days"
++            }
++          },
++          "identifier": "austinCamerasLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin camera detections in the last 24 hours"
++            }
++          },
++          "identifier": "austinCamerasLast24Hours"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections all time"
++            }
++          },
++          "identifier": "dallasCamerasTotal"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "How many Cybercabs did Dallas cameras detect today"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections today"
++            }
++          },
++          "identifier": "dallasCamerasToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections yesterday"
++            }
++          },
++          "identifier": "dallasCamerasYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections this week"
++            }
++          },
++          "identifier": "dallasCamerasThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections in the last seven days"
++            }
++          },
++          "identifier": "dallasCamerasLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas camera detections in the last 24 hours"
++            }
++          },
++          "identifier": "dallasCamerasLast24Hours"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas sightings all time"
++            }
++          },
++          "identifier": "compareSightings"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Which city has more Cybercab sightings today"
++              },
++              {
++                "alternatives": [],
++                "key": "Compare Austin and Dallas Cybercab sightings today"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas sightings today"
++            }
++          },
++          "identifier": "compareSightingsToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas sightings yesterday"
++            }
++          },
++          "identifier": "compareSightingsYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin and Dallas sightings this week"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Weekly sightings comparison"
++            }
++          },
++          "identifier": "compareSightingsThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas sightings in the last seven days"
++            }
++          },
++          "identifier": "compareSightingsLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas sightings in the last 24 hours"
++            }
++          },
++          "identifier": "compareSightingsLast24Hours"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections all time"
++            }
++          },
++          "identifier": "compareCameras"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections today"
++            }
++          },
++          "identifier": "compareCamerasToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections yesterday"
++            }
++          },
++          "identifier": "compareCamerasYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections this week"
++            }
++          },
++          "identifier": "compareCamerasThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections in the last seven days"
++            }
++          },
++          "identifier": "compareCamerasLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas camera detections in the last 24 hours"
++            }
++          },
++          "identifier": "compareCamerasLast24Hours"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas registry vehicles"
++            }
++          },
++          "identifier": "compareRegistry"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas recorded rides"
++            }
++          },
++          "identifier": "compareRides"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin and Dallas service zones"
++            }
++          },
++          "identifier": "compareZones"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin Cybercab fleet size"
++              },
++              {
++                "alternatives": [],
++                "key": "Austin Cybercab fleet stats"
++              },
++              {
++                "alternatives": [],
++                "key": "How many Cybercabs are in Austin"
++              },
++              {
++                "alternatives": [],
++                "key": "What is the Austin Cybercab fleet size"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin public registry vehicles"
++            }
++          },
++          "identifier": "austinRegistry"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin Cybercab zone"
++              },
++              {
++                "alternatives": [],
++                "key": "How big is the Austin Cybercab zone"
++              },
++              {
++                "alternatives": [],
++                "key": "What is the Cybercab service area in Austin"
++              },
++              {
++                "alternatives": [],
++                "key": "How many square miles is the Austin Cybercab service zone"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin Cybercab service area"
++            }
++          },
++          "identifier": "austinZone"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Compare Austin and Dallas Cybercab activity"
++              },
++              {
++                "alternatives": [],
++                "key": "How do Dallas and Austin compare today"
++              },
++              {
++                "alternatives": [],
++                "key": "Cybercab camera detections this week"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Unspecified Cybercab activity"
++            }
++          },
++          "identifier": "clarifyActivity"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "City activity question"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.CityActivityQuestion",
++      "identifier": "CityActivityQuestion",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter20CityActivityQuestionO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin all time"
++              },
++              {
++                "alternatives": [],
++                "key": "Austin total"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin"
++            }
++          },
++          "identifier": "austin"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin today"
++            }
++          },
++          "identifier": "austinToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin yesterday"
++            }
++          },
++          "identifier": "austinYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin this week"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin weekly"
++            }
++          },
++          "identifier": "austinThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Austin in the last 7 days"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Austin in the last seven days"
++            }
++          },
++          "identifier": "austinLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin in the last 24 hours"
++            }
++          },
++          "identifier": "austinLast24Hours"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Dallas all time"
++              },
++              {
++                "alternatives": [],
++                "key": "Dallas total"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Dallas"
++            }
++          },
++          "identifier": "dallas"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas today"
++            }
++          },
++          "identifier": "dallasToday"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas yesterday"
++            }
++          },
++          "identifier": "dallasYesterday"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Dallas this week"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Dallas weekly"
++            }
++          },
++          "identifier": "dallasThisWeek"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "Dallas in the last 7 days"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Dallas in the last seven days"
++            }
++          },
++          "identifier": "dallasLast7Days"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas in the last 24 hours"
++            }
++          },
++          "identifier": "dallasLast24Hours"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "City and period"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.CitySightingsQuestion",
++      "identifier": "CitySightingsQuestion",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter21CitySightingsQuestionO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Texas DMV overview"
++            }
++          },
++          "identifier": "overview"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Texas DMV total VINs"
++            }
++          },
++          "identifier": "total"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "How many Cybercab VINs are registered in Texas"
++              },
++              {
++                "alternatives": [],
++                "key": "Texas DMV Cybercab registrations"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Texas DMV Cybercab VINs"
++            }
++          },
++          "identifier": "cybercab"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Texas DMV Model Y VINs"
++            }
++          },
++          "identifier": "modelY"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Latest newly detected DMV VINs"
++            }
++          },
++          "identifier": "additions"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Latest newly detected DMV Cybercab VINs"
++            }
++          },
++          "identifier": "cybercabAdditions"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Latest newly detected DMV Model Y VINs"
++            }
++          },
++          "identifier": "modelYAdditions"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "Texas DMV statistic"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.DMVQuestion",
++      "identifier": "DMVQuestion",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter11DMVQuestionO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Fleet overview"
++            }
++          },
++          "identifier": "overview"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Public registry vehicles"
++            }
++          },
++          "identifier": "registry"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Recorded rides"
++            }
++          },
++          "identifier": "rides"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Lifetime approved sightings"
++            }
++          },
++          "identifier": "lifetimeSightings"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "Fleet statistic"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.FleetMetric",
++      "identifier": "FleetMetric",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter11FleetMetricO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Tesla robotaxi VIN"
++            }
++          },
++          "identifier": "all"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Cybercab VIN"
++            }
++          },
++          "identifier": "cybercab"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Model Y VIN"
++            }
++          },
++          "identifier": "modelY"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "DMV growth model"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.GrowthModel",
++      "identifier": "GrowthModel",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter11GrowthModelO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "latest day"
++              },
++              {
++                "alternatives": [],
++                "key": "daily"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Latest snapshots"
++            }
++          },
++          "identifier": "day"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "week"
++              },
++              {
++                "alternatives": [],
++                "key": "weekly"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Last seven days"
++            }
++          },
++          "identifier": "week"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "month"
++              },
++              {
++                "alternatives": [],
++                "key": "monthly"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Last thirty days"
++            }
++          },
++          "identifier": "month"
++        },
++        {
++          "displayRepresentation": {
++            "synonyms": [
++              {
++                "alternatives": [],
++                "key": "all time"
++              },
++              {
++                "alternatives": [],
++                "key": "since the start"
++              }
++            ],
++            "title": {
++              "alternatives": [],
++              "key": "Since tracking began"
++            }
++          },
++          "identifier": "all"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "Period"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.GrowthPeriod",
++      "identifier": "GrowthPeriod",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter12GrowthPeriodO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    },
++    {
++      "assistantDefinedSchemas": [],
++      "availabilityAnnotations": {
++        "LNPlatformNameWildcard": {
++          "introducedVersion": "*"
++        }
++      },
++      "cases": [
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Austin"
++            }
++          },
++          "identifier": "austin"
++        },
++        {
++          "displayRepresentation": {
++            "title": {
++              "alternatives": [],
++              "key": "Dallas"
++            }
++          },
++          "identifier": "dallas"
++        }
++      ],
++      "displayTypeName": {
++        "alternatives": [],
++        "key": "City"
++      },
++      "effectiveBundleIdentifiers": [],
++      "fullyQualifiedTypeName": "CybercabHunter.ServiceCity",
++      "identifier": "ServiceCity",
++      "isSystem": false,
++      "mangledTypeName": "14CybercabHunter11ServiceCityO",
++      "mangledTypeNameByBundleIdentifier": {},
++      "systemProtocolMetadata": [],
++      "visibilityMetadata": {
++        "assistantOnly": false,
++        "isDiscoverable": true
++      }
++    }
++  ]
++}

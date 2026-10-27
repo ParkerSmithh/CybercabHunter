@@ -26,6 +26,9 @@ struct ZoneMapView: UIViewRepresentable {
     var heatPoints: [ZonesModel.HeatPoint] = []
     var cameraDots: [ZonesModel.CameraDot] = []
     var place: PlaceResults.Place?
+    var locationFix: CLLocation?
+    var recenterID = 0
+    var locationTarget: CLLocationCoordinate2D?
     var showsMarkers = true
     var interactive = true
     var bottomInset: CGFloat = 0
@@ -70,6 +73,23 @@ struct ZoneMapView: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         let c = context.coordinator
         c.parent = self
+        if c.lastFix != locationFix?.timestamp {
+            c.lastFix = locationFix?.timestamp
+            map.removeAnnotations(map.annotations.compactMap { $0 as? LocationFixAnnotation })
+            if let circle = c.accuracyCircle { map.removeOverlay(circle); c.accuracyCircle = nil }
+            if let fix = locationFix {
+                map.addAnnotation(LocationFixAnnotation(fix.coordinate))
+                let circle = MKCircle(center: fix.coordinate, radius: fix.horizontalAccuracy)
+                c.accuracyCircle = circle
+                map.addOverlay(circle)
+            }
+        }
+        if c.lastRecenter != recenterID {
+            c.lastRecenter = recenterID
+            if let target = locationTarget {
+                map.setCamera(MKMapCamera(lookingAtCenter: target, fromDistance: max(2500, (locationFix?.horizontalAccuracy ?? 0)*4), pitch: 0, heading: 0), animated: true)
+            }
+        }
         if !selectionActive { for a in map.selectedAnnotations { map.deselectAnnotation(a, animated: true) } }
         if c.lastCity != cityKey { c.frame(cityKey, on: map, animated: true) }
         if c.lastHeatMode != heatMode {
@@ -94,6 +114,9 @@ struct ZoneMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: ZoneMapView
+        var lastFix: Date?
+        var lastRecenter = 0
+        var accuracyCircle: MKCircle?
         var lastCity: String?
         var lastHeatMode: Bool
         var lastPlace: PlaceResults.Place?
@@ -165,6 +188,14 @@ struct ZoneMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? MKCircle, circle === accuracyCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.12)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.6)
+                renderer.lineWidth = 1
+                return renderer
+            }
+
             if let zone = overlay as? ZonePolygon { return ZoneRenderer(zone: zone) }
             if overlay is DarkMatterOverlay { return DarkMatterRenderer(overlay: overlay) }
             if overlay is HeatmapOverlay { let r = HeatmapRenderer(overlay: overlay); r.alpha = 1; return r }
@@ -172,6 +203,16 @@ struct ZoneMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is LocationFixAnnotation {
+                let view = MKAnnotationView(annotation: annotation, reuseIdentifier: nil)
+                let dot = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 16))
+                dot.backgroundColor = .systemBlue; dot.layer.cornerRadius = 8
+                dot.layer.borderColor = UIColor.white.cgColor; dot.layer.borderWidth = 3
+                view.frame = dot.bounds; view.addSubview(dot)
+                view.displayPriority = .required
+                view.isAccessibilityElement = true; view.accessibilityLabel = "Your location, approximate"
+                return view
+            }
             switch annotation {
             case let a as ChargingAnnotation:
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "charging", for: a)
@@ -213,4 +254,9 @@ struct ZoneMapView: UIViewRepresentable {
             }
         }
     }
+}
+
+final class LocationFixAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    init(_ coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
 }

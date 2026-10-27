@@ -3,8 +3,8 @@ import PhotosUI
 
 /// "Submit a sighting" (the website's sighting drawer) as a sheet. The photo
 /// comes from Apple's picker (the app sees only the photo picked). There is
-/// no map pin and no location permission: as on the website, a Location is a
-/// real place picked from search, and only its street and city are shown.
+/// no raw GPS attachment: a Location is a confirmed verified place, and only
+/// its street and city are shown. Manual search remains available.
 struct SubmitSightingView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
@@ -12,6 +12,7 @@ struct SubmitSightingView: View {
     @State private var picked: PhotosPickerItem?
     @State private var signingIn = false
     @State private var pickingCamera = false
+    @State private var showingLocationSuggestion = false
     @FocusState private var locationFocused: Bool
 
     var body: some View {
@@ -190,6 +191,10 @@ struct SubmitSightingView: View {
     private var locationField: some View {
         field("Location", optional: true, help: "Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search © OpenStreetMap.") {
             VStack(alignment: .leading, spacing: 6) {
+                Button("Use Current Location", systemImage: "location.fill") { showingLocationSuggestion = true }
+                    .tint(Color.brandGold).disabled(model.area == nil)
+                    .accessibilityIdentifier("useCurrentSightingLocation")
+                    .sheet(isPresented: $showingLocationSuggestion) { SightingLocationSheet(submission: model) }
                 TextField(model.area == nil ? "Choose a city first" : "Street or landmark", text: $model.locationText)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.words)

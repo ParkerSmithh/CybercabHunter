@@ -1,0 +1,17 @@
+remaining-ui
+Test Case '-[CybercabHunterUITests.PreparationRemainingUITests testBypassAndReportControlsWithoutResetOrPermissionChange]' failed (122.333 seconds).
+Test Case '-[CybercabHunterUITests.RuntimePushLinksUITests testNewsPayloadOpensSyntheticArticle]' failed (83.196 seconds).
+Test Case '-[CybercabHunterUITests.SightingsAccountUITests test1SightingsBrowseViewerVehicleAndReplay]' passed (65.656 seconds).
+** TEST FAILED **
+
+controls-retry
+Test Case '-[CybercabHunterUITests.PreparationRemainingUITests testBypassWithoutResetOrPermissionChange]' failed (104.122 seconds).
+Test Case '-[CybercabHunterUITests.PreparationRemainingUITests testReportControlsWithoutResetOrPermissionChange]' failed (61.263 seconds).
+
+News visual review: exported screenshot shows Synthetic News Article at 127.0.0.1.
+Local fixture server counters: 1 /api/push/news lookup; 1 /__verify/article request.
+News StaticText assertion failed despite visible rendering; do not call it an automated pass.
+Controls retry: bypass failed to locate quiet switch; report failed to locate comparison switch.
+No shipping native UI fix or demonstrated app defect.
+No simulator reset/erase, permission change, uninstall, or physical-device action.
+Full logs/xcresults: /private/tmp/cch-apns-preparation/

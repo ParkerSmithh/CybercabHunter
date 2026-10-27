@@ -10,16 +10,18 @@ struct SiriSettingsView: View {
 
     /// Each action, with a phrase Siri understands (it matches loosely, not word for word).
     static let actions: [(title: String, phrase: String, symbol: String)] = [
-        ("Daily Briefing", "Give me my Cybercab briefing in Cybercab Hunter", "newspaper"),
-        ("Quick Status", "Give me a quick Cybercab status in Cybercab Hunter", "waveform"),
-        ("Check Fleet", "How many Cybercabs are tracked in Cybercab Hunter", "chart.bar.fill"),
-        ("DMV Updates", "Check Cybercab DMV updates in Cybercab Hunter", "doc.text.magnifyingglass"),
-        ("Fleet Growth", "How much has the Cybercab fleet grown in Cybercab Hunter", "chart.line.uptrend.xyaxis"),
-        ("Recent Sightings", "Check Cybercab sightings in Dallas in Cybercab Hunter", "camera.viewfinder"),
+        ("Daily Briefing", "Give me my Cybercab Hunter briefing", "newspaper"),
+        ("Quick Status", "Run a personal shortcut containing Quick Cybercab Status", "waveform"),
+        ("Check Fleet", "Cybercab Hunter fleet stats", "chart.bar.fill"),
+        ("DMV Updates", "Read DMV data in Cybercab Hunter", "doc.text.magnifyingglass"),
+        ("Fleet Growth", "Cybercab growth last seven days in Cybercab Hunter", "chart.line.uptrend.xyaxis"),
+        ("Dallas Weekly", "Cybercab Hunter Dallas weekly sightings", "camera.viewfinder"),
         ("Nearby Sightings", "Find Cybercab sightings near me in Cybercab Hunter", "location.circle"),
-        ("Find a Cybercab", "Find XVF1524 in Cybercab Hunter", "magnifyingglass"),
+        ("Dallas Fleet", "Cybercab Hunter Dallas fleet summary", "chart.bar.fill"),
         ("Vehicle History", "Show the history of XVF1524 in Cybercab Hunter", "clock.arrow.circlepath"),
-        ("Service Zone", "How big is the Austin Cybercab service area in Cybercab Hunter", "map"),
+        ("Dallas Zone", "Cybercab Hunter Dallas service area", "map"),
+        ("City Activity", "City activity Austin camera detections today in Cybercab Hunter", "chart.bar.xaxis"),
+        ("City Comparisons", "Cybercab Hunter weekly sightings comparison", "chart.bar.fill"),
         ("Open a Screen", "Open DMV Tracker in Cybercab Hunter", "rectangle.stack")
     ]
 
@@ -39,7 +41,7 @@ struct SiriSettingsView: View {
                     .padding(.vertical, 2)
                 }
             } header: { Text("Ask Siri") } footer: {
-                Text("Siri answers from Cybercab Hunter's public data and offers to open the screen. Siri matches phrases loosely, so similar wording usually works.")
+                Text("Include Cybercab Hunter in your request. Try the displayed phrases first; recognition depends on Siri. Sightings support today, yesterday, this week (Monday onward), the last seven days, and available public records. A city lifetime total is not available.")
             }
             .accessibilityIdentifier("siriActions")
 
@@ -49,7 +51,7 @@ struct SiriSettingsView: View {
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
             } footer: {
-                Text("Every action is in the Shortcuts app, including ones without a Siri phrase (Quick Status, a city's Sightings, Submit a Sighting). Use Shortcuts automations for a scheduled briefing; the app never runs one on its own.")
+                Text("Every action is in the Shortcuts app. For Find a Cybercab, Quick Status or Submit a Sighting, create a personal shortcut and invoke its chosen name. Use Shortcuts automations for a scheduled briefing; the app never runs one on its own.")
             }
 
             Section {
@@ -79,7 +81,7 @@ struct SiriSettingsView: View {
             }
 
             Section {
-                Text("Every action works with Siri on iOS 18 and later. With Apple Intelligence on, a vehicle's page tells Siri which Cybercab is on screen, so requests about “this Cybercab” can use it where your iOS version and region support it.")
+                Text("Actions are available in Shortcuts on iOS 18 and later. Siri phrase recognition varies with system version, settings, and language. With Apple Intelligence on, a vehicle's page tells Siri which Cybercab is on screen, so requests about “this Cybercab” can use it where your iOS version and region support it.")
                     .font(.inter(13)).foregroundStyle(Color.chMist)
             } header: { Text("Apple Intelligence") }
 
