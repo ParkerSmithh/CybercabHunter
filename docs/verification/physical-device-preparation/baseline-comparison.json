@@ -1,0 +1,37 @@
+{
+  "baseline_head": "669f642931203cba2e39ccda6f57fd01488af5cd",
+  "comparison": [
+    {
+      "suite": "mobile-density",
+      "identical_baseline_assertions": true,
+      "failures": [
+        "FAIL \u2014 Community: the four stats in one row on phones (2 / 4 from sm up as before)",
+        "FAIL \u2014 Fleet ETA: one \"Ride, hours & wait\" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones",
+        "FAIL \u2014 Zones: the details panel is a side drawer below lg, with a close button",
+        "FAIL \u2014 Replay: the details panel is a side drawer below lg, with a close button"
+      ]
+    },
+    {
+      "suite": "motion",
+      "identical_baseline_assertions": true,
+      "failures": [
+        "FAIL \u2014 wired to the six eyebrows that sit above a heading, and nothing else"
+      ]
+    },
+    {
+      "suite": "social-v2",
+      "identical_baseline_assertions": true,
+      "failures": [
+        "FAIL \u2014 the published post shows the Cybercab card, linking to its vehicle page"
+      ]
+    },
+    {
+      "suite": "ui-effects",
+      "identical_baseline_assertions": true,
+      "failures": [
+        "FAIL \u2014 Community: the four stat tiles only (not Reviews, not the leaderboard)",
+        "FAIL \u2014 Fleet ETA: the eight model cards only, red on Model Y"
+      ]
+    }
+  ]
+}

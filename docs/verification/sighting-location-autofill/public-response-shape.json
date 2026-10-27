@@ -1,0 +1,44 @@
+[
+  {
+    "city": "austin",
+    "response_keys": [
+      "next_cursor",
+      "order",
+      "seen",
+      "sightings",
+      "sightings_all_time"
+    ],
+    "sample_count": 2,
+    "sighting_keys": [
+      "city",
+      "cybercab",
+      "id",
+      "image_url",
+      "location",
+      "plate",
+      "spotted_at",
+      "time_zone"
+    ]
+  },
+  {
+    "city": "dallas",
+    "response_keys": [
+      "next_cursor",
+      "order",
+      "seen",
+      "sightings",
+      "sightings_all_time"
+    ],
+    "sample_count": 2,
+    "sighting_keys": [
+      "city",
+      "cybercab",
+      "id",
+      "image_url",
+      "location",
+      "plate",
+      "spotted_at",
+      "time_zone"
+    ]
+  }
+]

@@ -21,15 +21,13 @@ struct FleetEtaView: View {
     @ViewBuilder private func content(now: Date) -> some View {
         let city = model.city
         let name = SimulationCalc.cityName[city] ?? city
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Eyebrow(text: "Fleet comparison")
-                Text("FLEET ETA").displayTitle(30).accessibilityIdentifier("etaTitle")
-                Text("Cybercab and Model Y robotaxis in \(name): what a ride costs, when they run, and how long a pickup might take.")
-                    .font(.inter(14)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 18) {
+            SimHero(eyebrow: "Fleet comparison", title: "FLEET ETA", titleID: "etaTitle",
+                    text: "Cybercab and Model Y robotaxis in \(name): what a ride costs, when they run, and how long a pickup might take.") {
                 CityPicker(cities: cities, selection: $model.city)
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("etaCityPicker")
+                    .padding(.top, 4)
                 if city == "austin" { fleetLine(now: now) }
             }
             if model.failed(city) && model.eta(city) == nil {
@@ -75,13 +73,11 @@ struct FleetEtaView: View {
             return city == "austin" ? "Every Cybercab on the public registry, counted \(ago)" : "Documented in Dallas by Cybercab Hunter, counted \(ago)"
         }()
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Eyebrow(text: "Fleet mix · \(SimulationCalc.cityName[city] ?? city)")
-                    Text("Cybercab vs Model Y").font(.inter(19, .bold)).foregroundStyle(Color.chInk)
-                }
-                Spacer()
-                Text("\(total.map(String.init) ?? "—") robotaxis in all").font(.inter(12)).foregroundStyle(Color.chFog)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("FLEET MIX · \((SimulationCalc.cityName[city] ?? city).uppercased())").font(.inter(11, .semibold)).tracking(1.8).foregroundStyle(Color.brandGold)
+                Text("CYBERCAB VS MODEL Y").font(.inter(19, .bold)).tracking(0.2).foregroundStyle(Color.chInk)
+                (Text(total.map(String.init) ?? "—").foregroundStyle(Color.chInk) + Text(" robotaxis in all").foregroundStyle(Color.chFog))
+                    .font(.inter(14)).padding(.top, 4)
             }
             GeometryReader { g in
                 ZStack(alignment: .leading) {
@@ -89,26 +85,52 @@ struct FleetEtaView: View {
                     Capsule().fill(Color.brandGold).frame(width: g.size.width * CGFloat(share ?? 0) / 100)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 10)
             .accessibilityHidden(true)
-            HStack(alignment: .top, spacing: 12) {
-                mixCard("Cybercab", value: cy.map(String.init) ?? "—", pct: share, color: .brandGold, note: note)
-                mixCard("Model Y", value: String(my), pct: share.map { 100 - $0 }, color: .chModelY, note: "A fixed figure: Cybercab Hunter has no live Model Y count.")
+            HStack {
+                Text("\(share.map { "\($0)%" } ?? "—") Cybercab").foregroundStyle(Color.brandGold)
+                Spacer()
+                Text("\(share.map { "\(100 - $0)%" } ?? "—") Model Y").foregroundStyle(Color(hex: 0xF08A84))
             }
+            .font(.inter(13))
+            mixCard("Cybercab", value: cy.map(String.init) ?? "—", pct: share, color: .brandGold, car: "CybercabRender", note: note)
+            mixCard("Model Y", value: String(my), pct: share.map { 100 - $0 }, color: .chModelY, car: "ModelYRender", note: "A fixed figure: Cybercab Hunter has no live Model Y count.")
         }
-        .glassCard()
+        .padding(16)
+        .background(Color.chSurface, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("etaMix")
     }
 
-    private func mixCard(_ title: String, value: String, pct: Int?, color: Color, note: String) -> some View {
+    /// One model in the mix: its count, share and note, with the car in the bottom-right corner (as on the site).
+    private func mixCard(_ title: String, value: String, pct: Int?, color: Color, car: String, note: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) { Circle().fill(color).frame(width: 7, height: 7); Text(title.uppercased()).font(.inter(10.5, .bold)).tracking(0.6).foregroundStyle(Color.chMist) }
-            Text(value).statNumber(26, color: .chInk)
-            Text("\(pct.map { "\($0)%" } ?? "—") of the fleet").font(.inter(12)).foregroundStyle(Color.chFog)
-            Text(note).font(.inter(11)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 7) { Circle().fill(color).frame(width: 8, height: 8); Text(title.uppercased()).font(.inter(11, .semibold)).tracking(1).foregroundStyle(color == .chModelY ? Color(hex: 0xF08A84) : color) }
+            Text(value).statNumber(30, color: .chInk)
+            Text("\(pct.map { "\($0)%" } ?? "—") of the fleet").font(.inter(13)).foregroundStyle(Color.chMist)
+            Text(note).font(.inter(12)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, TintCard<EmptyView>.headingInset)
+        .padding(14)
+        // The car wholly inside the card, centred on its right (never cropped).
+        .overlay(alignment: .trailing) {
+            Image(car).resizable().aspectRatio(contentMode: .fit).frame(width: TintCard<EmptyView>.carWidth)
+                .shadow(color: .black.opacity(0.45), radius: 8, y: 6)
+                .padding(.trailing, 12)
+                .accessibilityHidden(true)
+        }
+        .background {
+            ZStack {
+                Color.chSurface2.opacity(0.6)
+                LinearGradient(colors: [color.opacity(0.10), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            .clipShape(.rect(cornerRadius: 14))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(color.opacity(0.3)))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Ride, hours & wait
@@ -116,8 +138,7 @@ struct FleetEtaView: View {
     @ViewBuilder private func estimates(_ eta: FleetEta, city: String, now: Date) -> some View {
         let tier = model.scenario(for: city, at: now)
         VStack(alignment: .leading, spacing: 14) {
-            Eyebrow(text: "Fares · Hours · Pickup wait")
-            Text("Ride, hours & wait").font(.inter(19, .bold)).foregroundStyle(Color.chInk)
+            SimSectionHead(eyebrow: "Fares · Hours · Pickup wait", title: "Ride, hours & wait").padding(.top, 6)
             HStack(spacing: 6) {
                 Text(eta.pendingFirstRun == true ? "First daily update pending: published-report estimates for now"
                      : "Estimates recomputed \(centralTime(eta.computedAt)) CT (daily)")
@@ -128,9 +149,9 @@ struct FleetEtaView: View {
             .font(.inter(12)).foregroundStyle(Color.chFog)
             .accessibilityIdentifier("etaUpdated")
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("DEMAND SCENARIO").font(.inter(10.5, .bold)).tracking(0.8).foregroundStyle(Color.chCaption)
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
+                    Text("Demand scenario").font(.inter(13)).foregroundStyle(Color.chFog).fixedSize()
                     ForEach(SimulationCalc.tiers, id: \.self) { t in
                         PillToggle(title: SimulationCalc.tierLabel[t] ?? t, selected: tier == t, compact: true) { model.userScenario = t }
                             .accessibilityIdentifier("scenario-\(t)")
@@ -140,8 +161,10 @@ struct FleetEtaView: View {
                     .accessibilityIdentifier("etaAssumed")
             }
 
+            VStack(alignment: .leading, spacing: 14) {
             SliderRow(label: "Trip distance", value: Binding(get: { model.miles[city] ?? 5 }, set: { model.miles[city] = $0 }),
                       range: 0.5...20, step: 0.5, format: { Format.one($0) }, unit: "mi", id: "etaMiles")
+            Text("Pickup area").font(.inter(14, .medium)).foregroundStyle(Color.chMist)
             Menu {
                 Picker("Pickup area", selection: Binding(get: { model.area[city] ?? "" }, set: { model.area[city] = $0 })) {
                     Text("Anywhere in \(SimulationCalc.cityName[city] ?? city)").tag("")
@@ -149,24 +172,39 @@ struct FleetEtaView: View {
                 }
             } label: {
                 HStack {
-                    Text("Pickup area").font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
+                    Text(eta.areaLabel(model.area[city]) ?? "Anywhere in \(SimulationCalc.cityName[city] ?? city)").font(.inter(14)).foregroundStyle(Color.chInk)
                     Spacer()
-                    Text(eta.areaLabel(model.area[city]) ?? "Anywhere in \(SimulationCalc.cityName[city] ?? city)").font(.inter(14)).foregroundStyle(Color.brandGold)
                     Image(systemName: "chevron.up.chevron.down").font(.system(size: 11)).foregroundStyle(Color.chFog)
                 }
+                .padding(.horizontal, 12).frame(minHeight: 40)
+                .background(Color.chSurface2, in: .rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
             }
+            .accessibilityLabel("Pickup area")
             .accessibilityIdentifier("etaArea")
+            }
+            .padding(16)
+            .background(Color.chSurface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
 
             ForEach(["cybercab", "model_y"], id: \.self) { vt in
                 vehicleCard(eta, city: city, vehicle: vt, tier: tier, now: now)
             }
-            fleetAvailability(eta, city: city)
-            serviceDay(city: city, now: now)
-            Text(calibration(eta, city: city)).font(.inter(12)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("etaCalibration")
+            VStack(alignment: .leading, spacing: 18) {
+                fleetAvailability(eta, city: city)
+                serviceDay(city: city, now: now)
+            }
+            .padding(16)
+            .background(Color.chSurface, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Color.chFog).padding(.top, 1)
+                Text(calibration(eta, city: city)).font(.inter(12.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("etaCalibration")
             if let rs = eta.recentReports, !rs.isEmpty { recentReports(rs) }
         }
-        .glassCard()
     }
 
     private func vehicleCard(_ eta: FleetEta, city: String, vehicle vt: String, tier: String, now: Date) -> some View {
@@ -177,16 +215,18 @@ struct FleetEtaView: View {
         let area = (model.area[city] ?? "").isEmpty ? nil : model.area[city]
         let areaName = eta.areaLabel(area)
         let status = SimulationCalc.serviceStatus(now)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                HStack(spacing: 5) { Circle().fill(color).frame(width: 8, height: 8); Text((SimulationCalc.vehicleLabel[vt] ?? vt).uppercased()).font(.inter(12, .heavy)).tracking(0.8).foregroundStyle(Color.chInk) }
-                Spacer()
-                Text(basisTag(fareModel, use: bv?.use)).font(.inter(10.5, .semibold)).foregroundStyle(Color.chMist)
-                    .padding(.horizontal, 7).padding(.vertical, 3).overlay(Capsule().strokeBorder(Color.chHair2))
+        let ink: Color = vt == "cybercab" ? .brandGold : Color(hex: 0xF08A84)
+        return TintCard(color: color, car: vt == "cybercab" ? "CybercabRender" : "ModelYRender") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) { Circle().fill(color).frame(width: 8, height: 8); Text((SimulationCalc.vehicleLabel[vt] ?? vt).uppercased()).font(.inter(12, .semibold)).tracking(1.8).foregroundStyle(ink) }
+                Text(basisTag(fareModel, use: bv?.use)).font(.inter(11, .semibold)).foregroundStyle(Color.chMist)
+                    .padding(.horizontal, 9).padding(.vertical, 4).overlay(Capsule().strokeBorder(Color.chHair2))
             }
+            .frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading)
+            .padding(.trailing, TintCard<EmptyView>.headingInset)
             // Estimated fare
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ESTIMATED FARE").font(.inter(10, .bold)).tracking(0.6).foregroundStyle(Color.chCaption)
+            VStack(alignment: .leading, spacing: 6) {
+                IconLabel(icon: "dollarsign", text: "Estimated fare", color: ink).padding(.bottom, 2)
                 if let m = fareModel, let r = SimulationCalc.fareRange(m, miles: miles, tier: tier, area: area) {
                     Text(SimulationCalc.dollarRange(r) ?? "—").statNumber(30, color: .chInk).accessibilityIdentifier("etaFare-\(vt)")
                     let typeName = bv?.use == "all" ? "All robotaxis" : bv?.use == "external" ? "All vehicle types" : (SimulationCalc.vehicleLabel[vt] ?? vt)
@@ -204,25 +244,35 @@ struct FleetEtaView: View {
                     Text(bv?.note ?? "Not enough data for an estimate.").font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .padding(.top, 12)
             // Hours
-            VStack(alignment: .leading, spacing: 4) {
-                Text("HOURS").font(.inter(10, .bold)).tracking(0.6).foregroundStyle(Color.chCaption)
-                HStack {
-                    Text("\(SimulationCalc.clockLabel(SimulationCalc.openMinute)) - \(SimulationCalc.clockLabel(SimulationCalc.closeMinute))").font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
-                    Text("Central, daily").font(.inter(12)).foregroundStyle(Color.chFog)
+            VStack(alignment: .leading, spacing: 6) {
+                IconLabel(icon: "clock", text: "Hours", color: ink)
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(SimulationCalc.clockLabel(SimulationCalc.openMinute)) - \(SimulationCalc.clockLabel(SimulationCalc.closeMinute))").font(.inter(16, .semibold)).foregroundStyle(Color.chInk)
+                        Text("Central, daily").font(.inter(13)).foregroundStyle(Color.chFog)
+                    }
                     Spacer()
-                    Text(status.label).font(.inter(11, .bold)).foregroundStyle(status.open ? Color.chOK : Color.chFog)
+                    HStack(spacing: 6) {
+                        Circle().fill(status.open ? Color.chOK : Color.chFog).frame(width: 6, height: 6)
+                        Text(status.label).font(.inter(12, .semibold)).foregroundStyle(status.open ? Color.chOK : Color.chFog)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .overlay(Capsule().strokeBorder((status.open ? Color.chOK : Color.chFog).opacity(0.5)))
                 }
             }
+            .padding(.vertical, 14)
+            .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+            .padding(.top, 14)
             // Estimated pickup wait
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ESTIMATED PICKUP WAIT").font(.inter(10, .bold)).tracking(0.6).foregroundStyle(Color.chCaption)
+            VStack(alignment: .leading, spacing: 6) {
+                IconLabel(icon: "mappin.and.ellipse", text: "Estimated pickup wait", color: ink).padding(.bottom, 2)
                 waitBlock(eta, city: city, vehicle: vt, tier: tier, area: area, areaName: areaName)
             }
+            .padding(.top, 14)
+            .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
         }
-        .padding(14)
-        .background(LinearGradient(colors: [color.opacity(0.10), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), in: .rect(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(color.opacity(0.35)))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("etaCard-\(vt)")
     }
@@ -248,7 +298,7 @@ struct FleetEtaView: View {
 
     private func fleetAvailability(_ eta: FleetEta, city: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("FLEET AVAILABILITY").font(.inter(10.5, .bold)).tracking(0.8).foregroundStyle(Color.chCaption)
+            Text("Fleet availability").font(.inter(15, .semibold)).foregroundStyle(Color.chInk).padding(.bottom, 4)
             if let f = eta.fleet {
                 let d = f.documented
                 row("Documented by Cybercab Hunter", "\(d.cybercab) Cybercab\((d.modelY ?? 0) > 0 ? " · \(d.modelY!) Model Y" : "")\((d.unknown ?? 0) > 0 ? " · \(d.unknown!) other" : "")", tag: "Registry")

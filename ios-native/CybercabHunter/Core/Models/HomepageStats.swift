@@ -81,5 +81,7 @@ struct HomepageStats: Decodable, Sendable, Equatable {
         let reporting24h: Int?
         let lastDetectionAt: String?
         let lastCamera: String?
+        /// All nonzero local dates from the existing endpoint (sparse history).
+        let daily: [DayCount]?
     }
 }

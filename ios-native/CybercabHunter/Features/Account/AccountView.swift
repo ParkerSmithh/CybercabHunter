@@ -12,9 +12,11 @@ struct AccountView: View {
     @State private var model = AccountModel()
     @State private var confirmingSignOut = false
     @State private var webPage: WebPage?
+    @State private var path = NavigationPath()
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 switch session.state {
                 case .restoring:
@@ -24,6 +26,19 @@ struct AccountView: View {
                 case .signedIn(let user):
                     signedIn(user)
                 }
+                Section("Notifications") {
+                    NavigationLink("Notifications", value: AccountRoute.notifications)
+                        .accessibilityIdentifier("pushSettingsLink")
+                }
+                // Siri, Shortcuts and Activity Alerts live on this iPhone: signed in or not.
+                Section {
+                    NavigationLink(value: AccountRoute.siri) { Label("Siri & Shortcuts", systemImage: "mic.circle") }
+                        .accessibilityIdentifier("siriSettingsLink")
+                    NavigationLink(value: AccountRoute.alerts) {
+                        LabeledContent { Text(ActivityAlertSettings.load().enabled ? "On" : "Off") } label: { Label("Activity Alerts", systemImage: "bell.badge") }
+                    }
+                    .accessibilityIdentifier("alertSettingsLink")
+                } header: { Text("Siri & Alerts") }
                 Section {
                     // The privacy policy is a legal document: shown as published on the website.
                     Button("Privacy policy") { webPage = WebPage(title: "Privacy", path: "/privacy", systemImage: "hand.raised.fill") }
@@ -46,6 +61,9 @@ struct AccountView: View {
                 case .importReceipt: ImportReceiptView()
                 case .delete: DeleteAccountView()
                 case .rider(let handle): RiderProfileView(route: RiderRoute(handle: handle))
+                case .siri: SiriSettingsView()
+                case .alerts: ActivityAlertsView()
+                case .notifications: PushSettingsView()
                 }
             }
             .navigationDestination(for: RiderDataRoute.self) { route in
@@ -58,6 +76,13 @@ struct AccountView: View {
             .navigationDestination(for: RegistryPlateRoute.self) { ModerationView(initialPlate: $0.plate) }
             .fullScreenCover(item: $webPage) { page in
                 SafariView(url: AppConfig.webURL(page.path)).ignoresSafeArea()
+            }
+            // Siri asked for one of these screens: open it right away.
+            .onChange(of: router.accountRequest, initial: true) {
+                guard let r = router.accountRequest else { return }
+                router.accountRequest = nil
+                path = NavigationPath()
+                path.append(r)
             }
             .task(id: session.user?.id) {
                 if session.user != nil { await model.load(api: session.api) } else { model.reset() }
@@ -190,6 +215,8 @@ struct AccountView: View {
 enum AccountRoute: Hashable {
     case profile, sightings, moderation, importReceipt, delete
     case rider(String)
+    /// Siri & Shortcuts, Activity Alerts: on this iPhone, signed in or not.
+    case siri, alerts, notifications
 }
 
 /// The rider's own sightings and where each one is in review (GET /api/submissions).

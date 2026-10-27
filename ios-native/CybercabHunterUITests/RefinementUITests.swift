@@ -86,20 +86,19 @@ final class RefinementUITests: XCTestCase {
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(app.descendants(matching: .any)["zoneDetailsLegend"].waitForNonExistence(timeout: 10))
 
-        // Search opens the existing place search (live suggestions, pick, back to the button).
+        // Search opens the place search sheet (live suggestions, pick, back to the map).
         search.tap()
         let field = app.textFields["zoneSearchField"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["zoneSearchButton"].label, "Close search")
+        field.tap()
         field.typeText("Congress")
         let suggestion = app.buttons["zonePlaceSuggestion"].firstMatch
         XCTAssertTrue(suggestion.waitForExistence(timeout: 20), "suggestions")
-        XCTAssertFalse(app.buttons["replayButton"].exists, "the bottom controls step aside while searching (nothing covers the suggestions)")
         shot(app, "r-zones-search")
         suggestion.tap()
-        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "picking a place closes the field")
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "picking a place closes the sheet")
         XCTAssertEqual(app.buttons["zoneSearchButton"].label, "Search places")
-        XCTAssertTrue(app.buttons["replayButton"].waitForExistence(timeout: 5), "...and come back after")
+        XCTAssertTrue(app.buttons["replayButton"].waitForExistence(timeout: 5), "the map's controls are back")
 
         // Gestures still work on the map.
         app.swipeLeft(velocity: .slow)

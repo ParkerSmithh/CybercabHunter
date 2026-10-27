@@ -104,7 +104,7 @@ async function run() {
     check('no all-cities totals in the response (the page no longer shows them)', !('all' in A.hero));
     check('Dallas hero: 0 / 0', D.hero.city.vehicles === 0 && D.hero.city.rides === 0);
     check('the private vehicle is nowhere in the response', !/PRIV004/.test(JSON.stringify(A)));
-    check('area: published zone facts and the documented vehicle count', A.area.square_miles === 264 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 81);
+    check('area: published zone facts and the documented vehicle count', A.area.square_miles === 272 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 81);
   }
 
   console.log('4. Sightings (approved public photo sightings only)');

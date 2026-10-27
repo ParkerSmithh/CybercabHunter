@@ -1,0 +1,52 @@
+[
+  {
+    "path": "ios-native/CybercabHunter/Features/Intents/CybercabIntents.swift",
+    "baseline_sha256": "8d94a9f5b7cadd1421845ecb0ef2b269de215fb3dc07248cab2bd1d6b58b6fc0",
+    "candidate_sha256": "bc905a448af7efe74e3883d2bf494a69c3dfd2a8bcd5d6bb1e716d0e1ae73122"
+  },
+  {
+    "path": "ios-native/CybercabHunter/Features/Intents/SiriDiagnostics.swift",
+    "baseline_sha256": "f8064642fb45bfd13b43f64d4b9267a0d492ad8c6d381e526ec7e3fe4d05add2",
+    "candidate_sha256": "3a2627fd7c6db96b3a3fecc24e79af813bfbb10394abeb8793cdd7c2378a1daa"
+  },
+  {
+    "path": "ios-native/CybercabHunter/Features/Intents/SiriIntents.swift",
+    "baseline_sha256": "a2097c81a1d5dfe0b3bfa89e743a98953e34f3d79223252c47da08d55dbb6645",
+    "candidate_sha256": "2e0f52548148817c8fbbc9b4cbef7b0bc079694fdb9da54b7c74535d1bf62a04"
+  },
+  {
+    "path": "ios-native/CybercabHunter/Features/Intents/SiriQuestions.swift",
+    "baseline_sha256": "0e2c9076191e8f3450fd959c1eea3b88cfa71f5a7c3f35a017fdef2c30193ee2",
+    "candidate_sha256": "465382e674459ecb9365e0f41fc174faabd6e5fb36aff04842bfb148d72a6ade"
+  },
+  {
+    "path": "ios-native/CybercabHunter.xcodeproj/project.pbxproj",
+    "baseline_sha256": "3cccc87d1ea93331d3a038d9ea306642e7a8b11b7e63009091706c3c5d473a32",
+    "candidate_sha256": "5e9d865062667aaeb19f19886041e00e8b72d52cb7a7d481501485ec8fe0063a"
+  },
+  {
+    "path": "ios-native/CybercabHunterTests/SiriNaturalLanguageTests.swift",
+    "baseline_sha256": "b32997dcdd428f84d064e65ddd0e56d0bec4227e857f4dcf4f7eeced827a875d",
+    "candidate_sha256": "20a831f20ff80d2d2d439c490f79aae2544103ad43b4a5050911afb7605d0e30"
+  },
+  {
+    "path": "ios-native/scripts/check-siri-metadata.py",
+    "baseline_sha256": "fa8ea0a1e6fba7df28c585f043448a8a8404355d3e0569136f9dd2bd3863f0a7",
+    "candidate_sha256": "ccc55cd3070215e32879391179dfeaba66447049d291de5984933f303a85db46"
+  },
+  {
+    "path": "ios-native/scripts/test_siri_metadata.py",
+    "baseline_sha256": "71dc629699c009f22ff18e055ba8bd720aa6746267ccec6b19a5f903238e0809",
+    "candidate_sha256": "e52d784bf47890df9e4aa3c422329b334a32047f266172618e2e4b2c6448db9e"
+  },
+  {
+    "path": "ios-native/CybercabHunterTests/SiriReliabilityTests.swift",
+    "baseline_sha256": null,
+    "candidate_sha256": "405b368fb00727b2ae9d1032d41be7a04f8feb756819a8d6945d79e524599546"
+  },
+  {
+    "path": "ios-native/scripts/siri-build4-contract.json",
+    "baseline_sha256": null,
+    "candidate_sha256": "84833e4c38ccad7dcc723f5c4a289fbe52d62aa4e6be0fdcb2226a6f33e92e84"
+  }
+]

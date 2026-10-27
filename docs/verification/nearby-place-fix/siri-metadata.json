@@ -1,0 +1,11 @@
+{
+  "intents": 22,
+  "shortcuts": 10,
+  "phrase_templates": 42,
+  "matches_last_approved_device_build": {
+    "actions": true,
+    "autoShortcuts": true,
+    "enums": true
+  },
+  "metadata_tests_passed": 17
+}

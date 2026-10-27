@@ -1,0 +1,50 @@
+{
+  "update": "Siri Natural Language Update",
+  "installation": "successful in-place update",
+  "device": "connected iPhone 16 Pro",
+  "previous_version": "0.1",
+  "previous_build": "3",
+  "installed_version": "0.1",
+  "installed_build": "4",
+  "bundle_id": "com.cybercabhunter.native",
+  "launched": true,
+  "startup_observed_local": "2026-10-24 11:45:27 CDT",
+  "executable_uuid": "D67B4F0E-C163-3C93-AA7A-AD79A63B1BC7",
+  "metadata_sha256": "dfc4d2b6ea3b151b8ba2af5442ff563b171b7fe79a01cfec779e134e4976480f",
+  "installed_startup_identifiers_match_validated_artifact": true,
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 38,
+  "metadata_verification": "On-device bundled metadata SHA-256 equals validated Release extract.actionsdata; that exact metadata validates 22 intents, 10 advertised shortcuts, 38 templates.",
+  "FleetGrowthIntent": "present; unchanged; discovery remains separate",
+  "registration_diagnostics": {
+    "refresh_requested": "observed",
+    "refresh_call_returned": "observed",
+    "system_completion": "unobservable",
+    "error_channel": "not_provided"
+  },
+  "signature": "passed --deep --strict before installation",
+  "data_preservation": {
+    "method": "in-place install; no uninstall/reset",
+    "data_container_relocated_by_system": true,
+    "preferences_file_size_mtime_owner_access_mode_unchanged": true,
+    "preferences_file_readability_writability_unchanged": true,
+    "system_added_extended_attribute": {
+      "com.apple.dataprotection.policy.exception-applied-by": "com.apple.containermanagerd"
+    },
+    "preference_or_account_values_read_or_exported": false,
+    "keychain_or_account_changes_performed": false
+  },
+  "permissions_changed_by_agent": false,
+  "uninstalled_reset_or_cleared_caches": false,
+  "installation_or_launch_errors": [],
+  "observations": [
+    "iOS assigned a different data-container path and added a containermanagerd data-protection extended attribute; preference size, modification time, ownership, access mode, and readability/writability were retained.",
+    "Registration refresh call returned; this does not prove system indexing or Siri recognition.",
+    "Capture was filtered to SiriRegistration and is not a complete system-log audit."
+  ],
+  "backend_modified": false,
+  "committed_pushed_merged_deployed": false,
+  "physical_siri_tests_run": 0,
+  "waiting_for": "owner physical-device test results"
+}

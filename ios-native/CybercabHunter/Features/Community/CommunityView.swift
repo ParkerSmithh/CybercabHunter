@@ -205,22 +205,44 @@ struct CommunityView: View {
                 }
                 Spacer(minLength: 0)
                 // The website's Community hero (images/CybercabFlipped.png) on a soft gold glow.
-                Image("CommunityCybercab").resizable().scaledToFit().frame(width: 104)
-                    .background(Circle().fill(Color.brandGold.opacity(0.16)).blur(radius: 22))
-                    .accessibilityHidden(true)
+                CommunityHeroCar()
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(CommunitySection.allCases) { s in
-                        PillToggle(title: s.title, selected: section == s, compact: true) { select(s) }
-                            .accessibilityIdentifier("section-\(s.rawValue)")
-                    }
-                }
+            // All four on screen at any text size: the roomiest layout that fits wins
+            // (no horizontal scrolling, labels never shortened).
+            ViewThatFits(in: .horizontal) {
+                sectionRow(padding: 12, spacing: 8, fill: false)
+                sectionRow(padding: 8, spacing: 5, fill: false)
+                sectionRow(padding: 4, spacing: 4, fill: true)
             }
             .sensoryFeedback(.selection, trigger: section)
             tiles
         }
         .padding(.top, 8)
+    }
+
+    private func sectionRow(padding: CGFloat, spacing: CGFloat, fill: Bool) -> some View {
+        HStack(spacing: spacing) {
+            ForEach(CommunitySection.allCases) { s in
+                let on = section == s
+                Button { select(s) } label: {
+                    Text(s.title)
+                        .font(.inter(12, .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(fill ? 0.7 : 1)
+                        .padding(.horizontal, padding)
+                        .frame(maxWidth: fill ? .infinity : nil, minHeight: 34)
+                        .foregroundStyle(on ? Color.chBackground : Color.chMist)
+                        .background(on ? Color.chInk : Color.clear, in: .capsule)
+                        .overlay(Capsule().strokeBorder(on ? Color.clear : Color.chHair2))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier("section-\(s.rawValue)")
+            }
+        }
+        .fixedSize(horizontal: !fill, vertical: false)
     }
 
     @ViewBuilder private var tiles: some View {
@@ -261,5 +283,21 @@ struct CommunityView: View {
         .background(Color.chSurface, in: .rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.chInk.opacity(0.08)))
         .accessibilityIdentifier("communityTiles")
+    }
+}
+
+/// The Community hero's car slides in once (css/community.css cch-car-in:
+/// from 28 px right, 97% scale, transparent, over 0.9 s). Reduce Motion: no slide.
+private struct CommunityHeroCar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+    var body: some View {
+        Image("CommunityCybercab").resizable().scaledToFit().frame(width: 104)
+            .background(Circle().fill(Color.brandGold.opacity(0.16)).blur(radius: 22))
+            .opacity(shown || reduceMotion ? 1 : 0)
+            .offset(x: shown || reduceMotion ? 0 : 28)
+            .scaleEffect(shown || reduceMotion ? 1 : 0.97)
+            .onAppear { withAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.9).delay(0.1)) { shown = true } }
+            .accessibilityHidden(true)
     }
 }

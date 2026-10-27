@@ -1,0 +1,46 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "info",
+      "apps",
+      "--device",
+      "00008140-000C39512813C01C",
+      "--filter",
+      "bundleIdentifier == 'com.cybercabhunter.native'",
+      "--json-output",
+      "/tmp/cch-install5-before-app.json"
+    ],
+    "commandType" : "devicectl.device.info.apps",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "651.13.5"
+  },
+  "result" : {
+    "apps" : [
+      {
+        "appClip" : false,
+        "builtByDeveloper" : true,
+        "bundleIdentifier" : "com.cybercabhunter.native",
+        "bundleVersion" : "4",
+        "containerAccessible" : true,
+        "defaultApp" : false,
+        "hidden" : false,
+        "internalApp" : false,
+        "name" : "Cybercab Hunter",
+        "removable" : true,
+        "url" : "file:///private/var/containers/Bundle/Application/8E71CA1E-BE4E-48AE-8735-80E0A6C19767/CybercabHunter.app/",
+        "version" : "0.1"
+      }
+    ],
+    "defaultAppsIncluded" : false,
+    "deviceIdentifier" : "3386B7C8-52DD-5A8F-BD1F-461068D9ED91",
+    "hiddenAppsIncluded" : false,
+    "internalAppsIncluded" : false,
+    "removableAppsIncluded" : true
+  }
+}

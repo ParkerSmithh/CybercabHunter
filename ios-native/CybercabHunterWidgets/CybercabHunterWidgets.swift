@@ -11,6 +11,7 @@ struct CybercabHunterWidgets: WidgetBundle {
     var body: some Widget {
         FleetWidget()
         DailyWidget()
+        ServiceLiveActivity()   // Dynamic Island / Lock Screen, off unless the rider turns it on
     }
 }
 

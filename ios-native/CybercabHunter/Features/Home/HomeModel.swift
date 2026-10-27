@@ -42,12 +42,17 @@ final class HomeModel {
         async let c: Void = loadCity(city, using: api, force: true)
         async let g: Void = loadGrowth(using: api)
         _ = await (r, d, m, a, c, g)
+        // Spotlight / Siri: the fleet as a whole, from what Home just loaded.
+        let (r2, d2, m2) = (registry, daily, dmv)
+        SiriIndex.later { await SiriIndex.fleet(registry: r2, daily: d2, dmv: m2) }
     }
 
     func loadCity(_ key: String, using api: APIClient, force: Bool = false) async {
         if !force, cityStats[key] != nil { return }
         do {
-            cityStats[key] = try await api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)])
+            let stats: HomepageStats = try await api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)])
+            cityStats[key] = stats
+            SiriIndex.later { await SiriIndex.zone(stats) }   // Spotlight / Siri: that city's zone and its last 24 hours
             cityErrors[key] = nil
         } catch is CancellationError {
         } catch {

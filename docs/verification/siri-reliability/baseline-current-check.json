@@ -1,0 +1,11 @@
+{
+  "archive_checks": {
+    "verification-build4.tar.gz": true,
+    "ios-native-source-build4.tar.gz": true,
+    "signed-release-build4.tar.gz": true
+  },
+  "source_files_checked": 482,
+  "source_drift": [],
+  "implementation_started": false,
+  "baseline_device_traces": "not available; owner reproduction required"
+}

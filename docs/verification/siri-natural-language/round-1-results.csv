@@ -1,0 +1,7 @@
+round_case,actual_reported_phrase,owner_reported_result,coverage,master_matrix_case,actual_intent_parameters
+1,Cybercab Hunter Dallas service area,WORKED,existing registered phrase,3,NOT CAPTURED
+2,How big is the Dallas Cybercab zone in Cybercab Hunter?,WORKED,new registered phrase,11,NOT CAPTURED
+3,What's the Cybercab service area in Dallas in Cybercab Hunter?,WORKED,contraction variation of new registered phrase,12,NOT CAPTURED
+4,How big is the Dallas Cybercab zone?,DID NOT INVOKE APP,experimental app-name-free wording,14,NOT CAPTURED
+5,How many Cybercabs are documented in Dallas in Cybercab Hunter?,WORKED,new registered phrase,17,NOT CAPTURED
+6,Any Cybercabs spotted in Dallas today in Cybercab Hunter?,WORKED,new registered phrase,21,NOT CAPTURED

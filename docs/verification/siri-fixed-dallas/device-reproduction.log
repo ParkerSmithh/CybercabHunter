@@ -1,0 +1,7 @@
+Physical Console live capture, SiriIntent category, installed 23-template build.
+Owner repeated "Cybercab Hunter Dallas weekly sightings" twice and reported Austin numbers both times.
+22:20:26.920327-0500 intent=RecentSightingsIntent phase=entered id=CCAA3CEC-A743-4638-9322-4656EEC6E8D2 city=austin period=last24Hours selection=legacy-city-period error=none
+22:20:26.921159-0500 intent=RecentSightingsIntent phase=answer_ready id=CCAA3CEC-A743-4638-9322-4656EEC6E8D2 city=austin period=last24Hours selection=legacy-city-period error=none
+22:20:35.184580-0500 intent=RecentSightingsIntent phase=entered id=88539F63-070B-45E0-B634-98FF9CAE7370 city=austin period=last24Hours selection=legacy-city-period error=none
+22:20:35.187051-0500 intent=RecentSightingsIntent phase=answer_ready id=88539F63-070B-45E0-B634-98FF9CAE7370 city=austin period=last24Hours selection=legacy-city-period error=none
+Transcribed from Console accessibility table. Capture stopped after reproduction. Original historical failure was not captured.

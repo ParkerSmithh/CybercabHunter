@@ -1,0 +1,53 @@
+(node:11699) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ok one report per local date/week: Asia/Tokyo
+ok one report per local date/week: Asia/Kolkata
+ok one report per local date/week: Pacific/Honolulu
+ok one report per local date/week: UTC
+ok one report per local date/week: America/Chicago
+ok one report per local date/week: America/New_York
+ok one report per local date/week: Europe/London
+ok one report per local date/week: Australia/Sydney
+ok one report per local date/week: Australia/Lord_Howe
+ok DST configured time 2026-03-08 America/Chicago
+ok DST configured time 2026-11-01 America/Chicago
+ok DST configured time 2026-03-29 Europe/London
+ok DST configured time 2026-10-04 Australia/Lord_Howe
+ok 23/25-hour previous-day boundaries and year rollover
+ok overlapping workers and database period uniqueness
+ok one complete summary for 0 events
+ok one complete summary for 1 events
+ok one complete summary for 60 events
+ok one complete summary for 61 events
+ok one complete summary for 100 events
+ok one complete summary for 1000 events
+ok summary excludes current day, consumed, missing source and pre-enrollment
+ok summary cannot merge with instant queue or replay when preference changes
+ok mock APNs 200 null
+ok mock APNs 400 BadDeviceToken
+ok mock APNs 400 DeviceTokenNotForTopic
+ok mock APNs 403 Forbidden
+ok mock APNs 403 ExpiredProviderToken
+ok mock APNs 410 Unregistered
+ok mock APNs 413 PayloadTooLarge
+ok mock APNs 429 TooManyRequests
+ok mock APNs 500 InternalServerError
+ok mock APNs 503 ServiceUnavailable
+ok durable accepted
+ok durable permanent
+ok durable invalid
+ok durable exhausted
+ok durable ambiguous
+ok partial fanout never retries accepted or permanently rejected devices
+ok stale Unregistered does not disable refreshed token
+ok transport exception remains unknown without retry
+ok interrupted send is unknown and not automatically repeated
+ok all eight categories and selected report arithmetic preserved
+ok both delivery gates fail closed
+ok temporary failures respect backoff and recover without duplicate acceptance
+ok local upgrade preserves receipts and removes unconfirmed legacy sent claims
+ok signing failures are explicit permanent configuration errors without HTTP
+ok revocation during retry terminates unavailable target
+48 notification blocker regression checks passed; synthetic SQLite and mocked APNs only

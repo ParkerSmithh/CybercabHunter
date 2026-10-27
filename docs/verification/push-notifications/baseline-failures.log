@@ -1,0 +1,28 @@
+mobile-density: 1
+  FAIL — Community: the four stats in one row on phones (2 / 4 from sm up as before)
+  FAIL — Fleet ETA: one "Ride, hours & wait" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones
+  FAIL — Zones: the details panel is a side drawer below lg, with a close button
+  FAIL — Replay: the details panel is a side drawer below lg, with a close button
+34 passed, 4 failed
+
+motion: 1
+  FAIL — wired to the six eyebrows that sit above a heading, and nothing else
+62 passed, 1 failed
+
+social-v2: 1
+
+tory, open '/private/tmp/cybercab-push-baseline/wrangler.jsonc'
+    at Object.readFileSync (node:fs:621:20)
+    at read (file:///private/tmp/cybercab-push-baseline/tests/social-v2.test.mjs:26:22)
+    at run (file:///private/tmp/cybercab-push-baseline/tests/social-v2.test.mjs:294:110) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/private/tmp/cybercab-push-baseline/wrangler.jsonc'
+}
+
+ui-effects: 1
+  FAIL — Community: the four stat tiles only (not Reviews, not the leaderboard)
+  FAIL — Fleet ETA: the eight model cards only, red on Model Y
+11 passed, 2 failed
+

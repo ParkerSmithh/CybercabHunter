@@ -96,39 +96,149 @@
 </nav>
 
 <main id="main" tabindex="-1">
-<!-- Every VIN on TxDMV's public automated-vehicle roster for Tesla Robotaxi,
-     LLC (js/dmv-vins.js, GET /api/dmv-registrations/vins): exactly the fields
-     the source publishes — VIN, make, model, model year. Nothing else. -->
-<section class="py-16 max-sm:py-10">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-6 max-sm:mb-4">
-      <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2"><a href="/vehicles" class="hover:underline">Vehicles</a> · Texas DMV</p>
-      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight mb-3 max-sm:text-2xl max-sm:mb-1.5">EVERY VIN</h1>
-      <p class="text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug">Every automated vehicle Tesla Robotaxi, LLC lists with the Texas DMV under its SB 2807 authorization AV8313426653583, from TxDMV's public roster as of the latest daily snapshot.</p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2 mb-4 max-sm:mb-3">
-      <div id="vinModel" role="group" aria-label="Model" class="flex gap-2">
-        <button type="button" data-model="" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">All</button>
-        <button type="button" data-model="cybercab" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Cybercab</button>
-        <button type="button" data-model="model_y" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Model Y</button>
+<!-- The Texas DMV tracker (js/dmv-tracker.js; worker/txdmv-activity.js): what
+     changed between Cybercab Hunter's daily snapshots of TxDMV's public
+     automated-vehicle roster for Tesla Robotaxi, LLC. The source lists VIN,
+     make, model and model year only: "first detected" is when Cybercab Hunter
+     first saw a VIN, never a DMV registration date. The growth chart and its
+     predictions are the shared panel (js/dmv-panel.js). -->
+<section class="pt-12 pb-16 max-sm:pt-6 max-sm:pb-10">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-6 max-sm:mb-4">
+      <div class="min-w-0">
+        <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2 max-sm:mb-1"><a href="/vehicles" class="hover:underline">Vehicles</a> · Texas DMV</p>
+        <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight max-sm:text-2xl">TEXAS DMV TRACKER</h1>
+        <p class="mt-2 text-slate-400 text-sm leading-relaxed max-w-2xl max-sm:text-xs max-sm:leading-snug max-sm:mt-1">Every vehicle Tesla Robotaxi, LLC lists with the Texas DMV under its SB 2807 automated-vehicle authorization, and when each first appeared in Cybercab Hunter's daily snapshots.</p>
       </div>
-      <label class="sr-only" for="vinSearch">Search by VIN</label>
-      <input id="vinSearch" type="search" inputmode="search" autocomplete="off" maxlength="17" placeholder="Search VIN" class="flex-1 min-w-[10rem] min-h-[44px] bg-panel border border-white/[0.1] rounded-xl px-4 text-sm font-mono uppercase placeholder:normal-case placeholder:font-sans placeholder:text-slate-600">
+      <div id="dmvFresh" class="text-xs text-slate-400" aria-live="polite"></div>
     </div>
-    <p id="vinCount" class="text-xs text-slate-500 mb-2" aria-live="polite"></p>
-    <div class="glass rounded-2xl overflow-hidden">
-      <table class="w-full text-sm max-sm:text-xs">
-        <thead><tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-white/[0.07]">
-          <th scope="col" class="px-4 py-3 font-semibold max-sm:px-3">VIN</th><th scope="col" class="px-4 py-3 font-semibold max-sm:hidden">Make</th>
-          <th scope="col" class="px-4 py-3 font-semibold max-sm:px-2">Model</th><th scope="col" class="px-4 py-3 font-semibold text-right max-sm:px-3">Year</th>
-        </tr></thead>
-        <tbody id="vinRows"></tbody>
-      </table>
+
+    <!-- Overview: four cards, then a line of secondary figures -->
+    <div id="dmvStats" class="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:gap-2" aria-live="polite">
+      <div class="glass rounded-2xl p-5 h-[112px] max-sm:p-3 max-sm:h-[92px] animate-pulse"></div><div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div>
+      <div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div><div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div>
     </div>
-    <button id="vinMore" type="button" class="hidden mt-4 w-full min-h-[44px] rounded-xl text-sm font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more</button>
-    <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Source: TxDMV Motor Carrier Credentialing System (TxMCCS), Tesla Robotaxi, LLC's automated motor vehicles, polled once a day. TxDMV publishes the VIN, make, model and model year; this page shows those and nothing else.</p>
+    <p id="dmvStatsMore" class="mt-3 text-xs text-slate-400 max-sm:text-[11px]"></p>
+
+    <div class="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-6 max-sm:mt-5 max-sm:gap-4">
+      <div class="lg:col-span-3 min-w-0 space-y-6 max-sm:space-y-4">
+        <!-- Cumulative roster by model (actual) with the existing predictions -->
+        <div data-dmv-panel="tracker" class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+        <!-- Additions per update: actual only -->
+        <div class="glass rounded-2xl p-6 min-w-0 max-sm:p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h2 class="font-display font-bold text-lg uppercase tracking-tight max-sm:text-base">New VINs per update</h2>
+              <p class="text-xs text-slate-500">First detected in each daily snapshot · actual data only</p>
+            </div>
+            <div id="addRange" role="group" aria-label="Range" class="flex gap-1 text-xs">
+              <button type="button" data-range="7d" class="px-2.5 min-h-[36px] rounded-lg">7D</button><button type="button" data-range="30d" class="px-2.5 min-h-[36px] rounded-lg">30D</button><button type="button" data-range="90d" class="px-2.5 min-h-[36px] rounded-lg">90D</button><button type="button" data-range="all" aria-pressed="true" class="px-2.5 min-h-[36px] rounded-lg">All</button>
+            </div>
+          </div>
+          <div id="addSeries" role="group" aria-label="Show" class="flex flex-wrap gap-2 mb-3 text-xs">
+            <button type="button" data-series="stack" aria-pressed="true" class="city-filter px-3 min-h-[36px] rounded-full border font-semibold">By model</button>
+            <button type="button" data-series="cybercab" aria-pressed="false" class="city-filter px-3 min-h-[36px] rounded-full border font-semibold">Cybercab</button>
+            <button type="button" data-series="model_y" aria-pressed="false" class="city-filter px-3 min-h-[36px] rounded-full border font-semibold">Model Y</button>
+          </div>
+          <div id="addChart" class="min-h-[160px]"></div>
+        </div>
+      </div>
+      <div class="lg:col-span-2 min-w-0 space-y-6 max-sm:space-y-4">
+        <div class="glass rounded-2xl p-6 max-sm:p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-display font-bold text-lg uppercase tracking-tight max-sm:text-base">Registration activity</h2>
+            <a href="#history" class="text-xs font-semibold text-gold hover:underline">Full history →</a>
+          </div>
+          <ol id="dmvActivity" class="space-y-2" aria-live="polite"></ol>
+        </div>
+        <div class="glass rounded-2xl p-6 max-sm:p-4">
+          <h2 class="font-display font-bold text-lg uppercase tracking-tight mb-3 max-sm:text-base">Insights</h2>
+          <ul id="dmvInsights" class="space-y-2 text-sm text-slate-300 max-sm:text-xs"></ul>
+          <div id="dmvMilestones" class="mt-4 flex flex-wrap gap-2"></div>
+        </div>
+        <div class="glass rounded-2xl p-6 max-sm:p-4">
+          <h2 class="font-display font-bold text-lg uppercase tracking-tight mb-3 max-sm:text-base">Latest dataset</h2>
+          <dl id="dmvSource" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs"></dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration history: every processed update -->
+    <div id="history" class="mt-10 scroll-mt-24 max-sm:mt-6">
+      <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+        <div>
+          <h2 class="font-display font-bold text-2xl uppercase tracking-tight max-sm:text-xl">Registration history</h2>
+          <p class="text-xs text-slate-500">Each daily snapshot that changed the roster, compared VIN by VIN with the one before.</p>
+        </div>
+        <form id="histFilters" class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-500">From<input name="from" type="date" class="bg-panel border border-white/[0.1] rounded-lg px-2 min-h-[36px] text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-500">To<input name="to" type="date" class="bg-panel border border-white/[0.1] rounded-lg px-2 min-h-[36px] text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-500">Model<select name="model" class="bg-panel border border-white/[0.1] rounded-lg px-2 min-h-[36px] text-slate-200"><option value="">Any</option><option value="cybercab">Cybercab</option><option value="model_y">Model Y</option><option value="other_tesla">Other Tesla</option><option value="unknown">Unknown</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-500">Show<select name="kind" class="bg-panel border border-white/[0.1] rounded-lg px-2 min-h-[36px] text-slate-200"><option value="additions">Additions</option><option value="missing">Missing VINs</option><option value="all">All changes</option></select></label>
+        </form>
+      </div>
+      <div class="glass rounded-2xl overflow-x-auto">
+        <table class="w-full text-sm max-sm:text-xs">
+          <thead><tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-white/[0.07]">
+            <th scope="col" class="px-4 py-3 font-semibold max-sm:px-3">Snapshot</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right">New</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right max-sm:hidden">Cybercab</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right max-sm:hidden">Model Y</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right">Missing</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right">Net</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-right max-sm:px-3">Total</th>
+          </tr></thead>
+          <tbody id="histRows"></tbody>
+        </table>
+      </div>
+      <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+        <span id="histCount" aria-live="polite"></span>
+        <span class="flex gap-2"><button id="histPrev" type="button" class="px-3 min-h-[36px] rounded-lg border border-white/[0.1] disabled:opacity-40">Newer</button><button id="histNext" type="button" class="px-3 min-h-[36px] rounded-lg border border-white/[0.1] disabled:opacity-40">Older</button></span>
+      </div>
+    </div>
+
+    <!-- VIN directory -->
+    <div id="vins" class="mt-10 scroll-mt-24 max-sm:mt-6">
+      <h2 class="font-display font-bold text-2xl uppercase tracking-tight max-sm:text-xl">Every VIN</h2>
+      <p class="text-xs text-slate-500 mb-3">The current roster. <span class="inline-block px-1.5 rounded bg-gold text-[#1a1204] text-[10px] font-bold">NEW</span> marks VINs first detected in the latest update.</p>
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <div id="vinModel" role="group" aria-label="Model" class="flex flex-wrap gap-2">
+          <button type="button" data-model="" aria-pressed="true" class="city-filter min-h-[40px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">All</button>
+          <button type="button" data-model="cybercab" aria-pressed="false" class="city-filter min-h-[40px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Cybercab</button>
+          <button type="button" data-model="model_y" aria-pressed="false" class="city-filter min-h-[40px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Model Y</button>
+          <button type="button" data-model="recent" aria-pressed="false" class="city-filter min-h-[40px] px-4 rounded-full text-sm font-semibold border max-sm:px-3 max-sm:text-xs">Latest update</button>
+        </div>
+        <select id="vinYear" aria-label="Model year" class="bg-panel border border-white/[0.1] rounded-xl px-3 min-h-[40px] text-sm text-slate-200"><option value="">Any year</option></select>
+        <select id="vinSort" aria-label="Sort" class="bg-panel border border-white/[0.1] rounded-xl px-3 min-h-[40px] text-sm text-slate-200"><option value="first_seen">Newest first detected</option><option value="last_seen">Latest confirmed</option><option value="vin">VIN</option></select>
+        <label class="sr-only" for="vinSearch">Search by VIN</label>
+        <input id="vinSearch" type="search" inputmode="search" autocomplete="off" maxlength="17" placeholder="Search VIN" class="flex-1 min-w-[10rem] min-h-[40px] bg-panel border border-white/[0.1] rounded-xl px-4 text-sm font-mono uppercase placeholder:normal-case placeholder:font-sans placeholder:text-slate-600">
+      </div>
+      <p id="vinCount" class="text-xs text-slate-500 mb-2" aria-live="polite"></p>
+      <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full text-sm max-sm:text-xs">
+          <thead><tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-white/[0.07]">
+            <th scope="col" class="px-4 py-3 font-semibold max-sm:px-3">VIN</th>
+            <th scope="col" class="px-3 py-3 font-semibold">Model</th>
+            <th scope="col" class="px-3 py-3 font-semibold text-right max-sm:hidden">Year</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-right max-sm:px-3">First detected</th>
+          </tr></thead>
+          <tbody id="vinRows"></tbody>
+        </table>
+      </div>
+      <button id="vinMore" type="button" class="hidden mt-4 w-full min-h-[44px] rounded-xl text-sm font-semibold border border-white/[0.1] text-slate-300 hover:bg-white/5">Show more</button>
+      <p class="mt-4 text-[11px] text-slate-500 leading-relaxed">Source: TxDMV Motor Carrier Credentialing System (TxMCCS), read once a day. TxDMV publishes the VIN, make, model and model year only — no registration dates, counties or owners. "First detected" is when Cybercab Hunter first saw a VIN on the roster, not a DMV registration date. Models are decoded with NHTSA vPIC and cross-checked against TxDMV's label; a registration does not mean a car is in service.</p>
+    </div>
   </div>
 </section>
+
+<!-- One update's VINs, or one VIN (js/dmv-tracker.js) -->
+<dialog id="dmvDialog" class="dmv-dialog p-0 rounded-2xl bg-[#0f1011] text-slate-200 border border-white/[0.1] w-[min(640px,calc(100vw-24px))] max-h-[85vh] backdrop:bg-black/60">
+  <div class="flex items-start justify-between gap-3 p-5 border-b border-white/[0.07] max-sm:p-4">
+    <div id="dlgHead" class="min-w-0"></div>
+    <button type="button" data-close class="shrink-0 w-10 h-10 rounded-full border border-white/[0.1] text-xl leading-none" aria-label="Close">&times;</button>
+  </div>
+  <div id="dlgBody" class="p-5 overflow-y-auto max-h-[65vh] max-sm:p-4"></div>
+</dialog>
 </main>
 
 <div id="accountBackdrop" class="drawer-backdrop fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"></div>
@@ -273,11 +383,13 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500 max-sm:py-4 max-sm:text-[11px]">© 2026 Cybercab Hunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
 </footer>
 
-<script src="js/calc.js?v=8"></script>
+<script src="js/calc.js?v=9"></script>
 <script src="js/main.js?v=33"></script>
 <script>
   CCC.init();
 </script>
-<script src="js/dmv-vins.js?v=2"></script>
+<script src="js/forecast.js?v=1"></script>
+<script src="js/dmv-panel.js?v=17"></script>
+<script src="js/dmv-tracker.js?v=4"></script>
 </body>
 </html>

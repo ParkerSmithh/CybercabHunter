@@ -1,0 +1,56 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--device",
+      "00008140-000C39512813C01C",
+      "com.cybercabhunter.native",
+      "--json-output",
+      "/tmp/cch-install5-launch.json"
+    ],
+    "commandType" : "devicectl.device.process.launch",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "651.13.5"
+  },
+  "result" : {
+    "deviceIdentifier" : "3386B7C8-52DD-5A8F-BD1F-461068D9ED91",
+    "launchOptions" : {
+      "activatedWhenStarted" : true,
+      "arguments" : [
+
+      ],
+      "environmentVariables" : {
+        "TERM" : "dumb"
+      },
+      "platformSpecificOptions" : {
+
+      },
+      "startStopped" : false,
+      "terminateExistingInstances" : false,
+      "user" : {
+        "active" : true
+      }
+    },
+    "process" : {
+      "auditToken" : [
+        4294967295,
+        501,
+        501,
+        501,
+        501,
+        3518,
+        0,
+        9726
+      ],
+      "executable" : "file:///private/var/containers/Bundle/Application/F4D4D2ED-08FA-4F1D-893A-65BF44CFE2DF/CybercabHunter.app/CybercabHunter",
+      "processIdentifier" : 3518
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "native_unit_tests_passed": 171,
+  "native_unit_tests_failed": 0,
+  "release_build": "passed (unsigned; not installed)",
+  "phrase_templates_before": 54,
+  "phrase_templates_after": 21,
+  "advertised_shortcuts": 10,
+  "structural_cross_intent_collisions_after": 0,
+  "manual_Austin_today": "owner confirmed correct count",
+  "installed_short_phrase_trials": {
+    "phrase": "Cybercab Hunter sightings in Austin today",
+    "trials": 2,
+    "owner_reported_result": "12 Austin sightings on both trials"
+  },
+  "exact_original_selected_intent": "unconfirmed",
+  "intermittent_failure_root_cause": "unconfirmed",
+  "historical_unified_logs": "unavailable: root access required, noninteractive sudo unavailable",
+  "physical_device_reinstalled": false,
+  "committed_pushed_merged_deployed": false
+}

@@ -1,0 +1,22 @@
+{
+  "version": "0.1",
+  "build": "4",
+  "intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 38,
+  "executable_uuid": "D67B4F0E-C163-3C93-AA7A-AD79A63B1BC7",
+  "executable_sha256": "e9983eba3f64fa26add2237fc9e144add9809b739805e2f11e3dd91328d3a860",
+  "metadata_sha256": "dfc4d2b6ea3b151b8ba2af5442ff563b171b7fe79a01cfec779e134e4976480f",
+  "training_corpus_sha256": "fb7d5ad783fd0515337f6e8e2dd6418926d5443424d756e30efd3202849cbe46",
+  "source_files": 482,
+  "archive_files_verified_byte_for_byte": true,
+  "source_changed": false,
+  "implementation_started": false,
+  "baseline_request_traces_available": false,
+  "saved_logs": "Existing capture contains SiriRegistration startup events only; no Round 2 request traces.",
+  "archives": {
+    "verification-build4.tar.gz": "cb7bdd772c49149a27a50fdbc2f976636547272d8d26645ce6662195d6a8e0e9",
+    "ios-native-source-build4.tar.gz": "21f9eec5159758bda712f7debee2923771b76de321a26159182fc36899b51ebc",
+    "signed-release-build4.tar.gz": "f4cb29f8dbb1ee21d48f8b57d71a91428c318825636391fb203ea4fb73384bb4"
+  }
+}

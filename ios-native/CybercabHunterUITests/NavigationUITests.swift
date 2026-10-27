@@ -64,7 +64,7 @@ final class NavigationUITests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         app.swipeDown()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["registrySearch"]
         if search.waitForExistence(timeout: 5) {
             search.tap()
             search.typeText("XVF")

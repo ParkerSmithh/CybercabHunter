@@ -42,7 +42,7 @@ const CCC_CALC = (() => {
 
   // Inputs of the ETA model that are assumptions, not data. Each is a [low, likely, high] band.
   const ETA_ASSUMPTIONS = {
-    areaSqMi: 264.1,                 // the Austin geofence (index.html serviceZoneCoords)
+    areaSqMi: 272.4,                 // the Austin geofence (index.html serviceZoneCoords; expanded Oct 23, 2026)
     deployedShare: [0.4, 0.6, 0.8],  // share of the registry in service at a given time
     speedMph: [18, 22, 28],          // average driving speed to the pickup
     circuity: 1.35,                  // road distance / straight-line distance

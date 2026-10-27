@@ -151,14 +151,14 @@ enum SimulationCalc {
 
     static let deployedShare = [0.4, 0.6, 0.8], speedMph = [18.0, 22, 28]
     static let idleShare: [String: [Double]] = ["quiet": [0.5, 0.65, 0.8], "typical": [0.3, 0.5, 0.6], "busy": [0.05, 0.15, 0.3]]
-    static let areaSqMi = ["austin": 264.1, "dallas": 81.0]
+    static let areaSqMi = ["austin": 272.4, "dallas": 81.0]
 
     enum Geometry: Equatable { case ok(low: Int, likely: Int, high: Int, highCapped: Bool), fewCars, noData }
 
     static func geometry(fleetSize: Int?, tier: String, city: String) -> Geometry {
         guard let fleet = fleetSize, fleet > 0 else { return .noData }
         let s = idleShare[tier] ?? idleShare["typical"]!
-        let area = areaSqMi[city] ?? 264.1
+        let area = areaSqMi[city] ?? 272.4
         func minutes(_ deployed: Double, _ idle: Double, _ speed: Double) -> (Double, Double) {
             let cars = Double(fleet) * deployed * idle
             guard cars > 0 else { return (.infinity, 0) }

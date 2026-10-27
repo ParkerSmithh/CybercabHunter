@@ -7,29 +7,51 @@ import SwiftUI
 struct HomeView: View {
     @Environment(SessionStore.self) private var session
     @State private var model = HomeModel()
+    @State private var scroll: CGFloat = 0
+    /// Debug builds: the page's measured heights, for layout tests.
+    @State private var contentHeight: CGFloat = 0
+    @State private var belowMinimapHeight: CGFloat = 0
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                HomeHero()
+                // No pin and no reserved space: the doors open as the hero scrolls out
+                // (the site's flow mode, js/hero-video.js), so the stats follow the hero.
+                HomeHero(scroll: scroll)
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
                 VStack(spacing: 14) {
                     ServiceStatusCard(hours: model.cityStats["austin"]?.area?.hours)
                     DailyCard(report: model.daily, error: model.errors["daily"])
                 }
                 ServiceZonesSection(model: model)
-                FleetGrowthSection(model: model)
-                DMVSection(dmv: model.dmv, error: model.errors["dmv"])
-                USSightingsSection()
-                CityRowsSection(model: model)
+                // Everything below the Austin minimap: compact dashboard cards.
+                VStack(alignment: .leading, spacing: 20) {
+                    FleetGrowthSection(model: model)
+                    DMVSection(dmv: model.dmv, error: model.errors["dmv"])
+                    USSightingsSection()
+                    CityRowsSection(model: model)
+                }
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { belowMinimapHeight = $0 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 32)
         }
+        // The hero's door frames follow the scroll position (js/hero-video.js).
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in let c = min(max(y, 0), HomeHeroMedia.openDistance); if c != scroll { scroll = c } }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.height } action: { _, h in contentHeight = h }
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            Color.clear.frame(width: 1, height: 1)
+                .accessibilityElement()
+                .accessibilityLabel("\(Int(contentHeight)) \(Int(belowMinimapHeight))")
+                .accessibilityIdentifier("homeHeights")
+        }
+        #endif
         .appBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { BrandToolbarItem() }
         .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
+        .onAppear { SiriDonations.donate("fleet", FleetStatsIntent()) }   // the rider checked the fleet
         .task { await model.loadAll(using: session.api) }
         .refreshable { await model.loadAll(using: session.api) }
         .onChange(of: model.city) { _, city in
@@ -43,10 +65,10 @@ struct HomeView: View {
 /// The website's hero: the Cybercab render, "TRACK THE FUTURE OF AUTONOMY"
 /// with FUTURE OF in gold, and the two calls to action.
 private struct HomeHero: View {
+    let scroll: CGFloat
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Image("HeroCybercab")
-                .resizable().scaledToFill()
+            HomeHeroMedia(scroll: scroll)
                 .frame(height: 220)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -148,7 +170,7 @@ struct ServiceStatusCard: View {
                             .contentTransition(.numericText())
                     }
                     Spacer(minLength: 0)
-                    Image("CybercabRender").resizable().scaledToFit().frame(width: 120).accessibilityHidden(true)
+                    LiveCar(live: s.live).frame(width: 130).padding(.trailing, -10)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -176,6 +198,7 @@ struct ServiceStatusCard: View {
                         .font(.inter(9, .medium)).foregroundStyle(Color.chCaption)
                     Text("All times central time (CT) · every day").font(.inter(10)).foregroundStyle(Color.chCaption)
                 }
+                LiveActivitySwitch(hours: hours, live: s.live)
             }
             .padding(16)
             .background {
@@ -186,6 +209,54 @@ struct ServiceStatusCard: View {
             .accessibilityElement(children: .combine)
         }
         .opacity(hours == nil ? 0.6 : 1)
+    }
+}
+
+/// The Live now card's switch for the Dynamic Island / Lock Screen Live
+/// Activity (ServiceLiveActivityController): off until the rider turns it on.
+struct LiveActivitySwitch: View {
+    let hours: HomepageStats.Hours?
+    let live: Bool
+    @State private var controller = ServiceLiveActivityController.shared
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Divider().overlay(Color.chLine)
+            Toggle(isOn: Binding(get: { controller.enabled }, set: { on in
+                busy = true
+                Task { await controller.setEnabled(on); busy = false }
+            })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dynamic Island Live Activity").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
+                    Text("Show Cybercab service status in the Dynamic Island and on your Lock Screen.")
+                        .font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .tint(Color.brandGold)
+            .disabled(!controller.isSupported || busy)
+            .accessibilityIdentifier("liveActivityToggle")
+            Text(statusLine).font(.inter(11)).foregroundStyle(controller.problem == nil ? Color.chCaption : Color(hex: 0xFCD34D))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("liveActivityStatus")
+            if controller.problem == .notAuthorized {
+                Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
+                    .font(.inter(12, .semibold)).tint(Color.brandGold)
+            }
+        }
+        // The hours (when they load) and each change of service while the app is open.
+        .task(id: "\(hours?.open ?? "")-\(hours?.close ?? "")-\(live)") {
+            controller.schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
+            await controller.reconcile()
+        }
+    }
+
+    private var statusLine: String {
+        if let p = controller.problem { return p.message }
+        if controller.enabled {
+            return "On · in the Dynamic Island, or on the Lock Screen on iPhones without one. Follows the published service hours; iOS ends it after about 8 hours, and opening the app starts it again."
+        }
+        return "Off · on iPhones without a Dynamic Island it appears on the Lock Screen."
     }
 }
 
@@ -204,15 +275,14 @@ struct ServiceClock {
         cal.timeZone = Format.central
         let parts = cal.dateComponents([.hour, .minute, .second], from: now)
         let sec = (parts.hour ?? 0) * 3600 + (parts.minute ?? 0) * 60 + (parts.second ?? 0)
-        let open = Self.minutes(hours?.open ?? "06:00") * 60
-        let close = Self.minutes(hours?.close ?? "24:00") * 60
-        live = sec >= open && sec < close
-        let startOfDay = cal.startOfDay(for: now)
-        let target: Date = live
-            ? startOfDay.addingTimeInterval(TimeInterval(close))
-            : cal.date(byAdding: .day, value: sec >= close ? 1 : 0, to: startOfDay)!.addingTimeInterval(TimeInterval(open))
-        let mins = max(1, Int(ceil(target.timeIntervalSince(now) / 60)))
-        countdown = mins >= 60 ? "\(mins / 60)h \(mins % 60)m" : "\(mins)m"
+        // Live / parked and the next change: Shared/ServiceSchedule.swift, the same
+        // logic the Dynamic Island Live Activity uses (wall-clock Central, DST-safe).
+        let schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
+        let status = schedule.status(at: now)
+        let open = schedule.openMinute * 60
+        let close = schedule.closeMinute * 60
+        live = status.live
+        countdown = ServiceSchedule.countdown(from: now, to: status.until)
         nowLabel = now.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())
         windowStart = CGFloat(open) / 86400
         windowWidth = CGFloat(close - open) / 86400
@@ -220,10 +290,7 @@ struct ServiceClock {
         nowPosition = CGFloat(sec) / 86400
     }
 
-    static func minutes(_ hhmm: String) -> Int {
-        let p = hhmm.split(separator: ":").compactMap { Int($0) }
-        return (p.first ?? 0) * 60 + (p.count > 1 ? p[1] : 0)
-    }
+    static func minutes(_ hhmm: String) -> Int { ServiceSchedule.minutes(hhmm) }
 }
 
 // MARK: - Cybercab Daily
@@ -283,17 +350,57 @@ struct BrandToolbarItem: ToolbarContent {
     }
 
     private var item: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            HStack(spacing: 8) {
-                Image("BrandMark").resizable().frame(width: 30, height: 30)
+        // Centred on the screen (the bar's principal place), a little larger than before.
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 10) {
+                Image("BrandMark").resizable().frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: -1) {
-                    Text("CYBERCAB").font(.inter(14, .bold)).tracking(0.7).foregroundStyle(Color.chInk)
-                    Text("HUNTER").font(.inter(9, .semibold)).tracking(2.2).foregroundStyle(Color.chFog)
+                    Text("CYBERCAB").font(.inter(17, .bold)).tracking(0.9).foregroundStyle(Color.chInk)
+                    Text("HUNTER").font(.inter(10.5, .semibold)).tracking(2.8).foregroundStyle(Color.chFog)
                 }
             }
             .fixedSize()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Cybercab Hunter")
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("homeBrand")
         }
+    }
+}
+
+/// The "Live now" card's car (css/style.css .sb-car): while the fleet runs it
+/// bobs 1.5 pt every 2.6 s over a gold dashed road scrolling at 26 pt per
+/// 0.8 s; parked, it is greyed out with no road. Reduce Motion: still.
+private struct LiveCar: View {
+    let live: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(paused: !live || reduceMotion)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            let bob = (live && !reduceMotion) ? -1.5 * (1 - cos(t / 2.6 * 2 * .pi)) / 2 : 0
+            let shift = (live && !reduceMotion) ? (t / 0.8).truncatingRemainder(dividingBy: 1) * 26 : 0
+            ZStack(alignment: .bottom) {
+                if live {
+                    Canvas { ctx, size in
+                        var x = -26 + shift
+                        while x < size.width {
+                            ctx.fill(Path(CGRect(x: x, y: 0, width: 12, height: 2)), with: .color(Color.brandGold.opacity(0.55)))
+                            x += 26
+                        }
+                    }
+                    .frame(height: 2)
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.35), .init(color: .black, location: 0.85), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                    .padding(.horizontal, -20)
+                    .offset(y: -4)
+                }
+                Image("CybercabLive").resizable().scaledToFit()
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22)], startPoint: .leading, endPoint: .trailing))
+                    .shadow(color: .black.opacity(0.5), radius: 7, y: 10)
+                    .grayscale(live ? 0 : 1).brightness(live ? 0 : -0.45).opacity(live ? 1 : 0.65)
+                    .offset(y: bob)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

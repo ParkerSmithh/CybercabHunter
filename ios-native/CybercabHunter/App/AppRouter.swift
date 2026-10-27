@@ -24,6 +24,12 @@ final class AppRouter {
     var registryPath = NavigationPath()
     /// Set by the "Submit a sighting" shortcut: Sightings opens its form.
     var submitSightingRequested = false
+    /// Home's history (Siri opens the Texas DMV tracker there).
+    var homePath = NavigationPath()
+    /// A city for Sightings to show (Siri: "show Cybercab sightings in Dallas").
+    var sightingsCity: String?
+    /// An Account screen to open (Siri: Activity Alerts, Siri & Shortcuts).
+    var accountRequest: AccountRoute?
 
     func openZones(_ city: String) {
         zonesCity = city
@@ -68,6 +74,34 @@ final class AppRouter {
         default: selectedTab = .home
         }
         return true
+    }
+
+    /// The Texas DMV tracker, pushed on Home (from Siri, Shortcuts or Spotlight).
+    func openDMVTracker() {
+        homePath = NavigationPath()
+        homePath.append(ExploreRoute.dmv)
+        selectedTab = .home
+    }
+
+    /// The Sightings tab, on a city when one is given.
+    func openSightings(city: String?) {
+        if let city { sightingsCity = city }
+        sightingsPath = NavigationPath()
+        selectedTab = .sightings
+    }
+
+    /// One of the app's main screens (Siri: "Open … in Cybercab Hunter").
+    func open(_ destination: AppDestination) {
+        switch destination {
+        case .home: homePath = NavigationPath(); selectedTab = .home
+        case .map: openZones(zonesCity ?? "austin")
+        case .cars: registryPath = NavigationPath(); selectedTab = .registry
+        case .sightings: openSightings(city: nil)
+        case .community: communityPath = NavigationPath(); selectedTab = .community
+        case .dmvTracker: openDMVTracker()
+        case .alertSettings: accountRequest = .alerts
+        case .siriSettings: accountRequest = .siri
+        }
     }
 
     func openCommunity(_ section: CommunitySection) {

@@ -1,0 +1,28 @@
+{
+  "installed_at_utc": "2026-10-24T03:18:26.241784+00:00",
+  "configuration": "signed Release",
+  "bundle_id": "com.cybercabhunter.native",
+  "install": "successful in-place update; no uninstall or reset",
+  "launch": "successful normal launch; startup requests App Shortcut parameter refresh",
+  "signature_verification": "passed --deep --strict",
+  "signing_entitlements": "identical to previous installed build artifact",
+  "preference_file_metadata_unchanged": true,
+  "preference_contents_accessed": false,
+  "permissions_changed": false,
+  "metadata_sha256": "2ecc0dc0ff038ea0c895f9d7be20729b8d8bc898a872acd0c4c2c10de3bd0652",
+  "app_intents": 19,
+  "advertised_app_shortcuts": 10,
+  "phrase_templates": 23,
+  "metadata_and_training_corpus_validation": "passed on exact signed bundle installed",
+  "on_device_Siri_registry_readback": "not available; verified packaged metadata and successful installation",
+  "diagnostics": "SiriDiagnostics.swift included in Release compilation; logger and errorCategory symbols verified in executable",
+  "Austin_command_and_Daily_Briefing": "preserved in validated metadata",
+  "test_commands": [
+    "Cybercab Hunter sightings in Austin today",
+    "Cybercab Hunter Dallas weekly sightings",
+    "Cybercab Hunter weekly sightings comparison"
+  ],
+  "voice_recognition": "unverified pending owner repeated testing",
+  "backend_modified": false,
+  "committed_pushed_merged_deployed": false
+}

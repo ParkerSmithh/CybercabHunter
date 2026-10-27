@@ -72,6 +72,12 @@ struct FleetGrowthSection: View {
     @State private var range: ChartRange = .d90
     @State private var predict = false
     @State private var horizon: Horizon = .d30
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The timelapse (index.html "Timelapse"): idle, playing, paused or done.
+    enum Play { case idle, playing, paused, done }
+    @State private var play: Play = .idle
+    @State private var playedBefore: Double = 0     // seconds played before the current run
+    @State private var playStarted: Date?
 
     /// The forecast horizons (index.html data-fleet-horizon).
     enum Horizon: Int, CaseIterable, Identifiable, CustomStringConvertible {
@@ -92,17 +98,21 @@ struct FleetGrowthSection: View {
         let week = total - (points.last(where: { $0.date < Date.now.addingTimeInterval(-7 * 86400) })?.count ?? 0)
         let forecast = predict ? Self.forecast(points, horizon: horizon.rawValue) : nil
 
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeading(city: nil, title: "Fleet growth · \(city)") {
-                SeeAllButton(title: "View Cybercabs") { router.selectedTab = .registry }
+        VStack(alignment: .leading, spacing: 12) {
+            CompactHeading(title: "Fleet growth · Cybercab",
+                           info: "\(city) Cybercabs documented in the registry, over time: each car counts from the day it was first documented (public registry coverage). " + (predict ? "Dashed: a projection with an 80% range — an estimate, not registrations." : "Turn on Predict for a projection.")) {
+                SeeAllButton(title: "Cars") { router.selectedTab = .registry }
             }
-            Text("\(city) Cybercabs documented in the registry, over time").font(.inter(12)).foregroundStyle(Color.chFog)
-            RangePicker(ranges: ChartRange.allCases, selection: $range)
+            // Timespan and Actual / Predict in one row; the forecast horizon only when predicting.
             HStack(spacing: 8) {
-                modeButton("Actual", on: !predict) { predict = false }
-                modeButton("Actual + Predictions", on: predict) { predict = true }
-                if predict {
-                    Spacer(minLength: 4)
+                RangePicker(ranges: ChartRange.allCases, selection: $range)
+                    .onChange(of: range) { stopPlay() }
+                Spacer(minLength: 4)
+                PredictToggle(on: $predict)
+            }
+            if predict {
+                HStack(spacing: 8) {
+                    Text("Horizon").font(.inter(12)).foregroundStyle(Color.chFog)
                     RangePicker(ranges: Horizon.allCases, selection: $horizon).accessibilityLabel("Forecast horizon")
                 }
             }
@@ -113,20 +123,35 @@ struct FleetGrowthSection: View {
             } else {
                 if case .ok(_, let current, let rate, _, _, let fp) = forecast, let end = fp.last {
                     let added = end.value - current
-                    MetricGrid(columns: 2) {
-                        Metric(label: "Current documented fleet", value: Format.int(current), note: "\(city) Cybercabs", valueColor: .brandGold, size: 26)
-                        Metric(label: "Projected in \(horizon.rawValue) days", value: "≈\(Format.int(end.value))", note: "Range \(end.low)–\(end.high)", valueColor: .chInk)
-                        Metric(label: "Expected additions", value: "+\(Format.int(added))", note: String(format: "≈%.1f a day now", rate), valueColor: .chOK)
-                        Metric(label: "Predicted growth", value: current > 0 ? "+\(Int((Double(added) / Double(current) * 100).rounded()))%" : "—",
-                               note: "by \(Date(timeIntervalSince1970: end.t / 1000).formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day()))")
+                    MetricGrid(columns: 4, rowSpacing: 10) {
+                        Metric(label: "Now", value: Format.int(current), note: "\(city) Cybercabs", valueColor: .brandGold, size: 19)
+                        Metric(label: "In \(horizon.rawValue) days", value: "≈\(Format.int(end.value))", note: "\(end.low)–\(end.high)", valueColor: .chInk, size: 19)
+                        Metric(label: "Additions", value: "+\(Format.int(added))", note: String(format: "≈%.1f a day", rate), valueColor: .chOK, size: 19)
+                        Metric(label: "Growth", value: current > 0 ? "+\(Int((Double(added) / Double(current) * 100).rounded()))%" : "—",
+                               note: "by \(Date(timeIntervalSince1970: end.t / 1000).formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day()))", size: 19)
                     }
                     .accessibilityIdentifier("fleetForecastTiles")
                 } else {
-                    MetricGrid(columns: 2) {
-                        Metric(label: "In the registry", value: Format.int(total), valueColor: .brandGold, size: 28)
-                        Metric(label: range.label, value: "+\(Format.int(total - before))", note: "Up from \(Format.int(before))", valueColor: .chOK)
-                        Metric(label: "Last 7 days", value: "+\(Format.int(week))", note: "vehicles added")
-                        Metric(label: "Latest addition", value: points.last.map { Format.ago($0.date) } ?? "—", note: points.last.map { $0.date.formatted(Date.FormatStyle(timeZone: Format.central).month(.abbreviated).day()) })
+                    // The key number big (with the Cybercab), the rest in a tight row beside it.
+                    HStack(alignment: .center, spacing: 12) {
+                        HStack(alignment: .bottom, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("IN THE REGISTRY").font(.inter(10, .semibold)).tracking(0.5).foregroundStyle(Color.chCaption)
+                                    .lineLimit(1).fixedSize()
+                                Text(Format.int(total)).statNumber(30, color: .brandGold).lineLimit(1).fixedSize()
+                            }
+                            Image("CommunityCybercab").resizable().scaledToFit().frame(width: 50).padding(.bottom, 2).accessibilityHidden(true)
+                        }
+                        .fixedSize()
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("fleetRegistryTile")
+                        Rectangle().fill(Color.chInk.opacity(0.08)).frame(width: 1, height: 44)
+                        VStack(alignment: .leading, spacing: 3) {
+                            statLine("+\(Format.int(total - before))", range.label.lowercased(), .chOK)
+                            statLine("+\(Format.int(week))", "last 7 days", .chInk)
+                            statLine(points.last.map { Format.ago($0.date) } ?? "—", "latest addition", .chInk)
+                        }
+                        Spacer(minLength: 0)
                     }
                 }
                 if case .unavailable(let reason) = forecast {
@@ -134,9 +159,13 @@ struct FleetGrowthSection: View {
                         .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.chSurface2, in: .rect(cornerRadius: 10))
                 }
-                let projected = Self.projected(forecast)
+                let projected = playing ? [] : Self.projected(forecast)
+                TimelineView(.animation(paused: play != .playing)) { tl in
+                let cut = cutoff(visible, at: tl.date)
+                let shown = cut.map { c in visible.filter { $0.date <= c } } ?? visible
+                VStack(alignment: .leading, spacing: 6) {
                 Chart {
-                    ForEach(visible) { p in
+                    ForEach(shown) { p in
                         AreaMark(x: .value("Date", p.date), y: .value("Cybercabs", p.count), series: .value("S", "actual"))
                             .interpolationMethod(.stepEnd)
                             .foregroundStyle(LinearGradient(colors: [Color.brandGold.opacity(0.35), Color.brandGold.opacity(0.02)], startPoint: .top, endPoint: .bottom))
@@ -160,22 +189,102 @@ struct FleetGrowthSection: View {
                 }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Color.chCaption) } }
                 .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in AxisGridLine().foregroundStyle(Color.chLine); AxisValueLabel().foregroundStyle(Color.chCaption) } }
-                .frame(height: 190)
+                .chartXScale(domain: (visible.first?.date ?? .now)...max(visible.last?.date ?? .now, projected.last?.date ?? .now))
+                .chartYScale(domain: 0...max(1, (projected.map(\.high).max() ?? 0), visible.map(\.count).max() ?? 0))
+                .frame(height: 140)
                 .accessibilityLabel(projected.isEmpty ? "Cumulative \(city) Cybercabs: \(total)" : "Cumulative \(city) Cybercabs: \(total), projected about \(projected.last!.value) in \(horizon.rawValue) days")
-                Chart(dailyAdditions(visible)) { d in
+                .overlay(alignment: .bottomTrailing) { if !predict { playButton } }
+                Chart(dailyAdditions(shown)) { d in
                     BarMark(x: .value("Day", d.day, unit: .day), y: .value("New", d.count)).foregroundStyle(Color.brandGold.opacity(0.65))
                 }
+                .chartXScale(domain: (visible.first?.date ?? .now)...(visible.last?.date ?? .now))
                 .chartXAxis(.hidden).chartYAxis(.hidden)
-                .frame(height: 36)
+                .frame(height: 22)
                 .accessibilityLabel("New Cybercabs per day")
-                Footnote(text: predict ? "Actual: first documented Cybercabs. Dashed: projection with an 80% range — an estimate, not registrations." : "First documented Cybercabs · public registry coverage")
+                if let c = cut, play == .playing || play == .paused {
+                    // "N Cybercabs · date" while it plays.
+                    let n = shown.last?.count ?? 0
+                    (Text("\(n) Cybercab\(n == 1 ? "" : "s")").bold().foregroundStyle(Color.chInk)
+                     + Text(" · " + c.formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).month(.abbreviated).day().year())).foregroundStyle(Color.chFog))
+                        .font(.inter(12.5))
+                        .accessibilityIdentifier("fleetPlayReadout")
+                }
+                }
+                .onChange(of: tl.date) { _, now in if play == .playing && progress(now) >= 1 { finishPlay() } }
+                }
                 if predict {
                     HowPredictionsWork(city: city, through: points.last?.date)
                 }
             }
         }
-        .dataPanel()
+        .dataPanel(padding: 14)
     }
+
+    /// "+14 last 7 days": a value and what it covers, on one line.
+    private func statLine(_ value: String, _ label: String, _ color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(value).font(.inter(14, .semibold)).monospacedDigit().foregroundStyle(color)
+            Text(label).font(.inter(11.5)).foregroundStyle(Color.chFog).lineLimit(1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Timelapse (index.html: 4 s for 90 days, 6 s for 6 months, 8 s otherwise; ease-in-out)
+
+    private var playing: Bool { play == .playing || play == .paused }
+    private var playSeconds: Double { switch range { case .d90: 4; case .m6: 6; case .y1, .all: 8 } }
+
+    private func progress(_ now: Date) -> Double {
+        let run = playStarted.map { now.timeIntervalSince($0) } ?? 0
+        return min(1, (playedBefore + run) / playSeconds)
+    }
+
+    /// The last day drawn: the eased progress across the visible range (nil = the static full view).
+    private func cutoff(_ visible: [HomeModel.GrowthPoint], at now: Date) -> Date? {
+        guard playing, let a = visible.first?.date, let b = visible.last?.date else { return nil }
+        let t = progress(now)
+        let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+        return a.addingTimeInterval(b.timeIntervalSince(a) * eased)
+    }
+
+    private var playButton: some View {
+        let (icon, label): (String, String) = switch play {
+        case .playing: ("pause.fill", "Pause fleet growth timelapse")
+        case .paused: ("play.fill", "Resume fleet growth timelapse")
+        case .done: ("arrow.counterclockwise", "Replay fleet growth timelapse")
+        case .idle: ("play.fill", "Play fleet growth timelapse")
+        }
+        return Button(action: togglePlay) {
+            HStack(spacing: 8) { Text("Timelapse"); Image(systemName: icon).font(.system(size: 11, weight: .bold)) }
+                .font(.inter(12, .semibold))
+                .foregroundStyle(Color(hex: 0x1A1204))
+                .padding(.leading, 14).padding(.trailing, 12).frame(height: 32)
+                .background(Color.brandGold, in: .capsule)
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: 44)
+        .padding(.trailing, 4).padding(.bottom, 18)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("fleetPlayButton")
+    }
+
+    private func togglePlay() {
+        switch play {
+        case .playing:
+            playedBefore += playStarted.map { Date.now.timeIntervalSince($0) } ?? 0
+            playStarted = nil
+            play = .paused
+        case .paused:
+            playStarted = .now; play = .playing
+        case .idle, .done:
+            // Reduced motion: straight to the finished view.
+            if reduceMotion { play = .done; return }
+            playedBefore = 0; playStarted = .now; play = .playing
+        }
+    }
+
+    private func finishPlay() { play = .done; playStarted = nil; playedBefore = 0 }
+    private func stopPlay() { play = .idle; playStarted = nil; playedBefore = 0 }
 
     private func modeButton(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button { withAnimation(.snappy) { action() } } label: {
@@ -245,6 +354,7 @@ struct HowPredictionsWork: View {
 
 struct DMVSection: View {
     let dmv: DMVRegistrations?
+    private var latest: DMVRegistrations.LatestUpdate? { dmv?.latestUpdate }
     let error: String?
     @State private var range: DMVRange = .all
     @State private var predict = false
@@ -271,21 +381,30 @@ struct DMVSection: View {
     struct Line: Identifiable { let date: Date; let series: String; let value: Int; var id: String { "\(series)\(date)" } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PanelHeading(city: nil, title: "Texas DMV registrations · Tesla")
-            Text("Every automated vehicle Tesla lists with the state").font(.inter(12)).foregroundStyle(Color.chFog)
+        VStack(alignment: .leading, spacing: 12) {
+            CompactHeading(title: "Texas DMV registrations · Tesla", info: dmvInfo)
             if let dmv, let snap = dmv.snapshot {
-                RangePicker(ranges: DMVRange.allCases, selection: $range)
-                HStack(spacing: 8) {
-                    Button("Actual") { withAnimation(.snappy) { predict = false } }.buttonStyle(PillButtonStyle(on: !predict))
-                    Button("Actual + Predictions") { withAnimation(.snappy) { predict = true } }.buttonStyle(PillButtonStyle(on: predict))
-                    if predict { Spacer(minLength: 4); RangePicker(ranges: FleetGrowthSection.Horizon.allCases, selection: $horizon) }
-                }
                 let fc = predict ? Self.forecast(dmv, horizon: horizon.rawValue) : nil
-                MetricGrid(columns: 3) {
-                    Metric(label: "Registered AV fleet", value: Format.int(snap.total), note: "by VIN · polled \(Format.instant(snap.polledAt).map { Format.ago($0) } ?? "daily")", valueColor: .brandGold)
-                    Metric(label: "Last 30 days", value: "+\(Format.int(dmv.new?.d30 ?? 0))", note: "+\(Format.int(dmv.new?.d7 ?? 0)) in the last 7 days · approx.", valueColor: .chOK)
-                    Metric(label: "Matched to tracked plates", value: Format.int(dmv.matched?.count), note: "\(Format.int(dmv.matched?.spotted30d)) spotted in the last 30 days")
+                MetricGrid(columns: 3, rowSpacing: 10) {
+                    Metric(label: "Registered AV fleet", value: Format.int(snap.total), note: "by VIN · polled \(Format.instant(snap.polledAt).map { Format.ago($0) } ?? "daily")", valueColor: .brandGold, size: 20)
+                    Metric(label: "Last 30 days", value: "+\(Format.int(dmv.new?.d30 ?? 0))", note: "+\(Format.int(dmv.new?.d7 ?? 0)) in 7 days · approx.", valueColor: .chOK, size: 20)
+                    Metric(label: "Matched plates", value: Format.int(dmv.matched?.count), note: "\(Format.int(dmv.matched?.spotted30d)) spotted in 30 days", size: 20)
+                }
+                // Cybercab and Model Y side by side.
+                HStack(alignment: .top, spacing: 10) {
+                    modelCard("Cybercab", value: snap.cybercab, total: snap.total, added: dmv.new?.cybercab30d, color: .brandGold, image: "CybercabRender", projected: fc.flatMap { Self.end($0.cybercab) })
+                    modelCard("Model Y", value: snap.modelY, total: snap.total, added: dmv.new?.modelY30d, color: .chModelY, image: "ModelYRender", projected: fc.flatMap { Self.end($0.modelY) })
+                }
+                HStack(spacing: 8) {
+                    RangePicker(ranges: DMVRange.allCases, selection: $range)
+                    Spacer(minLength: 4)
+                    PredictToggle(on: $predict)
+                }
+                if predict {
+                    HStack(spacing: 8) {
+                        Text("Horizon").font(.inter(12)).foregroundStyle(Color.chFog)
+                        RangePicker(ranges: FleetGrowthSection.Horizon.allCases, selection: $horizon)
+                    }
                 }
                 if let fc, case .unavailable(let reason) = fc.cybercab {
                     Text("Predictions unavailable. \(reason)").font(.inter(12)).foregroundStyle(Color.chMist)
@@ -310,14 +429,28 @@ struct DMVSection: View {
                 .chartLegend(position: .top, alignment: .leading)
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated)).foregroundStyle(Color.chCaption) } }
                 .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in AxisGridLine().foregroundStyle(Color.chLine); AxisValueLabel().foregroundStyle(Color.chCaption) } }
-                .frame(height: 200)
-                modelCard("Cybercab", value: snap.cybercab, total: snap.total, added: dmv.new?.cybercab30d, color: .brandGold, image: "CybercabRender", projected: fc.flatMap { Self.end($0.cybercab) })
-                modelCard("Model Y", value: snap.modelY, total: snap.total, added: dmv.new?.modelY30d, color: .chModelY, image: "ModelYRender", projected: fc.flatMap { Self.end($0.modelY) })
-                if fc != nil { Footnote(text: "Dashed: each model projected from its own history, the total as their sum, with the approximate early counts widening the range. Estimates, not registrations.") }
-                Footnote(text: "Polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN Tesla Robotaxi, LLC lists under its SB 2807 automated-vehicle authorization. Before \(Format.day(dmv.trackingSince)), counts are approximate.")
+                .frame(height: 140)
+                if fc != nil { Footnote(text: "Dashed: projections — estimates, not registrations.") }
+                // The website's gold "View DMV Tracker" button (js/dmv-panel.js): the latest update's new VINs when known.
                 NavigationLink(value: ExploreRoute.dmv) {
-                    Text("Every VIN on the roster →").font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
+                    HStack(spacing: 12) {
+                        Image(systemName: "list.bullet.rectangle").font(.system(size: 18, weight: .semibold))
+                            .frame(width: 40, height: 40).background(Color.black.opacity(0.12), in: .rect(cornerRadius: 9))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("View DMV Tracker").font(.inter(16, .bold)).tracking(-0.3).lineLimit(1).minimumScaleFactor(0.85)
+                            Text(latest.map { "+\(Format.int($0.added)) newly detected · \(Format.day($0.date, year: false))" } ?? "\(Format.int(snap.total)) VINs · from TxDMV").font(.inter(12, .semibold)).monospacedDigit().opacity(0.7)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "arrow.right").font(.system(size: 14, weight: .bold))
+                            .frame(width: 32, height: 32).background(Color.black.opacity(0.14), in: .circle)
+                    }
+                    .foregroundStyle(Color(hex: 0x1A1204))
+                    .padding(.leading, 12).padding(.trailing, 14).padding(.vertical, 9)
+                    .background(LinearGradient(colors: [Color(hex: 0xF5D62A), .brandGold], startPoint: .leading, endPoint: .trailing), in: .rect(cornerRadius: 12))
+                    .shadow(color: Color.brandGold.opacity(0.35), radius: 12, y: 6)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(latest.map { "View DMV Tracker, \(Format.int(snap.total)) tracked, \($0.added) newly detected in the latest update" } ?? "View DMV Tracker, \(Format.int(snap.total)) VINs from TxDMV")
                 .accessibilityIdentifier("dmvEveryVin")
             } else if let error {
                 InlineMessage(text: error, systemImage: "wifi.exclamationmark")
@@ -325,7 +458,15 @@ struct DMVSection: View {
                 PanelSkeleton(height: 260)
             }
         }
-        .dataPanel()
+        .dataPanel(padding: 14)
+    }
+
+    /// The section's source and method, behind its ⓘ.
+    private var dmvInfo: String {
+        var t = "Every automated vehicle Tesla lists with the state, polled daily from the TxDMV Motor Carrier Credentialing System (TxMCCS): every VIN Tesla Robotaxi, LLC lists under its SB 2807 automated-vehicle authorization."
+        if let d = dmv?.trackingSince { t += " Before \(Format.day(d)), counts are approximate." }
+        if predict { t += " Dashed lines: each model projected from its own history, the total as their sum, with the approximate early counts widening the range. Estimates, not registrations." }
+        return t
     }
 
     private func lines(_ dmv: DMVRegistrations) -> [Line] {
@@ -350,23 +491,27 @@ struct DMVSection: View {
         return out
     }
 
+    /// One model, half width: name, count, share bar, 30-day additions, projection; the car in the corner.
     private func modelCard(_ name: String, value: Int, total: Int, added: Int?, color: Color, image: String, projected: Forecast.Point? = nil) -> some View {
         let share = total > 0 ? Double(value) / Double(total) : 0
-        return HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) { Circle().fill(color).frame(width: 7, height: 7); Text(name.uppercased()).font(.inter(10, .bold)).tracking(1.2).foregroundStyle(color) }
-                Text(Format.int(value)).statNumber(26)
-                Text("\(Int((share * 100).rounded()))% of the fleet").font(.inter(11)).foregroundStyle(Color.chFog)
-                Capsule().fill(Color.chSmoke).frame(width: 110, height: 4).overlay(alignment: .leading) { Capsule().fill(color).frame(width: 110 * share, height: 4) }
-                if let added { Text("+\(Format.int(added)) in 30 days (approx.)").font(.inter(10, .medium)).foregroundStyle(Color.chOK) }
-                if let projected { Text("≈\(Format.int(projected.value)) in \(horizon.rawValue) days (\(projected.low)–\(projected.high))").font(.inter(10, .medium)).foregroundStyle(Color.chMist) }
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) { Circle().fill(color).frame(width: 7, height: 7); Text(name.uppercased()).font(.inter(10, .bold)).tracking(1).foregroundStyle(color) }
+            Text(Format.int(value)).statNumber(22)
+            Text("\(Int((share * 100).rounded()))% of the fleet").font(.inter(10.5)).foregroundStyle(Color.chFog)
+            GeometryReader { g in
+                Capsule().fill(Color.chSmoke).overlay(alignment: .leading) { Capsule().fill(color).frame(width: g.size.width * share) }
             }
-            Spacer(minLength: 0)
-            Image(image).resizable().scaledToFit().frame(width: 130).accessibilityHidden(true)
+            .frame(height: 4)
+            if let added { Text("+\(Format.int(added)) in 30 days").font(.inter(10, .medium)).foregroundStyle(Color.chOK).lineLimit(1).minimumScaleFactor(0.85) }
+            if let projected { Text("≈\(Format.int(projected.value)) in \(horizon.rawValue)d (\(projected.low)–\(projected.high))").font(.inter(10, .medium)).foregroundStyle(Color.chMist).lineLimit(1).minimumScaleFactor(0.8) }
         }
-        .padding(14)
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .overlay(alignment: .topTrailing) {
+            Image(image).resizable().scaledToFit().frame(width: 62).padding(.top, 8).padding(.trailing, 6).accessibilityHidden(true)
+        }
         .background(color.opacity(0.06), in: .rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(color.opacity(0.45)))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(color.opacity(0.4)))
         .accessibilityElement(children: .combine)
     }
 }
@@ -376,7 +521,7 @@ struct DMVSection: View {
 struct CityRowsSection: View {
     @Bindable var model: HomeModel
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("CITY DETAILS").displayTitle(18)
                 Spacer()
@@ -402,21 +547,21 @@ private struct RideStatsPanel: View {
     var body: some View {
         let r = d.rides
         let has = (r?.rides ?? 0) > 0
-        VStack(alignment: .leading, spacing: 18) {
-            PanelHeading(city: d.name, title: "Ride stats")
+        VStack(alignment: .leading, spacing: 12) {
+            CompactHeading(city: d.name, title: "Ride stats",
+                           info: "From contributed ride receipts. Counted rides only: accepted receipts (pending or approved), never ones under review or rejected, and a ride two riders shared counts once. Rides on a private vehicle are left out. The average fare is the mean per ride; per mile is all fares divided by all miles, so one short ride can't skew it.")
             if !has { Text("No contributed ride receipts in \(d.name) yet.").font(.inter(13)).foregroundStyle(Color.chFog) }
-            MetricGrid {
-                Metric(label: "Rides", value: has ? Format.int(r?.rides) : "—", note: has ? "\(Format.int(r?.rides30d)) in the last 30 days" : "No receipts yet", valueColor: .brandGold)
-                Metric(label: "Miles", value: has ? Format.one(r?.miles) : "—", note: has ? "Across \(Format.plural(r?.rides ?? 0, "ride", "rides"))" : nil)
-                Metric(label: "Avg fare", value: Format.money(r?.averageFare), note: r?.medianFare.map { "Median \(Format.money($0)) · \(Format.plural(r?.fareRides ?? 0, "ride", "rides"))" })
-                Metric(label: "Per mile", value: Format.money(r?.perMile), note: r?.perMile != nil ? "Total fares ÷ total miles" : nil)
-                Metric(label: "Avg trip", value: Format.one(r?.averageMiles), unit: r?.averageMiles != nil ? "mi" : nil, note: r?.longestMiles.map { "Longest \(Format.one($0)) mi" })
-                Metric(label: "Avg duration", value: Format.one(r?.averageMinutes), unit: r?.averageMinutes != nil ? "min" : nil, note: (r?.minutesRides ?? 0) > 0 ? "From \(Format.plural(r?.minutesRides ?? 0, "ride", "rides")) with a time" : nil)
+            MetricGrid(rowSpacing: 12) {
+                Metric(label: "Rides", value: has ? Format.int(r?.rides) : "—", note: has ? "\(Format.int(r?.rides30d)) in the last 30 days" : "No receipts yet", valueColor: .brandGold, size: 19)
+                Metric(label: "Miles", value: has ? Format.one(r?.miles) : "—", note: has ? "Across \(Format.plural(r?.rides ?? 0, "ride", "rides"))" : nil, size: 19)
+                Metric(label: "Avg fare", value: Format.money(r?.averageFare), note: r?.medianFare.map { "Median \(Format.money($0)) · \(Format.plural(r?.fareRides ?? 0, "ride", "rides"))" }, size: 19)
+                Metric(label: "Per mile", value: Format.money(r?.perMile), note: r?.perMile != nil ? "Total fares ÷ total miles" : nil, size: 19)
+                Metric(label: "Avg trip", value: Format.one(r?.averageMiles), unit: r?.averageMiles != nil ? "mi" : nil, note: r?.longestMiles.map { "Longest \(Format.one($0)) mi" }, size: 19)
+                Metric(label: "Avg duration", value: Format.one(r?.averageMinutes), unit: r?.averageMinutes != nil ? "min" : nil, note: (r?.minutesRides ?? 0) > 0 ? "From \(Format.plural(r?.minutesRides ?? 0, "ride", "rides")) with a time" : nil, size: 19)
             }
-            Footnote(text: "From contributed ride receipts.")
             Rectangle().fill(Color.chInk.opacity(0.08)).frame(height: 1)
             HStack {
-                Text("WEEKLY AVERAGE FARE").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
+                GroupLabel(text: "Weekly average fare")
                 Spacer()
                 RangePicker(ranges: ChartRange.allCases, selection: $range)
             }
@@ -435,12 +580,11 @@ private struct RideStatsPanel: View {
                 }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Color.chCaption) } }
                 .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { v in AxisGridLine().foregroundStyle(Color.chLine); AxisValueLabel { if let n = v.as(Double.self) { Text("$\(Int(n))") } }.foregroundStyle(Color.chCaption) } }
-                .frame(height: 150)
+                .frame(height: 110)
                 .accessibilityLabel("Weekly average fare")
             }
-            AboutNumbers(text: "Counted rides only: accepted receipts (pending or approved), never ones under review or rejected, and a ride two riders shared counts once. Rides on a private vehicle are left out. The average fare is the mean per ride; per mile is all fares divided by all miles, so one short ride can't skew it.")
         }
-        .dataPanel()
+        .dataPanel(padding: 14)
     }
 }
 
@@ -460,28 +604,28 @@ private struct SightingsActivityPanel: View {
         let s = d.sightings
         let c = d.cameras
         let has = (s?.total ?? 0) > 0
-        VStack(alignment: .leading, spacing: 18) {
-            PanelHeading(city: d.name, title: "Sightings activity", badge: AnyView(LiveBadge(updated: Format.instant(d.generatedAt)))) {
+        VStack(alignment: .leading, spacing: 12) {
+            CompactHeading(city: d.name, title: "Sightings activity",
+                           info: "Approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). Camera detections are automated and experimental, and kept separate from human sightings. Dates in Central Time.") {
                 SeeAllButton { router.selectedTab = .sightings }
             }
-            Text("APPROVED SIGHTINGS").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
-            MetricGrid(columns: 2) {
-                Metric(label: "Last 24 hours", value: has ? Format.int(s?.last24h) : "—", note: has ? Format.delta(s?.last24h, s?.prev24h, "previous 24 h") : "No sightings yet", valueColor: .brandGold)
-                Metric(label: "Last 7 days", value: has ? Format.int(s?.last7Days) : "—", note: has ? Format.delta(s?.last7Days, s?.prev7Days, "prior 7 days", percent: true) : nil)
-                Metric(label: "Busiest hour", value: s?.peakHour.map { Format.hourLabel($0.hour) } ?? "—", note: s?.peakHour.map { "\(Format.plural($0.count, "sighting", "sightings")) at that hour" } ?? (has ? "Not enough data yet" : nil))
-                Metric(label: "All approved", value: has ? Format.int(s?.total) : "—", note: s?.firstDay.map { "Since \(Format.day($0, year: false))" })
+            LiveBadge(updated: Format.instant(d.generatedAt))
+            GroupLabel(text: "Approved sightings")
+            MetricGrid(columns: 2, rowSpacing: 10) {
+                Metric(label: "Last 24 hours", value: has ? Format.int(s?.last24h) : "—", note: has ? Format.delta(s?.last24h, s?.prev24h, "previous 24 h") : "No sightings yet", valueColor: .brandGold, size: 19)
+                Metric(label: "Last 7 days", value: has ? Format.int(s?.last7Days) : "—", note: has ? Format.delta(s?.last7Days, s?.prev7Days, "prior 7 days", percent: true) : nil, size: 19)
+                Metric(label: "Busiest hour", value: s?.peakHour.map { Format.hourLabel($0.hour) } ?? "—", note: s?.peakHour.map { "\(Format.plural($0.count, "sighting", "sightings")) at that hour" } ?? (has ? "Not enough data yet" : nil), size: 19)
+                Metric(label: "All approved", value: has ? Format.int(s?.total) : "—", note: s?.firstDay.map { "Since \(Format.day($0, year: false))" }, size: 19)
             }
-            Footnote(text: "From approved sightings.")
-            Text("CAMERA DETECTIONS").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
-            MetricGrid {
-                Metric(label: "Cameras monitored", value: Format.int(c?.monitored), note: c?.reporting24h.map { "\(Format.int($0)) reported in the last 24 h" })
-                Metric(label: "Detections · 24 h", value: Format.int(c?.detections24h), note: Format.delta(c?.detections24h, c?.prev24h, "previous 24 h"))
-                Metric(label: "Last detection", value: Format.instant(c?.lastDetectionAt).map { Format.ago($0) } ?? "—", note: c?.lastDetectionAt == nil ? "None yet" : [c?.lastCamera, Format.dateTime(Format.instant(c?.lastDetectionAt))].compactMap { $0 }.joined(separator: " · "))
+            GroupLabel(text: "Camera detections")
+            MetricGrid(columns: 2, rowSpacing: 10) {
+                Metric(label: "Cameras monitored", value: Format.int(c?.monitored), note: c?.reporting24h.map { "\(Format.int($0)) reported in the last 24 h" }, size: 19)
+                Metric(label: "Detections · 24 h", value: Format.int(c?.detections24h), note: Format.delta(c?.detections24h, c?.prev24h, "previous 24 h"), size: 19)
+                Metric(label: "Last detection", value: Format.instant(c?.lastDetectionAt).map { Format.ago($0) } ?? "—", note: c?.lastDetectionAt == nil ? "None yet" : [c?.lastCamera, Format.dateTime(Format.instant(c?.lastDetectionAt))].compactMap { $0 }.joined(separator: " · "), size: 19)
             }
-            Footnote(text: "From automated camera detections — separate from the human sightings above.")
             Rectangle().fill(Color.chInk.opacity(0.08)).frame(height: 1)
             HStack {
-                Text("DAILY SIGHTINGS").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
+                GroupLabel(text: "Daily sightings")
                 Spacer()
                 RangePicker(ranges: SightRange.allCases, selection: $range)
             }
@@ -499,43 +643,43 @@ private struct SightingsActivityPanel: View {
             }
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Color.chCaption) } }
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in AxisGridLine().foregroundStyle(Color.chLine); AxisValueLabel().foregroundStyle(Color.chCaption) } }
-            .frame(height: 160)
+            .frame(height: 110)
             .accessibilityLabel("Daily approved sightings in \(d.name)")
-            Footnote(text: "Approved photo sightings in \(d.name) · dates in Central Time.")
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("TOP SPOTS").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
+            VStack(alignment: .leading, spacing: 6) {
+                GroupLabel(text: "Top spots")
                 if let spots = s?.topSpots, !spots.isEmpty {
                     ForEach(Array(spots.enumerated()), id: \.element.id) { i, spot in
                         HStack {
-                            Text("\(i + 1)").font(.inter(13)).foregroundStyle(Color.chCaption).frame(width: 18, alignment: .leading)
-                            Text(spot.location).font(.inter(14)).foregroundStyle(Color.chMist).lineLimit(1)
+                            Text("\(i + 1)").font(.inter(12.5)).foregroundStyle(Color.chCaption).frame(width: 16, alignment: .leading)
+                            Text(spot.location).font(.inter(13.5)).foregroundStyle(Color.chMist).lineLimit(1)
                             Spacer()
-                            Text(Format.plural(spot.count, "sighting", "sightings")).font(.inter(13)).monospacedDigit().foregroundStyle(Color.chFog)
+                            Text(Format.plural(spot.count, "sighting", "sightings")).font(.inter(12.5)).monospacedDigit().foregroundStyle(Color.chFog)
                         }
+                        .accessibilityElement(children: .combine)
                     }
                 } else {
                     InlineMessage(text: "No sighting locations yet.")
                 }
             }
-            .glassCard(padding: 14, radius: 12)
+            .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    Text("LATEST SIGHTINGS").font(.inter(11, .semibold)).tracking(0.6).foregroundStyle(Color.chFog)
+                    GroupLabel(text: "Latest sightings")
                     Spacer()
                     SeeAllButton { router.selectedTab = .sightings }
                 }
                 if let latest = s?.latest, !latest.isEmpty {
-                    ForEach(latest) { x in LatestSightingRow(x: x, cityName: d.name) }
+                    // The three newest on Home; See all opens every sighting.
+                    ForEach(latest.prefix(3)) { x in LatestSightingRow(x: x, cityName: d.name) }
                 } else {
                     InlineMessage(text: "No approved sightings in \(d.name) yet.")
                 }
             }
-            .glassCard(padding: 14, radius: 12)
-            AboutNumbers(text: "Sightings are approved photo sightings only, by when the Cybercab was spotted; pending and rejected ones never count, and the busiest hour needs a clear peak (at least two sightings in that hour, no tie). The camera check is automated and experimental, and kept separate from human sightings.")
+            .padding(.top, 2)
         }
-        .dataPanel()
+        .dataPanel(padding: 14)
     }
 }
 
@@ -548,7 +692,7 @@ private struct LatestSightingRow: View {
             AsyncImage(url: x.imageURL, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
                 if let image = phase.image { image.resizable().scaledToFill() } else { Color.chSurface2 }
             }
-            .frame(width: 56, height: 40)
+            .frame(width: 52, height: 36)
             .clipShape(.rect(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.chLine))
             .accessibilityHidden(true)
@@ -559,7 +703,7 @@ private struct LatestSightingRow: View {
             Spacer(minLength: 4)
             Text(spotted.map { Format.ago($0) } ?? "").font(.inter(12)).monospacedDigit().foregroundStyle(Color.chFog)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 5)
         .accessibilityElement(children: .combine)
     }
 }

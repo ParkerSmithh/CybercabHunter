@@ -1,0 +1,288 @@
+apiVersion: ssu/v1
+nlu:
+  shortcuts:
+    bundleIdentifier: com.cybercabhunter.native
+    intents:
+    - metadata:
+        name: FleetStatsIntent_0
+        title: Check the Cybercab Fleet
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+applicationName} fleet stats'
+          - '{${+prefix} }Fleet statistic ${FleetMetric} in ${+applicationName}'
+          - '{${+prefix} }City activity ${CityActivityQuestion} in ${+applicationName}'
+          - '{${+prefix} }${+applicationName} ${CityActivityQuestion}'
+          - '{${+prefix} }Compare ${CityActivityQuestion} in ${+applicationName}'
+          - '{${+prefix} }${CityActivityQuestion} in ${+applicationName}'
+          - '{${+prefix} }Give me ${CityActivityQuestion} in ${+applicationName}'
+          - '{${+prefix} }Read Cybercab camera detections for ${CameraCityPeriod} in ${+applicationName}'
+          - '{${+prefix} }Read public registry fleet data for ${ServiceCity} in ${+applicationName}'
+          - '{${+prefix} }Compare approved Cybercab sightings in Austin and Dallas ${ActivityPeriod} in ${+applicationName}'
+    - metadata:
+        name: CheckDMVIntent_1
+        title: Check Texas DMV Updates
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }Read DMV data in ${+applicationName}'
+          - '{${+prefix} }Read DMV statistic ${DMVQuestion} in ${+applicationName}'
+          - '{${+prefix} }Tell me ${DMVQuestion} in ${+applicationName}'
+    - metadata:
+        name: DallasFleetSummaryIntent_2
+        title: Dallas Fleet Summary
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+applicationName} Dallas fleet summary'
+          - '{${+prefix} }Fleet summary for Dallas in ${+applicationName}'
+          - '{${+prefix} }How many Cybercabs are documented in Dallas in ${+applicationName}'
+          - '{${+prefix} }Give me Dallas Cybercab fleet stats in ${+applicationName}'
+          - '{${+prefix} }How many Cybercabs are in Dallas in ${+applicationName}'
+    - metadata:
+        name: RecentSightingsIntent_3
+        title: Show Recent Cybercab Sightings
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+applicationName} sightings in ${CitySightingsQuestion}'
+          - '{${+prefix} }Show the latest Cybercab sightings in ${+applicationName}'
+          - '{${+prefix} }Any Cybercabs spotted in ${CitySightingsQuestion} in ${+applicationName}'
+          - '{${+prefix} }How many Cybercabs were spotted in ${CitySightingsQuestion} in ${+applicationName}'
+          - '{${+prefix} }Approved Cybercab sightings in ${CitySightingsQuestion} in ${+applicationName}'
+          - '{${+prefix} }Count approved Cybercab sightings for ${CitySightingsQuestion} in ${+applicationName}'
+    - metadata:
+        name: DallasWeeklySightingsIntent_4
+        title: Dallas Weekly Sightings
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+applicationName} Dallas weekly sightings'
+          - '{${+prefix} }Dallas Cybercab sightings this week in ${+applicationName}'
+    - metadata:
+        name: DailyBriefingIntent_5
+        title: Cybercab Hunter Briefing
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+applicationName} briefing'
+          - '{${+prefix} }Give me my ${+applicationName} briefing'
+          - '{${+prefix} }Give me a rundown of the ${+applicationName} data'
+          - '{${+prefix} }What is happening with Cybercabs today in ${+applicationName}'
+          - '{${+prefix} }Give me today''s Cybercab briefing in ${+applicationName}'
+          - '{${+prefix} }What is new with the Cybercab fleet in ${+applicationName}'
+    - metadata:
+        name: NearbySightingsIntent_6
+        title: Find Cybercab Sightings Near Me
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }Find Cybercab sightings near me in ${+applicationName}'
+    - metadata:
+        name: FleetGrowthIntent_7
+        title: Check Cybercab Fleet Growth
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }Cybercab growth ${GrowthPeriod} in ${+applicationName}'
+          - '{${+prefix} }Check ${GrowthModel} growth in ${+applicationName}'
+    - metadata:
+        name: VehicleHistoryIntent_8
+        title: Get Cybercab History
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }Show the history of ${VehicleEntity} in ${+applicationName}'
+          - '{${+prefix} }Get Cybercab history in ${+applicationName}'
+    - metadata:
+        name: DallasServiceZoneIntent_9
+        title: Dallas Service Area
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }How big is the Dallas Cybercab service area in ${+applicationName}'
+          - '{${+prefix} }${+applicationName} Dallas service area'
+          - '{${+prefix} }How big is the Dallas Cybercab zone in ${+applicationName}'
+          - '{${+prefix} }What is the Cybercab service area in Dallas in ${+applicationName}'
+          - '{${+prefix} }How many square miles is the Dallas Cybercab service zone in ${+applicationName}'
+    - metadata:
+        name: +negative
+      corpuses:
+        training:
+        - locale: en
+          utterances:
+          - '{${+prefix} }${+standardAppShortcutNegatives}'
+variables:
+- name: +applicationName
+  type: ssu/expansion
+  definitions:
+  - locale: en
+    synomyms:
+    - Cybercab Hunter
+    - Cyber Cab Hunter
+- name: ActivityPeriod
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - All time
+    - Today
+    - Yesterday
+    - This week
+    - Last seven days
+    - Last 24 hours
+- name: CityMetric
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Approved sightings
+    - Camera detections
+    - Public registry vehicles
+    - Recorded rides
+    - Service area
+- name: CameraCityPeriod
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Austin all time
+    - Austin today
+    - Austin yesterday
+    - Austin this week
+    - Austin in the last seven days
+    - Austin in the last 24 hours
+    - Dallas all time
+    - Dallas today
+    - Dallas yesterday
+    - Dallas this week
+    - Dallas in the last seven days
+    - Dallas in the last 24 hours
+- name: ServiceCity
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Austin
+    - Dallas
+- name: GrowthModel
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Tesla robotaxi VIN
+    - Cybercab VIN
+    - Model Y VIN
+- name: CityActivityQuestion
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Austin camera detections all time
+    - Austin camera detections today
+    - Austin camera detections yesterday
+    - Austin camera detections this week
+    - Austin camera detections in the last seven days
+    - Austin camera detections in the last 24 hours
+    - Dallas camera detections all time
+    - Dallas camera detections today
+    - Dallas camera detections yesterday
+    - Dallas camera detections this week
+    - Dallas camera detections in the last seven days
+    - Dallas camera detections in the last 24 hours
+    - Austin and Dallas sightings all time
+    - Austin and Dallas sightings today
+    - Austin and Dallas sightings yesterday
+    - Weekly sightings comparison
+    - Austin and Dallas sightings in the last seven days
+    - Austin and Dallas sightings in the last 24 hours
+    - Austin and Dallas camera detections all time
+    - Austin and Dallas camera detections today
+    - Austin and Dallas camera detections yesterday
+    - Austin and Dallas camera detections this week
+    - Austin and Dallas camera detections in the last seven days
+    - Austin and Dallas camera detections in the last 24 hours
+    - Austin and Dallas registry vehicles
+    - Austin and Dallas recorded rides
+    - Austin and Dallas service zones
+    - Austin public registry vehicles
+    - Austin Cybercab service area
+    - Unspecified Cybercab activity
+    - Compare Austin and Dallas Cybercab activity
+    - How do Dallas and Austin compare today
+    - Cybercab camera detections this week
+- name: DMVQuestion
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Texas DMV overview
+    - Texas DMV total VINs
+    - Texas DMV Cybercab VINs
+    - Texas DMV Model Y VINs
+    - Latest newly detected DMV VINs
+    - Latest newly detected DMV Cybercab VINs
+    - Latest newly detected DMV Model Y VINs
+- name: GrowthPeriod
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Latest snapshots
+    - Last seven days
+    - Last thirty days
+    - Since tracking began
+- name: CitySightingsQuestion
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Austin
+    - Austin today
+    - Austin yesterday
+    - Austin weekly
+    - Austin in the last seven days
+    - Austin in the last 24 hours
+    - Dallas
+    - Dallas today
+    - Dallas yesterday
+    - Dallas weekly
+    - Dallas in the last seven days
+    - Dallas in the last 24 hours
+- name: FleetMetric
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Fleet overview
+    - Public registry vehicles
+    - Recorded rides
+    - Lifetime approved sightings
+- name: VehicleEntity
+  type: ssu/parameter
+  definitions:
+  - locale: en
+    synomyms:
+    - Cybercab
+- name: +prefix
+  type: ssu/expansion
+  definitions:
+  - locale: en
+    synomyms:
+      $ref: ssu://Resources/prefix/en.yaml
+- name: +standardAppShortcutNegatives
+  type: ssu/expansion
+  definitions:
+  - locale: en
+    synomyms:
+      $ref: ssu://Resources/standardAppShortcutNegatives/en.yaml

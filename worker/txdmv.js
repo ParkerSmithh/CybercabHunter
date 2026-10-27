@@ -126,7 +126,18 @@ export async function runTxdmvPoll(env, { fetchImpl = fetch, nowMs = Date.now() 
     const first = !(await sql.prepare('SELECT 1 FROM dmv_snapshots LIMIT 1').first());
     const polledAt = new Date().toISOString();
     const raw = JSON.stringify(roster.vehicles);
+    // Push event is part of the same atomic D1 batch, before the VIN upsert:
+    // corrections/reimports cannot count as discoveries. No baseline alert.
+    const pushWrites = env.PUSH_ENABLED === 'true' ? [sql.prepare(`
+      INSERT OR IGNORE INTO push_events(id,category,recipient,payload,created_at)
+      SELECT ?, 'dmv', NULL,
+        json_object('title','New DMV Entries','link','/dmv','source',?,'count',COUNT(*)), ?
+      FROM json_each(?) j LEFT JOIN dmv_av_vehicles v ON v.vin=json_extract(j.value,'$.vin')
+      WHERE v.vin IS NULL AND lower(json_extract(j.value,'$.model')) IN ('cybercab','model y')
+      HAVING COUNT(*)>0 AND ?=0
+    `).bind('dmv:'+date,date,nowMs,raw,first?1:0)] : [];
     await sql.batch([
+      ...pushWrites,
       sql.prepare(`INSERT OR IGNORE INTO dmv_snapshots (snapshot_date, total, cybercab_count, model_y_count, other_count, authorization_number, raw_json, polled_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(date, roster.total, counts.cybercab, counts.model_y, counts.other, roster.company.authorization, raw, polledAt),
@@ -155,7 +166,9 @@ const daysBefore = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) - n * 8
 //   -> { source, snapshot: { date, polled_at, total, cybercab, model_y, other } | null,
 //        tracking_since, series: [{ date, total, cybercab, model_y }],
 //        new: { d30, d7, cybercab_30d, model_y_30d, window_start_30d, window_start_7d },
-//        matched: { count, spotted_30d }, last_attempt: { at, ok } | null }
+//        matched: { count, spotted_30d }, last_attempt: { at, ok } | null,
+//        latest_update: { date, added } | null }   (the DMV tracker's latest roster change,
+//        worker/txdmv-activity.js; here so Home's DMV button needs no second request)
 export async function apiDmvRegistrations(request, env, ctx) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
@@ -209,8 +222,14 @@ export async function apiDmvRegistrations(request, env, ctx) {
           model_y_30d: byCount30 ? delta(d30, 'model_y') : Number(f.model_y_30d) || 0,
           approx: byCount30
         },
-        matched: { count: Number(m.n) || 0, spotted_30d: Number(m.spotted) || 0 }
+        matched: { count: Number(m.n) || 0, spotted_30d: Number(m.spotted) || 0 },
+        latest_update: null
       };
+      // Its own query, so the panel still works if the tracker's tables are missing.
+      try {
+        const u = await sql.prepare(`SELECT snapshot_date AS date, added FROM dmv_events WHERE status = 'ok' AND added > 0 ORDER BY snapshot_date DESC LIMIT 1`).first();
+        if (u) body.latest_update = { date: u.date, added: u.added };
+      } catch (e) { /* tracker not migrated yet */ }
     }
     const response = Response.json(body, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
     if (cache) { const stored = cache.put(cacheKey, response.clone()).catch(() => {}); if (ctx && ctx.waitUntil) ctx.waitUntil(stored); }

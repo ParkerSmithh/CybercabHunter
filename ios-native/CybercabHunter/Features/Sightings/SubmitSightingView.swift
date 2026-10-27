@@ -3,8 +3,8 @@ import PhotosUI
 
 /// "Submit a sighting" (the website's sighting drawer) as a sheet. The photo
 /// comes from Apple's picker (the app sees only the photo picked). There is
-/// no map pin and no location permission: as on the website, a Location is a
-/// real place picked from search, and only its street and city are shown.
+/// no raw GPS attachment: a Location is a confirmed verified place, and only
+/// its street and city are shown. Manual search remains available.
 struct SubmitSightingView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
@@ -12,6 +12,7 @@ struct SubmitSightingView: View {
     @State private var picked: PhotosPickerItem?
     @State private var signingIn = false
     @State private var pickingCamera = false
+    @State private var showingLocationSuggestion = false
     @FocusState private var locationFocused: Bool
 
     var body: some View {
@@ -86,7 +87,7 @@ struct SubmitSightingView: View {
                 if model.isModerator { cameraField }
                 field("Description", optional: true) {
                     TextField("What did you see?", text: $model.notes, axis: .vertical)
-                        .lineLimit(3...6).inputBox()
+                        .lineLimit(3...6).inputBox(multiline: true)
                         .accessibilityIdentifier("sightingNotes")
                 }
                 field("License Plate", optional: true) {
@@ -190,6 +191,10 @@ struct SubmitSightingView: View {
     private var locationField: some View {
         field("Location", optional: true, help: "Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search © OpenStreetMap.") {
             VStack(alignment: .leading, spacing: 6) {
+                Button("Use Current Location", systemImage: "location.fill") { showingLocationSuggestion = true }
+                    .tint(Color.brandGold).disabled(model.area == nil)
+                    .accessibilityIdentifier("useCurrentSightingLocation")
+                    .sheet(isPresented: $showingLocationSuggestion) { SightingLocationSheet(submission: model) }
                 TextField(model.area == nil ? "Choose a city first" : "Street or landmark", text: $model.locationText)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.words)
@@ -292,8 +297,11 @@ private struct PhotoDropzone: View {
 
 private extension View {
     /// The form's input box (dark field, graphite border).
-    func inputBox() -> some View {
-        self.padding(.horizontal, 12).frame(minHeight: 44)
+    /// A multi-line field gets the same inset on every side, so the placeholder
+    /// and the typed text start at the top-left, 12 pt in.
+    func inputBox(multiline: Bool = false) -> some View {
+        self.padding(.horizontal, 12).padding(.vertical, multiline ? 12 : 0)
+            .frame(minHeight: 44, alignment: multiline ? .topLeading : .leading)
             .background(Color.chBackground, in: .rect(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.chHair2))
     }

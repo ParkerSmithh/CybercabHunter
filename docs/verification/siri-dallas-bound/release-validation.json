@@ -1,0 +1,18 @@
+{
+  "bundle_id": "com.cybercabhunter.native",
+  "version": "0.1",
+  "build": "2",
+  "app_entitlements_match_installed_artifact": true,
+  "widget_entitlements_match_installed_artifact": true,
+  "actionsdata_sha256": "f3ed18b84bd949e18542e0a9a0c684abbbfff54e4c88c454790b939cf70ed91b",
+  "unit_tests_passed": 191,
+  "unit_test_suites": 41,
+  "metadata_regression_tests_passed": 9,
+  "app_intents": 22,
+  "advertised_shortcuts": 10,
+  "phrase_templates": 22,
+  "codesign_deep_strict": "passed",
+  "release_build": "passed",
+  "installed": false,
+  "voice_recognition": "not tested"
+}

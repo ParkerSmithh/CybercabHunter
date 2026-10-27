@@ -26,6 +26,9 @@ struct ZoneMapView: UIViewRepresentable {
     var heatPoints: [ZonesModel.HeatPoint] = []
     var cameraDots: [ZonesModel.CameraDot] = []
     var place: PlaceResults.Place?
+    var locationFix: CLLocation?
+    var recenterID = 0
+    var locationTarget: CLLocationCoordinate2D?
     var showsMarkers = true
     var interactive = true
     var bottomInset: CGFloat = 0
@@ -34,6 +37,8 @@ struct ZoneMapView: UIViewRepresentable {
     /// The zone's framing padding; nil = the Zones page's. The Home minimap
     /// passes the website's minimap fitBounds padding (top 70, bottom 54, sides 24).
     var framePadding: UIEdgeInsets? = nil
+    /// Whether a marker's sheet is open: the tapped marker stays selected until it closes.
+    var selectionActive = false
     var onSelect: (MapSelection) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -53,7 +58,8 @@ struct ZoneMapView: UIViewRepresentable {
         map.cameraZoomRange = MKMapView.CameraZoomRange(minCenterCoordinateDistance: 400, maxCenterCoordinateDistance: 250_000)
         map.backgroundColor = UIColor(Color.chSurface)
         map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "charging")
-        map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "live")
+        map.register(CybercabMarkerView.self, forAnnotationViewWithReuseIdentifier: "live")
+        map.register(CybercabClusterView.self, forAnnotationViewWithReuseIdentifier: "cybercabCluster")
         map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "dot")
         map.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "place")
         map.isUserInteractionEnabled = interactive
@@ -67,6 +73,24 @@ struct ZoneMapView: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         let c = context.coordinator
         c.parent = self
+        if c.lastFix != locationFix?.timestamp {
+            c.lastFix = locationFix?.timestamp
+            map.removeAnnotations(map.annotations.compactMap { $0 as? LocationFixAnnotation })
+            if let circle = c.accuracyCircle { map.removeOverlay(circle); c.accuracyCircle = nil }
+            if let fix = locationFix {
+                map.addAnnotation(LocationFixAnnotation(fix.coordinate))
+                let circle = MKCircle(center: fix.coordinate, radius: fix.horizontalAccuracy)
+                c.accuracyCircle = circle
+                map.addOverlay(circle)
+            }
+        }
+        if c.lastRecenter != recenterID {
+            c.lastRecenter = recenterID
+            if let target = locationTarget {
+                map.setCamera(MKMapCamera(lookingAtCenter: target, fromDistance: max(2500, (locationFix?.horizontalAccuracy ?? 0)*4), pitch: 0, heading: 0), animated: true)
+            }
+        }
+        if !selectionActive { for a in map.selectedAnnotations { map.deselectAnnotation(a, animated: true) } }
         if c.lastCity != cityKey { c.frame(cityKey, on: map, animated: true) }
         if c.lastHeatMode != heatMode {
             c.lastHeatMode = heatMode
@@ -81,7 +105,8 @@ struct ZoneMapView: UIViewRepresentable {
             c.lastPlace = place
             map.removeAnnotations(map.annotations.compactMap { $0 as? PlaceAnnotation })
             if let place {
-                map.addAnnotation(PlaceAnnotation(place))
+                // A known spot (a charging location) already has its marker: just fly there.
+                if !place.id.hasPrefix("spot:") { map.addAnnotation(PlaceAnnotation(place)) }
                 map.setCamera(MKMapCamera(lookingAtCenter: .init(latitude: place.lat, longitude: place.lng), fromDistance: 2_500, pitch: 0, heading: 0), animated: true)
             }
         }
@@ -89,6 +114,9 @@ struct ZoneMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: ZoneMapView
+        var lastFix: Date?
+        var lastRecenter = 0
+        var accuracyCircle: MKCircle?
         var lastCity: String?
         var lastHeatMode: Bool
         var lastPlace: PlaceResults.Place?
@@ -100,7 +128,7 @@ struct ZoneMapView: UIViewRepresentable {
         func addZone(_ city: WebData.City, to map: MKMapView, dimmed: Bool) {
             var coords = city.polygon
             let zone = ZonePolygon(coordinates: &coords, count: coords.count)
-            zone.lineWeight = parent.interactive ? 1.25 : 1   // the minimap is small: a finer line
+            zone.lineWeight = parent.interactive ? 1.1 : 0.8   // the minimap is small: a finer line
             zone.cityKey = city.key
             zone.dimmed = dimmed
             map.addOverlay(zone, level: .aboveRoads)
@@ -160,6 +188,14 @@ struct ZoneMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? MKCircle, circle === accuracyCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.12)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.6)
+                renderer.lineWidth = 1
+                return renderer
+            }
+
             if let zone = overlay as? ZonePolygon { return ZoneRenderer(zone: zone) }
             if overlay is DarkMatterOverlay { return DarkMatterRenderer(overlay: overlay) }
             if overlay is HeatmapOverlay { let r = HeatmapRenderer(overlay: overlay); r.alpha = 1; return r }
@@ -167,6 +203,16 @@ struct ZoneMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is LocationFixAnnotation {
+                let view = MKAnnotationView(annotation: annotation, reuseIdentifier: nil)
+                let dot = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 16))
+                dot.backgroundColor = .systemBlue; dot.layer.cornerRadius = 8
+                dot.layer.borderColor = UIColor.white.cgColor; dot.layer.borderWidth = 3
+                view.frame = dot.bounds; view.addSubview(dot)
+                view.displayPriority = .required
+                view.isAccessibilityElement = true; view.accessibilityLabel = "Your location, approximate"
+                return view
+            }
             switch annotation {
             case let a as ChargingAnnotation:
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "charging", for: a)
@@ -174,8 +220,10 @@ struct ZoneMapView: UIViewRepresentable {
                 return v
             case let a as LiveCameraAnnotation:
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "live", for: a)
-                MarkerViews.liveCamera(v); v.displayPriority = .required; v.accessibilityLabel = a.title
+                v.accessibilityLabel = a.title
                 return v
+            case let c as MKClusterAnnotation:
+                return mapView.dequeueReusableAnnotationView(withIdentifier: "cybercabCluster", for: c)
             case let a as CameraDotAnnotation:
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "dot", for: a)
                 MarkerViews.cameraDot(v, count: a.dot.count); v.displayPriority = .required; v.accessibilityLabel = a.title
@@ -194,10 +242,21 @@ struct ZoneMapView: UIViewRepresentable {
             case let a as ChargingAnnotation: parent.onSelect(.charging(a.location))
             case let a as LiveCameraAnnotation: parent.onSelect(.liveCamera(a.detection))
             case let a as CameraDotAnnotation: parent.onSelect(.heatCamera(id: a.dot.id, name: a.dot.name))
+            case let c as MKClusterAnnotation:
+                // Zoom in until the Cybercabs separate (their real positions; nothing moves).
+                mapView.showAnnotations(c.memberAnnotations, animated: true)
             default: break
             }
-            // The sheet shows the details; let the marker be tapped again.
-            DispatchQueue.main.async { mapView.deselectAnnotation(annotation, animated: false) }
+            // A cluster only zooms: let it be tapped again. A marker stays selected
+            // while its sheet is open (updateUIView deselects when it closes).
+            if annotation is MKClusterAnnotation || annotation is PlaceAnnotation {
+                DispatchQueue.main.async { mapView.deselectAnnotation(annotation, animated: false) }
+            }
         }
     }
+}
+
+final class LocationFixAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    init(_ coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
 }

@@ -1,0 +1,37 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "install",
+      "app",
+      "--device",
+      "00008140-000C39512813C01C",
+      "/tmp/cch-install5-validated/CybercabHunter.app",
+      "--json-output",
+      "/tmp/cch-install5-result.json"
+    ],
+    "commandType" : "devicectl.device.install.app",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "651.13.5"
+  },
+  "result" : {
+    "deviceIdentifier" : "3386B7C8-52DD-5A8F-BD1F-461068D9ED91",
+    "installedApplications" : [
+      {
+        "bundleID" : "com.cybercabhunter.native",
+        "databaseSequenceNumber" : 3204,
+        "databaseUUID" : "6F678365-C136-4C6C-91DB-44B376632AC7",
+        "installationURL" : "file:///private/var/containers/Bundle/Application/F4D4D2ED-08FA-4F1D-893A-65BF44CFE2DF/CybercabHunter.app/",
+        "launchServicesIdentifier" : "unknown",
+        "options" : {
+
+        }
+      }
+    ]
+  }
+}

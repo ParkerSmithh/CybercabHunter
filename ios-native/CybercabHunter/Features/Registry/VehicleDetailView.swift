@@ -1,4 +1,5 @@
 import SwiftUI
+import AppIntents
 
 /// One registry vehicle (the website's /vehicle/:id): the plate card, the
 /// recorded ride history, and the approved sightings of it.
@@ -36,15 +37,23 @@ struct VehicleDetailView: View {
         }
         .task { await load() }
         .refreshable { await load() }
+        // Siri and Apple Intelligence: this screen shows this Cybercab ("this car").
+        .modifier(OnscreenVehicle(id: route.id))
     }
 
     private func load() async {
         do {
             async let d: VehicleDetail = session.api.get("/api/robotaxi-vehicles/\(route.id)")
             async let s: VehicleSightings = session.api.get("/api/robotaxi-vehicles/\(route.id)/sightings", query: [URLQueryItem(name: "limit", value: "20")])
-            detail = try await d
+            let loaded = try await d
+            detail = loaded
             sightings = (try? await s)?.sightings
             failure = nil
+            let entity = VehicleEntity(loaded)
+            await SpotlightRecents.record(entity)   // Spotlight: vehicles you opened
+            let open = OpenVehicleIntent()
+            open.target = entity
+            SiriDonations.donate("vehicle-\(entity.id)", open)   // the rider viewed this Cybercab
         } catch is CancellationError {
         } catch APIError.http(let status, _) where status == 404 {
             failure = "This vehicle isn't in the public registry (or no longer is)."
@@ -131,5 +140,22 @@ struct VehicleDetailView: View {
             }
         }
         .dataPanel()
+    }
+}
+
+/// Tells the system which Cybercab is on screen (Apple's onscreen-entity API),
+/// so Siri with Apple Intelligence can resolve "this Cybercab" to it. iOS 18.4+
+/// annotates the view; 18.2–18.3 the screen's user activity. Earlier: nothing.
+private struct OnscreenVehicle: ViewModifier {
+    let id: String
+    func body(content: Content) -> some View {
+        if #available(iOS 18.4, *) {
+            content.appEntityIdentifier(EntityIdentifier(for: VehicleEntity.self, identifier: id))
+        } else {
+            content.userActivity("com.cybercabhunter.native.vehicle") { activity in
+                activity.title = "Cybercab"
+                if #available(iOS 18.2, *) { activity.appEntityIdentifier = EntityIdentifier(for: VehicleEntity.self, identifier: id) }
+            }
+        }
     }
 }

@@ -1,0 +1,155 @@
+{
+  "summary": {
+    "advertised_shortcuts": 10,
+    "phrase_templates": 38,
+    "finite_expansions_with_synonyms": 365,
+    "unique_finite_phrases": 365,
+    "dynamic_entity_templates": 1,
+    "budget_with_ten_suggested_vehicles": 375,
+    "collisions": {},
+    "existing_phrase_templates_preserved": 22,
+    "cross_intent_structural_collisions": 0,
+    "sightings_and_dmv_background_and_authentication": "validated",
+    "voice_recognition": "not tested"
+  },
+  "shortcuts": [
+    {
+      "intent": "FleetStatsIntent",
+      "phrase_templates": [
+        "${applicationName} fleet stats",
+        "Fleet statistic ${metric} in ${applicationName}",
+        "City activity ${activity} in ${applicationName}",
+        "${applicationName} ${activity}",
+        "Compare ${activity} in ${applicationName}",
+        "${activity} in ${applicationName}",
+        "Give me ${activity} in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 230,
+      "unique_finite_phrases": 230,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 230,
+      "collisions": {}
+    },
+    {
+      "intent": "CheckDMVIntent",
+      "phrase_templates": [
+        "Read DMV data in ${applicationName}",
+        "Read DMV statistic ${question} in ${applicationName}",
+        "Tell me ${question} in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 19,
+      "unique_finite_phrases": 19,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 19,
+      "collisions": {}
+    },
+    {
+      "intent": "DallasFleetSummaryIntent",
+      "phrase_templates": [
+        "${applicationName} Dallas fleet summary",
+        "Fleet summary for Dallas in ${applicationName}",
+        "How many Cybercabs are documented in Dallas in ${applicationName}",
+        "Give me Dallas Cybercab fleet stats in ${applicationName}",
+        "How many Cybercabs are in Dallas in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 5,
+      "unique_finite_phrases": 5,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 5,
+      "collisions": {}
+    },
+    {
+      "intent": "RecentSightingsIntent",
+      "phrase_templates": [
+        "${applicationName} sightings in ${question}",
+        "Show the latest Cybercab sightings in ${applicationName}",
+        "Any Cybercabs spotted in ${question} in ${applicationName}",
+        "How many Cybercabs were spotted in ${question} in ${applicationName}",
+        "Approved Cybercab sightings in ${question} in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 81,
+      "unique_finite_phrases": 81,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 81,
+      "collisions": {}
+    },
+    {
+      "intent": "DallasWeeklySightingsIntent",
+      "phrase_templates": [
+        "${applicationName} Dallas weekly sightings",
+        "Dallas Cybercab sightings this week in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 2,
+      "unique_finite_phrases": 2,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 2,
+      "collisions": {}
+    },
+    {
+      "intent": "DailyBriefingIntent",
+      "phrase_templates": [
+        "${applicationName} briefing",
+        "Give me my ${applicationName} briefing",
+        "Give me a rundown of the ${applicationName} data",
+        "What is happening with Cybercabs today in ${applicationName}",
+        "Give me today's Cybercab briefing in ${applicationName}",
+        "What is new with the Cybercab fleet in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 6,
+      "unique_finite_phrases": 6,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 6,
+      "collisions": {}
+    },
+    {
+      "intent": "NearbySightingsIntent",
+      "phrase_templates": [
+        "Find Cybercab sightings near me in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 1,
+      "unique_finite_phrases": 1,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 1,
+      "collisions": {}
+    },
+    {
+      "intent": "FleetGrowthIntent",
+      "phrase_templates": [
+        "Cybercab growth ${period} in ${applicationName}",
+        "Check ${model} growth in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 15,
+      "unique_finite_phrases": 15,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 15,
+      "collisions": {}
+    },
+    {
+      "intent": "VehicleHistoryIntent",
+      "phrase_templates": [
+        "Show the history of ${vehicle} in ${applicationName}",
+        "Get Cybercab history in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 1,
+      "unique_finite_phrases": 1,
+      "dynamic_entity_templates": 1,
+      "budget_with_ten_suggested_vehicles": 11,
+      "collisions": {}
+    },
+    {
+      "intent": "DallasServiceZoneIntent",
+      "phrase_templates": [
+        "How big is the Dallas Cybercab service area in ${applicationName}",
+        "${applicationName} Dallas service area",
+        "How big is the Dallas Cybercab zone in ${applicationName}",
+        "What is the Cybercab service area in Dallas in ${applicationName}",
+        "How many square miles is the Dallas Cybercab service zone in ${applicationName}"
+      ],
+      "finite_expansions_with_synonyms": 5,
+      "unique_finite_phrases": 5,
+      "dynamic_entity_templates": 0,
+      "budget_with_ten_suggested_vehicles": 5,
+      "collisions": {}
+    }
+  ]
+}

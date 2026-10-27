@@ -1,0 +1,4 @@
+Final generic iOS Simulator build-for-testing: PASS
+App + native unit/UI test targets compiled. No installation or execution.
+App Intents: 22; advertised shortcuts: 10; phrase templates: 42.
+Full local build log: /private/tmp/cybercab-push-final-build.log

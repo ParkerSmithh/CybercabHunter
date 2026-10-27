@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Inert until an approved signing configuration defines PUSH_ENVIRONMENT. -->
+	<key>PushEnvironment</key>
+	<string>$(PUSH_ENVIRONMENT)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Your location helps you find nearby Cybercab service zones, sightings, and cameras. Location is optional and is used only when you request it.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<!-- Phase 6: the widgets' links (cybercabhunter-widget://<tab>, AppRouter.open(widgetURL:)).
@@ -17,6 +22,22 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Siri: a name Siri may hear for the app ("Cyber Cab Hunter"). Not "Cybercab":
+	     that's a common word in requests, so Siri took any "Cybercabs" question as
+	     aimed at this app. At most three. -->
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Cyber Cab Hunter</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>sigh ber cab hunter</string>
+		</dict>
+	</array>
+	<!-- The service-status Live Activity (Dynamic Island / Lock Screen); off until
+	     the rider turns it on in the Live now card. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter-Variable.ttf</string>

@@ -168,6 +168,14 @@ final class ReplayModel {
     static func dayPart(_ t: Date) -> String {
         var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
         let h = cal.component(.hour, from: t)
-        switch h { case 5..<8: return "Dawn"; case 8..<17: return "Midday"; case 17..<20: return "Dusk"; default: return "Night" }
+        // The website's phaseAt (js/replay.js): Night before 5 and from 21, Dawn to 9, Midday to 17, then Dusk.
+        switch h { case 5..<9: return "Dawn"; case 9..<17: return "Midday"; case 17..<21: return "Dusk"; default: return "Night" }
+    }
+
+    /// The local (Central) hour of `t`, with minutes, for the sky.
+    static func hour(_ t: Date) -> Double {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
+        let c = cal.dateComponents([.hour, .minute], from: t)
+        return Double(c.hour ?? 0) + Double(c.minute ?? 0) / 60
     }
 }

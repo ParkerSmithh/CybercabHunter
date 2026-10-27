@@ -1,0 +1,12 @@
+{
+  "siri": {
+    "intents": 22,
+    "slots": 10,
+    "phrases": 42
+  },
+  "backend_migrations_unchanged": true,
+  "submission_form_serialization_unchanged": true,
+  "cameras_page_absent": true,
+  "raw_coordinate_logs_or_history_added": false,
+  "always_or_background_location_added": false
+}

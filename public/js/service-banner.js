@@ -17,7 +17,9 @@
    counts its real 23 or 25 hours. Ticks on each minute boundary, and at once
    when the tab comes back.
    LAYOUT: the status and countdown | the service day on a 24-hour track
-   (window, the part already run, now, the Austin clock) | the Cybercab. */
+   (window, the part already run, now, the Austin clock) | the Cybercab
+   (images/CybercabLive.webp: images/CybercabLive.png trimmed of its empty
+   margins and sized for the 240 px column). */
 (function () {
   const el = document.getElementById('serviceBanner');
   const C = typeof CCC_CALC !== 'undefined' ? CCC_CALC : null;   // js/calc.js (a top-level const, not a window property)
@@ -107,7 +109,7 @@
         <div class="flex justify-between text-[10px] text-slate-500 stat-value" aria-hidden="true"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
         <p class="sb-meta text-[11px] text-slate-500">All times central time (CT) · every day</p>
       </div>
-      <div class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/dmv-cybercab.webp" alt="" decoding="async"></div>`;
+      <div class="sb-car" aria-hidden="true"><span class="sb-road"></span><img src="images/CybercabLive.webp" alt="" decoding="async"></div>`;
     paintDay(s, d);
   }
 

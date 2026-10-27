@@ -1,0 +1,19 @@
+Full unit and focused UI run
+✔ Test run with 221 tests in 45 suites passed after 17.108 seconds.
+Test Case '-[CybercabHunterUITests.LocationUITests testCompactOutsideStatusKeepsNearestBoundaryAction]' passed (35.052 seconds).
+Test Case '-[CybercabHunterUITests.LocationUITests testLocationControlPlacementAndCameraDiscovery]' passed (27.752 seconds).
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:65: error: -[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters] : XCTAssertTrue failed
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:67: error: -[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters] : XCTAssertFalse failed
+Test Case '-[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters]' failed (26.292 seconds).
+	 Executed 3 tests, with 2 failures (0 unexpected) in 89.096 (89.138) seconds
+Test Case '-[CybercabHunterUITests.ZonesUITests testZonesHeatmapAndReplayAreNative]' passed (54.949 seconds).
+	 Executed 4 tests, with 2 failures (0 unexpected) in 144.046 (144.092) seconds
+	 Executed 4 tests, with 2 failures (0 unexpected) in 144.046 (144.099) seconds
+
+Unchanged Sightings test retry
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:65: error: -[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters] : XCTAssertTrue failed
+/Users/parkersmith/Downloads/Website/ios-native/CybercabHunterUITests/LocationUITests.swift:67: error: -[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters] : XCTAssertFalse failed
+Test Case '-[CybercabHunterUITests.LocationUITests testNearMeExplainsMissingDataAndRestoresExistingFilters]' failed (29.261 seconds).
+
+Retry command outcome:
+** TEST EXECUTE FAILED **

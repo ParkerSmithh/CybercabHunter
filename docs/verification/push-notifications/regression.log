@@ -1,0 +1,205 @@
+PASS account-delete.test.mjs
+PASS app-signin.test.mjs
+PASS avatars.test.mjs
+PASS camera-sighting-approval.test.mjs
+PASS camera-sightings.test.mjs
+PASS community-polish.test.mjs
+PASS community.test.mjs
+PASS cybercab-doors.test.mjs
+PASS daily.test.mjs
+PASS dallas-camera-plan.test.mjs
+PASS dallas-copy.test.mjs
+PASS fleet-eta.test.mjs
+PASS fleet-stats.test.mjs
+PASS fleet-timelapse.test.mjs
+PASS gmail-onboarding.test.mjs
+PASS gmail-sync.test.mjs
+PASS google-auth.test.mjs
+PASS heatmap-forecast.test.mjs
+PASS homepage-stats.test.mjs
+PASS link-gmail-ui.test.mjs
+PASS map-search.test.mjs
+PASS migration-0046.test.mjs
+FAIL mobile-density.test.mjs
+es
+  FAIL — Fleet ETA: one "Ride, hours & wait" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones
+  ok — Fleet ROI / ETA headers: the Cybercab sits beside the text on phones too (owner request 2026-10-07; replaces fit fix 2's stacking)
+  ok — the ROI sliders get a 40px touch strip on phones, the 4px track unchanged
+  ok — Vehicle page: the four ride stats in one row on phones
+  ok — Rider profile: the stat strip 3 across on phones (6 from lg), discovered vehicles 2 across on phones
+  ok — Rider Data: the rides table scroll box contains its sr-only label (it used to widen the page to 546px on phones)
+  ok — Rider Data: overview 3 across and ride history 4 across on phones
+  ok — Sightings: two photo cards per row on phones (1 / 2 / 3 / 4 from 480px up as before)
+  FAIL — Zones: the details panel is a side drawer below lg, with a close button
+  ok — Zones: a toggle on the map opens the drawer
+  ok — Zones: a backdrop blurs and darkens the map behind the drawer
+  ok — Zones: the map fills the phone screen below lg
+  FAIL — Replay: the details panel is a side drawer below lg, with a close button
+  ok — Replay: a toggle on the map opens the drawer
+  ok — Replay: a backdrop blurs and darkens the map behind the drawer
+  ok — Replay: the map fills the phone screen below lg
+  ok — the drawer slides in from the left with a blurred backdrop, below lg only
+  ok — the drawer toggle, header and backdrop never show from lg up
+  ok — main.js wires the drawer (toggle, backdrop, close, Escape) and closes it at lg
+
+34 passed, 4 failed
+ (node:2827) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+PASS moderation-access.test.mjs
+PASS moderation-api.test.mjs
+PASS moderation-forwarding-stats.test.mjs
+PASS moderation-gmail-tab.test.mjs
+PASS moderation-social-tab.test.mjs
+PASS moderation-ui.test.mjs
+PASS moderation-vehicles-ui.test.mjs
+PASS moderator-log-ride.test.mjs
+PASS moderator-receipt-import.test.mjs
+FAIL motion.test.mjs
+ text is unchanged
+  ok — off screen it waits (pending), and is observed once
+  ok — in view (already, on load) it plays at once, and only once
+  ok — reduced motion: shown at once, never split
+  ok — 40ms per word, 8px rise, stagger capped (~0.5s at most)
+  ok — headings hidden before paint only with motion allowed, with a CSS fallback that shows them
+  ok — only h2s (never the hero h1), and only on pages that load main.js
+10. PixelCard (batch three)
+  ok — a new photo starts pixelated (a canvas veil over the preview, drawn in blocks)
+  ok — ...and always ends fully sharp: the veil is gone after ~0.8s
+  ok — picking another photo (or clearing it) removes the veil at once
+  ok — a 1.5s backstop removes the veil whatever happens
+  ok — reduced motion: the sharp photo, no veil
+  ok — visual only: wired after the preview is set, and the upload still sends the picked file
+11. Stepper (batch three)
+  ok — the deletion flow is untouched apart from one stepper call after a confirmed success
+  ok — ...its checks are all still there: typed DELETE, disabled until then, the confirm body, the redirect
+  ok — the stepper only reads the flow: it never writes the field, the button, the panel or calls the server
+  ok — three steps in a labelled list, the current one marked aria-current="step", announced in a status line
+  ok — no gradients or shadows, only existing tokens
+12. Not added in batch three
+  ok — no carousel autoplay anywhere (no carousel was added: the vehicle page has no photo strip)
+  ok — no grain layer: the canvas is flat (the Linear style: no texture)
+
+62 passed, 1 failed
+ (node:2861) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+PASS muse-connector.test.mjs
+PASS muse-ride-api.test.mjs
+PASS news.test.mjs
+PASS phase2-api.test.mjs
+PASS phase2-canonical.test.mjs
+PASS phase2-hardening.test.mjs
+PASS phase2-ingest.test.mjs
+PASS phase2-revisions.test.mjs
+PASS phase2-stats.test.mjs
+PASS photo-sightings-api.test.mjs
+PASS preview-auth-ui.test.mjs
+PASS profile-sync.test.mjs
+PASS profile.test.mjs
+PASS progression.test.mjs
+PASS public-sightings.test.mjs
+PASS push.test.mjs
+PASS receipt-address.test.mjs
+PASS receipt-backend-completion.test.mjs
+PASS receipt-pipeline.test.mjs
+PASS registry-review-approval.test.mjs
+PASS registry-review-tooling.test.mjs
+PASS registry-ride-aggregation.test.mjs
+PASS registry-sort.test.mjs
+PASS registry-stats.test.mjs
+PASS registry-trust.test.mjs
+PASS replay.test.mjs
+PASS reviews.test.mjs
+PASS rider-data-ui.test.mjs
+PASS rider-search.test.mjs
+PASS seo.test.mjs
+PASS service-banner.test.mjs
+PASS sighting-drawer.test.mjs
+PASS sighting-location.test.mjs
+PASS sighting-promotion.test.mjs
+PASS sighting-time.test.mjs
+PASS sightings-api.test.mjs
+PASS sightings-gallery.test.mjs
+PASS sightings-stats.test.mjs
+PASS simulation-page.test.mjs
+PASS site-layout.test.mjs
+PASS site-stat-counters.test.mjs
+FAIL social-v2.test.mjs
+
+  ok — the page has default Open Graph tags for the rewriter to fill
+{"event":"account_deleted","at":"2026-10-25T18:32:37.883Z","user_hash":"81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9"}
+  ok — deleting an account clears their saves, their notifications and notices they caused, and saves of their posts
+  ok — no XP from saves, likes, comments, pins or notifications
+8. The page (jsdom)
+  ok — signed out: no bell; Saved asks to sign in
+  ok — the filters are For You | Latest | Photos | Reviews | Saved
+  ok — the pinned post leads the feed with a Pinned label
+  ok — post headers show the Spotter rank and level
+  ok — the bell shows the unread count (a comment and a mention)
+  ok — the panel lists who did what, unread first-class
+  ok — opening a notification shows the post with that comment highlighted, and marks it read
+  ok — the bookmark saves the post (and shows it)
+  ok — the Saved filter lists it
+  ok — unsaving takes it off Saved, with the empty message
+  ok — typing a VIN finds the Cybercab (debounced search), showing plate, VIN and city
+  ok — no match: a helpful empty state
+  ok — Enter picks it: a preview card with Change and Remove
+  FAIL — the published post shows the Cybercab card, linking to its vehicle page
+  ok — a shared link opens Social on that post, with its comments, for anyone
+  ok — a deleted or unknown post says it is not available
+  ok — Share uses the native share sheet where supported, copy link otherwise
+  ok — the navigation is still Social | Streaks | Leaderboard | Progress, and there is no /social page
+
+99 passed, 1 failed
+ (node:3020) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+PASS social.test.mjs
+PASS streaks.test.mjs
+PASS summary-cache.test.mjs
+PASS tesla-oauth.test.mjs
+PASS tesla-rides.test.mjs
+PASS theme.test.mjs
+PASS trips-query.test.mjs
+PASS txdmv-activity.test.mjs
+PASS txdmv.test.mjs
+FAIL ui-effects.test.mjs
+1. RubberSegment: label copies are never mistaken for the page's buttons
+  ok — a thumb holds one copy per label
+  ok — the copies carry none of the buttons' classes (so .city-btn finds only the 2 real buttons)
+  ok — after the page switches city, every copy is still a positioned label copy
+  ok — the thumb is still shown
+  ok — the rubber styles are keyed on structure, not on classes a page can rewrite
+2. BorderGlow: only on the cards marked [data-glow]
+  ok — the listener looks for [data-glow], not every .glass
+  ok — Sightings: the six stat tiles and the empty / error messages; not the city / sort bar
+  FAIL — Community: the four stat tiles only (not Reviews, not the leaderboard)
+  ok — Fleet ROI: the three result tiles only (not the inputs or the graph)
+  FAIL — Fleet ETA: the eight model cards only, red on Model Y
+  ok — the vehicle cards and the sighting cards are marked by their scripts
+  ok — Vehicle page: the hero card only
+  ok — no glow anywhere else (Zones, Replay, Rider Data, profiles, Moderation, Profile settings, ...)
+
+11 passed, 2 failed
+ (node:3096) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/parkersmith/Downloads/Website/worker/db.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/parkersmith/Downloads/Website/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+PASS us-sightings-map.test.mjs
+PASS user-roles.test.mjs
+PASS vehicle-approval-basis.test.mjs
+PASS vehicle-identity.test.mjs
+PASS vehicle-page.test.mjs
+PASS vehicle-registry.test.mjs
+PASS vehicles-api.test.mjs
+PASS videos.test.mjs
+PASS worker-errors.test.mjs
+{"failures":["mobile-density.test.mjs","motion.test.mjs","social-v2.test.mjs","ui-effects.test.mjs"]}

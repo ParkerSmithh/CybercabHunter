@@ -1,0 +1,12 @@
+✔ Test run with 246 tests in 47 suites passed after 10.180 seconds.
+** TEST SUCCEEDED **
+Scheme: CybercabHunter; Debug; simulator FE7EEF97-1C51-4369-A5CF-D130DEB25EE0
+Only CybercabHunterTests; excluded temporary RuntimePushDelegateTests
+Isolated project: /private/tmp/cch-notification-runtime-20261025/project
+Derived data: /private/tmp/cch-notification-runtime-20261025/build
+Full log: /private/tmp/cch-notification-blocker-fixes/native-tests.log
+Result bundle: /private/tmp/cch-notification-blocker-fixes/native-tests.xcresult
+Ad-hoc simulator signing; localhost API harness (no production requests).
+AppConfig default API and matching URL expectations use localhost in this temporary copy only.
+No native shipping source changed by this fix.
+Built metadata: 22 actions, 10 autoShortcuts, 42 phrase templates.
