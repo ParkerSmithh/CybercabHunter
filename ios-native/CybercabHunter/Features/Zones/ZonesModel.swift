@@ -72,7 +72,7 @@ final class ZonesModel {
     func loadPanel(using api: APIClient) async {
         let asked = city
         async let f: FleetStats? = try? api.get("/api/fleet-stats", query: [URLQueryItem(name: "city", value: asked)])
-        async let s: HomepageStats? = try? api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: asked)])
+        async let s: HomepageStats? = try? api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: asked)], fresh: true)
         if let v = await f { fleet[asked] = v }
         if let v = await s { facts[asked] = v }
     }

@@ -22,6 +22,8 @@ protocol ServiceActivityBackend: AnyObject {
     var isAuthorized: Bool { get }
     /// The states of this app's running service activities.
     var running: [ServiceActivityAttributes.ContentState] { get }
+    /// Their fixed details (the hours they were started with).
+    var runningAttributes: [ServiceActivityAttributes] { get }
     func start(_ attributes: ServiceActivityAttributes, _ state: ServiceActivityAttributes.ContentState, staleDate: Date) throws
     /// Updates the first running activity and ends any others.
     func update(_ state: ServiceActivityAttributes.ContentState, staleDate: Date) async
@@ -36,6 +38,7 @@ final class ActivityKitServiceBackend: ServiceActivityBackend {
         Activity<ServiceActivityAttributes>.activities.filter { $0.activityState == .active || $0.activityState == .stale }
     }
     var running: [ServiceActivityAttributes.ContentState] { activities.map(\.content.state) }
+    var runningAttributes: [ServiceActivityAttributes] { activities.map(\.attributes) }
 
     func start(_ attributes: ServiceActivityAttributes, _ state: ServiceActivityAttributes.ContentState, staleDate: Date) throws {
         // No push type: nothing is sent to Apple's push service or to Cybercab Hunter's server.
@@ -128,7 +131,13 @@ final class ServiceLiveActivityController {
         guard backend.isSupported else { problem = .unsupported; return }
         guard backend.isAuthorized else { problem = .notAuthorized; return }
         let state = ServiceActivityAttributes.ContentState(schedule.status(at: now))
-        let running = backend.running
+        var running = backend.running
+        // An activity's details (the hours it shows) can't be updated, only its
+        // state: when the hours changed, it is replaced by a new one.
+        if !running.isEmpty, backend.runningAttributes.contains(where: { $0 != attributes }) {
+            await backend.endAll()
+            running = []
+        }
         if running.isEmpty {
             do {
                 try backend.start(attributes, state, staleDate: state.until)
