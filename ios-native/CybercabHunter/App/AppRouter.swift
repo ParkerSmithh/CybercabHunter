@@ -65,12 +65,24 @@ final class AppRouter {
     @discardableResult
     func open(widgetURL url: URL) -> Bool {
         guard url.scheme == WidgetLink.scheme, let host = url.host() else { return false }
-        let city = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "city" }?.value
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let city = items.first { $0.name == "city" }?.value
         switch host {
+        case "post":
+            // Community Activity: one post, natively.
+            guard let id = items.first(where: { $0.name == "id" })?.value, !id.isEmpty else { selectedTab = .community; return true }
+            communityPath = NavigationPath()
+            open(.post(PostRoute(id: id)))
+            return true
+        case "community":
+            // Leaderboard, My Spotting Progress, Community Activity: their section.
+            communityPath = NavigationPath()
+            communitySection = items.first { $0.name == "section" }?.value.flatMap(CommunitySection.init(rawValue:))
+            selectedTab = .community
+            return true
         case "zones": openZones(city == "dallas" ? "dallas" : "austin")
         case "sightings": selectedTab = .sightings
         case "registry": selectedTab = .registry
-        case "community": selectedTab = .community
         default: selectedTab = .home
         }
         return true
