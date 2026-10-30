@@ -1,12 +1,12 @@
 /* Homepage service-status banner (index.html #serviceBanner), just below the
    stats bar. Pure client-side: no request.
-   HOURS: js/calc.js SERVICE_HOURS — 6:00 AM to 1:00 AM, America/Chicago,
+   HOURS: js/calc.js SERVICE_HOURS — 6:00 AM to 2:00 AM, America/Chicago,
    every day, for Austin and Dallas alike (the one place to change them). The
    service day runs past midnight: 12:30 AM is still live (the day before's
-   service), 1:00 AM to 6:00 AM is parked.
+   service), 2:00 AM to 6:00 AM is parked.
    STATE: from the visitor's clock read in America/Chicago (Intl), never the
    visitor's own time zone. Open from openMinute:00 (6:00:00 → live) up to
-   but not including closeMinute:00 (1:00:00 AM → parked).
+   but not including closeMinute:00 (2:00:00 AM → parked).
      live    green pulsing dot · "Cybercabs are on the road now" ·
              "Service ends in Xh Ym"
      parked  moon, cooler tone · "The fleet is parked for the night" ·
@@ -45,9 +45,12 @@
   function instantOf(ms, minuteOfDay, addDays) {
     const p = parts(ms);
     const wall = Date.UTC(p.y, p.mo - 1, p.d + addDays, Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0);
-    let t = wall - offset(ms);
-    t = wall - offset(t);   // settle across a daylight-saving change
-    return t;
+    const first = wall - offset(ms);
+    const t = wall - offset(first);   // settle across a daylight-saving change
+    // A time the clocks skip (2:00 AM on the spring-forward night) is the moment
+    // it would have been: 3:00 AM CDT, not an hour early.
+    const back = parts(t);
+    return back.h * 60 + back.mi === minuteOfDay % 1440 ? t : Math.max(first, t);
   }
 
   // { live, ms (until the change), label } at instant `now`.
@@ -84,7 +87,7 @@
     return { minute, label: clock(minute) };
   }
   // The service window's pieces on the track (two when it runs past midnight:
-  // 6 AM–12 AM, then 12 AM–1 AM), in service order.
+  // 6 AM–12 AM, then 12 AM–2 AM), in service order.
   const SEGS = C.serviceSegments(H);
   function paintDay(s, d) {
     const mark = el.querySelector('[data-sb-now]'), lab = el.querySelector('[data-sb-clock]');

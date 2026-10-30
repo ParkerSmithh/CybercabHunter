@@ -15,12 +15,12 @@
 // the Zones page shows (not database figures: they describe Tesla's geofence
 // and launch): coverage in square miles (Austin: the published geofence;
 // Dallas: Tesla's figure), first day of service, daily hours (America/Chicago,
-// js/calc.js; 6 AM to 1 AM: a close earlier than the open is the next day),
+// js/calc.js; 6 AM to 2 AM: a close earlier than the open is the next day),
 // and one line describing the zone.
 const ZONE_FACTS = {
-  austin: { square_miles: 272, in_service_since: '2025-06-22', hours: { open: '06:00', close: '01:00' },
+  austin: { square_miles: 272, in_service_since: '2025-06-22', hours: { open: '06:00', close: '02:00' },
     description: 'First Robotaxi market. Launched as an invite pilot, now unsupervised.' },
-  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '06:00', close: '01:00' },
+  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '06:00', close: '02:00' },
     description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
 };
 

@@ -7,28 +7,28 @@ import ActivityKit
 // Dynamic Island / Lock Screen Live Activity (CybercabHunterWidgets), so the
 // two can never disagree. Times are wall-clock America/Chicago: 6:00 AM is
 // 6:00 AM on daylight-saving change days too. The service day runs past
-// midnight (6:00 AM to 1:00 AM): 12:30 AM belongs to the day before's service. "Live" means inside the
+// midnight (6:00 AM to 2:00 AM): 1:30 AM belongs to the day before's service. "Live" means inside the
 // published service hours (what the Live now card has always shown), not a
 // count of cars confirmed on the road.
 
 struct ServiceSchedule: Codable, Hashable, Sendable {
     /// Minutes after the service day's midnight, Central; closeMinute is past
-    /// 1440 when service runs past midnight (1500 = 1:00 AM the next day).
+    /// 1440 when service runs past midnight (1560 = 2:00 AM the next day).
     var openMinute: Int
     var closeMinute: Int
 
     static let timeZone = TimeZone(identifier: "America/Chicago")!
-    /// 6:00 AM – 1:00 AM, every day (the API's hours when they haven't loaded).
-    static let standard = ServiceSchedule(openMinute: 6 * 60, closeMinute: 25 * 60)
+    /// 6:00 AM – 2:00 AM, every day (the API's hours when they haven't loaded).
+    static let standard = ServiceSchedule(openMinute: 6 * 60, closeMinute: 26 * 60)
 
-    /// A close at or before the open is the next day ("01:00" after "06:00" → 1500).
+    /// A close at or before the open is the next day ("02:00" after "06:00" → 1560).
     init(openMinute: Int, closeMinute: Int) {
         self.openMinute = openMinute
         self.closeMinute = closeMinute <= openMinute ? closeMinute + 1440 : closeMinute
     }
 
     /// From the API's "HH:MM" strings ("24:00" = midnight at the end of the day,
-    /// "01:00" = 1:00 AM the next day).
+    /// "02:00" = 2:00 AM the next day).
     init(open: String?, close: String?) {
         self.init(openMinute: open.map(Self.minutes) ?? Self.standard.openMinute,
                   closeMinute: close.map(Self.minutes) ?? Self.standard.closeMinute)
@@ -77,7 +77,7 @@ struct ServiceSchedule: Codable, Hashable, Sendable {
         return Status(live: false, since: close, until: moment(openMinute, on: tomorrow))
     }
 
-    /// "6:00 AM" for a minute of the day (1440 → "12:00 AM", 1500 → "1:00 AM").
+    /// "6:00 AM" for a minute of the day (1440 → "12:00 AM", 1560 → "2:00 AM").
     func label(_ minute: Int) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US"); f.timeZone = Self.timeZone; f.dateFormat = "h:mm a"

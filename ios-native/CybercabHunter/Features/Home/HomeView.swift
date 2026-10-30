@@ -261,7 +261,7 @@ struct LiveActivitySwitch: View {
     private var statusLine: String {
         if let p = controller.problem { return p.message }
         if controller.enabled {
-            return "On · in the Dynamic Island, or on the Lock Screen on iPhones without one. Follows the published service hours; iOS ends it after about 8 hours, and opening the app starts it again."
+            return "On · in the Dynamic Island (or on the Lock Screen on iPhones without one) while you're in other apps. Closing Cybercab Hunter removes it when iOS reports the app closing; otherwise it updates when you reopen the app."
         }
         return "Off · on iPhones without a Dynamic Island it appears on the Lock Screen."
     }
@@ -273,7 +273,7 @@ struct ServiceClock {
     let countdown: String
     let nowLabel: String
     /// The service window on the 24-hour track: one piece, or two when service
-    /// runs past midnight (6 AM–12 AM, then 12 AM–1 AM), each with the share run so far.
+    /// runs past midnight (6 AM–12 AM, then 12 AM–2 AM), each with the share run so far.
     struct Piece: Equatable { let start: CGFloat; let width: CGFloat; let run: CGFloat }
     let pieces: [Piece]
     let nowPosition: CGFloat

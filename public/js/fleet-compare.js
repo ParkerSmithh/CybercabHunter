@@ -110,7 +110,7 @@
   const H = C.SERVICE_HOURS;
   const hoursText = `${C.clockLabel(H.openMinute)} - ${C.clockLabel(H.closeMinute)}`;
   qa('[data-hours]').forEach(el => { el.textContent = hoursText; });
-  // The window's pieces on the 24-hour track: 6 AM–12 AM, then 12 AM–1 AM (past midnight).
+  // The window's pieces on the 24-hour track: 6 AM–12 AM, then 12 AM–2 AM (past midnight).
   C.serviceSegments(H).forEach((g, i) => {
     const w = $(i ? 'hoursWindowLate' : 'hoursWindow');
     if (!w) return;

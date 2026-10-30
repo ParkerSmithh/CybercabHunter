@@ -24,6 +24,8 @@ final class AppRouter {
     var registryPath = NavigationPath()
     /// Set by the "Submit a sighting" shortcut: Sightings opens its form.
     var submitSightingRequested = false
+    /// A photo shared from the Share Sheet (SightingShareInbox), for the form to attach.
+    var sharedSighting: SightingShareInbox.Share?
     /// Home's history (Siri opens the Texas DMV tracker there).
     var homePath = NavigationPath()
     /// A city for Sightings to show (Siri: "show Cybercab sightings in Dallas").
@@ -58,6 +60,14 @@ final class AppRouter {
     func requestSubmitSighting() {
         selectedTab = .sightings
         submitSightingRequested = true
+    }
+
+    /// A photo shared to Cybercab Hunter is waiting: the form opens with it
+    /// (after signing in, when signed out). Each share is offered once.
+    func openSharedSighting(now: Date = .now) {
+        guard sharedSighting == nil, let share = SightingShareInbox.pending(now: now).first else { return }
+        sharedSighting = share
+        requestSubmitSighting()
     }
 
     /// A widget's link (`cybercabhunter-widget://<tab>[?city=…]`): opens that tab.
