@@ -38,6 +38,8 @@ protocol ServiceActivityBackend: AnyObject {
     func endAll() async
     /// The app left the screen: keep it running as long as iOS allows, so closing it soon after is noticed.
     func stayAwakeBriefly()
+    /// Back in the app: release that time, so the next leave gets the full window again.
+    func stopStayingAwake()
     /// Remove ended ones still on screen.
     func dismissEnded() async
 }
@@ -64,8 +66,14 @@ final class ActivityKitServiceBackend: ServiceActivityBackend {
     func endAll() async { await Self.endEvery() }
 
     private var awake: UIBackgroundTaskIdentifier = .invalid
+    func stopStayingAwake() {
+        guard awake != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(awake)
+        awake = .invalid
+    }
+
     func stayAwakeBriefly() {
-        guard awake == .invalid else { return }
+        stopStayingAwake()   // a fresh window each time the app leaves the screen
         // Until iOS takes the time back (about 30 seconds): a swipe-away meanwhile
         // delivers willTerminate, which ends the activity.
         awake = UIApplication.shared.beginBackgroundTask(withName: "Live Activity: notice closing") { [weak self] in
@@ -168,7 +176,9 @@ final class ServiceLiveActivityController {
         }
         guard backend.isSupported else { problem = .unsupported; return }
         guard backend.isAuthorized else { problem = .notAuthorized; return }
-        // Back in the app: one left showing from the last visit goes first.
+        // Back in the app: one left showing from the last visit goes first, and
+        // the time kept for noticing a close is released (the next leave starts it again).
+        backend.stopStayingAwake()
         await backend.dismissEnded()
         let state = ServiceActivityAttributes.ContentState(schedule.status(at: now))
         var running = backend.running
@@ -201,10 +211,21 @@ final class ServiceLiveActivityController {
     /// Closing the app (when iOS says so) ends it at once.
     private func endWhenTheAppCloses() {
         NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: .main) { _ in
-            let done = DispatchSemaphore(value: 0)
-            Task.detached { await ActivityKitServiceBackend.endEvery(); done.signal() }
-            _ = done.wait(timeout: .now() + 2)
+            // Ending needs the main thread too, so it isn't blocked while waiting:
+            // the run loop keeps turning until it's done (at most 3 seconds).
+            let done = Flag()
+            Task.detached { await ActivityKitServiceBackend.endEvery(); done.set() }
+            let deadline = Date.now.addingTimeInterval(3)
+            while !done.isSet && Date.now < deadline { RunLoop.main.run(mode: .default, before: .now.addingTimeInterval(0.05)) }
         }
+    }
+
+    /// A thread-safe "done" for the closing wait.
+    private final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+        var isSet: Bool { lock.withLock { value } }
+        func set() { lock.withLock { value = true } }
     }
 
     var attributes: ServiceActivityAttributes {
