@@ -31,6 +31,8 @@ final class FakeActivityBackend: ServiceActivityBackend {
     var stayAwakeCalls = 0
     var dismissEndedCalls = 0
     func stayAwakeBriefly() { stayAwakeCalls += 1 }
+    var stopStayingAwakeCalls = 0
+    func stopStayingAwake() { stopStayingAwakeCalls += 1 }
     func dismissEnded() async { dismissEndedCalls += 1 }
 }
 
@@ -193,6 +195,7 @@ struct LiveActivityTests {
         #expect(fake.stayAwakeCalls == 1, "awake briefly so a swipe-away is noticed")
         await c.reconcile(now: central("2026-10-27 20:20:00"))
         #expect(fake.started.count == 1 && fake.running.count == 1, "back in the app: the same one, not a second")
+        #expect(fake.stopStayingAwakeCalls >= 1, "back in the app: the closing window is released, so the next leave gets a full one")
         await c.setEnabled(false)
         c.appDidLeave()
         #expect(fake.stayAwakeCalls == 1, "switched off: nothing to keep")
