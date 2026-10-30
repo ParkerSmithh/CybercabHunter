@@ -60,10 +60,10 @@ enum SimulationCalc {
     /// Static figures with no live source (js/fleet-compare.js, calc.js).
     static let modelYFleet = ["austin": 114, "dallas": 65]
     static let staleHours = 36.0
-    /// Both cities: 6 AM to 1 AM, Central (owner-confirmed). closeMinute is past
-    /// 1440: the service day runs past midnight (1500 = 1:00 AM the next day).
-    static let openMinute = 6 * 60, closeMinute = 25 * 60
-    /// The window on a 24-hour track, in minutes: 6 AM–12 AM, then 12 AM–1 AM.
+    /// Both cities: 6 AM to 2 AM, Central (owner-confirmed). closeMinute is past
+    /// 1440: the service day runs past midnight (1560 = 2:00 AM the next day).
+    static let openMinute = 6 * 60, closeMinute = 26 * 60
+    /// The window on a 24-hour track, in minutes: 6 AM–12 AM, then 12 AM–2 AM.
     static var hourPieces: [(start: Int, end: Int)] {
         closeMinute > 1440 ? [(openMinute, 1440), (0, closeMinute - 1440)] : [(openMinute, closeMinute)]
     }

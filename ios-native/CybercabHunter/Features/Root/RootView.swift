@@ -43,7 +43,15 @@ struct RootView: View {
         .onChange(of: router.accountRequest, initial: true) { if router.accountRequest != nil { showingAccount = true } }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
         // The Live Activity follows the switch and the service day each time the app is opened.
-        .onChange(of: scenePhase, initial: true) { if scenePhase == .active { Task { await ServiceLiveActivityController.shared.reconcile() } } }
+        // The Live Activity: refreshed on opening; on leaving it keeps running (the
+        // Dynamic Island shows it) and closing the app ends it.
+        .onChange(of: scenePhase, initial: true) {
+            if scenePhase == .active {
+                Task { await ServiceLiveActivityController.shared.reconcile() }
+                router.openSharedSighting()   // a photo shared from Photos opens the sighting form
+            }
+            if scenePhase == .background { ServiceLiveActivityController.shared.appDidLeave() }
+        }
         // Changing tabs always puts the keyboard away (a tab left behind stays alive,
         // so its own field can't do it).
         .onChange(of: router.selectedTab) {
@@ -170,6 +178,9 @@ enum DebugLaunch {
     /// its own Keychain item so the real session is never touched.
     static var session: String? { value("-session") }
     static var usesTestSession: Bool { apiBase != nil }
+    /// `-seedSharedSighting`: what sharing a photo from Photos does (the Share
+    /// extension's inbox gets a generated test photo; UI tests can't drive Photos).
+    static var seedsSharedSighting: Bool { ProcessInfo.processInfo.arguments.contains("-seedSharedSighting") }
     private static func value(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
@@ -186,6 +197,7 @@ enum DebugLaunch {
     static let apiBase: URL? = nil
     static let session: String? = nil
     static let usesTestSession = false
+    static let seedsSharedSighting = false
     #endif
 }
 

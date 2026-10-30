@@ -26,6 +26,8 @@
 			<string>sigh ber cab hunter</string>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Cybercab Hunter uses the camera to take a photo of a Cybercab for your sighting. The photo stays on your iPhone until you submit it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location helps you find nearby Cybercab service zones, sightings, and cameras. Location is optional and is used only when you request it.</string>
 	<key>NSSupportsLiveActivities</key>

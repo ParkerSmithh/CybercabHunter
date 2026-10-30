@@ -87,6 +87,11 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         Task { @MainActor in PushCoordinator.shared.registered = false; PushCoordinator.shared.status = "Remote notification registration is unavailable. Your preferences are saved." }
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        // "Finish your Cybercab sighting" (the Share extension): the form, with the shared photo.
+        if response.notification.request.content.userInfo[SightingShareInbox.notificationKey] != nil {
+            await MainActor.run { AppRouter.shared.openSharedSighting() }
+            return
+        }
         guard let raw = response.notification.request.content.userInfo["link"] as? String,
               raw.hasPrefix("/"), !raw.hasPrefix("//"), let url = URL(string: raw, relativeTo: URL(string: "https://cybercabhunter.com")!)?.absoluteURL,
               url.host == "cybercabhunter.com" else { return }

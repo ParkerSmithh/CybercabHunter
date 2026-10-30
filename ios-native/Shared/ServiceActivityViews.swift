@@ -57,7 +57,7 @@ struct ServiceActivityDisplay {
     var window: ClosedRange<Date> { since...max(until, since.addingTimeInterval(60)) }
 
     /// Where the service hours sit on the 24-hour track (0 = 12 AM, 1 = the next
-    /// 12 AM): one piece, or two when service runs past midnight (6 AM–12 AM, 12 AM–1 AM).
+    /// 12 AM): one piece, or two when service runs past midnight (6 AM–12 AM, 12 AM–2 AM).
     var servicePieces: [ClosedRange<CGFloat>] { live ? Self.pieces(since, until) : Self.pieces(until, since) }
 
     /// One stretch the system fills up to now: where it sits, and its times.

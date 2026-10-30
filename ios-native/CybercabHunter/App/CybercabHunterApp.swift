@@ -18,6 +18,14 @@ struct CybercabHunterApp: App {
         if DebugLaunch.resetsSiriState { UserDefaults.standard.removeObject(forKey: ActivityAlertSettings.key) }
         // UI tests: `-resetLiveActivity` starts with the Live Activity switch at its default (off).
         if DebugLaunch.resetsLiveActivity { UserDefaults.standard.removeObject(forKey: ServiceLiveActivityController.enabledKey) }
+        // UI tests: `-seedSharedSighting` leaves a test photo where the Share extension would.
+        if DebugLaunch.seedsSharedSighting {
+            let photo = UIGraphicsImageRenderer(size: CGSize(width: 1200, height: 800)).pngData { ctx in
+                UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 1).setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 1200, height: 800))
+                UIColor.black.setFill(); ctx.fill(CGRect(x: 200, y: 300, width: 800, height: 220))
+            }
+            _ = try? SightingShareInbox.save(photo)
+        }
         // Inter in the navigation bars, as on the website.
         let inline = UIFont(name: "Inter", size: 17).map { UIFontMetrics(forTextStyle: .headline).scaledFont(for: $0.withWeight(.semibold)) }
         let large = UIFont(name: "Inter", size: 32).map { UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: $0.withWeight(.bold)) }

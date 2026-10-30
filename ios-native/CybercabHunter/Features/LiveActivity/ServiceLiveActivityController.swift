@@ -10,8 +10,16 @@ import UIKit
 // the system, so nothing polls the website or runs timers. The app updates it
 // whenever it's opened (and when service changes while it's open); if it isn't
 // opened at a change, the activity turns stale at that moment (staleDate) and
-// says so. iOS ends Live Activities after about 8 hours; the next app open
-// starts a fresh one, while the switch is on.
+// says so.
+//
+// It stays in the Dynamic Island while the rider is in other apps, and closing
+// the app (swiping it away) removes it when iOS says the app is closing. iOS
+// only says so while the app is still running: on leaving, the app keeps
+// running for the short time iOS allows (about 30 seconds), so a swipe-away in
+// that time ends it at once. Closed after that (the app suspended), iOS gives
+// no signal: it stays until the app is opened again (which refreshes it) or
+// iOS ends it (about 8 hours). An activity ending removes it from the Dynamic
+// Island at once, so it is never ended just because the app left the screen.
 
 /// What the controller needs from ActivityKit (tests use a fake).
 @MainActor
@@ -28,6 +36,10 @@ protocol ServiceActivityBackend: AnyObject {
     /// Updates the first running activity and ends any others.
     func update(_ state: ServiceActivityAttributes.ContentState, staleDate: Date) async
     func endAll() async
+    /// The app left the screen: keep it running as long as iOS allows, so closing it soon after is noticed.
+    func stayAwakeBriefly()
+    /// Remove ended ones still on screen.
+    func dismissEnded() async
 }
 
 @MainActor
@@ -51,6 +63,22 @@ final class ActivityKitServiceBackend: ServiceActivityBackend {
 
     func endAll() async { await Self.endEvery() }
 
+    private var awake: UIBackgroundTaskIdentifier = .invalid
+    func stayAwakeBriefly() {
+        guard awake == .invalid else { return }
+        // Until iOS takes the time back (about 30 seconds): a swipe-away meanwhile
+        // delivers willTerminate, which ends the activity.
+        awake = UIApplication.shared.beginBackgroundTask(withName: "Live Activity: notice closing") { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.awake != .invalid else { return }
+                UIApplication.shared.endBackgroundTask(self.awake)
+                self.awake = .invalid
+            }
+        }
+    }
+
+    func dismissEnded() async { await Self.dismissEndedOnes() }
+
     // Off the main actor: each Activity stays inside this task (it isn't Sendable).
     nonisolated private static func updateAll(_ state: ServiceActivityAttributes.ContentState, staleDate: Date) async {
         let list = Activity<ServiceActivityAttributes>.activities.filter { $0.activityState == .active || $0.activityState == .stale }
@@ -60,15 +88,25 @@ final class ActivityKitServiceBackend: ServiceActivityBackend {
         }
     }
 
-    nonisolated private static func endEvery() async {
+    nonisolated static func endEvery() async {
         for a in Activity<ServiceActivityAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+    }
+
+    nonisolated private static func dismissEndedOnes() async {
+        for a in Activity<ServiceActivityAttributes>.activities where a.activityState == .ended {
+            await a.end(nil, dismissalPolicy: .immediate)
+        }
     }
 }
 
 @MainActor
 @Observable
 final class ServiceLiveActivityController {
-    static let shared = ServiceLiveActivityController()
+    static let shared: ServiceLiveActivityController = {
+        let c = ServiceLiveActivityController()
+        c.endWhenTheAppCloses()
+        return c
+    }()
     static let enabledKey = "serviceLiveActivity.enabled"
 
     /// The rider's choice: false until they turn it on.
@@ -130,6 +168,8 @@ final class ServiceLiveActivityController {
         }
         guard backend.isSupported else { problem = .unsupported; return }
         guard backend.isAuthorized else { problem = .notAuthorized; return }
+        // Back in the app: one left showing from the last visit goes first.
+        await backend.dismissEnded()
         let state = ServiceActivityAttributes.ContentState(schedule.status(at: now))
         var running = backend.running
         // An activity's details (the hours it shows) can't be updated, only its
@@ -148,6 +188,22 @@ final class ServiceLiveActivityController {
         } else {
             if running.count > 1 || running[0] != state { await backend.update(state, staleDate: state.until) }
             problem = nil
+        }
+    }
+
+    /// The app left the screen: the activity keeps running (it shows in the
+    /// Dynamic Island now), and the app stays awake briefly so closing it is noticed.
+    func appDidLeave() {
+        guard enabled, !backend.running.isEmpty else { return }
+        backend.stayAwakeBriefly()
+    }
+
+    /// Closing the app (when iOS says so) ends it at once.
+    private func endWhenTheAppCloses() {
+        NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: .main) { _ in
+            let done = DispatchSemaphore(value: 0)
+            Task.detached { await ActivityKitServiceBackend.endEvery(); done.signal() }
+            _ = done.wait(timeout: .now() + 2)
         }
     }
 

@@ -1,15 +1,26 @@
 import SwiftUI
 import PhotosUI
+import UserNotifications
 
 /// "Submit a sighting" (the website's sighting drawer) as a sheet. The photo
-/// comes from Apple's picker (the app sees only the photo picked). There is
+/// comes from Apple's camera, Apple's picker (the app sees only the photo
+/// picked) or the Share Sheet (SightingShareInbox); all three go through
+/// SubmitSightingModel.setPhoto, so they look and validate the same. There is
 /// no raw GPS attachment: a Location is a confirmed verified place, and only
 /// its street and city are shown. Manual search remains available.
 struct SubmitSightingView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
     @State private var model = SubmitSightingModel()
     @State private var picked: PhotosPickerItem?
+    @State private var choosingPhotoSource = false
+    @State private var pickingFromLibrary = false
+    @State private var takingPhoto = false
+    @State private var cameraDenied = false
+    /// A shared photo that arrived while the form already had one: replace it?
+    @State private var sharedReplacement: Data?
+    @State private var photoFromShare = false
     @State private var signingIn = false
     @State private var pickingCamera = false
     @State private var showingLocationSuggestion = false
@@ -30,6 +41,7 @@ struct SubmitSightingView: View {
             .onChange(of: picked) { _, item in
                 guard let item else { return }
                 picked = nil
+                photoFromShare = false
                 Task {
                     guard let data = try? await item.loadTransferable(type: Data.self) else { model.photoError = SubmitSightingModel.errors["unsupported_file_type"]; return }
                     await model.setPhoto(data)
@@ -37,6 +49,28 @@ struct SubmitSightingView: View {
             }
             .sheet(isPresented: $signingIn) { AccountView() }
             .sheet(isPresented: $pickingCamera) { SightingCameraPicker(model: model) }
+            .confirmationDialog("Add a photo", isPresented: $choosingPhotoSource, titleVisibility: .hidden) {
+                Button("Take Photo") { Task { await startCamera() } }
+                Button("Choose from Photo Library") { pickingFromLibrary = true }
+                Button("Cancel", role: .cancel) {}
+            }
+            .photosPicker(isPresented: $pickingFromLibrary, selection: $picked, matching: .images, photoLibrary: .shared())
+            .fullScreenCover(isPresented: $takingPhoto) {
+                SightingCameraCapture { data in photoFromShare = false; Task { await model.setPhoto(data) } }.ignoresSafeArea()
+            }
+            .alert("Camera access is off", isPresented: $cameraDenied) {
+                Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+                Button("Cancel", role: .cancel) {}
+            } message: { Text("Allow Cybercab Hunter to use the camera in Settings to take a sighting photo, or choose one from your library.") }
+            // A photo shared from Photos (or any app) through the Share Sheet.
+            .onChange(of: router.sharedSighting, initial: true) { attachSharedPhoto() }
+            .confirmationDialog("Replace the photo?", isPresented: Binding(get: { sharedReplacement != nil }, set: { if !$0 { sharedReplacement = nil } }), titleVisibility: .visible) {
+                Button("Use the shared photo") {
+                    if let data = sharedReplacement { photoFromShare = true; Task { await model.setPhoto(data) } }
+                    sharedReplacement = nil
+                }
+                Button("Keep the current photo", role: .cancel) { sharedReplacement = nil }
+            } message: { Text("This sighting already has a photo. The photo you shared can replace it.") }
             .onChange(of: session.user?.id) { if session.user != nil { signingIn = false } }
         }
         .interactiveDismissDisabled(model.sending || model.photo != nil)
@@ -133,20 +167,49 @@ struct SubmitSightingView: View {
         }
     }
 
+    /// Take Photo: the camera once allowed (asked the first time), else the way to Settings.
+    private func startCamera() async {
+        switch await SightingCameraCapture.requestAccess() {
+        case .allowed: takingPhoto = true
+        case .denied: cameraDenied = true
+        }
+    }
+
+    /// The shared photo, taken from the inbox (so it is attached once), through
+    /// the same preparation as any photo. A photo already in the form isn't
+    /// replaced without asking.
+    private func attachSharedPhoto() {
+        guard let share = router.sharedSighting else { return }
+        router.sharedSighting = nil
+        // Its "Finish your Cybercab sighting" notification has done its job.
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [SightingShareInbox.notificationID(share.id)])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [SightingShareInbox.notificationID(share.id)])
+        guard let data = SightingShareInbox.take(share.id) else {
+            model.photoError = "The shared photo is no longer available. Share it again, or add it from your library."
+            return
+        }
+        if model.outcome != .editing { model.reset() }
+        if model.photo != nil { sharedReplacement = data; return }
+        photoFromShare = true
+        Task { await model.setPhoto(data) }
+    }
+
     private var photoField: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("PHOTO").font(.inter(11, .bold)).tracking(1.2).foregroundStyle(Color.chFog)
             let preview = model.preview, preparing = model.preparingPhoto
-            PhotosPicker(selection: $picked, matching: .images, photoLibrary: .shared()) {
+            // Take Photo or Choose from Photo Library (no camera, as in the Simulator: the library).
+            Button { if SightingCameraCapture.isAvailable { choosingPhotoSource = true } else { pickingFromLibrary = true } } label: {
                 PhotoDropzone(preview: preview, preparing: preparing)
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(model.preview == nil ? "Upload photo" : "Change photo")
             .accessibilityIdentifier("sightingPhotoPicker")
             if model.preview != nil {
                 HStack {
-                    Text("Change Photo").font(.inter(12.5, .semibold)).foregroundStyle(Color.brandGold)
+                    Text(photoFromShare ? "Shared from Photos · Change Photo" : "Change Photo").font(.inter(12.5, .semibold)).foregroundStyle(Color.brandGold)
                     Spacer()
-                    Button("Remove photo", role: .destructive) { model.removePhoto() }.font(.inter(12.5, .semibold))
+                    Button("Remove photo", role: .destructive) { model.removePhoto(); photoFromShare = false }.font(.inter(12.5, .semibold))
                 }
                 .accessibilityIdentifier("sightingPhotoChosen")
             }
