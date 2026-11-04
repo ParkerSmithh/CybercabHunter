@@ -9,6 +9,7 @@
 import { db } from './db.js';
 import { leaderboardRiderChanged } from './community.js';
 import { avatarSource } from './avatars.js';
+import { acceptPendingOnGoingPublic } from './follows.js';
 
 export async function apiGetProfile(request, env, userId) {
   const user = await db.getUserById(env.cybercabhunter_db, userId);
@@ -104,6 +105,9 @@ export async function apiUpdateProfile(request, env, userId) {
     }
     throw err;
   }
+
+  // Private -> public: pending follow requests become followers (worker/follows.js).
+  if (leaderboardOptIn && Number(user.leaderboard_opt_in) !== 1) await acceptPendingOnGoingPublic(env.cybercabhunter_db, userId);
 
   // The stored leaderboard figures follow at once (worker/community.js).
   await leaderboardRiderChanged(env, userId, {

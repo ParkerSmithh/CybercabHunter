@@ -21,6 +21,7 @@ import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders, leaderboardData } from './community.js';
 import { apiDeleteAccount } from './account.js';
 import { apiListReviews, apiListReviewComments, apiGetReviewPhoto } from './reviews.js';
+import { apiFollow, apiFollowers, apiFollowing, apiFollowRequests, apiFollowStatus, apiRemoveFollower, apiResolveFollowRequest, apiUnfollow } from './follows.js';
 import { apiSocialFeed, apiSocialSidebar, apiGetSocialPost, apiCreateSocialPost, apiUpdateSocialPost, apiDeleteSocialPost, apiSetSocialLike, apiListSocialComments, apiCreateSocialComment, apiUpdateSocialComment, apiDeleteSocialComment, apiCreateSocialReport, apiGetSocialPhoto, apiModerationSocialReports, apiModerationSocialOverview, apiModerationSocialResolve, apiModerationSocialAnnouncement, apiSetSocialSave, apiSetSocialPin, apiListSocialNotifications, apiReadSocialNotifications, apiSearchSocialVehicles, socialPostMeta, socialSidebarData } from './social.js';
 import { apiUploadAvatar, apiDeleteAvatar, apiGetAvatar } from './avatars.js';
 import { apiFleetStats, recomputeFleetStats, FLEET_STATS_CRON } from './fleet-stats.js';
@@ -519,6 +520,27 @@ const worker = {
     if (/^\/api\/(reviews(\/[^/]+(\/(like|comments))?)?|review-comments\/[^/]+)$/.test(url.pathname) && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
       return withCors(Response.json({ success: false, error: 'moved_to_social', message: 'Reviews are now part of Community Social: attach a ride review to a post.' }, { status: 410 }), request);
     }
+
+    // Followers & Following (worker/follows.js).
+    if (url.pathname === '/api/follow-requests' && request.method === 'GET') {
+      return withCors(await apiFollowRequests(request, env), request);
+    }
+    const followRequest = url.pathname.match(/^\/api\/follow-requests\/([^/]+)\/(accept|decline)$/);
+    if (followRequest && request.method === 'POST') {
+      return withCors(await apiResolveFollowRequest(request, env, followRequest[1], followRequest[2] === 'accept'), request);
+    }
+    const removeFollower = url.pathname.match(/^\/api\/followers\/([^/]+)$/);
+    if (removeFollower && request.method === 'DELETE') {
+      return withCors(await apiRemoveFollower(request, env, removeFollower[1]), request);
+    }
+    const followList = url.pathname.match(/^\/api\/follows\/([^/]+)\/(followers|following)$/);
+    if (followList && request.method === 'GET') {
+      return withCors(await (followList[2] === 'followers' ? apiFollowers : apiFollowing)(request, env, followList[1]), request);
+    }
+    const followOne = url.pathname.match(/^\/api\/follows\/([^/]+)$/);
+    if (followOne && request.method === 'GET') return withCors(await apiFollowStatus(request, env, followOne[1]), request);
+    if (followOne && request.method === 'PUT') return withCors(await apiFollow(request, env, followOne[1]), request);
+    if (followOne && request.method === 'DELETE') return withCors(await apiUnfollow(request, env, followOne[1]), request);
 
     // Community Social (worker/social.js).
     if (url.pathname === '/api/social/feed' && request.method === 'GET') {

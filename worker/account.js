@@ -111,6 +111,10 @@ export async function apiDeleteAccount(request, env) {
   const mine = table => sql.prepare(`DELETE FROM ${table} WHERE user_id = ?`).bind(userId);
   const myReviews = `SELECT id FROM cybercab_reviews WHERE user_id = ?`;
   await sql.batch([
+    // Followers & Following: every relationship, request, notice and rate-limit row, either side.
+    sql.prepare(`DELETE FROM follow_notifications WHERE user_id = ? OR actor_user_id = ?`).bind(userId, userId),
+    sql.prepare(`DELETE FROM user_follows WHERE follower_id = ? OR followed_id = ?`).bind(userId, userId),
+    sql.prepare(`DELETE FROM follow_actions WHERE user_id = ? OR target_user_id = ?`).bind(userId, userId),
     // Community reviews: their photos, likes and comments (anyone's), then the
     // rider's own likes and comments on other reviews, then the reviews.
     sql.prepare(`DELETE FROM cybercab_review_photos WHERE review_id IN (${myReviews})`).bind(userId),

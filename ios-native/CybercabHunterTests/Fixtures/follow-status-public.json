@@ -1,0 +1,13 @@
+{
+  "handle": "alice_a",
+  "private": false,
+  "can_view": true,
+  "relationship": "following",
+  "follows_you": true,
+  "requested_you": false,
+  "counts": {
+    "followers": 2,
+    "following": 1
+  },
+  "profile": null
+}

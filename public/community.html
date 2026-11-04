@@ -347,6 +347,7 @@
         <div class="social-filters">
           <div role="tablist" aria-label="Feed" class="social-filter-tabs">
             <button type="button" role="tab" data-filter="foryou" aria-selected="true" class="social-filter">For You</button>
+            <button type="button" role="tab" data-filter="following" aria-selected="false" class="social-filter">Following</button>
             <button type="button" role="tab" data-filter="latest" aria-selected="false" class="social-filter">Latest</button>
             <button type="button" role="tab" data-filter="photos" aria-selected="false" class="social-filter">Photos</button>
             <button type="button" role="tab" data-filter="reviews" aria-selected="false" class="social-filter">Reviews</button>
@@ -369,6 +370,7 @@
           <div class="social-empty-title">Nothing here yet</div>
           <p id="socialEmptyText">Be the first to post about the Cybercab.</p>
           <a id="socialEmptySignIn" href="signin.html?returnTo=%2Fcommunity" class="hidden social-publish-btn mt-3">Sign in</a>
+          <button id="socialEmptyDiscover" type="button" class="hidden social-publish-btn mt-3">Browse the leaderboard</button>
         </div>
         <div id="socialError" class="hidden social-empty"><div class="social-empty-title">We couldn't load posts</div><p>Please try again in a moment.</p></div>
         <button type="button" id="socialMore" class="hidden social-more">Load more posts</button>
@@ -647,7 +649,7 @@
 <script src="js/rider-search.js?v=2"></script>
 <script src="js/streaks.js?v=5"></script>
 <script src="js/progress.js?v=2"></script>
-<script src="js/social.js?v=3"></script>
+<script src="js/social.js?v=4"></script>
 <script>
   // ---- Social | Streaks | Leaderboard | Progress (the Simulation page's tabs) ----
   (function () {

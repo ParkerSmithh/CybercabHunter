@@ -3,6 +3,7 @@
 // optional attachment to a post.
 //
 //   GET    /api/social/feed?filter=foryou|latest|photos|reviews&sort=new|popular&cursor=&limit=   public
+//   GET    /api/social/feed?filter=following&cursor=&limit=   signed in; accounts I follow, newest first (worker/follows.js)
 //   GET    /api/social/posts/:id                       public (a removed post: moderators only)
 //   POST   /api/social/posts                           signed in; multipart (see readPostForm)
 //   PATCH  /api/social/posts/:id                       author only; multipart
@@ -60,6 +61,7 @@ import { levelFor, rankFor } from './progression-levels.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 import { budgetedSummary, rowsRead } from './summary-cache.js';
 import { profileEpoch } from './profile-cache.js';
+import { approvedAuthors, followNotices, followUnread, markFollowNoticesRead } from './follows.js';
 
 export const MAX_POST_CHARS = 2000;
 export const MAX_COMMENT_CHARS = 1000;
@@ -205,6 +207,15 @@ async function postsByIds(sql, ids, me, { shownOnly = false } = {}) {
   if (!ids.length) return [];
   let rows = (await sql.prepare(`${POST_SELECT} WHERE p.id IN (${ids.map(() => '?').join(',')})`).bind(me ? me.id : '', ...ids).all()).results || [];
   if (shownOnly) rows = rows.filter(r => r.status === 'visible' && (!r.legacy_review_id || Number(r.vehicle_public) === 1));
+  // A private account's posts are anonymous, except to its approved followers
+  // (worker/follows.js). Signed-in answers are never shared, so this is per viewer.
+  if (me) {
+    const hidden = [...new Set(rows.filter(r => Number(r.opt_in) !== 1).map(r => r.user_id))];
+    if (hidden.length) {
+      const approved = await approvedAuthors(sql, me.id, hidden);
+      rows = rows.map(r => (approved.has(r.user_id) ? { ...r, opt_in: 1 } : r));
+    }
+  }
   const byId = new Map(rows.map(r => [r.id, r]));
   const photos = await photosFor(sql, rows.filter(r => Number(r.has_photos)).map(r => r.id));
   return ids.map(id => byId.get(id)).filter(Boolean).map(r => postJson(r, photos.get(r.id), me));
@@ -270,7 +281,7 @@ const hasSession = request => /^Bearer\s+\S/i.test(request.headers.get('Authoriz
 
 export async function apiSocialFeed(request, env, ctx) {
   const params = new URL(request.url).searchParams;
-  const f = params.get('filter'), cacheable = !hasSession(request) && !params.get('cursor') && f !== 'saved';
+  const f = params.get('filter'), cacheable = !hasSession(request) && !params.get('cursor') && f !== 'saved' && f !== 'following';
   const cache = cacheable && typeof caches !== 'undefined' && caches.default ? caches.default : null;
   if (!cache) return socialFeed(request, env);
   // The key holds only what shapes the page (unknown parameters can't bust it).
@@ -295,22 +306,36 @@ export async function apiSocialFeed(request, env, ctx) {
 async function socialFeed(request, env) {
   const sql = env.cybercabhunter_db;
   const params = new URL(request.url).searchParams;
-  const filter = ['foryou', 'latest', 'photos', 'reviews', 'saved'].includes(params.get('filter')) ? params.get('filter') : 'foryou';
+  const filter = ['foryou', 'following', 'latest', 'photos', 'reviews', 'saved'].includes(params.get('filter')) ? params.get('filter') : 'foryou';
   // For You has its own ranking and Latest is newest-first by definition;
   // Photos, Reviews and Saved take ?sort=new|popular.
-  const sort = filter === 'foryou' ? 'ranked' : filter === 'latest' ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
+  const sort = filter === 'foryou' ? 'ranked' : (filter === 'latest' || filter === 'following') ? 'new' : (params.get('sort') === 'popular' ? 'popular' : 'new');
   const limit = Math.min(Math.max(Number(params.get('limit')) || FEED_DEFAULT, 1), FEED_MAX);
   const cursor = decodeCursor(params.get('cursor'));
   const me = await viewer(request, env);
   const viewerJson = { signed_in: !!me, moderator: !!(me && me.moderator) };
-  if (filter === 'saved' && !me) return Response.json({ authenticated: false, error: 'sign_in_required', viewer: viewerJson }, { status: 401, headers: { 'Cache-Control': 'private, no-store' } });
+  if ((filter === 'saved' || filter === 'following') && !me) return Response.json({ authenticated: false, error: 'sign_in_required', viewer: viewerJson }, { status: 401, headers: { 'Cache-Control': 'private, no-store' } });
   // Community pins sit above For You and Latest (first page only) and are left
   // out of those lists below them, so a pinned post never shows twice.
   const withPins = filter === 'foryou' || filter === 'latest';
   const extra = filter === 'photos' ? ' AND p.has_photos = 1' : filter === 'reviews' ? ' AND p.has_review = 1' : withPins ? ' AND p.pinned = 0' : '';
   const shownFrom = `FROM social_posts p LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id WHERE ${SHOWN}${extra}`;
   let ids, next = null;
-  if (filter === 'saved' && sort === 'popular') {
+  let followingCount;
+  if (filter === 'following') {
+    // Posts by accounts I follow (accepted only: a pending request shows nothing),
+    // from the follow index and each author's post index, never a feed scan.
+    const after = cursor && typeof cursor.t === 'string' && typeof cursor.id === 'string' ? cursor : null;
+    const rows = (await sql.prepare(`SELECT p.id, p.created_at
+        FROM user_follows f JOIN social_posts p ON p.user_id = f.followed_id LEFT JOIN robotaxi_vehicles v ON v.id = p.robotaxi_vehicle_id
+        WHERE f.follower_id = ? AND f.status = 'accepted' AND ${SHOWN}
+        ${after ? 'AND (p.created_at < ? OR (p.created_at = ? AND p.id < ?))' : ''}
+        ORDER BY p.created_at DESC, p.id DESC LIMIT ?`).bind(me.id, ...(after ? [after.t, after.t, after.id] : []), limit + 1).all()).results || [];
+    ids = rows.slice(0, limit).map(r => r.id);
+    if (rows.length > limit) { const last = rows[limit - 1]; next = encodeCursor({ t: last.created_at, id: last.id }); }
+    // Tells "follows nobody yet" from "the people you follow haven't posted".
+    if (!after) followingCount = Number((await sql.prepare(`SELECT COUNT(*) AS n FROM user_follows WHERE follower_id = ? AND status = 'accepted'`).bind(me.id).first()).n) || 0;
+  } else if (filter === 'saved' && sort === 'popular') {
     // The rider's bookmarks ranked like Most popular (the newest RANKED_WINDOW saves).
     const at = cursor && Number.isFinite(cursor.at) ? cursor.at : Date.now();
     const offset = cursor && Number.isInteger(cursor.o) && cursor.o >= 0 ? cursor.o : 0;
@@ -372,7 +397,7 @@ async function socialFeed(request, env) {
   }
   const pinned = new Set(pinnedIds);
   const posts = await postsByIds(sql, [...(cursor ? [] : pinnedIds), ...ids.filter(id => !pinned.has(id))], me, { shownOnly: true });
-  return Response.json({ filter, sort, posts, next_cursor: next, viewer: viewerJson }, { headers: { 'Cache-Control': 'private, no-store' } });
+  return Response.json({ filter, sort, posts, next_cursor: next, viewer: viewerJson, ...(followingCount === undefined ? {} : { following_count: followingCount }) }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 // One post, or null. Moderators also see removed posts.
@@ -383,7 +408,9 @@ async function onePost(sql, id, me, { includeRemoved = false } = {}) {
   const legacyHidden = row.legacy_review_id && Number(row.vehicle_public) !== 1;
   if ((row.status !== 'visible' || legacyHidden) && !(includeRemoved && me && me.moderator)) return null;
   const photos = Number(row.has_photos) ? (await photosFor(sql, [id])).get(id) : [];
-  return postJson(row, photos, me);
+  // A private account's post is anonymous, except to its approved followers.
+  const named = me && Number(row.opt_in) !== 1 && (await approvedAuthors(sql, me.id, [row.user_id])).has(row.user_id);
+  return postJson(named ? { ...row, opt_in: 1 } : row, photos, me);
 }
 
 export async function apiGetSocialPost(request, env, id) {
@@ -1028,7 +1055,8 @@ export async function apiListSocialNotifications(request, env) {
     sql.prepare(`SELECT COUNT(*) AS n FROM (SELECT 1 ${NOTIFICATION_FROM} AND n.read_at IS NULL LIMIT 100)`).bind(me.id).first(),
     announcementNotice(sql, me)
   ]);
-  const unread = Number(unreadRow ? unreadRow.n : 0) + (ann && !ann.read ? 1 : 0);
+  const followNew = await followUnread(sql, me.id);
+  const unread = Number(unreadRow ? unreadRow.n : 0) + (ann && !ann.read ? 1 : 0) + followNew;
   const headers = { 'Cache-Control': 'private, no-store' };
   if (countOnly) return Response.json({ unread }, { headers });
   const rows = (await sql.prepare(`SELECT n.id, n.type, n.post_id, n.comment_id, n.read_at, n.created_at,
@@ -1047,6 +1075,8 @@ export async function apiListSocialNotifications(request, env) {
     read: !!r.read_at
   }));
   if (ann) items.push(ann);
+  // New followers, follow requests and accepted requests (worker/follows.js).
+  items.push(...await followNotices(sql, me.id, NOTIFICATIONS_PAGE));
   items.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
   return Response.json({ unread, notifications: items.slice(0, NOTIFICATIONS_PAGE) }, { headers });
 }
@@ -1061,10 +1091,12 @@ export async function apiReadSocialNotifications(request, env) {
   const stmts = [];
   if (p && p.all === true) {
     stmts.push(sql.prepare(`UPDATE social_notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL`).bind(me.id));
+    stmts.push(markFollowNoticesRead(sql, me.id, 'all'));
   } else {
     const real = ids.filter(id => ID_RE.test(id));
     // Only the rider's own rows can change (user_id = me): someone else's id does nothing.
     if (real.length) stmts.push(sql.prepare(`UPDATE social_notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL AND id IN (${real.map(() => '?').join(',')})`).bind(me.id, ...real));
+    if (real.length) stmts.push(markFollowNoticesRead(sql, me.id, real));
   }
   if ((p && p.all === true) || ids.includes('announcement')) {
     stmts.push(sql.prepare(`INSERT INTO social_notification_state (user_id, announcement_read_at) VALUES (?, datetime('now'))

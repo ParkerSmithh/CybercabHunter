@@ -120,6 +120,8 @@ struct SocialFeedPage: Decodable, Sendable, Equatable {
     let posts: [SocialPost]
     let nextCursor: String?
     let viewer: SocialViewer
+    /// Following, first page: how many accounts the rider follows.
+    var followingCount: Int? = nil
 }
 
 struct SocialPostResponse: Decodable, Sendable, Equatable {

@@ -19,6 +19,7 @@
 <script src="js/theme.js?v=4"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=76">
+<link rel="stylesheet" href="css/follows.css?v=1">
 <style>
   /* Locked = a quiet read-only field; unlocked = a normal input. The same
      box either way (no layout jump), toggled by swapping these two classes
@@ -133,6 +134,7 @@
       <div class="grid gap-8 lg:grid-cols-[200px_minmax(0,1fr)] max-sm:gap-4">
         <nav aria-label="Settings sections" class="settings-nav max-lg:hidden">
           <a href="#settingsProfile">Profile</a>
+          <a href="#settingsFollow">Followers</a>
           <a href="#settingsPrivacy">Privacy</a>
           <a href="#settingsAccount">Account</a>
         </nav>
@@ -205,6 +207,26 @@
           <p id="editProfileError" class="text-xs text-crimson empty:hidden mt-1" role="alert"></p>
         </section>
 
+        <!-- Followers & Following (js/follows.js): your counts and lists (Remove is
+             in the Followers list), and requests to follow you. -->
+        <section id="settingsFollow" class="settings-card" aria-labelledby="settingsFollowTitle">
+          <header class="settings-card-head">
+            <div class="min-w-0">
+              <h2 id="settingsFollowTitle" class="settings-title">Followers</h2>
+              <p class="settings-desc">Who follows you, who you follow, and requests to follow you.</p>
+            </div>
+          </header>
+          <div id="profileFollowCounts" class="follow-counts hidden"></div>
+          <p id="profileFollowNoHandle" class="hidden text-xs text-slate-400 mt-3">Set a username so people can find and follow you.</p>
+          <div id="followRequests" class="mt-5">
+            <h3 class="text-sm font-medium text-slate-100">Follow Requests <span id="followRequestCount" class="text-slate-400 font-normal"></span></h3>
+            <p class="text-xs text-slate-400 mt-1">People asking to follow you while your profile is private. Nobody sees your private profile until you accept.</p>
+            <div id="followRequestRows" class="mt-2"></div>
+            <p id="followRequestNote" class="follow-note" role="status">Loading…</p>
+            <button id="followRequestMore" type="button" class="settings-btn follow-more hidden">Load more</button>
+          </div>
+        </section>
+
         <section id="settingsPrivacy" class="settings-card" aria-labelledby="settingsPrivacyTitle">
           <header class="settings-card-head">
             <div class="min-w-0">
@@ -215,7 +237,7 @@
           <div class="flex items-center justify-between gap-6 pt-5 max-sm:gap-3">
             <div class="min-w-0">
               <div id="visibilityLabel" class="text-sm font-medium text-slate-100">Community leaderboard &amp; public profile</div>
-              <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default. Turn it off to be left off the leaderboard.</p>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">Show my name, photo and ride counts on the Community leaderboard and a public profile. On by default. Turn it off to be left off the leaderboard. Off also makes your account private: new followers need your approval, approved followers see your name on your posts, and existing followers stay until you remove them.</p>
               <p id="communityHandleHint" class="hidden text-xs text-gold mt-1.5">Set a username to get a public profile page.</p>
             </div>
             <button id="visibilityToggle" type="button" role="switch" aria-checked="false" aria-labelledby="visibilityLabel" disabled class="shrink-0 relative w-12 h-7 max-sm:after:absolute max-sm:after:-inset-2 max-sm:after:content-[''] rounded-full bg-[#0F141C] border border-[rgba(250,224,48,0.3)] transition-colors disabled:cursor-not-allowed">
@@ -422,6 +444,7 @@
 
 <script src="js/calc.js?v=11"></script>
 <script src="js/main.js?v=33"></script>
+<script src="js/follows.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -831,6 +854,60 @@
     });
   }
 
+  // Followers & Following (worker/follows.js): counts, lists and requests to follow you.
+  function initFollowSection(user) {
+    const F = window.CCFollow;
+    const handle = user.handle;
+    const refreshCounts = async () => {
+      if (!handle) { document.getElementById('profileFollowNoHandle').classList.remove('hidden'); return; }
+      try {
+        const r = await F.api('/api/follows/' + encodeURIComponent(handle));
+        const s = r.ok ? await F.readJson(r) : null;
+        if (s) F.renderCounts(document.getElementById('profileFollowCounts'), { handle, counts: s.counts, isPrivate: s.private });
+      } catch (e) { /* the counts just stay as they were */ }
+    };
+    document.addEventListener('follows:changed', refreshCounts);
+    refreshCounts();
+    const rows = document.getElementById('followRequestRows'), note = document.getElementById('followRequestNote'), more = document.getElementById('followRequestMore'), count = document.getElementById('followRequestCount');
+    let cursor = null, total = 0;
+    const setTotal = n => { total = n; count.textContent = n ? '(' + n + ')' : ''; if (!n && !rows.children.length) note.textContent = 'No requests right now.'; };
+    const resolve = async (req, row, accept, buttons) => {
+      buttons.forEach(b => { b.disabled = true; });
+      let r = null;
+      try { r = await F.api('/api/follow-requests/' + encodeURIComponent(req.id) + '/' + (accept ? 'accept' : 'decline'), { method: 'POST' }); } catch (e) { r = null; }
+      if (!r || !r.ok) { buttons.forEach(b => { b.disabled = false; }); F.toast("That didn't go through. Please try again.", 'error'); return; }
+      row.remove();
+      setTotal(Math.max(0, total - 1));
+      if (accept) refreshCounts();
+    };
+    const load = async () => {
+      more.disabled = true;
+      let r = null, data = null;
+      try { r = await F.api('/api/follow-requests' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : '')); data = r.ok ? await F.readJson(r) : null; } catch (e) { data = null; }
+      more.disabled = false;
+      if (!data) { note.textContent = "We couldn't load your requests. Please try again."; return; }
+      note.textContent = '';
+      for (const req of data.requests) {
+        const row = F.personRow(req.user);
+        const actions = row.querySelector('[data-actions]');
+        const yes = document.createElement('button'), no = document.createElement('button');
+        yes.type = no.type = 'button';
+        yes.className = 'follow-btn is-small'; yes.textContent = 'Accept'; yes.setAttribute('aria-label', 'Accept ' + req.user.name);
+        no.className = 'follow-btn is-small'; no.dataset.state = 'following'; no.textContent = 'Decline'; no.setAttribute('aria-label', 'Decline ' + req.user.name);
+        yes.addEventListener('click', () => resolve(req, row, true, [yes, no]));
+        no.addEventListener('click', () => resolve(req, row, false, [yes, no]));
+        actions.append(yes, no);
+        rows.appendChild(row);
+      }
+      cursor = data.next_cursor || null;
+      more.classList.toggle('hidden', !cursor);
+      setTotal(data.count);
+    };
+    more.addEventListener('click', load);
+    load();
+    if (new URLSearchParams(location.search).get('section') === 'follow-requests') document.getElementById('settingsFollow').scrollIntoView({ block: 'start' });
+  }
+
   const sessionId = localStorage.getItem(TESLA_SESSION_KEY);
   initEditProfilePanel(sessionId);
   initAvatarEditor(sessionId);
@@ -844,7 +921,7 @@
         if (!r.ok) throw new Error('not authenticated');
         return r.json();
       })
-      .then(data => renderProfile(data.user))
+      .then(data => { renderProfile(data.user); initFollowSection(data.user); })
       .catch(() => {
         document.getElementById('profileSignedOut').classList.remove('hidden');
       });

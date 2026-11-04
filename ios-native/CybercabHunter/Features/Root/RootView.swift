@@ -36,6 +36,7 @@ struct RootView: View {
             if DebugLaunch.opensAccount { showingAccount = true }
             if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
             if let d = DebugLaunch.destination { router.open(d) }
+            if let h = DebugLaunch.opensRider { router.open(.rider(RiderRoute(handle: h))) }
             if DebugLaunch.enablesLiveActivity { await ServiceLiveActivityController.shared.setEnabled(true) }
         }
         // Siri / Shortcuts asked for an Account screen (Activity Alerts, Siri & Shortcuts),
@@ -181,6 +182,8 @@ enum DebugLaunch {
     /// `-seedSharedSighting`: what sharing a photo from Photos does (the Share
     /// extension's inbox gets a generated test photo; UI tests can't drive Photos).
     static var seedsSharedSighting: Bool { ProcessInfo.processInfo.arguments.contains("-seedSharedSighting") }
+    /// `-openRider dave_d`: a rider's profile in the Community tab (UI tests).
+    static var opensRider: String? { value("-openRider") }
     private static func value(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
@@ -198,6 +201,7 @@ enum DebugLaunch {
     static let session: String? = nil
     static let usesTestSession = false
     static let seedsSharedSighting = false
+    static let opensRider: String? = nil
     #endif
 }
 

@@ -162,6 +162,17 @@ d1.exec(`INSERT INTO receipt_ingestions (id, user_id, received_at, status) VALUE
   ('ing-3', 'alice', '${sqlTime(now - 3 * DAY)}', 'rejected')`);
 
 // ---- Serve, or write the fixtures ----
+// ---- Followers & Following: bob and alice follow each other, dave follows
+// alice, carol (private) has one approved follower (bob) and one request (dave).
+for (const [who, handle] of [['s-bob', 'alice_a'], ['s-alice', 'bob_b'], ['s-dave', 'alice_a'], ['s-bob', 'carol_c'], ['s-dave', 'carol_c']]) {
+  await api('PUT', `/api/follows/${handle}`, { session: who });
+}
+{
+  const pending = (await api('GET', '/api/follow-requests', { session: 's-carol' })).json.requests;
+  const fromBob = pending.find(r => r.user.handle === 'bob_b');
+  if (fromBob) await api('POST', `/api/follow-requests/${fromBob.id}/accept`, { session: 's-carol' });
+}
+
 const port = flag('--serve');
 const out = flag('--fixtures');
 if (out) {
@@ -169,6 +180,12 @@ if (out) {
   const save = (name, r) => fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify(r.json, null, 2) + '\n');
   const saveStatus = (name, r) => fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify({ status: r.status, body: r.json }, null, 2) + '\n');
   // Phase 7: the rider's own Rider data and Receipt sync answers.
+  save('follow-status-public', await api('GET', '/api/follows/alice_a', { session: 's-bob' }));
+  save('follow-status-private', await api('GET', '/api/follows/carol_c', { session: 's-dave' }));
+  save('follow-status-approved', await api('GET', '/api/follows/carol_c', { session: 's-bob' }));
+  save('follow-list', await api('GET', '/api/follows/alice_a/followers', { session: 's-bob' }));
+  save('follow-requests', await api('GET', '/api/follow-requests', { session: 's-carol' }));
+  save('social-feed-following', await api('GET', '/api/social/feed?filter=following&limit=10', { session: 's-dave' }));
   save('my-rider-data', await api('GET', '/api/profile', { session: 's-alice' }));
   save('my-trips', await api('GET', '/api/trips?page=1&page_size=10', { session: 's-alice' }));
   save('my-sync-status', await api('GET', '/api/rides/sync-status', { session: 's-alice' }));

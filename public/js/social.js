@@ -176,7 +176,7 @@
   const SORT_KEY = 'cchSocialSort';
   let sort = (() => { try { return localStorage.getItem(SORT_KEY) === 'popular' ? 'popular' : 'new'; } catch (e) { return 'new'; } })();
   const SORTABLE = ['photos', 'reviews', 'saved'];
-  const SORT_NOTE = { foryou: 'Ranked by recent likes and comments', latest: 'Newest posts first' };
+  const SORT_NOTE = { foryou: 'Ranked by recent likes and comments', following: 'Newest posts from accounts you follow', latest: 'Newest posts first' };
   let cursor = null;
   let loading = false;
   let feedToken = 0;
@@ -291,15 +291,20 @@
     latest: 'Be the first to post about the Cybercab.',
     photos: 'No photo posts yet. Share a Cybercab photo.',
     reviews: 'No ride reviews yet. Rode in one? Add a ride review to a post.',
-    saved: "You haven't saved any posts yet."
+    saved: "You haven't saved any posts yet.",
+    following: "The people you follow haven't posted yet."
   };
+  // Following: whether this rider follows anyone (the server says, on the first page).
+  let followsNobody = false;
   function showFeedState(state) {
     $('socialEmpty').classList.toggle('hidden', state !== 'empty' && state !== 'signin');
     $('socialError').classList.toggle('hidden', state !== 'error');
     $('socialEmptySignIn').classList.toggle('hidden', state !== 'signin');
-    if (state === 'empty') $('socialEmptyText').textContent = EMPTY[filter];
-    if (state === 'signin') { $('socialEmptyText').textContent = 'Sign in to save posts and see them here.'; $('socialEmptySignIn').href = 'signin.html?returnTo=' + encodeURIComponent('/community'); }
-    document.querySelector('#socialEmpty .social-empty-title').textContent = filter === 'saved' ? 'Saved posts' : 'Nothing here yet';
+    const nobody = state === 'empty' && filter === 'following' && followsNobody;
+    if (state === 'empty') $('socialEmptyText').textContent = nobody ? 'Follow other Cybercab spotters to see their posts here.' : EMPTY[filter];
+    $('socialEmptyDiscover').classList.toggle('hidden', !nobody);
+    if (state === 'signin') { $('socialEmptyText').textContent = filter === 'following' ? 'Sign in to see posts from the accounts you follow.' : 'Sign in to save posts and see them here.'; $('socialEmptySignIn').href = 'signin.html?returnTo=' + encodeURIComponent('/community'); }
+    document.querySelector('#socialEmpty .social-empty-title').textContent = nobody ? "You're not following anyone yet." : filter === 'following' ? 'Following' : filter === 'saved' ? 'Saved posts' : 'Nothing here yet';
   }
   async function loadFeed(reset) {
     if (loading && !reset) return;
@@ -313,7 +318,7 @@
       showFeedState(null);
       $('socialMore').classList.add('hidden');
     }
-    if (filter === 'saved' && !session()) {
+    if ((filter === 'saved' || filter === 'following') && !session()) {
       loading = false; feed.innerHTML = ''; feed.setAttribute('aria-busy', 'false'); showFeedState('signin'); return;
     }
     $('socialMore').disabled = true;
@@ -324,7 +329,7 @@
     let status = 0;
     try { const r = await api('/api/social/feed?' + q); status = r.status; data = r.ok ? await json(r) : null; } catch (e) { data = null; }
     if (token !== feedToken) return;
-    if (status === 401 && filter === 'saved') { loading = false; feed.innerHTML = ''; feed.setAttribute('aria-busy', 'false'); showFeedState('signin'); return; }
+    if (status === 401 && (filter === 'saved' || filter === 'following')) { loading = false; feed.innerHTML = ''; feed.setAttribute('aria-busy', 'false'); showFeedState('signin'); return; }
     loading = false;
     $('socialMore').disabled = false;
     feed.setAttribute('aria-busy', 'false');
@@ -334,6 +339,7 @@
       return;
     }
     setViewer(data.viewer);
+    if (reset && filter === 'following') followsNobody = data.following_count === 0;
     for (const p of data.posts) { if (!feed.querySelector(`[data-post="${CSS.escape(p.id)}"]`)) renderPostInto(feed, p); }
     cursor = data.next_cursor || null;
     $('socialMore').classList.toggle('hidden', !cursor);
@@ -356,6 +362,7 @@
     renderSortBar();
     loadFeed(true);
   }
+  $('socialEmptyDiscover').addEventListener('click', () => { const tab = $('communityTabLeaderboard'); if (tab) { tab.click(); tab.focus(); } });
   const filterBtns = () => [...document.querySelectorAll('.social-filter[data-filter]')];
   filterBtns().forEach(b => b.addEventListener('click', () => { if (b.dataset.filter !== filter) setFilter(b.dataset.filter); }));
   document.querySelector('.social-filter-tabs').addEventListener('keydown', e => {

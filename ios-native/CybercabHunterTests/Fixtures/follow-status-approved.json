@@ -1,0 +1,24 @@
+{
+  "handle": "carol_c",
+  "private": true,
+  "can_view": true,
+  "relationship": "following",
+  "follows_you": false,
+  "requested_you": false,
+  "counts": {
+    "followers": 1,
+    "following": 0
+  },
+  "profile": {
+    "name": "Carol Private",
+    "handle": "carol_c",
+    "avatar_url": null,
+    "rank": {
+      "key": "bronze",
+      "name": "Bronze Spotter"
+    },
+    "level": 1,
+    "bio": null,
+    "joined": "2026-11"
+  }
+}

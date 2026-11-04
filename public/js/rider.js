@@ -85,6 +85,54 @@
     }).join('');
     $('riderNoVehicles').classList.toggle('hidden', vehicles.length > 0);
     show('riderProfile');
+    loadFollow(r.handle);
+  }
+
+  // The follow button and counts (js/follows.js, worker/follows.js): per viewer, never cached.
+  async function followStatus(handle) {
+    const F = window.CCFollow;
+    if (!F) return null;
+    try {
+      const resp = await F.api(`/api/follows/${encodeURIComponent(handle)}`);
+      return resp.ok ? await F.readJson(resp) : null;
+    } catch (e) { return null; }
+  }
+  function followButton(el, s) {
+    el.innerHTML = '';
+    if (s.relationship === 'self') return;
+    el.appendChild(window.CCFollow.makeButton({ handle: s.handle, state: s.relationship, isPrivate: s.private, onChange: changed => renderPublicFollow(changed) }));
+  }
+  function renderPublicFollow(s) {
+    window.CCFollow.renderCounts($('riderFollowCounts'), { handle: s.handle, counts: s.counts, isPrivate: s.private });
+  }
+  async function loadFollow(handle) {
+    const s = await followStatus(handle);
+    if (!s) return;
+    followButton($('riderFollowButton'), s);
+    renderPublicFollow(s);
+    document.addEventListener('follows:changed', async () => { const again = await followStatus(handle); if (again) renderPublicFollow(again); });
+  }
+
+  // A private account: signed in, the handle and Request; its owner and approved
+  // followers also see who it is. Anyone else gets the plain private state.
+  function renderPrivate(s) {
+    const F = window.CCFollow;
+    const box = $('riderPrivateFollow');
+    box.classList.remove('hidden');
+    $('riderPrivateHandle').textContent = `@${s.handle}`;
+    const p = s.profile;
+    $('riderPrivateName').textContent = p ? p.name : '';
+    $('riderPrivateBio').textContent = (p && p.bio) || '';
+    $('riderPrivateBio').classList.toggle('hidden', !(p && p.bio));
+    $('riderPrivateAvatar').classList.toggle('hidden', !p);
+    if (p) CCC.renderAvatar($('riderPrivateAvatar'), { url: p.avatar_url, name: p.name, size: 128 });
+    F.renderCounts($('riderPrivateCounts'), { handle: s.handle, counts: s.counts, isPrivate: true });
+    const slot = $('riderPrivateButton');
+    slot.innerHTML = '';
+    if (s.relationship !== 'self') {
+      // Following or un-following changes what this page may show.
+      slot.appendChild(F.makeButton({ handle: s.handle, state: s.relationship, isPrivate: true, onChange: renderPrivate }));
+    }
   }
 
   async function load() {
@@ -92,7 +140,12 @@
     if (!m) { show('riderPrivate'); return; }
     let resp;
     try { resp = await fetch(`${API}/api/riders/${m[1]}`); } catch (e) { show('riderError'); return; }
-    if (resp.status === 404) { show('riderPrivate'); return; }
+    if (resp.status === 404) {
+      show('riderPrivate');
+      const s = await followStatus(decodeURIComponent(m[1]));
+      if (s && s.private) renderPrivate(s);
+      return;
+    }
     let data = null;
     try { data = resp.ok ? await resp.json() : null; } catch (e) { data = null; }
     if (!data || !data.rider) { show('riderError'); return; }
