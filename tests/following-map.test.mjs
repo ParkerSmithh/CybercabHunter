@@ -73,7 +73,7 @@ console.log('1. Who may ask');
   check('no city at all: 400 (never "everywhere")', (await call(ctx, 'GET', '/api/sightings/following', { who: 'alice' })).status === 400);
   check('a bad cursor: 400', (await map(ctx, 'alice', 'austin', '&cursor=abc')).status === 400);
   const empty = await map(ctx, 'alice');
-  check('following nobody: following_count 0, the "No followed spotters yet" state', empty.status === 200 && empty.json.following_count === 0 && empty.json.sightings.length === 0);
+  check('following nobody: following_count 0, the "NO FOLLOWED SPOTTERS YET" state', empty.status === 200 && empty.json.following_count === 0 && empty.json.sightings.length === 0);
   check('the public gallery still answers signed out', (await call(ctx, 'GET', '/api/sightings?city=austin')).status === 200);
 }
 
@@ -274,7 +274,7 @@ console.log('11. Map controls');
   check('Following never polls: no timer', !/setInterval|setTimeout/.test(js));
   check('an older request is cancelled', /AbortController/.test(js) && /inFlight\.abort\(\)/.test(js));
   check('All Sightings is the default', /let mode = 'all'/.test(js));
-  check('the spec wording', /No followed spotters yet/.test(js) && /Follow other Cybercab spotters to see their sightings on this map\./.test(js) && /No sightings from followed users in this area/.test(js));
+  check('the spec wording', /NO FOLLOWED SPOTTERS YET/.test(js) && /Follow other Cybercab spotters to see their sightings on this map\./.test(js) && /NO SIGHTINGS FROM FOLLOWED USERS IN THIS AREA/.test(js));
   const page = fs.readFileSync(`${ROOT}public/infrastructure.html`, 'utf8');
   check('every service area: the page refreshes Following on a city change, with no city written into the script', /if \(following\) following\.refresh\(\);/.test(page) && !/austin|dallas/i.test(js.replace(/cityOf\(\) *: *\(\) => 'austin'|\(\) => 'austin'/g, '')));
 }

@@ -50,6 +50,28 @@ final class FollowingMapUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["@bob_b"].waitForExistence(timeout: 15), "the link opens the spotter's profile")
     }
 
+    func testOneMapViewControlOnOneRowWithReplay() {
+        let app = openZones(session: "s-alice")
+        let all = app.buttons["mapSourceAll"], following = app.buttons["mapSourceFollowing"], heat = app.buttons["heatmapButton"], replay = app.buttons["replayButton"]
+        XCTAssertTrue(all.waitForExistence(timeout: 30))
+        XCTAssertFalse(app.buttons["normalMapButton"].exists, "no second set of buttons")
+        XCTAssertEqual(all.frame.midY, replay.frame.midY, accuracy: 1, "one row")
+        XCTAssertEqual(following.frame.midY, heat.frame.midY, accuracy: 1)
+        XCTAssertLessThanOrEqual(heat.frame.maxX, replay.frame.minX, "Replay sits beside the choice, not over it")
+        XCTAssertLessThanOrEqual(replay.frame.maxX, app.windows.firstMatch.frame.maxX)
+        XCTAssertEqual(replay.frame.height, 48, accuracy: 1)
+        saveShot(app, "zones-controls-all")
+        heat.tap()
+        XCTAssertTrue(heat.isSelected && !all.isSelected && !following.isSelected, "one choice at a time")
+        saveShot(app, "zones-controls-heat")
+        following.tap()
+        XCTAssertTrue(following.isSelected && !heat.isSelected)
+        XCTAssertTrue(any(app, "followingMarker").waitForExistence(timeout: 20), "Following from Heatmap goes straight back to the map")
+        saveShot(app, "zones-controls-following")
+        all.tap()
+        XCTAssertTrue(all.isSelected)
+    }
+
     func testSwitchingBackHidesFollowingMarkers() {
         let app = openZones(session: "s-alice")
         XCTAssertTrue(app.buttons["mapSourceFollowing"].waitForExistence(timeout: 30))
@@ -99,7 +121,7 @@ final class FollowingMapUITests: XCTestCase {
         XCTAssertTrue(app.buttons["mapSourceFollowing"].waitForExistence(timeout: 30))
         app.buttons["mapSourceFollowing"].tap()
         XCTAssertTrue(any(app, "followingEmptyTitle").waitForExistence(timeout: 15))
-        XCTAssertEqual(any(app, "followingEmptyTitle").label, "No followed spotters yet")
+        XCTAssertEqual(any(app, "followingEmptyTitle").label, "NO FOLLOWED SPOTTERS YET")
         XCTAssertTrue(any(app, "followingFindSpotters").exists)
         saveShot(app, "following-map-nobody")
     }
@@ -110,7 +132,7 @@ final class FollowingMapUITests: XCTestCase {
         XCTAssertTrue(dave.buttons["mapSourceFollowing"].waitForExistence(timeout: 30))
         dave.buttons["mapSourceFollowing"].tap()
         XCTAssertTrue(any(dave, "followingEmptyTitle").waitForExistence(timeout: 15))
-        XCTAssertEqual(any(dave, "followingEmptyTitle").label, "No sightings from followed users in this area")
+        XCTAssertEqual(any(dave, "followingEmptyTitle").label, "NO SIGHTINGS FROM FOLLOWED USERS IN THIS AREA")
         XCTAssertFalse(any(dave, "followingMarker").exists)
         saveShot(dave, "following-map-no-sightings")
         dave.terminate()

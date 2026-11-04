@@ -57,6 +57,6 @@ final class ZonesStyleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["heatPanelExpand"].waitForExistence(timeout: 10))
         sleep(4)
         shot(app, "zones-heatmap")
-        app.buttons["normalMapButton"].tap()
+        app.buttons["mapSourceAll"].tap()
     }
 }

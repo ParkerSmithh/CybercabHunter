@@ -64,7 +64,7 @@ final class ZonesUITests: XCTestCase {
         XCTAssertTrue(expand.label.contains("all"), "still the All range: \(expand.label)")
         XCTAssertTrue(app.buttons["heatmapButton"].isSelected)
         assertNative(app)
-        app.buttons["normalMapButton"].tap()
+        app.buttons["mapSourceAll"].tap()
 
         // Replay.
         app.buttons["replayButton"].tap()
