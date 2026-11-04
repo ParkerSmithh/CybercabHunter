@@ -63,6 +63,14 @@ final class LiveCameraAnnotation: NSObject, MKAnnotation {
     init(_ d: CameraDetection) { detection = d; coordinate = d.coordinate }
 }
 
+/// A Following-map marker: the same Cybercab marker, one per vehicle or spot.
+final class FollowingSpotAnnotation: NSObject, MKAnnotation {
+    @objc dynamic var coordinate: CLLocationCoordinate2D
+    var spot: FollowingMapSpot
+    var title: String? { "Cybercab spotted by \(spot.sightings.first?.spotter.name ?? "someone you follow")" }
+    init(_ spot: FollowingMapSpot) { self.spot = spot; coordinate = .init(latitude: spot.lat, longitude: spot.lng) }
+}
+
 final class CameraDotAnnotation: NSObject, MKAnnotation {
     let dot: ZonesModel.CameraDot
     var coordinate: CLLocationCoordinate2D { dot.coordinate }

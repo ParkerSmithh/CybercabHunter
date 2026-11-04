@@ -16,7 +16,7 @@ import { apiModerationForwardingStats, apiModerationForwardingDetail, apiModerat
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
 import { apiSearchPlaces, apiSearchMapPlaces } from './places.js';
 import { apiListServiceAreas } from './service-areas.js';
-import { apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
+import { apiFollowingSightings, apiListPublicSightings, apiGetPublicSightingPhoto, expireSightingPhotos } from './sightings-public.js';
 import { apiConnectorCreateVehicleSighting } from './connector.js';
 import { apiCommunityLeaderboard, apiGetRiderProfile, apiSearchRiders, leaderboardData } from './community.js';
 import { apiDeleteAccount } from './account.js';
@@ -395,6 +395,10 @@ const worker = {
     // photo sightings only, and their photos by random public id. Public GETs.
     if (url.pathname === '/api/sightings' && request.method === 'GET') {
       return withCors(await apiListPublicSightings(request, env, ctx), request);
+    }
+    // The maps' Following filter: signed in, per viewer, never cached.
+    if (url.pathname === '/api/sightings/following' && request.method === 'GET') {
+      return withCors(await apiFollowingSightings(request, env), request);
     }
     const sightingPhotoMatch = url.pathname.match(/^\/api\/sightings\/([^/]+)\/photo$/);
     if (sightingPhotoMatch && request.method === 'GET') {

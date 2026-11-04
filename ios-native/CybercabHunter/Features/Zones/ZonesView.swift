@@ -10,6 +10,9 @@ struct ZonesView: View {
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openSignIn) private var openSignIn
+    /// Bumped when the rider comes back to the map (they may have just followed someone).
+    @State private var followingRefresh = 0
     @State private var model = ZonesModel()
     @State private var location = LocationService.shared
     @State private var recenterID = 0
@@ -32,9 +35,9 @@ struct ZonesView: View {
         // Liquid Glass tab bar. The controls stay inside the safe area.
         GeometryReader { geo in
             ZStack(alignment: .top) {
-                ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.live[model.city] ?? [],
+                ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.source == .following ? [] : (model.live[model.city] ?? []), followingSpots: model.followingSpots,
                             heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place, locationFix: location.location, recenterID: recenterID, locationTarget: locationTarget,
-                            bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 90,
+                            bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 130,
                             topInset: geo.safeAreaInsets.top + 52, selectionActive: selection != nil) { selection = $0 }   // under the status bar, header and the Search button
                     .ignoresSafeArea()
                     .accessibilityIdentifier("zonesMap")
@@ -47,6 +50,7 @@ struct ZonesView: View {
                 topControls
             }
         }
+        .overlay { if model.source == .following && model.mode == .normal { followingOverlay } }
         .overlay(alignment: .bottom) { bottomControls }
         // The place search: an Apple Maps-style sheet over the live map (medium, drag up for more).
         .sheet(isPresented: $searchOpen) {
@@ -70,7 +74,13 @@ struct ZonesView: View {
         .background(Color.chBackground)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: ReplayRoute.self) { ReplayView(route: $0) }
-        .sheet(item: $selection) { sel in MapSelectionSheet(selection: sel, model: model).presentationDetents([.medium]).presentationDragIndicator(.visible) }
+        .sheet(item: $selection) { sel in
+            if case .following(let spot) = sel {
+                FollowingSpotSheet(spot: spot) { selection = nil }.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            } else {
+                MapSelectionSheet(selection: sel, model: model).presentationDetents([.medium]).presentationDragIndicator(.visible)
+            }
+        }
         .sheet(isPresented: $showingDetails) { ZoneDetailsSheet(model: model).presentationDetents([.medium, .large]).presentationDragIndicator(.visible) }
         // Live markers: now, then every 60 s while Zones is showing (as the site), per city.
         .task {
@@ -80,8 +90,15 @@ struct ZonesView: View {
         .task(id: model.city) {
             await model.loadPanel(using: session.api)
         }
-        .task(id: "\(model.city)|\(scenePhase == .active)") {
+        .task(id: "\(model.city)|\(scenePhase == .active)|\(model.source.rawValue)|\(session.user != nil)|\(followingRefresh)") {
             guard scenePhase == .active else { return }
+            // Following asks once and never polls; All Sightings keeps its 60 s refresh.
+            if model.source == .following {
+                // The stored session, not `user`: offline, the account can't be loaded but
+                // the rider is still signed in. The server's 401 is what says otherwise.
+                await model.loadFollowing(using: session.api, signedIn: session.token != nil)
+                return
+            }
             while !Task.isCancelled {
                 await model.loadLive(using: session.api)
                 try? await Task.sleep(for: .seconds(60))
@@ -96,6 +113,7 @@ struct ZonesView: View {
         }
         .onDisappear { location.cancel() }
         .onAppear { if let c = router.zonesCity { model.city = c; router.zonesCity = nil } }
+        .onAppear { if model.source == .following { followingRefresh += 1 } }
         #if DEBUG
         .onAppear {
             let args = ProcessInfo.processInfo.arguments
@@ -118,7 +136,10 @@ struct ZonesView: View {
             if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("zone-\(c.rawValue)", ServiceZoneIntent(city: c)) }
         }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
-        .onChange(of: model.city) { place = nil; selection = nil }
+        .onChange(of: model.city) { place = nil; selection = nil; model.clearFollowing() }
+        #if DEBUG
+        .onAppear { if ProcessInfo.processInfo.arguments.contains("-zonesFollowing") { model.source = .following } }
+        #endif
     }
 
     // MARK: controls
@@ -191,9 +212,89 @@ struct ZonesView: View {
         }
     }
 
+    /// All Sightings | Following: the Normal Map only (a heatmap is camera history).
+    private var sourceToggle: some View {
+        HStack(spacing: 0) {
+            ForEach(ZonesModel.Source.allCases) { option in
+                let on = model.source == option
+                Button { withAnimation(.snappy) { model.source = option } } label: {
+                    Text(option == .all ? "All Sightings" : "Following").font(.inter(13.5, .semibold))
+                        .padding(.horizontal, 14).frame(height: MapControl.height - 8)
+                        .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
+                        .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: MapControl.radius - 4))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier(option == .all ? "mapSourceAll" : "mapSourceFollowing")
+            }
+        }
+        .padding(4)
+        .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
+        .sensoryFeedback(.selection, trigger: model.source)
+    }
+
+    /// What Following has to say when there is nothing, or something missing, to draw.
+    @ViewBuilder private var followingOverlay: some View {
+        switch model.following {
+        case .idle, .loading:
+            EmptyView()
+        case .signedOut:
+            followingCard(title: "Sign in to see Following", text: "Sign in to see sightings from people you follow. The public map stays open to everyone.") {
+                Button("Sign in") { openSignIn() }.buttonStyle(ZoneCardButton(gold: true)).accessibilityIdentifier("followingSignIn")
+            }
+        case .failed:
+            followingCard(title: "Couldn't load Following", text: "Check your connection and try again. All Sightings still works.") {
+                Button("Try again") { followingRefresh += 1 }.buttonStyle(ZoneCardButton(gold: true)).accessibilityIdentifier("followingRetry")
+            }
+        case .loaded(let page):
+            if page.followingCount == 0 {
+                followingCard(title: "No followed spotters yet", text: "Follow other Cybercab spotters to see their sightings on this map.") {
+                    Button("Find spotters") { router.openCommunity(.leaderboard) }.buttonStyle(ZoneCardButton(gold: true)).accessibilityIdentifier("followingFindSpotters")
+                }
+            } else if page.sightings.isEmpty {
+                followingCard(title: "No sightings from followed users in this area",
+                              text: page.unplaced.isEmpty ? "The people you follow have no recent approved sightings here."
+                                : "\(Format.plural(page.unplaced.count, "recent sighting has", "recent sightings have")) no map position, so nothing is shown here.") { EmptyView() }
+            } else if !page.unplaced.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("\(Format.plural(page.unplaced.count, "more sighting has", "more sightings have")) no map position")
+                        .font(.inter(12, .medium)).foregroundStyle(Color.chMist)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Color.chBackground.opacity(0.92), in: .capsule)
+                        .padding(.bottom, 190)
+                }
+                .allowsHitTesting(false)
+                .accessibilityIdentifier("followingUnplacedNote")
+            }
+        }
+    }
+
+    private func followingCard<Actions: View>(title: String, text: String, @ViewBuilder actions: () -> Actions) -> some View {
+        VStack(spacing: 8) {
+            Text(title).font(.inter(16, .bold)).foregroundStyle(Color.chInk).multilineTextAlignment(.center)
+                .accessibilityIdentifier("followingEmptyTitle")
+            Text(text).font(.inter(13.5)).foregroundStyle(Color.chMist).multilineTextAlignment(.center)
+            HStack(spacing: 8) {
+                actions()
+                Button("All Sightings") { withAnimation(.snappy) { model.source = .all } }.buttonStyle(ZoneCardButton(gold: false))
+                    .accessibilityIdentifier("followingBackToAll")
+            }
+            .padding(.top, 4)
+        }
+        .padding(16)
+        .frame(maxWidth: 320)
+        .background(Color.chBackground.opacity(0.94), in: .rect(cornerRadius: MapControl.radius))
+        .overlay(RoundedRectangle(cornerRadius: MapControl.radius).strokeBorder(Color.brandGold.opacity(0.3)))
+        .padding(.horizontal, 24)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("followingEmptyCard")
+    }
+
     private var bottomControls: some View {
         VStack(alignment: .trailing, spacing: 10) {
-            if model.mode == .heat { heatPanel }
+            if model.mode == .heat { heatPanel } else { sourceToggle }
             HStack(spacing: 8) {
                 // The map key lives in Zone details only (as on the website).
                 Spacer(minLength: 0)
@@ -318,6 +419,91 @@ struct ZonesView: View {
 
 struct ReplayRoute: Hashable { let city: String }
 
+private struct ZoneCardButton: ButtonStyle {
+    let gold: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.inter(13.5, .semibold))
+            .padding(.horizontal, 14).frame(minHeight: 40)
+            .foregroundStyle(gold ? Color(hex: 0x1A1204) : Color.chInk)
+            .background(gold ? Color.brandGold : Color.clear, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(gold ? Color.clear : Color.chHair2))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+/// A tapped Following marker: the sighting's permitted facts, the links to the
+/// vehicle and the spotter, and any other sightings the marker stands for.
+struct FollowingSpotSheet: View {
+    let spot: FollowingMapSpot
+    let close: () -> Void
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        ScrollView {
+            if let s = spot.sightings.first {
+                VStack(alignment: .leading, spacing: 10) {
+                    Eyebrow(text: "Spotted by someone you follow")
+                    AsyncImage(url: s.gallery.imageURL) { phase in
+                        if let image = phase.image {
+                            image.resizable().aspectRatio(contentMode: .fit).frame(maxWidth: .infinity, maxHeight: 300)
+                        } else if phase.error != nil {
+                            Text("Photo unavailable").font(.inter(12)).foregroundStyle(Color.chFog).frame(maxWidth: .infinity, minHeight: 160)
+                        } else {
+                            ProgressView().tint(Color.chFog).frame(maxWidth: .infinity, minHeight: 160)
+                        }
+                    }
+                    .background(Color(hex: 0x0C1119)).clipShape(.rect(cornerRadius: 10))
+                    .accessibilityElement().accessibilityAddTraits(.isImage)
+                    .accessibilityLabel("Photo of a Cybercab\(s.location.map { " at \($0)" } ?? "")")
+                    .accessibilityIdentifier("followingSightingPhoto")
+                    Text(s.plate ?? "Cybercab sighting").font(.inter(20, .bold)).foregroundStyle(Color.chInk)
+                        .accessibilityIdentifier("followingSightingTitle")
+                    Text(s.gallery.spottedText).font(.inter(13)).foregroundStyle(Color.chMist)
+                    if let location = s.location { Text(location).font(.inter(14)).foregroundStyle(Color.chMist) }
+                    links(s)
+                    if spot.sightings.count > 1 { others }
+                    Footnote(text: "A past sighting at about this spot: not a live position.")
+                }
+                .padding(20)
+            }
+        }
+        .appBackground()
+    }
+
+    @ViewBuilder private func links(_ s: FollowingMapPage.Sighting) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let handle = s.spotter.handle {
+                Button { close(); router.open(.rider(RiderRoute(handle: handle))) } label: {
+                    Label("Spotted by \(s.spotter.name)", systemImage: "person.crop.circle").font(.inter(14, .semibold)).foregroundStyle(Color.brandGold)
+                }
+                .frame(minHeight: 36)
+                .accessibilityIdentifier("followingSpotterLink")
+            } else {
+                Text("Spotted by \(s.spotter.name)").font(.inter(14, .semibold)).foregroundStyle(Color.chInk)
+            }
+            if let id = s.vehicleId {
+                Button { close(); router.openVehicle(id: id, plate: s.plate) } label: {
+                    Label("View this Cybercab", systemImage: "car.fill").font(.inter(14, .semibold)).foregroundStyle(Color.brandGold)
+                }
+                .frame(minHeight: 36)
+                .accessibilityIdentifier("followingVehicleLink")
+            }
+        }
+    }
+
+    private var others: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("ALSO SPOTTED").font(.inter(11, .semibold)).tracking(1.4).foregroundStyle(Color.chFog)
+            ForEach(spot.sightings.dropFirst()) { m in
+                Text("\(m.spotter.name): \(m.gallery.spottedText)\(m.location.map { ", \($0)" } ?? "")")
+                    .font(.inter(13)).foregroundStyle(Color.chMist)
+            }
+        }
+        .padding(.top, 6)
+        .accessibilityIdentifier("followingOtherSightings")
+    }
+}
+
 // MARK: - Sheets
 
 /// A tapped marker: a charging location, a camera's Cybercab capture, or (in
@@ -358,6 +544,8 @@ struct MapSelectionSheet: View {
                     Text(Format.instant(d.observedAt).map { $0.formatted(Date.FormatStyle(timeZone: Format.central).month(.abbreviated).day().hour().minute().timeZone()) } ?? "")
                         .font(.inter(13)).foregroundStyle(Color.chMist)
                     Footnote(text: "Seen by the traffic camera at this spot in the last 24 hours: a camera sighting, not a live position. Camera captures don't identify which Cybercab it was.")
+                case .following:
+                    EmptyView()   // FollowingSpotSheet shows these
                 case .heatCamera(let id, let name):
                     let cam = model.heatCamera(id)
                     let s = cam.map { CameraHeat.stats(for: $0, hour: model.heatHour) } ?? CameraHeat.Stats(count: 0, last: nil, busiestHour: nil, busiestDay: nil)

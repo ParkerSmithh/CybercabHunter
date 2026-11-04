@@ -156,6 +156,37 @@ async function run() {
     check('12:05 am is just after midnight (00:05), not noon', extraction.fields.dropoff_time === '00:05');
   }
 
+  console.log('10b. A missing or ambiguous pickup time is never guessed (docs/bugs.md)');
+  {
+    const read = async stops => extractTeslaReceiptFieldsV2(await parseRawEmail(
+      'From: robotaxi@tesla.com\nTo: u_test@receipts.example.com\nSubject: Your Tesla Robotaxi Receipt\nMessage-ID: <gap-001@tesla.com>\nDate: Thu, 17 Sep 2026 18:00:00 +0000\nContent-Type: text/plain\n\n' +
+      `Trip Summary for September 17, 2026\n\n2.0 mi · 5 min · ABC1234\n\n$5.00\n\nTotal\n\n${stops}\n\nPayment\n\nTrip Fare $5.00\n`)).fields;
+    const A = '1 Main St, Austin, TX 78701', B = '2 Oak St, Austin, TX 78701';
+    let f = await read(`Pick up\n\n${A}\n\nDest\n\n${B}\n\n5:20 pm`);
+    check('no pickup time, a place name: the time is the drop-off time, not the pickup time', f.pickup_time === undefined && f.dropoff_time === '17:20');
+    check('...and the two stops stay apart', f.pickup_description === A && f.dropoff_description === `Dest, ${B}`);
+    const ride = normalizeRide({ extraction: { fields: f, fieldSources: {} }, receiptHash: 'h', review: { status: 'needs_review', reason: 'pickup_time_missing' } }, 'receipt_import');
+    check('...which leaves no ride identity: pickup_time_missing, for review, never a wrong key', ride.identityIssue === 'pickup_time_missing' && ride.rideKey === null);
+    f = await read(`Pick up\n\n${A}\n\nDrop off\n\n${B}\n\n5:20 pm`);
+    check('no pickup time, a Drop off label: the same', f.pickup_time === undefined && f.dropoff_time === '17:20' && f.pickup_description === A && f.dropoff_description === B);
+    f = await read(`Pick up\n\n${A}\n\n${B}\n\n5:20 pm`);
+    check('no pickup time, two bare addresses: the same', f.pickup_time === undefined && f.dropoff_time === '17:20' && f.pickup_description === A && f.dropoff_description === B);
+    f = await read(`Pick up\n\n${A}\n\nDrop off 5:20 pm\n\n${B}`);
+    check('an inline drop-off time: read as such, and not left in the address', f.pickup_time === undefined && f.dropoff_time === '17:20' && f.pickup_description === A && f.dropoff_description === B);
+    f = await read(`Pick up\n\n${A}\n\n5:05 pm\n\nDrop off 5:20 pm\n\n${B}`);
+    check('a pickup time and an inline drop-off time: both right', f.pickup_time === '17:05' && f.dropoff_time === '17:20' && f.dropoff_description === B);
+    f = await read(`Pick up\n\nThe Place\n\nAnother Name\n\n5:20 pm`);
+    check('two lines that could be either, then one time: no time at all rather than a wrong one', f.pickup_time === undefined && f.dropoff_time === undefined);
+    f = await read(`Pick up\n\n${A}\n\nDest\n\n${B}`);
+    check('no times at all: nothing invented, and the stops stay apart', f.pickup_time === undefined && f.dropoff_time === undefined && f.pickup_description === A && f.dropoff_description === `Dest, ${B}`);
+    f = await read(`Pick up\n\n${A}\n\n5:05 pm`);
+    check('one address then one time: that is the pickup time', f.pickup_time === '17:05' && f.dropoff_time === undefined);
+    f = await read(`Pick up\n\n${A}\n\n5:05 pm\n\nDest\n\n${B}`);
+    check('a pickup time with no drop-off time: the pickup time stays', f.pickup_time === '17:05' && f.dropoff_time === undefined && f.dropoff_description === `Dest, ${B}`);
+    f = await read(`Pick up\n\n${A}\n\n5:05 pm\n\nDest\n\n${B}\n\n5:20 pm`);
+    check('the real two-time receipt reads exactly as before', f.pickup_time === '17:05' && f.dropoff_time === '17:20' && f.pickup_description === A && f.dropoff_description === `Dest, ${B}` && f.duration_minutes === 5);
+  }
+
   console.log('11. Duplicate delivery of the same real-format email is recognized (message-ID path, unaffected by dedupe change)');
   {
     const msgA = await parseRawEmail(fixture('tesla-receipt-real-format.eml'));

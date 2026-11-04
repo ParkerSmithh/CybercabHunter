@@ -6,11 +6,13 @@ enum MapSelection: Identifiable, Equatable {
     case charging(WebData.ChargingLocation)
     case liveCamera(CameraDetection)
     case heatCamera(id: String, name: String)
+    case following(FollowingMapSpot)
     var id: String {
         switch self {
         case .charging(let c): "charging-\(c.name)"
         case .liveCamera(let d): "live-\(d.cameraId)"
         case .heatCamera(let id, _): "heat-\(id)"
+        case .following(let spot): "following-\(spot.id)"
         }
     }
 }
@@ -23,6 +25,8 @@ struct ZoneMapView: UIViewRepresentable {
     var cityKey: String
     var heatMode = false
     var liveDetections: [CameraDetection] = []
+    /// The Following filter's markers; empty on All Sightings.
+    var followingSpots: [FollowingMapSpot] = []
     var heatPoints: [ZonesModel.HeatPoint] = []
     var cameraDots: [ZonesModel.CameraDot] = []
     var place: PlaceResults.Place?
@@ -160,6 +164,19 @@ struct ZoneMapView: UIViewRepresentable {
                     map.addAnnotation(LiveCameraAnnotation(d))
                 }
             }
+            // Following: the same marker, reconciled by spot (Normal Map only).
+            let wantSpots = p.showsMarkers && !p.heatMode ? p.followingSpots : []
+            let spotCurrent = map.annotations.compactMap { $0 as? FollowingSpotAnnotation }
+            let spotById = Dictionary(spotCurrent.map { ($0.spot.id, $0) }, uniquingKeysWith: { a, _ in a })
+            let wantedSpots = Set(wantSpots.map(\.id))
+            map.removeAnnotations(spotCurrent.filter { !wantedSpots.contains($0.spot.id) })
+            for s in wantSpots {
+                if let existing = spotById[s.id] {
+                    if existing.spot != s { existing.spot = s; existing.coordinate = .init(latitude: s.lat, longitude: s.lng) }
+                } else {
+                    map.addAnnotation(FollowingSpotAnnotation(s))
+                }
+            }
             // Heatmap camera dots.
             let wantDots = p.heatMode ? p.cameraDots : []
             let dotCurrent = map.annotations.compactMap { $0 as? CameraDotAnnotation }
@@ -222,6 +239,12 @@ struct ZoneMapView: UIViewRepresentable {
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "live", for: a)
                 v.accessibilityLabel = a.title
                 return v
+            case let a as FollowingSpotAnnotation:
+                let v = mapView.dequeueReusableAnnotationView(withIdentifier: "live", for: a)
+                v.isAccessibilityElement = true
+                v.accessibilityLabel = a.title
+                v.accessibilityIdentifier = "followingMarker"
+                return v
             case let c as MKClusterAnnotation:
                 return mapView.dequeueReusableAnnotationView(withIdentifier: "cybercabCluster", for: c)
             case let a as CameraDotAnnotation:
@@ -241,6 +264,7 @@ struct ZoneMapView: UIViewRepresentable {
             switch annotation {
             case let a as ChargingAnnotation: parent.onSelect(.charging(a.location))
             case let a as LiveCameraAnnotation: parent.onSelect(.liveCamera(a.detection))
+            case let a as FollowingSpotAnnotation: parent.onSelect(.following(a.spot))
             case let a as CameraDotAnnotation: parent.onSelect(.heatCamera(id: a.dot.id, name: a.dot.name))
             case let c as MKClusterAnnotation:
                 // Zoom in until the Cybercabs separate (their real positions; nothing moves).

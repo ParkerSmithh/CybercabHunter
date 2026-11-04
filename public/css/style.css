@@ -1049,11 +1049,39 @@ header.glass{border-width:0 0 1px;}
 .zh-note{margin-top:2px;font-size:10px;line-height:1.4;color:#7E838C;}
 .zh-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;padding:10px 14px;border:1px solid rgb(250 224 48 / .3);border-radius:12px;background:rgb(15 16 17 / .85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);font-size:12px;font-weight:600;color:#D0D6E0;pointer-events:none;text-align:center;max-width:80%;}
 .zh-empty[hidden]{display:none;}
+/* All Sightings | Following (js/zones-following.js): normal map only. */
+.zf-ctrl{margin-bottom:0 !important;}
+.zones-heat-on .zf-ctrl,.zones-heat-on .zf-card{display:none !important;}
+.zf-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;width:min(320px,calc(100% - 32px));padding:16px;border:1px solid rgb(250 224 48 / .3);border-radius:14px;background:rgb(10 10 10 / .92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);text-align:center;font-family:'Inter',sans-serif;}
+.zf-card[hidden]{display:none;}
+.zf-card h3{font-size:15px;font-weight:700;color:#F7F8F8;}
+.zf-card p{margin-top:6px;font-size:13px;line-height:1.45;color:#A0A5AD;}
+.zf-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px;}
+.zf-btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border-radius:10px;border:1px solid rgb(255 255 255 / .16);font-size:13px;font-weight:600;color:#F7F8F8;background:transparent;cursor:pointer;}
+.zf-btn:hover{border-color:rgb(255 255 255 / .32);}
+.zf-btn.is-gold{background:#FAE030;border-color:#FAE030;color:#1a1204;}
+.zf-btn:focus-visible{outline:2px solid rgb(250 224 48 / .75);outline-offset:2px;}
+.zf-note{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:3;max-width:calc(100% - 32px);padding:7px 12px;border:1px solid rgb(255 255 255 / .12);border-radius:999px;background:rgb(10 10 10 / .88);color:#A0A5AD;font:500 12px/1.3 'Inter',sans-serif;}
+.zf-note[hidden]{display:none;}
+.zones-heat-on .zf-note{display:none !important;}
+@media (max-width:1023px){.zf-note{top:auto;bottom:128px;white-space:normal;text-align:center;width:max-content;}}
+.zf-pop-eyebrow{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#FAE030;margin-bottom:4px;}
+.zf-pop-img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-bottom:8px;background:#0C1119;}
+.zf-pop-plate{font-weight:700;font-size:14px;color:#F7F8F8;}
+.zf-pop-plate a,.zf-pop-who a{color:#FAE030;}
+.zf-pop-meta{font-size:12px;color:#CBD0D8;margin-top:2px;}
+.zf-pop-who{font-size:12px;color:#CBD0D8;margin-top:6px;}
+.zf-pop-more{margin-top:8px;padding-top:8px;border-top:1px solid rgb(255 255 255 / .1);max-height:128px;overflow-y:auto;}
+.zf-pop-more-row{font-size:12px;color:#CBD0D8;padding:3px 0;}
 .zones-heat-on .camera-cybercab{display:none !important;}
 .zones-heat-on .camera-cybercab-cluster{display:none !important;}
 /* MapLibre styles every button inside a map control (29px squares, a grey
    hover); these segmented buttons keep their own size and colours. */
 .maplibregl-ctrl.zh-ctrl button{width:auto;height:auto;display:inline-flex;align-items:center;justify-content:center;}
+/* MapLibre's control hover (a faint grey) outranks .zh-seg: a selected button lost
+   its gold under the pointer, and on phones a tap leaves it "hovered". */
+.maplibregl-ctrl.zh-ctrl .zh-seg:not(.zh-panel *) button[aria-pressed="true"]:not(:disabled):hover{background:#FAE030;color:#1a1204;}
+.maplibregl-ctrl.zh-ctrl .zh-seg button[aria-pressed="false"]:not(:disabled):hover{background:transparent;}
 .maplibregl-ctrl.zh-ctrl button:not(:disabled):hover{background-color:rgb(255 255 255 / .06);}
 .maplibregl-ctrl.zh-ctrl .zh-mode button[aria-pressed="true"],.maplibregl-ctrl.zh-ctrl .zh-mode button[aria-pressed="true"]:hover{background-color:#FAE030;color:#1a1204;}
 .maplibregl-ctrl.zh-ctrl .zh-panel button[aria-pressed="true"],.maplibregl-ctrl.zh-ctrl .zh-panel button[aria-pressed="true"]:hover{background-color:rgb(255 255 255 / .12);color:#F7F8F8;}

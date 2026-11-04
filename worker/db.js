@@ -515,7 +515,7 @@ async function findRecentDuplicateSighting(sql, userId, normalizedPlate) {
 // robotaxiVehicleId is null when the observed plate didn't match an
 // existing registry vehicle — the caller decides that with a read-only
 // lookup; this function never creates or mutates a robotaxi_vehicles row.
-async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt, evidenceRef, cameraId }) {
+async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, model, color, notes, observedAt, evidenceRef, cameraId , position}) {
   const submissionId = newId();
   const observationId = newId();
 
@@ -536,6 +536,8 @@ async function createVehicleSighting(sql, { userId, robotaxiVehicleId, licensePl
   if (observedAt) { columns.push('observed_at'); values.push(observedAt); }
   // The traffic camera a photo was captured from (migrations/0020), when picked.
   if (cameraId) { columns.push('camera_id'); values.push(cameraId); }
+  // The verified place, rounded (migrations/0052): only what the Following map reads.
+  if (position) { columns.push('map_lat', 'map_lng'); values.push(position.lat, position.lng); }
 
   const observationStmt = sql.prepare(`
     INSERT INTO vehicle_observations (${columns.join(', ')})
@@ -653,6 +655,32 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
     ORDER BY o.observed_at ${dir}, o.public_id ${dir}
     LIMIT ?
   `).bind(...filter.binds, ...cursorBinds, limit).all();
+  return rows.results || [];
+}
+
+// One signed-in rider's Following map (worker/sightings-public.js): the same
+// public sightings as the gallery, submitted by accounts this rider follows with
+// an ACCEPTED relationship, newest first. Pending requests never match, and the
+// follow is read on every request, so unfollowing or removal takes effect at
+// once. The plan walks this rider's follows, then each account's observations.
+async function getFollowingMapSightings(sql, { followerId, city, limit, after = null }) {
+  const filter = publicSightingCityFilter(city);
+  const cursorSql = after ? ` AND (o.observed_at < ? OR (o.observed_at = ? AND o.public_id < ?))` : '';
+  const cursorBinds = after ? [after.observedAt, after.observedAt, after.publicId] : [];
+  const rows = await sql.prepare(`
+    SELECT o.public_id, o.service_area, o.approx_location, o.observed_at, o.map_lat, o.map_lng,
+           pv.id AS public_vehicle_id, pv.license_plate AS public_plate, (pv.approval_basis IS NOT NULL) AS public_cybercab,
+           u.handle, u.display_name, u.avatar_url, x.xp
+    FROM user_follows f
+    JOIN vehicle_observations o ON o.user_id = f.followed_id
+    JOIN submissions s ON s.id = o.submission_id AND s.user_id = f.followed_id
+    JOIN users u ON u.id = f.followed_id
+    LEFT JOIN user_xp x ON x.user_id = u.id
+    LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
+    WHERE f.follower_id = ? AND f.status = 'accepted' AND ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
+    ORDER BY o.observed_at DESC, o.public_id DESC
+    LIMIT ?
+  `).bind(followerId, ...filter.binds, ...cursorBinds, limit).all();
   return rows.results || [];
 }
 
@@ -1802,7 +1830,7 @@ export const db = {
   getRecentApprovedPhotoSightings,
   getVehicleSightingSubmission,
   reviewVehicleSighting,
-  getPublicPhotoSightings,
+  getPublicPhotoSightings, getFollowingMapSightings,
   getApprovedPhotoSightingHourBuckets,
   countPublicPhotoSightings, getPublicPhotoSightingSpots,
   getPublicSightingPhoto,

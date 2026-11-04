@@ -27,7 +27,7 @@
 
 import { normalizePlate } from './plate.js';
 import { db } from './db.js';
-import { verifyPlace } from './places.js';
+import { verifyPlace, mapPosition } from './places.js';
 import { serviceAreaFor } from './service-areas.js';
 import { timeZoneFor, resolveObservedAt } from './timezones.js';
 import { trafficCameraFor, cameraCity } from './traffic-cameras.js';
@@ -271,6 +271,7 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   // Location needs a City: there is no area to check it against otherwise.
   // All of this happens before the photo is stored or any record is written.
   let approxLocation = null;
+  let position = null;
   if (parsed.fields.approxLocation) {
     if (!area) return bad('invalid_service_area');
     const placeId = form.get('location_id');
@@ -285,6 +286,7 @@ export async function apiCreatePhotoSighting(request, env, userId) {
     }
     if (verified.error) return bad(verified.error);
     approxLocation = verified.place.label;
+    position = mapPosition(verified.place);   // about 110 m, for the Following map once approved
   }
 
   // Date spotted: the form sends only the DATE; the time is the exact moment
@@ -350,7 +352,7 @@ export async function apiCreatePhotoSighting(request, env, userId) {
   let result;
   try {
     result = await db.createVehicleSighting(sql, {
-      userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, notes, observedAt, evidenceRef: objectKey, cameraId
+      userId, robotaxiVehicleId, licensePlate, serviceArea, approxLocation, notes, observedAt, evidenceRef: objectKey, cameraId, position
     });
   } catch (err) {
     // The photo is stored but the record isn't: remove it rather than leave

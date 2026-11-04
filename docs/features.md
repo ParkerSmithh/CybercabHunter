@@ -29,7 +29,7 @@ Two tools on one page (nav label "Simulation", URL `/simulation`), switched with
 Cybercab vs. Model Y in Austin; the model and its inputs are in `docs/fleet-eta-live-data-research.md`. Dallas shows a "not yet available" note.
 
 - Fares: the Cybercab median, average and $/mile from `GET /api/fleet-stats` (each with its sample size) beside Tesla's reported Austin rate; a trip-distance slider prices both, and an estimate far past the measured average trip is labelled an extrapolation. A Stale badge after 36 h; "Live data unavailable" when the request fails (no fallback numbers).
-- Operating hours (6:00 AM – 12:00 AM Central) with a live open/closed state and a 24-hour strip.
+- Operating hours (6:00 AM – 2:00 AM Central) with a live open/closed state and a 24-hour strip.
 - Pickup wait as a range (e.g. 6–16 min, most likely ~9) with Quiet / Typical / Busy scenarios; "How this is estimated" lists every input as Live, Measured or Assumed.
 - The live data refreshes every 5 minutes while the page is visible.
 
@@ -39,13 +39,15 @@ Cybercab vs. Model Y in Austin; the model and its inputs are in `docs/fleet-eta-
 - Passenger Fare, Tesla Network Cut, and Cost per Unit are shown as fixed assumptions, not adjustable inputs
 - Animated output cards: Monthly Energy Overhead, Gross Fleet Revenue, Net Operating Income
 - Breakeven-timeline meter
-- "Export" button generates a PDF client-side via `jsPDF` (loaded from a CDN) — not a `.txt` file
+- "Export" button generates a PDF client-side via `jsPDF` (served from `public/vendor`) — not a `.txt` file
 
 ## Zones (`infrastructure.html`)
 
 - Austin/Dallas city selector. Dallas shows "NOT YET AVAILABLE — Dallas zone information isn't available in Cybercab Hunter yet."
 - Austin: a MapLibre GL map showing Tesla's actual published Robotaxi service-zone geofence as a polygon, plus two named, real charging-location markers (St. Elmo Robotaxi Charging Hub, Ridgepoint Robotaxi Charging Site) with popup details
 - Austin "Services in Austin" (coverage in mi², launch date) and "Fleet & Fares" (Cybercab count, median/average fare, per-mile rate) figures. The Cybercab count and the fares are live from `GET /api/fleet-stats` (worker/fleet-stats.js): the count is the public Austin registry, and the fares are computed daily from riders' logged Austin rides, with "—" when there are none. Coverage and the launch date are fixed text.
+
+- **All Sightings | Following** (`js/zones-following.js`, `GET /api/sightings/following`, every service area; the same on the app's Zones map). All Sightings is the default and is the map as before. Following shows the approved photo sightings of accounts the signed-in rider follows with an accepted relationship: one marker per vehicle at its latest sighting, at a position rounded to about 110 m, with the photo, date, street-level location, spotter and vehicle links. The server decides everything; answers are never cached. It asks once per choice or city, never on a timer. Normal Map only.
 
 ## Sign-in (`signin.html`)
 

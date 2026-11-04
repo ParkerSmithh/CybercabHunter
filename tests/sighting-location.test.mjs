@@ -131,7 +131,13 @@ async function run() {
     check('edge just inside each box: accepted', edgeA.status === 201 && edgeD.status === 201);
     const row = id => ctx.d1.query('SELECT o.service_area, o.approx_location FROM vehicle_observations o WHERE o.id = ?', id)[0];
     check('stored with the canonical City and the place search\'s own label (not the typed text)', row(okAustin.json.observation_id).service_area === 'Austin' && row(okDallas.json.observation_id).approx_location === HANOVER.label);
-    check('no coordinates are stored anywhere in the record', !JSON.stringify(ctx.d1.query('SELECT * FROM vehicle_observations')).match(/-9[678]\.\d{3}|3[023]\.\d{3}/));
+    // Changed for the Following map (migrations/0052): the place's position, rounded
+    // to about 110 m, is kept; precise coordinates and the place id are not.
+    {
+      const row = ctx.d1.query(`SELECT * FROM vehicle_observations`)[0];
+      const decimals = v => (String(v).split('.')[1] || '').length;
+      check('only a rounded position is stored, in map_lat / map_lng, and no other coordinate', decimals(row.map_lat) <= 3 && decimals(row.map_lng) <= 3 && !Object.keys(row).some(k => /(^|_)(lat|lng|lon|latitude|longitude|coords?)($|_)/i.test(k) && !['map_lat', 'map_lng'].includes(k)));
+    }
     check('a sighting with no Location still needs no City (both optional)', (await submit(ctx, {})).status === 201);
 
     // A street split into same-named segments: the picked segment is found

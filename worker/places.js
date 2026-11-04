@@ -13,8 +13,10 @@
 // too (verifyPlace): the form sends the chosen place's OpenStreetMap id, the
 // server looks it up again within the chosen area, and stores Photon's own
 // label — never text the visitor typed. So the Location can only ever be a
-// real place inside the chosen City's area. Coordinates are used only for
-// that check; they are never stored or returned.
+// real place inside the chosen City's area. Coordinates are used for that
+// check, and a version rounded to about 110 m (mapPosition) is kept so an
+// approved sighting can go on the Following map. Precise coordinates are never
+// stored, and the rounded ones reach only that map (worker/sightings-public.js).
 //
 // Privacy: the full label (it may include a house number) is kept for
 // moderators; the public gallery shows publicLocation() — street/place and
@@ -216,6 +218,27 @@ export async function verifyPlace(id, queries, area) {
     if ((await photonSearch(q, 10)).some(p => p.id === id)) return { error: 'location_outside_area' };
   }
   return { error: 'invalid_location' };
+}
+
+// Where a verified place goes on the map: rounded to 3 decimals (about 110 m),
+// the street-or-place precision publicLocation already shows. Null if unknown.
+export function mapPosition(place) {
+  const lat = Number(place && place.lat), lng = Number(place && place.lon);
+  if (!place || place.lat == null || place.lon == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 };
+}
+
+// For the one-off backfill of older sightings (scripts/backfill-sighting-positions.mjs):
+// the position of a stored label ONLY when Photon returns a place inside the
+// area with exactly that label. Anything less stays unplaced: never a guess.
+export async function positionForStoredLabel(label, area, search = photonSearch) {
+  const text = String(label || '').trim();
+  if (!area || text.length < MIN_QUERY) return null;
+  const places = await search(text.slice(0, MAX_QUERY), 10, bboxParam(area));
+  const matches = places.filter(p => p.label === text && placeInArea(p, area));
+  if (!matches.length) return null;
+  const positions = new Set(matches.map(p => JSON.stringify(mapPosition(p))));
+  return positions.size === 1 ? mapPosition(matches[0]) : null;   // same label, different spots: don't choose
 }
 
 // The public version of a stored location: the street or place and the city,
