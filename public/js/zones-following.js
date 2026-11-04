@@ -140,14 +140,14 @@ window.CCCZonesFollowing = (function () {
         return;
       }
       if (data.following_count === 0) {
-        showCard('No followed spotters yet', 'Follow other Cybercab spotters to see their sightings on this map.',
+        showCard('NO FOLLOWED SPOTTERS YET', 'Follow other Cybercab spotters to see their sightings on this map.',
           ['<a class="zf-btn is-gold" href="/community?view=leaderboard">Find spotters</a>', BACK]);
         return;
       }
       const groups = groupSightings(data.sightings.filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng)));
       const unplaced = Array.isArray(data.unplaced) ? data.unplaced.length : 0;
       if (!groups.length && !unplaced) {
-        showCard('No sightings from followed users in this area', 'The people you follow have no recent approved sightings here.', [BACK]);
+        showCard('NO SIGHTINGS FROM FOLLOWED USERS IN THIS AREA', 'The people you follow have no recent approved sightings here.', [BACK]);
         return;
       }
       features.setFollowingSpots(groups.map(g => {
@@ -156,7 +156,7 @@ window.CCCZonesFollowing = (function () {
         return { id: g.id, lat: g.lat, lng: g.lng, html: popupHtml(g), name: s.plate || s.location || who, label: `Cybercab spotted by ${who}${s.location ? ' at ' + s.location : ''}` };
       }));
       if (!groups.length) {
-        showCard('No sightings from followed users in this area', `${unplaced === 1 ? '1 recent sighting has' : unplaced + ' recent sightings have'} no map position, so ${unplaced === 1 ? "it isn't" : "they aren't"} shown here.`,
+        showCard('NO SIGHTINGS FROM FOLLOWED USERS IN THIS AREA', `${unplaced === 1 ? '1 recent sighting has' : unplaced + ' recent sightings have'} no map position, so ${unplaced === 1 ? "it isn't" : "they aren't"} shown here.`,
           [`<a class="zf-btn" href="/sightings?city=${encodeURIComponent(city)}">Open Sightings</a>`, BACK]);
         return;
       }

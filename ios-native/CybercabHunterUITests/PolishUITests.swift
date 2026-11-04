@@ -112,7 +112,7 @@ final class PolishUITests: XCTestCase {
         app.buttons["heatPanelCollapse"].tap()
         XCTAssertTrue(expand.waitForExistence(timeout: 3))
         XCTAssertTrue(expand.label.contains("30 days"), expand.label)
-        app.buttons["normalMapButton"].tap()
+        app.buttons["mapSourceAll"].tap()
 
         app.buttons["replayButton"].tap()
         XCTAssertTrue(app.staticTexts["replayCount"].waitForExistence(timeout: 20))

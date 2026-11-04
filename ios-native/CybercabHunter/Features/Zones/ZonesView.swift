@@ -37,7 +37,7 @@ struct ZonesView: View {
             ZStack(alignment: .top) {
                 ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.source == .following ? [] : (model.live[model.city] ?? []), followingSpots: model.followingSpots,
                             heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place, locationFix: location.location, recenterID: recenterID, locationTarget: locationTarget,
-                            bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 130,
+                            bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 90,
                             topInset: geo.safeAreaInsets.top + 52, selectionActive: selection != nil) { selection = $0 }   // under the status bar, header and the Search button
                     .ignoresSafeArea()
                     .accessibilityIdentifier("zonesMap")
@@ -212,28 +212,6 @@ struct ZonesView: View {
         }
     }
 
-    /// All Sightings | Following: the Normal Map only (a heatmap is camera history).
-    private var sourceToggle: some View {
-        HStack(spacing: 0) {
-            ForEach(ZonesModel.Source.allCases) { option in
-                let on = model.source == option
-                Button { withAnimation(.snappy) { model.source = option } } label: {
-                    Text(option == .all ? "All Sightings" : "Following").font(.inter(13.5, .semibold))
-                        .padding(.horizontal, 14).frame(height: MapControl.height - 8)
-                        .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
-                        .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: MapControl.radius - 4))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityIdentifier(option == .all ? "mapSourceAll" : "mapSourceFollowing")
-            }
-        }
-        .padding(4)
-        .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
-        .sensoryFeedback(.selection, trigger: model.source)
-    }
-
     /// What Following has to say when there is nothing, or something missing, to draw.
     @ViewBuilder private var followingOverlay: some View {
         switch model.following {
@@ -249,11 +227,11 @@ struct ZonesView: View {
             }
         case .loaded(let page):
             if page.followingCount == 0 {
-                followingCard(title: "No followed spotters yet", text: "Follow other Cybercab spotters to see their sightings on this map.") {
+                followingCard(title: "NO FOLLOWED SPOTTERS YET", text: "Follow other Cybercab spotters to see their sightings on this map.") {
                     Button("Find spotters") { router.openCommunity(.leaderboard) }.buttonStyle(ZoneCardButton(gold: true)).accessibilityIdentifier("followingFindSpotters")
                 }
             } else if page.sightings.isEmpty {
-                followingCard(title: "No sightings from followed users in this area",
+                followingCard(title: "NO SIGHTINGS FROM FOLLOWED USERS IN THIS AREA",
                               text: page.unplaced.isEmpty ? "The people you follow have no recent approved sightings here."
                                 : "\(Format.plural(page.unplaced.count, "recent sighting has", "recent sightings have")) no map position, so nothing is shown here.") { EmptyView() }
             } else if !page.unplaced.isEmpty {
@@ -263,7 +241,7 @@ struct ZonesView: View {
                         .font(.inter(12, .medium)).foregroundStyle(Color.chMist)
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .background(Color.chBackground.opacity(0.92), in: .capsule)
-                        .padding(.bottom, 190)
+                        .padding(.bottom, 130)
                 }
                 .allowsHitTesting(false)
                 .accessibilityIdentifier("followingUnplacedNote")
@@ -292,39 +270,78 @@ struct ZonesView: View {
         .accessibilityIdentifier("followingEmptyCard")
     }
 
+    /// One choice, on one row with Replay: All Sightings (the normal map), Following
+    /// (the normal map, from followed accounts) or Heatmap (camera history).
+    private enum MapView: CaseIterable, Identifiable {
+        case all, following, heat
+        var id: Self { self }
+        var identifier: String {
+            switch self {
+            case .all: "mapSourceAll"
+            case .following: "mapSourceFollowing"
+            case .heat: "heatmapButton"
+            }
+        }
+        func title(short: Bool) -> String {
+            switch self {
+            case .all: short ? "All" : "All Sightings"
+            case .following: "Following"
+            case .heat: "Heatmap"
+            }
+        }
+    }
+
+    private var mapView: MapView { model.mode == .heat ? .heat : model.source == .following ? .following : .all }
+
+    private func choose(_ view: MapView) {
+        withAnimation(.snappy) {
+            model.mode = view == .heat ? .heat : .normal
+            model.source = view == .following ? .following : .all
+        }
+    }
+
+    private func mapViewPicker(short: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(MapView.allCases) { option in
+                let on = mapView == option
+                Button { choose(option) } label: {
+                    Text(option.title(short: short)).font(.inter(13.5, .semibold)).lineLimit(1).fixedSize()
+                        .padding(.horizontal, 12).frame(height: MapControl.height - 8)
+                        .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
+                        .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: MapControl.radius - 4))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(option.title(short: false))
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier(option.identifier)
+            }
+        }
+        .padding(4)
+        .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
+        .sensoryFeedback(.selection, trigger: mapView)
+    }
+
     private var bottomControls: some View {
         VStack(alignment: .trailing, spacing: 10) {
-            if model.mode == .heat { heatPanel } else { sourceToggle }
+            if model.mode == .heat { heatPanel }
             HStack(spacing: 8) {
                 // The map key lives in Zone details only (as on the website).
+                ViewThatFits(in: .horizontal) {
+                    mapViewPicker(short: false)
+                    mapViewPicker(short: true)
+                }
                 Spacer(minLength: 0)
                 NavigationLink(value: ReplayRoute(city: model.city)) {
-                    Label("Replay", systemImage: "play.fill").font(.inter(14, .bold))
-                        .padding(.horizontal, 16).frame(height: MapControl.height)
+                    Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
+                        .frame(width: MapControl.height, height: MapControl.height)
                         .background(Color.brandGold, in: .rect(cornerRadius: MapControl.radius))
                         .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
                         .foregroundStyle(Color(hex: 0x1A1204))
                 }
+                .accessibilityLabel("Replay")
                 .accessibilityIdentifier("replayButton")
             }
-            HStack(spacing: 0) {
-                ForEach(ZonesModel.Mode.allCases) { m in
-                    let on = model.mode == m
-                    Button { withAnimation(.snappy) { model.mode = m } } label: {
-                        Text(m == .normal ? "Normal Map" : "Heatmap").font(.inter(13.5, .semibold))
-                            .padding(.horizontal, 14).frame(height: MapControl.height - 8)
-                            .foregroundStyle(on ? Color(hex: 0x1A1204) : Color.chMist)
-                            .background(on ? Color.brandGold : Color.clear, in: .rect(cornerRadius: MapControl.radius - 4))
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(on ? .isSelected : [])
-                    .accessibilityIdentifier(m == .normal ? "normalMapButton" : "heatmapButton")
-                }
-            }
-            .padding(4)
-            .modifier(GlassBackground(shape: RoundedRectangle(cornerRadius: MapControl.radius)))
-            .sensoryFeedback(.selection, trigger: model.mode)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 64)   // above the Liquid Glass tab bar
