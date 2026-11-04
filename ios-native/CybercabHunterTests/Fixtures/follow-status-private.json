@@ -1,0 +1,10 @@
+{
+  "handle": "carol_c",
+  "private": true,
+  "can_view": false,
+  "relationship": "requested",
+  "follows_you": false,
+  "requested_you": false,
+  "counts": null,
+  "profile": null
+}

@@ -340,7 +340,7 @@ async function run() {
 
     const p = await open('s-alice');
     const d = p.d;
-    check('the filters are For You | Latest | Photos | Reviews | Saved', [...d.querySelectorAll('.social-filter[data-filter]')].map(x => x.textContent).join('|') === 'For You|Latest|Photos|Reviews|Saved');
+    check('the filters are For You | Following | Latest | Photos | Reviews | Saved', [...d.querySelectorAll('.social-filter[data-filter]')].map(x => x.textContent).join('|') === 'For You|Following|Latest|Photos|Reviews|Saved');
     check('the pinned post leads the feed with a Pinned label', d.querySelector('#socialFeed .social-post').dataset.post === a.id && /Pinned/.test(d.querySelector('#socialFeed .social-post .social-pinned').textContent));
     check('post headers show the Spotter rank and level', /Gold Spotter/.test(d.querySelector(`[data-post="${a.id}"] .social-rank`).textContent) && /Lv \d+/.test(d.querySelector(`[data-post="${a.id}"] .social-level`).textContent));
     check('the bell shows the unread count (a comment and a mention)', !d.getElementById('socialBellWrap').classList.contains('hidden') && d.getElementById('socialBellCount').textContent === '2');

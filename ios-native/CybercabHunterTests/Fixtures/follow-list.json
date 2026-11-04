@@ -1,0 +1,31 @@
+{
+  "users": [
+    {
+      "name": "Dave D",
+      "handle": "dave_d",
+      "avatar_url": null,
+      "rank": {
+        "key": "bronze",
+        "name": "Bronze Spotter"
+      },
+      "level": 1,
+      "relationship": "follow",
+      "follow_id": null
+    },
+    {
+      "name": "Bob B",
+      "handle": "bob_b",
+      "avatar_url": null,
+      "rank": {
+        "key": "bronze",
+        "name": "Bronze Spotter"
+      },
+      "level": 2,
+      "relationship": "self",
+      "follow_id": null
+    }
+  ],
+  "next_cursor": null,
+  "total": 2,
+  "hidden_count": 0
+}

@@ -64,6 +64,7 @@ struct AccountView: View {
                 case .siri: SiriSettingsView()
                 case .alerts: ActivityAlertsView()
                 case .notifications: PushSettingsView()
+                case .followers: FollowRequestsView(handle: model.settings?.handle)
                 }
             }
             .navigationDestination(for: RiderDataRoute.self) { route in
@@ -167,6 +168,8 @@ struct AccountView: View {
             if let s = model.settings, s.leaderboardOptIn, let handle = s.handle {
                 NavigationLink(value: AccountRoute.rider(handle)) { Label("Your public profile", systemImage: "person.text.rectangle") }
             }
+            NavigationLink(value: AccountRoute.followers) { Label("Followers & requests", systemImage: "person.2") }
+                .accessibilityIdentifier("followersAndRequests")
             NavigationLink(value: RiderDataRoute.data) { Label("Rider data", systemImage: "list.bullet.rectangle") }
                 .accessibilityIdentifier("riderData")
             NavigationLink(value: RiderDataRoute.gmail) { Label("Receipt sync (Gmail)", systemImage: "envelope.arrow.triangle.branch") }
@@ -217,6 +220,8 @@ enum AccountRoute: Hashable {
     case rider(String)
     /// Siri & Shortcuts, Activity Alerts: on this iPhone, signed in or not.
     case siri, alerts, notifications
+    /// Your followers, who you follow, and requests to follow you.
+    case followers
 }
 
 /// The rider's own sightings and where each one is in review (GET /api/submissions).

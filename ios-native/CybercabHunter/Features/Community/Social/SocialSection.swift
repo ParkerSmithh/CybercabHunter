@@ -117,14 +117,26 @@ struct SocialSection: View {
             EmptyStateCard(title: "We couldn't load posts", text: "Please try again in a moment.").accessibilityIdentifier("feedError")
         case .signInRequired:
             VStack(spacing: 12) {
-                EmptyStateCard(title: "Saved posts", text: "Sign in to save posts and see them here.")
+                if social.filter == .following {
+                    EmptyStateCard(title: "Following", text: "Sign in to see posts from the accounts you follow.")
+                } else {
+                    EmptyStateCard(title: "Saved posts", text: "Sign in to save posts and see them here.")
+                }
                 Button("Sign in") { openSignIn() }.buttonStyle(GoldButtonStyle())
             }
             .accessibilityIdentifier("savedSignIn")
         default:
             if social.feed.isEmpty {
-                EmptyStateCard(title: social.filter == .saved ? "Saved posts" : "Nothing here yet", text: SocialText.emptyFeed[social.filter] ?? "")
-                    .accessibilityIdentifier("feedEmpty")
+                if social.filter == .following && social.followsNobody {
+                    VStack(spacing: 12) {
+                        EmptyStateCard(title: "You're not following anyone yet.", text: "Follow other Cybercab spotters to see their posts here.")
+                        Button("Browse the leaderboard") { router.communitySection = .leaderboard }.buttonStyle(GoldButtonStyle())
+                    }
+                    .accessibilityIdentifier("followingEmpty")
+                } else {
+                    EmptyStateCard(title: social.filter == .saved ? "Saved posts" : social.filter == .following ? "Following" : "Nothing here yet", text: SocialText.emptyFeed[social.filter] ?? "")
+                        .accessibilityIdentifier("feedEmpty")
+                }
             }
             ForEach(social.feed) { post in
                 PostCard(post: post, social: social)

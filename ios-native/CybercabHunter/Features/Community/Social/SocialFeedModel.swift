@@ -11,11 +11,12 @@ import Observation
 @Observable
 final class SocialFeedModel {
     enum Filter: String, CaseIterable, Identifiable, Sendable {
-        case foryou, latest, photos, reviews, saved
+        case foryou, following, latest, photos, reviews, saved
         var id: String { rawValue }
         var title: String {
             switch self {
             case .foryou: "For You"
+            case .following: "Following"
             case .latest: "Latest"
             case .photos: "Photos"
             case .reviews: "Reviews"
@@ -27,6 +28,7 @@ final class SocialFeedModel {
         var note: String? {
             switch self {
             case .foryou: "Ranked by recent likes and comments"
+            case .following: "Newest posts from accounts you follow"
             case .latest: "Newest posts first"
             default: nil
             }
@@ -59,6 +61,8 @@ final class SocialFeedModel {
     private(set) var sidebarFailed = false
     private(set) var topContributors: [Leaderboard.Entry]?
     private(set) var topFailed = false
+    /// Following: true when the rider follows nobody yet (tells the two empty states apart).
+    private(set) var followsNobody = false
     /// Posts with a like / save request in flight (a second tap waits).
     private(set) var busy: Set<String> = []
     var toast: Toast?
@@ -115,10 +119,11 @@ final class SocialFeedModel {
             guard token == feedToken else { return }
             feedIDs = []
             absorb(page)
+            followsNobody = filter == .following && page.followingCount == 0
             phase = .loaded
         } catch is CancellationError {
             if token == feedToken, phase == .loading { phase = feedIDs.isEmpty ? .idle : .loaded }
-        } catch APIError.unauthorized where filter == .saved {
+        } catch APIError.unauthorized where filter == .saved || filter == .following {
             guard token == feedToken else { return }
             feedIDs = []; nextCursor = nil; phase = .signInRequired
         } catch {

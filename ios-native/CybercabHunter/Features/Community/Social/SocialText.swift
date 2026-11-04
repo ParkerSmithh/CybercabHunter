@@ -50,7 +50,8 @@ enum SocialText {
         .latest: "Be the first to post about the Cybercab.",
         .photos: "No photo posts yet. Share a Cybercab photo.",
         .reviews: "No ride reviews yet. Rode in one? Add a ride review to a post.",
-        .saved: "You haven't saved any posts yet."
+        .saved: "You haven't saved any posts yet.",
+        .following: "The people you follow haven't posted yet."
     ]
 
     static let rules = [

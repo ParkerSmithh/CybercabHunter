@@ -48,6 +48,7 @@ struct NotificationsView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var showingFollowRequests = false
 
     var body: some View {
         NavigationStack {
@@ -84,6 +85,7 @@ struct NotificationsView: View {
             }
             .task { await model.load(api: session.api) }
             .refreshable { await model.load(api: session.api) }
+            .navigationDestination(isPresented: $showingFollowRequests) { FollowRequestsView() }
         }
         .presentationDetents([.medium, .large])
     }
@@ -95,6 +97,7 @@ struct NotificationsView: View {
                 case "like": Image(systemName: "heart.fill")
                 case "mention": Text("@").font(.inter(15, .heavy))
                 case "announcement": Image(systemName: "pin.fill")
+                case "follower", "follow_request", "follow_accepted": Image(systemName: "person.badge.plus")
                 default: Image(systemName: "bubble.left.fill")
                 }
             }
@@ -120,6 +123,8 @@ struct NotificationsView: View {
 
     private func tap(_ item: SocialNotifications.Item) {
         Task { await model.markRead(item, api: session.api) }
+        // A follow request: the screen to answer it.
+        if item.type == "follow_request" { showingFollowRequests = true; return }
         if let target = item.target { open(.post(target)); return }
         // The announcement: its own link (a site page opens natively), else Community.
         let url = AppConfig.webURL(item.url)

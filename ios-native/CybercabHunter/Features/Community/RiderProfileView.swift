@@ -1,16 +1,19 @@
 import SwiftUI
 
 /// A public rider profile (the website's /rider/<handle>, js/rider.js): only
-/// riders who opted in and chose a username have one. Anything else, an
-/// unknown handle included, shows the same "not available" state, so whether
-/// an account exists is never revealed. Ride figures are counts and city
-/// names only, as the server sends them.
+/// riders who opted in and chose a username have one. Ride figures are counts
+/// and city names only, as the server sends them. Followers & Following
+/// (worker/follows.js) come from their own answer, per viewer. Signed in, a
+/// private account shows its handle and Request; its owner and approved
+/// followers also see who it is. Otherwise, and for an unknown handle, the
+/// same "not available" state.
 struct RiderProfileView: View {
     let route: RiderRoute
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @State private var profile: RiderProfile?
     @State private var state: State = .loading
+    @State private var follow: FollowStatus?
     enum State { case loading, loaded, notAvailable, failed }
 
     var body: some View {
@@ -21,6 +24,7 @@ struct RiderProfileView: View {
                 case .notAvailable:
                     EmptyStateCard(title: "This profile is private", text: "This spotter hasn't made their profile public.")
                         .accessibilityIdentifier("riderPrivate")
+                    if let follow, follow.private { privateAccount(follow) }
                 case .failed:
                     EmptyStateCard(title: "We couldn't load this profile", text: "Please try again in a moment.")
                 case .loaded:
@@ -43,6 +47,7 @@ struct RiderProfileView: View {
     }
 
     private func load() async {
+        await loadFollow()
         do {
             profile = try await session.api.get("/api/riders/\(route.handle)", fresh: true)
             state = .loaded
@@ -52,6 +57,40 @@ struct RiderProfileView: View {
         } catch {
             state = profile == nil ? .failed : .loaded
         }
+    }
+
+    private func loadFollow() async {
+        if let s: FollowStatus = try? await session.api.get(FollowAPI.path(route.handle), authenticated: true, fresh: true) { follow = s }
+    }
+
+    /// The follow button (not on your own profile) and the two counts.
+    @ViewBuilder private func followBar(_ f: FollowStatus) -> some View {
+        HStack(spacing: 12) {
+            if let counts = f.counts { FollowCounts(handle: f.handle, counts: counts) }
+            Spacer(minLength: 0)
+            if f.relationship != .isSelf {
+                FollowButton(handle: f.handle, isPrivate: f.private, state: f.relationship) { follow = $0 }
+            }
+        }
+        if f.followsYou { Text("Follows you").font(.inter(12, .semibold)).foregroundStyle(Color.chFog) }
+    }
+
+    /// A private account, for a signed-in viewer: only what the server sent.
+    @ViewBuilder private func privateAccount(_ f: FollowStatus) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                if let p = f.profile { PersonAvatar(name: p.name, url: SocialAuthor.avatarURL(p.avatarUrl), size: 56) }
+                VStack(alignment: .leading, spacing: 2) {
+                    if let p = f.profile { Text(p.name).font(.inter(18, .bold)).foregroundStyle(Color.chInk) }
+                    Text("@\(f.handle)").font(.inter(14, .semibold)).foregroundStyle(Color.brandGold)
+                }
+            }
+            if let bio = f.profile?.bio { Text(bio).font(.inter(14)).foregroundStyle(Color.chMist) }
+            followBar(f)
+        }
+        .dataPanel()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("riderPrivateFollow")
     }
 
     @ViewBuilder private func content(_ p: RiderProfile) -> some View {
@@ -66,6 +105,7 @@ struct RiderProfileView: View {
                 }
             }
         }
+        if let follow { followBar(follow) }
         Text(p.rider.bio ?? "No bio yet.").font(.inter(14)).foregroundStyle(p.rider.bio == nil ? Color.chCaption : Color.chMist)
             .fixedSize(horizontal: false, vertical: true)
 
