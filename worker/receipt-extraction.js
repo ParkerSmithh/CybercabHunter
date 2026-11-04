@@ -293,6 +293,52 @@ function parseInlineStops(lines, pickupIdx) {
   };
 }
 
+// A receipt that doesn't carry the usual two times (real Tesla receipts do).
+// The walk below takes the first time after the pickup address as the pickup
+// time, so without this a receipt with no pickup-time line would read its
+// drop-off time as the pickup time: a wrong ride identity. Here a time counts
+// as the pickup time only when the receipt shows it is one. A missing time stays
+// missing, which leaves the ride without an identity and in needs_review
+// (ride-canonical.js) rather than counted at a wrong time.
+//   "Drop off" label, or a second address before the time: the time is the drop-off's.
+//   One address then one time: the pickup's.
+//   Several lines that can't be told apart, then one time: neither.
+// Returns null for the usual shapes, which the ordinary walk reads as before.
+const DROP_LABEL_RE = /^drop\s*off\b[\s:·\-–]*(\d{1,2}:\d{2}\s*[ap]\.?m\.?)?$/i;
+const ADDRESS_END_RE = /,\s*[A-Z]{2}(\s+\d{5}(-\d{4})?)?\s*$/;
+
+function parseIncompleteStops(section, timeRe) {
+  const timeAt = section.reduce((at, l, i) => (timeRe.test(l) ? [...at, i] : at), []);
+  const labelAt = section.findIndex(l => DROP_LABEL_RE.test(l));
+  const labelTime = labelAt === -1 ? null : section[labelAt].match(DROP_LABEL_RE)[1] || null;
+  const timeFollowedByText = timeAt.length === 1 && timeAt[0] < section.length - 1;
+  // Two plain times, or a pickup time with the drop-off stop after it: the usual walk.
+  if (timeAt.length >= 2 && !labelTime) return null;
+  if (timeFollowedByText && labelAt === -1) return null;
+
+  const describe = block => {
+    const cleaned = block.filter(l => !timeRe.test(l)).map(stripLocationArtifacts).filter(Boolean);
+    return cleaned.length ? stripLocationArtifacts(cleaned.join(', ')) : null;
+  };
+  const timeIn = (from, to) => { const i = timeAt.find(t => t >= from && t < to); return i === undefined ? null : to24HourTime(section[i]); };
+  const stops = (pickupBlock, dropoffBlock, pickupTime, dropoffTime) => ({
+    pickup_description: describe(pickupBlock), pickup_time: pickupTime,
+    dropoff_description: describe(dropoffBlock), dropoff_time: dropoffTime
+  });
+
+  if (labelAt !== -1) {
+    return stops(section.slice(0, labelAt), section.slice(labelAt + 1), timeIn(0, labelAt),
+      labelTime ? to24HourTime(labelTime) : timeIn(labelAt + 1, section.length));
+  }
+  const text = section.filter(l => !timeRe.test(l));
+  if (text.length <= 1) return null;   // one address (then a time, or none): the usual walk
+  const firstAddress = text.findIndex(l => ADDRESS_END_RE.test(stripLocationArtifacts(l)));
+  if (firstAddress !== -1 && firstAddress < text.length - 1) {
+    return stops(text.slice(0, firstAddress + 1), text.slice(firstAddress + 1), null, timeAt.length ? to24HourTime(section[timeAt[0]]) : null);
+  }
+  return stops(text, [], null, null);   // can't tell: no time at all rather than a wrong one
+}
+
 function parsePickupDropoff(lines) {
   const inlineIdx = lines.findIndex(l => /^pick\s*up\b[\s:·\-–]*\d{1,2}:\d{2}\s*[ap]\.?m\.?$/i.test(l));
   const pickupIdx = lines.findIndex(l => /^pick\s*up:?$/i.test(l));
@@ -316,6 +362,11 @@ function parsePickupDropoff(lines) {
     const description = block.length ? stripLocationArtifacts(block.join(', ')) : null;
     return { description: description || null, time, nextIdx: i + 1 };
   }
+
+  // A receipt missing a time is read separately, and never guessed: see below.
+  const stopEnd = (() => { const n = lines.findIndex((l, i) => i > pickupIdx && stopRe.test(l)); return n === -1 ? lines.length : n; })();
+  const incomplete = parseIncompleteStops(lines.slice(pickupIdx + 1, stopEnd), timeRe);
+  if (incomplete) return incomplete;
 
   const pickup = collectStop(pickupIdx + 1);
   const dropoff = pickup.time !== null ? collectStop(pickup.nextIdx) : {};

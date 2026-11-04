@@ -173,8 +173,22 @@ for (const [who, handle] of [['s-bob', 'alice_a'], ['s-alice', 'bob_b'], ['s-dav
   if (fromBob) await api('POST', `/api/follow-requests/${fromBob.id}/accept`, { session: 's-carol' });
 }
 
+// ---- The Following map: the seeded sightings get the rounded positions a
+// picked place would give them. Bob's are in Austin and Dallas; one of Dave's
+// stays without a position, so the "no map position" note can be seen.
+const place = (id, lat, lng) => d1.exec(`UPDATE vehicle_observations SET map_lat = ${lat}, map_lng = ${lng} WHERE submission_id = '${id}'`);
+place(sights.approved1, 30.263, -97.745);
+place(sights.approved3, 32.792, -96.8);
+
 const port = flag('--serve');
 const out = flag('--fixtures');
+if (port) {
+  // Served only (fixture counts stay as they were): carol (private) has one
+  // approved sighting, for her approved follower bob and not for dave (pending).
+  const carol = await photoSighting('s-carol', { service_area: 'Austin' });
+  await review(carol, 'approve');
+  place(carol, 30.3, -97.72);
+}
 if (out) {
   fs.mkdirSync(out, { recursive: true });
   const save = (name, r) => fs.writeFileSync(path.join(out, `${name}.json`), JSON.stringify(r.json, null, 2) + '\n');
@@ -186,6 +200,8 @@ if (out) {
   save('follow-list', await api('GET', '/api/follows/alice_a/followers', { session: 's-bob' }));
   save('follow-requests', await api('GET', '/api/follow-requests', { session: 's-carol' }));
   save('social-feed-following', await api('GET', '/api/social/feed?filter=following&limit=10', { session: 's-dave' }));
+  save('following-map', await api('GET', '/api/sightings/following?city=austin', { session: 's-alice' }));
+  save('following-map-nobody', await api('GET', '/api/sightings/following?city=austin', { session: 's-erin' }));
   save('my-rider-data', await api('GET', '/api/profile', { session: 's-alice' }));
   save('my-trips', await api('GET', '/api/trips?page=1&page_size=10', { session: 's-alice' }));
   save('my-sync-status', await api('GET', '/api/rides/sync-status', { session: 's-alice' }));

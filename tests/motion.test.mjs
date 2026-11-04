@@ -164,7 +164,7 @@ console.log('6. DecryptedText (batch two)');
   const pages = ['index', 'sightings', 'community', 'rider-data', 'simulation', 'infrastructure'].map(f => read(`public/${f}.html`)).join('\n');
   const labels = [...pages.matchAll(/data-decrypt[^>]*>([^<]*)</g)].map(m => m[1]);
   // The homepage's "Service Area" label is static: everything below the homepage hero is on the page at load.
-  check('wired to the six eyebrows that sit above a heading, and nothing else', labels.sort().join('|') === ['Community spotted', 'Investor tools', 'Riders &amp; Spotters', 'Service Zone', 'Service Zone', 'Your Data'].sort().join('|'), labels.join('|'));
+  check('wired to the five eyebrows that sit above a heading, and nothing else (the Community redesign, 3d0516e, removed its own)', labels.sort().join('|') === ['Community spotted', 'Investor tools', 'Service Zone', 'Service Zone', 'Your Data'].sort().join('|'), labels.join('|'));
 }
 
 console.log('7. ElasticSlider (batch two)');

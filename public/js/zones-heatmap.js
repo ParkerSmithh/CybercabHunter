@@ -98,6 +98,10 @@ window.CCCZonesHeat = (function () {
         'circle-stroke-width': 0.75
       } });
       ready = true;
+      // Only now: a layer listener added while the basemap is loading throws inside
+      // MapLibre on every pointer move over the map (it has no style to ask yet).
+      map.on('mouseenter', 'zh-cams', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'zh-cams', () => { map.getCanvas().style.cursor = ''; });
       draw();
     }
     if (map.loaded() && map.isStyleLoaded()) addLayers(); else map.on('load', addLayers);
@@ -207,8 +211,6 @@ window.CCCZonesHeat = (function () {
       }
       showCamera(best.properties.id, best.properties.name, best.geometry.coordinates);
     });
-    map.on('mouseenter', 'zh-cams', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'zh-cams', () => { map.getCanvas().style.cursor = ''; });
 
     // ---- controls ----
     function setMode(next) {

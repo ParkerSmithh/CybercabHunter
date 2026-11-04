@@ -1,6 +1,6 @@
 # Deploying and migrating — the procedure
 
-Everything here is about **production** (`cybercabhunter_db`, remote). Local tests build their own in-memory database from `migrations/` and need none of this.
+Everything here is about **production** (`cybercabhunter-db`, remote). Local tests build their own in-memory database from `migrations/` and need none of this.
 
 ## The tooling, and what it expects
 
@@ -14,13 +14,13 @@ Reconciliation was done by comparing production's actual schema (every table, co
 
 ## The procedure from now on
 
-1. **Never** run a migration with `d1 execute --file`. Always `wrangler d1 migrations apply cybercabhunter_db --remote`, which applies and records in one step.
-2. Before applying: `wrangler d1 migrations list cybercabhunter_db --remote` and read the list. It must contain **only** the migrations you intend to run. If it lists something already applied, stop — the tracker is out of sync; reconcile by schema comparison as above before doing anything else.
-3. Take a backup first: `wrangler d1 export cybercabhunter_db --remote --output=<somewhere outside the repo>.sql` (it contains rider data; delete it when no longer needed).
+1. **Never** run a migration with `d1 execute --file`. Always `wrangler d1 migrations apply cybercabhunter-db --remote`, which applies and records in one step.
+2. Before applying: `wrangler d1 migrations list cybercabhunter-db --remote` and read the list. It must contain **only** the migrations you intend to run. If it lists something already applied, stop — the tracker is out of sync; reconcile by schema comparison as above before doing anything else.
+3. Take a backup first: `wrangler d1 export cybercabhunter-db --remote --output=<somewhere outside the repo>.sql` (it contains rider data; delete it when no longer needed).
 4. Migrations must be **additive** (new tables/columns/indexes). A destructive change needs explicit sign-off and a rehearsal on a restored copy of the backup.
 5. **Order: migrate first, then deploy.** New code may rely on a new column; old code tolerates an extra column. Deploying first breaks ingestion until the column exists.
 6. After deploying, re-run `migrations list` (should say nothing pending) and probe an authenticated endpoint.
 
 ## Checking for drift at any time
 
-`wrangler d1 migrations list cybercabhunter_db --remote` shows what wrangler thinks is pending. Anything unexpected means either a migration was applied outside wrangler again or a file was added but not yet applied.
+`wrangler d1 migrations list cybercabhunter-db --remote` shows what wrangler thinks is pending. Anything unexpected means either a migration was applied outside wrangler again or a file was added but not yet applied.

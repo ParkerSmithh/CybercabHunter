@@ -18,6 +18,11 @@ final class ZonesModel {
     var mode: Mode = .normal
     var heatRange: HeatRange = .d7
     var heatHour: Int?
+    /// All Sightings (the map as it always was) or Following. All Sightings by default.
+    enum Source: String, CaseIterable, Identifiable { case all, following; var id: String { rawValue } }
+    enum FollowingState: Equatable { case idle, loading, signedOut, failed, loaded(FollowingMapPage) }
+    var source: Source = .all
+    private(set) var following: FollowingState = .idle
 
     private(set) var live: [String: [CameraDetection]] = [:]
     private(set) var liveError: String?
@@ -45,6 +50,33 @@ final class ZonesModel {
         } catch {
             liveError = (error as? LocalizedError)?.errorDescription
         }
+    }
+
+    /// Once per choice, city or return to the map: never on a timer. Replaced by
+    /// the next request (the view's task is cancelled when any of those change).
+    func loadFollowing(using api: APIClient, signedIn: Bool) async {
+        guard signedIn else { following = .signedOut; return }
+        let asked = city
+        if case .loaded = following {} else { following = .loading }
+        do {
+            let page: FollowingMapPage = try await api.get("/api/sightings/following", query: [URLQueryItem(name: "city", value: asked)], authenticated: true, fresh: true)
+            guard asked == city else { return }
+            following = .loaded(page)
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
+        } catch APIError.unauthorized {
+            following = .signedOut
+        } catch {
+            following = .failed
+        }
+    }
+
+    /// A city change must not leave the last city's markers on screen.
+    func clearFollowing() { following = .idle }
+
+    var followingSpots: [FollowingMapSpot] {
+        guard source == .following, mode == .normal, case .loaded(let page) = following else { return [] }
+        return FollowingMapSpot.group(page.sightings)
     }
 
     func loadHeat(using api: APIClient) async {

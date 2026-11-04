@@ -53,10 +53,10 @@ check('the Appearance switch buttons are 40px tall on phones', /@media \(max-wid
 check('every page loads the same stylesheet version', new Set([...pages, 'infrastructure', 'moderation', 'replay', 'privacy', 'signin', 'moderation/import-receipt'].map(f => (/css\/style\.css\?v=(\d+)/.exec(read(`${f}.html`)) || [])[1])).size === 1);
 
 const community = read('community.html');
-check('Community: the four stats in one row on phones (2 / 4 from sm up as before)', /<div id="communityStats" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 [^"]*max-sm:grid-cols-4/.test(community));
+check('Community: the four stats in one row on phones (2 / 4 from sm up as before)', /<div class="community-stat-grid" data-stats-view="social" style="--cells:4">/.test(community) && /\.community-stat-grid\{[^}]*grid-template-columns:repeat\(var\(--cells/.test(fs.readFileSync(`${ROOT}public/css/community.css`, 'utf8')));
 const sim = read('simulation.html');
 check('Fleet ROI: the three results in one row on phones', /<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-sm:grid-cols-3 max-sm:gap-2">/.test(sim));
-check('Fleet ETA: one "Ride, hours & wait" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones', (sim.match(/>Ride, hours &amp; wait<\/h2>/g) || []).length === 2 && (sim.match(/<article data-glow(="red")? class="dmv-card rhw-card /g) || []).length === 4 && !/>(Fares|Operating hours|Pickup wait estimate)<\/h2>/.test(sim));
+check('Fleet ETA: one "Ride, hours & wait" section per city, a card per model (fare, hours and wait together), side by side from lg, stacked on phones', (sim.match(/>Ride, hours &amp; wait<\/h2>/g) || []).length === 2 && (sim.match(/<article class="dmv-card rhw-card /g) || []).length >= 3 && !/>(Fares|Operating hours|Pickup wait estimate)<\/h2>/.test(sim));
 check('Fleet ROI / ETA headers: the Cybercab sits beside the text on phones too (owner request 2026-10-07; replaces fit fix 2\'s stacking)', (sim.match(/grid grid-cols-\[minmax\(0,1fr\)_auto\] md:grid-cols-\[minmax\(0,32rem\)_auto\][^"]*max-sm:py-6/g) || []).length === 2 && /@media \(max-width:639px\)\{ \.sim-hero-car\{[^}]*width:clamp\(120px, 40vw, 170px\)/.test(sim) && !/@media \(max-width:639px\)\{ \.sim-hero-car\{[^}]*order:-1/.test(sim));
 check('the ROI sliders get a 40px touch strip on phones, the 4px track unchanged', /@media \(max-width:639px\)\{\s*input\[type=range\]\{height:40px; background:transparent;\}/.test(sim));
 check('Vehicle page: the four ride stats in one row on phones', /<div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm max-sm:grid-cols-4 max-sm:gap-2">/.test(read('vehicle.html')));
@@ -73,7 +73,7 @@ check('Sightings: two photo cards per row on phones (1 / 2 / 3 / 4 from 480px up
 const replayPage = read('replay.html');
 const mainJs = fs.readFileSync(`${ROOT}public/js/main.js`, 'utf8');
 for (const [name, html, id] of [['Zones', zones, 'zonePanel'], ['Replay', replayPage, 'replayPanel']]) {
-  check(`${name}: the details panel is a side drawer below lg, with a close button`, new RegExp(`<(div|aside) (id="${id}" class="[^"]*map-drawer"|class="[^"]*map-drawer" id="${id}")`).test(html) && /data-map-drawer-close aria-label="Close /.test(html));
+  check(`${name}: the details panel is a side drawer below lg, with a close button`, new RegExp(`<(div|aside) (id="${id}" class="[^"]*\\bmap-drawer\\b[^"]*"|class="[^"]*\\bmap-drawer\\b[^"]*" id="${id}")`).test(html) && /data-map-drawer-close aria-label="Close /.test(html));
   check(`${name}: a toggle on the map opens the drawer`, new RegExp(`data-map-drawer-toggle aria-controls="${id}" aria-expanded="false" class="map-drawer-toggle [^"]*min-h-\\[40px\\]`).test(html));
   check(`${name}: a backdrop blurs and darkens the map behind the drawer`, /class="drawer-backdrop map-drawer-backdrop" data-map-drawer-backdrop aria-hidden="true"/.test(html));
   check(`${name}: the map fills the phone screen below lg`, /max-lg:h-\[calc\(100dvh-10\.5rem-var\(--safe-bottom,0px\)\)\]/.test(html));

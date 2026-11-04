@@ -89,9 +89,9 @@ export async function newContext(browser, { session = null, width = 1440, height
   });
   if (process.env.TAILWIND_CSS) {
     const tw = fs.readFileSync(process.env.TAILWIND_CSS, 'utf8');
-    await ctx.route('https://cdn.tailwindcss.com/**', r => r.fulfill({ contentType: 'text/javascript', body: `window.tailwind={};document.write(${JSON.stringify('<style>' + tw + '</style>')});` }));
+    await ctx.route('**/vendor/tailwindcss-*.js', r => r.fulfill({ contentType: 'text/javascript', body: `window.tailwind={};document.write(${JSON.stringify('<style>' + tw + '</style>')});` }));
   }
-  await ctx.route(/googletagmanager|google-analytics|fonts\.g|unpkg\.com|cdnjs/, r => r.abort());
+  await ctx.route(/googletagmanager|google-analytics|fonts\.g|vendor\/maplibre|vendor\/jspdf/, r => r.abort());
   if (session) await ctx.addInitScript(s => { try { localStorage.setItem('teslaSessionId', s); } catch (e) { /* none */ } }, session);
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   return ctx;

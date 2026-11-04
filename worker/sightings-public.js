@@ -18,7 +18,9 @@ import { getSiteStatCounters } from './site-stats.js';
 import { db } from './db.js';
 import { publicLocation } from './places.js';
 import { timeZoneFor, usLocalParts } from './timezones.js';
-import { SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
+import { SERVICE_AREAS, serviceAreaFor, isInServiceArea } from './service-areas.js';
+import { tesla } from './tesla.js';
+import { authorJson } from './social.js';
 import { removeSightingsFromMap } from './camera-sightings.js';
 
 // The city filter buttons (Austin, Dallas). The API also answers city=all
@@ -197,6 +199,58 @@ export function publicSightingJson(r) {
     // (e.g. Austin in US Central); null when the area is unknown.
     time_zone: timeZoneFor({ serviceArea: r.service_area, location: r.approx_location })
   };
+}
+
+// GET /api/sightings/following?city=austin|dallas&limit=&cursor=  (signed in)
+// The service-area maps' Following filter, on the website and in the app:
+//   { following_count?, sightings: [{ ...public fields, vehicle_id, lat, lng, spotter }],
+//     unplaced: [the same without a position], next_cursor }
+//
+// Same sightings as the public gallery (PUBLIC_PHOTO_SIGHTING_SQL: approved,
+// photo still stored, within 30 days), narrowed on the server to accounts the
+// viewer follows with an accepted relationship. A sighting is one past moment
+// at a place rounded to about 110 m: never anyone's live location. A position
+// outside the selected area, or none, is listed in `unplaced`, not guessed.
+// Naming the spotter is what following grants: a private account only ever
+// reaches an approved follower, because nothing else matches the query.
+// Per viewer, so never stored by any cache (private, no-store), and no ids
+// beyond the public sighting and vehicle ids and the spotter's public handle.
+const FOLLOWING_DEFAULT_LIMIT = 100;
+const FOLLOWING_MAX_LIMIT = 200;
+const NO_STORE = { 'Cache-Control': 'private, no-store' };
+
+export async function apiFollowingSightings(request, env) {
+  const userId = await tesla.requireUserId(request, env);
+  if (!userId) return Response.json({ authenticated: false, error: 'sign_in_required' }, { status: 401, headers: NO_STORE });
+  const params = new URL(request.url).searchParams;
+  const area = serviceAreaFor(params.get('city'));
+  if (!area) return Response.json({ success: false, error: 'invalid_city' }, { status: 400, headers: NO_STORE });
+  const rawLimit = params.get('limit');
+  const limit = /^\d{1,3}$/.test(rawLimit || '') ? Math.min(Math.max(Number(rawLimit), 1), FOLLOWING_MAX_LIMIT) : FOLLOWING_DEFAULT_LIMIT;
+  let after = null;
+  if (params.get('cursor')) {
+    after = decodeCursor(params.get('cursor'), 'desc');
+    if (!after) return Response.json({ success: false, error: 'invalid_cursor' }, { status: 400, headers: NO_STORE });
+  }
+  const sql = env.cybercabhunter_db;
+  const [rows, count] = await Promise.all([
+    db.getFollowingMapSightings(sql, { followerId: userId, city: area.name.toLowerCase(), limit: limit + 1, after }),
+    after ? null : sql.prepare(`SELECT COUNT(*) AS n FROM user_follows WHERE follower_id = ? AND status = 'accepted'`).bind(userId).first()
+  ]);
+  const page = rows.slice(0, limit);
+  const sightings = [], unplaced = [];
+  for (const r of page) {
+    const { name, handle, avatar_url, rank, level } = authorJson({ ...r, opt_in: 1 });
+    const json = { ...publicSightingJson(r), vehicle_id: r.public_vehicle_id || null, spotter: { name, handle, avatar_url, rank, level } };
+    if (isInServiceArea(area, r.map_lng, r.map_lat)) sightings.push({ ...json, lat: r.map_lat, lng: r.map_lng });
+    else unplaced.push(json);
+  }
+  return Response.json({
+    ...(count ? { following_count: Number(count.n) || 0 } : {}),
+    sightings,
+    unplaced,
+    next_cursor: rows.length > limit ? encodeCursor(page[page.length - 1], 'desc') : null
+  }, { headers: NO_STORE });
 }
 
 const notFound = () => Response.json({ success: false, error: 'not_found' }, { status: 404 });

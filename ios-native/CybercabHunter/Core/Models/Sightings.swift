@@ -43,6 +43,63 @@ struct PublicSighting: Decodable, Sendable, Equatable, Hashable, Identifiable {
 }
 
 /// The Sightings page's stat cards (worker/sightings-public.js buildSightingStats).
+/// GET /api/sightings/following (worker/sightings-public.js): the maps' Following
+/// filter. The server decides everything: signed in, accepted follows only, the
+/// public gallery's sightings, never cached. A position is rounded to about 110 m;
+/// sightings without one are in `unplaced`, never drawn at a guess.
+struct FollowingMapPage: Decodable, Sendable, Equatable {
+    struct Sighting: Decodable, Sendable, Equatable, Hashable, Identifiable {
+        struct Spotter: Decodable, Sendable, Equatable, Hashable {
+            let name: String
+            let handle: String?
+            let avatarUrl: String?
+        }
+        let id: String
+        let imageUrl: String
+        let city: String?
+        let location: String?
+        let plate: String?
+        let cybercab: Bool
+        let spottedAt: String?
+        let timeZone: String?
+        let vehicleId: String?
+        let lat: Double?
+        let lng: Double?
+        let spotter: Spotter
+
+        /// The gallery's own form, so the time reads the same everywhere.
+        var gallery: PublicSighting { .init(id: id, imageUrl: imageUrl, city: city, location: location, plate: plate, cybercab: cybercab, spottedAt: spottedAt, timeZone: timeZone) }
+    }
+    /// On the first page only.
+    let followingCount: Int?
+    let sightings: [Sighting]
+    let unplaced: [Sighting]
+    let nextCursor: String?
+}
+
+/// One marker on the Following map: a vehicle at its latest sighting (or, with no
+/// public vehicle, one spot), holding every sighting it stands for, newest first.
+struct FollowingMapSpot: Identifiable, Equatable, Hashable, Sendable {
+    let id: String
+    let lat: Double
+    let lng: Double
+    let sightings: [FollowingMapPage.Sighting]
+
+    static func group(_ list: [FollowingMapPage.Sighting]) -> [FollowingMapSpot] {
+        var order: [String] = []
+        var groups: [String: [FollowingMapPage.Sighting]] = [:]
+        for s in list where s.lat != nil && s.lng != nil {
+            let key = s.vehicleId.map { "v:\($0)" } ?? "p:\(s.lat!),\(s.lng!)"
+            if groups[key] == nil { order.append(key) }
+            groups[key, default: []].append(s)
+        }
+        return order.map { key in
+            let members = groups[key]!
+            return FollowingMapSpot(id: key, lat: members[0].lat!, lng: members[0].lng!, sightings: members)
+        }
+    }
+}
+
 struct SightingStats: Decodable, Sendable, Equatable {
     struct PeakHour: Decodable, Sendable, Equatable { let hour: Int; let count: Int }
     struct BestDay: Decodable, Sendable, Equatable { let date: String; let count: Int }

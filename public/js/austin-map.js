@@ -13,6 +13,9 @@
      - Cybercabs spotted by the traffic-camera watch (GET /api/camera-sightings,
        worker/camera-sightings.js): one marker per camera with a detection in
        the last 24 hours, refreshed every 60s and reconciled by camera_id.
+     - setFollowingSpots(list): the Following filter (js/zones-following.js)
+       draws its own markers with the same look and grouping, in place of the
+       camera markers; null goes back to the cameras, with no refresh while hidden.
    Needs MapLibre (maplibregl) and the page's map instance. */
 window.CCCAustinMap = (function () {
   // Every map on the site uses CARTO's Dark Matter basemap (owner's choice,
@@ -129,6 +132,8 @@ window.CCCAustinMap = (function () {
     const CAMERA_REFRESH_MS = 60000;
     const CAMERA_TIME = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago', timeZoneName: 'short' };
     const cameraMarkers = new Map();   // camera_id -> { marker, key }
+    const followingMarkers = new Map();   // js/zones-following.js: spot id -> { marker, name }
+    let followingOn = false;
     const escapeHtml = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
     function cameraPopupHtml(d) {
@@ -143,12 +148,12 @@ window.CCCAustinMap = (function () {
          <div class="text-xs text-slate-300">${escapeHtml(when)}</div>`;
     }
 
-    function cameraMarkerElement(name) {
+    function cameraMarkerElement(name, label) {
       // As in the iOS app: a 26px dark disc with a thin gold ring and a soft
       // shadow (no glow), inside a 44px tap target so it is easy to hit on a phone.
       const el = document.createElement('div');
       el.className = 'camera-cybercab';
-      el.setAttribute('aria-label', `Cybercab seen by the traffic camera at ${name}`);
+      el.setAttribute('aria-label', label || `Cybercab seen by the traffic camera at ${name}`);
       el.style.cssText = 'width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
       el.innerHTML = `<span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85),0 1.5px 3px rgba(0,0,0,0.55);"><img src="images/CybercabOverhead.png" alt="" width="20" height="20" style="width:20px;height:20px;object-fit:contain;pointer-events:none;"></span>`;
       return el;
@@ -163,7 +168,7 @@ window.CCCAustinMap = (function () {
       const el = document.createElement('div');
       el.className = 'camera-cybercab-cluster';
       el.setAttribute('role', 'button');
-      el.setAttribute('aria-label', `${n} Cybercabs seen by nearby traffic cameras. Click to zoom in.`);
+      el.setAttribute('aria-label', followingOn ? `${n} Cybercabs spotted nearby by people you follow. Click to zoom in.` : `${n} Cybercabs seen by nearby traffic cameras. Click to zoom in.`);
       el.style.cssText = 'position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
       el.innerHTML = `<span style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(15,16,17,0.94);box-shadow:0 0 0 1.25px #FAE030,0 1.5px 3px rgba(0,0,0,0.55);"><img src="images/CybercabOverhead.png" alt="" width="22" height="22" style="width:22px;height:22px;object-fit:contain;pointer-events:none;"></span>`
         + `<span style="position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#FAE030;color:#1a1204;font:700 10.5px/16px Inter,system-ui,sans-serif;text-align:center;">${n}</span>`;
@@ -175,7 +180,7 @@ window.CCCAustinMap = (function () {
     }
     function regroup() {
       clusterMarkers.splice(0).forEach(c => c.remove());
-      const entries = [...cameraMarkers.values()];
+      const entries = followingOn ? [...followingMarkers.values()] : [...cameraMarkers.values()];
       if (typeof map.project !== 'function') return;   // no screen projection: leave every marker as is
       const pts = entries.map(e => ({ e, p: map.project(e.marker.getLngLat()) }));
       const used = new Set();
@@ -235,8 +240,35 @@ window.CCCAustinMap = (function () {
       regroup();
     }
 
+    // The Following filter's markers: drawn by this file so they group the same
+    // way. A list replaces the camera markers; null brings the cameras back.
+    function setFollowingSpots(spots) {
+      followingMarkers.forEach(e => e.marker.remove());
+      followingMarkers.clear();
+      if (spots === null) {
+        followingOn = false;
+        refreshCameraMarkers();
+        regroup();
+        return;
+      }
+      if (!followingOn) {
+        followingOn = true;
+        cameraSeq++;   // a camera answer still on its way must not land on this view
+        cameraMarkers.forEach(e => e.marker.remove());
+        cameraMarkers.clear();
+      }
+      for (const s of spots) {
+        const popup = new maplibregl.Popup({ offset: 18, maxWidth: '268px' }).setHTML(s.html);
+        const marker = new maplibregl.Marker({ element: cameraMarkerElement(s.name, s.label), anchor: 'center' })
+          .setLngLat([s.lng, s.lat]).setPopup(popup).addTo(map);
+        followingMarkers.set(s.id, { marker, name: s.name });
+      }
+      regroup();
+    }
+
     let cameraSeq = 0;   // only the newest request's answer is shown (a city switch mid-request)
     async function refreshCameraMarkers() {
+      if (followingOn) return;   // Following shows its own markers and asks for nothing here
       const mine = ++cameraSeq;
       const city = cityOf();
       let detections = [];
@@ -251,7 +283,7 @@ window.CCCAustinMap = (function () {
 
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
-    return { refreshCameras: refreshCameraMarkers, refreshChargingLocations };
+    return { refreshCameras: refreshCameraMarkers, refreshChargingLocations, setFollowingSpots };
   }
   return { DARK_MATTER, styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
 })();

@@ -321,7 +321,17 @@ async function run() {
       const sent = [];
       w.fetch = async (u, opts = {}) => {
         const path = String(u).replace(/^https:\/\/[^/]+/, '');
-        if (path.startsWith('/api/')) { sent.push({ path, opts }); return worker.fetch(new Request(`https://cybercabhunter.com${path}`, opts), ctx.env, {}); }
+        if (path.startsWith('/api/')) {
+          sent.push({ path, opts });
+          // A browser would encode jsdom's FormData itself; Node's Request needs its own.
+          let init = opts;
+          if (opts.body instanceof w.FormData) {
+            const fd = new FormData();
+            for (const [k, v] of opts.body.entries()) if (typeof v === 'string') fd.append(k, v);
+            init = { ...opts, body: fd };
+          }
+          return worker.fetch(new Request(`https://cybercabhunter.com${path}`, init), ctx.env, {});
+        }
         return new Response('{}', { status: 404 });
       };
       w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\nCCC.init();\n${read('public/js/community.js')}\n${read('public/js/peek-rating.js')}\n${read('public/js/social.js')}\n${inline}`);

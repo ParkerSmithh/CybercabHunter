@@ -1,0 +1,30 @@
+{
+  "following_count": 1,
+  "sightings": [
+    {
+      "id": "3583953eccbff3aa20681cba5a1b4d0a",
+      "image_url": "/api/sightings/3583953eccbff3aa20681cba5a1b4d0a/photo",
+      "city": "Austin",
+      "location": null,
+      "plate": "XVF-3582",
+      "cybercab": true,
+      "spotted_at": "2026-11-04T18:53:39Z",
+      "time_zone": "America/Chicago",
+      "vehicle_id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "spotter": {
+        "name": "Bob B",
+        "handle": "bob_b",
+        "avatar_url": null,
+        "rank": {
+          "key": "bronze",
+          "name": "Bronze Spotter"
+        },
+        "level": 2
+      },
+      "lat": 30.263,
+      "lng": -97.745
+    }
+  ],
+  "unplaced": [],
+  "next_cursor": null
+}

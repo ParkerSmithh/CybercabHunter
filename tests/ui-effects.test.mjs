@@ -55,14 +55,14 @@ async function run() {
     check('the listener looks for [data-glow], not every .glass', /e\.target\.closest\('\[data-glow\]'\)/.test(MAIN) && !/closest\('\.glass'\)/.test(MAIN));
     const count = f => (read(`public/${f}`).match(/\bdata-glow\b/g) || []).length;
     check('Sightings: the six stat tiles and the empty / error messages; not the city / sort bar', count('sightings.html') === 8 && !/data-glow class="glass rounded-2xl p-3 mb-6/.test(read('public/sightings.html')));
-    check('Community: the four stat tiles only (not Reviews, not the leaderboard)', count('community.html') === 4 && !/id="reviews" data-glow|data-glow[^>]*id="reviews"/.test(read('public/community.html')));
+    check('Community: no glow (its stats became one quiet panel in the redesign, 3d0516e)', count('community.html') === 0 && /id="communityStats" class="community-stats glass soft-panel"/.test(read('public/community.html')));
     {
       // simulation.html: Fleet ROI's three result tiles, and on Fleet ETA only the
       // model cards (Cybercab gold, Model Y red), Austin and Dallas: fleet mix + ride/hours/wait.
       const sim = read('public/simulation.html'), roi = sim.slice(sim.indexOf('id="simPanelRoi"'), sim.indexOf('id="simPanelEta"')), eta = sim.slice(sim.indexOf('id="simPanelEta"'));
       const n = t => (t.match(/\bdata-glow\b/g) || []).length;
       check('Fleet ROI: the three result tiles only (not the inputs or the graph)', n(roi) === 3);
-      check('Fleet ETA: the eight model cards only, red on Model Y', n(eta) === 8 && (eta.match(/data-glow="red"/g) || []).length === 4 && [...eta.matchAll(/data-glow(?:="red")? class="([^"]*)"/g)].every(m => /\bdmv-card\b/.test(m[1])));
+      check('Fleet ETA: no glow (the model cards became subtle panels, c417898), still tinted gold and red', n(eta) === 0 && /class="dmv-card rhw-card [^"]*soft-panel" style="--c:239 68 68"/.test(eta));
     }
     check('the vehicle cards and the sighting cards are marked by their scripts', /a\.dataset\.glow = kind\.glow/.test(read('public/js/vehicles.js')) && /article\.dataset\.glow = ''/.test(read('public/js/sightings.js')));
     // vehicle.html: only its hero card (the Fleet ETA model-card redesign, owner request 2026-10-09).
