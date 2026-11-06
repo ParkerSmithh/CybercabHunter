@@ -78,6 +78,7 @@ struct AccountView: View {
                 switch route {
                 case .data: RiderDataView()
                 case .gmail: GmailForwardingView()
+                case .receipts: RideReceiptsView()
                 }
             }
             .navigationDestination(for: VehicleRoute.self) { VehicleDetailView(route: $0) }
@@ -179,7 +180,7 @@ struct AccountView: View {
                 .accessibilityIdentifier("followersAndRequests")
             NavigationLink(value: RiderDataRoute.data) { Label("Rider data", systemImage: "list.bullet.rectangle") }
                 .accessibilityIdentifier("riderData")
-            NavigationLink(value: RiderDataRoute.gmail) { Label("Receipt sync (Gmail)", systemImage: "envelope.arrow.triangle.branch") }
+            NavigationLink(value: RiderDataRoute.receipts) { Label("Ride receipts", systemImage: "envelope.arrow.triangle.branch") }
                 .accessibilityIdentifier("receiptSync")
         }
         if model.isModerator {

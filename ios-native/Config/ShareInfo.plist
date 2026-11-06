@@ -7,10 +7,7 @@
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>NSExtensionActivationRule</key>
-			<dict>
-				<key>NSExtensionActivationSupportsImageWithMaxCount</key>
-				<integer>10</integer>
-			</dict>
+			<string>SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.plain-text" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.mail.email" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.email-message").@count &gt;= 1 AND SUBQUERY($item.attachments, $a, ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image").@count &lt;= 10).@count &gt;= 1</string>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>

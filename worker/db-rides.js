@@ -345,6 +345,29 @@ async function deleteRideForUser(sql, userId, tripId) {
 
 // ---- Receipt-sync status ----
 
+// The rider's own recent receipt imports, newest first, for the Ride Receipts
+// screen: each receipt's outcome (and the ride it made, if any), whichever way
+// it arrived. Keyset paged on (received_at, id). Reads the rider's rows through
+// idx_receipt_ingestions_user: a handful to a few hundred per rider, so no new
+// index. Never the email, its text, the Message-ID or the receipt hash.
+async function listRecentImports(sql, userId, { limit = 20, after = null } = {}) {
+  const cursorSql = after ? ' AND (i.received_at < ? OR (i.received_at = ? AND i.id < ?))' : '';
+  const binds = after ? [after.t, after.t, after.id] : [];
+  const rows = await sql.prepare(`
+    SELECT i.id, i.received_at, i.status, i.outcome, i.error_code, i.trip_id,
+           r.source AS run_source,
+           t.ride_date, t.pickup_time, t.pickup_description, t.dropoff_description,
+           t.fare_amount_cents, t.currency, (t.id IS NOT NULL AND t.superseded_by IS NULL) AS trip_live
+    FROM receipt_ingestions i
+    LEFT JOIN ride_sync_runs r ON r.id = i.sync_run_id
+    LEFT JOIN trips t ON t.id = i.trip_id AND t.user_id = i.user_id
+    WHERE i.user_id = ?${cursorSql}
+    ORDER BY i.received_at DESC, i.id DESC
+    LIMIT ?
+  `).bind(userId, ...binds, limit).all();
+  return rows.results || [];
+}
+
 async function getSyncStatus(sql, userId) {
   const [address, totals, lastRun, lastReceived, review, unidentified] = await sql.batch([
     sql.prepare(`
@@ -603,5 +626,6 @@ export const rideQueries = {
   deleteAllRidesForUser,
   deleteRideForUser,
   getSyncStatus,
+  listRecentImports,
   getUserProfile
 };

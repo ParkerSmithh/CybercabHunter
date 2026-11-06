@@ -168,6 +168,27 @@ async function applyToExistingRide(sql, ctx, ride, existing) {
 // ctx: { userId, syncRunId, evidenceType, storeEvidence?: async () => evidenceRef }
 // storeEvidence runs only when a NEW ride is actually created, so a
 // duplicate never leaves an orphaned attachment behind.
+// What ingestRide WOULD do with this ride, answered from reads only: the import
+// screen's preview, so a rider can check a scanned or shared receipt before
+// anything is saved. Mirrors ingestRide's order exactly; writes nothing.
+//   rejected      not a Tesla Robotaxi receipt
+//   needs_details no ride identity (e.g. no readable pickup time): it would be
+//                 kept for review, but no ride is created
+//   duplicate     this exact receipt is already imported
+//   same_ride     a receipt for a ride already on file (it would update it)
+//   new           a new ride
+export async function previewRide(env, ride, userId) {
+  const sql = env.cybercabhunter_db;
+  if (ride.review.status === 'rejected') return { would: 'rejected', reason: ride.review.reason };
+  if (ride.identityIssue) return { would: 'needs_details', reason: ride.identityIssue };
+  const prior = (ride.messageId ? await db.findIngestionByMessageId(sql, userId, ride.messageId) : null)
+    || await db.findIngestionByHash(sql, userId, ride.receiptHash);
+  if (prior) return { would: 'duplicate', tripId: prior.trip_id || null };
+  const existing = await findExistingRide(sql, userId, ride);
+  if (existing) return { would: 'same_ride', tripId: existing.id || null };
+  return { would: 'new', reviewStatus: ride.review.status };
+}
+
 export async function ingestRide(env, ride, ctx) {
   const sql = env.cybercabhunter_db;
   const userId = ctx.userId;

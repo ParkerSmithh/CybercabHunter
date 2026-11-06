@@ -78,7 +78,7 @@ final class Phase7AccountUITests: XCTestCase {
         XCTAssertFalse(app.buttons.containing(NSPredicate(format: "label CONTAINS[c] 'Connect Tesla'")).firstMatch.exists)
         shot(app, "tesla-ride-history-note")
         app.buttons["teslaRideHistoryReceipts"].tap()
-        XCTAssertTrue(app.descendants(matching: .any).containing(NSPredicate(format: "label CONTAINS 'forwarding address'")).firstMatch.waitForExistence(timeout: 10), "opens receipt sync")
+        XCTAssertTrue(app.descendants(matching: .any)["receiptsHeader"].firstMatch.waitForExistence(timeout: 10), "opens Ride Receipts")
     }
 
     func testReceiptSyncShowsAddressAndGmailConfirmation() throws {
@@ -87,6 +87,11 @@ final class Phase7AccountUITests: XCTestCase {
         let link = app.buttons["receiptSync"]
         reveal(link, in: app)
         link.tap()
+        // Account -> Ride receipts -> the forwarding setup it links to.
+        XCTAssertTrue(app.descendants(matching: .any)["receiptsHeader"].firstMatch.waitForExistence(timeout: 10))
+        let setup = app.buttons["receiptSetup"], manage = app.buttons["receiptManage"]
+        XCTAssertTrue(setup.waitForExistence(timeout: 15) || manage.exists)
+        (setup.exists ? setup : manage).tap()
         XCTAssertTrue(app.staticTexts["gmailTitle"].waitForExistence(timeout: 10))
         let address = app.staticTexts["gmailAddress"]
         XCTAssertTrue(address.waitForExistence(timeout: 15))

@@ -92,6 +92,11 @@ final class PushAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
             await MainActor.run { AppRouter.shared.openSharedSighting() }
             return
         }
+        // "Finish importing your receipt" (the Share extension): Import Receipt, with it attached.
+        if response.notification.request.content.userInfo[ReceiptShareInbox.notificationKey] != nil {
+            await MainActor.run { AppRouter.shared.openSharedReceipt(force: true) }
+            return
+        }
         guard let raw = response.notification.request.content.userInfo["link"] as? String,
               raw.hasPrefix("/"), !raw.hasPrefix("//"), let url = URL(string: raw, relativeTo: URL(string: "https://cybercabhunter.com")!)?.absoluteURL,
               url.host == "cybercabhunter.com" else { return }

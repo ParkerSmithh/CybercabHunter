@@ -30,7 +30,9 @@ export async function apiPush(request,env) {
  }
  if(request.method==='GET' && path==='/api/push/preferences') {
   const row=await db.prepare('SELECT settings FROM push_preferences WHERE user_id=?').bind(user).first();
-  return json({preferences:row?JSON.parse(row.settings):null});
+  // Merged with the defaults, so a newer setting (e.g. rides) is always present.
+  let preferences=null; if(row) { try { preferences=validatePreferences(JSON.parse(row.settings)); } catch { preferences=JSON.parse(row.settings); } }
+  return json({preferences});
  }
  if(Number(request.headers.get('Content-Length'))>8192) return json({error:'body_too_large'},413);
  let body; try { const raw=await request.text(); if(raw.length>8192) return json({error:'body_too_large'},413); body=JSON.parse(raw); } catch { return json({error:'invalid_json'},400); }
@@ -97,7 +99,7 @@ async function plan(db,row,now) {
   const body=reportBody(days,p.weeklyMetrics);
   if(body) await enqueue(db,user,`${user}:weekly:${period}`,'weekly',{title:'Your Weekly Cybercab Recap',body:`Previous seven days: ${body}`,link:'/?daily='+date+'&days=7'},[],now,false,period);
  }
- const active=['news','dmv','registry','sightings','cameras','community'].filter(category=>eligible(p,{category,major:true,kind:'comments'}) || (category==='community' && (p.replies||p.mentions||p.likes)));
+ const active=['news','dmv','registry','sightings','cameras','community','rides'].filter(category=>eligible(p,{category,major:true,kind:'comments'}) || (category==='community' && (p.replies||p.mentions||p.likes)));
  if(!active.length) return;
  const summary=active.filter(category=>p[category]==='daily');
  if(dailyAt!==null && now>=dailyAt) for(const category of summary) {
@@ -123,8 +125,8 @@ async function plan(db,row,now) {
  if(discard.length) await db.batch(discard.map(id=>db.prepare('INSERT OR IGNORE INTO push_consumed(user_id,event_id) VALUES(?,?)').bind(user,id)));
  for(const events of groups.values()) {
   const e=events[0], data=JSON.parse(e.payload), n=events.reduce((sum,event)=>sum+(JSON.parse(event.payload).count||1),0);
-  const title=e.category==='dmv'?`${n} New DMV ${n===1?'Entry':'Entries'}`:n>1?`${n} Cybercab ${e.category==='cameras'?'Detections':e.category==='sightings'?'Sightings':'Updates'}`:e.category==='news'?(data.major?'Major Cybercab News':'Cybercab News'):data.title;
-  const body=e.category==='news'?(n===1?data.title:`${n} new stories are available.`):e.category==='community'?'There is a new interaction with your Community content.':`${n} new ${e.category==='registry'?'public Cybercabs':e.category==='dmv'?'Tesla/Cybercab DMV records':e.category==='cameras'?'camera detections':'approved public sightings'} added to Cybercab Hunter.`;
+  const title=e.category==='rides'?(n===1?'New Tesla ride imported':`${n} new Tesla rides imported`):e.category==='dmv'?`${n} New DMV ${n===1?'Entry':'Entries'}`:n>1?`${n} Cybercab ${e.category==='cameras'?'Detections':e.category==='sightings'?'Sightings':'Updates'}`:e.category==='news'?(data.major?'Major Cybercab News':'Cybercab News'):data.title;
+  const body=e.category==='rides'?(n===1?'Tap to view your ride details.':'Tap to view them in Rider Data.'):e.category==='news'?(n===1?data.title:`${n} new stories are available.`):e.category==='community'?'There is a new interaction with your Community content.':`${n} new ${e.category==='registry'?'public Cybercabs':e.category==='dmv'?'Tesla/Cybercab DMV records':e.category==='cameras'?'camera detections':'approved public sightings'} added to Cybercab Hunter.`;
   const id=await digest(user+':'+events.map(e=>e.id).join(','));
   await enqueue(db,user,id,e.category,{title,body,count:n,link:data.link,major:events.some(e=>JSON.parse(e.payload).major)},events,now,p.group || quietNow(p,now) || p.frequency==='reduced');
  }

@@ -12,7 +12,7 @@
 // payment details or names.
 
 import { parseRawEmail } from './receipt-parser.js';
-import { processReceiptMessage, newCounts, addToCounts, runStatusFor } from './receipt-process.js';
+import { processReceiptMessage, previewReceiptMessage, newCounts, addToCounts, runStatusFor } from './receipt-process.js';
 import { db } from './db.js';
 
 const MAX_ITEMS = 25;
@@ -144,6 +144,90 @@ export const itemBase = (result, index) => ({
   reason: result.outcome === 'error' ? result.code : (result.reason || null),
   ride_date: result.rideDate || null
 });
+
+// POST /api/rides/import/preview  { items: [ONE { kind, content }] }
+// What importing this receipt would do, from the same parser, classifier and
+// duplicate rules as /api/rides/import, WITHOUT writing anything: the app's
+// review step for a scanned, photographed or shared receipt. Missing fields
+// stay null (never guessed); `uncertain` lists what the rider should check.
+// Only the signed-in rider's own receipt and duplicate state are returned.
+export async function apiPreviewReceipt(request, env, userId) {
+  const read = await readImportItems(request);
+  if (read.response) return read.response;
+  if (read.items.length !== 1) return Response.json({ success: false, error: 'one_item_only' }, { status: 400 });
+  let preview;
+  try {
+    preview = await previewReceiptMessage(env, await toParsedMessage(read.items[0]), 'receipt_import', userId);
+  } catch (err) {
+    return Response.json({ success: false, error: 'not_readable' }, { status: 422 });
+  }
+  const { ride, fieldSources, verdict } = preview;
+  const fields = {
+    ride_date: ride.rideDate, pickup_time: ride.pickupTime, dropoff_time: ride.dropoffTime,
+    pickup: ride.pickupDescription, dropoff: ride.dropoffDescription,
+    fare_amount_cents: ride.fareAmountCents, currency: ride.currency,
+    distance_miles: ride.distance, duration_minutes: ride.durationMinutes,
+    license_plate: ride.licensePlate, service_area: ride.serviceArea, timezone: ride.timezone
+  };
+  const uncertain = [];
+  if (!ride.pickupTime) uncertain.push('pickup_time');
+  if (!ride.rideDate) uncertain.push('ride_date');
+  if (ride.fareAmountCents === null || ride.fareAmountCents === undefined) uncertain.push('fare');
+  if (!ride.licensePlate) uncertain.push('license_plate');
+  for (const [k, v] of Object.entries(fieldSources)) if (v && v !== 'extracted' && !uncertain.includes(k)) uncertain.push(k);
+  return Response.json({
+    success: true,
+    would: verdict.would,
+    reason: verdict.reason || null,
+    review_status: ride.review ? ride.review.status : null,
+    fields,
+    uncertain
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
+}
+
+// GET /api/rides/imports?cursor=  the rider's own recent receipt imports.
+// `source`: email (the forwarding address), gmail (Connect Gmail) or import
+// (pasted, scanned, photographed or shared in the app or on the website).
+// `result` is what happened, in plain terms; `error` is a stable code the
+// app turns into an action (e.g. needs a pickup time).
+const IMPORT_PAGE = 20;
+const SOURCE_NAMES = { receipt_email: 'email', gmail_api: 'gmail', receipt_import: 'import', moderator_import: 'import' };
+export async function apiListImports(request, env, userId) {
+  const raw = new URL(request.url).searchParams.get('cursor');
+  let after = null;
+  if (raw) {
+    try { after = JSON.parse(atob(raw.replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { after = null; }
+    if (!after || typeof after.t !== 'string' || typeof after.id !== 'string') {
+      return Response.json({ success: false, error: 'invalid_cursor' }, { status: 400 });
+    }
+  }
+  const rows = await db.listRecentImports(env.cybercabhunter_db, userId, { limit: IMPORT_PAGE + 1, after });
+  const page = rows.slice(0, IMPORT_PAGE);
+  const result = r => {
+    if (r.outcome === 'created') return 'imported';
+    if (r.outcome === 'updated') return 'updated';
+    if (r.outcome === 'duplicate' || r.status === 'duplicate') return 'duplicate';
+    if (r.outcome === 'unidentified') return 'needs_details';
+    if (r.outcome === 'rejected' || r.status === 'rejected') return 'not_a_receipt';
+    return r.status === 'accepted' ? 'imported' : 'failed';
+  };
+  const last = page[page.length - 1];
+  return Response.json({
+    imports: page.map(r => ({
+      id: r.id,
+      received_at: r.received_at ? `${String(r.received_at).replace(' ', 'T')}Z` : null,
+      source: SOURCE_NAMES[r.run_source] || (r.run_source ? 'import' : 'email'),
+      result: result(r),
+      error: ['imported', 'updated'].includes(result(r)) ? null : (r.error_code || null),
+      ride: r.trip_id && r.trip_live ? {
+        id: r.trip_id, ride_date: r.ride_date, pickup_time: r.pickup_time,
+        pickup: r.pickup_description, dropoff: r.dropoff_description,
+        fare_amount_cents: r.fare_amount_cents, currency: r.currency
+      } : null
+    })),
+    next_cursor: rows.length > IMPORT_PAGE ? btoa(JSON.stringify({ t: last.received_at, id: last.id })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : null
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
+}
 
 export async function apiImportReceipts(request, env, userId) {
   const read = await readImportItems(request);

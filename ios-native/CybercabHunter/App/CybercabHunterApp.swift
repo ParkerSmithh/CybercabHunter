@@ -26,6 +26,15 @@ struct CybercabHunterApp: App {
             }
             _ = try? SightingShareInbox.save(photo)
         }
+        // UI tests: `-seedSharedReceipt text|pdf|image` leaves a sanitized receipt where the Share extension would.
+        #if DEBUG
+        // UI tests (-apiBase) start with no shared receipt left by an earlier test,
+        // unless a test seeds one or keeps one (-keepSharedReceipts) on purpose.
+        if DebugLaunch.usesTestSession && DebugLaunch.seedsSharedReceipt == nil && !ProcessInfo.processInfo.arguments.contains("-keepSharedReceipts") {
+            ReceiptShareInbox.pending().forEach { ReceiptShareInbox.discard($0.id) }
+        }
+        if let kind = DebugLaunch.seedsSharedReceipt { _ = try? ReceiptShareInbox.save(TestReceipt.data(kind)) }
+        #endif
         // Inter in the navigation bars, as on the website.
         let inline = UIFont(name: "Inter", size: 17).map { UIFontMetrics(forTextStyle: .headline).scaledFont(for: $0.withWeight(.semibold)) }
         let large = UIFont(name: "Inter", size: 32).map { UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: $0.withWeight(.bold)) }

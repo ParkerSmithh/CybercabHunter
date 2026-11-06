@@ -3,7 +3,9 @@ export const defaults = () => ({ version: 1, master: true, timezone: 'America/Ch
  quietStart: 1320, quietEnd: 420, majorDuringQuiet: false, group: true, frequency: 'standard',
  news: 'major', dmv: 'instant', daily: true, dailyTime: 480, dailyMetrics: [...metrics], comparison: false,
  registry: 'off', sightings: 'off', cameras: 'off', comments: true, replies: true, mentions: true, likes: true,
- weekly: false, weeklyDay: 0, weeklyTime: 540, weeklyMetrics: [...metrics] });
+ weekly: false, weeklyDay: 0, weeklyTime: 540, weeklyMetrics: [...metrics],
+ // Receipt Import Notifications: off until the rider turns them on.
+ rides: false });
 export function validatePreferences(value) {
  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('invalid_preferences');
  const p = defaults();
@@ -37,6 +39,7 @@ export function eligible(p,e) {
  if (!p.master) return false;
  if (e.category==='news') return p.news==='all' || (p.news==='major' && e.major);
  if (e.category==='community') return !!p[e.kind];
+ if (e.category==='rides') return !!p.rides;
  return p[e.category] && p[e.category]!=='off';
 }
 export function reportBody(days,selected,previous) {
