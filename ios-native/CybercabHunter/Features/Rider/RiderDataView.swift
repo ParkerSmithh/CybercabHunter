@@ -141,6 +141,8 @@ struct RiderDataView: View {
 
         ridesSection
 
+        teslaRideHistoryNote
+
         if model.isModerator { teslaSection }
     }
 
@@ -165,6 +167,23 @@ struct RiderDataView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("riderGmail")
+    }
+
+    // MARK: Tesla ride history (docs/tesla-ride-sync.md)
+
+    /// Riders ask for a direct Tesla connection: say plainly that Tesla doesn't
+    /// offer one, and point to the way that works. No Connect button and no
+    /// status that isn't true.
+    private var teslaRideHistoryNote: some View {
+        section("Tesla ride history", id: "riderTeslaRideHistory") {
+            Text("Automatic sync from your Tesla account isn't available. Tesla doesn't offer Robotaxi ride history to other apps, so your rides come from Tesla's ride receipts instead.")
+                .font(.inter(13)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
+            NavigationLink(value: RiderDataRoute.gmail) {
+                Text("Set up receipt sync").font(.inter(14, .semibold))
+            }
+            .modifier(OutlineButton(color: .brandGold))
+            .accessibilityIdentifier("teslaRideHistoryReceipts")
+        }
     }
 
     // MARK: Rides

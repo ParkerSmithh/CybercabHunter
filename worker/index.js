@@ -7,8 +7,6 @@ import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiCompleteForwardingSetup, apiGetSyncStatus } from './receipt-ingestion.js';
 import { apiImportReceipts } from './receipt-import.js';
-import { apiTeslaDebugCapabilities } from './tesla-debug.js';
-import { robotaxiOwnerAuth } from './robotaxi-owner-auth.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
@@ -657,14 +655,14 @@ const worker = {
       return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);
     }
 
-    // Tesla Ride Sync — a separate OAuth subsystem from the Fleet API
-    // routes above and from the earlier /oauth/robotaxi/* experiment. See
-    // worker/tesla-rides.js. No ride-history endpoint exists yet.
+    // Tesla Ride Sync — a separate Fleet API OAuth subsystem from the routes
+    // above. See worker/tesla-rides.js. No ride-history endpoint exists: Tesla
+    // documents none (docs/tesla-ride-sync.md).
     if (url.pathname === '/api/tesla/rides/connect' && request.method === 'GET') {
       return withCors(await teslaRides.startAuthorization(request, env), request);
     }
     // Reached by Tesla's own redirect, not a fetch() — no CORS handling,
-    // matching /oauth/tesla/callback and /oauth/robotaxi/callback.
+    // matching /oauth/tesla/callback.
     if (url.pathname === '/api/tesla/rides/callback' && request.method === 'GET') {
       return await teslaRides.handleCallback(request, env);
     }
@@ -675,32 +673,10 @@ const worker = {
       return withCors(await teslaRides.apiDisconnect(request, env), request);
     }
 
-    // TEMPORARY — Tesla Fleet API capability audit. Delete this route (and
-    // worker/tesla-debug.js) once the audit is done; see that file's header.
-    if (url.pathname === '/api/tesla/debug/capabilities' && request.method === 'GET') {
-      return withCors(await apiTeslaDebugCapabilities(request, env), request);
-    }
-
-    // Robotaxi ride-history (ownerapi) authentication — fully separate from
-    // the Fleet API routes above. See worker/robotaxi-owner-auth.js.
-    // /oauth/robotaxi/start requires the bearer session (fetch, not a link
-    // click) since it needs to know which user is linking before handing
-    // off to Tesla, so unlike /oauth/tesla/start it goes through withCors.
-    if (url.pathname === '/oauth/robotaxi/start' && request.method === 'GET') {
-      return withCors(await robotaxiOwnerAuth.startOAuth(request, env), request);
-    }
-    // Tesla's void-callback page isn't on our domain (see that module's
-    // header) — reached by the user pasting the resulting URL, not a
-    // cross-origin fetch, so no CORS handling here, matching /oauth/tesla/callback.
-    if (url.pathname === '/oauth/robotaxi/callback' && request.method === 'GET') {
-      return await robotaxiOwnerAuth.handleCallback(request, env);
-    }
-    if (url.pathname === '/api/robotaxi/status' && request.method === 'GET') {
-      return withCors(await robotaxiOwnerAuth.apiStatus(request, env), request);
-    }
-    if (url.pathname === '/api/robotaxi/disconnect' && request.method === 'POST') {
-      return withCors(await robotaxiOwnerAuth.apiDisconnect(request, env), request);
-    }
+    // Removed Nov 2026 (docs/tesla-ride-sync.md): the server-side ownerapi
+    // sign-in (/oauth/robotaxi/*, /api/robotaxi/*) and the temporary Fleet API
+    // capability audit (/api/tesla/debug/capabilities). Tesla documents no
+    // third-party ride-history API, and the audit was done.
 
     // Public vehicle page shell (Phase 3C): vehicle.html is ONE static file
     // that serves every /vehicle/:id — the page itself reads the id from

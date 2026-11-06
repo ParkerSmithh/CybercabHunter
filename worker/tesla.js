@@ -457,9 +457,6 @@ export const tesla = {
   apiDisconnect,
   apiDeleteData,
   requireUserId,
-  // Exposed for worker/tesla-debug.js (temporary capability-audit route) so
-  // it reuses the exact existing token-refresh logic and API base rather
-  // than duplicating them.
   getValidAccessToken,
   FLEET_API_AUDIENCE
 };

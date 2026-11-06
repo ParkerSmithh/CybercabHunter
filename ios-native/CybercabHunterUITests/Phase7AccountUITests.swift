@@ -70,6 +70,15 @@ final class Phase7AccountUITests: XCTestCase {
         ride.buttons["Cancel"].tap()
         XCTAssertFalse(app.buttons["riderConfirmRemove"].exists)
         XCTAssertFalse(any(app, "riderTesla").exists, "Tesla linking is offered to moderators only, as on the website")
+        // Tesla ride history: says it isn't available and points to receipts; no Connect button.
+        let note = any(app, "riderTeslaRideHistory")
+        reveal(note, in: app)
+        XCTAssertTrue(note.exists)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Automatic sync from your Tesla account isn'")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.containing(NSPredicate(format: "label CONTAINS[c] 'Connect Tesla'")).firstMatch.exists)
+        shot(app, "tesla-ride-history-note")
+        app.buttons["teslaRideHistoryReceipts"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).containing(NSPredicate(format: "label CONTAINS 'forwarding address'")).firstMatch.waitForExistence(timeout: 10), "opens receipt sync")
     }
 
     func testReceiptSyncShowsAddressAndGmailConfirmation() throws {
