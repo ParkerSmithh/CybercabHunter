@@ -73,7 +73,6 @@ async function populate(ctx, u) {
   // Connections and bookkeeping.
   seedRow(ctx, 'tesla_connections', 'user_id', u, { status: 'active' });
   seedRow(ctx, 'vehicles', 'owner_user_id', u);
-  seedRow(ctx, 'robotaxi_owner_connections', 'user_id', u, { status: 'active' });
   const tokenKey = `ride_tokens:${u}`;
   await ctx.env.TESLA_SESSIONS.put(tokenKey, JSON.stringify({ encryptedAccessToken: 'x' }));
   seedRow(ctx, 'tesla_ride_sync_connections', 'user_id', u, { kv_token_key: tokenKey, status: 'active' });
@@ -135,7 +134,7 @@ async function run() {
       ctx.d1.query(`SELECT moderator_user_id FROM robotaxi_vehicle_reviews WHERE id = 'rev-1'`)[0].moderator_user_id === 'victim' && ctx.d1.query(`SELECT COUNT(*) n FROM users WHERE id = 'victim'`)[0].n === 0);
     check('the users row is gone', ctx.d1.query(`SELECT COUNT(*) n FROM users WHERE id = 'victim'`)[0].n === 0);
     check('their receipt forwarding address, trips (and revisions), sightings, submissions and connections are gone',
-      ['receipt_ingestion_addresses', 'trips', 'vehicle_observations', 'submissions', 'tesla_connections', 'vehicles', 'robotaxi_owner_connections', 'tesla_ride_sync_connections', 'google_connections', 'gmail_connections', 'gmail_processed_messages', 'ride_sync_runs', 'receipt_ingestions']
+      ['receipt_ingestion_addresses', 'trips', 'vehicle_observations', 'submissions', 'tesla_connections', 'vehicles', 'tesla_ride_sync_connections', 'google_connections', 'gmail_connections', 'gmail_processed_messages', 'ride_sync_runs', 'receipt_ingestions']
         .every(tb => ctx.d1.query(`SELECT COUNT(*) n FROM ${tb} WHERE ${tb === 'vehicles' ? 'owner_user_id' : 'user_id'} = 'victim'`)[0].n === 0)
       && ctx.d1.query(`SELECT COUNT(*) n FROM trip_revisions WHERE trip_id LIKE 'victim%'`)[0].n === 0);
     check('their Zones-map copy is gone (row and image)', ctx.d1.query(`SELECT COUNT(*) n FROM camera_detections WHERE id = 'victim-cam'`)[0].n === 0 && !ctx.env.EVIDENCE_BUCKET._objects.has('camera-captures/65/victim.jpg'));

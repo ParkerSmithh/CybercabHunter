@@ -157,15 +157,11 @@ async function run() {
         check(`${method} ${path} ${userId ? 'signed in' : 'signed out'}: not served (${resp.status})`, ![200, 302, 409].includes(resp.status) && !/connected|access_token|capabilit/i.test(text));
       }
     }
-    // A leftover row from the old experiment is never readable through any route.
-    await ctx.d1.exec(`
-      INSERT INTO robotaxi_owner_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status)
-      VALUES ('conn-u2', 'u2', 'x', 'y', datetime('now', '+1 hour'), 'active')
-    `);
-    const after = await call(ctx, 'GET', '/api/robotaxi/status', { userId: 'u2' });
-    check('even its owner gets nothing back', after.status !== 200);
+    // The old token table itself is gone (migrations/0053), and deleting an
+    // account still works without it.
+    check('robotaxi_owner_connections no longer exists', ctx.d1.query("SELECT COUNT(*) n FROM sqlite_master WHERE name IN ('robotaxi_owner_connections', 'idx_robotaxi_owner_connections_user')")[0].n === 0);
     const del = await call(ctx, 'DELETE', '/api/account', { userId: 'u2', body: JSON.stringify({ confirm: 'DELETE' }), headers: { 'Content-Type': 'application/json' } });
-    check('account deletion still removes the row', del.status === 200 && ctx.d1.query("SELECT COUNT(*) n FROM robotaxi_owner_connections WHERE user_id = 'u2'")[0].n === 0);
+    check('account deletion still succeeds', del.status === 200 && ctx.d1.query("SELECT COUNT(*) n FROM users WHERE id = 'u2'")[0].n === 0);
   }
 
   t.finish();

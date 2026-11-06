@@ -155,7 +155,6 @@ export async function apiDeleteAccount(request, env) {
     mine('submissions'),
     mine('ride_sync_runs'),
     mine('tesla_ride_sync_connections'),
-    mine('robotaxi_owner_connections'),
     mine('gmail_processed_messages'),
     mine('gmail_connections'),
     mine('google_connections'),

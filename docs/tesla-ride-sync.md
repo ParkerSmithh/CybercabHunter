@@ -41,16 +41,9 @@ Primary sources, read Nov 5, 2026:
 - `/oauth/tesla/*` (`worker/tesla.js`): the documented Fleet API "Link Tesla account", for owned vehicles.
 - `/api/tesla/rides/*` (`worker/tesla-rides.js`): a Fleet API sign-in with no ride source behind it. It holds no `ownerapi` tokens and does no harm, so removing it is a separate decision.
 
-### Plan: remove the stored ownerapi tokens
-Encrypted `ownerapi` tokens from the Sept–Oct experiment may still be in production's `robotaxi_owner_connections` table. Nothing reads them, but they shouldn't be kept. Each step needs the owner's go-ahead.
-1. **Count, read-only.** Select statuses and counts only, never the token columns:
-   `npx wrangler d1 execute cybercabhunter-db --remote --command "SELECT status, COUNT(*) AS n FROM robotaxi_owner_connections GROUP BY status"`
-   If it returns no rows, there's nothing to delete and only step 4 remains.
-2. **Deploy the Worker without the routes first**, so no new row can be written. The unused helper functions are gone too.
-3. **Delete the rows** by running the reviewed script `scripts/cleanup/clear-robotaxi-owner-tokens.sql`:
-   `npx wrangler d1 execute cybercabhunter-db --remote --file scripts/cleanup/clear-robotaxi-owner-tokens.sql`
-   - **Don't back up the token columns first.** A backup would just be another copy of the credentials being removed. Note the step 1 counts instead.
-   - **Keep it out of `migrations/`.** Kept separate, no routine migrate step can run it by surprise.
-4. **Later, drop the table** with a migration of its own, and remove its cleanup line in `worker/account.js` at the same time. Leave both in place until then.
+### Stored ownerapi tokens: none, and the table is dropped
+- **Counted Nov 6, 2026** (read-only, statuses and counts only): production's `robotaxi_owner_connections` held **0 rows**. With no tokens stored, the planned row-deletion script was never needed and has been removed.
+- **`migrations/0053_drop_robotaxi_owner_connections.sql`** drops the empty table and its index. `worker/account.js` no longer deletes from it.
+- **Order matters for this one: deploy the Worker first, then apply the migration.** The Worker deployed before this change still deletes from the table during account deletion. If the table went first, every account deletion would fail until the new Worker went out.
 
-**What deleting doesn't cover:** deleting our copies is all we can do. Tesla documents no revocation endpoint for these tokens, and they lapse on Tesla's side over time (8-hour access tokens; refresh tokens by Tesla's own rules). Riders can also remove access at [auth.tesla.com/user/revoke/consent](https://auth.tesla.com/user/revoke/consent). The `robotaxi_state:*` sign-in keys in KV expire after 10 minutes, so none are left. The token-encryption key is shared with the Fleet API tokens and stays.
+Tesla documents no revocation endpoint for `ownerapi` tokens. Riders can remove access at [auth.tesla.com/user/revoke/consent](https://auth.tesla.com/user/revoke/consent). The token-encryption key is shared with the Fleet API tokens and stays.
