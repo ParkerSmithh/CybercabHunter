@@ -1,7 +1,7 @@
 // Tesla "Ride Sync" — a separate OAuth/token subsystem from the existing
 // Fleet API integration (worker/tesla.js, tesla_connections) and from the
 // earlier ownerapi experiment (removed Nov 2026; was worker/robotaxi-owner-auth.js,
-// robotaxi_owner_connections). This is Phase 1 only: authorization and
+// its table dropped by migrations/0053). This is Phase 1 only: authorization and
 // encrypted token storage. No ride-history API is called anywhere in this
 // file — see worker/tesla-ride-provider.js for why that's deliberately
 // unimplemented.

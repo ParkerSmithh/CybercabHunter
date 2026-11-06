@@ -1708,11 +1708,10 @@ async function getRobotaxiVehicleHistory(sql, vehicleId) {
 }
 
 // ---- Robotaxi ride-history (ownerapi) connections: removed Nov 2026 ----
-// The table (migrations) stays until its rows are cleared (docs/tesla-ride-sync.md);
-// account deletion still removes a rider's row (worker/account.js).
+// The table is dropped by migrations/0053 (docs/tesla-ride-sync.md).
 
 // ---- Tesla Ride Sync — separate OAuth subsystem from Fleet API and from
-// the earlier robotaxi_owner_connections experiment. Holds no token
+// the earlier ownerapi token table (dropped, migrations/0053). Holds no token
 // material itself; kv_token_key only points at the encrypted blob in
 // TESLA_SESSIONS KV. ----
 
