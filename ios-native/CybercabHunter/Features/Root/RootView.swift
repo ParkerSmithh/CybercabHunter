@@ -50,6 +50,7 @@ struct RootView: View {
             if scenePhase == .active {
                 Task { await ServiceLiveActivityController.shared.reconcile() }
                 router.openSharedSighting()   // a photo shared from Photos opens the sighting form
+                router.openSharedReceipt()    // a receipt shared from Mail, Files or Photos opens Import Receipt
             }
             if scenePhase == .background { ServiceLiveActivityController.shared.appDidLeave() }
         }
@@ -71,6 +72,10 @@ struct RootView: View {
             if url.path == "/community", let link = CommunityLink(url: url) { router.open(link) }
             else if url.path.hasPrefix("/vehicles/") { router.openVehicle(id: String(url.path.dropFirst("/vehicles/".count)), plate: nil) }
             else { pushDestination = PushDestination(url: url) }
+        }
+        // A receipt shared from another app: Import Receipt, with it attached.
+        .sheet(item: Binding(get: { router.sharedReceipt }, set: { router.sharedReceipt = $0 })) { share in
+            ReceiptImportView(start: .share(share))
         }
         .sheet(item: $pushDestination) { destination in
             NavigationStack { PushDestinationView(destination: destination) }
@@ -182,6 +187,8 @@ enum DebugLaunch {
     /// `-seedSharedSighting`: what sharing a photo from Photos does (the Share
     /// extension's inbox gets a generated test photo; UI tests can't drive Photos).
     static var seedsSharedSighting: Bool { ProcessInfo.processInfo.arguments.contains("-seedSharedSighting") }
+    /// `-seedSharedReceipt text|pdf|image`: what sharing a receipt does (UI tests can't drive Mail or Files).
+    static var seedsSharedReceipt: String? { value("-seedSharedReceipt") }
     /// `-openRider dave_d`: a rider's profile in the Community tab (UI tests).
     static var opensRider: String? { value("-openRider") }
     private static func value(_ flag: String) -> String? {
@@ -201,6 +208,7 @@ enum DebugLaunch {
     static let session: String? = nil
     static let usesTestSession = false
     static let seedsSharedSighting = false
+    static let seedsSharedReceipt: String? = nil
     static let opensRider: String? = nil
     #endif
 }

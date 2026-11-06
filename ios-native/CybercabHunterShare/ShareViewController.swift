@@ -3,7 +3,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UserNotifications
 
-// "Cybercab Hunter" in the Share Sheet (Photos and any app sharing images).
+// "Cybercab Hunter" in the Share Sheet (Photos, Mail, Files and any app
+// sharing images, PDFs or text). Two jobs: a photo can become a SIGHTING
+// (unchanged), and a Tesla ride receipt (PDF, image, saved email or its text)
+// can be IMPORTED. A receipt is kept for the app (ReceiptShareInbox) and
+// nothing is uploaded here: the rider reviews it in the app first.
 // It keeps the shared photo for the app (SightingShareInbox, in the App Group)
 // and nothing else: no upload, no account, no network. The rider continues in
 // Cybercab Hunter, where the photo is waiting in the Submit a sighting form.
@@ -25,9 +29,14 @@ final class ShareViewController: UIViewController {
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(host.view)
         host.didMove(toParent: self)
-        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? []).flatMap { $0.attachments ?? [] }
-            .filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
-        Task { await model.load(providers) }
+        let all = (extensionContext?.inputItems as? [NSExtensionItem] ?? []).flatMap { $0.attachments ?? [] }
+        let images = all.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        let receipts = all.filter { p in ShareModel.receiptTypes.contains { p.hasItemConformingToTypeIdentifier($0.identifier) } && !p.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
+        Task {
+            if !receipts.isEmpty { await model.loadReceipt(receipts, total: all.count) }   // a PDF, email or text: only ever a receipt
+            else if !images.isEmpty { await model.load(images) }                           // a photo: sighting, or receipt if the rider says so
+            else { model.unsupported() }
+        }
     }
 
     private func finish() { extensionContext?.completeRequest(returningItems: nil) }
@@ -37,12 +46,81 @@ final class ShareViewController: UIViewController {
 @MainActor
 @Observable
 final class ShareModel {
-    enum Stage: Equatable { case loading, ready, saved, failed(String) }
+    enum Stage: Equatable { case loading, ready, saved, receiptSaved, failed(String) }
+    /// Receipts arrive as PDFs, saved emails or text (images are offered both ways).
+    static let receiptTypes: [UTType] = [.pdf, .emailMessage, .plainText, .utf8PlainText]
     private(set) var stage: Stage = .loading
     private(set) var preview: UIImage?
     private(set) var count = 0
     private var photo: Data?
     @ObservationIgnored var onNotified: (() -> Void)?
+
+    func unsupported() { stage = .failed("Share a Tesla receipt (PDF, email or photo) or a Cybercab photo.") }
+
+    /// A PDF, email or text receipt: kept for the app, which shows what was read
+    /// before anything is imported.
+    func loadReceipt(_ providers: [NSItemProvider], total: Int) async {
+        guard let first = providers.first, let data = await Self.receiptData(first) else { stage = .failed("That receipt couldn't be read. Try the PDF or a screenshot."); return }
+        keepReceipt(data, skipped: max(0, total - 1))
+    }
+
+    /// The shared photo, as a receipt instead of a sighting.
+    func keepAsReceipt() {
+        guard let photo else { return }
+        keepReceipt(photo, skipped: max(0, count - 1))
+    }
+
+    private func keepReceipt(_ data: Data, skipped: Int) {
+        do {
+            let share = try ReceiptShareInbox.save(data, skipped: skipped)
+            stage = .receiptSaved
+            Task { if await Self.notifyReceipt(share) { onNotified?() } }
+        } catch ReceiptShareInbox.Failure.tooLarge {
+            stage = .failed("That file is too large to be a receipt (15 MB at most).")
+        } catch ReceiptShareInbox.Failure.unavailable {
+            stage = .failed("Cybercab Hunter couldn't keep the receipt. Open the app and import it from Files.")
+        } catch {
+            stage = .failed("That receipt couldn't be read. Try the PDF or a screenshot.")
+        }
+    }
+
+    static func notifyReceipt(_ share: ReceiptShareInbox.Share) async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        var status = await center.notificationSettings().authorizationStatus
+        if status == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .sound])
+            status = await center.notificationSettings().authorizationStatus
+        }
+        guard status == .authorized || status == .provisional || status == .ephemeral else { return false }
+        let content = UNMutableNotificationContent()
+        content.title = "Finish importing your receipt"
+        content.body = "Tap to check the ride details in Cybercab Hunter, then import."
+        content.sound = .default
+        content.userInfo = [ReceiptShareInbox.notificationKey: share.id.uuidString]
+        let request = UNNotificationRequest(identifier: ReceiptShareInbox.notificationID(share.id), content: content,
+                                            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false))
+        return (try? await center.add(request)) != nil
+    }
+
+    /// PDF and email files as their own bytes; text as UTF-8. Loaded in the
+    /// background by the provider (a large PDF is never decoded here).
+    static func receiptData(_ provider: NSItemProvider) async -> Data? {
+        for type in [UTType.pdf, .emailMessage] where provider.hasItemConformingToTypeIdentifier(type.identifier) {
+            if let d = await load(provider, type) { return d }
+        }
+        if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
+            if let d = await load(provider, .plainText) { return d }
+            return await withCheckedContinuation { done in
+                _ = provider.loadObject(ofClass: NSString.self) { s, _ in done.resume(returning: (s as? String).map { Data($0.utf8) }) }
+            }
+        }
+        return nil
+    }
+    private static func load(_ provider: NSItemProvider, _ type: UTType) async -> Data? {
+        await withCheckedContinuation { done in
+            _ = provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, _ in done.resume(returning: data) }
+        }
+    }
 
     func load(_ providers: [NSItemProvider]) async {
         count = providers.count
@@ -123,7 +201,7 @@ struct ShareView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
-                Text("NEW CYBERCAB SIGHTING").font(Look.inter(11, .bold)).tracking(1.4).foregroundStyle(Look.gold)
+                Text(model.stage == .receiptSaved ? "RIDE RECEIPT" : "CYBERCAB HUNTER").font(Look.inter(11, .bold)).tracking(1.4).foregroundStyle(Look.gold)
                 preview
                 message
                 Spacer(minLength: 0)
@@ -135,7 +213,7 @@ struct ShareView: View {
             .navigationTitle("Cybercab Hunter")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if model.stage != .saved { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: cancel) } }
+                if model.stage != .saved && model.stage != .receiptSaved { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: cancel) } }
             }
         }
         .tint(Look.gold)
@@ -162,16 +240,22 @@ struct ShareView: View {
     @ViewBuilder private var message: some View {
         switch model.stage {
         case .loading:
-            Text("Getting the photo…").font(Look.inter(14)).foregroundStyle(Look.fog)
+            Text("Getting it ready…").font(Look.inter(14)).foregroundStyle(Look.fog)
         case .ready:
             VStack(alignment: .leading, spacing: 6) {
-                Text("Submit it as a sighting").font(Look.inter(18, .bold)).foregroundStyle(.white)
-                Text("Continue in Cybercab Hunter to add the city, place and notes, then submit. Nothing is sent until you do.")
+                Text("A sighting, or a ride receipt?").font(Look.inter(18, .bold)).foregroundStyle(.white)
+                Text("A Cybercab photo continues to the sighting form. A screenshot or photo of a Tesla ride receipt goes to Import Receipt. Nothing is sent until you confirm in the app.")
                     .font(Look.inter(13.5)).foregroundStyle(Look.fog)
                 if model.count > 1 {
                     Text("A sighting has one photo: the first of the \(model.count) you shared is attached. Share the others one at a time.")
                         .font(Look.inter(12.5, .semibold)).foregroundStyle(Look.gold)
                 }
+            }
+        case .receiptSaved:
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Receipt ready", systemImage: "checkmark.circle.fill").font(Look.inter(18, .bold)).foregroundStyle(Look.gold)
+                Text("Open Cybercab Hunter: Import Receipt opens with this receipt, shows what was read, and imports it when you confirm. If you're signed out, sign in first; the receipt waits for three days.")
+                    .font(Look.inter(13.5)).foregroundStyle(Look.fog)
             }
         case .saved:
             VStack(alignment: .leading, spacing: 6) {
@@ -190,8 +274,18 @@ struct ShareView: View {
     @ViewBuilder private var action: some View {
         switch model.stage {
         case .ready:
-            Button { model.keep() } label: { label("Continue in Cybercab Hunter") }
-                .accessibilityIdentifier("shareContinue")
+            VStack(spacing: 10) {
+                Button { model.keep() } label: { label("Add as a sighting") }
+                    .accessibilityIdentifier("shareContinue")
+                Button { model.keepAsReceipt() } label: {
+                    Text("Import as a ride receipt").font(Look.inter(15, .semibold)).foregroundStyle(Look.gold)
+                        .frame(maxWidth: .infinity).frame(height: 46)
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Look.gold.opacity(0.6)))
+                }
+                .accessibilityIdentifier("shareAsReceipt")
+            }
+        case .receiptSaved:
+            Button(action: close) { label("Done") }
         case .saved, .failed:
             Button(action: model.stage == .saved ? close : cancel) { label("Done") }
         case .loading:

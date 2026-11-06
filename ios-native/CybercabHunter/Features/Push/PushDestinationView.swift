@@ -19,6 +19,12 @@ struct PushDestinationView: View {
             else if destination.url.path == "/sightings" { Text(message).foregroundStyle(.secondary) }
             else if destination.url.path == "/heatmap" { ZonesView(initialHeat: true, initialCity: URLComponents(url: destination.url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "city" })?.value) }
             else if destination.url.path == "/dmv" { DMVRosterView() }
+            // "New Tesla ride imported": the rider's receipts and rides.
+            else if destination.url.path == "/rider-data" {
+                RideReceiptsView().navigationDestination(for: RiderDataRoute.self) { route in
+                    switch route { case .data: RiderDataView(); case .gmail: GmailForwardingView(); case .receipts: RideReceiptsView() }
+                }
+            }
             else {
                 List {
                     ForEach(days, id: \.date) { day in

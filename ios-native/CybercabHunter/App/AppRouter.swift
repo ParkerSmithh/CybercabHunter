@@ -70,6 +70,17 @@ final class AppRouter {
         requestSubmitSighting()
     }
 
+    /// A receipt shared to Cybercab Hunter (ReceiptShareInbox) is waiting: the
+    /// Import Receipt screen opens with it. Offered once per app session; it
+    /// stays in the inbox until imported or discarded (three days at most).
+    var sharedReceipt: ReceiptShareInbox.Share?
+    private var offeredReceipts = Set<UUID>()
+    func openSharedReceipt(now: Date = .now, force: Bool = false) {
+        guard sharedReceipt == nil, let share = ReceiptShareInbox.pending(now: now).first(where: { force || !offeredReceipts.contains($0.id) }) else { return }
+        offeredReceipts.insert(share.id)
+        sharedReceipt = share
+    }
+
     /// A widget's link (`cybercabhunter-widget://<tab>[?city=…]`): opens that tab.
     /// Returns false for any other URL.
     @discardableResult

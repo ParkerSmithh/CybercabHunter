@@ -9,7 +9,7 @@ import { extractTeslaReceiptFields, extractTeslaReceiptFieldsV2 } from './receip
 import { classifyReceipt } from './receipt-validation.js';
 import { computeReceiptHash } from './receipt-dedupe.js';
 import { normalizeRide } from './ride-canonical.js';
-import { ingestRide } from './ride-ingest.js';
+import { ingestRide, previewRide } from './ride-ingest.js';
 import { receiptSentAt } from './receipt-ordering.js';
 
 // Try the format confirmed against a real Tesla receipt first; only fall
@@ -43,6 +43,21 @@ export async function processReceiptMessage(env, parsedMessage, source, options)
 
   const result = await ingestRide(env, ride, options);
   return { ...result, rideDate: ride.rideDate, reason: result.reason || review.reason };
+}
+
+// The same extraction, classification and identity as processReceiptMessage,
+// then previewRide instead of ingestRide: nothing is written. The fields are
+// the rider's own receipt, returned only to them (worker/receipt-import.js).
+export async function previewReceiptMessage(env, parsedMessage, source, userId) {
+  const extraction = extractFields(parsedMessage);
+  const receiptHash = await computeReceiptHash(parsedMessage, extraction);
+  const review = classifyReceipt(parsedMessage, extraction);
+  const ride = normalizeRide(
+    { extraction, receiptHash, review, messageId: parsedMessage.messageId || null, sentAt: receiptSentAt(parsedMessage) },
+    source
+  );
+  const verdict = await previewRide(env, ride, userId);
+  return { ride, fieldSources: extraction.fieldSources || {}, verdict };
 }
 
 // ---- Sync-run tallies ----

@@ -6,7 +6,7 @@ import { apiDaily } from './daily.js';
 import { tesla } from './tesla.js';
 import { apiCreateSubmission, apiListSubmissions, apiDeleteSubmission, apiGetEvidence } from './submissions.js';
 import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress, apiCompleteForwardingSetup, apiGetSyncStatus } from './receipt-ingestion.js';
-import { apiImportReceipts } from './receipt-import.js';
+import { apiImportReceipts, apiPreviewReceipt, apiListImports } from './receipt-import.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
@@ -348,6 +348,16 @@ const worker = {
     }
 
     // Receipt sync: historical import and the rider's sync/forwarding status.
+    if (url.pathname === '/api/rides/imports' && request.method === 'GET') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiListImports(request, env, userId), request);
+    }
+    if (url.pathname === '/api/rides/import/preview' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiPreviewReceipt(request, env, userId), request);
+    }
     if (url.pathname === '/api/rides/import' && request.method === 'POST') {
       const userId = await tesla.requireUserId(request, env);
       if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);

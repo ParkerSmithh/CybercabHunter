@@ -54,6 +54,10 @@ struct PushSettingsView: View {
                 mode("Camera Detections", $preferences.cameras)
             } header: { Text("Fleet & activity") } footer: { Text("Public vehicles, approved public sightings, and valid tracked camera detections. Daily summaries use your report delivery time.") }
             Section {
+                Toggle("Receipt Import Notifications", isOn: $preferences.rides)
+                    .accessibilityIdentifier("ridesNotificationsToggle")
+            } header: { Text("Rides") } footer: { Text("When a Tesla ride receipt imports automatically (forwarded email). Never for receipts you import yourself, duplicates, or receipts missing details. The notification names no address, time or fare.") }
+            Section {
                 Toggle("Comments on my posts", isOn: $preferences.comments)
                 Toggle("Replies to my comments", isOn: $preferences.replies)
                 Toggle("Mentions", isOn: $preferences.mentions)

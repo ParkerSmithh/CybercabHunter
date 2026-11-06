@@ -149,13 +149,13 @@ struct RiderDataView: View {
     // MARK: Receipt sync (Gmail forwarding)
 
     private var receiptSync: some View {
-        NavigationLink(value: RiderDataRoute.gmail) {
+        NavigationLink(value: RiderDataRoute.receipts) {
             HStack(spacing: 12) {
                 Image(systemName: "envelope.arrow.triangle.branch").font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.brandGold)
                     .frame(width: 38, height: 38).background(Color.brandGold.opacity(0.12), in: .rect(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Receipt sync (Gmail)").font(.inter(15, .bold)).foregroundStyle(Color.chInk)
-                    Text("Forward Tesla's ride receipts to your private address. No Gmail sign-in or password.").font(.inter(12)).foregroundStyle(Color.chFog).multilineTextAlignment(.leading)
+                    Text("Ride Receipts").font(.inter(15, .bold)).foregroundStyle(Color.chInk)
+                    Text("Automatic forwarding, import, scan and your recent receipts.").font(.inter(12)).foregroundStyle(Color.chFog).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.chCaption)
@@ -178,8 +178,8 @@ struct RiderDataView: View {
         section("Tesla ride history", id: "riderTeslaRideHistory") {
             Text("Automatic sync from your Tesla account isn't available. Tesla doesn't offer Robotaxi ride history to other apps, so your rides come from Tesla's ride receipts instead.")
                 .font(.inter(13)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
-            NavigationLink(value: RiderDataRoute.gmail) {
-                Text("Set up receipt sync").font(.inter(14, .semibold))
+            NavigationLink(value: RiderDataRoute.receipts) {
+                Text("Import receipts").font(.inter(14, .semibold))
             }
             .modifier(OutlineButton(color: .brandGold))
             .accessibilityIdentifier("teslaRideHistoryReceipts")
@@ -315,6 +315,6 @@ struct RiderDataView: View {
     }
 }
 
-enum RiderDataRoute: Hashable { case data, gmail }
+enum RiderDataRoute: Hashable { case data, gmail, receipts }
 
 private struct RiderURL: Identifiable { let url: URL; var id: String { url.absoluteString } }
