@@ -1707,42 +1707,9 @@ async function getRobotaxiVehicleHistory(sql, vehicleId) {
   `).bind(vehicleId, vehicleId, vehicleId).first();
 }
 
-// ---- Robotaxi ride-history (ownerapi) connection — separate from tesla_connections ----
-
-async function upsertRobotaxiOwnerConnection(sql, { userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt }) {
-  await sql.prepare(`
-    INSERT INTO robotaxi_owner_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status, last_refresh_at)
-    VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
-    ON CONFLICT(user_id) DO UPDATE SET
-      encrypted_access_token = excluded.encrypted_access_token,
-      encrypted_refresh_token = excluded.encrypted_refresh_token,
-      access_token_expires_at = excluded.access_token_expires_at,
-      status = 'active',
-      updated_at = datetime('now'),
-      last_refresh_at = datetime('now')
-  `).bind(newId(), userId, encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt).run();
-}
-
-async function getRobotaxiOwnerConnectionByUserId(sql, userId) {
-  return sql.prepare(`SELECT * FROM robotaxi_owner_connections WHERE user_id = ?`).bind(userId).first();
-}
-
-async function updateRobotaxiOwnerConnectionTokens(sql, userId, { encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt }) {
-  await sql.prepare(`
-    UPDATE robotaxi_owner_connections SET
-      encrypted_access_token = ?,
-      encrypted_refresh_token = ?,
-      access_token_expires_at = ?,
-      status = 'active',
-      updated_at = datetime('now'),
-      last_refresh_at = datetime('now')
-    WHERE user_id = ?
-  `).bind(encryptedAccessToken, encryptedRefreshToken, accessTokenExpiresAt, userId).run();
-}
-
-async function markRobotaxiOwnerConnectionRevoked(sql, userId) {
-  await sql.prepare(`UPDATE robotaxi_owner_connections SET status = 'revoked', updated_at = datetime('now') WHERE user_id = ?`).bind(userId).run();
-}
+// ---- Robotaxi ride-history (ownerapi) connections: removed Nov 2026 ----
+// The table (migrations) stays until its rows are cleared (docs/tesla-ride-sync.md);
+// account deletion still removes a rider's row (worker/account.js).
 
 // ---- Tesla Ride Sync — separate OAuth subsystem from Fleet API and from
 // the earlier robotaxi_owner_connections experiment. Holds no token
@@ -1855,10 +1822,6 @@ export const db = {
   verifyRegistryVehicleVin,
   getRobotaxiVehicleReviews,
   getRobotaxiVehicleHistory,
-  upsertRobotaxiOwnerConnection,
-  getRobotaxiOwnerConnectionByUserId,
-  updateRobotaxiOwnerConnectionTokens,
-  markRobotaxiOwnerConnectionRevoked,
   createTeslaRideSyncConnection,
   getTeslaRideSyncConnectionByUserId,
   touchTeslaRideSyncRefresh,

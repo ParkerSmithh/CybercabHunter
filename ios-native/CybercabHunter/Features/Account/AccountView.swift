@@ -39,6 +39,13 @@ struct AccountView: View {
                     }
                     .accessibilityIdentifier("alertSettingsLink")
                 } header: { Text("Siri & Alerts") }
+                #if DEBUG
+                // Debug builds only: the Tesla Ride Sync feasibility probe (Features/Debug).
+                Section {
+                    NavigationLink { TeslaRideProbeView() } label: { Label("Tesla Ride Sync probe", systemImage: "stethoscope") }
+                        .accessibilityIdentifier("teslaProbeLink")
+                } header: { Text("Developer") } footer: { Text("Debug builds only. Not in the App Store build.") }
+                #endif
                 Section {
                     // The privacy policy is a legal document: shown as published on the website.
                     Button("Privacy policy") { webPage = WebPage(title: "Privacy", path: "/privacy", systemImage: "hand.raised.fill") }

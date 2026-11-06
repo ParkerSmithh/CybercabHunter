@@ -145,41 +145,27 @@ async function run() {
     check('a genuinely valid body still succeeds', ok.status === 200);
   }
 
-  console.log('5. Legacy routes (ownerapi PKCE flow, Tesla debug capabilities) stay authenticated and expose nothing without a session');
+  console.log('5. The removed Tesla routes (ownerapi sign-in, debug capabilities) are gone, signed in or not');
   {
     const ctx = await makeApp(['u1', 'u2']);
-    const anonGets = [
-      ['GET', '/oauth/robotaxi/start'],
-      ['GET', '/api/robotaxi/status'],
-      ['GET', '/api/tesla/debug/capabilities']
-    ];
-    for (const [method, path] of anonGets) {
-      const resp = await call(ctx, method, path, {});
-      check(`${method} ${path} without a session is refused (401), not served`, resp.status === 401);
+    const gone = [['GET', '/oauth/robotaxi/start'], ['GET', '/oauth/robotaxi/callback?code=x&state=y'], ['GET', '/api/robotaxi/status'],
+      ['POST', '/api/robotaxi/disconnect'], ['GET', '/api/tesla/debug/capabilities']];
+    for (const [method, path] of gone) {
+      for (const userId of [undefined, 'u1']) {
+        const resp = await call(ctx, method, path, userId ? { userId } : {});
+        const text = await resp.text();
+        check(`${method} ${path} ${userId ? 'signed in' : 'signed out'}: not served (${resp.status})`, ![200, 302, 409].includes(resp.status) && !/connected|access_token|capabilit/i.test(text));
+      }
     }
-    const anonPost = await call(ctx, 'POST', '/api/robotaxi/disconnect', {});
-    check('POST /api/robotaxi/disconnect without a session is refused (401)', anonPost.status === 401);
-
-    const status = await call(ctx, 'GET', '/api/robotaxi/status', { userId: 'u1' });
-    check('an authenticated rider with no ownerapi connection gets a clean "not connected" status, not an error', status.status === 200);
-    const statusJson = await status.json();
-    check('reports connected: false, never_connected, and nothing else', statusJson.connected === false && statusJson.status === 'never_connected');
-
-    const debug = await call(ctx, 'GET', '/api/tesla/debug/capabilities', { userId: 'u1' });
-    check('an authenticated rider with no Fleet API connection is told so, not served stale/other data', debug.status === 409);
-
-    // Seed a connection for u2 only, then confirm u1 can never see it through
-    // these routes — isolation, not just "requires a session".
+    // A leftover row from the old experiment is never readable through any route.
     await ctx.d1.exec(`
       INSERT INTO robotaxi_owner_connections (id, user_id, encrypted_access_token, encrypted_refresh_token, access_token_expires_at, status)
       VALUES ('conn-u2', 'u2', 'x', 'y', datetime('now', '+1 hour'), 'active')
     `);
-    const u1Status = await call(ctx, 'GET', '/api/robotaxi/status', { userId: 'u1' });
-    const u1Json = await u1Status.json();
-    check("u1's status is unaffected by u2's connection", u1Json.connected === false);
-    const u2Status = await call(ctx, 'GET', '/api/robotaxi/status', { userId: 'u2' });
-    const u2Json = await u2Status.json();
-    check("u2 sees their own connection as connected", u2Json.connected === true);
+    const after = await call(ctx, 'GET', '/api/robotaxi/status', { userId: 'u2' });
+    check('even its owner gets nothing back', after.status !== 200);
+    const del = await call(ctx, 'DELETE', '/api/account', { userId: 'u2', body: JSON.stringify({ confirm: 'DELETE' }), headers: { 'Content-Type': 'application/json' } });
+    check('account deletion still removes the row', del.status === 200 && ctx.d1.query("SELECT COUNT(*) n FROM robotaxi_owner_connections WHERE user_id = 'u2'")[0].n === 0);
   }
 
   t.finish();
