@@ -5,9 +5,9 @@ import ActivityKit
 
 // The Cybercab service day, shared by the app's "Live now" card and the
 // Dynamic Island / Lock Screen Live Activity (CybercabHunterWidgets), so the
-// two can never disagree. Times are wall-clock America/Chicago: 6:00 AM is
-// 6:00 AM on daylight-saving change days too. The service day runs past
-// midnight (6:00 AM to 2:00 AM): 1:30 AM belongs to the day before's service. "Live" means inside the
+// two can never disagree. Times are wall-clock America/Chicago: 5:00 AM is
+// 5:00 AM on daylight-saving change days too. The service day runs past
+// midnight (5:00 AM to 2:00 AM): 1:30 AM belongs to the day before's service. "Live" means inside the
 // published service hours (what the Live now card has always shown), not a
 // count of cars confirmed on the road.
 
@@ -18,10 +18,10 @@ struct ServiceSchedule: Codable, Hashable, Sendable {
     var closeMinute: Int
 
     static let timeZone = TimeZone(identifier: "America/Chicago")!
-    /// 6:00 AM – 2:00 AM, every day (the API's hours when they haven't loaded).
-    static let standard = ServiceSchedule(openMinute: 6 * 60, closeMinute: 26 * 60)
+    /// 5:00 AM – 2:00 AM, every day (the API's hours when they haven't loaded).
+    static let standard = ServiceSchedule(openMinute: 5 * 60, closeMinute: 26 * 60)
 
-    /// A close at or before the open is the next day ("02:00" after "06:00" → 1560).
+    /// A close at or before the open is the next day ("02:00" after "05:00" → 1560).
     init(openMinute: Int, closeMinute: Int) {
         self.openMinute = openMinute
         self.closeMinute = closeMinute <= openMinute ? closeMinute + 1440 : closeMinute

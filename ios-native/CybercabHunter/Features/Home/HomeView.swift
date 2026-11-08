@@ -273,7 +273,7 @@ struct ServiceClock {
     let countdown: String
     let nowLabel: String
     /// The service window on the 24-hour track: one piece, or two when service
-    /// runs past midnight (6 AM–12 AM, then 12 AM–2 AM), each with the share run so far.
+    /// runs past midnight (5 AM–12 AM, then 12 AM–2 AM), each with the share run so far.
     struct Piece: Equatable { let start: CGFloat; let width: CGFloat; let run: CGFloat }
     let pieces: [Piece]
     let nowPosition: CGFloat
