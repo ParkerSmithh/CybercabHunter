@@ -77,32 +77,32 @@ struct LiveActivityTests {
         #expect(fake.started.count == 1)
         let (attrs, state, stale) = fake.started[0]
         #expect(state.live && wall(state.until) == "2026-10-27 02:00 CDT" && stale == state.until, "until 2 AM; stale from then")
-        #expect(attrs.openLabel == "6:00 AM" && attrs.closeLabel == "2:00 AM")
+        #expect(attrs.openLabel == "5:00 AM" && attrs.closeLabel == "2:00 AM")
         #expect(ServiceSchedule.countdown(from: now, to: state.until) == "8h 5m", "the Live now card's countdown")
         await c.setEnabled(false)
         #expect(fake.running.isEmpty && fake.endAllCalls == 1 && !c.enabled)
     }
 
-    // 5, 6, 7: active, parked, past midnight (6 AM to 2 AM)
+    // 5, 6, 7: active, parked, past midnight (5 AM to 2 AM)
 
     @Test func activeAndParkedStatusAcrossMidnight() {
         let s = ServiceSchedule.standard
-        #expect(s == ServiceSchedule(open: "06:00", close: "02:00"), "the API's 6 AM to 2 AM")
-        #expect(s.label(s.openMinute) == "6:00 AM" && s.label(s.closeMinute) == "2:00 AM")
+        #expect(s == ServiceSchedule(open: "05:00", close: "02:00"), "the API's 5 AM to 2 AM")
+        #expect(s.label(s.openMinute) == "5:00 AM" && s.label(s.closeMinute) == "2:00 AM")
         let noon = s.status(at: central("2026-10-26 12:00:00"))
-        #expect(noon.live && wall(noon.since) == "2026-10-26 06:00 CDT" && wall(noon.until) == "2026-10-27 02:00 CDT")
+        #expect(noon.live && wall(noon.since) == "2026-10-26 05:00 CDT" && wall(noon.until) == "2026-10-27 02:00 CDT")
         let pastMidnight = s.status(at: central("2026-10-27 00:30:00"))
-        #expect(pastMidnight.live && wall(pastMidnight.since) == "2026-10-26 06:00 CDT" && wall(pastMidnight.until) == "2026-10-27 02:00 CDT", "12:30 AM is the day before's service")
+        #expect(pastMidnight.live && wall(pastMidnight.since) == "2026-10-26 05:00 CDT" && wall(pastMidnight.until) == "2026-10-27 02:00 CDT", "12:30 AM is the day before's service")
         let lastMinute = s.status(at: central("2026-10-27 01:59:30"))
         #expect(lastMinute.live && ServiceSchedule.countdown(from: central("2026-10-27 01:59:30"), to: lastMinute.until) == "1m")
         let parked = s.status(at: central("2026-10-27 02:00:00"))
-        #expect(!parked.live && wall(parked.since) == "2026-10-27 02:00 CDT" && wall(parked.until) == "2026-10-27 06:00 CDT", "parks at 2:00 AM")
+        #expect(!parked.live && wall(parked.since) == "2026-10-27 02:00 CDT" && wall(parked.until) == "2026-10-27 05:00 CDT", "parks at 2:00 AM")
         let midnightClose = ServiceSchedule(open: "06:00", close: "24:00")
         #expect(!midnightClose.status(at: central("2026-10-27 00:30:00")).live, "an older server's 24:00 still closes at midnight")
-        let early = s.status(at: central("2026-10-27 05:59:00"))
-        #expect(!early.live && ServiceSchedule.countdown(from: central("2026-10-27 05:59:00"), to: early.until) == "1m")
-        let open = s.status(at: central("2026-10-27 06:00:00"))
-        #expect(open.live, "6:00:00 AM is open")
+        let early = s.status(at: central("2026-10-27 04:59:00"))
+        #expect(!early.live && ServiceSchedule.countdown(from: central("2026-10-27 04:59:00"), to: early.until) == "1m")
+        let open = s.status(at: central("2026-10-27 05:00:00"))
+        #expect(open.live, "5:00:00 AM is open")
         let hours = ServiceSchedule(open: "07:30", close: "22:00")
         #expect(!hours.status(at: central("2026-10-26 22:15:00")).live && wall(hours.status(at: central("2026-10-26 22:15:00")).until) == "2026-10-27 07:30 CDT", "the API's hours, when they differ")
     }
@@ -112,16 +112,16 @@ struct LiveActivityTests {
     @Test func daylightSavingKeepsWallClockTimes() {
         let s = ServiceSchedule.standard
         // Spring forward (Sun Mar 8, 2026: 2 AM → 3 AM): 2 AM doesn't exist, so service
-        // ends when it would have, 3:00 AM CDT; parked until 6:00 AM CDT.
+        // ends when it would have, 3:00 AM CDT; parked until 5:00 AM CDT.
         let spring = s.status(at: central("2026-03-08 04:00:00"))
-        #expect(!spring.live && wall(spring.until) == "2026-03-08 06:00 CDT" && wall(spring.since) == "2026-03-08 03:00 CDT")
-        #expect(spring.until.timeIntervalSince(spring.since) == 3 * 3600, "a 23-hour day: 3 real hours parked")
+        #expect(!spring.live && wall(spring.until) == "2026-03-08 05:00 CDT" && wall(spring.since) == "2026-03-08 03:00 CDT")
+        #expect(spring.until.timeIntervalSince(spring.since) == 2 * 3600, "a 23-hour day: 2 real hours parked")
         let springLate = s.status(at: central("2026-03-08 01:30:00"))
         #expect(springLate.live && wall(springLate.until) == "2026-03-08 03:00 CDT", "1:30 AM CST still runs, to 3:00 AM CDT")
         // Fall back (Sun Nov 1, 2026: 2 AM → 1 AM): runs through both 1 AMs, parked from 2:00 AM CST.
         let fall = s.status(at: central("2026-11-01 04:00:00"))
-        #expect(!fall.live && wall(fall.since) == "2026-11-01 02:00 CST" && wall(fall.until) == "2026-11-01 06:00 CST")
-        #expect(fall.until.timeIntervalSince(fall.since) == 4 * 3600, "4 real hours parked")
+        #expect(!fall.live && wall(fall.since) == "2026-11-01 02:00 CST" && wall(fall.until) == "2026-11-01 05:00 CST")
+        #expect(fall.until.timeIntervalSince(fall.since) == 3 * 3600, "3 real hours parked")
         let fallDay = s.status(at: central("2026-11-01 12:00:00"))
         #expect(fallDay.live && wall(fallDay.until) == "2026-11-02 02:00 CST")
     }
@@ -218,18 +218,19 @@ struct LiveActivityTests {
     // The 24-hour track: the service window (two pieces past midnight) and the stretches the system fills.
     @Test func dayTrackPlacesTheWindowAndTheRun() {
         func display(_ s: ServiceSchedule.Status, stale: Bool = false) -> ServiceActivityDisplay {
-            ServiceActivityDisplay(live: s.live, since: s.since, until: s.until, stale: stale, openLabel: "6:00 AM", closeLabel: "2:00 AM")
+            ServiceActivityDisplay(live: s.live, since: s.since, until: s.until, stale: stale, openLabel: "5:00 AM", closeLabel: "2:00 AM")
         }
         func near(_ a: ClosedRange<CGFloat>, _ b: ClosedRange<CGFloat>) -> Bool { abs(a.lowerBound - b.lowerBound) < 0.001 && abs(a.upperBound - b.upperBound) < 0.001 }
         let oneAM: CGFloat = 120.0 / 1440   // 2 AM on the track
+        let open: CGFloat = 300.0 / 1440    // 5 AM on the track
         let live = display(ServiceSchedule.standard.status(at: central("2026-10-26 19:51:00")))
-        #expect(live.servicePieces.count == 2 && near(live.servicePieces[0], 0.25...1) && near(live.servicePieces[1], 0...oneAM), "6 AM to the right edge, then 12 AM to 2 AM")
-        #expect(live.runs.count == 2 && near(live.runs[0].span, 0.25...1) && near(live.runs[1].span, 0...oneAM))
+        #expect(live.servicePieces.count == 2 && near(live.servicePieces[0], open...1) && near(live.servicePieces[1], 0...oneAM), "5 AM to the right edge, then 12 AM to 2 AM")
+        #expect(live.runs.count == 2 && near(live.runs[0].span, open...1) && near(live.runs[1].span, 0...oneAM))
         #expect(wall(live.runs[0].time.upperBound) == "2026-10-27 00:00 CDT" && live.runs[1].time.lowerBound == live.runs[0].time.upperBound && wall(live.runs[1].time.upperBound) == "2026-10-27 02:00 CDT", "each piece fills in its own time, split at midnight")
         let late = display(ServiceSchedule.standard.status(at: central("2026-10-27 00:30:00")))
         #expect(late.live && late.runs.count == 2, "12:30 AM: live, the first piece full, the second filling")
         let night = display(ServiceSchedule.standard.status(at: central("2026-10-27 03:00:00")))
-        #expect(night.servicePieces.count == 2 && night.runs.count == 1 && near(night.runs[0].span, oneAM...0.25), "parked: the window stays put; the night (2 AM to 6 AM) fills")
+        #expect(night.servicePieces.count == 2 && night.runs.count == 1 && near(night.runs[0].span, oneAM...open), "parked: the window stays put; the night (2 AM to 5 AM) fills")
         let stale = display(ServiceSchedule.standard.status(at: central("2026-10-26 19:51:00")), stale: true)
         #expect(stale.runs.isEmpty, "stale: nothing claims to move")
         let midnightClose = display(ServiceSchedule(open: "06:00", close: "24:00").status(at: central("2026-10-26 12:00:00")))

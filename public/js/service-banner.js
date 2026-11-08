@@ -1,17 +1,17 @@
 /* Homepage service-status banner (index.html #serviceBanner), just below the
    stats bar. Pure client-side: no request.
-   HOURS: js/calc.js SERVICE_HOURS — 6:00 AM to 2:00 AM, America/Chicago,
+   HOURS: js/calc.js SERVICE_HOURS — 5:00 AM to 2:00 AM, America/Chicago,
    every day, for Austin and Dallas alike (the one place to change them). The
    service day runs past midnight: 12:30 AM is still live (the day before's
-   service), 2:00 AM to 6:00 AM is parked.
+   service), 2:00 AM to 5:00 AM is parked.
    STATE: from the visitor's clock read in America/Chicago (Intl), never the
-   visitor's own time zone. Open from openMinute:00 (6:00:00 → live) up to
+   visitor's own time zone. Open from openMinute:00 (5:00:00 → live) up to
    but not including closeMinute:00 (2:00:00 AM → parked).
      live    green pulsing dot · "Cybercabs are on the road now" ·
              "Service ends in Xh Ym"
      parked  moon, cooler tone · "The fleet is parked for the night" ·
-             "Back on the road at 6:00 AM" · "Back in Xh Ym" (on a phone the
-             "All times central time (CT)" line folds into "6:00 AM CT", so the
+             "Back on the road at 5:00 AM" · "Back in Xh Ym" (on a phone the
+             "All times central time (CT)" line folds into "5:00 AM CT", so the
              strip stays at two lines)
    COUNTDOWN: whole minutes, rounded UP (so it never shows 0m while running and
    never goes negative), "Xh Ym", or "Ym" under an hour. Measured in real time
@@ -87,7 +87,7 @@
     return { minute, label: clock(minute) };
   }
   // The service window's pieces on the track (two when it runs past midnight:
-  // 6 AM–12 AM, then 12 AM–2 AM), in service order.
+  // 5 AM–12 AM, then 12 AM–2 AM), in service order.
   const SEGS = C.serviceSegments(H);
   function paintDay(s, d) {
     const mark = el.querySelector('[data-sb-now]'), lab = el.querySelector('[data-sb-clock]');

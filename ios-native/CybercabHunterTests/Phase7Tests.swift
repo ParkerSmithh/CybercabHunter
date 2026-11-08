@@ -53,11 +53,11 @@ struct SimulationCalcTests {
         #expect(SimulationCalc.slot(at("2026-10-21T16:00:00Z")).key == "weekday:midday")
         let open = SimulationCalc.serviceStatus(at("2026-10-23T23:30:00Z"))
         #expect(open.open && open.minuteOfDay == 1110 && open.label == "Operating now")
-        let closed = SimulationCalc.serviceStatus(at("2026-10-22T10:59:00Z"))
-        #expect(!closed.open && closed.minuteOfDay == 359 && closed.label == "Opens 6:00 AM")
-        // 6 AM to 2 AM: 1:30 AM is still the day before's service; 2:00 AM is parked.
+        let closed = SimulationCalc.serviceStatus(at("2026-10-22T09:59:00Z"))
+        #expect(!closed.open && closed.minuteOfDay == 299 && closed.label == "Opens 5:00 AM")
+        // 5 AM to 2 AM: 1:30 AM is still the day before's service; 2:00 AM is parked.
         #expect(SimulationCalc.serviceStatus(at("2026-10-23T06:30:00Z")).open && !SimulationCalc.serviceStatus(at("2026-10-23T07:00:00Z")).open)
-        #expect(SimulationCalc.clockLabel(SimulationCalc.closeMinute) == "2:00 AM" && SimulationCalc.hourPieces.map(\.start) == [360, 0])
+        #expect(SimulationCalc.clockLabel(SimulationCalc.closeMinute) == "2:00 AM" && SimulationCalc.hourPieces.map(\.start) == [300, 0])
         #expect(SimulationCalc.isStale("2026-10-20T00:00:00Z", now: at("2026-10-21T13:00:00Z")) && !SimulationCalc.isStale("2026-10-21T00:00:00Z", now: at("2026-10-21T12:00:00Z")))
         #expect(SimulationCalc.isStale(nil, now: .now), "no timestamp counts as stale")
     }

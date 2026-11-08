@@ -24,11 +24,11 @@ const CCC_CALC = (() => {
   // Model, inputs and ranges: docs/fleet-eta-live-data-research.md §3.
 
   // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
-  // 6 AM to 2 AM: the service day runs past midnight, so closeMinute (2 AM =
+  // 5 AM to 2 AM: the service day runs past midnight, so closeMinute (2 AM =
   // 120) is smaller than openMinute; serviceStatus and serviceSegments handle that.
-  const SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
-  // Dallas (launched Apr 18, 2026): 6 AM to 2 AM daily, the same as Austin (owner-confirmed, Oct 2026).
-  const DALLAS_SERVICE_HOURS = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  const SERVICE_HOURS = { openMinute: 5 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  // Dallas (launched Apr 18, 2026): 5 AM to 2 AM daily, the same as Austin (owner-confirmed, Nov 2026).
+  const DALLAS_SERVICE_HOURS = { openMinute: 5 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
   // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
   // $3.25 base + $1.00 per mile. Not a published rate card.
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
@@ -140,7 +140,7 @@ const CCC_CALC = (() => {
   }
 
   // The service window on a 24-hour track (12 AM to 12 AM), as minute ranges:
-  // one piece, or two when it runs past midnight (6 AM–12 AM and 12 AM–2 AM).
+  // one piece, or two when it runs past midnight (5 AM–12 AM and 12 AM–2 AM).
   function serviceSegments(hours = SERVICE_HOURS) {
     const close = hours.closeMinute === 0 ? 1440 : hours.closeMinute;
     return close > hours.openMinute
@@ -155,7 +155,7 @@ const CCC_CALC = (() => {
       .formatToParts(date);
     const get = type => Number((parts.find(p => p.type === type) || {}).value);
     const minuteOfDay = (get('hour') % 24) * 60 + get('minute');
-    // A window that crosses midnight (closeMinute < openMinute, e.g. 6 AM to
+    // A window that crosses midnight (closeMinute < openMinute, e.g. 5 AM to
     // 2 AM) is open after the opening time OR before the closing time.
     const open = hours.closeMinute > hours.openMinute
       ? minuteOfDay >= hours.openMinute && minuteOfDay < hours.closeMinute
