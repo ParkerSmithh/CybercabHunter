@@ -57,10 +57,10 @@ async function run() {
   {
     check('Austin and Dallas, in that order', SERVICE_AREAS.map(a => a.name).join() === 'Austin,Dallas');
     const austin = serviceAreaFor('Austin'), dallas = serviceAreaFor('dallas');
-    check('Austin metro box: -98.05..-97.45, 30.05..30.60, TX', JSON.stringify(austin.bbox) === JSON.stringify({ minLon: -98.05, minLat: 30.05, maxLon: -97.45, maxLat: 30.60 }) && austin.state === 'TX');
+    check('Austin metro box: -98.05..-97.45, 30.00..30.60, TX', JSON.stringify(austin.bbox) === JSON.stringify({ minLon: -98.05, minLat: 30, maxLon: -97.45, maxLat: 30.60 }) && austin.state === 'TX');
     check('Dallas metro box: -97.20..-96.45, 32.55..33.15, TX', JSON.stringify(dallas.bbox) === JSON.stringify({ minLon: -97.20, minLat: 32.55, maxLon: -96.45, maxLat: 33.15 }) && dallas.state === 'TX');
     check('lookup by key or name, any case/spacing; unsupported -> null', serviceAreaFor(' AUSTIN ') === austin && serviceAreaFor('dallas') === dallas && serviceAreaFor('Houston') === null && serviceAreaFor('') === null);
-    check('box edges count as inside; just past them does not', isInServiceArea(austin, -98.05, 30.05) && isInServiceArea(austin, -97.45, 30.60) && !isInServiceArea(austin, -98.0501, 30.3) && !isInServiceArea(dallas, -96.4499, 32.8) && isInServiceArea(dallas, -96.45, 33.15));
+    check('box edges count as inside; just past them does not', isInServiceArea(austin, -98.05, 30.00) && isInServiceArea(austin, -97.45, 30.60) && !isInServiceArea(austin, -98.0501, 30.3) && !isInServiceArea(dallas, -96.4499, 32.8) && isInServiceArea(dallas, -96.45, 33.15));
     const list = await (await req(await makeApp(), 'GET', '/api/service-areas')).json();
     check('GET /api/service-areas lists them (key + name only), for the pages to build from', JSON.stringify(list) === JSON.stringify({ areas: [{ key: 'austin', name: 'Austin' }, { key: 'dallas', name: 'Dallas' }] }));
   }
@@ -76,7 +76,7 @@ async function run() {
     photon.calls.length = 0;
     const austin = await search(ctx, 'congress', 'austin');
     check('Austin: Congress Avenue is offered', austin.status === 200 && austin.json.places[0].id === CONGRESS.id && austin.json.places[0].label === CONGRESS.label);
-    check('the search sent Photon the Austin metro box', photon.calls[0].searchParams.get('bbox') === '-98.05,30.05,-97.45,30.6');
+    check('the search sent Photon the Austin metro box', photon.calls[0].searchParams.get('bbox') === '-98.05,30,-97.45,30.6');
     check('each suggestion carries only id, label and city (no coordinates)', austin.json.places.every(p => Object.keys(p).sort().join() === 'city,id,label'));
     check('Austin: the Levittown, NY address is NOT offered', !(await search(ctx, '4016 hahn', 'austin')).json.places.some(p => p.id === LEVITTOWN.id));
     check('Austin: a Dallas address is NOT offered', !(await search(ctx, '4016 hanover', 'austin')).json.places.some(p => p.id === HANOVER.id));

@@ -60,7 +60,7 @@ async function run() {
     check('no sign-in needed: 200 with places', r.status === 200 && Array.isArray(r.json.places));
     check('Congress Avenue is offered with its coordinates', !!hit && hit.lat === CONGRESS.lat && hit.lng === CONGRESS.lon);
     check('each place carries only id, label, lat and lng', r.json.places.every(p => Object.keys(p).sort().join() === 'id,label,lat,lng'));
-    check('the search sent Photon the Austin metro box', photon.calls.at(-1).searchParams.get('bbox') === '-98.05,30.05,-97.45,30.6');
+    check('the search sent Photon the Austin metro box', photon.calls.at(-1).searchParams.get('bbox') === '-98.05,30,-97.45,30.6');
     check('a New York or Dallas address is not offered', !(await search(ctx, '4016 hahn')).json.places.some(p => p.id === LEVITTOWN.id) && !(await search(ctx, '4016 hanover')).json.places.some(p => p.id === HANOVER.id));
     photon.ignoreBbox = true;
     const leaky = await search(ctx, 'hahn edgeoutaustin congress');

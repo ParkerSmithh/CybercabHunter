@@ -24,12 +24,12 @@ const CCC_CALC = require('../public/js/calc.js');
 // ---- Fleet ETA (simulation.html?view=eta; model: docs/fleet-eta-live-data-research.md §3) ----
 
 // ETA range, the report's worked example: 47 public Cybercabs, Typical -> about 6-16 min, most likely ~9
-// (the report used the 264 mi² zone; Austin's expanded 272 mi² zone puts the high end at 17).
+// (the report used the 264 mi² zone; Austin's Nov 2026 zone, 440 mi², spreads them further: about 7-20+, most likely ~11).
 {
   const r = CCC_CALC.etaRange({ fleetSize: 47, scenario: 'typical' });
   assert.strictEqual(r.state, 'ok');
-  assert.deepStrictEqual([r.low, r.likely, r.high], [6, 9, 17]);
-  assert.strictEqual(r.highCapped, false);
+  assert.deepStrictEqual([r.low, r.likely, r.high], [7, 11, 20]);
+  assert.strictEqual(r.highCapped, true);   // past the 20-minute cap: shown as "20+"
   assert.ok(r.low <= r.likely && r.likely <= r.high, 'range is ordered');
 }
 // Scenarios change free cars, not a multiplier: Quiet is faster than Typical, Busy slower.
