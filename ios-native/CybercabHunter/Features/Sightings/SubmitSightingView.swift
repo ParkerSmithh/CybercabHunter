@@ -12,6 +12,10 @@ struct SubmitSightingView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
     @Environment(AppRouter.self) private var router
+    /// Opened by the New Sighting control or the camera shortcut: Apple's camera
+    /// first (permission asked only now). No camera (the Simulator): the form.
+    var startWithCamera = false
+    @State private var startedCamera = false
     @State private var model = SubmitSightingModel()
     @State private var picked: PhotosPickerItem?
     @State private var choosingPhotoSource = false
@@ -38,6 +42,39 @@ struct SubmitSightingView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(model.sending) }
             }
             .task { await model.load(api: session.api) }
+            .task {
+                guard startWithCamera, !startedCamera, SightingCameraCapture.isAvailable else { return }
+                startedCamera = true
+                try? await Task.sleep(for: .milliseconds(350))   // the sheet finishes appearing first
+                await startCamera()
+            }
+            // Tells the router whether this form holds the rider's work, so a
+            // system control never closes it then.
+            .onChange(of: model.photo != nil || !model.plate.isEmpty || !model.notes.isEmpty, initial: true) { _, draft in router.sightingFormHasDraft = draft }
+            #if DEBUG
+            .overlay(alignment: .topLeading) {
+                Color.clear.frame(width: 1, height: 1).accessibilityElement()
+                    .accessibilityLabel(router.sightingFormHasDraft ? "draft" : "empty")
+                    .accessibilityIdentifier("sightingDraftState")
+            }
+            #endif
+            // A control or shortcut asked for another screen: leave only if the rider says so.
+            // An alert (not a confirmation dialog): it always shows both choices.
+            .alert("Leave this sighting?", isPresented: Binding(get: { router.draftConflict != nil }, set: { if !$0 { router.draftConflict = nil } })) {
+                Button("Leave", role: .destructive) {
+                    guard let action = router.draftConflict else { return }
+                    router.draftConflict = nil
+                    router.sightingFormHasDraft = false
+                    dismiss()
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(450))   // the form's dismissal
+                        router.perform(action, leavingDraft: true)
+                    }
+                }
+                Button("Keep Editing", role: .cancel) { router.draftConflict = nil }
+            } message: {
+                Text("Your photo and details haven't been submitted and will be discarded.")
+            }
             .onChange(of: picked) { _, item in
                 guard let item else { return }
                 picked = nil

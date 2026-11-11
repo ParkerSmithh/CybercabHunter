@@ -167,7 +167,7 @@ async function run() {
     const d1 = createTestD1();
     const page = await openPage({ cybercabhunter_db: d1 }, '11111111-1111-1111-1111-111111111111');
     check('a well-formed but nonexistent id shows "Vehicle not found", not an error or invalid-link message', page.visible('vehicleNotFound') && !page.visible('vehicleError') && !page.visible('vehicleInvalid'));
-    check('the not-found state offers a way back, not a raw API error dump', /back to cybercab hunter/i.test(page.d.getElementById('vehicleNotFound').textContent) && !/"success":false|"error":"not_found"/.test(page.d.getElementById('vehicleNotFound').innerHTML));
+    check('the not-found state offers a way back, not a raw API error dump', /back to cybercabhunter/i.test(page.d.getElementById('vehicleNotFound').textContent) && !/"success":false|"error":"not_found"/.test(page.d.getElementById('vehicleNotFound').innerHTML));
   }
   {
     const d1 = createTestD1();

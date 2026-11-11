@@ -154,7 +154,7 @@ struct PostCard: View {
             }
             .accessibilityLabel("Comments, \(post.commentCount)")
             .accessibilityIdentifier("commentsButton")
-            ShareLink(item: post.webURL, subject: Text("Cybercab Hunter Community"), message: Text(String(post.body.prefix(100)))) {
+            ShareLink(item: post.webURL, subject: Text("CybercabHunter Community"), message: Text(String(post.body.prefix(100)))) {
                 Image(systemName: "square.and.arrow.up").actionPill()
             }
             .accessibilityLabel("Share post")

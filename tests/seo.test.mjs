@@ -85,7 +85,7 @@ async function run() {
     check('blocks nothing (internal pages rely on noindex, which crawlers must be able to read)', !/Disallow/.test(robots));
   }
 
-  console.log('3. Public pages: canonical, Open Graph, Twitter and JSON-LD; the tab title stays "Cybercab Hunter"');
+  console.log('3. Public pages: canonical, Open Graph, Twitter and JSON-LD; the tab title is the brand, "CybercabHunter"');
   for (const [file, path] of Object.entries(PUBLIC)) {
     const html = read(file);
     const url = 'https://cybercabhunter.com' + path;
@@ -95,11 +95,11 @@ async function run() {
     try { graph = JSON.parse(ld[0].replace(/<[^>]+>/g, ''))['@graph']; } catch (e) { graph = null; }
     const desc = metaContent(html, 'name', 'description');
     const ogTitle = metaContent(html, 'property', 'og:title');
-    check(`${file}: tab title "Cybercab Hunter", canonical ${url}`, /<title>Cybercab Hunter<\/title>/.test(h) && h.includes(`<link rel="canonical" href="${url}">`));
+    check(`${file}: tab title "CybercabHunter", canonical ${url}`, /<title>CybercabHunter<\/title>/.test(h) && h.includes(`<link rel="canonical" href="${url}">`));
     check(`${file}: og:url = canonical; og:image and twitter:image absolute https`, metaContent(html, 'property', 'og:url') === url
       && /^https:\/\/cybercabhunter\.com\/images\//.test(metaContent(html, 'property', 'og:image')) && metaContent(html, 'name', 'twitter:image') === metaContent(html, 'property', 'og:image'));
     check(`${file}: og:type website, site name, large Twitter card, matching titles/descriptions`, metaContent(html, 'property', 'og:type') === 'website'
-      && metaContent(html, 'property', 'og:site_name') === 'Cybercab Hunter' && metaContent(html, 'name', 'twitter:card') === 'summary_large_image'
+      && metaContent(html, 'property', 'og:site_name') === 'CybercabHunter' && metaContent(html, 'name', 'twitter:card') === 'summary_large_image'
       && metaContent(html, 'name', 'twitter:title') === ogTitle && metaContent(html, 'property', 'og:description') === desc && metaContent(html, 'name', 'twitter:description') === desc);
     check(`${file}: share title ≤ 60 and description ≤ 160 characters`, ogTitle && ogTitle.replace(/&amp;/g, '&').length <= 60 && desc && desc.length <= 160);
     check(`${file}: one JSON-LD block (Organization + WebSite) that parses`, ld.length === 1 && graph && graph.some(n => n['@type'] === 'Organization') && graph.some(n => n['@type'] === 'WebSite'));
@@ -138,8 +138,8 @@ async function run() {
     const m = (attr, key) => d.head.querySelector(`meta[${attr}="${key}"]`).getAttribute('content');
     const url = `https://cybercabhunter.com/vehicle/${uuid(10)}`;
     check('canonical and og:url are this vehicle\'s URL', d.head.querySelector('link[rel="canonical"]').href === url && m('property', 'og:url') === url);
-    check('title: "Cybercab <plate> | Tesla Cybercab Registry" (og and twitter); the tab stays "Cybercab Hunter"',
-      m('property', 'og:title') === 'Cybercab CYB 123 | Tesla Cybercab Registry' && m('name', 'twitter:title') === m('property', 'og:title') && d.title === 'Cybercab Hunter');
+    check('title: "Cybercab <plate> | Tesla Cybercab Registry" (og and twitter); the tab stays "CybercabHunter"',
+      m('property', 'og:title') === 'Cybercab CYB 123 | Tesla Cybercab Registry' && m('name', 'twitter:title') === m('property', 'og:title') && d.title === 'CybercabHunter');
     check('description names the plate, VIN and city, under 160 characters', m('name', 'description') === 'Tesla Cybercab CYB 123 (VIN 7SAXCBE5XRF000001) operating in Austin: rides, sightings and details on Cybercab Hunter.'
       && m('name', 'description').length <= 160 && m('property', 'og:description') === m('name', 'description'));
     const graph = JSON.parse(d.head.querySelector('script[type="application/ld+json"]').textContent)['@graph'];

@@ -364,18 +364,9 @@ struct BrandToolbarItem: ToolbarContent {
     private var item: some ToolbarContent {
         // Centred on the screen (the bar's principal place), a little larger than before.
         ToolbarItem(placement: .principal) {
-            HStack(spacing: 10) {
-                Image("BrandMark").resizable().frame(width: 36, height: 36)
-                VStack(alignment: .leading, spacing: -1) {
-                    Text("CYBERCAB").font(.inter(17, .bold)).tracking(0.9).foregroundStyle(Color.chInk)
-                    Text("HUNTER").font(.inter(10.5, .semibold)).tracking(2.8).foregroundStyle(Color.chFog)
-                }
-            }
-            .fixedSize()
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Cybercab Hunter")
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier("homeBrand")
+            BrandLockup()
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("homeBrand")
         }
     }
 }

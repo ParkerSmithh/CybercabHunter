@@ -21,7 +21,11 @@ final class CarsSearchUITests: XCTestCase {
         XCTAssertTrue(brand.waitForExistence(timeout: 20))
         let screen = app.windows.firstMatch.frame
         XCTAssertEqual(brand.frame.midX, screen.midX, accuracy: 2, "centred on the screen: \(brand.frame)")
-        XCTAssertGreaterThanOrEqual(brand.frame.height, 35, "larger mark")
+        XCTAssertGreaterThanOrEqual(brand.frame.height, 32, "the emblem is at least 32 pt tall")
+        // The CybercabHunter lockup: one name, one line (far wider than tall), on screen.
+        XCTAssertEqual(brand.label, "CybercabHunter")
+        XCTAssertGreaterThan(brand.frame.width, brand.frame.height * 4, "emblem and wordmark on one line: \(brand.frame)")
+        XCTAssertTrue(screen.contains(brand.frame), "never cut off")
         let avatar = app.buttons["accountButton"].firstMatch
         XCTAssertTrue(avatar.exists)
         XCTAssertFalse(brand.frame.intersects(avatar.frame), "no overlap with the avatar")

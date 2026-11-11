@@ -86,7 +86,10 @@
           sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
           mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
         },
-        fontWeight: { medium: '510', semibold: '590', bold: '590', extrabold: '590', black: '590' },
+        // Real weights for bold and heavier (Inter is a variable font, 100–900):
+        // they used to all collapse to 590, which made every "bold" heading
+        // read as semibold. Medium and semibold keep the site's quieter values.
+        fontWeight: { medium: '510', semibold: '590', bold: '700', extrabold: '800', black: '900' },
         borderRadius: { sm: '4px', md: '6px', lg: '6px', xl: '6px', '2xl': '12px', '3xl': '12px' },
         maxWidth: { '7xl': '1200px' },
         transitionTimingFunction: { out: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }

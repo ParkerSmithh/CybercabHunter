@@ -1,0 +1,99 @@
+/* Brand lockup and typography system (every page, after style.css).
+
+   Typeface: the homepage headline's — "TRACK THE FUTURE OF AUTONOMY" is
+   Inter (self-hosted variable font, fonts/inter-latin-wght.woff2, weights
+   100–900), weight 700, uppercase, letter-spacing -0.035em, line-height 1.05.
+   No other font is loaded: these rules only use more of Inter's weights.
+
+   Hierarchy (one place to tune it):
+     page headings (h1)        800, tight tracking
+     section headings (h2)     760
+     card titles (h3/h4)       700
+     large statistics          700, tabular figures
+     navigation                500 (current page 650)
+     body, metadata            unchanged (Inter 400–590)                      */
+
+:root{
+  --type-display:'Inter',ui-sans-serif,system-ui,sans-serif;
+  --fw-page:800;
+  --fw-section:760;
+  --fw-card:700;
+  --fw-stat:700;
+  --fw-nav:500;
+  --fw-nav-current:650;
+  --brand-cybercab:#FFFFFF;
+  --brand-hunter:#FAE030;
+}
+/* Light theme: white on a light header would vanish, and #FAE030 is too
+   pale on white, so the same wordmark uses the theme's ink and a deeper gold. */
+:root[data-theme="light"]{
+  --brand-cybercab:rgb(var(--ink));
+  /* #FAE030 on white is about 1.4:1; this deeper gold clears 3:1 for large bold text. */
+  --brand-hunter:#A88400;
+}
+
+/* ---------------------------------------------------------------------------
+   The lockup: [emblem] CYBERCABHUNTER — one line, one link home. Proportions
+   from the reference artwork (CyberCabHunter Gold Emblem Logo.png): the emblem
+   is ~2.9x the letters' cap height, the gap ~0.25 cap, the word uppercase and
+   black-weight, centred on the emblem. Inter's cap height is 0.727em, so a
+   font-size of 0.47x the emblem gives that ratio. The text stays real
+   "CybercabHunter" (screen readers, copy/paste); only its display is uppercase. */
+.brand{
+  --mark:42px;
+  display:inline-flex; align-items:center; gap:calc(var(--mark) * 0.085);
+  min-width:0; flex:0 1 auto; text-decoration:none;
+}
+.brand-mark{
+  width:var(--mark); height:var(--mark); flex:none; object-fit:contain; display:block;
+}
+.brand-word{
+  font-family:var(--type-display); font-weight:900; font-size:calc(var(--mark) * 0.47);
+  line-height:1; letter-spacing:-0.012em; text-transform:uppercase; white-space:nowrap;
+  font-feature-settings:"kern" 1;
+}
+.brand-cybercab{color:var(--brand-cybercab)}
+.brand-hunter{color:var(--brand-hunter)}
+.brand:focus-visible{outline:2px solid #FAE030; outline-offset:4px; border-radius:6px}
+
+/* The name inside uppercase labels keeps its own case (CybercabHunter). */
+.brand-name{text-transform:none; letter-spacing:-0.01em}
+
+/* Smaller placements: the footer; the sign-in page's photo panel keeps dark-mode colors. */
+.brand--footer{--mark:36px}
+.brand--onphoto .brand-cybercab{color:#FFFFFF}
+.brand--onphoto .brand-hunter{color:#FAE030}
+
+/* Phones: everything shrinks together, never wraps, never meets the buttons. */
+@media (max-width:640px){
+  /* The lockup is ~5.65x its emblem wide; the buttons (Submit + Sign In) and
+     the side padding take ~170px, so the emblem gets what is left. */
+  header .brand{--mark:clamp(24px, calc((100vw - 170px) / 5.65), 38px)}
+  .brand--footer{--mark:32px}
+}
+/* The header's buttons never wrap or shrink; the lockup is sized to fit beside them. */
+header .brand ~ div{flex:none; white-space:nowrap}
+
+/* ---------------------------------------------------------------------------
+   Headings: the headline's face at real weights. (style.css sets every h1 to
+   510; Tailwind's font-bold is 700 again — js/theme.js — and these give each
+   level its own weight.) Authors' tracking and case classes are kept. */
+html h1.font-display, html .type-page{font-family:var(--type-display); font-weight:var(--fw-page); letter-spacing:-0.03em}
+html h2.font-display, html .type-section{font-family:var(--type-display); font-weight:var(--fw-section)}
+html h3.font-display, html h4.font-display, html .type-card{font-family:var(--type-display); font-weight:var(--fw-card)}
+
+/* Headings styled by their own classes rather than font-display. */
+html .community-title, html .news-h1{font-weight:var(--fw-page)}
+html .settings-title, html .news-section-head h2{font-weight:var(--fw-section)}
+html .social-card-title, html .news-title{font-weight:var(--fw-card)}
+/* The rider profile's name and the profile page heading (Tailwind font-semibold). */
+html h1.font-semibold{font-weight:var(--fw-page)}
+
+/* Large statistics: bold, tabular, still Inter. */
+html .stat-value{font-weight:var(--fw-stat); font-variant-numeric:tabular-nums}
+html .news-statcell-num, html .news-statsbar dd{font-weight:var(--fw-section)}
+
+/* Navigation: a little firmer than the 400 it was; the current page stronger. */
+header nav a{font-weight:var(--fw-nav) !important}
+header nav a[aria-current="page"]{font-weight:var(--fw-nav-current) !important}
+#mobileBottomNav a span{font-weight:650}

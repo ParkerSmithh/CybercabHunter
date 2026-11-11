@@ -22,6 +22,11 @@ struct CybercabHunterWidgets: WidgetBundle {
         LockFleetWidget()
         DailyWidget()             // the existing Cybercab Daily widget, restyled
         ServiceLiveActivity()     // Dynamic Island / Lock Screen, off unless the rider turns it on
+        // Controls: Control Center, the Lock Screen's bottom slots, the Action Button (SystemControls.swift).
+        NewSightingControl()
+        CybercabMapControl()
+        FleetStatsControl()
+        CommunityControl()
     }
 }
 
@@ -69,7 +74,7 @@ struct CCShell<Value, Content: View>: View {
             } else if placeholder {
                 content(blank, size).redacted(reason: .placeholder)
             } else if accessory {
-                Label("Cybercab Hunter", systemImage: "wifi.slash")
+                Label("CybercabHunter", systemImage: "wifi.slash")
             } else {
                 WidgetMessage(icon: "wifi.slash", title: "Can't reach Cybercab Hunter", message: "It'll try again shortly.")
             }

@@ -9,6 +9,8 @@ struct SightingsView: View {
     @Environment(\.openSignIn) private var openSignIn
     @State private var model = SightingsModel()
     @State private var submitting = false
+    /// The form opens Apple's camera first (the New Sighting control / camera shortcut).
+    @State private var submitWithCamera = false
     @State private var viewing: PublicSighting?
     @State private var deleting: PublicSighting?
 
@@ -47,7 +49,7 @@ struct SightingsView: View {
                 if scenePhase == .active && router.selectedTab == .sightings { await model.poll(api: session.api) }
             }
         }
-        .sheet(isPresented: $submitting) { SubmitSightingView() }
+        .sheet(isPresented: $submitting, onDismiss: { submitWithCamera = false; router.sightingFormHasDraft = false }) { SubmitSightingView(startWithCamera: submitWithCamera) }
         // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
         .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
         // The rider looked at a city's sightings (a donation, once per city per launch).
@@ -61,6 +63,14 @@ struct SightingsView: View {
             Task { await model.select(city: c, api: session.api) }
         }
         .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
+        // Signed in after asking for the form from a control or shortcut: it opens now.
+        .onChange(of: session.user?.id) { resumeAfterSignIn() }
+        // Another control or shortcut (the map, Community…): an empty form makes
+        // way; one holding the rider's photo or notes stays.
+        .onChange(of: router.presentationReset) {
+            guard submitting, let a = router.lastQuickAction?.action, !a.opensSightingForm, !router.sightingFormHasDraft else { return }
+            submitting = false
+        }
         .fullScreenCover(item: $viewing) { SightingViewer(sighting: $0) }
         .confirmationDialog("Delete this photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
             Button("Delete photo", role: .destructive) { if let s = deleting { Task { await model.deletePhoto(s, api: session.api) } } }
@@ -74,7 +84,45 @@ struct SightingsView: View {
         guard router.submitSightingRequested else { return }
         if case .restoring = session.state { return }
         router.submitSightingRequested = false
-        if session.user != nil { submitting = true } else { openSignIn() }
+        let camera = router.submitSightingWithCamera
+        router.submitSightingWithCamera = false
+        Task { @MainActor in
+            await waitForClosingSheets()
+            if session.user != nil {
+                // Already open (a second request): leave the rider's form as it is.
+                guard !submitting else { return }
+                submitWithCamera = camera
+                submitting = true
+            } else {
+                // Sign in first; the form opens afterwards (resumeAfterSignIn).
+                router.resumeSightingAfterSignIn = (camera, .now)
+                openSignIn()
+            }
+        }
+    }
+
+    /// The sign-in a sighting request led to has finished: close the account
+    /// sheet and open the form that was asked for (within ten minutes).
+    private func resumeAfterSignIn(now: Date = .now) {
+        guard session.user != nil, let pending = router.resumeSightingAfterSignIn else { return }
+        router.resumeSightingAfterSignIn = nil
+        guard now.timeIntervalSince(pending.at) < 600 else { return }
+        router.closeAccountSheetRequest &+= 1
+        router.selectedTab = .sightings
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(550))   // the account sheet's dismissal
+            submitWithCamera = pending.camera
+            submitting = true
+        }
+    }
+
+    /// A sheet RootView just closed for this request is still animating away:
+    /// presenting now would fail, so wait for it.
+    private func waitForClosingSheets() async {
+        await Task.yield()   // RootView's reaction to the same request runs first
+        guard let closed = router.sheetsClosedAt else { return }
+        let left = 0.55 - Date.now.timeIntervalSince(closed)
+        if left > 0 { try? await Task.sleep(for: .milliseconds(Int(left * 1000))) }
     }
 
     // MARK: Header

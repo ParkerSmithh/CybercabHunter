@@ -50,7 +50,7 @@ struct AccountView: View {
                     // The privacy policy is a legal document: shown as published on the website.
                     Button("Privacy policy") { webPage = WebPage(title: "Privacy", path: "/privacy", systemImage: "hand.raised.fill") }
                 } footer: {
-                    Text("Cybercab Hunter \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · native preview")
+                    Text("CybercabHunter \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · native preview")
                 }
             }
             .font(.inter(15))
@@ -105,8 +105,9 @@ struct AccountView: View {
     private var signedOut: some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
-                Image("BrandMark").resizable().frame(width: 56, height: 56)
-                Text("Sign in to Cybercab Hunter").font(.inter(20, .bold))
+                Image("BrandMark").resizable().scaledToFit().frame(width: 56, height: 56)
+                (Text("Sign in to ") + BrandLockup.wordmark(size: 20)).font(.inter(20, .bold))
+                    .accessibilityLabel("Sign in to CybercabHunter")
                 Text("Use the same Google account as on the website: your sightings, rides, XP and Social posts come with you.")
                     .font(.inter(14))
                     .foregroundStyle(Color.secondaryText)

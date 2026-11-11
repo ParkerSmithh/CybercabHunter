@@ -106,7 +106,7 @@ struct NotificationsView: View {
             .frame(width: 30, height: 30)
             .background(Color.chInk.opacity(0.06), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                (Text(n.actor?.official == true ? "Cybercab Hunter" : n.actor?.name ?? "Someone").bold().foregroundStyle(Color.chInk)
+                (Text(n.actor?.official == true ? "CybercabHunter" : n.actor?.name ?? "Someone").bold().foregroundStyle(Color.chInk)
                     + Text(" \(n.text)").foregroundStyle(Color.chMist))
                     .font(.inter(13.5))
                 if let excerpt = n.excerpt, !excerpt.isEmpty {

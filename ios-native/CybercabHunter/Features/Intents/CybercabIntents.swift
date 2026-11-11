@@ -34,17 +34,8 @@ struct OpenZonesIntent: AppIntent {
     }
 }
 
-struct SubmitSightingIntent: AppIntent {
-    static let title: LocalizedStringResource = "Submit a Cybercab Sighting"
-    static let description = IntentDescription("Opens the form to submit a photo of a Cybercab you spotted. You need to be signed in.")
-    static let openAppWhenRun = true
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        AppRouter.shared.requestSubmitSighting()
-        return .result()
-    }
-}
+// SubmitSightingIntent ("New Cybercab Sighting") lives in Shared/QuickActions.swift
+// with the other system-control intents, so Control Center can use it too.
 
 struct FleetStatsIntent: AppIntent {
     static let title: LocalizedStringResource = "Check the Cybercab Fleet"
