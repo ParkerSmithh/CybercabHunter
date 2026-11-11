@@ -36,7 +36,7 @@ struct SiriDiagnosticsTests {
     @Test func startupReadsTheActualHostAppsBundledMetadata() {
         let metadata = SiriStartupDiagnostics.bundledMetadata()
         #expect(metadata.status == "readable")
-        #expect(metadata.growth == "present" && metadata.actions == 22)
+        #expect(metadata.growth == "present" && metadata.actions == 27)   // 22 + the five system-control intents (Shared/QuickActions.swift)
         #expect(metadata.sha256.count == 64)
     }
 

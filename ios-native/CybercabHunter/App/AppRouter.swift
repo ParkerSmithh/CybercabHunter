@@ -8,7 +8,18 @@ import Observation
 final class AppRouter {
     /// The one router of the app: the scene uses it, and so do App Intents
     /// (Siri, Shortcuts, Spotlight), which run outside the view tree.
-    static let shared = AppRouter()
+    static let shared: AppRouter = {
+        let router = AppRouter()
+        router.connectQuickActions()
+        return router
+    }()
+
+    /// Control Center, Lock Screen, Action Button and Shortcuts requests
+    /// (Shared/QuickActions.swift) all arrive here, including one made before
+    /// the app finished launching.
+    func connectQuickActions() {
+        QuickActionCenter.connect { [weak self] in self?.perform($0) }
+    }
 
     var selectedTab: AppTab = DebugLaunch.initialTab ?? .home
     /// A city for Zones to open on (Home's minimaps set it).
@@ -24,6 +35,55 @@ final class AppRouter {
     var registryPath = NavigationPath()
     /// Set by the "Submit a sighting" shortcut: Sightings opens its form.
     var submitSightingRequested = false
+    /// With it: the form opens Apple's camera first (the New Sighting control).
+    var submitSightingWithCamera = false
+    /// A signed-out rider asked for the sighting form: it opens once they sign
+    /// in (within ten minutes), and is forgotten if they close sign-in.
+    var resumeSightingAfterSignIn: (camera: Bool, at: Date)?
+    /// Whether the open sighting form holds the rider's work (a photo, a
+    /// plate or notes): a system control never closes it then.
+    var sightingFormHasDraft = false
+    /// A control asked for another screen while the form holds a draft: the
+    /// form asks "Leave this sighting?" before anything is lost.
+    var draftConflict: QuickAction?
+
+    // MARK: System controls (Control Center, Lock Screen, Action Button, Shortcuts)
+
+    /// The last request and when, so a double tap or a request delivered twice
+    /// (an intent and its link) navigates once.
+    private(set) var lastQuickAction: (action: QuickAction, at: Date)?
+    /// Bumped by each request: RootView closes the Account and notification
+    /// sheets, and Sightings closes an empty form, so the destination shows.
+    private(set) var presentationReset = 0
+    /// When RootView last closed a sheet for a request: a new sheet waits for
+    /// that animation instead of failing to present.
+    var sheetsClosedAt: Date?
+    /// Sightings asks RootView to close the account sheet once sign-in is done.
+    var closeAccountSheetRequest = 0
+
+    /// The one way a system control or shortcut navigates. Returns false for a
+    /// duplicate (the same action within a second).
+    @discardableResult
+    func perform(_ action: QuickAction, now: Date = .now, leavingDraft: Bool = false) -> Bool {
+        if let last = lastQuickAction, last.action == action, now.timeIntervalSince(last.at) < 1 { return false }
+        // The sighting form holds the rider's photo or notes, and going
+        // elsewhere would close it: the form asks first (SubmitSightingView).
+        if sightingFormHasDraft && !action.opensSightingForm && !leavingDraft {
+            draftConflict = action
+            return false
+        }
+        lastQuickAction = (action, now)
+        presentationReset &+= 1
+        switch action {
+        case .open: break
+        case .fleet: open(AppDestination.home)
+        case .map: open(AppDestination.map)
+        case .community: open(AppDestination.community)
+        case .camera: requestSubmitSighting(camera: true)
+        case .newSighting: requestSubmitSighting(camera: false)
+        }
+        return true
+    }
     /// A photo shared from the Share Sheet (SightingShareInbox), for the form to attach.
     var sharedSighting: SightingShareInbox.Share?
     /// Home's history (Siri opens the Texas DMV tracker there).
@@ -56,9 +116,11 @@ final class AppRouter {
         selectedTab = .registry
     }
 
-    /// The Sightings tab with its "Submit a sighting" form.
-    func requestSubmitSighting() {
+    /// The Sightings tab with its "Submit a sighting" form (`camera`: opening
+    /// Apple's camera first).
+    func requestSubmitSighting(camera: Bool = false) {
         selectedTab = .sightings
+        submitSightingWithCamera = camera
         submitSightingRequested = true
     }
 
@@ -86,6 +148,11 @@ final class AppRouter {
     @discardableResult
     func open(widgetURL url: URL) -> Bool {
         guard url.scheme == WidgetLink.scheme, let host = url.host() else { return false }
+        // A system-control request as a link (cybercabhunter-widget://action?do=map).
+        if host == "action" {
+            if let action = QuickAction(url: url) { perform(action) } else { selectedTab = .home }
+            return true
+        }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let city = items.first { $0.name == "city" }?.value
         switch host {
@@ -127,7 +194,9 @@ final class AppRouter {
     func open(_ destination: AppDestination) {
         switch destination {
         case .home: homePath = NavigationPath(); selectedTab = .home
-        case .map: openZones(zonesCity ?? "austin")
+        // Zones remembers the rider's city itself (ZonesModel), so the map
+        // opens where they left it unless a city was asked for.
+        case .map: if let c = zonesCity { openZones(c) } else { selectedTab = .zones }
         case .cars: registryPath = NavigationPath(); selectedTab = .registry
         case .sightings: openSightings(city: nil)
         case .community: communityPath = NavigationPath(); selectedTab = .community

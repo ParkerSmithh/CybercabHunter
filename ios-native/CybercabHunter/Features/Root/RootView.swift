@@ -29,12 +29,21 @@ struct RootView: View {
             }
         }
         .modifier(ExpandedTabBar())
+        #if DEBUG
+        // UI tests: the system-control router's state (SystemControlsUITests).
+        .overlay(alignment: .bottomTrailing) {
+            Color.clear.frame(width: 1, height: 1).accessibilityElement()
+                .accessibilityLabel("pid=\(ProcessInfo.processInfo.processIdentifier) last=\(router.lastQuickAction?.action.rawValue ?? "-") conflict=\(router.draftConflict?.rawValue ?? "-") draft=\(router.sightingFormHasDraft) reset=\(router.presentationReset)")
+                .accessibilityIdentifier("quickActionState")
+        }
+        #endif
         // Any screen can ask for sign-in (the account sheet holds Google sign-in).
         .environment(\.openSignIn, { [show = $showingAccount] in show.wrappedValue = true })
         .task {
             if ProcessInfo.processInfo.arguments.contains("-pushSettings") { router.accountRequest = .notifications }
             if DebugLaunch.opensAccount { showingAccount = true }
             if DebugLaunch.requestsSubmitSighting { router.requestSubmitSighting() }
+            if let a = DebugLaunch.quickAction { QuickActionCenter.request(a) }
             if let d = DebugLaunch.destination { router.open(d) }
             if let h = DebugLaunch.opensRider { router.open(.rider(RiderRoute(handle: h))) }
             if DebugLaunch.enablesLiveActivity { await ServiceLiveActivityController.shared.setEnabled(true) }
@@ -42,6 +51,18 @@ struct RootView: View {
         // Siri / Shortcuts asked for an Account screen (Activity Alerts, Siri & Shortcuts),
         // also on a cold launch.
         .onChange(of: router.accountRequest, initial: true) { if router.accountRequest != nil { showingAccount = true } }
+        // A Control Center / Lock Screen / Action Button / Shortcuts request: the
+        // destination must be visible, so the Account and notification sheets close.
+        .onChange(of: router.presentationReset) {
+            guard showingAccount || pushDestination != nil else { return }
+            showingAccount = false
+            pushDestination = nil
+            router.sheetsClosedAt = .now
+        }
+        // Signed in for a sighting request: Sightings opens the form next.
+        .onChange(of: router.closeAccountSheetRequest) { showingAccount = false }
+        // Sign-in closed without signing in: the waiting sighting request is dropped.
+        .onChange(of: showingAccount) { if !showingAccount && session.user == nil { router.resumeSightingAfterSignIn = nil } }
         .sensoryFeedback(.selection, trigger: router.selectedTab)
         // The Live Activity follows the switch and the service day each time the app is opened.
         // The Live Activity: refreshed on opening; on leaving it keeps running (the
@@ -177,6 +198,9 @@ enum DebugLaunch {
     static var enablesLiveActivity: Bool { ProcessInfo.processInfo.arguments.contains("-enableLiveActivity") }
     /// `-requestSubmitSighting`: what the Siri / Shortcuts "Submit a sighting" intent does (UI tests can't drive Siri).
     static var requestsSubmitSighting: Bool { ProcessInfo.processInfo.arguments.contains("-requestSubmitSighting") }
+    /// `-quickAction map`: what a Control Center / Lock Screen control or the
+    /// Action Button does (UI tests can't press them).
+    static var quickAction: QuickAction? { value("-quickAction").flatMap(QuickAction.init(rawValue:)) }
     /// `-apiBase http://127.0.0.1:8799`: the UI tests' local Worker
     /// (scripts/community-test-server.mjs), never production data.
     static var apiBase: URL? { value("-apiBase").flatMap(URL.init(string:)) }
@@ -200,6 +224,7 @@ enum DebugLaunch {
     static let initialTab: AppTab? = nil
     static let opensAccount = false
     static let requestsSubmitSighting = false
+    static let quickAction: QuickAction? = nil
     static let destination: AppDestination? = nil
     static let resetsSiriState = false
     static let resetsLiveActivity = false

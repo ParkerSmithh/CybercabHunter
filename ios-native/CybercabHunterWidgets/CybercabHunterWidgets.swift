@@ -22,6 +22,11 @@ struct CybercabHunterWidgets: WidgetBundle {
         LockFleetWidget()
         DailyWidget()             // the existing Cybercab Daily widget, restyled
         ServiceLiveActivity()     // Dynamic Island / Lock Screen, off unless the rider turns it on
+        // Controls: Control Center, the Lock Screen's bottom slots, the Action Button (SystemControls.swift).
+        NewSightingControl()
+        CybercabMapControl()
+        FleetStatsControl()
+        CommunityControl()
     }
 }
 

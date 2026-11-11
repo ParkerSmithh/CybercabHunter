@@ -14,7 +14,14 @@ final class ZonesModel {
     enum Mode: String, CaseIterable, Identifiable { case normal, heat; var id: String { rawValue } }
     enum Load<T: Equatable>: Equatable { case idle, loading, loaded(T), failed(String) }
 
-    var city = "austin"
+    /// The city on the map, remembered across launches so the Cybercab Map
+    /// control and shortcut reopen it.
+    var city = ZonesModel.savedCity { didSet { if city != oldValue { UserDefaults.standard.set(city, forKey: Self.cityKey) } } }
+    static let cityKey = "zones.lastCity"
+    static var savedCity: String {
+        let saved = UserDefaults.standard.string(forKey: cityKey) ?? "austin"
+        return WebData.city(saved).key == saved ? saved : "austin"
+    }
     var mode: Mode = .normal
     var heatRange: HeatRange = .d7
     var heatHour: Int?
