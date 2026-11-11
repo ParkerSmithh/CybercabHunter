@@ -196,7 +196,7 @@ struct CommunityView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Eyebrow(text: "Cybercab Hunter community")
+                    Eyebrow(text: "community", brand: true)
                     Text("COMMUNITY").displayTitle(30)
                     Text(section.intro).font(.inter(14)).foregroundStyle(Color.chFog)
                         .fixedSize(horizontal: false, vertical: true)

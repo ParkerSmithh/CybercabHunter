@@ -485,7 +485,7 @@
   async function sharePost(p) {
     const url = location.origin + p.url;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Cybercab Hunter Community', text: (p.body || '').slice(0, 100), url }); return; }
+      try { await navigator.share({ title: 'CybercabHunter Community', text: (p.body || '').slice(0, 100), url }); return; }
       catch (e) { if (e && e.name === 'AbortError') return; }
     }
     copyLink(p);

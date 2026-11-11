@@ -286,9 +286,9 @@ async function run() {
     const ctx = await makeApp();
     const p = (await post(ctx, 'alice', { body: 'Gold Cybercab at the "Domain" <b>today</b>', photos: photo('a.jpg') })).json.post;
     const m = socialMetaFor(p);
-    check('a shared post\'s preview: who, the text (no quotes or tags), its photo, its link', m.title === 'Post by Alice A | Cybercab Hunter Community' && m.description === 'Gold Cybercab at the Domain btoday/b' && m.image === `https://cybercabhunter.com${p.photos[0].url}` && m.url === `https://cybercabhunter.com/community?post=${p.id}`);
+    check('a shared post\'s preview: who, the text (no quotes or tags), its photo, its link', m.title === 'Post by Alice A | CybercabHunter Community' && m.description === 'Gold Cybercab at the Domain btoday/b' && m.image === `https://cybercabhunter.com${p.photos[0].url}` && m.url === `https://cybercabhunter.com/community?post=${p.id}`);
     const anon = socialMetaFor({ ...p, author: { anonymous: true, name: 'Anonymous' }, photos: [], review: { rating: 5 } });
-    check('an anonymous author is never named; no photo → the site image', anon.title === 'Ride review by a Cybercab Hunter | Cybercab Hunter Community' && /CybercabAnimation-poster/.test(anon.image));
+    check('an anonymous author is never named; no photo → the site image', anon.title === 'Ride review by a Cybercab Hunter | CybercabHunter Community' && /CybercabAnimation-poster/.test(anon.image));
     const page = await call(ctx, 'GET', `/community?post=${p.id}`);
     check('/community is served through the Worker (the page itself when no rewriter is available)', page.status === 200 && /<title>/.test(await page.r.text()));
     check('wrangler runs the Worker first for /community only', /"run_worker_first": \["\/community"\]/.test(read('wrangler.jsonc')));

@@ -358,7 +358,7 @@ console.log('7. The website: the button, the rider page, the feed and the Profil
   check('the rider page has the button and counts', rider.includes('id="riderFollowButton"') && rider.includes('id="riderFollowCounts"') && rider.includes('js/follows.js'));
   const profile = read('public/profile.html');
   check('the Profile page has Follow Requests', profile.includes('id="followRequests"') && profile.includes('/api/follow-requests'));
-  check('every tab title stays plain', /<title>Cybercab Hunter<\/title>/.test(rider) && /<title>Cybercab Hunter<\/title>/.test(profile));
+  check('every tab title stays plain', /<title>CybercabHunter<\/title>/.test(rider) && /<title>CybercabHunter<\/title>/.test(profile));
 }
 
 t.finish();

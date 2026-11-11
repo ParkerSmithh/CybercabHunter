@@ -6,19 +6,21 @@
 <meta name="description" content="Sign in to Cybercab Hunter with Google to submit sightings, review Cybercabs and see your rider data.">
 <meta name="theme-color" content="#090B0F">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" sizes="16x16" href="/images/icons/cybercab-ico-16.png?v=4ecb96d981e1">
-<link rel="icon" type="image/png" sizes="32x32" href="/images/icons/cybercab-ico-32.png?v=4ecb96d981e1">
-<link rel="icon" type="image/png" sizes="64x64" href="/images/icons/cybercab-ico-64.png?v=4ecb96d981e1">
-<link rel="apple-touch-icon" sizes="180x180" href="/images/icons/cybercab-ico-apple.png?v=4ecb96d981e1">
-<title>Cybercab Hunter</title>
+<link rel="icon" href="/favicon.ico?v=b1" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="16x16" href="/images/brand/favicon-16.png?v=b1">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/brand/favicon-32.png?v=b1">
+<link rel="icon" type="image/png" sizes="64x64" href="/images/brand/favicon-64.png?v=b1">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/brand/apple-touch-icon.png?v=b1">
+<title>CybercabHunter</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
-<script src="js/theme.js?v=4"></script>
+<script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -30,24 +32,18 @@
     <div class="absolute inset-0" style="background:url('images/HeroImage.png') center/cover no-repeat;"></div>
     <!-- A photograph panel: a dark scrim in both themes so the logo stays legible. -->
     <div class="absolute inset-0 bg-gradient-to-t from-[#090B0F] via-[#090B0F]/30 to-[#090B0F]/50"></div>
-    <a href="index.html" class="absolute top-8 left-10 flex items-center gap-2">
-      <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-11 h-11 object-contain">
-      <div class="leading-tight">
-        <div class="font-display font-bold text-base tracking-wide text-paper">CYBERCAB</div>
-        <div class="text-[11px] text-paper/70 tracking-[0.2em] font-semibold">HUNTER</div>
-      </div>
+    <a href="index.html" class="brand brand--onphoto absolute top-8 left-10" aria-label="CybercabHunter home">
+      <img src="/images/brand/cybercab-emblem-128.png?v=b1" srcset="/images/brand/cybercab-emblem-64.png?v=b1 1x, /images/brand/cybercab-emblem-128.png?v=b1 2x, /images/brand/cybercab-emblem-192.png?v=b1 3x" alt="" width="42" height="42" class="brand-mark">
+      <span class="brand-word"><span class="brand-cybercab">Cybercab</span><span class="brand-hunter">Hunter</span></span>
     </a>
   </aside>
 
   <!-- Right: sign-in -->
   <main id="main" tabindex="-1" class="flex flex-col px-6 sm:px-12 py-10">
     <div class="flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-2 lg:invisible">
-        <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-10 h-10 object-contain">
-        <div class="leading-tight">
-          <div class="font-display font-bold text-sm tracking-wide">CYBERCAB</div>
-          <div class="text-[9px] text-slate-400 tracking-[0.2em] font-semibold">HUNTER</div>
-        </div>
+      <a href="index.html" class="brand brand--footer lg:invisible" aria-label="CybercabHunter home">
+        <img src="/images/brand/cybercab-emblem-128.png?v=b1" srcset="/images/brand/cybercab-emblem-64.png?v=b1 1x, /images/brand/cybercab-emblem-128.png?v=b1 2x, /images/brand/cybercab-emblem-192.png?v=b1 3x" alt="" width="32" height="32" class="brand-mark">
+        <span class="brand-word"><span class="brand-cybercab">Cybercab</span><span class="brand-hunter">Hunter</span></span>
       </a>
       <a href="index.html" class="text-sm text-slate-400 hover:text-gold transition-colors max-sm:inline-flex max-sm:items-center max-sm:min-h-[40px]">&larr; Back to home</a>
     </div>

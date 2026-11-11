@@ -1029,7 +1029,7 @@ async function announcementNotice(sql, me) {
   return {
     id: 'announcement',
     type: 'announcement',
-    actor: { name: 'Cybercab Hunter', handle: null, avatar_url: null, anonymous: false, official: true },
+    actor: { name: 'CybercabHunter', handle: null, avatar_url: null, anonymous: false, official: true },
     text: 'posted an announcement',
     excerpt: String(ann.body).slice(0, 140),
     url: ann.link_url || '/community',
@@ -1325,8 +1325,8 @@ const metaText = (v, max) => {
 };
 export function socialMetaFor(post) {
   const who = post.author && !post.author.anonymous ? post.author.name : 'a Cybercab Hunter';
-  const title = metaText(post.review ? `Ride review by ${who}` : `Post by ${who}`, 80) + ' | Cybercab Hunter Community';
-  const description = metaText(post.body || (post.review ? `${post.review.rating} out of 5 stars` : 'A photo from the Cybercab Hunter community.'), 200);
+  const title = metaText(post.review ? `Ride review by ${who}` : `Post by ${who}`, 80) + ' | CybercabHunter Community';
+  const description = metaText(post.body || (post.review ? `${post.review.rating} out of 5 stars` : 'A photo from the CybercabHunter community.'), 200);
   const image = post.photos && post.photos[0] ? META_SITE + post.photos[0].url : `${META_SITE}/images/CybercabAnimation-poster.jpg`;
   return { title, description, image, url: META_SITE + post.url };
 }

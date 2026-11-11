@@ -88,9 +88,13 @@ struct Eyebrow: View {
     let text: String
     var accent: String? = nil
     var color: Color = .brandGold
+    /// Starts with the brand name in its own case ("CybercabHunter COMMUNITY"),
+    /// as the website's eyebrows do.
+    var brand = false
 
     var body: some View {
-        (Text(text.uppercased()).foregroundStyle(accent == nil ? color : Color.chFog)
+        (Text(brand ? "CybercabHunter " : "").tracking(0.2).foregroundStyle(accent == nil ? color : Color.chFog)
+            + Text(text.uppercased()).foregroundStyle(accent == nil ? color : Color.chFog)
             + Text(accent.map { " · \($0.uppercased())" } ?? "").foregroundStyle(Color.brandGold))
             .font(.inter(11, .semibold, relativeTo: .caption))
             .tracking(1.9)

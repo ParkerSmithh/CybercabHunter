@@ -74,7 +74,7 @@ struct CCShell<Value, Content: View>: View {
             } else if placeholder {
                 content(blank, size).redacted(reason: .placeholder)
             } else if accessory {
-                Label("Cybercab Hunter", systemImage: "wifi.slash")
+                Label("CybercabHunter", systemImage: "wifi.slash")
             } else {
                 WidgetMessage(icon: "wifi.slash", title: "Can't reach Cybercab Hunter", message: "It'll try again shortly.")
             }

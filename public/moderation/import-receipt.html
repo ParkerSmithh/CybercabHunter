@@ -7,19 +7,21 @@
 <meta name="robots" content="noindex, nofollow">
 <!-- Served at /moderation/import-receipt: resolve every relative URL from the site root. -->
 <base href="/">
-<link rel="icon" type="image/png" sizes="16x16" href="/images/icons/cybercab-ico-16.png?v=4ecb96d981e1">
-<link rel="icon" type="image/png" sizes="32x32" href="/images/icons/cybercab-ico-32.png?v=4ecb96d981e1">
-<link rel="icon" type="image/png" sizes="64x64" href="/images/icons/cybercab-ico-64.png?v=4ecb96d981e1">
-<link rel="apple-touch-icon" sizes="180x180" href="/images/icons/cybercab-ico-apple.png?v=4ecb96d981e1">
-<title>Cybercab Hunter</title>
+<link rel="icon" href="/favicon.ico?v=b1" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="16x16" href="/images/brand/favicon-16.png?v=b1">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/brand/favicon-32.png?v=b1">
+<link rel="icon" type="image/png" sizes="64x64" href="/images/brand/favicon-64.png?v=b1">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/brand/apple-touch-icon.png?v=b1">
+<title>CybercabHunter</title>
 <script>
   if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
   window.scrollTo(0, 0);
 </script>
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
-<script src="js/theme.js?v=3"></script>
+<script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/geist-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -31,12 +33,9 @@
      role itself on every request. -->
 <header class="border-b border-[rgba(250,224,48,0.15)]">
   <div class="max-w-5xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
-    <a href="index.html" class="flex items-center gap-2">
-      <img src="/images/icons/cybercab-ico-logo.png?v=4ecb96d981e1" alt="Cybercab Hunter" width="256" height="256" class="w-12 h-12 object-contain">
-      <div class="leading-tight">
-        <div class="font-display font-bold text-base tracking-wide">CYBERCAB</div>
-        <div class="text-[11px] text-slate-400 tracking-[0.16em] font-semibold">HUNTER</div>
-      </div>
+    <a href="index.html" class="brand" aria-label="CybercabHunter home">
+      <img src="/images/brand/cybercab-emblem-128.png?v=b1" srcset="/images/brand/cybercab-emblem-64.png?v=b1 1x, /images/brand/cybercab-emblem-128.png?v=b1 2x, /images/brand/cybercab-emblem-192.png?v=b1 3x" alt="" width="42" height="42" class="brand-mark">
+      <span class="brand-word"><span class="brand-cybercab">Cybercab</span><span class="brand-hunter">Hunter</span></span>
     </a>
     <span class="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em]">Moderation</span>
   </div>

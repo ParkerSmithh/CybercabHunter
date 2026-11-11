@@ -210,7 +210,7 @@ struct ShareView: View {
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Look.background)
-            .navigationTitle("Cybercab Hunter")
+            .navigationTitle("CybercabHunter")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if model.stage != .saved && model.stage != .receiptSaved { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: cancel) } }
