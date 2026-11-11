@@ -31,7 +31,7 @@ struct ZonesView: View {
 
     var body: some View {
         // Full screen: the map runs under the status bar, the see-through
-        // navigation bar (only the Account button, no title; RootView) and the
+        // navigation bar (the CybercabHunter brand and the Account button) and the
         // Liquid Glass tab bar. The controls stay inside the safe area.
         GeometryReader { geo in
             ZStack(alignment: .top) {
@@ -73,6 +73,7 @@ struct ZonesView: View {
         }
         .background(Color.chBackground)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { BrandToolbarItem(identifier: "zonesBrand") }
         .navigationDestination(for: ReplayRoute.self) { ReplayView(route: $0) }
         .sheet(item: $selection) { sel in
             if case .following(let spot) = sel {
