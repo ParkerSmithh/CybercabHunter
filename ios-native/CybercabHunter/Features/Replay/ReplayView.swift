@@ -44,8 +44,9 @@ struct ReplayView: View {
             .onChange(of: context.date) { _, now in model.tick(now: now) }
         }
         .background(Color.chBackground.ignoresSafeArea())
-        .navigationTitle("Replay")
+        .navigationTitle("Replay")   // still names the screen (back button, VoiceOver); the bar shows the brand
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { BrandToolbarItem(identifier: "replayBrand") }
         .task(id: "\(model.range.rawValue)|\(model.date?.timeIntervalSince1970 ?? 0)") { await model.load(using: session.api) }
         .sheet(isPresented: $pickingDate) { datePicker.presentationDetents([.medium]) }
     }

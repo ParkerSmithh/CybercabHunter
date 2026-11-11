@@ -39,6 +39,31 @@ struct BrandLockup: View {
     }
 }
 
+/// The lockup in a screen's top bar, centred (the bar's principal place):
+/// Home, the Zones map and Replay share it, so the brand is identical on each.
+/// On iOS 26+ it sits on the bar itself, not in a glass capsule (which clipped
+/// it). VoiceOver reads "CybercabHunter", a header.
+struct BrandToolbarItem: ToolbarContent {
+    /// For UI tests: homeBrand, zonesBrand, replayBrand.
+    var identifier = "homeBrand"
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            item.sharedBackgroundVisibility(.hidden)
+        } else {
+            item
+        }
+    }
+
+    private var item: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            BrandLockup()
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier(identifier)
+        }
+    }
+}
+
 #Preview {
     BrandLockup().padding().background(Color.chBackground)
 }

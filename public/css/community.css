@@ -169,9 +169,7 @@ a.streak-row:hover{border-color:rgb(var(--gold) / .45);background:rgb(var(--ink)
 /* ==== Polish (Oct 2026): hero, motion, leaderboard rows, streaks, empty states ==== */
 /* Hero: headline and intro beside the Cybercab on a layered gold glow; one entrance. */
 .community-hero-copy{min-width:0;}
-.community-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgb(var(--gold-ink));}
-.community-eyebrow-dot{width:7px;height:7px;border-radius:999px;background:rgb(var(--gold));box-shadow:0 0 0 4px rgb(var(--gold) / .15),0 0 12px rgb(var(--gold) / .6);}
-.community-title{margin-top:10px;font-size:clamp(2.6rem,5.2vw,4.4rem);line-height:.95;letter-spacing:-.04em;color:rgb(var(--ink));background:linear-gradient(180deg,rgb(var(--ink)) 55%,rgb(var(--ink) / .62));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.community-title{margin-top:0;font-size:clamp(2.6rem,5.2vw,4.4rem);line-height:.95;letter-spacing:-.04em;color:rgb(var(--ink));background:linear-gradient(180deg,rgb(var(--ink)) 55%,rgb(var(--ink) / .62));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .community-title::after{content:"";display:block;width:64px;height:3px;margin-top:14px;border-radius:999px;background:linear-gradient(90deg,rgb(var(--gold)),rgb(var(--gold) / 0));}
 .community-intro.is-swapping{animation:cch-fade-up .35s ease both;}
 .community-hero-art{position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;isolation:isolate;min-width:0;max-width:100%;}
@@ -284,9 +282,8 @@ a.streak-row:hover{border-color:rgb(var(--gold) / .45);background:rgb(var(--ink)
   .community-hero-art{min-height:90px;}
   .community-hero-art img{width:100%;}
   .community-hero-glow{inset:0;}
-  .community-title{font-size:2.1rem;margin-top:6px;}
+  .community-title{font-size:2.1rem;margin-top:0;}
   .community-title::after{width:44px;margin-top:10px;}
-  .community-eyebrow{font-size:9.5px;letter-spacing:.12em;}
   #communityTabs > button{min-height:38px;padding:0 9px;font-size:10.5px;letter-spacing:.02em;}
   #communityTabs{gap:6px;}
   .lb-row{gap:9px;padding:9px 10px;}

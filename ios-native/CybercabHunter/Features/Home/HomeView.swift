@@ -350,27 +350,6 @@ private struct DailyCard: View {
     }
 }
 
-/// The website header's brand: the logo with CYBERCAB / HUNTER beside it. On
-/// iOS 26+ it sits on the bar itself, not in a glass capsule (which clipped it).
-struct BrandToolbarItem: ToolbarContent {
-    var body: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            item.sharedBackgroundVisibility(.hidden)
-        } else {
-            item
-        }
-    }
-
-    private var item: some ToolbarContent {
-        // Centred on the screen (the bar's principal place), a little larger than before.
-        ToolbarItem(placement: .principal) {
-            BrandLockup()
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("homeBrand")
-        }
-    }
-}
-
 /// The "Live now" card's car (css/style.css .sb-car): while the fleet runs it
 /// bobs 1.5 pt every 2.6 s over a gold dashed road scrolling at 26 pt per
 /// 0.8 s; parked, it is greyed out with no road. Reduce Motion: still.
