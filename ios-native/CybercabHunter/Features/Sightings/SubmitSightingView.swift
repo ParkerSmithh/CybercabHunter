@@ -7,7 +7,9 @@ import UserNotifications
 /// picked) or the Share Sheet (SightingShareInbox); all three go through
 /// SubmitSightingModel.setPhoto, so they look and validate the same. There is
 /// no raw GPS attachment: a Location is a confirmed verified place, and only
-/// its street and city are shown. Manual search remains available.
+/// its street and city are shown. A photo with a saved location offers
+/// "Location found in photo" (PhotoLocation): a suggestion to review, never
+/// applied by itself and never uploaded. Manual search remains available.
 struct SubmitSightingView: View {
     @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
@@ -28,6 +30,8 @@ struct SubmitSightingView: View {
     @State private var signingIn = false
     @State private var pickingCamera = false
     @State private var showingLocationSuggestion = false
+    /// The photo's location being reviewed (captured, so a new photo doesn't change it mid-review).
+    @State private var reviewingPhotoLocation: PhotoLocation?
     @FocusState private var locationFocused: Bool
 
     var body: some View {
@@ -288,9 +292,59 @@ struct SubmitSightingView: View {
         .accessibilityIdentifier("sightingCameraField")
     }
 
+    /// "Location found in photo": where the suggestion comes from, Review (the
+    /// photo-location sheet: pick and confirm a verified place) or dismiss.
+    /// When photos point to different places, the rider chooses which.
+    private func photoLocationRow(_ found: PhotoLocation) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "photo.badge.checkmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.brandGold)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Location found in photo").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
+                    Text(photoRowDetail(found)).font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                Button("Review") { reviewingPhotoLocation = found }
+                    .buttonStyle(GoldButtonStyle(small: true))
+                    .accessibilityHint("Choose a verified place near where the photo was taken")
+                    .accessibilityIdentifier("reviewPhotoLocation")
+                Button { model.dismissPhotoLocation() } label: { Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Color.chFog) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Don't use the photo's location")
+                    .accessibilityIdentifier("dismissPhotoLocation")
+            }
+            if model.photosDisagree {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Your photos show different places. Which one?").font(.inter(11.5, .semibold)).foregroundStyle(Color.brandGold)
+                    Picker("Photo location", selection: $model.chosenPhotoLocation) {
+                        ForEach(model.photoLocations.indices, id: \.self) { i in Text("Photo \(i + 1)").tag(i) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("photoLocationChoice")
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.brandGold.opacity(0.06), in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.brandGold.opacity(0.35)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("photoLocationSuggestion")
+        .sheet(item: Binding(get: { reviewingPhotoLocation.map(PhotoReview.init) }, set: { reviewingPhotoLocation = $0?.location })) { review in
+            SightingLocationSheet(submission: model, photo: review.location)
+        }
+    }
+
+    private func photoRowDetail(_ found: PhotoLocation) -> String {
+        let area = found.area(in: model.areas)
+        if let place = model.place { return "You picked \(place.label). Review to use a place near the photo instead." }
+        if let area { return "Taken in the \(area.name) area. Review to choose a nearby place." }
+        return "Taken outside Austin and Dallas. You can still search manually."
+    }
+
     private var locationField: some View {
         field("Location", optional: true, help: "Choose a city, then type and pick the place from the list. Only places in that city's area are offered. Only the street and city are shown publicly. Search © OpenStreetMap.") {
             VStack(alignment: .leading, spacing: 6) {
+                if let found = model.photoSuggestion { photoLocationRow(found) }
                 Button("Use Current Location", systemImage: "location.fill") { showingLocationSuggestion = true }
                     .tint(Color.brandGold).disabled(model.area == nil)
                     .accessibilityIdentifier("useCurrentSightingLocation")
@@ -471,4 +525,10 @@ struct SightingCameraPicker: View {
         }
         .contentShape(Rectangle())
     }
+}
+
+/// A photo location under review (the sheet's item).
+private struct PhotoReview: Identifiable {
+    let location: PhotoLocation
+    var id: String { "\(location.latitude),\(location.longitude)" }
 }
