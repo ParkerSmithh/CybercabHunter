@@ -273,7 +273,7 @@ struct LiveActivityTests {
                     }
                     ForEach(widths, id: \.name) { w in
                         VStack(spacing: 6) {
-                            HStack(alignment: .center) { ServiceExpandedLeading(d: d); Spacer() }.frame(height: 24)
+                            HStack(alignment: .center) { ServiceExpandedLeading(d: d); Spacer(); ServiceExpandedTrailing(d: d) }.frame(height: 38)
                             ServiceExpandedBottom(d: d)
                         }
                         .padding(.horizontal, 12).padding(.vertical, 12).frame(width: w.island).background(.black, in: .rect(cornerRadius: 44))
@@ -289,11 +289,17 @@ struct LiveActivityTests {
                 #expect(image.size.width > 300 && image.size.height > 300)
                 try image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/cch-shots/live-activity-\(name)-\(scheme == .dark ? "dark" : "light").png"))
             }
-            // The expanded island is at most 160 pt tall: the top row plus the bottom region must fit.
+            // The expanded island is at most 160 pt in all, and iOS gives the
+            // bottom region only what the top band (the leading/trailing regions,
+            // level with the camera, about 44 pt) and its bottom margin (about
+            // 16 pt) leave: about 100 pt. (An earlier check allowed 124 pt and
+            // passed while the real iPhone cut off the last line.)
             for w in widths {
                 let bottom = ImageRenderer(content: ServiceExpandedBottom(d: d).frame(width: w.island - 24).fixedSize(horizontal: false, vertical: true))
                 let h = try #require(bottom.uiImage).size.height
-                #expect(h + 24 + 12 <= 160, "expanded \(name) at \(w.name): \(h) pt")
+                #expect(h <= ServiceExpandedBottom.budget, "expanded \(name) at \(w.name): \(h) pt")
+                let car = ImageRenderer(content: ServiceExpandedTrailing(d: d).fixedSize())
+                #expect(try #require(car.uiImage).size.height <= 40, "the car fits the top band beside LIVE · 24/7")
                 let lock = ImageRenderer(content: ServiceLockScreen(d: d).frame(width: w.lock).fixedSize(horizontal: false, vertical: true))
                 let lh = try #require(lock.uiImage).size.height
                 #expect(lh <= 160, "Lock Screen \(name) at \(w.name): \(lh) pt (iOS truncates past 160)")
