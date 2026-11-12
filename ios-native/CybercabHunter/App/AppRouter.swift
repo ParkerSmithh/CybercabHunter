@@ -65,6 +65,7 @@ final class AppRouter {
     /// duplicate (the same action within a second).
     @discardableResult
     func perform(_ action: QuickAction, now: Date = .now, leavingDraft: Bool = false) -> Bool {
+        StartupIntro.shared.skip()   // a launch with a destination goes straight there
         if let last = lastQuickAction, last.action == action, now.timeIntervalSince(last.at) < 1 { return false }
         // The sighting form holds the rider's photo or notes, and going
         // elsewhere would close it: the form asks first (SubmitSightingView).
@@ -100,6 +101,7 @@ final class AppRouter {
 
     /// Opens a cybercabhunter.com link natively in the Community tab.
     func open(_ link: CommunityLink) {
+        StartupIntro.shared.skip()   // a launch with a destination goes straight there
         selectedTab = .community
         switch link {
         case .post(let route): communityPath.append(route)
@@ -111,6 +113,7 @@ final class AppRouter {
 
     /// A vehicle's page in the Cars tab (from Siri, Shortcuts or Spotlight).
     func openVehicle(id: String, plate: String?) {
+        StartupIntro.shared.skip()   // a launch with a destination goes straight there
         registryPath = NavigationPath()
         registryPath.append(VehicleRoute(id: id, plate: plate))
         selectedTab = .registry
@@ -128,6 +131,7 @@ final class AppRouter {
     /// (after signing in, when signed out). Each share is offered once.
     func openSharedSighting(now: Date = .now) {
         guard sharedSighting == nil, let share = SightingShareInbox.pending(now: now).first else { return }
+        StartupIntro.shared.skip()
         sharedSighting = share
         requestSubmitSighting()
     }
@@ -140,6 +144,7 @@ final class AppRouter {
     func openSharedReceipt(now: Date = .now, force: Bool = false) {
         guard sharedReceipt == nil, let share = ReceiptShareInbox.pending(now: now).first(where: { force || !offeredReceipts.contains($0.id) }) else { return }
         offeredReceipts.insert(share.id)
+        StartupIntro.shared.skip()
         sharedReceipt = share
     }
 
@@ -148,6 +153,7 @@ final class AppRouter {
     @discardableResult
     func open(widgetURL url: URL) -> Bool {
         guard url.scheme == WidgetLink.scheme, let host = url.host() else { return false }
+        StartupIntro.shared.skip()
         // A system-control request as a link (cybercabhunter-widget://action?do=map).
         if host == "action" {
             if let action = QuickAction(url: url) { perform(action) } else { selectedTab = .home }
@@ -192,6 +198,7 @@ final class AppRouter {
 
     /// One of the app's main screens (Siri: "Open … in Cybercab Hunter").
     func open(_ destination: AppDestination) {
+        StartupIntro.shared.skip()   // a launch with a destination goes straight there
         switch destination {
         case .home: homePath = NavigationPath(); selectedTab = .home
         // Zones remembers the rider's city itself (ZonesModel), so the map
