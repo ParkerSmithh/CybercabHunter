@@ -14,14 +14,15 @@ final class ZonesModel {
     enum Mode: String, CaseIterable, Identifiable { case normal, heat; var id: String { rawValue } }
     enum Load<T: Equatable>: Equatable { case idle, loading, loaded(T), failed(String) }
 
-    /// The city on the map, remembered across launches so the Cybercab Map
-    /// control and shortcut reopen it.
-    var city = ZonesModel.savedCity { didSet { if city != oldValue { UserDefaults.standard.set(city, forKey: Self.cityKey) } } }
-    static let cityKey = "zones.lastCity"
-    static var savedCity: String {
-        let saved = UserDefaults.standard.string(forKey: cityKey) ?? "austin"
-        return WebData.city(saved).key == saved ? saved : "austin"
-    }
+    /// The city on the map for this app session: Austin on every fresh launch;
+    /// a city chosen here (or in Replay opened from here) holds while the app
+    /// runs, background included, and is never saved to disk.
+    var city = ZonesModel.sessionCity { didSet { if city != oldValue { Self.sessionCity = city } } }
+    /// In memory only, so a new process starts on Austin.
+    static var sessionCity = "austin"
+    /// Earlier builds saved the city here (so Dallas came back after a relaunch);
+    /// it is cleared once at launch (CybercabHunterApp).
+    static let legacyCityKey = "zones.lastCity"
     var mode: Mode = .normal
     var heatRange: HeatRange = .d7
     var heatHour: Int?

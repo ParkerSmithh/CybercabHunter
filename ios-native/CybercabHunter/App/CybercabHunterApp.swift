@@ -12,6 +12,8 @@ struct CybercabHunterApp: App {
     init() {
         // Refresh the finite Siri phrase choices after app updates; no API calls.
         SiriStartupDiagnostics.start()
+        // Zones' city is per session now: drop the value earlier builds saved.
+        UserDefaults.standard.removeObject(forKey: ZonesModel.legacyCityKey)
         // Photos and API responses honour the Worker's Cache-Control; a larger
         // cache keeps sighting photos and car renders from re-downloading.
         URLCache.shared = URLCache(memoryCapacity: 32 << 20, diskCapacity: 200 << 20)

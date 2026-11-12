@@ -7,6 +7,7 @@ import Charts
 struct ReplayView: View {
     let route: ReplayRoute
     @Environment(SessionStore.self) private var session
+    @Environment(AppRouter.self) private var router
     @State private var model: ReplayModel
     @State private var projection = MapProjection()
     @State private var pickingDate = false
@@ -15,11 +16,11 @@ struct ReplayView: View {
 
     init(route: ReplayRoute) {
         self.route = route
-        _model = State(initialValue: ReplayModel(city: route.city))
+        _model = State(initialValue: ReplayModel(city: route.city, autoplay: route.fromZones))
     }
 
     var body: some View {
-        let city = WebData.city(route.city)
+        let city = WebData.city(model.city)
         TimelineView(.animation(paused: !model.playing)) { context in
             let t = model.time(at: context.date)
             let shown = model.count(upTo: t)
@@ -44,15 +45,24 @@ struct ReplayView: View {
             .onChange(of: context.date) { _, now in model.tick(now: now) }
         }
         .background(Color.chBackground.ignoresSafeArea())
+        // From Zones: a city chosen here is the one Zones shows on the way back.
+        // (Only on leaving: changing Zones' Replay link while this screen is up
+        // would make SwiftUI rebuild it.)
+        .onDisappear { if route.fromZones, model.city != route.city { router.zonesCity = model.city } }
         .navigationTitle("Replay")   // still names the screen (back button, VoiceOver); the bar shows the brand
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { BrandToolbarItem(identifier: "replayBrand") }
-        .task(id: "\(model.range.rawValue)|\(model.date?.timeIntervalSince1970 ?? 0)") { await model.load(using: session.api) }
+        .task(id: "\(model.city)|\(model.range.rawValue)|\(model.date?.timeIntervalSince1970 ?? 0)") { await model.load(using: session.api) }
         .sheet(isPresented: $pickingDate) { datePicker.presentationDetents([.medium]) }
     }
 
     private func header(city: WebData.City, t: Date, shown: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Austin / Dallas, as on Zones. From Zones, the choice carries back there.
+            CityPicker(cities: [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")],
+                       selection: Binding(get: { model.city }, set: { model.switchCity($0) }))
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("replayCityPicker")
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Eyebrow(text: "Sightings replay", accent: city.name)
@@ -225,15 +235,21 @@ struct MapProjection: Equatable {
 }
 
 /// The Replay's map: the quiet zone, no markers (the Canvas draws them).
+/// It frames the whole service zone, with room around it, once it has its real
+/// size (framing a zero-size map, before layout, zoomed far too close), and
+/// again only when the city changes: a rider's own pans and zooms are kept.
 struct ReplayMapView: UIViewRepresentable {
     let cityKey: String
     /// The dark map (with the Dark Matter dimming) or the light one.
     var dark = true
     @Binding var projection: MapProjection
 
+    /// Room around the zone, as a share of the map's size.
+    static let framePadding: CGFloat = 0.06
+
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func makeUIView(context: Context) -> MKMapView {
-        let map = MKMapView()
+    func makeUIView(context: Context) -> FramingMapView {
+        let map = FramingMapView()
         map.delegate = context.coordinator
         map.overrideUserInterfaceStyle = dark ? .dark : .light
         let config = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
@@ -241,14 +257,10 @@ struct ReplayMapView: UIViewRepresentable {
         map.preferredConfiguration = config
         map.isRotateEnabled = false; map.isPitchEnabled = false; map.showsCompass = false
         if dark { map.addOverlay(DarkMatterOverlay(), level: .aboveRoads) }
-        var coords = WebData.city(cityKey).polygon
-        let zone = ZonePolygon(coordinates: &coords, count: coords.count)
-        zone.cityKey = cityKey; zone.dimmed = true
-        map.addOverlay(zone, level: .aboveRoads)
-        map.setVisibleMapRect(WebData.city(cityKey).zoneRect, edgePadding: UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20), animated: false)
+        map.show(cityKey)
         return map
     }
-    func updateUIView(_ map: MKMapView, context: Context) {
+    func updateUIView(_ map: FramingMapView, context: Context) {
         context.coordinator.parent = self
         // Day / Dusk / Night: switch the map's look in place (the zone and the view stay).
         let style: UIUserInterfaceStyle = dark ? .dark : .light
@@ -256,6 +268,40 @@ struct ReplayMapView: UIViewRepresentable {
         let dimming = map.overlays.filter { $0 is DarkMatterOverlay }
         if dark && dimming.isEmpty { map.insertOverlay(DarkMatterOverlay(), at: 0, level: .aboveRoads) }
         if !dark && !dimming.isEmpty { map.removeOverlays(dimming) }
+        if map.cityKey != cityKey { map.show(cityKey) }
+    }
+
+    /// An MKMapView that frames its city's zone once it has a size.
+    final class FramingMapView: MKMapView {
+        private(set) var cityKey = ""
+        /// The city whose zone has been framed (nil: framing is due).
+        private(set) var framedCity: String?
+
+        /// The city's zone outline, replacing the last city's, framed at the next layout.
+        func show(_ key: String) {
+            cityKey = key
+            removeOverlays(overlays.filter { $0 is ZonePolygon })
+            var coords = WebData.city(key).polygon
+            let zone = ZonePolygon(coordinates: &coords, count: coords.count)
+            zone.cityKey = key; zone.dimmed = true
+            addOverlay(zone, level: .aboveRoads)
+            framedCity = nil
+            setNeedsLayout()
+            frameIfReady(animated: !overlays.isEmpty && bounds.width > 0)
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            frameIfReady(animated: false)
+        }
+
+        private func frameIfReady(animated: Bool) {
+            guard framedCity != cityKey, bounds.width > 40, bounds.height > 40 else { return }
+            framedCity = cityKey
+            let p = ReplayMapView.framePadding
+            let pad = UIEdgeInsets(top: bounds.height * p, left: bounds.width * p, bottom: bounds.height * p, right: bounds.width * p)
+            setVisibleMapRect(WebData.city(cityKey).zoneRect, edgePadding: pad, animated: animated)
+        }
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {

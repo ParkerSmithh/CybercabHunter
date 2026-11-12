@@ -145,6 +145,8 @@ async function run() {
     check('the city switch: Dallas is current; Austin links to Austin at the same range', nav('dallas').getAttribute('aria-current') === 'page' && !nav('austin').hasAttribute('aria-current') && nav('austin').getAttribute('href') === '/replay?range=7d' && nav('dallas').getAttribute('href') === '/replay?range=7d&city=dallas');
     dal.d.querySelector('#replayRange [data-range="24h"]').click();
     check('...and follows a range change', nav('austin').getAttribute('href') === '/replay?range=24h' && nav('dallas').getAttribute('href') === '/replay?range=24h&city=dallas');
+    const mapNav = c => dal.d.querySelector(`#replayCityNavMap [data-city="${c}"]`);
+    check('phones: the switch on the map matches the panel one (Dallas current, same range links)', mapNav('dallas').getAttribute('aria-current') === 'page' && !mapNav('austin').hasAttribute('aria-current') && mapNav('austin').getAttribute('href') === '/replay?range=24h' && mapNav('dallas').getAttribute('href') === '/replay?range=24h&city=dallas');
     dal.w.close();
     const done = await page(ctx, '?range=24h', { reduceMotion: true });
     const counter = () => Number(done.d.getElementById('replayCounter').dataset.value);
@@ -215,6 +217,7 @@ async function run() {
     check('the replay page is public (no sign-in gate) and draws on one canvas', !/signin\.html\?returnTo=%2Freplay/.test(html) && (html.match(/<canvas id="replayCanvas"/g) || []).length === 1);
     check('no video export of any kind', !/MediaRecorder|captureStream|\.mp4|\.webm|download=/i.test(read('public/js/replay.js') + html));
     check('no cybercabhunter.com brand mark on the map (removed on owner request)', !/cybercabhunter\.com<\/span>/.test(html));
+    check('phones and tablets get the switch on the map (hidden at lg, where the panel shows its own)', /<nav id="replayCityNavMap"[^>]*class="lg:hidden[\s\S]*?data-city="austin"[\s\S]*?data-city="dallas"/.test(html));
     check('an Austin / Dallas switch sits above the range control', /<nav id="replayCityNav"[\s\S]*?data-city="austin"[\s\S]*?data-city="dallas"[\s\S]*?<\/nav>\s*<!-- Range/.test(html));
     // The service zone: one boundary on the replay, the Zones page and the homepage.
     const coordsIn = (src, re) => JSON.stringify(JSON.parse(`[${re.exec(src)[1].replace(/\s+/g, '').replace(/,$/, '')}]`));

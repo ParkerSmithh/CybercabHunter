@@ -49,10 +49,11 @@ cybercabhunter-widget://action?do=<action> link ──────┘        │
     switching tabs would otherwise discard the rider's work.
 - Signed out: New Sighting opens sign-in. After signing in (within ten
   minutes) the form opens by itself; closing sign-in drops the request.
-- The Zones city is saved (`zones.lastCity`), so the map opens where the rider
-  left it, also after the app was closed.
-- The existing Siri "Open the map" now uses the remembered city too, instead of
-  always Austin.
+- The Zones city holds for the app session (in memory): a fresh launch opens
+  Austin; Dallas, once chosen, stays while the app runs. (Earlier builds saved it
+  as `zones.lastCity`; that value is cleared at launch.)
+- The existing Siri "Open the map" uses the session's city, instead of always
+  Austin.
 
 Files: `Shared/QuickActions.swift`, `CybercabHunterWidgets/SystemControls.swift`
 (+4 lines in the widget bundle), `App/AppRouter.swift`,
