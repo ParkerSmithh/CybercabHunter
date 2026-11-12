@@ -14,7 +14,7 @@ final class Phase6UITests: XCTestCase {
 
     /// What tapping a widget does: cybercabhunter-widget://<tab> opens that tab natively.
     func testWidgetLinksOpenTheirTabs() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         app.open(URL(string: "cybercabhunter-widget://zones?city=dallas")!)
@@ -36,14 +36,14 @@ final class Phase6UITests: XCTestCase {
         var r = URLRequest(url: URL(string: "\(Self.server)/api/social/sidebar")!); r.timeoutInterval = 3
         let up = (try? await URLSession.shared.data(for: r)).map { ($0.1 as? HTTPURLResponse)?.statusCode == 200 } ?? false
         try XCTSkipUnless(up, "The test Worker isn't running: run ios-native/scripts/test-community.sh")
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server, "-session", "s-bob", "-requestSubmitSighting"]
         app.launch()
         XCTAssertTrue(app.buttons["sightingSubmit"].waitForExistence(timeout: 20), "signed in: the Submit a sighting form opens")
         XCTAssertTrue(app.tabBars.buttons["Sightings"].isSelected)
         shot(app, "p6-shortcut-submit-signed-in")
         app.terminate()
-        let signedOut = XCUIApplication()
+        let signedOut = XCUIApplication.forTests()
         signedOut.launchArguments = ["-tab", "home", "-apiBase", Self.server, "-requestSubmitSighting"]
         signedOut.launch()
         XCTAssertTrue(signedOut.buttons["googleSignIn"].waitForExistence(timeout: 20), "signed out: sign-in first")
@@ -53,7 +53,7 @@ final class Phase6UITests: XCTestCase {
     /// The two widgets are offered in the Home Screen gallery and can be added.
     /// (Driving SpringBoard is best effort: it skips, honestly, if its controls aren't found.)
     func testWidgetsAreInTheHomeScreenGallery() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         XCUIDevice.shared.press(.home)

@@ -15,7 +15,7 @@ final class SightingShareUITests: XCTestCase {
     }
 
     private func launch(_ extra: [String]) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "sightings", "-apiBase", "http://127.0.0.1:8799"] + extra
         app.launch()
         return app

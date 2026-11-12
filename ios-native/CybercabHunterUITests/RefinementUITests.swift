@@ -15,7 +15,7 @@ final class RefinementUITests: XCTestCase {
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a)
     }
     private func launch(_ tab: String, session: String? = nil, server: Bool = false) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", tab] + (server ? ["-apiBase", Self.server] : []) + (session.map { ["-session", $0] } ?? [])
         app.launch()
         return app

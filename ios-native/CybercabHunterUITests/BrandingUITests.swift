@@ -13,7 +13,7 @@ final class BrandingUITests: XCTestCase {
     }
 
     func testHomeAccountAndCommunityBranding() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-apiBase", "http://127.0.0.1:8799"]
         app.launch()
         let brand = app.descendants(matching: .any)["homeBrand"]
@@ -39,7 +39,7 @@ final class BrandingUITests: XCTestCase {
     /// The Zones map and Replay carry the same lockup in their top bar, beside
     /// the Account button and (Replay) the back button, without covering either.
     func testZonesAndReplayBranding() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-apiBase", "http://127.0.0.1:8799", "-tab", "zones"]
         app.launch()
         let zones = app.descendants(matching: .any)["zonesBrand"]

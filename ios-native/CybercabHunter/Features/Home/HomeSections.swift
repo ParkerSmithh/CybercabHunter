@@ -22,7 +22,7 @@ struct ServiceZonesSection: View {
                     tile("In service since", Format.day(a.inServiceSince), note: daysOfService(a.inServiceSince))
                     tile("Vehicles documented", Format.int(a.vehicles),
                          note: (a.vehicles ?? 0) > 0 ? "+\(Format.int(a.vehiclesAdded7d ?? 0)) this week · \(Format.int(a.vehiclesAddedPrev7d ?? 0)) the week before" : "None in the registry yet")
-                    tile("Service hours", a.hours.map { "\(Format.clock($0.open)) – \(Format.clock($0.close))" } ?? "—", note: hoursNote(a.hours))
+                    tile("Service hours", a.hours?.label ?? "—", note: hoursNote(a.hours))
                 }
                 if let text = a.description { Text(text).font(.inter(14)).foregroundStyle(Color.chFog) }
                 Footnote(text: "Zone facts as published for the service area; vehicles from the public registry.")
@@ -51,7 +51,9 @@ struct ServiceZonesSection: View {
 
     private func hoursNote(_ hours: HomepageStats.Hours?) -> String {
         guard let hours else { return "" }
-        let span = (ServiceClock.minutes(hours.close) - ServiceClock.minutes(hours.open)) / 60
+        if hours.isAllDay { return "Around the clock, every day" }
+        let minutes = { (hhmm: String) -> Int in let p = hhmm.split(separator: ":").compactMap { Int($0) }; return (p.first ?? 0) * 60 + (p.count > 1 ? p[1] : 0) }
+        let span = (minutes(hours.close) - minutes(hours.open)) / 60
         return "\(span <= 0 ? span + 24 : span) hours a day · Central"
     }
 }

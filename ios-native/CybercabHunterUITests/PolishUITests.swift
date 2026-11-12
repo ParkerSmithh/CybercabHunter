@@ -15,10 +15,10 @@ final class PolishUITests: XCTestCase {
         var n = 0
         while !(e.exists && e.isHittable) && n < swipes { app.swipeUp(velocity: .slow); n += 1 }
     }
-    private var screen: CGRect { XCUIApplication().windows.firstMatch.frame }
+    private var screen: CGRect { XCUIApplication.forTests().windows.firstMatch.frame }
 
     func testHomeStatsFollowTheHero() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let news = app.buttons["homeViewNews"]
         XCTAssertTrue(news.waitForExistence(timeout: 20))
@@ -33,7 +33,7 @@ final class PolishUITests: XCTestCase {
     }
 
     func testCommunityTabsCarsAndNewsFilter() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Community"].tap()
         let ids = ["social", "streaks", "leaderboard", "progress"].map { app.buttons["section-\($0)"] }
@@ -70,7 +70,7 @@ final class PolishUITests: XCTestCase {
     }
 
     func testZonesPhotoHeatmapPanelAndReplayLooks() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Zones"].tap()
         let markers = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Cybercab seen by the traffic camera'"))
@@ -128,7 +128,7 @@ final class PolishUITests: XCTestCase {
     }
 
     func testSimulationPicturesInsideTheirCards() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.buttons["homeExplore"].tap()
         XCTAssertTrue(app.staticTexts["roiTitle"].waitForExistence(timeout: 10))
@@ -153,7 +153,7 @@ final class PolishUITests: XCTestCase {
         URLSession.shared.dataTask(with: request) { _, r, _ in ok = (r as? HTTPURLResponse)?.statusCode == 200; sem.signal() }.resume()
         sem.wait()
         try XCTSkipUnless(ok, "needs the test Worker (scripts/test-community.sh)")
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", "http://127.0.0.1:8799", "-session", "s-bob", "-requestSubmitSighting"]
         app.launch()
         let notes = app.textViews["sightingNotes"].exists ? app.textViews["sightingNotes"] : app.textFields["sightingNotes"]

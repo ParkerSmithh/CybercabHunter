@@ -1,5 +1,9 @@
-/* Cybercab Daily refreshes its small, same-origin endpoint every five minutes.
+/* Cybercab Daily (index.html #cybercabDaily: the former "Live now" banner,
+   now today's four figures; Robotaxi service runs 24/7, so nothing counts
+   down). Refreshes its small, same-origin endpoint every five minutes.
    A local-date rollover fetches immediately; hidden tabs do not poll.
+   A figure that changed since the last refresh glows once (.is-updated;
+   none with reduced motion, css/daily.css).
    The request carries the Central date (?day=), so a response the browser
    cached before midnight is never reused for the new day; if the server is
    still on the previous day for a moment, it retries shortly (no error). */
@@ -40,7 +44,10 @@
       // A value not in yet (loading, before the day's DMV snapshot, a failed
       // fetch) shows 0 until it updates (owner request, Oct 17).
       const value = el('dd');
-      value.append(el('span', `${key === 'registry' || key === 'dmv' ? '+' : ''}${number(n ?? 0)}`, 'daily-value'));
+      const figure = el('span', `${key === 'registry' || key === 'dmv' ? '+' : ''}${number(n ?? 0)}`, 'daily-value');
+      if (day && n != null && shownValues[key] != null && shownValues[key] !== n) figure.classList.add('is-updated');
+      if (day && n != null) shownValues[key] = n;
+      value.append(figure);
       if (detail) value.append(detail);
       item.append(label, value);
       dl.append(item);
@@ -48,6 +55,8 @@
     return dl;
   }
   let data, lastDay = today(), fetched = 0, sequence = 0, behind = 0;
+  // The figures last shown (a new day starts fresh: no glow at midnight).
+  let shownValues = {}, shownDay = null;
   const BEHIND_RETRY_MS = 15000, BEHIND_TRIES = 8;
   async function load() {
     const token = ++sequence;
@@ -63,6 +72,7 @@
       if (body.today !== lastDay || !body.day) throw Object.assign(new Error('Daily date mismatch'), { behind: body.today < lastDay });
       data = body;
       behind = 0;
+      if (shownDay !== body.today) { shownValues = {}; shownDay = body.today; }
       fetched = Date.now();
       $('dailyStats').replaceChildren(stats(data.day));
       $('dailyUpdated').textContent = Object.keys(data.errors || {}).length ? 'Some data unavailable' : `Updated ${new Date(data.generated_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT`;

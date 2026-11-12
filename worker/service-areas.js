@@ -15,12 +15,15 @@
 // the Zones page shows (not database figures: they describe Tesla's geofence
 // and launch): coverage in square miles (Austin: the mapped boundary, measured (docs/verification/austin-zone-expansion);
 // Dallas: Tesla's figure), first day of service, daily hours (America/Chicago,
-// js/calc.js; 5 AM to 2 AM: a close earlier than the open is the next day),
-// and one line describing the zone.
+// js/calc.js) and one line describing the zone. Hours: Robotaxi service runs
+// 24/7 in both cities (Tesla's Robotaxi account, Nov 2026: "Robotaxi now runs
+// 24/7. Every city we're available in."); before that it was 5 AM to 2 AM.
+// 24/7 is { open: '00:00', close: '24:00', all_day: true } so older app builds,
+// which read open/close, see the whole day as service hours.
 const ZONE_FACTS = {
-  austin: { square_miles: 440, in_service_since: '2025-06-22', hours: { open: '05:00', close: '02:00' },
+  austin: { square_miles: 440, in_service_since: '2025-06-22', hours: { open: '00:00', close: '24:00', all_day: true },
     description: 'First Robotaxi market. Launched as an invite pilot, now unsupervised.' },
-  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '05:00', close: '02:00' },
+  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '00:00', close: '24:00', all_day: true },
     description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
 };
 

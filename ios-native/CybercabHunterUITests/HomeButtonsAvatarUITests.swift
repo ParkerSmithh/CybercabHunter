@@ -21,7 +21,7 @@ final class HomeButtonsAvatarUITests: XCTestCase {
     }
 
     func testHeroButtonsAreCompactAndNavigate() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server, "-session", "s-frank"]
         app.launch()
         let news = app.buttons["homeViewNews"], explore = app.buttons["homeExplore"]
@@ -47,7 +47,7 @@ final class HomeButtonsAvatarUITests: XCTestCase {
     }
 
     func testAvatarHasNoGlassBubbleAndOpensAccount() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server, "-session", "s-frank"]
         app.launch()
         for tab in ["Home", "Zones", "Community"] {

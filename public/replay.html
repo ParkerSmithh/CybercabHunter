@@ -183,6 +183,13 @@
          sightings stay smooth on a phone. -->
     <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0 max-lg:h-[calc(100dvh-10.5rem-var(--safe-bottom,0px))] max-lg:min-h-[320px]">
       <button type="button" data-map-drawer-toggle aria-controls="replayPanel" aria-expanded="false" class="map-drawer-toggle absolute bottom-5 left-5 z-10 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl glass-strong text-xs font-semibold text-white shadow-[0_6px_18px_-8px_rgba(0,0,0,0.6)]"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h7"/><circle cx="18" cy="15" r="3"/></svg>Replay controls</button>
+      <!-- Phones and tablets: the city switch on the map itself (the panel's own
+           switch is inside the Replay controls drawer there). Same links and
+           highlighting (js/replay.js syncCityNav). -->
+      <nav id="replayCityNavMap" aria-label="City" class="lg:hidden absolute top-5 left-5 z-10 flex p-1 rounded-xl glass-strong shadow-[0_6px_18px_-8px_rgba(0,0,0,0.6)]">
+        <a data-city="austin" href="/replay?range=month" class="flex-1 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide text-center transition-colors min-h-[40px] flex items-center justify-center bg-white/[0.08] text-white" aria-current="page">Austin</a>
+        <a data-city="dallas" href="/replay?range=month&amp;city=dallas" class="flex-1 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide text-center transition-colors min-h-[40px] flex items-center justify-center text-slate-400 hover:text-slate-200">Dallas</a>
+      </nav>
       <div id="replayStage" class="replay-stage relative rounded-xl overflow-hidden w-full h-full lg:rounded-2xl">
         <div id="replayMap" class="absolute inset-0"></div>
         <div id="replayTint" class="absolute inset-0 pointer-events-none"></div>
@@ -331,6 +338,6 @@
 </script>
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/austin-map.js?v=13"></script>
-<script src="js/replay.js?v=13"></script>
+<script src="js/replay.js?v=14"></script>
 </body>
 </html>

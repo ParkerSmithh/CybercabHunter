@@ -16,7 +16,7 @@ final class ZonesUITests: XCTestCase {
     }
 
     func testZonesHeatmapAndReplayAreNative() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones"]
         app.launch()
 
@@ -83,7 +83,7 @@ final class ZonesUITests: XCTestCase {
     }
 
     func testHomePredictionsAndMinimap() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let scroll = app.scrollViews.firstMatch
         XCTAssertTrue(scroll.waitForExistence(timeout: 20))
@@ -116,7 +116,7 @@ final class ZonesUITests: XCTestCase {
 
     /// The map key is only in Zone details (as on the website), never floating on the map.
     func testZonesLegendOnlyInZoneDetails() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones"]
         app.launch()
         XCTAssertTrue(app.buttons["zoneDetailsButton"].waitForExistence(timeout: 20))
@@ -140,7 +140,7 @@ final class ZonesUITests: XCTestCase {
 
     /// Home's minimap is the website's phone card: height 0.92 × width, Austin and Dallas.
     func testHomeMinimapsMatchTheWebsite() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let scroll = app.scrollViews.firstMatch
         XCTAssertTrue(scroll.waitForExistence(timeout: 20))

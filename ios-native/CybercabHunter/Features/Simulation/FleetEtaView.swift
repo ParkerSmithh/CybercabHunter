@@ -250,8 +250,8 @@ struct FleetEtaView: View {
                 IconLabel(icon: "clock", text: "Hours", color: ink)
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(SimulationCalc.clockLabel(SimulationCalc.openMinute)) - \(SimulationCalc.clockLabel(SimulationCalc.closeMinute))").font(.inter(16, .semibold)).foregroundStyle(Color.chInk)
-                        Text("Central, daily").font(.inter(13)).foregroundStyle(Color.chFog)
+                        Text(SimulationCalc.hoursLabel).font(.inter(16, .semibold)).foregroundStyle(Color.chInk)
+                        Text(SimulationCalc.isAllDay ? "Every day, Central" : "Central, daily").font(.inter(13)).foregroundStyle(Color.chFog)
                     }
                     Spacer()
                     HStack(spacing: 6) {

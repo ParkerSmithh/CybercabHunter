@@ -33,7 +33,7 @@ struct RootView: View {
         // UI tests: the system-control router's state (SystemControlsUITests).
         .overlay(alignment: .bottomTrailing) {
             Color.clear.frame(width: 1, height: 1).accessibilityElement()
-                .accessibilityLabel("pid=\(ProcessInfo.processInfo.processIdentifier) last=\(router.lastQuickAction?.action.rawValue ?? "-") conflict=\(router.draftConflict?.rawValue ?? "-") draft=\(router.sightingFormHasDraft) reset=\(router.presentationReset)")
+                .accessibilityLabel("pid=\(ProcessInfo.processInfo.processIdentifier) last=\(router.lastQuickAction?.action.rawValue ?? "-") conflict=\(router.draftConflict?.rawValue ?? "-") draft=\(router.sightingFormHasDraft) reset=\(router.presentationReset) intro=\(StartupIntro.shared.endReason)")
                 .accessibilityIdentifier("quickActionState")
         }
         #endif
@@ -82,6 +82,7 @@ struct RootView: View {
         }
         // A cybercabhunter.com link handed to the app opens its native screen.
         .onOpenURL { url in
+            StartupIntro.shared.skip()
             if router.open(widgetURL: url) { return }   // a Home Screen / Lock Screen widget
             if let link = CommunityLink(url: url) { router.open(link) }
         }
@@ -90,6 +91,7 @@ struct RootView: View {
         .onChange(of: pushCoordinator.pendingURL, initial: true) {
             guard let url = pushCoordinator.pendingURL else { return }
             pushCoordinator.pendingURL = nil
+            StartupIntro.shared.skip()
             if url.path == "/community", let link = CommunityLink(url: url) { router.open(link) }
             else if url.path.hasPrefix("/vehicles/") { router.openVehicle(id: String(url.path.dropFirst("/vehicles/".count)), plate: nil) }
             else { pushDestination = PushDestination(url: url) }

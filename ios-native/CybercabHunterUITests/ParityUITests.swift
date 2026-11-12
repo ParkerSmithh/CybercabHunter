@@ -16,7 +16,7 @@ final class ParityUITests: XCTestCase {
     }
 
     func testSimulationCybercabDoorsAndModelPictures() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let explore = app.buttons["homeExplore"]
         XCTAssertTrue(explore.waitForExistence(timeout: 20))
@@ -59,7 +59,7 @@ final class ParityUITests: XCTestCase {
     }
 
     func testNewsHeroWithTheCybercab() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let news = app.buttons["homeViewNews"]
         XCTAssertTrue(news.waitForExistence(timeout: 20))
@@ -78,7 +78,7 @@ final class ParityUITests: XCTestCase {
     }
 
     func testHomeHeroFilmThenScrollFrames() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let film = app.descendants(matching: .any)["heroFilm"]
         let frames = app.descendants(matching: .any)["heroFrames"]
@@ -102,7 +102,7 @@ final class ParityUITests: XCTestCase {
     }
 
     func testFleetGrowthTimelapseAndRegistryButton() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
         let play = app.buttons["fleetPlayButton"]

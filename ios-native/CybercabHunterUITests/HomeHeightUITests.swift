@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class HomeHeightUITests: XCTestCase {
     func testMeasureHome() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
         sleep(6)
@@ -32,7 +32,7 @@ final class HomeHeightUITests: XCTestCase {
 
     /// Each redesigned section framed on screen, with its controls exercised.
     func testShootSections() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
         sleep(5)

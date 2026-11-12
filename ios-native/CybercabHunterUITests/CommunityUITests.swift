@@ -19,7 +19,7 @@ final class CommunityUITests: XCTestCase {
     }
 
     private func launch(session: String?) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "community", "-apiBase", Self.server] + (session.map { ["-session", $0] } ?? [])
         app.launch()
         return app

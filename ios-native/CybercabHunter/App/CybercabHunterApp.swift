@@ -7,10 +7,13 @@ struct CybercabHunterApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var session = SessionStore()
     @State private var router = AppRouter.shared
+    @State private var intro = StartupIntro.shared
 
     init() {
         // Refresh the finite Siri phrase choices after app updates; no API calls.
         SiriStartupDiagnostics.start()
+        // Zones' city is per session now: drop the value earlier builds saved.
+        UserDefaults.standard.removeObject(forKey: ZonesModel.legacyCityKey)
         // Photos and API responses honour the Worker's Cache-Control; a larger
         // cache keeps sighting photos and car renders from re-downloading.
         URLCache.shared = URLCache(memoryCapacity: 32 << 20, diskCapacity: 200 << 20)
@@ -45,11 +48,21 @@ struct CybercabHunterApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(session)
-                .environment(router)
-                .font(.inter(16))
-                .tint(.brandGold)
+            // The opening animation sits over the app, which loads beneath it,
+            // and crossfades away into Home (Features/Startup/StartupIntro.swift).
+            ZStack {
+                RootView()
+                    .environment(session)
+                    .environment(router)
+                    .font(.inter(16))
+                    .tint(.brandGold)
+                if intro.isShowing {
+                    StartupIntroView(intro: intro)
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+            }
+                .statusBarHidden(intro.isShowing)
                 .preferredColorScheme(.dark)
                 .task { await session.restore() }
                 .task(id: session.user?.id) { await PushCoordinator.shared.connect(api: session.api, user: session.user?.id) }

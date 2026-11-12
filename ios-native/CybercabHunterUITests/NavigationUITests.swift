@@ -21,7 +21,7 @@ final class NavigationUITests: XCTestCase {
     }
 
     func testHomeCarsAndVehicleDetailAreNative() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
 
         // Home: the lifetime counters arrive from /api/registry/stats.

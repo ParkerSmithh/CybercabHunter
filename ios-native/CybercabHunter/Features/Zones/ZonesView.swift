@@ -333,7 +333,7 @@ struct ZonesView: View {
                     mapViewPicker(short: true)
                 }
                 Spacer(minLength: 0)
-                NavigationLink(value: ReplayRoute(city: model.city)) {
+                NavigationLink(value: ReplayRoute(city: model.city, fromZones: true)) {
                     Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
                         .frame(width: MapControl.height, height: MapControl.height)
                         .background(Color.brandGold, in: .rect(cornerRadius: MapControl.radius))
@@ -435,7 +435,12 @@ struct ZonesView: View {
 
 }
 
-struct ReplayRoute: Hashable { let city: String }
+/// Replay, opened on a city. From Zones' Replay button it plays as soon as
+/// the sightings are in, and a city chosen in Replay carries back to Zones.
+struct ReplayRoute: Hashable {
+    let city: String
+    var fromZones = false
+}
 
 private struct ZoneCardButton: ButtonStyle {
     let gold: Bool

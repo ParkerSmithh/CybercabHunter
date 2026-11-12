@@ -21,7 +21,7 @@ final class SystemControlsUITests: XCTestCase {
         try XCTSkipUnless(up, "The test Worker isn't running: node ios-native/scripts/community-test-server.mjs --serve 8799")
     }
     private func launch(_ args: [String]) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-apiBase", Self.server] + args
         app.launch()
         return app
@@ -148,23 +148,22 @@ final class SystemControlsUITests: XCTestCase {
     }
 
     /// The map control reopens the city the rider chose, after the app was closed.
-    func testMapRestoresTheLastCity() async throws {
+    /// The map control opens the session's city: Dallas while the app runs,
+    /// Austin again once the app was closed (the city isn't saved).
+    func testMapOpensTheSessionsCity() async throws {
         try await requireServer()
         var app = launch(["-tab", "zones"])
         let dallas = app.otherElements["zonesCityPicker"].buttons["Dallas"]
         XCTAssertTrue(dallas.waitForExistence(timeout: 20))
         dallas.tap()
         waitIsSelected(dallas)
+        tab(app, "Home").tap()
+        openLink(app, "map")
+        waitSelected(app.otherElements["zonesCityPicker"].buttons["Dallas"], "same session: the control reopens Dallas")
         app.terminate()
         app = launch(["-tab", "home", "-quickAction", "map"])
-        let again = app.otherElements["zonesCityPicker"].buttons["Dallas"]
-        XCTAssertTrue(again.waitForExistence(timeout: 20))
-        waitIsSelected(again)
-        shot(app, "sc-map-restores-dallas")
-        // Back to Austin for the other tests.
-        let austin = app.otherElements["zonesCityPicker"].buttons["Austin"]
-        austin.tap()
-        waitIsSelected(austin)
+        waitSelected(app.otherElements["zonesCityPicker"].buttons["Austin"], "a fresh launch: Austin")
+        shot(app, "sc-map-fresh-launch-austin")
     }
 
     /// The rider's work is never thrown away: a form with notes stays open when
@@ -208,7 +207,7 @@ final class SystemControlsUITests: XCTestCase {
     /// The four controls are offered in Control Center's gallery (Add a Control).
     /// Driving SpringBoard is best effort: it skips, honestly, if a step isn't found.
     func testControlsAreInTheControlCenterGallery() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()   // iOS registers an app's controls once it has been installed and run
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         XCUIDevice.shared.press(.home)

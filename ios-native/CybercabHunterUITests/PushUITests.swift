@@ -3,7 +3,7 @@ import XCTest
 @MainActor
 final class PushUITests: XCTestCase {
     func testNotificationSettings() {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-pushSettings"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Notifications"].waitForExistence(timeout: 20))

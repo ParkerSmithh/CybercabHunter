@@ -398,11 +398,12 @@ window.CCCReplay = (function () {
       seek(state.start);
       play();   // always: a window with no sightings still plays its clock and sky
     }
-    // City switch (#replayCityNav): links to each city's replay at the current
-    // range; the selected city is highlighted like the Zones switch.
+    // City switches (#replayCityNav in the panel; #replayCityNavMap on the map,
+    // phones and tablets): links to each city's replay at the current range;
+    // the selected city is highlighted like the Zones switch.
     function syncCityNav() {
       const range = new URLSearchParams(location.search).get('range') || 'month';
-      document.querySelectorAll('#replayCityNav [data-city]').forEach(a => {
+      document.querySelectorAll('#replayCityNav [data-city], #replayCityNavMap [data-city]').forEach(a => {
         const on = a.dataset.city === CITY;
         const q = new URLSearchParams({ range });
         if (a.dataset.city === 'dallas') q.set('city', 'dallas');

@@ -19,7 +19,7 @@ final class KeyboardZonesUITests: XCTestCase {
     }
 
     func testCarsKeyboardAlwaysDismisses() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Cars"].tap()
         let inline = app.textFields["registrySearch"], floating = app.textFields["registryFloatingSearch"]
@@ -100,7 +100,7 @@ final class KeyboardZonesUITests: XCTestCase {
     }
 
     func testZonesMapReachesTheTop() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Zones"].tap()
         XCTAssertTrue(app.buttons["zoneDetailsButton"].waitForExistence(timeout: 15))

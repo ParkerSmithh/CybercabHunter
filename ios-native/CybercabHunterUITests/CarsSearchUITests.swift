@@ -15,7 +15,7 @@ final class CarsSearchUITests: XCTestCase {
     }
 
     func testHomeBrandIsCentred() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         let brand = app.descendants(matching: .any)["homeBrand"]
         XCTAssertTrue(brand.waitForExistence(timeout: 20))
@@ -35,7 +35,7 @@ final class CarsSearchUITests: XCTestCase {
     }
 
     func testCarsFloatingSearchAndFilter() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Cars"].tap()
         let inline = app.textFields["registrySearch"], floating = app.textFields["registryFloatingSearch"]

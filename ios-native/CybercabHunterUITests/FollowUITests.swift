@@ -25,7 +25,7 @@ final class FollowUITests: XCTestCase {
     }
 
     private func openProfile(_ handle: String, session: String?) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "community", "-apiBase", base, "-openRider", handle] + (session.map { ["-session", $0] } ?? [])
         app.launch()
         return app
@@ -81,7 +81,7 @@ final class FollowUITests: XCTestCase {
 
     func testFollowingFilterAndRequestsScreen() {
         // The Following feed, signed in.
-        var app = XCUIApplication()
+        var app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "community", "-apiBase", base, "-session", "s-dave"]
         app.launch()
         let tab = app.buttons["Following"].firstMatch
@@ -91,7 +91,7 @@ final class FollowUITests: XCTestCase {
         saveShot(app, "follow-feed")
         app.terminate()
         // Follow Requests, for the private account.
-        app = XCUIApplication()
+        app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-account", "-apiBase", base, "-session", "s-carol"]
         app.launch()
         let link = app.buttons["followersAndRequests"].firstMatch

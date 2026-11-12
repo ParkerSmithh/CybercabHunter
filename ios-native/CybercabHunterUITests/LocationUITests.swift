@@ -3,7 +3,7 @@ import XCTest
 @MainActor
 final class LocationUITests: XCTestCase {
     func testLocationControlPlacementWithoutCameras() {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones", "-zoneStatusFixture", "dallas", "-apiBase", "http://127.0.0.1:8799"]
         app.launch()
         let search = app.buttons["zoneSearchButton"]
@@ -39,7 +39,7 @@ final class LocationUITests: XCTestCase {
 
     }
     func testCompactOutsideStatusKeepsNearestBoundaryAction() {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones", "-zoneStatusFixture", "outside", "-apiBase", "http://127.0.0.1:8799"]
         app.launch()
         let badge = app.buttons["zoneStatusBadge"]
@@ -55,7 +55,7 @@ final class LocationUITests: XCTestCase {
         saveShot(app, "zones-compact-status-outside")
     }
     func testSightingsGalleryHasNoNearbyControls() {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "sightings", "-apiBase", "http://127.0.0.1:8799"]
         app.launch()
         XCTAssertTrue(app.buttons["order-desc"].waitForExistence(timeout: 20))

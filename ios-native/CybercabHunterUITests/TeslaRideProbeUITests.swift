@@ -11,7 +11,7 @@ final class TeslaRideProbeUITests: XCTestCase {
     func testProbeOpensTeslasSignInPage() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["CCH_LIVE_TESLA_PROBE"] == "1",
                           "Live-network check: set TEST_RUNNER_CCH_LIVE_TESLA_PROBE=1 to run it")
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-account"]
         app.launch()
         let link = app.descendants(matching: .any)["teslaProbeLink"]

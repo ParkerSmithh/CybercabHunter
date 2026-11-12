@@ -60,10 +60,15 @@ enum SimulationCalc {
     /// Static figures with no live source (js/fleet-compare.js, calc.js).
     static let modelYFleet = ["austin": 114, "dallas": 65]
     static let staleHours = 36.0
-    /// Both cities: 5 AM to 2 AM, Central (owner-confirmed). closeMinute is past
-    /// 1440: the service day runs past midnight (1560 = 2:00 AM the next day).
-    static let openMinute = 5 * 60, closeMinute = 26 * 60
-    /// The window on a 24-hour track, in minutes: 5 AM–12 AM, then 12 AM–2 AM.
+    /// Both cities: 24/7, Central (Tesla, Nov 2026; it was 5 AM to 2 AM): the
+    /// whole day, 0 to 1440. A window past midnight (closeMinute over 1440, e.g.
+    /// 1560 = 2:00 AM the next day) still works if hours ever come back.
+    static let openMinute = 0, closeMinute = 1440
+    static var isAllDay: Bool { openMinute == 0 && closeMinute >= 1440 }
+    /// "24/7", or "5:00 AM - 2:00 AM".
+    static var hoursLabel: String { isAllDay ? "24/7" : "\(clockLabel(openMinute)) - \(clockLabel(closeMinute))" }
+    /// The window on a 24-hour track, in minutes: the whole day for 24/7; two
+    /// pieces for a window past midnight (5 AM–12 AM, then 12 AM–2 AM).
     static var hourPieces: [(start: Int, end: Int)] {
         closeMinute > 1440 ? [(openMinute, 1440), (0, closeMinute - 1440)] : [(openMinute, closeMinute)]
     }

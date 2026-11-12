@@ -31,7 +31,8 @@ final class ReplayModel {
     static let playSecondsAt1x: Double = 150   // any window plays in ~2.5 minutes at 1×
     static let maxPages = 40
 
-    let city: String
+    /// Austin or Dallas; `switchCity(_:)` changes it.
+    private(set) var city: String
     var range: Range = .month
     var date: Date?                    // nil = now (the site's ?date=)
     private(set) var phase: Phase = .idle
@@ -46,7 +47,30 @@ final class ReplayModel {
     private var anchorT = Date.now
     private var pausedT: Date?
 
-    init(city: String) { self.city = city }
+    /// Play once the sightings are in (opened from Zones' Replay button, or
+    /// playing when the city changed). Never pretends: an empty or failed load
+    /// doesn't play.
+    private(set) var playWhenLoaded: Bool
+
+    init(city: String, autoplay: Bool = false) {
+        self.city = city
+        self.playWhenLoaded = autoplay
+    }
+
+    /// Another city: its sightings, cameras and zone replace the last city's
+    /// (nothing of Austin stays on the Dallas map). If it was playing, it plays
+    /// again once the new city's sightings are in. The view reloads (its task
+    /// is keyed on the city).
+    func switchCity(_ new: String) {
+        guard new != city, WebData.city(new).key == new else { return }
+        playWhenLoaded = playWhenLoaded || playing
+        playing = false
+        pausedT = nil
+        city = new
+        sightings = []
+        cameras = []
+        phase = .idle
+    }
 
     // MARK: the window (js/replay.js windowFor), Austin time
 
@@ -80,6 +104,7 @@ final class ReplayModel {
         pausedT = nil
         window = Self.window(for: range, date: date)
         phase = .loading
+        let asked = city
         do {
             async let cams: Void = loadCameras(using: api)
             var all: [Sighting] = []
@@ -87,7 +112,7 @@ final class ReplayModel {
             let iso = ISO8601DateFormatter()
             for _ in 0..<Self.maxPages {
                 var q = [URLQueryItem(name: "from", value: iso.string(from: window.start)), URLQueryItem(name: "to", value: iso.string(from: window.end)), URLQueryItem(name: "limit", value: "1000")]
-                if city != "austin" { q.append(URLQueryItem(name: "city", value: city)) }
+                if asked != "austin" { q.append(URLQueryItem(name: "city", value: asked)) }
                 if let cursor { q.append(URLQueryItem(name: "cursor", value: cursor)) }
                 let page: DetectionHistory = try await api.get("/api/camera-sightings/history", query: q)
                 for d in page.detections {
@@ -98,9 +123,14 @@ final class ReplayModel {
                 if cursor == nil { break }
             }
             _ = await cams
+            guard asked == city else { return }   // the city changed meanwhile
             sightings = all.sorted { $0.t < $1.t }
             phase = .loaded
             pausedT = window.start
+            if playWhenLoaded {
+                playWhenLoaded = false
+                if !sightings.isEmpty { togglePlay() }
+            }
         } catch is CancellationError {
         } catch {
             phase = .failed((error as? LocalizedError)?.errorDescription ?? "Couldn't load the replay.")
@@ -109,7 +139,8 @@ final class ReplayModel {
 
     private func loadCameras(using api: APIClient) async {
         guard cameras.isEmpty else { return }
-        if let list: [TrafficCamera] = try? await api.get("/data/traffic-cameras.json") { cameras = list.filter { $0.cityKey == city } }
+        let asked = city
+        if let list: [TrafficCamera] = try? await api.get("/data/traffic-cameras.json"), asked == city { cameras = list.filter { $0.cityKey == asked } }
     }
 
     // MARK: playback
@@ -125,6 +156,7 @@ final class ReplayModel {
     }
 
     func togglePlay(now: Date = .now) {
+        playWhenLoaded = false
         if playing { pausedT = time(at: now); playing = false; return }
         var from = pausedT ?? window.start
         if from >= window.end { from = window.start }

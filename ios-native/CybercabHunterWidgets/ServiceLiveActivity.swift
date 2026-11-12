@@ -2,10 +2,12 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-// The Cybercab service-status Live Activity: Dynamic Island (compact,
-// minimal, expanded) and the Lock Screen. Started, updated and ended only by
-// the app (ServiceLiveActivityController), and only when the rider has turned
-// it on in the Live now card. Views: Shared/ServiceActivityViews.swift.
+// The Cybercab Daily Live Activity: Dynamic Island (compact, minimal,
+// expanded) and the Lock Screen, showing today's camera detections and
+// sightings (Robotaxi service runs 24/7: no countdown). Started, updated and
+// ended only by the app (ServiceLiveActivityController), and only when the
+// rider has turned it on in the Cybercab Daily card. Data: Shared/DailyActivity.swift;
+// views: Shared/ServiceActivityViews.swift.
 struct ServiceLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ServiceActivityAttributes.self) { context in
@@ -25,17 +27,18 @@ struct ServiceLiveActivity: Widget {
             } minimal: {
                 ServiceMinimal(d: d)
             }
-            .keylineTint(d.live ? ServiceActivityPalette.gold : ServiceActivityPalette.parked)
+            .keylineTint(d.lit ? ServiceActivityPalette.gold : ServiceActivityPalette.fog)
             .widgetURL(WidgetLink.url("home"))
         }
     }
 }
 
 extension ActivityViewContext<ServiceActivityAttributes> {
-    /// The state as drawn: stale once its `until` has passed without an update
-    /// (the app wasn't opened at the change, and nothing polls in the background).
+    /// The state as drawn: stale once its stale date has passed without an
+    /// update (nothing polls in the background), or when it carries no day
+    /// (an activity from an earlier build, until the app replaces it).
     var display: ServiceActivityDisplay {
-        ServiceActivityDisplay(live: state.live, since: state.since, until: state.until, stale: isStale,
-                               openLabel: attributes.openLabel, closeLabel: attributes.closeLabel)
+        ServiceActivityDisplay(detections: state.detections, sightings: state.sightings, detectionsYesterday: state.detectionsYesterday,
+                               updated: state.updated, city: attributes.cityName, stale: isStale || state.day.isEmpty)
     }
 }

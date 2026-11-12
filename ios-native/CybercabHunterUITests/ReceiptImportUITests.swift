@@ -17,7 +17,7 @@ final class ReceiptImportUITests: XCTestCase {
     }
 
     private func launch(session: String?, extra: [String] = []) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server] + (session.map { ["-session", $0] } ?? []) + extra
         app.launch()
         return app
@@ -101,7 +101,7 @@ final class ReceiptImportUITests: XCTestCase {
 
     func testReceiptImportNotificationsSetting() {
         // The notification settings screen, as PushUITests opens it.
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-pushSettings"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Notifications"].waitForExistence(timeout: 20))

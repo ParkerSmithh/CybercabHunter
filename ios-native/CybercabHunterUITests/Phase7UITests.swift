@@ -24,7 +24,7 @@ final class Phase7UITests: XCTestCase {
     }
 
     func testHomeNavigationAndBack() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.buttons["homeExplore"].isHittable)
@@ -51,7 +51,7 @@ final class Phase7UITests: XCTestCase {
     // MARK: Simulation
 
     func testSimulationROIAndFleetEta() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         openHomeLink(app, "homeExplore")
         XCTAssertTrue(app.staticTexts["roiTitle"].waitForExistence(timeout: 10))
@@ -110,7 +110,7 @@ final class Phase7UITests: XCTestCase {
     // MARK: News
 
     func testNewsFeedFiltersSearchAndOpensTheArticle() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         openHomeLink(app, "homeViewNews")
         XCTAssertTrue(app.staticTexts["newsTitle"].waitForExistence(timeout: 10))

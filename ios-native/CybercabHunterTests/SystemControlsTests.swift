@@ -166,20 +166,17 @@ struct SystemControlsTests {
         #expect(r.draftConflict == nil)
     }
 
-    // MARK: The map remembers its city (no location needed)
+    // MARK: The map's city: per app session, Austin on a fresh launch
 
-    @Test func zonesRemembersTheCityAcrossLaunches() {
-        let d = UserDefaults.standard
-        let saved = d.string(forKey: ZonesModel.cityKey)
-        defer { if let saved { d.set(saved, forKey: ZonesModel.cityKey) } else { d.removeObject(forKey: ZonesModel.cityKey) } }
-        d.removeObject(forKey: ZonesModel.cityKey)
-        #expect(ZonesModel().city == "austin", "first launch: Austin")
+    @Test func zonesCityHoldsForTheSessionOnly() {
+        let before = ZonesModel.sessionCity
+        defer { ZonesModel.sessionCity = before }
+        ZonesModel.sessionCity = "austin"   // what a new process starts with
+        #expect(ZonesModel().city == "austin", "a fresh launch opens Austin")
         let m = ZonesModel()
         m.city = "dallas"
-        #expect(d.string(forKey: ZonesModel.cityKey) == "dallas")
-        #expect(ZonesModel().city == "dallas", "the next launch reopens Dallas")
-        d.set("atlantis", forKey: ZonesModel.cityKey)
-        #expect(ZonesModel().city == "austin", "an unknown saved city falls back to Austin")
+        #expect(ZonesModel().city == "dallas", "the rest of the session (a rebuilt screen, back from the background) keeps Dallas")
+        #expect(UserDefaults.standard.string(forKey: ZonesModel.legacyCityKey) == nil, "nothing saved for the next launch")
     }
 
     @Test func siriOpenTheMapNoLongerForcesAustin() {

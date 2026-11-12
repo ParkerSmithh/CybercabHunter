@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// The native homepage, in the website's order: hero, the live stats bar, the
-/// service status, Cybercab Daily, Service Zones (city facts), Fleet Growth,
+/// The native homepage, in the website's order: hero, the live stats bar,
+/// Cybercab Daily (with the Live Activity switch), Service Zones (city facts), Fleet Growth,
 /// Texas DMV registrations, Ride Stats and Sightings Activity. Every number is
 /// one the server sent.
 struct HomeView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = HomeModel()
     @State private var scroll: CGFloat = 0
     /// Debug builds: the page's measured heights, for layout tests.
@@ -19,10 +20,7 @@ struct HomeView: View {
                 // (the site's flow mode, js/hero-video.js), so the stats follow the hero.
                 HomeHero(scroll: scroll)
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
-                VStack(spacing: 14) {
-                    ServiceStatusCard(hours: model.cityStats["austin"]?.area?.hours)
-                    DailyCard(report: model.daily, error: model.errors["daily"])
-                }
+                CybercabDailyCard(report: model.daily, error: model.errors["daily"])
                 ServiceZonesSection(model: model)
                 // Everything below the Austin minimap: compact dashboard cards.
                 VStack(alignment: .leading, spacing: 20) {
@@ -54,6 +52,8 @@ struct HomeView: View {
         .onAppear { SiriDonations.donate("fleet", FleetStatsIntent()) }   // the rider checked the fleet
         .task { await model.loadAll(using: session.api) }
         .refreshable { await model.loadAll(using: session.api) }
+        // Back in the app: Cybercab Daily (and the Live Activity) catch up, at most every five minutes.
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refreshDailyIfStale(using: session.api) } } }
         .onChange(of: model.city) { _, city in
             Task { await model.loadCity(city, using: session.api) }
         }
@@ -146,84 +146,97 @@ private struct HeadlineStats: View {
     }
 }
 
-// MARK: - Service status
+// MARK: - Cybercab Daily
 
-/// "LIVE NOW · Cybercabs are on the road now / Service ends in 5h 21m", or
-/// parked, from the service hours (Central), with the 24-hour track.
-struct ServiceStatusCard: View {
-    let hours: HomepageStats.Hours?
+/// Cybercab Daily, built on the former "Live now" card (the surface, the gold
+/// wash and edge, the green eyebrow, the bold headline, the car on its road):
+/// Robotaxi service runs 24/7 in Austin and Dallas, so where the countdown and
+/// the service-day track were it shows today's four figures (Central), each
+/// against yesterday, and the Live Activity switch below them. A figure that
+/// changes rolls to its new value (none with Reduce Motion).
+struct CybercabDailyCard: View {
+    let report: DailyReport?
+    let error: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { context in
-            let s = ServiceClock(hours: hours, now: context.date)
-            VStack(alignment: .leading, spacing: 14) {
-                // The car (and its road) centered on the headline and countdown,
-                // not the top of the card.
-                HStack(alignment: .liveCarRow) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) {
-                            Circle().fill(s.live ? Color.chOK : Color(hex: 0x7DD3FC)).frame(width: 7, height: 7)
-                            Text(s.live ? "LIVE NOW" : "PARKED").font(.inter(10, .bold)).tracking(1.6).foregroundStyle(s.live ? Color.chOK : Color(hex: 0x7DD3FC))
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(s.live ? "CYBERCABS ARE ON THE ROAD NOW" : "THE FLEET IS PARKED FOR THE NIGHT")
-                                .font(.inter(16, .bold)).foregroundStyle(Color.chInk).fixedSize(horizontal: false, vertical: true)
-                            Text(s.live ? "Service ends in \(s.countdown)" : "Back on the road at \(Format.clock(hours?.open)) · in \(s.countdown)")
-                                .font(.inter(13, .semibold)).foregroundStyle(s.live ? Color.brandGold : Color.chFog)
-                                .contentTransition(.numericText())
-                        }
-                        .alignmentGuide(.liveCarRow) { $0[VerticalAlignment.center] }
-                    }
-                    Spacer(minLength: 0)
-                    LiveCar(live: s.live).frame(width: 130).padding(.trailing, -10)
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            // The car (and its road) centered on the headline block, as before.
+            HStack(alignment: .liveCarRow) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Service day · ").foregroundStyle(Color.chFog) + Text("\(Format.clock(hours?.open)) – \(Format.clock(hours?.close))").foregroundStyle(Color.chMist)
-                        Spacer()
-                        Text("Now ").foregroundStyle(Color.chFog) + Text(s.nowLabel).foregroundStyle(Color.chMist)
+                    HStack(spacing: 6) {
+                        Circle().fill(Color.chOK).frame(width: 7, height: 7)
+                        Text("LIVE · 24/7").font(.inter(10, .bold)).tracking(1.6).foregroundStyle(Color.chOK)
                     }
-                    .font(.inter(11, .medium))
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.chSmoke).frame(height: 6)
-                            ForEach(Array(s.pieces.enumerated()), id: \.offset) { _, piece in
-                                Capsule().fill(Color.brandGold.opacity(0.35))
-                                    .frame(width: geo.size.width * piece.width, height: 6)
-                                    .offset(x: geo.size.width * piece.start)
-                                Capsule().fill(Color.brandGold)
-                                    .frame(width: geo.size.width * piece.run, height: 6)
-                                    .offset(x: geo.size.width * piece.start)
-                            }
-                            Circle().fill(Color.chInk).frame(width: 14, height: 14)
-                                .overlay(Circle().strokeBorder(Color.brandGold, lineWidth: 2))
-                                .offset(x: geo.size.width * s.nowPosition - 7)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 7) {
+                            Image(systemName: "calendar").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.brandGold)
+                            Text("CYBERCAB DAILY").font(.inter(16, .bold)).foregroundStyle(Color.chInk)
                         }
+                        .accessibilityAddTraits(.isHeader)
+                        Text("Robotaxi service runs 24/7 in Austin and Dallas.")
+                            .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold).fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(height: 14)
-                    HStack { ForEach(["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"], id: \.self) { Text($0); if $0 != "12 AM" || true { Spacer(minLength: 0) } } }
-                        .font(.inter(9, .medium)).foregroundStyle(Color.chCaption)
-                    Text("All times central time (CT) · every day").font(.inter(10)).foregroundStyle(Color.chCaption)
+                    .alignmentGuide(.liveCarRow) { $0[VerticalAlignment.center] }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(dateLine).font(.inter(11.5)).foregroundStyle(Color.chFog)
+                        Text(updatedLine).font(.inter(11)).foregroundStyle(Color.chCaption).accessibilityIdentifier("dailyUpdated")
+                    }
                 }
-                LiveActivitySwitch(hours: hours, live: s.live)
+                Spacer(minLength: 0)
+                LiveCar(live: true).frame(width: 130).padding(.trailing, -10)
             }
-            .padding(16)
-            .background {
-                RoundedRectangle(cornerRadius: 16).fill(Color.chSurface)
-                    .overlay(RoundedRectangle(cornerRadius: 16).fill(LinearGradient(colors: [(s.live ? Color.brandGold : Color(hex: 0x7DD3FC)).opacity(0.08), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)))
+            MetricGrid(columns: 4) {
+                metric("New Cybercabs", "car.fill", \.registry, plus: true)
+                metric("DMV additions", "doc.text.fill", \.dmv, plus: true)
+                metric("Sightings", "eye.fill", \.sightings)
+                metric("Detections", "video.fill", \.cameras)
             }
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder((s.live ? Color.brandGold : Color.chLine).opacity(0.45)))
-            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("dailyFigures")
+            if let error { InlineMessage(text: error, systemImage: "wifi.exclamationmark") }
+            LiveActivitySwitch(report: report)
         }
-        .opacity(hours == nil ? 0.6 : 1)
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 16).fill(Color.chSurface)
+                .overlay(RoundedRectangle(cornerRadius: 16).fill(LinearGradient(colors: [Color.brandGold.opacity(0.08), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.brandGold.opacity(0.45)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("cybercabDaily")
+    }
+
+    private var dateLine: String {
+        report.map { Format.calendarDate($0.today)?.formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).weekday(.wide).month(.wide).day().year()) ?? $0.today } ?? "Today"
+    }
+    private var updatedLine: String {
+        guard let at = Format.instant(report?.generatedAt) else { return report == nil && error == nil ? "Updating today's activity…" : "Refresh pending" }
+        return "Updated \(at.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())) CT"
+    }
+
+    /// A value not in yet shows 0 until it updates (as the website does).
+    private func metric(_ label: String, _ icon: String, _ key: KeyPath<DailyReport.Day, Int?>, plus: Bool = false) -> some View {
+        let n = report?.day[keyPath: key] ?? 0
+        let before = report?.previous?[keyPath: key]
+        return VStack(alignment: .leading, spacing: 5) {
+            Image(systemName: icon).font(.caption2).foregroundStyle(Color.brandGold)
+            Text(label).font(.inter(10, .medium)).foregroundStyle(Color.chFog).lineLimit(2).frame(minHeight: 26, alignment: .topLeading)
+            Text(plus ? "+\(Format.int(n))" : Format.int(n)).statNumber(20, color: .brandGold)
+                .contentTransition(.numericText(value: Double(n)))
+                .animation(reduceMotion ? nil : .snappy, value: n)
+            if let before, report?.day[keyPath: key] != nil {
+                Text("\(Format.signed(n - before)) vs yesterday").font(.inter(9)).foregroundStyle(Color.chCaption)
+            }
+        }
     }
 }
 
-/// The Live now card's switch for the Dynamic Island / Lock Screen Live
+/// The Cybercab Daily card's switch for the Dynamic Island / Lock Screen Live
 /// Activity (ServiceLiveActivityController): off until the rider turns it on.
+/// It hands the controller each fresh Daily report, so the activity shows
+/// today's detections and sightings.
 struct LiveActivitySwitch: View {
-    let hours: HomepageStats.Hours?
-    let live: Bool
+    let report: DailyReport?
     @State private var controller = ServiceLiveActivityController.shared
     @State private var busy = false
 
@@ -236,7 +249,7 @@ struct LiveActivitySwitch: View {
             })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Dynamic Island Live Activity").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
-                    Text("Show Cybercab service status in the Dynamic Island and on your Lock Screen.")
+                    Text("Show today's camera detections and sightings in the Dynamic Island and on your Lock Screen.")
                         .font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -251,9 +264,9 @@ struct LiveActivitySwitch: View {
                     .font(.inter(12, .semibold)).tint(Color.brandGold)
             }
         }
-        // The hours (when they load) and each change of service while the app is open.
-        .task(id: "\(hours?.open ?? "")-\(hours?.close ?? "")-\(live)") {
-            controller.schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
+        // Each fresh report (and the first) updates the activity.
+        .task(id: report?.generatedAt ?? report?.today ?? "") {
+            if let report { controller.latest = ServiceActivityAttributes.ContentState(report) }
             await controller.reconcile()
         }
     }
@@ -261,92 +274,9 @@ struct LiveActivitySwitch: View {
     private var statusLine: String {
         if let p = controller.problem { return p.message }
         if controller.enabled {
-            return "On · in the Dynamic Island (or on the Lock Screen on iPhones without one) while you're in other apps. Closing Cybercab Hunter removes it when iOS reports the app closing; otherwise it updates when you reopen the app."
+            return "On · in the Dynamic Island (or on the Lock Screen on iPhones without one) while you're in other apps. It updates when CybercabHunter refreshes today's figures. Closing CybercabHunter removes it when iOS reports the app closing."
         }
         return "Off · on iPhones without a Dynamic Island it appears on the Lock Screen."
-    }
-}
-
-/// The service day in Central time (the website's js/service-banner.js).
-struct ServiceClock {
-    let live: Bool
-    let countdown: String
-    let nowLabel: String
-    /// The service window on the 24-hour track: one piece, or two when service
-    /// runs past midnight (5 AM–12 AM, then 12 AM–2 AM), each with the share run so far.
-    struct Piece: Equatable { let start: CGFloat; let width: CGFloat; let run: CGFloat }
-    let pieces: [Piece]
-    let nowPosition: CGFloat
-
-    init(hours: HomepageStats.Hours?, now: Date) {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = Format.central
-        let parts = cal.dateComponents([.hour, .minute, .second], from: now)
-        let sec = (parts.hour ?? 0) * 3600 + (parts.minute ?? 0) * 60 + (parts.second ?? 0)
-        // Live / parked and the next change: Shared/ServiceSchedule.swift, the same
-        // logic the Dynamic Island Live Activity uses (wall-clock Central, DST-safe).
-        let schedule = ServiceSchedule(open: hours?.open, close: hours?.close)
-        let status = schedule.status(at: now)
-        let open = schedule.openMinute, close = schedule.closeMinute
-        live = status.live
-        countdown = ServiceSchedule.countdown(from: now, to: status.until)
-        nowLabel = now.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())
-        // Minutes of service run so far fill the pieces in order.
-        var ran = live ? now.timeIntervalSince(status.since) / 60 : 0
-        let spans = close > 1440 ? [(open, 1440), (0, close - 1440)] : [(open, close)]
-        pieces = spans.map { a, b in
-            let len = Double(b - a), fill = min(max(ran, 0), len)
-            ran -= len
-            return Piece(start: CGFloat(a) / 1440, width: CGFloat(len) / 1440, run: CGFloat(fill) / 1440)
-        }
-        nowPosition = CGFloat(sec) / 86400
-    }
-
-    static func minutes(_ hhmm: String) -> Int { ServiceSchedule.minutes(hhmm) }
-}
-
-// MARK: - Cybercab Daily
-
-private struct DailyCard: View {
-    let report: DailyReport?
-    let error: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "calendar").foregroundStyle(Color.brandGold)
-                Text("CYBERCAB DAILY").font(.inter(12, .bold)).tracking(1.2).foregroundStyle(Color.chInk)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(report.map { Format.calendarDate($0.today)?.formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).weekday(.wide).month(.wide).day().year()) ?? $0.today } ?? "Today")
-                    .font(.inter(12)).foregroundStyle(Color.chFog)
-                if let at = Format.instant(report?.generatedAt) {
-                    Text("Updated \(at.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())) CT").font(.inter(11)).foregroundStyle(Color.chCaption)
-                }
-            }
-            MetricGrid(columns: 4) {
-                metric("New Cybercabs", "car.fill", \.registry, plus: true)
-                metric("DMV additions", "doc.text.fill", \.dmv, plus: true)
-                metric("Sightings", "eye.fill", \.sightings)
-                metric("Detections", "video.fill", \.cameras)
-            }
-            if let error { InlineMessage(text: error, systemImage: "wifi.exclamationmark") }
-        }
-        .glassCard()
-    }
-
-    /// A value not in yet shows 0 until it updates (as the website does).
-    private func metric(_ label: String, _ icon: String, _ key: KeyPath<DailyReport.Day, Int?>, plus: Bool = false) -> some View {
-        let n = report?.day[keyPath: key] ?? 0
-        let before = report?.previous?[keyPath: key]
-        return VStack(alignment: .leading, spacing: 5) {
-            Image(systemName: icon).font(.caption2).foregroundStyle(Color.brandGold)
-            Text(label).font(.inter(10, .medium)).foregroundStyle(Color.chFog).lineLimit(2).frame(minHeight: 26, alignment: .topLeading)
-            Text(plus ? "+\(Format.int(n))" : Format.int(n)).statNumber(20, color: .brandGold)
-            if let before, report?.day[keyPath: key] != nil {
-                Text("\(Format.signed(n - before)) vs yesterday").font(.inter(9)).foregroundStyle(Color.chCaption)
-            }
-        }
     }
 }
 
