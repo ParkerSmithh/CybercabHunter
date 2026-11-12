@@ -169,14 +169,15 @@ struct ServiceFigures: View {
     }
 }
 
-/// "Austin & Dallas · Updated 10:41 AM CT".
+/// "Austin & Dallas · Updated 10:41 AM CT" ("… 10:41 AM" when `short`).
 struct ServiceFootnote: View {
     let d: ServiceActivityDisplay
     var size: CGFloat = 10.5
+    var short = false
     var body: some View {
         HStack(spacing: 0) {
             Text(d.city).foregroundStyle(ServiceActivityPalette.mist)
-                + Text(" · \(d.updatedText)").foregroundStyle(ServiceActivityPalette.fog)
+                + Text(" · \(short ? d.updatedText.replacingOccurrences(of: " CT", with: "") : d.updatedText)").foregroundStyle(ServiceActivityPalette.fog)
             Spacer(minLength: 0)
         }
         .font(ServiceFont.inter(size, .medium)).lineLimit(1).minimumScaleFactor(0.8)
@@ -268,25 +269,30 @@ struct ServiceExpandedLeading: View {
     var body: some View { ServiceEyebrow(d: d, size: 11).padding(.leading, 6) }
 }
 
-/// Expanded, bottom: the headline and today's detections, with the car
-/// center-right beside them; then detections and sightings, and the area and
-/// update time.
+/// Expanded, trailing: the gold Cybercab, level with LIVE · 24/7 (the top
+/// band beside the camera, otherwise empty), so the bottom stays short.
+struct ServiceExpandedTrailing: View {
+    let d: ServiceActivityDisplay
+    var body: some View { ServiceCarArt(d: d, width: 86, scene: true).padding(.trailing, 4) }
+}
+
+/// Expanded, bottom: CYBERCAB DAILY, today's detections (gold) and sightings
+/// with the change against yesterday, and "Austin & Dallas · Updated 1:51 PM".
+/// The expanded island is at most 160 pt in all; the top band (LIVE · 24/7
+/// and the car, level with the camera) and iOS's bottom margin leave about
+/// 100 pt for this region, so it keeps to that (LiveActivityTests checks it).
+/// The gold "N camera detections today" line of the Lock Screen is left out
+/// here: the gold Detections figure says the same.
 struct ServiceExpandedBottom: View {
     let d: ServiceActivityDisplay
+    static let budget: CGFloat = 100
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    ServiceHeadline(d: d, size: 15)
-                    ServiceDetectionsLine(d: d, size: 13)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                ServiceCarArt(d: d, width: 104, scene: true)
-            }
+            ServiceHeadline(d: d, size: 14)
             ServiceFigures(d: d, size: 16)
-                .padding(.top, 7)
-            ServiceFootnote(d: d, size: 10)
-                .padding(.top, 5)
+                .padding(.top, 4)
+            ServiceFootnote(d: d, size: 10, short: true)
+                .padding(.top, 4)
         }
         .padding(.horizontal, 6)
     }

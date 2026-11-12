@@ -160,43 +160,45 @@ struct CybercabDailyCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // The car (and its road) centered on the headline block, as before.
-            HStack(alignment: .liveCarRow) {
-                VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
+            // The car (and its road) centered on the heading block, as before.
+            HStack(alignment: .liveCarRow, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Circle().fill(Color.chOK).frame(width: 7, height: 7)
                         Text("LIVE · 24/7").font(.inter(10, .bold)).tracking(1.6).foregroundStyle(Color.chOK)
                     }
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 7) {
                             Image(systemName: "calendar").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.brandGold)
                             Text("CYBERCAB DAILY").font(.inter(16, .bold)).foregroundStyle(Color.chInk)
                         }
                         .accessibilityAddTraits(.isHeader)
-                        Text("Robotaxi service runs 24/7 in Austin and Dallas.")
-                            .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold).fixedSize(horizontal: false, vertical: true)
+                        Text("Robotaxi 24/7 in Austin and Dallas")
+                            .font(.inter(12.5, .semibold)).foregroundStyle(Color.brandGold).lineLimit(1).minimumScaleFactor(0.85)
                     }
                     .alignmentGuide(.liveCarRow) { $0[VerticalAlignment.center] }
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(dateLine).font(.inter(11.5)).foregroundStyle(Color.chFog)
-                        Text(updatedLine).font(.inter(11)).foregroundStyle(Color.chCaption).accessibilityIdentifier("dailyUpdated")
-                    }
+                    Text(dateLine).font(.inter(11)).foregroundStyle(Color.chFog).lineLimit(1).minimumScaleFactor(0.85)
+                        .accessibilityIdentifier("dailyUpdated")
                 }
                 Spacer(minLength: 0)
-                LiveCar(live: true).frame(width: 130).padding(.trailing, -10)
+                LiveCar(live: true).frame(width: 112).padding(.trailing, -10)
             }
-            MetricGrid(columns: 4) {
+            HStack(alignment: .top, spacing: 0) {
                 metric("New Cybercabs", "car.fill", \.registry, plus: true)
+                divider
                 metric("DMV additions", "doc.text.fill", \.dmv, plus: true)
+                divider
                 metric("Sightings", "eye.fill", \.sightings)
+                divider
                 metric("Detections", "video.fill", \.cameras)
             }
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("dailyFigures")
             if let error { InlineMessage(text: error, systemImage: "wifi.exclamationmark") }
             LiveActivitySwitch(report: report)
         }
-        .padding(16)
+        .padding(.horizontal, 14).padding(.vertical, 12)
         .background {
             RoundedRectangle(cornerRadius: 16).fill(Color.chSurface)
                 .overlay(RoundedRectangle(cornerRadius: 16).fill(LinearGradient(colors: [Color.brandGold.opacity(0.08), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)))
@@ -206,35 +208,43 @@ struct CybercabDailyCard: View {
         .accessibilityIdentifier("cybercabDaily")
     }
 
+    private var divider: some View { Rectangle().fill(Color.brandGold.opacity(0.16)).frame(width: 1).padding(.horizontal, 6) }
+
+    /// "Thu, Nov 12 · Updated 1:51 PM CT" (Central).
     private var dateLine: String {
-        report.map { Format.calendarDate($0.today)?.formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).weekday(.wide).month(.wide).day().year()) ?? $0.today } ?? "Today"
-    }
-    private var updatedLine: String {
-        guard let at = Format.instant(report?.generatedAt) else { return report == nil && error == nil ? "Updating today's activity…" : "Refresh pending" }
-        return "Updated \(at.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())) CT"
+        let day = report.flatMap { Format.calendarDate($0.today)?.formatted(Date.FormatStyle(timeZone: TimeZone(identifier: "UTC")!).weekday(.abbreviated).month(.abbreviated).day()) } ?? "Today"
+        guard let at = Format.instant(report?.generatedAt) else { return "\(day) · \(report == nil && error == nil ? "Updating…" : "Refresh pending")" }
+        return "\(day) · Updated \(at.formatted(Date.FormatStyle(timeZone: Format.central).hour().minute())) CT"
     }
 
     /// A value not in yet shows 0 until it updates (as the website does).
     private func metric(_ label: String, _ icon: String, _ key: KeyPath<DailyReport.Day, Int?>, plus: Bool = false) -> some View {
         let n = report?.day[keyPath: key] ?? 0
         let before = report?.previous?[keyPath: key]
-        return VStack(alignment: .leading, spacing: 5) {
-            Image(systemName: icon).font(.caption2).foregroundStyle(Color.brandGold)
-            Text(label).font(.inter(10, .medium)).foregroundStyle(Color.chFog).lineLimit(2).frame(minHeight: 26, alignment: .topLeading)
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 3) {
+                Image(systemName: icon).font(.system(size: 8.5, weight: .semibold)).foregroundStyle(Color.brandGold)
+                Text(label).font(.inter(10, .medium)).foregroundStyle(Color.chFog).lineLimit(1).minimumScaleFactor(0.75)
+            }
             Text(plus ? "+\(Format.int(n))" : Format.int(n)).statNumber(20, color: .brandGold)
+                .lineLimit(1).minimumScaleFactor(0.7)
                 .contentTransition(.numericText(value: Double(n)))
                 .animation(reduceMotion ? nil : .snappy, value: n)
             if let before, report?.day[keyPath: key] != nil {
-                Text("\(Format.signed(n - before)) vs yesterday").font(.inter(9)).foregroundStyle(Color.chCaption)
+                Text("\(Format.signed(n - before)) vs yesterday").font(.inter(9)).foregroundStyle(Color.chCaption).lineLimit(1).minimumScaleFactor(0.75)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
 /// The Cybercab Daily card's switch for the Dynamic Island / Lock Screen Live
 /// Activity (ServiceLiveActivityController): off until the rider turns it on.
 /// It hands the controller each fresh Daily report, so the activity shows
-/// today's detections and sightings.
+/// today's detections and sightings. One compact row: the name with On/Off,
+/// one line of explanation, the switch; a problem (not allowed, couldn't
+/// start) still shows its message, and Open Settings when that helps.
 struct LiveActivitySwitch: View {
     let report: DailyReport?
     @State private var controller = ServiceLiveActivityController.shared
@@ -243,25 +253,36 @@ struct LiveActivitySwitch: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Divider().overlay(Color.chLine)
-            Toggle(isOn: Binding(get: { controller.enabled }, set: { on in
-                busy = true
-                Task { await controller.setEnabled(on); busy = false }
-            })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Dynamic Island Live Activity").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
-                    Text("Show today's camera detections and sightings in the Dynamic Island and on your Lock Screen.")
-                        .font(.inter(11.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 6) {
+                        Text("Live Activity").font(.inter(13.5, .semibold)).foregroundStyle(Color.chInk)
+                        Text(statusLine).font(.inter(10.5, .semibold))
+                            .foregroundStyle(controller.problem == nil ? (controller.enabled ? Color.chOK : Color.chCaption) : Color(hex: 0xFCD34D))
+                            .lineLimit(1)
+                            .accessibilityIdentifier("liveActivityStatus")
+                    }
+                    Text("Show detections and sightings on your Lock Screen and Dynamic Island.")
+                        .font(.inter(11)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
                 }
+                Spacer(minLength: 0)
+                Toggle("Live Activity", isOn: Binding(get: { controller.enabled }, set: { on in
+                    busy = true
+                    Task { await controller.setEnabled(on); busy = false }
+                }))
+                .labelsHidden()
+                .tint(Color.brandGold)
+                .disabled(!controller.isSupported || busy)
+                .accessibilityHint("Shows today's detections and sightings on your Lock Screen and Dynamic Island.")
+                .accessibilityIdentifier("liveActivityToggle")
             }
-            .tint(Color.brandGold)
-            .disabled(!controller.isSupported || busy)
-            .accessibilityIdentifier("liveActivityToggle")
-            Text(statusLine).font(.inter(11)).foregroundStyle(controller.problem == nil ? Color.chCaption : Color(hex: 0xFCD34D))
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("liveActivityStatus")
-            if controller.problem == .notAuthorized {
-                Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
-                    .font(.inter(12, .semibold)).tint(Color.brandGold)
+            if let p = controller.problem {
+                Text(p.message).font(.inter(11)).foregroundStyle(Color(hex: 0xFCD34D)).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("liveActivityProblem")
+                if p == .notAuthorized {
+                    Button("Open Settings") { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
+                        .font(.inter(12, .semibold)).tint(Color.brandGold)
+                }
             }
         }
         // Each fresh report (and the first) updates the activity.
@@ -271,12 +292,10 @@ struct LiveActivitySwitch: View {
         }
     }
 
+    /// "On" / "Off", or "Needs attention" when there's a problem (its message below).
     private var statusLine: String {
-        if let p = controller.problem { return p.message }
-        if controller.enabled {
-            return "On · in the Dynamic Island (or on the Lock Screen on iPhones without one) while you're in other apps. It updates when CybercabHunter refreshes today's figures. Closing CybercabHunter removes it when iOS reports the app closing."
-        }
-        return "Off · on iPhones without a Dynamic Island it appears on the Lock Screen."
+        if controller.problem != nil { return "Needs attention" }
+        return controller.enabled ? "On" : "Off"
     }
 }
 

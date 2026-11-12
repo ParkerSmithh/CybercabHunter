@@ -19,6 +19,7 @@ struct ServiceLiveActivity: Widget {
             let d = context.display
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) { ServiceExpandedLeading(d: d) }
+                DynamicIslandExpandedRegion(.trailing) { ServiceExpandedTrailing(d: d) }
                 DynamicIslandExpandedRegion(.bottom) { ServiceExpandedBottom(d: d) }
             } compactLeading: {
                 ServiceCompactLeading(d: d)
