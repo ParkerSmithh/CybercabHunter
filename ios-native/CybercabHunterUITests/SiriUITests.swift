@@ -12,7 +12,7 @@ final class SiriUITests: XCTestCase {
     private func set(_ e: XCUIElement, to value: String, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(e.waitForExistence(timeout: 10))
         // Clear of the sheet's bottom edge before tapping.
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         var n = 0
         while e.frame.maxY > app.windows.firstMatch.frame.maxY - 140 && n < 5 { app.swipeUp(velocity: .slow); n += 1 }
         expectation(for: NSPredicate(format: "isHittable == true AND isEnabled == true"), evaluatedWith: e)
@@ -25,7 +25,7 @@ final class SiriUITests: XCTestCase {
     }
 
     private func launch(_ args: [String]) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = args
         app.launch()
         return app

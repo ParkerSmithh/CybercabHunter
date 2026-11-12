@@ -82,41 +82,48 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
   assert.strictEqual(Math.round(CCC_CALC.ageHours('2026-10-03T09:00:00Z', now)), 3);
 }
 
-// Service hours: 5:00 AM - 2:00 AM (past midnight) by the clock in America/Chicago, never the visitor's.
+// Service hours: Robotaxi service runs 24/7 in Austin and Dallas (Nov 2026;
+// it was 5:00 AM - 2:00 AM). Read by the clock in America/Chicago, never the
+// visitor's: open at every minute, including the old 2-5 AM gap and both
+// daylight-saving nights.
 {
   const at = iso => CCC_CALC.serviceStatus(new Date(iso));
+  for (const iso of ['2026-10-03T09:59:00Z', '2026-10-03T10:00:00Z', '2026-10-04T05:00:00Z', '2026-10-04T07:00:00Z', '2026-10-04T08:30:00Z',
+                     '2026-12-15T10:59:00Z', '2026-11-01T07:30:00Z', '2026-03-08T08:30:00Z']) {
+    assert.strictEqual(at(iso).open, true, iso);
+    assert.strictEqual(at(iso).label, 'Operating now', iso);
+  }
+  assert.deepStrictEqual([CCC_CALC.SERVICE_HOURS.openMinute, CCC_CALC.SERVICE_HOURS.closeMinute], [0, 1440]);
+  assert.deepStrictEqual([CCC_CALC.DALLAS_SERVICE_HOURS.openMinute, CCC_CALC.DALLAS_SERVICE_HOURS.closeMinute], [0, 1440]);
+  assert.strictEqual(CCC_CALC.isAllDay(), true);
+  assert.strictEqual(CCC_CALC.isAllDay(CCC_CALC.DALLAS_SERVICE_HOURS), true);
+  assert.strictEqual(CCC_CALC.hoursLabel(), '24/7');
+  // The 24-hour track: one full-day piece.
+  assert.deepStrictEqual(CCC_CALC.serviceSegments(), [{ start: 0, end: 1440 }]);
+  assert.strictEqual(CCC_CALC.serviceStatus(new Date('2026-10-04T08:00:00Z'), CCC_CALC.DALLAS_SERVICE_HOURS).open, true);   // 3:00 AM CDT
+}
+
+// A window, should hours ever come back: one that crosses midnight is open
+// after the opening OR before the closing; a same-day window stays one piece.
+{
+  const window = { openMinute: 5 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  const at = iso => CCC_CALC.serviceStatus(new Date(iso), window);
   assert.strictEqual(at('2026-10-03T09:59:00Z').open, false);   // 4:59 AM CDT
   assert.strictEqual(at('2026-10-03T10:00:00Z').open, true);    // 5:00 AM CDT
-  assert.strictEqual(at('2026-10-04T03:59:00Z').open, true);    // 10:59 PM CDT
-  assert.strictEqual(at('2026-10-04T04:00:00Z').open, true);    // 11:00 PM CDT
-  assert.strictEqual(at('2026-10-04T04:59:00Z').open, true);    // 11:59 PM CDT
   assert.strictEqual(at('2026-10-04T05:00:00Z').open, true);    // 12:00 AM CDT (midnight): still running
-  assert.strictEqual(at('2026-10-04T05:59:00Z').open, true);    // 12:59 AM CDT
-  assert.strictEqual(at('2026-10-04T06:00:00Z').open, true);    // 1:00 AM CDT
   assert.strictEqual(at('2026-10-04T06:59:00Z').open, true);    // 1:59 AM CDT
-  assert.strictEqual(at('2026-10-04T07:00:00Z').open, false);   // 2:00 AM CDT: parked
+  assert.strictEqual(at('2026-10-04T07:00:00Z').open, false);   // 2:00 AM CDT: closed
   assert.strictEqual(at('2026-12-15T11:00:00Z').open, true);    // 5:00 AM CST (UTC-6 in winter)
   assert.strictEqual(at('2026-12-15T10:59:00Z').open, false);   // 4:59 AM CST
   assert.strictEqual(at('2026-10-03T08:00:00Z').label, 'Opens 5:00 AM');
-  assert.strictEqual(at('2026-10-03T18:00:00Z').label, 'Operating now');
-  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.SERVICE_HOURS.closeMinute), '2:00 AM');
-  // The 24-hour track: two pieces, 5 AM–12 AM then 12 AM–2 AM; a same-day window stays one.
-  assert.deepStrictEqual(CCC_CALC.serviceSegments(), [{ start: 300, end: 1440 }, { start: 0, end: 120 }]);
+  assert.strictEqual(CCC_CALC.isAllDay(window), false);
+  assert.strictEqual(CCC_CALC.hoursLabel(window), '5:00 AM - 2:00 AM');
+  assert.deepStrictEqual(CCC_CALC.serviceSegments(window), [{ start: 300, end: 1440 }, { start: 0, end: 120 }]);
   assert.deepStrictEqual(CCC_CALC.serviceSegments({ openMinute: 360, closeMinute: 1440 }), [{ start: 360, end: 1440 }]);
   assert.deepStrictEqual(CCC_CALC.serviceSegments({ openMinute: 360, closeMinute: 0 }), [{ start: 360, end: 1440 }]);
-}
-
-// Dallas (launched Apr 18, 2026): 5 AM to 2 AM, the same as Austin. A window
-// that crosses midnight is still handled (open after opening OR before closing).
-{
   const cdt = (h, m) => new Date(Date.UTC(2026, 9, 7, h + 5, m));   // Oct 7, 2026 is CDT (UTC-5)
-  const dal = (h, m) => CCC_CALC.serviceStatus(cdt(h, m), CCC_CALC.DALLAS_SERVICE_HOURS).open;
-  const aus = (h, m) => CCC_CALC.serviceStatus(cdt(h, m)).open;
-  assert.deepStrictEqual([dal(0, 0), dal(1, 30), dal(1, 59), dal(2, 0), dal(4, 59), dal(5, 0), dal(22, 59), dal(23, 0), dal(23, 59)], [true, true, true, false, false, true, true, true, true]);
-  assert.strictEqual(CCC_CALC.clockLabel(CCC_CALC.DALLAS_SERVICE_HOURS.closeMinute), '2:00 AM');
   const late = { openMinute: 6 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
   assert.deepStrictEqual([1, 2, 5, 6, 23].map(h => CCC_CALC.serviceStatus(cdt(h, 30), late).open), [true, false, false, true, true]);
-  assert.deepStrictEqual([aus(0, 0), aus(1, 30), aus(1, 59), aus(2, 0), aus(6, 0), aus(22, 59), aus(23, 0), aus(23, 59)], [true, true, true, false, true, true, true, true]);
   assert.strictEqual(CCC_CALC.reportedFare(5, CCC_CALC.DALLAS_REPORTED_RATE), 8.25);
   assert.strictEqual(CCC_CALC.DALLAS_MODEL_Y_FLEET, 65);
 }
@@ -146,7 +153,7 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
   'DALLAS_AREA_SQ_MI', 'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
   'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'ETA_TIERS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
-  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceSegments', 'serviceStatus'
+  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'hoursLabel', 'isAllDay', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceSegments', 'serviceStatus'
 ]);
 
 console.log('calc.test.js: all assertions passed');

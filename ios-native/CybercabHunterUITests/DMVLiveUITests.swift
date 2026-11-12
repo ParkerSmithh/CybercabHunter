@@ -7,7 +7,7 @@ final class DMVLiveUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
     func testLiveTrackerTotalsHistoryAndVin() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home"]
         app.launch()
         let button = app.buttons["dmvEveryVin"]

@@ -11,7 +11,7 @@ final class ZonesStyleUITests: XCTestCase {
     }
 
     func testZonesMarkersClustersAndControls() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Zones"].tap()
         let markers = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Cybercab seen by the traffic camera'"))

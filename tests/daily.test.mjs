@@ -45,14 +45,23 @@ const failed = await buildDaily(failing, now);
 assert.equal(Object.keys(failed.errors).length, 4);
 assert(['registry','sightings','cameras','dmv'].every(key => failed.day[key] === null));
 const home = fs.readFileSync('public/index.html', 'utf8'), js = fs.readFileSync('public/js/daily.js', 'utf8');
-assert(home.indexOf('id="cybercabDaily"') > home.indexOf('id="serviceBanner"'));
-assert(home.indexOf('id="cybercabDaily"') < home.indexOf('id="map"'));
+// One card: the former "Live now" banner is Cybercab Daily now (24/7: no
+// countdown, no service-day track, no separate service banner).
+assert(!home.includes('id="serviceBanner"') && !home.includes('service-banner.js') && !fs.existsSync('public/js/service-banner.js'), 'no separate service banner');
+assert(home.indexOf('id="cybercabDaily"') > home.indexOf('id="statSightings"'), 'below the stats bar');
+assert(home.indexOf('id="cybercabDaily"') < home.indexOf('id="map"'), 'above SERVICE ZONES');
+const card = home.slice(home.indexOf('id="cybercabDaily"'), home.indexOf('<!-- ===== Live map'));
+assert(/class="service-banner[^"]*"/.test(card) && /Live · 24\/7/.test(card) && /Cybercab Daily<\/h2>/.test(card), 'the Live now design: banner, green 24/7 eyebrow, CYBERCAB DAILY');
+assert(/runs 24\/7 in Austin and Dallas/.test(card) && /images\/CybercabLive\.webp/.test(card), '24/7 line and the Cybercab');
+assert(/id="dailyStats" class="sb-day"/.test(card), 'the figures take the old service-day column');
+assert(!/Service ends|Back on the road|Service day|countdown|5:00 AM|2:00 AM/i.test(card), 'nothing counts down or names the old hours');
 assert(!home.includes('/calendar')); assert(!fs.existsSync('public/calendar.html'));
 assert(!js.includes('/api/activity'));
 const homeDom = new JSDOM(home, { runScripts: 'outside-only', url: 'https://test/' });
 homeDom.window.fetch = async url => { assert.match(url, /^\/api\/daily\?day=\d{4}-\d\d-\d\d$/); return apiDaily(new Request('https://test'+url), env, {}); };
 homeDom.window.eval(js); await new Promise(r => setTimeout(r, 80));
 assert.deepEqual([...homeDom.window.document.querySelectorAll('#dailyStats .daily-value')].map(n => n.textContent), ['+1', '+2', '1', '1']);
+assert.equal(homeDom.window.document.querySelectorAll('#dailyStats .is-updated').length, 0, 'the first figures of the day don\'t glow');
 homeDom.window.close();
 // Midnight rollover, visibility, and unavailable states remain part of Daily.
 let clock = now, tick, requests = 0;

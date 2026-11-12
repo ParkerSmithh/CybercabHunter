@@ -18,7 +18,7 @@ final class Phase7AccountUITests: XCTestCase {
     }
 
     private func launch(session: String) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server, "-session", session]
         app.launch()
         return app

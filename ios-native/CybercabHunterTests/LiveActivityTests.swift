@@ -4,10 +4,11 @@ import SwiftUI
 import ActivityKit
 @testable import CybercabHunter
 
-// The service-status Live Activity: the switch (off by default, persisted,
-// never re-enabled by itself), the service-day logic shared with the Live now
-// card (past midnight, daylight saving), reconciling at launch, staleness, and each
-// presentation rendered. ActivityKit itself is replaced by a fake.
+// The Cybercab Daily Live Activity: the switch (off by default, persisted,
+// never re-enabled by itself), today's figures from the Daily report (24/7:
+// no countdown), staleness at the hour or at Central midnight, an activity
+// left by an earlier build, reconciling at launch, and each presentation
+// rendered. ActivityKit itself is replaced by a fake.
 
 @MainActor
 final class FakeActivityBackend: ServiceActivityBackend {
@@ -37,12 +38,25 @@ final class FakeActivityBackend: ServiceActivityBackend {
 }
 
 private func central(_ s: String) -> Date {
-    let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = ServiceSchedule.timeZone; f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = CentralTime.zone; f.dateFormat = "yyyy-MM-dd HH:mm:ss"
     return f.date(from: s)!
 }
 private func wall(_ d: Date) -> String {
-    let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = ServiceSchedule.timeZone; f.dateFormat = "yyyy-MM-dd HH:mm zzz"
+    let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = CentralTime.zone; f.dateFormat = "yyyy-MM-dd HH:mm zzz"
     return f.string(from: d)
+}
+private func iso(_ d: Date) -> String { ISO8601DateFormatter().string(from: d) }
+/// A Daily report as GET /api/daily sends it.
+private func report(today: String = "2026-11-12", at: Date, detections: Int?, sightings: Int?, yesterday: Int? = nil) -> DailyReport {
+    func n(_ v: Int?) -> Any { v.map { $0 as Any } ?? NSNull() }
+    let body: [String: Any] = ["today": today, "generated_at": iso(at),
+        "day": ["date": today, "registry": 1, "dmv": 0, "sightings": n(sightings), "cameras": n(detections)],
+        "previous": ["date": "2026-11-11", "registry": 0, "dmv": 0, "sightings": 2, "cameras": n(yesterday)]]
+    return try! APIClient.makeDecoder().decode(DailyReport.self, from: JSONSerialization.data(withJSONObject: body))
+}
+private func display(_ s: ServiceActivityAttributes.ContentState, stale: Bool = false) -> ServiceActivityDisplay {
+    ServiceActivityDisplay(detections: s.detections, sightings: s.sightings, detectionsYesterday: s.detectionsYesterday,
+                           updated: s.updated, city: ServiceActivityAttributes.coverage, stale: stale || s.day.isEmpty)
 }
 
 @MainActor
@@ -68,62 +82,135 @@ struct LiveActivityTests {
         #expect(!ServiceLiveActivityController(backend: FakeActivityBackend(), defaults: d).enabled, "off stays off")
     }
 
-    // 3, 4: start and end
+    // 3, 4: start from today's Daily figures, end at once
 
-    @Test func enablingStartsWithTheCardsStatusAndDisablingEndsIt() async {
+    @Test func enablingStartsWithTodaysFiguresAndDisablingEndsIt() async {
         let (c, fake, _) = make()
-        let now = central("2026-10-26 17:55:00")
-        await c.setEnabled(true, now: now)
+        let made = central("2026-11-12 10:41:00")
+        c.latest = ServiceActivityAttributes.ContentState(report(at: made, detections: 1234, sightings: 4, yesterday: 1200))
+        await c.setEnabled(true, now: central("2026-11-12 10:45:00"))
         #expect(fake.started.count == 1)
         let (attrs, state, stale) = fake.started[0]
-        #expect(state.live && wall(state.until) == "2026-10-27 02:00 CDT" && stale == state.until, "until 2 AM; stale from then")
-        #expect(attrs.openLabel == "5:00 AM" && attrs.closeLabel == "2:00 AM")
-        #expect(ServiceSchedule.countdown(from: now, to: state.until) == "8h 5m", "the Live now card's countdown")
+        #expect(state.detections == 1234 && state.sightings == 4 && state.detectionsYesterday == 1200 && state.day == "2026-11-12")
+        #expect(attrs.cityName == "Austin & Dallas", "the Daily figures cover both cities")
+        #expect(wall(stale) == "2026-11-12 11:41 CST", "stale an hour after the figures")
         await c.setEnabled(false)
         #expect(fake.running.isEmpty && fake.endAllCalls == 1 && !c.enabled)
     }
 
-    // 5, 6, 7: active, parked, past midnight (5 AM to 2 AM)
-
-    @Test func activeAndParkedStatusAcrossMidnight() {
-        let s = ServiceSchedule.standard
-        #expect(s == ServiceSchedule(open: "05:00", close: "02:00"), "the API's 5 AM to 2 AM")
-        #expect(s.label(s.openMinute) == "5:00 AM" && s.label(s.closeMinute) == "2:00 AM")
-        let noon = s.status(at: central("2026-10-26 12:00:00"))
-        #expect(noon.live && wall(noon.since) == "2026-10-26 05:00 CDT" && wall(noon.until) == "2026-10-27 02:00 CDT")
-        let pastMidnight = s.status(at: central("2026-10-27 00:30:00"))
-        #expect(pastMidnight.live && wall(pastMidnight.since) == "2026-10-26 05:00 CDT" && wall(pastMidnight.until) == "2026-10-27 02:00 CDT", "12:30 AM is the day before's service")
-        let lastMinute = s.status(at: central("2026-10-27 01:59:30"))
-        #expect(lastMinute.live && ServiceSchedule.countdown(from: central("2026-10-27 01:59:30"), to: lastMinute.until) == "1m")
-        let parked = s.status(at: central("2026-10-27 02:00:00"))
-        #expect(!parked.live && wall(parked.since) == "2026-10-27 02:00 CDT" && wall(parked.until) == "2026-10-27 05:00 CDT", "parks at 2:00 AM")
-        let midnightClose = ServiceSchedule(open: "06:00", close: "24:00")
-        #expect(!midnightClose.status(at: central("2026-10-27 00:30:00")).live, "an older server's 24:00 still closes at midnight")
-        let early = s.status(at: central("2026-10-27 04:59:00"))
-        #expect(!early.live && ServiceSchedule.countdown(from: central("2026-10-27 04:59:00"), to: early.until) == "1m")
-        let open = s.status(at: central("2026-10-27 05:00:00"))
-        #expect(open.live, "5:00:00 AM is open")
-        let hours = ServiceSchedule(open: "07:30", close: "22:00")
-        #expect(!hours.status(at: central("2026-10-26 22:15:00")).live && wall(hours.status(at: central("2026-10-26 22:15:00")).until) == "2026-10-27 07:30 CDT", "the API's hours, when they differ")
+    // Before the first figures arrive it still starts, honestly empty, and
+    // fills in when they come.
+    @Test func startsBeforeTheFiguresAndFillsInWhenTheyArrive() async {
+        let (c, fake, _) = make()
+        await c.setEnabled(true, now: central("2026-11-12 08:00:00"))
+        #expect(fake.started.count == 1 && fake.started[0].1.detections == nil && display(fake.started[0].1).detectionsText == "—")
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 08:01:00"), detections: 12, sightings: 1))
+        await c.reconcile(now: central("2026-11-12 08:01:30"))
+        #expect(fake.updates.count == 1 && fake.updates[0].0.detections == 12 && fake.started.count == 1, "updated in place, not a second one")
+        // New figures: one update; the same figures again: nothing sent.
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 08:06:00"), detections: 15, sightings: 1))
+        await c.reconcile(now: central("2026-11-12 08:06:10"))
+        await c.reconcile(now: central("2026-11-12 08:07:00"))
+        #expect(fake.updates.count == 2 && fake.updates[1].0.detections == 15)
     }
 
-    // 8: daylight saving
+    // Relaunch: the app reconciles on becoming active, before Home has fetched
+    // today's figures. The running activity keeps its figures until new ones
+    // arrive, instead of flashing "not updated".
+    @Test func relaunchKeepsTheShownFiguresUntilNewOnesArrive() async {
+        let fake = FakeActivityBackend()
+        let (c, _, d) = make(fake)
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 09:00:00"), detections: 21, sightings: 2))
+        await c.setEnabled(true, now: central("2026-11-12 09:00:00"))
+        let relaunched = ServiceLiveActivityController(backend: fake, defaults: d)   // a new launch: no figures in memory
+        await relaunched.reconcile(now: central("2026-11-12 09:30:00"))
+        #expect(fake.updates.isEmpty && fake.started.count == 1 && fake.running.first?.detections == 21, "left as it was")
+        relaunched.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 09:30:00"), detections: 25, sightings: 2))
+        await relaunched.reconcile(now: central("2026-11-12 09:30:05"))
+        #expect(fake.updates.count == 1 && fake.running.first?.detections == 25)
+    }
 
-    @Test func daylightSavingKeepsWallClockTimes() {
-        let s = ServiceSchedule.standard
-        // Spring forward (Sun Mar 8, 2026: 2 AM → 3 AM): 2 AM doesn't exist, so service
-        // ends when it would have, 3:00 AM CDT; parked until 5:00 AM CDT.
-        let spring = s.status(at: central("2026-03-08 04:00:00"))
-        #expect(!spring.live && wall(spring.until) == "2026-03-08 05:00 CDT" && wall(spring.since) == "2026-03-08 03:00 CDT")
-        #expect(spring.until.timeIntervalSince(spring.since) == 2 * 3600, "a 23-hour day: 2 real hours parked")
-        let springLate = s.status(at: central("2026-03-08 01:30:00"))
-        #expect(springLate.live && wall(springLate.until) == "2026-03-08 03:00 CDT", "1:30 AM CST still runs, to 3:00 AM CDT")
-        // Fall back (Sun Nov 1, 2026: 2 AM → 1 AM): runs through both 1 AMs, parked from 2:00 AM CST.
-        let fall = s.status(at: central("2026-11-01 04:00:00"))
-        #expect(!fall.live && wall(fall.since) == "2026-11-01 02:00 CST" && wall(fall.until) == "2026-11-01 05:00 CST")
-        #expect(fall.until.timeIntervalSince(fall.since) == 3 * 3600, "3 real hours parked")
-        let fallDay = s.status(at: central("2026-11-01 12:00:00"))
-        #expect(fallDay.live && wall(fallDay.until) == "2026-11-02 02:00 CST")
+    // 5–8: staleness: an hour after the figures, or the next Central midnight
+    // (when "today" becomes yesterday), whichever comes first; DST-safe.
+    @Test func staleAtTheHourOrAtCentralMidnight() {
+        func state(_ at: String) -> ServiceActivityAttributes.ContentState {
+            ServiceActivityAttributes.ContentState(report(at: central(at), detections: 1, sightings: 1))
+        }
+        #expect(wall(state("2026-11-12 10:41:00").staleDate) == "2026-11-12 11:41 CST")
+        #expect(wall(state("2026-11-12 23:30:00").staleDate) == "2026-11-13 00:00 CST", "at midnight the figures are yesterday's")
+        // Fall back (Sun Nov 1, 2026) and spring forward (Sun Mar 8, 2026): midnight is still midnight.
+        #expect(wall(state("2026-10-31 23:20:00").staleDate) == "2026-11-01 00:00 CDT")
+        #expect(wall(state("2026-03-07 23:45:00").staleDate) == "2026-03-08 00:00 CST")
+        #expect(wall(state("2026-03-08 01:00:00").staleDate) == "2026-03-08 03:00 CDT", "an hour later across the skipped hour")
+        #expect(CentralTime.nextMidnight(after: central("2026-11-01 12:00:00")).timeIntervalSince(central("2026-11-01 00:00:00")) == 25 * 3600, "the 25-hour day")
+    }
+
+    // An activity started by the earlier build (the service countdown) decodes
+    // as "not updated" and is replaced, not left showing a countdown.
+    @Test func anActivityFromTheOldBuildIsReplaced() async throws {
+        let old = #"{"live":true,"since":783064800,"until":783147600}"#
+        let state = try JSONDecoder().decode(ServiceActivityAttributes.ContentState.self, from: Data(old.utf8))
+        #expect(state.day.isEmpty && state.detections == nil && display(state).stale && display(state).badge == "NOT UPDATED")
+        let attrs = try JSONDecoder().decode(ServiceActivityAttributes.self, from: Data(#"{"cityName":"Austin","openLabel":"5:00 AM","closeLabel":"2:00 AM"}"#.utf8))
+        #expect(attrs.cityName == "Austin")
+        let (c, fake, _) = make()
+        await c.setEnabled(true, now: central("2026-11-12 09:00:00"))
+        fake.running = [state]; fake.runningAttributes = [attrs]
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 09:00:00"), detections: 7, sightings: 0))
+        await c.reconcile(now: central("2026-11-12 09:01:00"))
+        #expect(fake.endAllCalls == 1 && fake.started.last?.0.cityName == "Austin & Dallas" && fake.started.last?.1.detections == 7 && fake.running.count == 1)
+    }
+
+    // 15, 16: restart reconciliation
+
+    @Test func launchReconcilesWhatIsRunning() async {
+        let (c, fake, _) = make()
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 12:00:00"), detections: 5, sightings: 1))
+        await c.setEnabled(true, now: central("2026-11-12 12:00:00"))
+        // A duplicate still around: ended; the figures are sent once.
+        let old = fake.running[0]
+        fake.running = [old, old]
+        c.latest = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 13:00:00"), detections: 9, sightings: 2))
+        await c.reconcile(now: central("2026-11-12 13:00:05"))
+        #expect(fake.updates.count == 1 && fake.updates[0].0.detections == 9 && fake.running.count == 1, "updated; the duplicate ended")
+        // iOS ended it (about 8 hours): the next launch starts a fresh one while the switch is on.
+        fake.running = []
+        await c.reconcile(now: central("2026-11-12 21:00:00"))
+        #expect(fake.started.count == 2)
+        // Switched off: a launch finds one left over and ends it, and never re-enables.
+        await c.setEnabled(false)
+        fake.running = [old]
+        await c.reconcile()
+        #expect(fake.running.isEmpty && !c.enabled && fake.started.count == 2)
+    }
+
+    @Test func failuresAndStalenessAreShownNotHidden() async {
+        let fake = FakeActivityBackend(); fake.failStart = true
+        let (c, _, _) = make(fake)
+        await c.setEnabled(true)
+        #expect(c.problem == .couldNotStart)
+        let s = ServiceActivityAttributes.ContentState(report(at: central("2026-11-12 10:00:00"), detections: 40, sightings: 3, yesterday: 52))
+        let live = display(s), stale = display(s, stale: true)
+        #expect(live.badge == "LIVE · 24/7" && live.detectionsText == "40" && live.sightingsText == "3" && live.versusYesterday == "−12 vs yesterday")
+        #expect(live.updatedText == "Updated 10:00 AM CT" && live.city == "Austin & Dallas" && live.headline == "Cybercab Daily")
+        #expect(stale.badge == "NOT UPDATED" && stale.detectionsText == "—" && stale.versusYesterday == nil, "past its time: says so instead of an old count")
+        let big = display(ServiceActivityAttributes.ContentState(report(at: .now, detections: 12_345, sightings: 0, yesterday: 12_345)))
+        #expect(big.detectionsText == "12,345" && big.versusYesterday == "Same as yesterday")
+    }
+
+    // The Home screen's Cybercab Daily card (with its animated car and road,
+    // the four figures and the Live Activity switch) at each iPhone width.
+    @Test func homeCardRendersAtEachWidth() throws {
+        try? FileManager.default.createDirectory(atPath: "/tmp/cch-shots", withIntermediateDirectories: true)
+        let r0 = report(at: .now, detections: 1234, sightings: 4, yesterday: 1200)
+        for (name, w) in [("se", 343.0), ("16", 361.0), ("max", 408.0)] {
+            let card = CybercabDailyCard(report: r0, error: nil).frame(width: w).padding(16)
+                .background(Color(red: 8 / 255, green: 9 / 255, blue: 10 / 255)).environment(\.colorScheme, .dark)
+            let r = ImageRenderer(content: card); r.scale = 3
+            let image = try #require(r.uiImage, "the card renders at \(name)")
+            #expect(image.size.height > 200)
+            try image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/cch-shots/home-daily-card-\(name).png"))
+        }
     }
 
     // 13, 14: unsupported devices and Live Activities turned off
@@ -150,41 +237,6 @@ struct LiveActivityTests {
         #expect(c.enabled && c.problem == .notAuthorized && !c.isShowing)
     }
 
-    // 15, 16: restart reconciliation, expiry and staleness
-
-    @Test func launchReconcilesWhatIsRunning() async {
-        let (c, fake, _) = make()
-        await c.setEnabled(true, now: central("2026-10-26 12:00:00"))
-        // Next morning: the old state (and a duplicate) still around.
-        let old = fake.running[0]
-        fake.running = [old, old]
-        await c.reconcile(now: central("2026-10-27 03:00:00"))
-        #expect(fake.updates.count == 1 && !fake.updates[0].0.live && fake.running.count == 1, "updated to parked; the duplicate ended")
-        // Nothing changed: no update.
-        await c.reconcile(now: central("2026-10-27 04:00:00"))
-        #expect(fake.updates.count == 1, "same state, not re-sent")
-        // iOS ended it (about 8 hours): the next launch starts a fresh one while the switch is on.
-        fake.running = []
-        await c.reconcile(now: central("2026-10-27 09:00:00"))
-        #expect(fake.started.count == 2 && fake.started[1].1.live)
-        // Switched off: a launch finds one left over and ends it, and never re-enables.
-        await c.setEnabled(false)
-        fake.running = [old]
-        await c.reconcile()
-        #expect(fake.running.isEmpty && !c.enabled && fake.started.count == 2)
-    }
-
-    @Test func expiryAndStalenessAreShownNotHidden() async {
-        let fake = FakeActivityBackend(); fake.failStart = true
-        let (c, _, _) = make(fake)
-        await c.setEnabled(true)
-        #expect(c.problem == .couldNotStart)
-        let stale = ServiceActivityDisplay(live: true, since: central("2026-10-26 06:00:00"), until: central("2026-10-27 00:00:00"), stale: true, openLabel: "6:00 AM", closeLabel: "2:00 AM")
-        #expect(stale.headline == "Status needs updating" && stale.badge == "NOT UPDATED", "past its change with no update: says so instead of a wrong 'live'")
-        let parked = ServiceActivityDisplay(live: false, since: central("2026-10-27 00:00:00"), until: central("2026-10-27 06:00:00"), stale: false, openLabel: "6:00 AM", closeLabel: "2:00 AM")
-        #expect(parked.badge == "PARKED" && parked.countdownLead == "Back on the road in")
-    }
-
     // Leaving the app keeps it running (an ended activity leaves the Dynamic
     // Island at once): only closing the app ends it.
     @Test func leavingTheAppKeepsItInTheDynamicIsland() async {
@@ -201,71 +253,17 @@ struct LiveActivityTests {
         #expect(fake.stayAwakeCalls == 1, "switched off: nothing to keep")
     }
 
-    // New hours: an activity started with the old ones (its details can't be
-    // updated) is replaced by one with the new hours, once.
-    @Test func newHoursReplaceAnActivityShowingTheOldOnes() async {
-        let (c, fake, _) = make()
-        c.schedule = ServiceSchedule(open: "06:00", close: "24:00")
-        await c.setEnabled(true, now: central("2026-10-26 12:00:00"))
-        #expect(fake.started.count == 1 && fake.started[0].0.closeLabel == "12:00 AM")
-        c.schedule = .standard
-        await c.reconcile(now: central("2026-10-26 12:05:00"))
-        #expect(fake.endAllCalls == 1 && fake.started.count == 2 && fake.started[1].0.closeLabel == "2:00 AM" && fake.running.count == 1, "ended and started again with 6:00 AM – 2:00 AM")
-        await c.reconcile(now: central("2026-10-26 12:10:00"))
-        #expect(fake.started.count == 2 && fake.endAllCalls == 1, "the same hours: left alone")
-    }
-
-    // The 24-hour track: the service window (two pieces past midnight) and the stretches the system fills.
-    @Test func dayTrackPlacesTheWindowAndTheRun() {
-        func display(_ s: ServiceSchedule.Status, stale: Bool = false) -> ServiceActivityDisplay {
-            ServiceActivityDisplay(live: s.live, since: s.since, until: s.until, stale: stale, openLabel: "5:00 AM", closeLabel: "2:00 AM")
-        }
-        func near(_ a: ClosedRange<CGFloat>, _ b: ClosedRange<CGFloat>) -> Bool { abs(a.lowerBound - b.lowerBound) < 0.001 && abs(a.upperBound - b.upperBound) < 0.001 }
-        let oneAM: CGFloat = 120.0 / 1440   // 2 AM on the track
-        let open: CGFloat = 300.0 / 1440    // 5 AM on the track
-        let live = display(ServiceSchedule.standard.status(at: central("2026-10-26 19:51:00")))
-        #expect(live.servicePieces.count == 2 && near(live.servicePieces[0], open...1) && near(live.servicePieces[1], 0...oneAM), "5 AM to the right edge, then 12 AM to 2 AM")
-        #expect(live.runs.count == 2 && near(live.runs[0].span, open...1) && near(live.runs[1].span, 0...oneAM))
-        #expect(wall(live.runs[0].time.upperBound) == "2026-10-27 00:00 CDT" && live.runs[1].time.lowerBound == live.runs[0].time.upperBound && wall(live.runs[1].time.upperBound) == "2026-10-27 02:00 CDT", "each piece fills in its own time, split at midnight")
-        let late = display(ServiceSchedule.standard.status(at: central("2026-10-27 00:30:00")))
-        #expect(late.live && late.runs.count == 2, "12:30 AM: live, the first piece full, the second filling")
-        let night = display(ServiceSchedule.standard.status(at: central("2026-10-27 03:00:00")))
-        #expect(night.servicePieces.count == 2 && night.runs.count == 1 && near(night.runs[0].span, oneAM...open), "parked: the window stays put; the night (2 AM to 5 AM) fills")
-        let stale = display(ServiceSchedule.standard.status(at: central("2026-10-26 19:51:00")), stale: true)
-        #expect(stale.runs.isEmpty, "stale: nothing claims to move")
-        let midnightClose = display(ServiceSchedule(open: "06:00", close: "24:00").status(at: central("2026-10-26 12:00:00")))
-        #expect(midnightClose.servicePieces.count == 1 && midnightClose.runs.count == 1 && near(midnightClose.runs[0].span, 0.25...1), "an older server's 6 AM to 12 AM: one piece")
-        let custom = display(ServiceSchedule(open: "07:30", close: "22:00").status(at: central("2026-10-26 22:15:00")))
-        #expect(custom.servicePieces.count == 1 && near(custom.servicePieces[0], 0.3125...(1320.0 / 1440)))
-        #expect(custom.runs.isEmpty, "a night across midnight isn't drawn as one bar")
-        #expect(live.headline == "Cybercabs are on the road now" && night.headline == "The fleet is parked for the night", "the website's words")
-    }
-
-    // The Home screen's Live now card (with its animated car and road) at each
-    // iPhone width, for review: the car sits center-right beside the headline.
-    @Test func homeCardRendersAtEachWidth() throws {
-        try? FileManager.default.createDirectory(atPath: "/tmp/cch-shots", withIntermediateDirectories: true)
-        for (name, w) in [("se", 343.0), ("16", 361.0), ("max", 408.0)] {
-            let card = ServiceStatusCard(hours: nil).frame(width: w).padding(16)
-                .background(Color(red: 8 / 255, green: 9 / 255, blue: 10 / 255)).environment(\.colorScheme, .dark)
-            let r = ImageRenderer(content: card); r.scale = 3
-            let image = try #require(r.uiImage, "the card renders at \(name)")
-            #expect(image.size.height > 200)
-            try image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/cch-shots/home-live-card-\(name).png"))
-        }
-    }
-
-    // 9–12: every presentation renders, live, parked and stale, at each iPhone
+    // 9–12: every presentation renders, live, with large numbers and stale, at each iPhone
     // width, in light and dark, inside the Dynamic Island's limits.
     @Test func presentationsRender() throws {
         try? FileManager.default.createDirectory(atPath: "/tmp/cch-shots", withIntermediateDirectories: true)
         #expect(UIImage(named: "CybercabLive") != nil, "the Cybercab image is in the bundle")
-        let live = ServiceActivityDisplay(live: true, since: central("2026-10-26 06:00:00"), until: .now.addingTimeInterval(3600 * 4 + 540), stale: false, openLabel: "6:00 AM", closeLabel: "2:00 AM")
-        let parked = ServiceActivityDisplay(live: false, since: central("2026-10-27 02:00:00"), until: .now.addingTimeInterval(3600 * 4), stale: false, openLabel: "6:00 AM", closeLabel: "2:00 AM")
-        let stale = ServiceActivityDisplay(live: true, since: central("2026-10-26 06:00:00"), until: .now.addingTimeInterval(-3600), stale: true, openLabel: "6:00 AM", closeLabel: "2:00 AM")
+        let live = display(ServiceActivityAttributes.ContentState(report(at: .now, detections: 1234, sightings: 4, yesterday: 1200)))
+        let big = display(ServiceActivityAttributes.ContentState(report(at: .now, detections: 123_456, sightings: 9_876, yesterday: 99_999)))
+        let stale = display(ServiceActivityAttributes.ContentState(report(at: .now.addingTimeInterval(-7200), detections: 40, sightings: 3)), stale: true)
         // Lock Screen and expanded widths: iPhone SE / 16 / 16 Pro Max.
         let widths: [(name: String, lock: CGFloat, island: CGFloat)] = [("se", 359, 355), ("16", 377, 371), ("max", 424, 408)]
-        for (name, d) in [("live", live), ("parked", parked), ("stale", stale)] {
+        for (name, d) in [("live", live), ("big-numbers", big), ("stale", stale)] {
             for scheme in [ColorScheme.dark, .light] {
                 let rows = VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 30) {

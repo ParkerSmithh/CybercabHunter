@@ -1,7 +1,8 @@
 import XCTest
 
-/// The Live now card's Live Activity switch in the running app, and the real
-/// Dynamic Island / Lock Screen it drives on the simulator (screenshots for review).
+/// The Cybercab Daily card's Live Activity switch in the running app, and the
+/// real Dynamic Island / Lock Screen it drives on the simulator (screenshots
+/// for review). Robotaxi service runs 24/7: nothing on Home counts down.
 @MainActor
 final class LiveActivityUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -20,13 +21,17 @@ final class LiveActivityUITests: XCTestCase {
     }
 
     func testSwitchIsOffByDefaultAndDrivesTheLiveActivity() throws {
-        var app = XCUIApplication()
+        var app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-resetLiveActivity"]
         app.launch()
         let toggle = app.switches["liveActivityToggle"]
         var n = 0
         while !toggle.exists && n < 10 { app.swipeUp(velocity: .slow); n += 1 }
-        XCTAssertTrue(toggle.waitForExistence(timeout: 15), "the switch is in the Live now card")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 15), "the switch is in the Cybercab Daily card")
+        let card = app.descendants(matching: .any)["cybercabDaily"]
+        XCTAssertTrue(card.exists && card.switches["liveActivityToggle"].exists, "inside the one Cybercab Daily card")
+        XCTAssertTrue(app.staticTexts["CYBERCAB DAILY"].exists && app.staticTexts["LIVE · 24/7"].exists)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Service ends' OR label CONTAINS[c] 'Back on the road' OR label CONTAINS[c] 'parked for the night' OR label CONTAINS[c] 'on the road now'")).firstMatch.exists, "no countdown or old service wording")
         XCTAssertEqual(toggle.value as? String, "0", "off by default")
         XCTAssertTrue(app.staticTexts["liveActivityStatus"].label.hasPrefix("Off"))
         saveShot(app, "live-activity-switch-off")
@@ -40,7 +45,7 @@ final class LiveActivityUITests: XCTestCase {
         let screen = XCUIScreen.main.screenshot()
         try screen.pngRepresentation.write(to: URL(fileURLWithPath: "/tmp/cch-shots/live-activity-island-home.png"))
         // Relaunch: the choice is kept and the activity reconciled, not restarted twice.
-        app = XCUIApplication()
+        app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home"]
         app.launch()
         let again = app.switches["liveActivityToggle"]

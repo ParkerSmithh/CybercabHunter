@@ -23,12 +23,17 @@ const CCC_CALC = (() => {
   // ---- Fleet ETA (simulation.html?view=eta) ----
   // Model, inputs and ranges: docs/fleet-eta-live-data-research.md §3.
 
-  // Both fleets' service hours, America/Chicago (owner-confirmed). One place to edit.
-  // 5 AM to 2 AM: the service day runs past midnight, so closeMinute (2 AM =
-  // 120) is smaller than openMinute; serviceStatus and serviceSegments handle that.
-  const SERVICE_HOURS = { openMinute: 5 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
-  // Dallas (launched Apr 18, 2026): 5 AM to 2 AM daily, the same as Austin (owner-confirmed, Nov 2026).
-  const DALLAS_SERVICE_HOURS = { openMinute: 5 * 60, closeMinute: 2 * 60, timeZone: 'America/Chicago' };
+  // Both fleets' service hours, America/Chicago. One place to edit. Robotaxi
+  // service runs 24/7 in Austin and Dallas (Tesla, Nov 2026; it was 5 AM to
+  // 2 AM): the whole day, 0 to 1440, so serviceStatus is always "Operating now"
+  // and serviceSegments is one full-day piece. A window that crosses midnight
+  // (closeMinute < openMinute) still works if hours ever come back.
+  const SERVICE_HOURS = { openMinute: 0, closeMinute: 1440, timeZone: 'America/Chicago' };
+  const DALLAS_SERVICE_HOURS = { openMinute: 0, closeMinute: 1440, timeZone: 'America/Chicago' };
+  // Around the clock: no opening or closing to show.
+  const isAllDay = (hours = SERVICE_HOURS) => hours.openMinute === 0 && hours.closeMinute >= 1440;
+  // "24/7", or "5:00 AM - 2:00 AM" for a window.
+  const hoursLabel = (hours = SERVICE_HOURS, sep = ' - ') => isAllDay(hours) ? '24/7' : `${clockLabel(hours.openMinute)}${sep}${clockLabel(hours.closeMinute)}`;
   // Dallas's introductory rate as reported at launch (FOX 4, Apr 20, 2026):
   // $3.25 base + $1.00 per mile. Not a published rate card.
   const DALLAS_REPORTED_RATE = { base: 3.25, perMile: 1.00, asOf: '2026-04-20' };
@@ -222,7 +227,7 @@ const CCC_CALC = (() => {
     fleetFinancials,
     SERVICE_HOURS, serviceSegments, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
     DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET, DALLAS_AREA_SQ_MI,
-    etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus
+    etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus, isAllDay, hoursLabel
   };
 })();
 

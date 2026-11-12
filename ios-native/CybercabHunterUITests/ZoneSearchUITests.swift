@@ -11,7 +11,7 @@ final class ZoneSearchUITests: XCTestCase {
     }
 
     func testSearchSheet() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         app.tabBars.buttons["Zones"].tap()
         let button = app.buttons["zoneSearchButton"]

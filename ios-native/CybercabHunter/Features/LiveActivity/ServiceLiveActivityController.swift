@@ -3,14 +3,15 @@ import Foundation
 import Observation
 import UIKit
 
-// The service-status Live Activity (Dynamic Island + Lock Screen), from the app's
-// side. OFF until the rider turns it on in the Live now card; turning it off ends
-// it at once. Its state comes from ServiceSchedule (the card's own logic) and is
-// fixed until the next change of service: the countdown and the bar are drawn by
-// the system, so nothing polls the website or runs timers. The app updates it
-// whenever it's opened (and when service changes while it's open); if it isn't
-// opened at a change, the activity turns stale at that moment (staleDate) and
-// says so.
+// The Cybercab Daily Live Activity (Dynamic Island + Lock Screen), from the
+// app's side. OFF until the rider turns it on in the Cybercab Daily card;
+// turning it off ends it at once. Robotaxi service runs 24/7, so it shows no
+// countdown: its state is today's Daily figures (camera detections, sightings;
+// Shared/DailyActivity.swift), which the Home screen hands over whenever fresh
+// ones arrive (opening the app, pull to refresh, coming back after five
+// minutes). Nothing polls in the background or runs timers: if the app isn't
+// opened, the activity turns stale (an hour after its figures, or at the next
+// Central midnight) and says so.
 //
 // It stays in the Dynamic Island while the rider is in other apps, and closing
 // the app (swiping it away) removes it when iOS says the app is closing. iOS
@@ -135,8 +136,9 @@ final class ServiceLiveActivityController {
 
     @ObservationIgnored let backend: ServiceActivityBackend
     @ObservationIgnored let defaults: UserDefaults
-    /// The service hours last loaded (the card passes the API's); the standard day until then.
-    @ObservationIgnored var schedule: ServiceSchedule = .standard
+    /// Today's figures last loaded (the Home screen passes the Daily report's);
+    /// nil until the first load, when it starts with "—" and updates once they arrive.
+    @ObservationIgnored var latest: ServiceActivityAttributes.ContentState?
 
     init(backend: ServiceActivityBackend? = nil, defaults: UserDefaults = .standard) {
         self.backend = backend ?? ActivityKitServiceBackend()
@@ -166,9 +168,9 @@ final class ServiceLiveActivityController {
         }
     }
 
-    /// Brings the running activity in line with the switch and the service day:
-    /// at launch, when the app comes back, when the hours load and at each change
-    /// of service while the app is open. Never turns the switch on by itself.
+    /// Brings the running activity in line with the switch and today's figures:
+    /// at launch, when the app comes back and whenever fresh figures arrive.
+    /// Never turns the switch on by itself.
     func reconcile(now: Date = .now) async {
         guard enabled else {
             if !backend.running.isEmpty { await backend.endAll() }
@@ -180,23 +182,28 @@ final class ServiceLiveActivityController {
         // the time kept for noticing a close is released (the next leave starts it again).
         backend.stopStayingAwake()
         await backend.dismissEnded()
-        let state = ServiceActivityAttributes.ContentState(schedule.status(at: now))
         var running = backend.running
-        // An activity's details (the hours it shows) can't be updated, only its
-        // state: when the hours changed, it is replaced by a new one.
+        // No figures loaded yet in this launch (the app just came back, Home
+        // hasn't fetched): a running activity keeps what it shows rather than
+        // being blanked to "not updated"; a new one starts empty and fills in.
+        let empty = ServiceActivityAttributes.ContentState(detections: nil, sightings: nil, detectionsYesterday: nil, day: "", updated: now)
+        let state = latest ?? running.first ?? empty
+        let staleDate = latest?.staleDate ?? (running.first.map { $0.day.isEmpty ? now.addingTimeInterval(3600) : $0.staleDate } ?? now.addingTimeInterval(3600))
+        // An activity's details (the area it covers) can't be updated, only its
+        // state: one with other details (an earlier build's countdown) is replaced.
         if !running.isEmpty, backend.runningAttributes.contains(where: { $0 != attributes }) {
             await backend.endAll()
             running = []
         }
         if running.isEmpty {
             do {
-                try backend.start(attributes, state, staleDate: state.until)
+                try backend.start(attributes, state, staleDate: staleDate)
                 problem = nil
             } catch {
                 problem = .couldNotStart
             }
         } else {
-            if running.count > 1 || running[0] != state { await backend.update(state, staleDate: state.until) }
+            if running.count > 1 || running[0] != state { await backend.update(state, staleDate: staleDate) }
             problem = nil
         }
     }
@@ -228,7 +235,5 @@ final class ServiceLiveActivityController {
         func set() { lock.withLock { value = true } }
     }
 
-    var attributes: ServiceActivityAttributes {
-        ServiceActivityAttributes(cityName: "Austin", openLabel: schedule.label(schedule.openMinute), closeLabel: schedule.label(schedule.closeMinute))
-    }
+    var attributes: ServiceActivityAttributes { ServiceActivityAttributes(cityName: ServiceActivityAttributes.coverage) }
 }

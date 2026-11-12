@@ -16,3 +16,13 @@ struct DailyReport: Decodable, Sendable, Equatable {
         let cameras: Int?
     }
 }
+
+extension ServiceActivityAttributes.ContentState {
+    /// The Live Activity's figures from the Daily report: today's camera
+    /// detections and sightings (Central), yesterday's detections, and when the
+    /// server made them.
+    init(_ report: DailyReport, now: Date = .now) {
+        self.init(detections: report.day.cameras, sightings: report.day.sightings, detectionsYesterday: report.previous?.cameras,
+                  day: report.today, updated: Format.instant(report.generatedAt) ?? now)
+    }
+}

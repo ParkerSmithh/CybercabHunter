@@ -24,6 +24,9 @@ struct StartupIntroTests {
         #expect(!StartupIntro.shouldPlay(arguments: ["-apiBase", "http://x"], reduceMotion: false, hasVideo: true))
         #expect(StartupIntro.shouldPlay(arguments: ["-apiBase", "http://x", "-playIntro"], reduceMotion: false, hasVideo: true))
         #expect(!StartupIntro.shouldPlay(arguments: ["-skipIntro"], reduceMotion: false, hasVideo: true))
+        // Suites that launch with no arguments at all (live data) are still tests.
+        #expect(!StartupIntro.shouldPlay(arguments: ["CybercabHunter"], environment: ["CCH_SKIP_INTRO": "1"], reduceMotion: false, hasVideo: true))
+        #expect(StartupIntro.shouldPlay(arguments: ["CybercabHunter", "-playIntro"], environment: ["CCH_SKIP_INTRO": "1"], reduceMotion: false, hasVideo: true))
     }
 
     @Test func theVideoIsBundled() throws {

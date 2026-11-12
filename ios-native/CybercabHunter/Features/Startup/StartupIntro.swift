@@ -40,10 +40,11 @@ final class StartupIntro {
     private var timeoutTask: Task<Void, Never>?
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments,
+         environment: [String: String] = ProcessInfo.processInfo.environment,
          reduceMotion: Bool = UIAccessibility.isReduceMotionEnabled,
          videoURL: URL? = StartupIntro.videoURL()) {
         let url = Self.debugURL(arguments) ?? videoURL
-        if Self.shouldPlay(arguments: arguments, reduceMotion: reduceMotion, hasVideo: url != nil), let url {
+        if Self.shouldPlay(arguments: arguments, environment: environment, reduceMotion: reduceMotion, hasVideo: url != nil), let url {
             phase = .waiting
             let player = AVPlayer(url: url)
             player.isMuted = true                        // the file has no sound; never touch other audio
@@ -62,10 +63,13 @@ final class StartupIntro {
     }
 
     /// Whether this launch opens with the animation.
-    nonisolated static func shouldPlay(arguments: [String], reduceMotion: Bool, hasVideo: Bool) -> Bool {
+    nonisolated static func shouldPlay(arguments: [String], environment: [String: String] = [:], reduceMotion: Bool, hasVideo: Bool) -> Bool {
         if arguments.contains("-skipIntro") || reduceMotion || !hasVideo { return false }
-        // UI tests (-apiBase) start straight in the app unless they ask for the intro.
-        if arguments.contains("-apiBase") && !arguments.contains("-playIntro") { return false }
+        // UI tests start straight in the app unless they ask for the intro:
+        // every test launch sets CCH_SKIP_INTRO (XCUIApplication.forTests());
+        // -apiBase marks a test-server launch too.
+        let underTest = environment["CCH_SKIP_INTRO"] == "1" || arguments.contains("-apiBase")
+        if underTest && !arguments.contains("-playIntro") { return false }
         return true
     }
 

@@ -11,7 +11,17 @@ struct HomepageStats: Decodable, Sendable, Equatable {
     let sightings: Sightings?
     let cameras: Cameras?
 
-    struct Hours: Decodable, Sendable, Equatable { let open: String; let close: String }
+    /// A zone's hours (worker/service-areas.js), Central. 24/7 is open "00:00",
+    /// close "24:00", all_day true (Robotaxi service runs around the clock).
+    struct Hours: Decodable, Sendable, Equatable {
+        let open: String
+        let close: String
+        var allDay: Bool? = nil
+        /// Around the clock: the flag, or a window covering the whole day.
+        var isAllDay: Bool { allDay == true || (open == "00:00" && (close == "24:00" || close == "00:00")) }
+        /// "24/7", or "5:00 AM – 2:00 AM".
+        var label: String { isAllDay ? "24/7" : "\(Format.clock(open)) – \(Format.clock(close))" }
+    }
 
     struct Area: Decodable, Sendable, Equatable {
         let squareMiles: Double?

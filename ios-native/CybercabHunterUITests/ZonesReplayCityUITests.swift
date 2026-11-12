@@ -9,7 +9,7 @@ final class ZonesReplayCityUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
     private func launch() -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-apiBase", "http://127.0.0.1:8799", "-tab", "zones"]
         app.launch()
         return app

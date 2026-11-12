@@ -16,7 +16,7 @@ final class DMVTrackerUITests: XCTestCase {
         while !(e.exists && e.isHittable) && n < swipes { app.swipeUp(velocity: .slow); n += 1 }
     }
     private func launch() -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "home", "-apiBase", Self.server]
         app.launch()
         return app

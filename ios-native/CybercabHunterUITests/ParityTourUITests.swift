@@ -20,7 +20,7 @@ final class ParityTourUITests: XCTestCase {
     }
 
     func testTour() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launch()
         XCTAssertTrue(app.buttons["homeViewNews"].waitForExistence(timeout: 20))
         sleep(4)

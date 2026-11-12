@@ -12,7 +12,7 @@ final class SightingAutofillUITests: XCTestCase {
         try XCTSkipUnless((response?.1 as? HTTPURLResponse)?.statusCode == 200, "Start the isolated community-test-server first")
     }
     private func form() -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "sightings", "-apiBase", "http://127.0.0.1:8799", "-session", "s-bob"]
         app.launch()
         XCTAssertTrue(app.buttons["submitSighting"].waitForExistence(timeout: 20))

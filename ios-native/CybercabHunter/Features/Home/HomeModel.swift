@@ -36,7 +36,7 @@ final class HomeModel {
     /// The whole screen (first open and pull-to-refresh).
     func loadAll(using api: APIClient) async {
         async let r: Void = load("registry", using: api) { self.registry = try await api.get("/api/registry/stats") }
-        async let d: Void = load("daily", using: api) { self.daily = try await api.get("/api/daily", query: [URLQueryItem(name: "day", value: Self.centralToday())]) }
+        async let d: Void = loadDaily(using: api)
         async let m: Void = load("dmv", using: api) { self.dmv = try await api.get("/api/dmv-registrations") }
         async let a: Void = load("areas", using: api) { self.areas = (try await api.get("/api/service-areas", as: ServiceAreasResponse.self)).areas }
         async let c: Void = loadCity(city, using: api, force: true)
@@ -45,6 +45,20 @@ final class HomeModel {
         // Spotlight / Siri: the fleet as a whole, from what Home just loaded.
         let (r2, d2, m2) = (registry, daily, dmv)
         SiriIndex.later { await SiriIndex.fleet(registry: r2, daily: d2, dmv: m2) }
+    }
+
+    /// When Cybercab Daily last loaded (for the comeback refresh).
+    private var dailyLoadedAt: Date?
+    func loadDaily(using api: APIClient) async {
+        await load("daily", using: api) { self.daily = try await api.get("/api/daily", query: [URLQueryItem(name: "day", value: Self.centralToday())]) }
+        dailyLoadedAt = .now
+    }
+    /// Back in the app: today's figures again if they're over five minutes old
+    /// (the website's own cadence and the Worker's cache time; never more often),
+    /// or the Central day changed. The Live Activity follows (LiveActivitySwitch).
+    func refreshDailyIfStale(using api: APIClient, now: Date = .now) async {
+        if let at = dailyLoadedAt, now.timeIntervalSince(at) < 300, daily?.today == Self.centralToday() { return }
+        await loadDaily(using: api)
     }
 
     func loadCity(_ key: String, using api: APIClient, force: Bool = false) async {

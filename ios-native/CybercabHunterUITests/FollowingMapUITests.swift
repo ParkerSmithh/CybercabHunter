@@ -23,7 +23,7 @@ final class FollowingMapUITests: XCTestCase {
     }
 
     private func openZones(session: String?, extra: [String] = []) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones", "-apiBase", base] + (session.map { ["-session", $0] } ?? []) + extra
         app.launch()
         return app
@@ -106,7 +106,7 @@ final class FollowingMapUITests: XCTestCase {
 
     func testAFailedRequestSaysSoAndOffersTryAgain() {
         // Nothing listens on this port: the same as being offline, for this request and the map's others.
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", "zones", "-apiBase", "http://127.0.0.1:1", "-session", "s-alice"]
         app.launch()
         XCTAssertTrue(app.buttons["mapSourceFollowing"].waitForExistence(timeout: 30))

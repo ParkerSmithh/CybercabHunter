@@ -107,17 +107,27 @@
   }
 
   // ---- operating hours (always Central time, from the visitor's clock)
+  // 24/7 in both cities (calc.js SERVICE_HOURS): "24/7 · every day"; a window
+  // ("5:00 AM - 2:00 AM · Central, daily") if hours ever come back.
   const H = C.SERVICE_HOURS;
-  const hoursText = `${C.clockLabel(H.openMinute)} - ${C.clockLabel(H.closeMinute)}`;
-  qa('[data-hours]').forEach(el => { el.textContent = hoursText; });
-  // The window's pieces on the 24-hour track: 5 AM–12 AM, then 12 AM–2 AM (past midnight).
-  C.serviceSegments(H).forEach((g, i) => {
-    const w = $(i ? 'hoursWindowLate' : 'hoursWindow');
-    if (!w) return;
-    w.style.left = `${(g.start / 1440) * 100}%`;
-    w.style.width = `${((g.end - g.start) / 1440) * 100}%`;
-    w.classList.remove('hidden');
-  });
+  qa('[data-hours]').forEach(el => { el.textContent = C.hoursLabel(H); });
+  qa('[data-hours-note]').forEach(el => { el.textContent = C.isAllDay(H) ? 'every day, Central' : 'Central, daily'; });
+  // The window's pieces on the 24-hour track: the whole track for 24/7; two
+  // pieces for a window past midnight (5 AM–12 AM, then 12 AM–2 AM).
+  function drawWindow(hours, first, late) {
+    const pieces = C.serviceSegments(hours);
+    [first, late].forEach((id, i) => {
+      const w = $(id);
+      if (!w) return;
+      const g = pieces[i];
+      if (!g) { w.classList.add('hidden'); return; }
+      w.style.left = `${(g.start / 1440) * 100}%`;
+      w.style.width = `${((g.end - g.start) / 1440) * 100}%`;
+      w.classList.remove('hidden');
+    });
+  }
+  drawWindow(H, 'hoursWindow', 'hoursWindowLate');
+  drawWindow(C.DALLAS_SERVICE_HOURS, 'dalHoursWindow', 'dalHoursWindowLate');
   function renderHours() {
     const s = C.serviceStatus(new Date(), H);
     qa('[data-service-status]').forEach(el => {

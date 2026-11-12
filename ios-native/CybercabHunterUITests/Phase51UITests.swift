@@ -17,7 +17,7 @@ final class Phase51UITests: XCTestCase {
     }
 
     private func launch(_ tab: String, session: String?) -> XCUIApplication {
-        let app = XCUIApplication()
+        let app = XCUIApplication.forTests()
         app.launchArguments = ["-tab", tab, "-apiBase", Self.server] + (session.map { ["-session", $0] } ?? [])
         app.launch()
         return app

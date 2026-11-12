@@ -186,8 +186,10 @@
   // Map" opens the full map.
   function rowArea(d) {
     const a = d.area || {};
-    const hours = a.hours ? `${clock(a.hours.open)} – ${clock(a.hours.close)}` : '—';
-    const span = a.hours ? ((Number(a.hours.close.split(':')[0]) - Number(a.hours.open.split(':')[0]) + 24) % 24 || 24) : null;
+    // 24/7 (open 00:00, close 24:00) reads "24/7", around the clock.
+    const allDay = !!(a.hours && (a.hours.all_day || (a.hours.open === '00:00' && a.hours.close === '24:00')));
+    const hours = a.hours ? (allDay ? '24/7' : `${clock(a.hours.open)} – ${clock(a.hours.close)}`) : '—';
+    const span = a.hours ? (allDay ? 24 : ((Number(a.hours.close.split(':')[0]) - Number(a.hours.open.split(':')[0]) + 24) % 24 || 24)) : null;
     const days = a.in_service_since ? Math.max(0, Math.floor((Date.now() - Date.parse(`${a.in_service_since}T06:00:00Z`)) / 864e5)) : null;
     const density = a.vehicles && a.square_miles ? `≈ ${one(Math.round((a.vehicles / a.square_miles) * 100) / 10)} vehicles per 10 mi²` : 'No vehicles documented yet';
     const added = a.vehicles ? `+${int(a.vehicles_added_7d || 0)} this week · ${int(a.vehicles_added_prev_7d || 0)} the week before` : 'None in the registry yet';
@@ -196,7 +198,7 @@
         tile('Coverage', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—', esc(density)) +
         tile('In service since', esc(date(a.in_service_since)), days != null ? `${int(days)} days of service` : '') +
         tile('Vehicles documented', int(a.vehicles), esc(added)) +
-        tile('Service hours', esc(hours), span ? `${span} hours a day · Central` : '')) +
+        tile('Service hours', esc(hours), allDay ? 'Around the clock, every day' : span ? `${span} hours a day · Central` : '')) +
       (a.description ? `<p class="mt-3 text-sm text-slate-400 leading-relaxed max-sm:mt-2 max-sm:text-xs max-sm:leading-snug">${esc(a.description)}</p>` : '') +
       footnote('Zone facts as published for the service area; vehicles from the public registry.') +
       about('Coverage, launch date and hours are the published figures for the zone (the Zones page shows the same). Vehicles documented counts the public registry\'s Cybercabs in this city: its own city, or, with none set, where its counted rides were.');
