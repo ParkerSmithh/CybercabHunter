@@ -62,6 +62,26 @@ homeDom.window.fetch = async url => { assert.match(url, /^\/api\/daily\?day=\d{4
 homeDom.window.eval(js); await new Promise(r => setTimeout(r, 80));
 assert.deepEqual([...homeDom.window.document.querySelectorAll('#dailyStats .daily-value')].map(n => n.textContent), ['+1', '+2', '1', '1']);
 assert.equal(homeDom.window.document.querySelectorAll('#dailyStats .is-updated').length, 0, 'the first figures of the day don\'t glow');
+// Phones: the date and update time as one compact line, kept in step with the
+// two desktop lines (no extra request); the short service line.
+{
+  const doc = homeDom.window.document, stampText = doc.getElementById('dailyStamp').textContent;
+  const short = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(today + 'T12:00:00Z'));
+  assert.equal(stampText, `${short} · ${doc.getElementById('dailyUpdated').textContent}`, 'the phone line: "Thu, Nov 12 · Updated 2:12 PM CT"');
+  assert.match(stampText, /^\w{3}, \w{3} \d{1,2} · Updated \d{1,2}:\d\d [AP]M CT$/);
+  assert.equal(doc.querySelector('#cybercabDaily .daily-sub-short').textContent, 'Robotaxi 24/7 in Austin and Dallas');
+  assert.equal(doc.querySelector('#cybercabDaily .daily-sub-long').textContent, 'Robotaxi service runs 24/7 in Austin and Dallas.', 'desktop keeps its line');
+  assert(!doc.querySelector('#cybercabDaily input, #cybercabDaily [role="switch"]') && !/Live Activity/i.test(doc.getElementById('cybercabDaily').textContent), 'no Live Activity toggle or text on the website');
+}
+{
+  const css = fs.readFileSync('public/css/daily.css', 'utf8');
+  const phone = css.slice(css.indexOf('@media(max-width:639px)'), css.indexOf('@media(max-width:374px)'));
+  assert(/#cybercabDaily\{[^}]*min-height:0/.test(phone), 'phones: no forced banner height');
+  assert(/\.activity-stats\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/.test(phone), 'phones: the four figures in one row');
+  assert(/grid-template-rows:subgrid/.test(phone) && /@supports not \(grid-template-rows:subgrid\)/.test(phone), 'phones: labels line up, with a fallback');
+  assert(/\.daily-sub-long,#cybercabDaily \.activity-date,#cybercabDaily \.daily-updated\{display:none\}/.test(phone) && /\.daily-sub-short,#cybercabDaily \.daily-stamp\{display:block\}/.test(phone), 'phones: the compact lines replace the long ones');
+  assert(/^#cybercabDaily \.daily-sub-short,#cybercabDaily \.daily-stamp\{display:none\}$/m.test(css), 'desktop and tablet: the compact lines are hidden');
+}
 homeDom.window.close();
 // Midnight rollover, visibility, and unavailable states remain part of Daily.
 let clock = now, tick, requests = 0;

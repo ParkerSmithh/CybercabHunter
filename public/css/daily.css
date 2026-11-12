@@ -40,13 +40,40 @@
 @media(max-width:1023px){
   #cybercabDaily{grid-template-columns:minmax(0,1fr) 200px;gap:16px 20px}
 }
-/* Phones: the figures two by two. */
-@media(max-width:640px){
-  #cybercabDaily{grid-template-columns:minmax(0,1fr) 112px;gap:12px}
+#cybercabDaily .daily-sub-short,#cybercabDaily .daily-stamp{display:none}
+/* Phones: a compact dashboard, as in the iOS app (build 7): the short service
+   line, the date and update time on one line, the four figures in one row with
+   "vs yesterday" under each, a smaller car; no forced height (style.css gives
+   the banner one on phones). No stat icons here: they took a third of each
+   narrow column. */
+@media(max-width:639px){
+  #cybercabDaily{grid-template-columns:minmax(0,1fr) 96px;gap:10px 8px;padding:12px 14px;min-height:0}
+  #cybercabDaily .sb-eyebrow{font-size:10px;gap:6px}
+  #cybercabDaily .sb-headline{margin-top:4px;font-size:16px;gap:7px}
   #cybercabDaily .daily-title-icon{width:16px;height:16px}
-  #cybercabDaily .daily-sub{font-size:12px}
-  #cybercabDaily .activity-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
-  #cybercabDaily .activity-stats>div{padding-left:10px}
-  #cybercabDaily .activity-stats dd{font-size:23px;grid-template-rows:29px auto}
-  #cybercabDaily .daily-metric-detail{white-space:normal}
+  #cybercabDaily .daily-sub{margin-top:3px;font-size:12.5px;font-weight:600;line-height:1.3;color:rgb(var(--gold-ink))}
+  #cybercabDaily .daily-sub-long,#cybercabDaily .activity-date,#cybercabDaily .daily-updated{display:none}
+  #cybercabDaily .daily-sub-short,#cybercabDaily .daily-stamp{display:block}
+  #cybercabDaily .daily-stamp{margin-top:4px;font-size:11px;line-height:1.35;color:rgb(var(--n-400));font-variant-numeric:tabular-nums}
+  /* The car and its road stay in their own column, clear of the text. */
+  #cybercabDaily .sb-car{margin:-6px -14px -4px 0}
+  #cybercabDaily .sb-road{left:0;right:-14px}
+  /* One row of four; the label rows line up (subgrid) so the figures sit
+     level when a label takes two lines. */
+  #cybercabDaily .activity-stats{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:auto auto;gap:0}
+  #cybercabDaily .activity-stats>div{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:0;padding:0 6px;border-left:1px solid rgb(var(--gold) / .16)}
+  @supports not (grid-template-rows:subgrid){#cybercabDaily .activity-stats dt{min-height:2.5em}}
+  #cybercabDaily .activity-stats>div:first-child{padding-left:0;border-left:0}
+  #cybercabDaily .daily-metric-icon{display:none}
+  #cybercabDaily .activity-stats dt{display:block;font-size:10.5px;line-height:1.25}
+  #cybercabDaily .activity-stats dd{display:block;margin-top:2px;font-size:20px;line-height:1.2}
+  #cybercabDaily .daily-metric-detail{margin-top:1px;font-size:9.5px;line-height:1.25;white-space:normal}
+}
+/* The narrowest phones: labels may take two lines; the figures stay level. */
+@media(max-width:374px){
+  #cybercabDaily{padding:12px;grid-template-columns:minmax(0,1fr) 78px}
+  #cybercabDaily .sb-headline{font-size:15px}
+  #cybercabDaily .activity-stats>div{padding:0 4px}
+  #cybercabDaily .activity-stats dt{min-height:2.5em;font-size:10px}
+  #cybercabDaily .activity-stats dd{font-size:18px}
 }

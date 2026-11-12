@@ -54,6 +54,17 @@
     }
     return dl;
   }
+  // Phones show the date and the update line as one compact line ("Thu, Nov 12
+  // · Updated 2:12 PM CT", css/daily.css), kept in step with the two lines it
+  // replaces there; no extra requests.
+  const shortDay = date => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(date + 'T12:00:00Z'));
+  function stamp() {
+    const node = $('dailyStamp');
+    if (node) node.textContent = `${shortDay(lastDay)} · ${$('dailyUpdated').textContent}`;
+  }
+  if ($('dailyStamp') && typeof MutationObserver === 'function') {
+    new MutationObserver(stamp).observe($('dailyUpdated'), { childList: true, characterData: true, subtree: true });
+  }
   let data, lastDay = today(), fetched = 0, sequence = 0, behind = 0;
   // The figures last shown (a new day starts fresh: no glow at midnight).
   let shownValues = {}, shownDay = null;
@@ -63,6 +74,7 @@
     fetched = Date.now();
     lastDay = today();
     $('dailyDate').textContent = readable(lastDay);
+    stamp();
     if (!data || data.today !== lastDay) $('dailyStats').replaceChildren(stats(null));
     try {
       const response = await fetch(`/api/daily?day=${lastDay}`);
