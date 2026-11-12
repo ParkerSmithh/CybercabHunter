@@ -35,6 +35,23 @@ final class SubmitSightingModel {
     private(set) var preparingPhoto = false
     var photoError: String?
 
+    // Where the photos say they were taken (PhotoLocation): a suggestion for
+    // the Location, read on the phone and never uploaded. One entry per
+    // distinct place, in the order the photos came; the first is suggested,
+    // and when photos disagree the rider chooses. Nothing here ever changes a
+    // place the rider picked: only confirming a place in the review sheet does.
+    private(set) var photoLocations: [PhotoLocation] = []
+    var chosenPhotoLocation = 0
+    private(set) var photoLocationDismissed = false
+    /// The suggestion to offer, unless dismissed.
+    var photoSuggestion: PhotoLocation? {
+        photoLocationDismissed || photoLocations.isEmpty ? nil : photoLocations[min(max(chosenPhotoLocation, 0), photoLocations.count - 1)]
+    }
+    /// The photos point to different places (more than 150 m apart).
+    var photosDisagree: Bool { photoLocations.count > 1 }
+    /// The city the suggestion is in or near, from the loaded service areas.
+    var photoSuggestionArea: ServiceArea? { photoSuggestion?.area(in: areas) }
+
     // City (optional) and the place search that needs it
     private(set) var areas: [ServiceArea] = []
     var cityName = "" { didSet { if cityName != oldValue { cityChanged() } } }
@@ -112,20 +129,37 @@ final class SubmitSightingModel {
         photoError = nil
         preparingPhoto = true
         defer { preparingPhoto = false }
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<(Data, UIImage?), PhotoEncoder.Failure> in
+        // The location is read from the original (the upload is re-encoded
+        // without any metadata, so it can't carry the GPS).
+        let result = await Task.detached(priority: .userInitiated) { () -> Result<(Data, UIImage?, PhotoLocation?), PhotoEncoder.Failure> in
             do {
                 let jpeg = try PhotoEncoder.sightingJPEG(from: original)
-                return .success((jpeg, ImagePipeline.downsample(jpeg, maxPixel: 700)))
+                return .success((jpeg, ImagePipeline.downsample(jpeg, maxPixel: 700), PhotoLocation.read(from: original)))
             } catch let failure as PhotoEncoder.Failure { return .failure(failure) } catch { return .failure(.unreadable) }
         }.value
         switch result {
-        case .success(let (jpeg, image)): photo = jpeg; preview = image
+        case .success(let (jpeg, image, found)): photo = jpeg; preview = image; notePhotoLocation(found)
         case .failure(.tooLarge): photoError = Self.tooLarge
         case .failure: photoError = Self.errors["unsupported_file_type"]
         }
     }
 
-    func removePhoto() { photo = nil; preview = nil }
+    /// Without a photo there's nothing to suggest a location from (a place
+    /// already picked stays picked).
+    func removePhoto() { photo = nil; preview = nil; clearPhotoLocations() }
+
+    /// A new photo's location: added when it's a new place (the first photo's
+    /// stays the suggestion; a different one makes them disagree, for the rider
+    /// to choose). A photo with no location changes nothing. A new place
+    /// re-offers a suggestion the rider dismissed earlier.
+    func notePhotoLocation(_ found: PhotoLocation?) {
+        guard let found else { return }
+        if photoLocations.contains(where: { $0.distance(to: found) <= PhotoLocation.samePlaceMeters }) { return }
+        photoLocations.append(found)
+        photoLocationDismissed = false
+    }
+    func dismissPhotoLocation() { photoLocationDismissed = true }
+    private func clearPhotoLocations() { photoLocations = []; chosenPhotoLocation = 0; photoLocationDismissed = false }
 
     // MARK: Location: real places only (type, then pick from the list)
 
@@ -224,7 +258,7 @@ final class SubmitSightingModel {
 
     /// Clears the form after a submission ("Submit another").
     func reset(keepOutcome: Bool = false) {
-        photo = nil; preview = nil; photoError = nil
+        photo = nil; preview = nil; photoError = nil; clearPhotoLocations()
         place = nil; locationText = ""; places = []; placesMessage = nil; locationError = nil
         date = nil; cameraId = ""; notes = ""; plate = ""
         if !keepOutcome { outcome = .editing; error = nil }

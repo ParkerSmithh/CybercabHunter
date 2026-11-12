@@ -84,15 +84,19 @@ final class SightingLocationModel {
         await lookup(fix, area: area, api: api)
     }
 
-    func lookup(_ fix: CLLocation, area: ServiceArea, api: APIClient) async {
+    /// `fromPhoto`: the fix is a photo's saved location (PhotoLocation), not
+    /// a live reading, so it isn't held to the 60-second recency rule.
+    func lookup(_ fix: CLLocation, area: ServiceArea, api: APIClient, fromPhoto: Bool = false) async {
         guard phase == .locating, areaKey == area.key else { return }
         phase = .lookingUp
         let gen = generation
         if fix.horizontalAccuracy.isFinite && fix.horizontalAccuracy >= 0 { accuracy = fix.horizontalAccuracy }
         guard fix.horizontalAccuracy.isFinite, fix.horizontalAccuracy >= 0,
               fix.horizontalAccuracy <= 500, CLLocationCoordinate2DIsValid(fix.coordinate),
-              abs(fix.timestamp.timeIntervalSinceNow) < 60 else {
-            fail(.locationAccuracy, "Location isn't accurate or recent enough to suggest a nearby place. Retry or search manually.")
+              fromPhoto || abs(fix.timestamp.timeIntervalSinceNow) < 60 else {
+            fail(.locationAccuracy, fromPhoto
+                ? "The photo's saved location isn't accurate enough to suggest a nearby place. Search manually."
+                : "Location isn't accurate or recent enough to suggest a nearby place. Retry or search manually.")
             return
         }
         diagnostics.locationAccepted = true
