@@ -15,6 +15,12 @@ function midnight(date) {
   const ms = Date.parse(date + 'T00:00:00Z');
   return new Date(ms - usLocalParts(ms + 6 * 3600e3, 'America/Chicago').offset * 3600e3).toISOString();
 }
+// Sightings are riders' own photo submissions. A traffic-camera capture
+// submitted through the sighting form (vehicle_observations.camera_id set) is
+// a camera detection: approving it copies it into camera_detections
+// (worker/camera-sightings.js, source_submission_id), where Detections counts
+// it. Counting it here too made Sightings repeat Detections.
+export const USER_SIGHTING_SQL = `(o.camera_id IS NULL OR trim(o.camera_id) = '')`;
 const emptyDay = date => ({ date, registry: null, dmv: null, sightings: null, cameras: null, cybercab: null, model_y: null });
 const eligibleCybercab = `${publicVehicleEligibleSql('v')} AND (lower(trim(v.model)) = 'cybercab' OR v.approval_basis IS NOT NULL) AND lower(trim(COALESCE(v.model, ''))) NOT IN ('model y', 'model_y', 'modely')`;
 
@@ -54,7 +60,8 @@ export async function buildDaily(sql, now = Date.now()) {
         COALESCE(SUM(o.observed_at >= ? AND o.observed_at < ?), 0) AS today
         FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
         LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
-        WHERE ${PUBLIC_PHOTO_SIGHTING_SQL} AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL)`)
+        WHERE ${PUBLIC_PHOTO_SIGHTING_SQL} AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL)
+          AND ${USER_SIGHTING_SQL}`)
         .bind(sqlBounds[0], sqlBounds[1], sqlBounds[1], sqlBounds[2]).first();
       const first = row?.first ? localDate(row.first) : today;
       for (let i = 0; i < days.length; i++) if (days[i].date >= first) days[i].sightings = Number(row?.[i ? 'today' : 'previous'] || 0);

@@ -130,6 +130,21 @@ struct LiveActivityTests {
         #expect(fake.updates.count == 1 && fake.running.first?.detections == 25)
     }
 
+    // Sightings and detections are separate figures all the way through: the
+    // Daily report's day.sightings and day.cameras (worker/daily.js) become the
+    // Live Activity's sightings and detections, and "vs yesterday" uses
+    // yesterday's detections only.
+    @Test func sightingsAndDetectionsStayIndependent() {
+        let r = report(at: central("2026-11-13 10:00:00"), detections: 7, sightings: 0, yesterday: 22)
+        #expect(r.day.cameras == 7 && r.day.sightings == 0)
+        let state = ServiceActivityAttributes.ContentState(r)
+        #expect(state.detections == 7 && state.sightings == 0 && state.detectionsYesterday == 22)
+        let d = display(state)
+        #expect(d.detectionsText == "7" && d.sightingsText == "0" && d.versusYesterday == "−15 vs yesterday")
+        let both = display(ServiceActivityAttributes.ContentState(report(at: central("2026-11-13 10:00:00"), detections: 7, sightings: 3, yesterday: 7)))
+        #expect(both.detectionsText == "7" && both.sightingsText == "3" && both.versusYesterday == "Same as yesterday")
+    }
+
     // 5–8: staleness: an hour after the figures, or the next Central midnight
     // (when "today" becomes yesterday), whichever comes first; DST-safe.
     @Test func staleAtTheHourOrAtCentralMidnight() {
