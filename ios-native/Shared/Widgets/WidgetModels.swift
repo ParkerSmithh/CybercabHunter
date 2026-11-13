@@ -20,6 +20,9 @@ enum WidgetAPI {
         if !query.isEmpty { components.queryItems = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var request = URLRequest(url: components.url!)
         request.timeoutInterval = 15
+        // Today's Cybercab Daily skips the phone's cache (Cloudflare marks cached
+        // answers max-age=14400); everything else keeps its caching.
+        if path == "/api/daily" { request.cachePolicy = .reloadIgnoringLocalCacheData }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await session.data(for: request)

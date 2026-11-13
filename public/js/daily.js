@@ -77,7 +77,11 @@
     stamp();
     if (!data || data.today !== lastDay) $('dailyStats').replaceChildren(stats(null));
     try {
-      const response = await fetch(`/api/daily?day=${lastDay}`);
+      // cache: 'no-cache': the browser asks the server every time (Cloudflare's
+      // 5-minute edge cache still answers). Cached responses come back with
+      // Cloudflare's 4-hour browser lifetime (max-age=14400), so without this
+      // the browser kept showing an old day's figures for up to 4 hours.
+      const response = await fetch(`/api/daily?day=${lastDay}`, { cache: 'no-cache' });
       if (!response.ok) throw new Error('Daily unavailable');
       const body = await response.json();
       if (token !== sequence) return;

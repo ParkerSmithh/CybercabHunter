@@ -25,7 +25,10 @@ actor SiriData {
         let key = path + "?" + query.map { "\($0.name)=\($0.value ?? "")" }.joined(separator: "&")
         if let e = entries[key], now.timeIntervalSince(e.at) < Self.ttl, let v = try? await e.task.value as? T { return v }
         let api = Self.api
-        let task = Task<any Sendable, any Error> { try await api.get(path, query: query, as: T.self) }
+        // Today's Cybercab Daily skips the phone's HTTP cache (Cloudflare marks
+        // cached answers max-age=14400); this cache's own short TTL still applies.
+        let fresh = path == "/api/daily"
+        let task = Task<any Sendable, any Error> { try await api.get(path, query: query, as: T.self, fresh: fresh) }
         entries[key] = (now, task)
         requestCount += 1
         do {
