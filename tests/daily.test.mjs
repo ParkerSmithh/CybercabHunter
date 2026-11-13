@@ -239,4 +239,33 @@ assert.equal((await buildDaily(partiallyFailing,now)).day.dmv,null);
   assert.deepEqual([...doc.querySelectorAll('#dailyStats .daily-metric-detail')].map(n => n.textContent).slice(2), ['-3 vs yesterday', '-15 vs yesterday'], 'each against its own yesterday');
   page.window.close();
 }
-console.log('Cybercab Daily: counts, privacy, source errors, baseline, DST, rollover, cache and deleted routes; sightings vs detections passed');
+// ---- Freshness: the browser never answers from its own cache ----
+// Cloudflare serves cached /api/daily with max-age=14400 (4 hours), so the
+// browser kept an old response (7 and 7) after the fix was live. The card
+// asks with cache: 'no-cache', and a newer response replaces the figures.
+{
+  const page = new JSDOM(home, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://test/' });   // a visible tab
+  const calls = [], responses = [
+    { day: { date: today, registry: 3, dmv: 0, sightings: 5, cameras: 5 }, previous: { date: prior, registry: 2, dmv: 0, sightings: 13, cameras: 13 } },
+    { day: { date: today, registry: 3, dmv: 0, sightings: 0, cameras: 7 }, previous: { date: prior, registry: 2, dmv: 0, sightings: 0, cameras: 13 } }
+  ];
+  page.window.fetch = async (url, init) => {
+    calls.push({ url, init });
+    const r = responses[Math.min(calls.length - 1, responses.length - 1)];
+    return new Response(JSON.stringify({ today, timezone: 'America/Chicago', generated_at: new Date().toISOString(), errors: {}, ...r }));
+  };
+  page.window.eval(js); await new Promise(r => setTimeout(r, 80));
+  const values = () => [...page.window.document.querySelectorAll('#dailyStats .daily-value')].map(n => n.textContent).slice(2);
+  assert.equal(calls[0].init && calls[0].init.cache, 'no-cache', "the browser's 4-hour cache is bypassed");
+  assert.deepEqual(values(), ['5', '5'], 'the first answer');
+  // Five minutes later the card asks again (Cloudflare's edge cache answers it) and shows the new figures.
+  const realNow = page.window.Date.now.bind(page.window.Date);
+  page.window.Date.now = () => realNow() + 6 * 60e3;
+  page.window.document.dispatchEvent(new page.window.Event('visibilitychange'));
+  await new Promise(r => setTimeout(r, 80));
+  assert.equal(calls.length, 2, 'one more request, not more');
+  assert.equal(calls[1].init.cache, 'no-cache');
+  assert.deepEqual(values(), ['0', '7'], 'Sightings 0 and Detections 7 replace 5 and 5');
+  page.window.close();
+}
+console.log('Cybercab Daily: counts, privacy, source errors, baseline, DST, rollover, cache and deleted routes; sightings vs detections; freshness passed');

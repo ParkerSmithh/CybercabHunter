@@ -48,6 +48,9 @@ struct FleetSnapshot: Codable, Equatable, Sendable {
     private static func fetch(_ base: URL, _ path: String, _ session: URLSession) async throws -> Data {
         var request = URLRequest(url: base.appending(path: path))
         request.timeoutInterval = 15
+        // Today's Cybercab Daily skips the phone's cache (Cloudflare marks cached
+        // answers max-age=14400): a widget never shows an old day's figures.
+        if path == "/api/daily" { request.cachePolicy = .reloadIgnoringLocalCacheData }
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else { throw LoadError.http(status) }

@@ -50,7 +50,11 @@ final class HomeModel {
     /// When Cybercab Daily last loaded (for the comeback refresh).
     private var dailyLoadedAt: Date?
     func loadDaily(using api: APIClient) async {
-        await load("daily", using: api) { self.daily = try await api.get("/api/daily", query: [URLQueryItem(name: "day", value: Self.centralToday())]) }
+        // fresh: past this phone's HTTP cache (Cloudflare's 5-minute edge cache
+        // still answers). Cloudflare sends cached answers with a 4-hour
+        // max-age, so the phone kept an old day's figures (and the Live
+        // Activity with them) for up to 4 hours. No extra requests.
+        await load("daily", using: api) { self.daily = try await api.get("/api/daily", query: [URLQueryItem(name: "day", value: Self.centralToday())], fresh: true) }
         dailyLoadedAt = .now
     }
     /// Back in the app: today's figures again if they're over five minutes old
