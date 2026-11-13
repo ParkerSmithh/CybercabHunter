@@ -1399,6 +1399,11 @@ const CCC = (() => {
     backdrop.addEventListener('click', () => set(false, true));
     panel.querySelectorAll('[data-map-drawer-close]').forEach(b => b.addEventListener('click', () => set(false, true)));
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('is-open')) set(false, true); });
+    // A choice made inside the drawer that the map then shows (the Zones
+    // page's city switch fires 'map-drawer-dismiss' when the city changes):
+    // close it so the map's move is visible. Only an open drawer (below lg);
+    // focus returns to the toggle, so it reopens as usual.
+    panel.addEventListener('map-drawer-dismiss', () => { if (panel.classList.contains('is-open')) set(false, true); });
     if (!window.matchMedia) return;
     const wide = window.matchMedia('(min-width: 1024px)');
     const onWide = () => { if (wide.matches) set(false, false); };

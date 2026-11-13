@@ -399,11 +399,12 @@
 
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/calc.js?v=13"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/main.js?v=34"></script>
 <script src="js/austin-map.js?v=13"></script>
 <script src="js/map-search.js?v=3"></script>
 <script src="js/zones-heatmap.js?v=4"></script>
 <script src="js/zones-following.js?v=2"></script>
+<script src="js/zone-warp.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -464,6 +465,7 @@
   const austinMapWrap = document.getElementById('austinMapWrap');
   cityBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      const changed = btn.getAttribute('aria-pressed') !== 'true';
       cityBtns.forEach(b => { b.className = CITY_BTN_INACTIVE; b.setAttribute('aria-pressed', 'false'); });
       btn.className = CITY_BTN_ACTIVE;
       btn.setAttribute('aria-pressed', 'true');
@@ -473,6 +475,8 @@
       austinContent.classList.toggle('hidden', isDallas);
       dallasContent.classList.toggle('hidden', !isDallas);
       setCity(isDallas ? 'dallas' : 'austin');
+      // Phones: a new city closes the Zone details drawer so the move shows (js/main.js).
+      if (changed) btn.dispatchEvent(new CustomEvent('map-drawer-dismiss', { bubbles: true }));
     });
   });
 
@@ -542,6 +546,9 @@
   const heat = window.CCCZonesHeat ? CCCZonesHeat.attach(map, { city: () => currentCity }) : null;
   // All Sightings | Following (js/zones-following.js): All Sightings by default; the map works without it.
   const following = window.CCCZonesFollowing ? CCCZonesFollowing.attach(map, { city: () => currentCity, features }) : null;
+  // City switches travel there (js/zone-warp.js); without it the map jumps, as before.
+  const warp = window.CCCZoneWarp ? CCCZoneWarp.attach(map, { sources: { austin: 'service-zone', dallas: 'service-zone-dallas' }, padding: zonePadding }) : null;
+  const frameZone = (city, bounds, from) => warp ? warp.go(city, bounds, from) : map.fitBounds(bounds, { padding: zonePadding(), animate: false });
 
   // ---- The selected city: map view, camera markers, search, replay link, title ----
   // Dallas: frame the service zone alone, centred in the map area beside the
@@ -556,6 +563,7 @@
   };
   function setCity(city) {
     if (city === currentCity) return;
+    const fromCity = currentCity;
     currentCity = city;
     const meta = CITY_META[city];
     document.title = meta.title;
@@ -567,13 +575,13 @@
     if (heat) heat.refresh();
     if (following) following.refresh();
     if (city === 'dallas') {
-      map.fitBounds(dallasZoneBounds, { padding: zonePadding(), animate: false });
+      frameZone('dallas', dallasZoneBounds, fromCity);
       if (!dallasStatsLoaded) {
         dallasStatsLoaded = true;
         loadFleetStats('dallas', { count: 'dalFleetCountOut', median: 'dalMedianFareOut', avg: 'dalAvgFareOut', perMile: 'dalPerMileOut', basis: 'dalFareBasis' });
       }
     } else {
-      map.fitBounds(zoneBounds, { padding: zonePadding(), animate: false });
+      frameZone('austin', zoneBounds, fromCity);
     }
     requestAnimationFrame(() => map.resize());
   }
