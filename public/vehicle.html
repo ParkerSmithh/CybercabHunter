@@ -31,7 +31,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -112,21 +112,21 @@
     </div>
 
     <!-- Invalid vehicle link: the URL itself has no usable id -->
-    <div id="vehicleInvalid" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="vehicleInvalid" class="hidden glass rounded-2xl p-10 max-w-xl text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">Invalid vehicle link</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">This vehicle link doesn't look right. It may be incomplete or mistyped.</p>
       <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to CybercabHunter</a>
     </div>
 
     <!-- Not found: a well-formed id with no matching vehicle -->
-    <div id="vehicleNotFound" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="vehicleNotFound" class="hidden glass rounded-2xl p-10 max-w-xl text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">Vehicle not found</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">We don't have a record of this vehicle. The link may be out of date, or the vehicle may not be in our registry.</p>
       <a href="index.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Back to CybercabHunter</a>
     </div>
 
     <!-- Network/server failure — NOT the same as not-found -->
-    <div id="vehicleError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl text-center">
+    <div id="vehicleError" class="hidden glass rounded-2xl p-10 max-w-xl text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">We couldn't load this vehicle</h1>
       <p id="vehicleErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="vehicleRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
@@ -136,7 +136,7 @@
     <div id="vehicleLoaded" class="hidden">
       <!-- The vehicle, in the Fleet ETA model-card style (js/vehicle.js sets its
            colour: gold Cybercab, red Model Y, slate otherwise; React Bits glow). -->
-      <div id="vHero" data-glow class="dmv-card reveal-on-scroll relative mb-6 rounded-2xl border p-6 lg:p-8 min-h-[220px] max-sm:mb-4 max-sm:p-4 max-sm:min-h-[150px]" style="--c:148 163 184;border-color:#94a3b859;background:linear-gradient(135deg, #94a3b81c, transparent 62%)">
+      <div id="vHero" data-glow data-animate="fade-up" class="dmv-card relative mb-6 rounded-2xl border p-6 lg:p-8 min-h-[220px] max-sm:mb-4 max-sm:p-4 max-sm:min-h-[150px]" style="--c:148 163 184;border-color:#94a3b859;background:linear-gradient(135deg, #94a3b81c, transparent 62%)">
         <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
           <img id="vCybercabImage" src="images/dmv-cybercab.webp" alt="Cybercab (generic vehicle-type image, not a photo of this specific vehicle)" class="hidden absolute right-[-4%] bottom-[-6%] w-[46%] max-w-[440px] opacity-95 max-sm:w-[52%] max-sm:bottom-[-2%]">
         </div>
@@ -150,7 +150,7 @@
         </div>
       </div>
 
-      <div class="glass rounded-2xl p-7 reveal-on-scroll mb-8 max-sm:p-4 max-sm:mb-4" style="--c:250 224 48">
+      <div class="glass rounded-2xl p-7 mb-8 max-sm:p-4 max-sm:mb-4" style="--c:250 224 48" data-animate="fade-up">
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Rides · Distance · Dates</p>
         <h2 data-split class="font-display font-bold text-2xl tracking-[-0.02em] text-white uppercase mt-1 mb-1 max-sm:text-lg">Recorded ride history</h2>
         <p class="text-xs text-slate-500 mb-6 max-sm:text-[11px] max-sm:leading-snug max-sm:mb-4">Based on rides and vehicle sightings recorded by Cybercab Hunter, not necessarily this vehicle's complete history, and "last seen" does not mean it is currently operating.</p>
@@ -316,5 +316,8 @@
   CCC.init();
 </script>
 <script src="js/vehicle.js?v=14"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

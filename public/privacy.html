@@ -26,7 +26,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -47,7 +47,7 @@
      lawyer and makes no legal or compliance claims. Items marked "To be
      confirmed" need a decision before this is published as the policy. -->
 <main id="main" tabindex="-1" class="py-14 max-sm:py-8">
-  <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed max-sm:space-y-7">
+  <div class="max-w-3xl mx-auto px-6 lg:px-10 space-y-10 text-sm text-slate-300 leading-relaxed max-sm:space-y-7" data-animate-stagger="fade-up" data-animate-distance="20" data-animate-each="0.05">
 
     <div id="privacyDraftNotice" class="rounded-xl border border-amber-400/40 bg-amber-400/5 px-5 py-4 text-amber-200">
       <strong>Draft — pending legal review.</strong> This page describes how Cybercab Hunter currently handles data. It is not yet a reviewed privacy policy, and sections marked “To be confirmed” are still open.
@@ -104,5 +104,8 @@
 
   </div>
 </main>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

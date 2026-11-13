@@ -19,7 +19,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -104,14 +104,14 @@
     </div>
 
     <!-- Error: the request failed — this is NOT the signed-out state -->
-    <div id="dataError" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
+    <div id="dataError" class="hidden glass rounded-2xl p-10 max-w-xl mx-auto text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">We couldn't load your rider data</h1>
       <p id="dataErrorDetail" class="text-slate-400 text-sm leading-relaxed mb-6">Something went wrong reaching the server. You're still signed in, and your data is safe.</p>
       <button id="dataRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
     </div>
 
     <!-- Signed-out state -->
-    <div id="dataSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
+    <div id="dataSignedOut" class="hidden glass rounded-2xl p-10 max-w-xl mx-auto text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">Sign in to view your rider data</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Your rider data is built entirely from your own Tesla Robotaxi receipts.</p>
       <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
@@ -153,7 +153,7 @@
            above). #gmailNotice explains a one-time ?gmail= result from the
            dormant Gmail OAuth callback. updateAccountsPanel() in
            js/rider-data.js shows the panel when either part applies. -->
-      <div id="accountsPanel" class="hidden reveal-on-scroll mb-8 glass rounded-2xl p-6 max-sm:p-4 max-sm:mb-4 flex items-center justify-between gap-4 flex-wrap">
+      <div id="accountsPanel" class="hidden mb-8 glass rounded-2xl p-6 max-sm:p-4 max-sm:mb-4 flex items-center justify-between gap-4 flex-wrap" data-animate="fade-up" data-animate-distance="24">
         <div id="dataUnlinkTeslaPrompt" class="hidden max-w-2xl">
           <div class="font-display font-bold text-base mb-1">TESLA ACCOUNT CONNECTED</div>
           <p class="text-slate-400 text-sm">Your Tesla account provides eligible vehicle information. Unlinking removes vehicle access but keeps your existing ride history.</p>
@@ -166,7 +166,7 @@
 
       <!-- Overview hero — identity is kept minimal and read-only here for
            orientation only; editing lives on profile.html. -->
-      <div class="reveal-on-scroll mb-8 relative overflow-hidden rounded-2xl glass p-6 lg:p-8 max-sm:p-3.5 max-sm:mb-3">
+      <div class="mb-8 relative overflow-hidden rounded-2xl glass p-6 lg:p-8 max-sm:p-3.5 max-sm:mb-3" data-animate="fade-up" data-animate-distance="24">
         <div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gold/10 blur-3xl pointer-events-none"></div>
         <div class="relative flex flex-col lg:flex-row lg:items-center gap-6">
           <div class="flex-1 w-full min-w-0">
@@ -220,7 +220,7 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 max-sm:gap-3 max-sm:mb-3">
         <!-- Ride history summary -->
-        <div class="glass rounded-2xl p-7 max-sm:p-3.5 reveal-on-scroll lg:col-span-2">
+        <div class="glass rounded-2xl p-7 max-sm:p-3.5 lg:col-span-2" data-animate="fade-up" data-animate-distance="24">
           <div class="flex items-baseline justify-between gap-3 mb-5 max-sm:mb-3">
             <h2 data-split class="font-display font-bold text-xl max-sm:text-base">RIDE HISTORY</h2>
             <span class="text-xs text-slate-500">Counted rides only</span>
@@ -242,7 +242,7 @@
         </div>
 
         <!-- Spending -->
-        <div class="glass rounded-2xl p-7 max-sm:p-3.5 reveal-on-scroll">
+        <div class="glass rounded-2xl p-7 max-sm:p-3.5" data-animate="fade-up" data-animate-distance="24">
           <h2 data-split class="font-display font-bold text-xl mb-1 max-sm:text-base">SPENDING</h2>
           <p class="text-xs text-slate-500 mb-5 max-sm:mb-3 max-sm:text-[11px]">From the fares printed on your receipts. Only you can see this.</p>
           <div id="spendingEmpty" class="hidden text-sm text-slate-500">No fares recorded yet. They'll appear here once a receipt with a fare is added.</div>
@@ -253,7 +253,7 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 max-sm:gap-3 max-sm:mb-3">
         <!-- Monthly activity -->
-        <div class="glass rounded-2xl p-7 max-sm:p-3.5 reveal-on-scroll lg:col-span-2">
+        <div class="glass rounded-2xl p-7 max-sm:p-3.5 lg:col-span-2" data-animate="fade-up" data-animate-distance="24">
           <div class="flex items-baseline justify-between flex-wrap gap-2 mb-1">
             <h2 data-split class="font-display font-bold text-xl max-sm:text-base">MONTHLY ACTIVITY</h2>
             <span id="monthlySummary" class="text-xs text-slate-500 max-sm:text-[11px]">Rides per month, last 12 months</span>
@@ -267,7 +267,7 @@
         </div>
 
         <!-- Cities -->
-        <div class="glass rounded-2xl p-7 max-sm:p-3.5 reveal-on-scroll">
+        <div class="glass rounded-2xl p-7 max-sm:p-3.5" data-animate="fade-up" data-animate-distance="24">
           <h2 data-split class="font-display font-bold text-xl mb-5 max-sm:text-base max-sm:mb-3">CITIES</h2>
           <div id="citiesList" class="space-y-3 text-sm max-sm:space-y-2 max-sm:text-[13px]"></div>
           <div id="citiesEmpty" class="hidden text-sm text-slate-500">No cities recorded yet.</div>
@@ -275,7 +275,7 @@
       </div>
 
       <!-- Ride list -->
-      <div class="glass rounded-2xl p-7 max-sm:p-3.5 reveal-on-scroll mb-8">
+      <div class="glass rounded-2xl p-7 max-sm:p-3.5 mb-8" data-animate="fade-up" data-animate-distance="24">
         <div class="flex items-baseline justify-between flex-wrap gap-2 mb-5 max-sm:mb-2">
           <h2 data-split class="font-display font-bold text-xl max-sm:text-base">YOUR RIDES</h2>
           <span id="ridesTotal" class="text-xs text-slate-500"></span>
@@ -459,5 +459,8 @@
   CCC.init();
 </script>
 <script src="js/rider-data.js?v=26"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

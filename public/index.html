@@ -31,7 +31,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/home-overview.css?v=7">
@@ -136,7 +136,7 @@
         <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#FAE030]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
       </h1>
       <p id="heroTypewriter" class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed max-sm:mt-3 max-sm:text-sm">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
-      <div class="flex flex-wrap gap-3 mt-8 reveal-on-scroll max-sm:mt-5" data-delay="320">
+      <div class="flex flex-wrap gap-3 mt-8 max-sm:mt-5" data-animate="fade-up" data-animate-distance="16" data-animate-delay="0.32">
         <a href="/news" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
           <!-- Phones keep the original label width so the hero layout stays fixed;
                from sm up the button fits "View News" and its arrow (gap-2, 8px). -->
@@ -161,8 +161,8 @@
        The city tabs only change the maps and detail rows.
        Each starts as an em dash and only becomes the server's number. -->
   <div class="max-w-7xl mx-auto px-6 lg:px-10 pb-4">
-    <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 max-sm:mb-1.5 max-sm:text-[10px]"><span id="statCityLabel" class="text-gold">All cities</span> · live</p>
-    <dl class="grid grid-cols-3 border-y border-white/[0.07] divide-x divide-white/[0.07]">
+    <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 max-sm:mb-1.5 max-sm:text-[10px]" data-animate="fade-up" data-animate-distance="16"><span id="statCityLabel" class="text-gold">All cities</span> · live</p>
+    <dl class="grid grid-cols-3 border-y border-white/[0.07] divide-x divide-white/[0.07]" data-animate-stagger="fade-up" data-animate-distance="24">
       <div class="py-6 pr-6 max-sm:py-4 max-sm:pr-4">
         <dt class="text-xs text-slate-500 max-sm:min-h-8">Cybercabs Registered</dt>
         <dd class="stat-value mt-2 text-3xl sm:text-4xl font-semibold text-white max-sm:mt-1 max-sm:text-2xl"><span id="statVehicles">—</span></dd>
@@ -186,7 +186,7 @@
      each against yesterday. ===== -->
 <section class="pt-4 max-sm:pt-3" aria-label="Cybercab Daily">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div id="cybercabDaily" class="service-banner rounded-2xl border text-sm" data-state="live">
+    <div id="cybercabDaily" class="service-banner rounded-2xl border text-sm" data-state="live" data-animate="fade-up">
       <div class="sb-main">
         <p class="sb-eyebrow text-emerald-300"><span class="relative flex w-2.5 h-2.5 shrink-0" aria-hidden="true"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping motion-reduce:animate-none"></span><span class="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>Live · 24/7</p>
         <h2 class="sb-headline font-display font-bold text-white uppercase tracking-wide"><svg class="daily-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-14 4h3m4 0h3m-10 3h3"/></svg>Cybercab Daily</h2>
@@ -205,7 +205,7 @@
 <!-- ===== Live map ===== -->
 <section class="pt-14 pb-20 lg:pt-20 max-sm:pt-10 max-sm:pb-14" id="map">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4 max-sm:flex-nowrap max-sm:items-center max-sm:gap-2">
+    <div data-animate="fade-up" class="mb-6 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4 max-sm:flex-nowrap max-sm:items-center max-sm:gap-2">
       <h2 class="font-display font-bold text-3xl lg:text-4xl tracking-[-0.03em] text-white max-sm:text-xl max-sm:whitespace-nowrap">SERVICE ZONES</h2>
     <!-- One Austin/Dallas selector controls everything below: the service-area
          facts and mini map swap to that city's, the one fleet chart redraws
@@ -221,10 +221,10 @@
            GET /api/homepage-stats): coverage, in service since, vehicles
            documented, hours, and the zone's description — across the top,
            above the minimap and the fleet chart. -->
-      <div id="rowArea" data-row="area" class="sm:col-span-2 xl:col-span-3 min-w-0"></div>
+      <div id="rowArea" data-row="area" class="sm:col-span-2 xl:col-span-3 min-w-0" data-animate="fade-up"></div>
 
       <!-- Austin mini map -->
-      <div id="homeZoneAustin" class="service-zone-card home-zone-panel">
+      <div id="homeZoneAustin" class="service-zone-card home-zone-panel" data-animate="fade-up">
         <div class="home-zone-heading"><h3>AUSTIN MINIMAP</h3><p>Published service zone</p></div>
         <div class="home-zone-viewport">
         <div id="zoneMap-austin" class="service-zone-map"></div>
@@ -262,7 +262,7 @@
            fleet count. Nothing here is hard-coded; see initFleetGrowthChart(). -->
       <!-- A Cybercab-only registry panel: summary rail beside the chart on
            wide screens, summary strip above it on smaller screens. -->
-      <div id="homeFleetChart" class="home-growth-panel">
+      <div id="homeFleetChart" class="home-growth-panel" data-animate="fade-up">
         <div class="home-growth-heading">
           <div class="home-growth-identity">
           <div class="min-w-0">
@@ -315,7 +315,7 @@
      Tesla's automated-vehicle roster from TxDMV, snapshotted daily. ===== -->
 <section class="pb-14 max-sm:pb-9" aria-label="Texas DMV registrations">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-dmv-panel class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+    <div data-dmv-panel class="glass rounded-2xl p-6 min-w-0 max-sm:p-4" data-animate="fade-right" data-animate-distance="32"></div>
   </div>
 </section>
 
@@ -323,7 +323,7 @@
      SVG map from js/us-sightings-data.js — no map service. ===== -->
 <section class="pb-14 max-sm:pb-9" aria-label="Cybercab sightings across the US">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-us-map class="home-data-panel min-w-0"></div>
+    <div data-us-map class="home-data-panel min-w-0" data-animate="fade-left" data-animate-distance="32"></div>
   </div>
 </section>
 
@@ -333,8 +333,8 @@
      database, "—" where there is no data yet. Each starts with a skeleton. -->
 <section id="cityRows" class="pb-20 max-sm:pb-14" aria-label="City details">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 space-y-14 max-sm:space-y-9">
-    <div id="rowRides" data-row="rides"></div>
-    <div id="rowSightings" data-row="sightings"></div>
+    <div id="rowRides" data-row="rides" data-animate="fade-up"></div>
+    <div id="rowSightings" data-row="sightings" data-animate="blur"></div>
   </div>
 </section>
 </main>
@@ -485,7 +485,7 @@
 
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/calc.js?v=14"></script>
-<script src="js/daily.js?v=7" defer></script>
+<script src="js/daily.js?v=8" defer></script>
 <script src="js/main.js?v=34"></script>
 <script src="js/home-stats.js?v=9"></script>
 <script src="js/home-rows.js?v=18"></script>
@@ -1219,5 +1219,8 @@
   }
   initFleetGrowthChart();
 </script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>
