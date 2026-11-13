@@ -170,4 +170,73 @@ const partiallyFailing = { prepare(query) {
  return d1.prepare(query);
 } };
 assert.equal((await buildDaily(partiallyFailing,now)).day.dmv,null);
-console.log('Cybercab Daily: counts, privacy, source errors, baseline, DST, rollover, cache and deleted routes passed');
+// ---- Sightings vs camera detections: independent figures ----
+// Sightings are riders' approved photo sightings; a traffic-camera capture
+// submitted through the sighting form (observation camera_id) is a camera
+// detection only (approval copies it into camera_detections). They used to be
+// counted as both, so Sightings repeated Detections.
+{
+  // Today's Central midnight, from the real clock (DST-safe).
+  const centralMidnight = date => [5, 6].map(h => Date.parse(`${date}T0${h}:00:00Z`)).find(ms => localDate(ms) === date && localDate(ms - 1000) !== date);
+  const midnightMs = centralMidnight(today);
+  const at = (offsetMinutes) => new Date(midnightMs + offsetMinutes * 60e3);
+  const sqlAt = d => d.toISOString().slice(0, 19).replace('T', ' ');
+  const scenarioNow = Math.max(now, midnightMs + 6 * 3600e3);   // a few hours into today
+  async function scenario({ userToday = 0, userYesterday = 0, capturesToday = 0, watchToday = 0, capturesYesterday = 0, watchYesterday = 0, ineligibleToday = 0, edges = false }) {
+    const env = await makeEnv();
+    const run = (q, ...b) => env.d1.prepare(q).bind(...b)._exec();
+    let n = 0;
+    const sighting = (when, { status = 'approved', camera = null } = {}) => {
+      const id = `s${++n}`;
+      run("INSERT INTO submissions(id,user_id,submission_type,status,evidence_type,submitted_at) VALUES (?, 'u1', 'vehicle_sighting', ?, 'photo', ?)", id, status, sqlAt(when));
+      run('INSERT INTO vehicle_observations(id, user_id, submission_id, observed_at, evidence_ref, public_id, camera_id) VALUES (?, \'u1\', ?, ?, \'photo\', ?, ?)', id, id, sqlAt(when), id.padStart(32, '0'), camera);
+      return id;
+    };
+    const detection = (when, source = null) => run('INSERT INTO camera_detections(id,camera_id,camera_name,lat,lng,observed_at,source_submission_id) VALUES (?,?,?,30,-97,?,?)', `d${++n}`, `cam${n}`, 'Congress', when.toISOString(), source);
+    // A capture: the camera photo as an approved sighting, and its map detection.
+    const capture = when => detection(when, sighting(when, { camera: '65' }));
+    for (let i = 0; i < userToday; i++) sighting(at(60 + i));
+    for (let i = 0; i < capturesToday; i++) capture(at(120 + i));
+    for (let i = 0; i < watchToday; i++) detection(at(180 + i));
+    for (let i = 0; i < userYesterday; i++) sighting(at(-600 - i));
+    for (let i = 0; i < capturesYesterday; i++) capture(at(-500 - i));
+    for (let i = 0; i < watchYesterday; i++) detection(at(-400 - i));
+    for (let i = 0; i < ineligibleToday; i++) { sighting(at(240 + i), { status: 'rejected' }); sighting(at(300 + i), { status: 'pending' }); }
+    if (edges) {   // one minute either side of Central midnight
+      sighting(at(-1)); detection(at(-1));
+      sighting(at(1)); detection(at(1));
+    }
+    return buildDaily(env.d1, scenarioNow);
+  }
+  // 1. The reported bug: seven camera detections (captures) and no rider sightings.
+  let r = await scenario({ capturesToday: 7 });
+  assert.equal(r.day.sightings, 0, 'no rider sightings today: 0, not the detections');
+  assert.equal(r.day.cameras, 7, 'seven camera detections');
+  r = await scenario({ capturesToday: 4, watchToday: 3 });
+  assert.deepEqual([r.day.sightings, r.day.cameras], [0, 7], 'captures and watch detections are all detections');
+  // 2. Three rider sightings and seven detections.
+  r = await scenario({ userToday: 3, capturesToday: 2, watchToday: 5 });
+  assert.deepEqual([r.day.sightings, r.day.cameras], [3, 7]);
+  // 3. Yesterday's figures are their own.
+  r = await scenario({ userToday: 3, watchToday: 7, userYesterday: 2, capturesYesterday: 4, watchYesterday: 1 });
+  assert.deepEqual([r.previous.sightings, r.previous.cameras], [2, 5], "yesterday: 2 rider sightings, 5 detections");
+  assert.deepEqual([r.day.sightings, r.day.cameras], [3, 7]);
+  // 4. Rejected and pending sightings don't count.
+  r = await scenario({ userToday: 1, ineligibleToday: 2 });
+  assert.equal(r.day.sightings, 1, 'only approved sightings');
+  // 5. Central midnight: 11:59 PM is yesterday, 12:01 AM today, for both.
+  r = await scenario({ edges: true });
+  assert.deepEqual([r.previous.sightings, r.previous.cameras, r.day.sightings, r.day.cameras], [1, 1, 1, 1]);
+}
+// 6. The website shows each figure and its own comparison.
+{
+  const page = new JSDOM(home, { runScripts: 'outside-only', url: 'https://test/' });
+  page.window.fetch = async () => new Response(JSON.stringify({ today, timezone: 'America/Chicago', generated_at: new Date().toISOString(), errors: {},
+    day: { date: today, registry: 2, dmv: 0, sightings: 0, cameras: 7 }, previous: { date: prior, registry: 5, dmv: 0, sightings: 3, cameras: 22 } }));
+  page.window.eval(js); await new Promise(r => setTimeout(r, 80));
+  const doc = page.window.document;
+  assert.deepEqual([...doc.querySelectorAll('#dailyStats .daily-value')].map(n => n.textContent), ['+2', '+0', '0', '7'], 'Sightings 0, Detections 7');
+  assert.deepEqual([...doc.querySelectorAll('#dailyStats .daily-metric-detail')].map(n => n.textContent).slice(2), ['-3 vs yesterday', '-15 vs yesterday'], 'each against its own yesterday');
+  page.window.close();
+}
+console.log('Cybercab Daily: counts, privacy, source errors, baseline, DST, rollover, cache and deleted routes; sightings vs detections passed');
