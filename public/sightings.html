@@ -30,7 +30,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -99,7 +99,7 @@
 <section class="py-16">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <!-- Header: the title, what this page is, and the replay map. -->
-    <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5 max-sm:mb-5 max-sm:flex-row max-sm:items-end max-sm:gap-3">
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-5 max-sm:mb-5 max-sm:flex-row max-sm:items-end max-sm:gap-3" data-animate="fade-up" data-animate-distance="24">
       <div class="min-w-0">
         <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold">Community spotted</p>
         <h1 class="mt-2 font-display font-bold text-4xl lg:text-5xl tracking-tight text-white max-sm:mt-1 max-sm:text-[1.75rem]">SIGHTINGS</h1>
@@ -114,7 +114,7 @@
 
     <!-- Stats for the selected city, from sighting timestamps in Austin time (GET /api/sightings?stats=1).
          Each value starts as an em dash and only becomes a number the server sent. -->
-    <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 max-sm:grid-cols-3 max-sm:gap-2 max-sm:mb-5">
+    <div id="sightingStats" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 max-sm:grid-cols-3 max-sm:gap-2 max-sm:mb-5" data-animate-stagger="fade-up" data-animate-distance="20" data-animate-each="0.06">
       <div data-glow class="dmv-card glass relative rounded-xl border p-4 min-w-0 max-sm:px-2.5 max-sm:py-2.5" style="--c:250 224 48;border-color:#FAE03073;background:linear-gradient(135deg, #FAE03024, transparent 70%)">
         <div class="sg-label max-sm:truncate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>All time · all cities</div>
         <div id="statTotal" class="dmv-card-num mt-1.5 max-sm:mt-0.5 max-sm:text-lg font-display font-bold text-2xl text-gold leading-snug tabular-nums">—</div>
@@ -148,7 +148,7 @@
     </div>
 
     <!-- Toolbar: city filter, how many sightings it holds, and the sort. -->
-    <div class="glass rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div class="glass rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3" data-animate="fade-up" data-animate-distance="16">
       <div class="flex flex-wrap items-center gap-3 min-w-0">
         <!-- One button per supported service area (GET /api/service-areas), built by js/sightings.js. -->
         <div id="cityFilters" role="group" aria-label="Filter sightings by city" class="flex flex-wrap gap-2 min-h-[44px]"></div>
@@ -169,12 +169,12 @@
       <div class="glass rounded-2xl overflow-hidden animate-pulse hidden sm:block"><div class="aspect-[4/3] bg-white/5"></div><div class="p-3 space-y-2"><div class="h-3 w-16 rounded bg-white/10"></div><div class="h-3 w-24 rounded bg-white/5"></div></div></div>
     </div>
 
-    <div id="sightingsEmpty" data-glow class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+    <div id="sightingsEmpty" data-glow data-animate="scale" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
       <h2 data-split class="font-display font-bold text-2xl mb-2">No sightings yet</h2>
       <p id="sightingsEmptyText" class="text-sm text-slate-400 leading-relaxed"></p>
     </div>
 
-    <div id="sightingsError" data-glow class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
+    <div id="sightingsError" data-glow data-animate="scale" class="hidden glass rounded-2xl p-10 text-center max-w-xl mx-auto">
       <h2 data-split class="font-display font-bold text-2xl mb-2">We couldn't load sightings</h2>
       <p class="text-sm text-slate-400 leading-relaxed mb-6">Something went wrong reaching the server. Try again in a moment.</p>
       <button id="sightingsRetry" type="button" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Try again</button>
@@ -346,5 +346,8 @@
   CCC.init();
 </script>
 <script src="js/sightings.js?v=29"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

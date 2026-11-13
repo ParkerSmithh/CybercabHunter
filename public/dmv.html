@@ -30,7 +30,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -103,7 +103,7 @@
      predictions are the shared panel (js/dmv-panel.js). -->
 <section class="pt-12 pb-16 max-sm:pt-6 max-sm:pb-10">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
-    <div class="flex flex-wrap items-end justify-between gap-3 mb-6 max-sm:mb-4">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-6 max-sm:mb-4" data-animate="fade-up" data-animate-distance="24">
       <div class="min-w-0">
         <p class="text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-2 max-sm:mb-1"><a href="/vehicles" class="hover:underline">Vehicles</a> · Texas DMV</p>
         <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight max-sm:text-2xl">TEXAS DMV TRACKER</h1>
@@ -113,7 +113,7 @@
     </div>
 
     <!-- Overview: four cards, then a line of secondary figures -->
-    <div id="dmvStats" class="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:gap-2" aria-live="polite">
+    <div id="dmvStats" class="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:gap-2" aria-live="polite" data-animate="fade-up" data-animate-distance="20">
       <div class="glass rounded-2xl p-5 h-[112px] max-sm:p-3 max-sm:h-[92px] animate-pulse"></div><div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div>
       <div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div><div class="glass rounded-2xl p-5 h-[112px] max-sm:h-[92px] animate-pulse"></div>
     </div>
@@ -122,9 +122,9 @@
     <div class="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-6 max-sm:mt-5 max-sm:gap-4">
       <div class="lg:col-span-3 min-w-0 space-y-6 max-sm:space-y-4">
         <!-- Cumulative roster by model (actual) with the existing predictions -->
-        <div data-dmv-panel="tracker" class="glass rounded-2xl p-6 min-w-0 max-sm:p-4"></div>
+        <div data-dmv-panel="tracker" class="glass rounded-2xl p-6 min-w-0 max-sm:p-4" data-animate="fade-up"></div>
         <!-- Additions per update: actual only -->
-        <div class="glass rounded-2xl p-6 min-w-0 max-sm:p-4">
+        <div class="glass rounded-2xl p-6 min-w-0 max-sm:p-4" data-animate="fade-up">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div>
               <h2 class="font-display font-bold text-lg uppercase tracking-tight max-sm:text-base">New VINs per update</h2>
@@ -142,7 +142,7 @@
           <div id="addChart" class="min-h-[160px]"></div>
         </div>
       </div>
-      <div class="lg:col-span-2 min-w-0 space-y-6 max-sm:space-y-4">
+      <div class="lg:col-span-2 min-w-0 space-y-6 max-sm:space-y-4" data-animate-stagger="fade-left" data-animate-distance="24">
         <div class="glass rounded-2xl p-6 max-sm:p-4">
           <div class="flex items-center justify-between mb-3">
             <h2 class="font-display font-bold text-lg uppercase tracking-tight max-sm:text-base">Registration activity</h2>
@@ -164,7 +164,7 @@
 
     <!-- Registration history: every processed update -->
     <div id="history" class="mt-10 scroll-mt-24 max-sm:mt-6">
-      <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+      <div class="flex flex-wrap items-end justify-between gap-3 mb-3" data-animate="fade-up" data-animate-distance="20">
         <div>
           <h2 class="font-display font-bold text-2xl uppercase tracking-tight max-sm:text-xl">Registration history</h2>
           <p class="text-xs text-slate-500">Each daily snapshot that changed the roster, compared VIN by VIN with the one before.</p>
@@ -176,7 +176,7 @@
           <label class="flex flex-col gap-1 text-slate-500">Show<select name="kind" class="bg-panel border border-white/[0.1] rounded-lg px-2 min-h-[36px] text-slate-200"><option value="additions">Additions</option><option value="missing">Missing VINs</option><option value="all">All changes</option></select></label>
         </form>
       </div>
-      <div class="glass rounded-2xl overflow-x-auto">
+      <div class="glass rounded-2xl overflow-x-auto" data-animate="fade-up" data-animate-distance="24">
         <table class="w-full text-sm max-sm:text-xs">
           <thead><tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-white/[0.07]">
             <th scope="col" class="px-4 py-3 font-semibold max-sm:px-3">Snapshot</th>
@@ -197,7 +197,7 @@
     </div>
 
     <!-- VIN directory -->
-    <div id="vins" class="mt-10 scroll-mt-24 max-sm:mt-6">
+    <div id="vins" class="mt-10 scroll-mt-24 max-sm:mt-6" data-animate-stagger="fade-up" data-animate-distance="16">
       <h2 class="font-display font-bold text-2xl uppercase tracking-tight max-sm:text-xl">Every VIN</h2>
       <p class="text-xs text-slate-500 mb-3">The current roster. <span class="inline-block px-1.5 rounded bg-gold text-[#1a1204] text-[10px] font-bold">NEW</span> marks VINs first detected in the latest update.</p>
       <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -390,5 +390,8 @@
 <script src="js/forecast.js?v=1"></script>
 <script src="js/dmv-panel.js?v=17"></script>
 <script src="js/dmv-tracker.js?v=4"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

@@ -19,7 +19,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 <link rel="stylesheet" href="css/follows.css?v=1">
 <style>
@@ -109,7 +109,7 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
 
     <!-- Signed-out state -->
-    <div id="profileSignedOut" class="hidden reveal-on-scroll glass rounded-2xl p-10 max-w-xl mx-auto text-center">
+    <div id="profileSignedOut" class="hidden glass rounded-2xl p-10 max-w-xl mx-auto text-center" data-animate="scale">
       <h1 class="font-display font-bold text-2xl mb-3">Sign in to customize your profile</h1>
       <p class="text-slate-400 text-sm leading-relaxed mb-6">Set your name, username, and bio once you're signed in.</p>
       <a href="signin.html" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Sign In</a>
@@ -126,7 +126,7 @@
          Community switch) and Account (joined, delete account). Rider ride
          data/stats live on rider-data.html, not here. -->
     <div id="profileSignedIn" class="hidden max-w-5xl mx-auto">
-      <div class="mb-8 max-sm:mb-5">
+      <div class="mb-8 max-sm:mb-5" data-animate-stagger="fade-up" data-animate-distance="20">
         <h1 class="text-3xl font-semibold text-white tracking-tight max-sm:text-2xl">SETTINGS</h1>
         <p class="mt-1 text-sm text-slate-400">Manage your public profile, privacy and account.</p>
       </div>
@@ -137,7 +137,7 @@
           <a href="#settingsPrivacy">Privacy</a>
           <a href="#settingsAccount">Account</a>
         </nav>
-        <div class="space-y-6 min-w-0 max-sm:space-y-4">
+        <div class="space-y-6 min-w-0 max-sm:space-y-4" data-animate-stagger="fade-up" data-animate-distance="24">
         <section id="settingsProfile" class="settings-card" aria-labelledby="settingsProfileTitle">
           <header class="settings-card-head">
             <div class="min-w-0">
@@ -926,5 +926,8 @@
       });
   }
 </script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

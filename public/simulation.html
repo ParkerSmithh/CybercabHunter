@@ -30,7 +30,7 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <style>
@@ -191,7 +191,7 @@
      (?view=eta); the old Fleet ETA URL redirects there. -->
 <section class="pt-8 max-sm:pt-4">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div id="simTabs" role="tablist" aria-label="Simulation" class="flex flex-wrap gap-2">
+    <div id="simTabs" role="tablist" aria-label="Simulation" class="flex flex-wrap gap-2" data-animate="fade-up" data-animate-distance="12">
       <button id="simTabRoi" type="button" role="tab" data-view="roi" aria-selected="true" aria-controls="simPanelRoi" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">FLEET ROI</button>
       <button id="simTabEta" type="button" role="tab" data-view="eta" aria-selected="false" aria-controls="simPanelEta" class="city-filter min-h-[44px] px-6 rounded-full text-sm font-semibold border max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">FLEET ETA</button>
     </div>
@@ -204,7 +204,7 @@
      The car is the interactive door component (js/cybercab-doors.js). -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 items-center max-sm:py-6 max-sm:gap-3">
-    <div class="max-w-2xl">
+    <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ROI</h1>
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
@@ -212,7 +212,7 @@
     <!-- Interactive Cybercab (js/cybercab-doors.js): click the car or the button
          and the butterfly doors swing open; again to close. The still is the
          first frame, so the box is reserved before any script runs. -->
-    <div class="sim-hero-car cc-doors" data-cc-doors>
+    <div data-animate="fade-left" data-animate-distance="32" data-animate-delay="0.12" class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
         <img src="images/cybercab-doors/m/000.webp?v=4" srcset="images/cybercab-doors/m/000.webp?v=4 480w, images/cybercab-doors/d/000.webp?v=4 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 40vw" width="800" height="446" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
@@ -235,7 +235,7 @@
       <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Inputs · Results · Breakeven</p>
       <h2 id="roiHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Fleet economics</h2>
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5" data-animate-stagger="fade-up" data-animate-distance="24">
       <!-- Inputs: one gold card with the Cybercab -->
       <div class="lg:col-span-1">
         <div class="dmv-card glass relative rounded-2xl border p-6 h-fit max-sm:p-4" style="--c:250 224 48;border-color:#FAE03059;background:linear-gradient(135deg, #FAE0301c, transparent 62%)">
@@ -357,7 +357,7 @@
      The model, its inputs and its D1 budget: docs/fleet-eta-accuracy.md. -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 items-center max-sm:py-6 max-sm:gap-3">
-    <div class="max-w-2xl">
+    <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
       <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Fleet comparison</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ETA</h1>
       <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-xl max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">Cybercab and Model Y robotaxis in Austin: what a ride costs, when they run, and how long a pickup might take.</p>
@@ -373,7 +373,7 @@
     <!-- Interactive Cybercab (js/cybercab-doors.js): click the car or the button
          and the butterfly doors swing open; again to close. The still is the
          first frame, so the box is reserved before any script runs. -->
-    <div class="sim-hero-car cc-doors" data-cc-doors>
+    <div data-animate="fade-left" data-animate-distance="32" data-animate-delay="0.12" class="sim-hero-car cc-doors" data-cc-doors>
       <div class="cc-doors-stage" data-cc-stage role="button" tabindex="0" aria-expanded="false" aria-label="Open the Cybercab's doors">
         <img src="images/cybercab-doors/m/000.webp?v=4" srcset="images/cybercab-doors/m/000.webp?v=4 480w, images/cybercab-doors/d/000.webp?v=4 800w" sizes="(min-width:1024px) 520px, (min-width:768px) 380px, 40vw" width="800" height="446" alt="A gold Tesla Cybercab" decoding="async">
         <canvas aria-hidden="true"></canvas>
@@ -400,7 +400,7 @@
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
 <section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="austinMixHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Austin</p>
@@ -464,7 +464,7 @@
     </div>
 
     <!-- Trip and pickup area: every estimate below follows them. -->
-    <div class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
       <div class="min-w-0">
         <div class="flex items-center justify-between">
           <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
@@ -539,7 +539,7 @@
     </div>
 
     <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
-    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
       <div class="min-w-0">
         <p class="text-sm font-medium text-slate-300">Fleet availability</p>
         <dl data-eta-fleet="austin" class="mt-3 text-sm"><div class="input-row"><dt>Loading</dt><dd></dd></div></dl>
@@ -578,7 +578,7 @@
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
 <section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="dalMixHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Dallas</p>
@@ -636,7 +636,7 @@
     </div>
 
     <!-- Trip and pickup area: every estimate below follows them. -->
-    <div class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
       <div class="min-w-0">
         <div class="flex items-center justify-between">
           <label for="dalTripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
@@ -705,7 +705,7 @@
     </div>
 
     <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
-    <div class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
+    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
       <div class="min-w-0">
         <p class="text-sm font-medium text-slate-300">Fleet availability</p>
         <dl data-eta-fleet="dallas" class="mt-3 text-sm"><div class="input-row"><dt>Loading</dt><dd></dd></div></dl>
@@ -740,7 +740,7 @@
      optional rider report (worker/fleet-eta.js POST /api/fare-reports). ===== -->
 <section class="pb-16 max-sm:pb-10" aria-label="How the estimates work and rider reports">
   <div class="max-w-7xl mx-auto px-6 lg:px-10 space-y-5 max-sm:space-y-4">
-    <details id="etaMethod" class="estimate-details glass rounded-2xl soft-panel">
+    <details data-animate="fade-up" data-animate-distance="24" id="etaMethod" class="estimate-details glass rounded-2xl soft-panel">
       <summary class="flex items-center justify-between gap-3 px-6 py-4 max-sm:px-4 cursor-pointer select-none text-sm font-semibold text-slate-200">
         How are these estimates calculated?
         <svg class="details-chevron w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg>
@@ -793,7 +793,7 @@
       </div>
     </details>
 
-    <details id="fareReport" class="estimate-details glass rounded-2xl soft-panel">
+    <details data-animate="fade-up" data-animate-distance="24" id="fareReport" class="estimate-details glass rounded-2xl soft-panel">
       <summary class="flex items-center justify-between gap-3 px-6 py-4 max-sm:px-4 cursor-pointer select-none text-sm font-semibold text-slate-200">
         <span>Report a fare or wait <span class="font-normal text-slate-400">· optional, helps calibrate</span></span>
         <svg class="details-chevron w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6l6 -6"/></svg>
@@ -1250,5 +1250,8 @@
 </script>
 <script src="js/fleet-compare.js?v=11"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

@@ -31,7 +31,7 @@
 <script src="js/theme.js?v=5"></script>
 <link rel="stylesheet" href="/vendor/maplibre-gl-5.24.0.css" />
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 </head>
@@ -181,7 +181,7 @@
          The stage: a light basemap, a time-of-day tint, and ONE canvas for every
          dot, ping and glow (js/replay.js) — no DOM markers, so thousands of
          sightings stay smooth on a phone. -->
-    <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0 max-lg:h-[calc(100dvh-10.5rem-var(--safe-bottom,0px))] max-lg:min-h-[320px]">
+    <div id="replayMapWrap" class="relative glass rounded-2xl p-3 h-[60vh] min-h-[380px] flex flex-col lg:block lg:p-0 lg:h-auto lg:absolute lg:inset-0 max-lg:h-[calc(100dvh-10.5rem-var(--safe-bottom,0px))] max-lg:min-h-[320px]" data-animate="fade-up" data-animate-distance="12" data-animate-duration="0.7">
       <button type="button" data-map-drawer-toggle aria-controls="replayPanel" aria-expanded="false" class="map-drawer-toggle absolute bottom-5 left-5 z-10 inline-flex items-center gap-2 min-h-[40px] px-3.5 rounded-xl glass-strong text-xs font-semibold text-white shadow-[0_6px_18px_-8px_rgba(0,0,0,0.6)]"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h7"/><circle cx="18" cy="15" r="3"/></svg>Replay controls</button>
       <!-- Phones and tablets: the city switch on the map itself (the panel's own
            switch is inside the Replay controls drawer there). Same links and
@@ -339,5 +339,8 @@
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/austin-map.js?v=13"></script>
 <script src="js/replay.js?v=14"></script>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
 </body>
 </html>

@@ -312,6 +312,20 @@ html .glass[data-tilt].is-tilting{
    js/main.js, or after 2.5s by CSS alone if the script never runs. */
 .motion-ok h2[data-split]:not(.split-done){opacity:0; animation:split-failsafe 0s linear 2.5s forwards;}
 @keyframes split-failsafe{ to{ opacity:1; } }
+
+/* AnimatedContent, sitewide (js/animated-content.js; React Bits
+   AnimatedContent on GSAP + ScrollTrigger). With motion allowed
+   (.motion-ok, js/theme.js) an opted-in element starts hidden until the
+   script holds it (.ac-armed: GSAP's inline start state) and plays it
+   (.ac-done). Without JavaScript nothing is hidden; if the script never runs,
+   the failsafe shows everything after 2.5s; .ac-off (Reduce Motion, no
+   GSAP) shows it at once. Opacity only: never visibility, so screen readers
+   always have the content. While held, CSS transitions are off so they never
+   fight GSAP's frames (hover transitions return when it finishes). */
+.motion-ok:not(.ac-off) [data-animate]:not(.ac-done):not(.ac-armed),
+.motion-ok:not(.ac-off) [data-animate-stagger]>:not(.ac-done):not(.ac-armed):not(template):not(script){opacity:0; animation:ac-failsafe 0s linear 2.5s forwards;}
+@keyframes ac-failsafe{ to{ opacity:1; } }
+.ac-armed{transition:none !important;}
 .split-word{display:inline-block;}
 .split-pending .split-word{opacity:0; transform:translateY(8px);}
 .split-play .split-word{animation:split-rise 320ms var(--ease) backwards; animation-delay:calc(var(--i, 0) * 40ms);}

@@ -67,7 +67,7 @@
   }
   let data, lastDay = today(), fetched = 0, sequence = 0, behind = 0;
   // The figures last shown (a new day starts fresh: no glow at midnight).
-  let shownValues = {}, shownDay = null;
+  let shownValues = {}, shownDay = null, entered = false;
   const BEHIND_RETRY_MS = 15000, BEHIND_TRIES = 8;
   async function load() {
     const token = ++sequence;
@@ -91,6 +91,8 @@
       if (shownDay !== body.today) { shownValues = {}; shownDay = body.today; }
       fetched = Date.now();
       $('dailyStats').replaceChildren(stats(data.day));
+      // The first real figures enter in turn (js/animated-content.js); refreshes never replay it.
+      if (!entered) { entered = true; const figures = $('dailyStats').firstElementChild; if (figures && window.CCCAnimate) window.CCCAnimate.enter(figures.children, 'fade-up', { distance: 16, each: 0.07 }); }
       $('dailyUpdated').textContent = Object.keys(data.errors || {}).length ? 'Some data unavailable' : `Updated ${new Date(data.generated_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT`;
     } catch (error) {
       if (token !== sequence) return;
