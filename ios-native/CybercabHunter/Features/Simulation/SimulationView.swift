@@ -46,9 +46,13 @@ struct FleetROIView: View {
         let r = model.financials
         VStack(alignment: .leading, spacing: 18) {
             SimHero(eyebrow: "Investor tools", title: "FLEET ROI", titleID: "roiTitle",
-                    text: "Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.")
+                    text: "What a Cybercab costs at the newly reported $29,990, and what a fleet might earn if owners are ever allowed to run one: purchase, financing, operating costs, payback and scenarios. Every assumption is yours to change.")
 
-            SimSectionHead(eyebrow: "Inputs · Results · Breakeven", title: "Fleet economics").padding(.top, 8)
+            FleetROI2Sections(session: model.roi2, store: model.roi2Store)
+
+            SimSectionHead(eyebrow: "Quick estimate · Energy & network", title: "Fleet economics").padding(.top, 8)
+            Text("The original quick calculator: fixed fare and network cut, the fleet's energy use and a simple payback on the vehicle price.")
+                .font(.inter(12)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
 
             // Inputs: one gold card with the Cybercab.
             TintCard(car: "CybercabRender") {

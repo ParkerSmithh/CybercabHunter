@@ -10,7 +10,7 @@ enum SimulationCalc {
     /// The page's locked assumptions (simulation.html): not user-editable.
     enum ROI {
         static let networkCutPct = 25.0
-        static let costPerCab = 30_000.0
+        static let costPerCab = FleetROI.Pricing.price   // reported $29,990 (FleetROIModel.swift), as on the site
         static let baseFare = 3.00
         static let perMileRate = 1.40
         static let avgTripMiles = 5.0
