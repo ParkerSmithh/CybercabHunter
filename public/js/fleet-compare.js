@@ -183,6 +183,8 @@
     const tag = q(`[data-eta-basis="${city}:${vt}"]`);
     const p = eta[city];
     if (!el) return;
+    const fareMore = q(`[data-eta-fare-more="${city}:${vt}"]`);
+    if (fareMore) fareMore.hidden = true;   // shown again below when there are notes
     if (p === false) {
       setHTML(el, '<p class="font-display font-semibold text-2xl text-white max-sm:text-base">Not available</p><p class="text-sm text-slate-400 mt-2 max-sm:text-xs">The estimates can\'t be loaded right now.</p>');
       setText(tag, 'Unavailable');
@@ -215,8 +217,12 @@
     if (areaNote) lines.push(esc(areaNote.trim()));
     setHTML(el, `<p class="stat-value font-semibold text-5xl text-white leading-none max-sm:text-3xl max-sm:whitespace-nowrap">${esc(C.dollarRange(r))}</p>`
       + `<p class="text-sm text-slate-300 mt-3 max-sm:text-xs max-sm:mt-2">${miles} mi · ${TIER_LABEL[tier]} demand${areaName ? ' · ' + esc(areaName) : ''} · ${esc(typeName)}</p>`
-      + `<p class="mt-2 flex flex-wrap items-center gap-2">${confPill(conf)}<span class="text-xs text-slate-400">${esc(basis)}</span></p>`
-      + (lines.length ? `<p class="text-xs text-slate-500 mt-2 leading-relaxed">${lines.join(' ')}</p>` : ''));
+      + `<p class="mt-2 flex flex-wrap items-center gap-2">${confPill(conf)}<span class="text-xs text-slate-400">${esc(basis)}</span></p>`);
+    // The longer notes sit one tap away ("Why this range"), outside the block
+    // this tick rewrites, so an opened note stays open.
+    const note = q(`[data-eta-fare-note="${city}:${vt}"]`), more = q(`[data-eta-fare-more="${city}:${vt}"]`);
+    setHTML(note, lines.length ? `<p class="text-xs text-slate-400 leading-relaxed">${lines.join(' ')}</p>` : '');
+    if (more) more.hidden = !lines.length;
   }
 
   function renderWait(city, vt) {

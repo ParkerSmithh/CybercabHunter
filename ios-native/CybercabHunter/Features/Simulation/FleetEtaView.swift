@@ -11,25 +11,35 @@ struct FleetEtaView: View {
     private let cities = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
 
     var body: some View {
-        // Ages, open / closed and the assumed scenario follow the clock (the site ticks every 30 s).
-        TimelineView(.periodic(from: .now, by: 30)) { tl in
-            content(now: tl.date)
+        // A compact header, then one segment under a pinned bar:
+        // Estimates (scenario, trip and the two model cards) | Fleet (mix,
+        // availability, service day, recent reports) | Method (accuracy check,
+        // how it's estimated, report a fare). Ages, open / closed and the
+        // assumed scenario follow the clock (the site ticks every 30 s).
+        let city = model.city
+        let name = SimulationCalc.cityName[city] ?? city
+        SimHero(eyebrow: "Fleet comparison", title: "FLEET ETA", titleID: "etaTitle",
+                text: "Cybercab and Model Y robotaxis in \(name): fares, hours and pickup waits.") {
+            CityPicker(cities: cities, selection: $model.city)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("etaCityPicker")
+                .padding(.top, 2)
+            if city == "austin" { TimelineView(.periodic(from: .now, by: 30)) { tl in fleetLine(now: tl.date) } }
         }
-        .task(id: model.city) { await model.loadEta(model.city, api: session.api) }
+        SegmentAnchor(pinned: $model.segmentPinned)
+        Section {
+            TimelineView(.periodic(from: .now, by: 30)) { tl in
+                content(now: tl.date)
+            }
+            .task(id: model.city) { await model.loadEta(model.city, api: session.api) }
+        } header: {
+            SegmentBar(label: "Fleet ETA section", tabs: SimulationModel.EtaTab.allCases, title: { $0.title }, selection: $model.etaTab, id: "etaSegments") { EmptyView() }
+        }
     }
 
     @ViewBuilder private func content(now: Date) -> some View {
         let city = model.city
-        let name = SimulationCalc.cityName[city] ?? city
-        VStack(alignment: .leading, spacing: 18) {
-            SimHero(eyebrow: "Fleet comparison", title: "FLEET ETA", titleID: "etaTitle",
-                    text: "Cybercab and Model Y robotaxis in \(name): what a ride costs, when they run, and how long a pickup might take.") {
-                CityPicker(cities: cities, selection: $model.city)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("etaCityPicker")
-                    .padding(.top, 4)
-                if city == "austin" { fleetLine(now: now) }
-            }
+        VStack(alignment: .leading, spacing: 14) {
             if model.failed(city) && model.eta(city) == nil {
                 InlineMessage(text: "Fleet ETA data unavailable. The estimates can't be loaded right now, so no numbers are shown.", systemImage: "wifi.exclamationmark")
                     .accessibilityIdentifier("etaError")
@@ -37,11 +47,35 @@ struct FleetEtaView: View {
             } else if model.eta(city) == nil {
                 PanelSkeleton(height: 220)
             }
-            mixSection(city: city, now: now)
-            if let eta = model.eta(city) { estimates(eta, city: city, now: now) }
-            methodSection(now: now)
-            FareReportForm(model: model)
+            switch model.etaTab {
+            case .estimates:
+                if let eta = model.eta(city) { estimates(eta, city: city, now: now) }
+            case .fleet:
+                mixSection(city: city, now: now)
+                if let eta = model.eta(city) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        fleetAvailability(eta, city: city)
+                        serviceDay(city: city, now: now)
+                    }
+                    .padding(14)
+                    .background(Color.chSurface, in: .rect(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
+                    if let rs = eta.recentReports, !rs.isEmpty { recentReports(rs) }
+                }
+            case .method:
+                if let eta = model.eta(city) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Color.chFog).padding(.top, 1)
+                        Text(calibration(eta, city: city)).font(.inter(12.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("etaCalibration")
+                }
+                methodSection(now: now)
+                FareReportForm(model: model)
+            }
         }
+        .padding(.top, 2)
     }
 
     // MARK: Fleet count line and mix
@@ -137,8 +171,7 @@ struct FleetEtaView: View {
 
     @ViewBuilder private func estimates(_ eta: FleetEta, city: String, now: Date) -> some View {
         let tier = model.scenario(for: city, at: now)
-        VStack(alignment: .leading, spacing: 14) {
-            SimSectionHead(eyebrow: "Fares · Hours · Pickup wait", title: "Ride, hours & wait").padding(.top, 6)
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Text(eta.pendingFirstRun == true ? "First daily update pending: published-report estimates for now"
                      : "Estimates recomputed \(centralTime(eta.computedAt)) CT (daily)")
@@ -150,17 +183,26 @@ struct FleetEtaView: View {
             .accessibilityIdentifier("etaUpdated")
 
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text("Demand scenario").font(.inter(13)).foregroundStyle(Color.chFog).fixedSize()
+                // One line when it fits; otherwise (large text) the pills go under the label.
+                let label = Text("Demand scenario").font(.inter(13)).foregroundStyle(Color.chFog).fixedSize()
+                let pills = HStack(spacing: 8) {
                     ForEach(SimulationCalc.tiers, id: \.self) { t in
                         PillToggle(title: SimulationCalc.tierLabel[t] ?? t, selected: tier == t, compact: true) { model.userScenario = t }
                             .accessibilityIdentifier("scenario-\(t)")
                     }
                 }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { label; pills }
+                    VStack(alignment: .leading, spacing: 6) { label; pills }
+                }
                 Text(assumedText(eta, city: city, now: now)).font(.inter(12)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("etaAssumed")
             }
 
+            // The fares first (as on the website's phone layout), then the trip settings.
+            ForEach(["cybercab", "model_y"], id: \.self) { vt in
+                vehicleCard(eta, city: city, vehicle: vt, tier: tier, now: now)
+            }
             VStack(alignment: .leading, spacing: 14) {
             SliderRow(label: "Trip distance", value: Binding(get: { model.miles[city] ?? 5 }, set: { model.miles[city] = $0 }),
                       range: 0.5...20, step: 0.5, format: { Format.one($0) }, unit: "mi", id: "etaMiles")
@@ -183,27 +225,9 @@ struct FleetEtaView: View {
             .accessibilityLabel("Pickup area")
             .accessibilityIdentifier("etaArea")
             }
-            .padding(16)
+            .padding(14)
             .background(Color.chSurface, in: .rect(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
-
-            ForEach(["cybercab", "model_y"], id: \.self) { vt in
-                vehicleCard(eta, city: city, vehicle: vt, tier: tier, now: now)
-            }
-            VStack(alignment: .leading, spacing: 18) {
-                fleetAvailability(eta, city: city)
-                serviceDay(city: city, now: now)
-            }
-            .padding(16)
-            .background(Color.chSurface, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.08)))
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "info.circle").font(.system(size: 13)).foregroundStyle(Color.chFog).padding(.top, 1)
-                Text(calibration(eta, city: city)).font(.inter(12.5)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("etaCalibration")
-            if let rs = eta.recentReports, !rs.isEmpty { recentReports(rs) }
         }
     }
 

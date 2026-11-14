@@ -9,21 +9,29 @@ struct SimulationView: View {
     var initialView: SimulationModel.View = .roi
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 8) {
-                    PillToggle(title: "FLEET ROI", selected: model.view == .roi) { model.view = .roi }
-                        .accessibilityIdentifier("simTab-roi")
-                    PillToggle(title: "FLEET ETA", selected: model.view == .eta) { model.view = .eta }
-                        .accessibilityIdentifier("simTab-eta")
+        ScrollViewReader { proxy in
+            ScrollView {
+                // Lazy only for the pinned segment bar (a section header): each
+                // view is a compact header, then one segment's content.
+                LazyVStack(alignment: .leading, spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    HStack(spacing: 8) {
+                        PillToggle(title: "FLEET ROI", selected: model.view == .roi) { model.view = .roi }
+                            .accessibilityIdentifier("simTab-roi")
+                        PillToggle(title: "FLEET ETA", selected: model.view == .eta) { model.view = .eta }
+                            .accessibilityIdentifier("simTab-eta")
+                    }
+                    switch model.view {
+                    case .roi: FleetROIView(model: model)
+                    case .eta: FleetEtaView(model: model)
+                    }
                 }
-                switch model.view {
-                case .roi: FleetROIView(model: model)
-                case .eta: FleetEtaView(model: model)
-                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 32)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 32)
+            // A new segment opens at its top when the bar is pinned (scrolled
+            // down); at the top of the page nothing moves.
+            .onChange(of: model.roi2.tab) { if model.segmentPinned { withAnimation(.snappy) { proxy.scrollTo(SegmentAnchor.id, anchor: .top) } } }
+            .onChange(of: model.etaTab) { if model.segmentPinned { withAnimation(.snappy) { proxy.scrollTo(SegmentAnchor.id, anchor: .top) } } }
         }
         .appBackground()
         .navigationBarTitleDisplayMode(.inline)
@@ -42,11 +50,10 @@ struct FleetROIView: View {
     @Bindable var model: SimulationModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            SimHero(eyebrow: "Investor tools", title: "FLEET ROI", titleID: "roiTitle",
-                    text: "What a $29,990 Cybercab costs to own, and what a fleet might earn if owners are ever allowed to run one: financing, operating costs, cash flow and break-even.")
-            FleetROI2Sections(session: model.roi2, store: model.roi2Store)
-        }
+        SimHero(eyebrow: "Investor tools", title: "FLEET ROI", titleID: "roiTitle",
+                text: "What a $29,990 Cybercab costs to own, and what a fleet might earn if owners are ever allowed to run one.")
+        SegmentAnchor(pinned: $model.segmentPinned)
+        FleetROI2Sections(session: model.roi2, store: model.roi2Store)
     }
 }
 

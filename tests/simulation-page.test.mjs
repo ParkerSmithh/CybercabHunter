@@ -93,6 +93,26 @@ async function run() {
     check('the earnings say Tesla\'s terms are unconfirmed', /25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement/.test(p.d.getElementById('roi2ModeNote').textContent));
   }
 
+  console.log('2a. Compact dashboards (Nov 2026)');
+  {
+    const p = open('https://cybercabhunter.com/simulation');
+    const g = id => p.d.querySelector(`#roi2Inputs details[data-group="${id}"]`);
+    check('Fleet ROI: four collapsible groups, in order', [...p.d.querySelectorAll('#roi2Inputs details.roi2-group')].map(d => d.dataset.group).join() === 'fin,ops,exp,fixed');
+    check('…Fleet & Financing and Revenue & Operations open; Monthly Expenses and Fixed Tesla values collapsed', g('fin').open && g('ops').open && !g('exp').open && !g('fixed').open);
+    check('…the five fixed values are in the Fixed group, read-only', ['price', 'deposit', 'subscriptionMonthly', 'subscriptionIncludedMonths', 'platformSharePct'].every(k => g('fixed').querySelector(`.roi2-locked[data-row="${k}"]`)));
+    check('…cash hides the financing fields', g('fin').querySelector('[data-row="aprPct"]').classList.contains('is-off') && (p.w.CCC_FLEET_ROI_UI.set('purchase', 'finance'), !g('fin').querySelector('[data-row="aprPct"]').classList.contains('is-off')));
+    check('…a collapsed group says what it holds', /Insurance \$250/.test(p.d.querySelector('[data-summary="exp"]').textContent) && /\$29,990/.test(p.d.querySelector('[data-summary="fixed"]').textContent));
+    const dash = p.d.getElementById('roi2Dash');
+    check('…inputs and results side by side (results column pinnable), fleet size above the settings', !!dash.querySelector('.roi2-col-in #roi2FleetBuilder') && !!dash.querySelector('.roi2-col-out #roi2Metrics') && !!dash.querySelector('.roi2-col-out #roi2Timeline'));
+    check('…phones: results first (fleet size, results, timeline, then settings)', /\.roi2-fleet-builder\{order:1;\} #roi2Metrics\{order:2;\} \.roi2-timeline\{order:3;\} \.roi2-inputs\{order:4;\}/.test(HTML));
+    for (const c of ['austin', 'dallas']) {
+      const box = p.d.getElementById(c === 'austin' ? 'austinContent' : 'dallasContent');
+      check(`Fleet ETA ${c}: one dashboard; trip, fleet mix and availability beside the two model cards`, box.querySelectorAll('.eta-dash').length === 1 && !!box.querySelector('.eta-col-side .eta-trip [data-eta-miles]') && !!box.querySelector('.eta-col-side .eta-mix') && !!box.querySelector('.eta-col-side .eta-avail [data-eta-fleet]') && box.querySelectorAll('.eta-col-main .eta-cards article').length === 2);
+      check(`Fleet ETA ${c}: the long notes are one tap away (fare: why this range; wait: sources)`, box.querySelectorAll('details.eta-more [data-eta-fare-note]').length === 2 && box.querySelectorAll('details.eta-more > p[id$="Basis"]').length === 2);
+    }
+    check('Fleet ETA: phones put the results first', /\.eta-cards\{order:1;\} \.eta-trip\{order:2;\}/.test(HTML));
+  }
+
   console.log('2b. Saved configurations made before the values were fixed');
   {
     const old = [{ id: 'cfg-old', name: 'Old plan', savedAt: '2026-11-13T20:00:00.000Z', input: { mode: 'fleet', vehicles: 7, price: 31000, deposit: 1500, subscriptionMonthly: 299, subscriptionIncludedMonths: 2, platformSharePct: 30, farePerRide: 13, ridesPerDay: 18 } }];

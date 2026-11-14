@@ -5,35 +5,39 @@ import SwiftUI
 // car in the corner (images/dmv-cybercab.webp, dmv-model-y.webp), the icon
 // section labels (.rhw-label) and the glowing result tiles.
 
-/// Both views open with the same header: text on the left, the Cybercab on
-/// the right at 40% of the width (120–170 pt, .sim-hero-car), with its
-/// "Open doors" button under it.
+/// Both views open with the same compact header: text on the left, the
+/// Cybercab on the right at 32% of the width (110–140 pt, .sim-hero-car),
+/// with its "Open doors" button under it.
 struct SimHero<Extra: View>: View {
     let eyebrow: String
     let title: String
     let titleID: String
     let text: String
     @ViewBuilder var extra: Extra
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
+        // The car sits beside the text; at accessibility text sizes it moves
+        // below, so the text and its controls get the full width.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
+            VStack(alignment: .leading, spacing: 5) {
                 Eyebrow(text: eyebrow)
-                Text(title).displayTitle(28).accessibilityIdentifier(titleID)
-                Text(text).font(.inter(14)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
+                Text(title).displayTitle(24).accessibilityIdentifier(titleID)
+                Text(text).font(.inter(13)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
                 extra
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             CybercabDoorsView(width: Self.carWidth)
+                .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
         }
-        .padding(.bottom, 6)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1).offset(y: 10) }
+        .padding(.bottom, 2)
     }
 
-    /// clamp(120px, 40vw, 170px)
+    /// clamp(110px, 32vw, 140px)
     static var carWidth: CGFloat {
         let w = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.width ?? 393
-        return min(170, max(120, w * 0.4))
+        return min(140, max(110, w * 0.32))
     }
 }
 
@@ -107,5 +111,48 @@ struct IconLabel: View {
             Text(text.uppercased()).font(.inter(11.5, .semibold)).tracking(1.6).foregroundStyle(Color.chFog)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The pinned segmented control under a Simulation view's header (Fleet ROI:
+/// Overview | Settings | Timeline; Fleet ETA: Estimates | Fleet | Method).
+/// Full-width opaque band so it reads cleanly over the content scrolling under it.
+struct SegmentBar<Tab: Hashable & Identifiable, Below: View>: View {
+    let label: String
+    let tabs: [Tab]
+    let title: (Tab) -> String
+    @Binding var selection: Tab
+    let id: String
+    @ViewBuilder var below: Below
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Picker(label, selection: $selection) {
+                ForEach(tabs) { Text(title($0)).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(id)
+            below
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(Color.chBackground)
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
+        .padding(.horizontal, -16)
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+}
+
+/// Marks where the segment bar sits, and reports when the page has scrolled
+/// past it (the bar is then pinned), so a segment change can bring its top
+/// into view.
+struct SegmentAnchor: View {
+    static let id = "simSegmentTop"
+    @Binding var pinned: Bool
+    var body: some View {
+        Color.clear.frame(height: 0)
+            .id(Self.id)
+            .onGeometryChange(for: Bool.self) { $0.frame(in: .scrollView).minY < -1 } action: { pinned = $0 }
+            .accessibilityHidden(true)
     }
 }

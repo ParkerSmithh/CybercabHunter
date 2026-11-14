@@ -13,6 +13,12 @@ import Charts
 @Observable
 final class FleetROISession {
     var input = FleetROI.Input()
+    enum Tab: String, CaseIterable, Identifiable { case overview, settings, timeline; var id: String { rawValue }
+        var title: String { switch self { case .overview: "Overview"; case .settings: "Settings"; case .timeline: "Timeline" } }
+    }
+    var tab: Tab = .overview
+    /// Settings groups that are open (Fleet & Financing and Revenue & Operations by default).
+    var openGroups: Set<String> = ["fin", "ops"]
     var showCumulative = true
     var showRevenue = true
     var showExpenses = true
@@ -151,39 +157,87 @@ struct FleetROI2Sections: View {
 
     var body: some View {
         let r = session.result
+        Section {
+            VStack(alignment: .leading, spacing: 14) {
+                switch session.tab {
+                case .overview: overview(r)
+                case .settings: inputs
+                case .timeline: timelineTab(r)
+                }
+            }
+            .padding(.top, 2)
+            .sensoryFeedback(.success, trigger: savedFlash)
+            .alert("Rename configuration", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+                TextField("Name", text: $newName)
+                Button("Save") { if let it = renaming { store.rename(it.id, to: newName) }; renaming = nil }
+                Button("Cancel", role: .cancel) { renaming = nil }
+            }
+            .confirmationDialog("Delete this configuration?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { it in
+                Button("Delete \u{201C}\(it.name)\u{201D}", role: .destructive) { store.delete(it.id); session.compareIDs.remove(it.id) }
+            } message: { _ in Text("This can't be undone.") }
+            .sheet(isPresented: $showCompare) { compareSheet }
+        } header: {
+            SegmentBar(label: "Fleet ROI section", tabs: FleetROISession.Tab.allCases, title: { $0.title }, selection: $session.tab, id: "roi2Segments") {
+                // Editing settings: the two key figures stay in view.
+                if session.tab == .settings { keyFigures(r) }
+            }
+        }
+    }
+
+    /// "Operating profit $3,044/mo · Break-even 15 mo" (or the personal-mode cost).
+    private func keyFigures(_ r: FleetROI.Result) -> some View {
         let fleet = session.input.mode == .fleet
-        VStack(alignment: .leading, spacing: 18) {
-            SimSectionHead(eyebrow: "Simulator · Fleet builder", title: "Own or operate").padding(.top, 8)
-            modePicker
-            Text(fleet
-                 ? "Fleet investment is a hypothetical: Tesla has not published terms for owners to run a Cybercab on its Robotaxi network (eligibility, revenue split, insurance, start date), and local rules and approval apply. The 25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement; revenue, costs and the start date are assumptions."
-                 : "Personal ownership: what owning and driving a Cybercab costs, with the required Autonomy Subscription. No revenue: owning one doesn't mean you may run it as a commercial Robotaxi.")
-                .font(.inter(13, relativeTo: .callout)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
-                .padding(.leading, 12)
-                .overlay(alignment: .leading) { Rectangle().fill(Color.brandGold).frame(width: 2) }
-                .accessibilityIdentifier("roi2ModeNote")
-
-            fleetBuilder
-            metrics(r)
-            timeline(r)
-            inputs
-
-            SimSectionHead(eyebrow: "On this device only", title: "Saved configurations").padding(.top, 8)
-            saved
-
-            Text("Not affiliated with Tesla, Inc. A simulation for planning and curiosity, not financial advice, a quote or a promise of returns. Personal ownership does not mean permission to operate a commercial Robotaxi: that depends on Tesla's fleet terms, local regulation, commercial insurance and approval.")
-                .font(.inter(11.5, relativeTo: .footnote)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
+        return HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(fleet ? "Operating profit / mo" : "Monthly cost").font(.inter(11, relativeTo: .caption)).foregroundStyle(Color.chFog)
+                Text(ROIFormat.big(fleet ? r.steady.operatingProfit : r.steady.opex + r.steady.loan)).font(.inter(16, .semibold)).monospacedDigit().foregroundStyle(Color.brandGold)
+                    .contentTransition(.numericText())
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(fleet ? "Hypothetical break-even" : "Cost over \(ROIFormat.years(session.horizon))").font(.inter(11, relativeTo: .caption)).foregroundStyle(Color.chFog)
+                Text(fleet ? ROIFormat.payback(r, short: true) : ROIFormat.big(r.horizon.ownershipCost)).font(.inter(16, .semibold)).monospacedDigit().foregroundStyle(Color.brandGold)
+            }
         }
-        .sensoryFeedback(.success, trigger: savedFlash)
-        .alert("Rename configuration", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("Name", text: $newName)
-            Button("Save") { if let it = renaming { store.rename(it.id, to: newName) }; renaming = nil }
-            Button("Cancel", role: .cancel) { renaming = nil }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("roi2KeyFigures")
+    }
+
+    // MARK: Segments
+
+    @ViewBuilder private func overview(_ r: FleetROI.Result) -> some View {
+        let fleet = session.input.mode == .fleet
+        modePicker
+        Text(fleet
+             ? "Hypothetical: Tesla hasn't published terms for owners to run a Cybercab on its network, and local rules apply. The 25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement."
+             : "Personal ownership: what owning and driving a Cybercab costs. No revenue: owning one doesn't mean you may run it as a commercial Robotaxi.")
+            .font(.inter(12, relativeTo: .footnote)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) { Rectangle().fill(Color.brandGold).frame(width: 2) }
+            .accessibilityIdentifier("roi2ModeNote")
+        fleetBuilder
+        metrics(r)
+        HStack(spacing: 10) {
+            jump("Adjust settings", icon: "slider.horizontal.3", to: .settings, id: "roi2GoSettings")
+            jump("See the timeline", icon: "chart.line.uptrend.xyaxis", to: .timeline, id: "roi2GoTimeline")
         }
-        .confirmationDialog("Delete this configuration?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { it in
-            Button("Delete “\(it.name)”", role: .destructive) { store.delete(it.id); session.compareIDs.remove(it.id) }
-        } message: { _ in Text("This can't be undone.") }
-        .sheet(isPresented: $showCompare) { compareSheet }
+    }
+
+    @ViewBuilder private func timelineTab(_ r: FleetROI.Result) -> some View {
+        timeline(r)
+        SimSectionHead(eyebrow: "On this device only", title: "Saved configurations").padding(.top, 4)
+        saved
+        Text("Not affiliated with Tesla, Inc. A simulation for planning and curiosity, not financial advice, a quote or a promise of returns. Personal ownership does not mean permission to operate a commercial Robotaxi: that depends on Tesla's fleet terms, local regulation, commercial insurance and approval.")
+            .font(.inter(11.5, relativeTo: .footnote)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func jump(_ title: String, icon: String, to tab: FleetROISession.Tab, id: String) -> some View {
+        Button { session.tab = tab } label: {
+            Label(title, systemImage: icon).font(.inter(13, .semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(Color.chMist).overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.chHair2))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(id)
     }
 
     // MARK: Mode and fleet size
@@ -377,45 +431,47 @@ struct FleetROI2Sections: View {
     private var inputs: some View {
         let x = session.input
         let fleet = x.mode == .fleet
-        return ROICard(gold: true) {
-            IconLabel(icon: "slider.horizontal.3", text: "Assumptions")
-            group("Purchase", locked: [
-                LockedRow(label: "Price per Cybercab", value: "$29,990", hint: "Before taxes", id: "roi2-price"),
-                LockedRow(label: "Order deposit", value: "$1,000", hint: "Per Cybercab; included in the $29,990, not extra", id: "roi2-deposit"),
-            ], rows: [
-                Row(key: "salesTaxPct", label: "Sales tax", range: 0...12, step: 0.05, unit: "%", dp: 2, hint: "Texas motor vehicle sales tax is 6.25%"),
-                Row(key: "feesPerVehicle", label: "Title, registration & fees", range: 0...2000, step: 10, unit: "", money: true),
-            ]) {
+        return VStack(alignment: .leading, spacing: 10) {
+            group("fin", "Fleet & Financing", summary: "\(x.purchase == .finance ? "Financed \(Int(x.downPaymentPct))% down · \(Format.one(x.aprPct))%" : "Cash") · tax \(Format.one(x.salesTaxPct))%", rows: []) {
                 Picker("Pay", selection: Binding(get: { session.input.purchase }, set: { session.input.purchase = $0 })) {
                     Text("Cash").tag(FleetROI.Purchase.cash); Text("Finance").tag(FleetROI.Purchase.finance)
                 }
-                .pickerStyle(.segmented).padding(.top, 4)
+                .pickerStyle(.segmented).padding(.top, 2)
                 .accessibilityIdentifier("roi2Purchase-pay")
                 if x.purchase == .finance {
                     slider(Row(key: "downPaymentPct", label: "Down payment", range: 0...100, step: 1, unit: "%"))
                     slider(Row(key: "aprPct", label: "Interest rate (APR)", range: 0...15, step: 0.1, unit: "%", dp: 1))
                     slider(Row(key: "loanMonths", label: "Loan term", range: 12...96, step: 12, unit: "mo"))
                 }
+                slider(Row(key: "salesTaxPct", label: "Sales tax", range: 0...12, step: 0.05, unit: "%", dp: 2, hint: "Texas motor vehicle sales tax is 6.25%"))
+                slider(Row(key: "feesPerVehicle", label: "Registration & fees", range: 0...2000, step: 10, unit: "", money: true))
             }
-            group("Ownership costs (per vehicle, monthly)", locked: [
-                LockedRow(label: "Autonomy Subscription", value: "$300/mo", hint: "Per Cybercab; a fixed calculator assumption", id: "roi2-subscriptionMonthly"),
-                LockedRow(label: "Free Autonomy", value: "1 month", hint: "The first month after delivery is free", id: "roi2-subscriptionIncludedMonths"),
-            ], rows: [
+            if fleet {
+                group("ops", "Revenue & Operations", summary: "\(ROIFormat.money(x.farePerRide, dp: 0)) × \(Int(x.ridesPerDay)) rides/day · \(Int(x.downtimePct))% down · start +\(Int(x.activationDelayMonths)) mo", rows: [
+                    Row(key: "ridesPerDay", label: "Rides per day", range: 0...40, step: 1, unit: ""),
+                    Row(key: "farePerRide", label: "Average fare", range: 0...40, step: 0.5, unit: "", money: true, dp: 2),
+                    Row(key: "operatingDays", label: "Operating days / month", range: 0...31, step: 1, unit: ""),
+                    Row(key: "downtimePct", label: "Downtime", range: 0...100, step: 1, unit: "%", hint: "Charging, cleaning, repairs, no demand"),
+                    Row(key: "activationDelayMonths", label: "Commercial start", range: 0...36, step: 1, unit: "mo", hint: "Hypothetical start: \(FleetROI.monthName(Int(x.activationDelayMonths) + 1)) (delivery estimate: December 2026)"),
+                    Row(key: "milesPerRide", label: "Miles per ride", range: 0.5...20, step: 0.5, unit: "mi", dp: 1),
+                    Row(key: "deadheadPct", label: "Empty miles between rides", range: 0...100, step: 5, unit: "%"),
+                ]) { EmptyView() }
+            }
+            group("exp", "Monthly Expenses", summary: "Insurance \(ROIFormat.money(x.insuranceMonthly)) · maintenance \(ROIFormat.money(x.maintenanceMonthly)) · \(String(format: "$%.2f", x.electricityRate))/kWh", rows: [
                 Row(key: "insuranceMonthly", label: "Insurance", range: 0...1500, step: 5, unit: "", money: true, hint: "Commercial cover would likely cost more"),
                 Row(key: "maintenanceMonthly", label: "Maintenance subscription", range: 0...400, step: 5, unit: "", money: true, hint: "Required; Tesla hasn't shown the price"),
                 Row(key: "electricityRate", label: "Electricity", range: 0...0.5, step: 0.01, unit: "/kWh", money: true, dp: 2),
-            ] + (fleet ? [] : [Row(key: "personalMilesMonthly", label: "Miles per month", range: 0...4000, step: 50, unit: "mi")])) { EmptyView() }
-            if fleet {
-                group("Commercial operation (hypothetical)", locked: [
-                    LockedRow(label: "Tesla Revenue Share", value: "25%", hint: "Of fares. A fixed modeling assumption: Tesla hasn't published revenue-sharing terms", id: "roi2-platformSharePct"),
-                ], rows: [
-                    Row(key: "activationDelayMonths", label: "Commercial start", range: 0...36, step: 1, unit: "mo", hint: "Hypothetical start: \(FleetROI.monthName(Int(x.activationDelayMonths) + 1)) (delivery estimate: December 2026)"),
-                    Row(key: "farePerRide", label: "Average fare per ride", range: 0...40, step: 0.5, unit: "", money: true, dp: 2),
-                    Row(key: "ridesPerDay", label: "Rides per vehicle per day", range: 0...40, step: 1, unit: ""),
-                    Row(key: "operatingDays", label: "Operating days per month", range: 0...31, step: 1, unit: ""),
-                    Row(key: "downtimePct", label: "Downtime", range: 0...100, step: 1, unit: "%", hint: "Charging, cleaning, repairs, no demand"),
-                    Row(key: "cleaningMonthly", label: "Cleaning", range: 0...800, step: 5, unit: "", money: true),
-                ]) { EmptyView() }
+                Row(key: "kwhPerMile", label: "Efficiency", range: 0.1...0.5, step: 0.01, unit: "kWh/mi", dp: 2),
+            ] + (fleet ? [Row(key: "cleaningMonthly", label: "Cleaning", range: 0...800, step: 5, unit: "", money: true)]
+                       : [Row(key: "personalMilesMonthly", label: "Miles per month", range: 0...4000, step: 50, unit: "mi")])) { EmptyView() }
+            group("fixed", "Fixed Tesla values", summary: "$29,990 · $1,000 deposit · $300/mo · 1 month free\(fleet ? " · 25% Tesla share" : "")", locked: true, rows: []) {
+                LockedRow(label: "Price per Cybercab", value: "$29,990", hint: "Before taxes", id: "roi2-price")
+                LockedRow(label: "Order deposit", value: "$1,000", hint: "Per Cybercab; included in the $29,990, not extra", id: "roi2-deposit")
+                LockedRow(label: "Autonomy Subscription", value: "$300/mo", hint: "Per Cybercab; a fixed calculator assumption", id: "roi2-subscriptionMonthly")
+                LockedRow(label: "Free Autonomy", value: "1 month", hint: "The first month after delivery is free", id: "roi2-subscriptionIncludedMonths")
+                if fleet {
+                    LockedRow(label: "Tesla Revenue Share", value: "25%", hint: "Of fares. A fixed modeling assumption: Tesla hasn't published revenue-sharing terms", id: "roi2-platformSharePct")
+                }
             }
             HStack(spacing: 10) {
                 Button { withAnimation(.snappy) { session.reset() } } label: {
@@ -435,18 +491,40 @@ struct FleetROI2Sections: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("roi2Save")
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
     }
 
-    private func group<Extra: View>(_ title: String, locked: [LockedRow] = [], rows: [Row], @ViewBuilder extra: () -> Extra) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased()).font(.inter(10.5, .semibold, relativeTo: .caption)).tracking(1.2).foregroundStyle(Color.chFog).padding(.top, 12)
-            ForEach(Array(locked.enumerated()), id: \.offset) { $0.element }
-            ForEach(rows, id: \.key) { slider($0) }
-            extra()
+    /// A collapsible settings group: its title, and when closed a one-line
+    /// summary of what it holds (nothing hidden blind).
+    private func group<Extra: View>(_ id: String, _ title: String, summary: String, locked: Bool = false, rows: [Row], @ViewBuilder extra: () -> Extra) -> some View {
+        let open = Binding(get: { session.openGroups.contains(id) }, set: { if $0 { session.openGroups.insert(id) } else { session.openGroups.remove(id) } })
+        let extraContent = extra()
+        return DisclosureGroup(isExpanded: open) {
+            VStack(alignment: .leading, spacing: 10) {
+                extraContent
+                ForEach(rows, id: \.key) { slider($0) }
+            }
+            .padding(.top, 8)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    if locked { Image(systemName: "lock.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.brandGold) }
+                    Text(title.uppercased()).font(.inter(11.5, .semibold, relativeTo: .caption)).tracking(1.1).foregroundStyle(Color.chMist)
+                }
+                if !open.wrappedValue {
+                    Text(summary).font(.inter(11.5, relativeTo: .caption)).foregroundStyle(Color.chCaption).lineLimit(1)
+                }
+            }
+            .frame(minHeight: 36, alignment: .leading)
         }
-        .overlay(alignment: .top) { Rectangle().fill(Color.chLine).frame(height: 1) }
+        .tint(.brandGold)
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .background(locked ? Color.brandGold.opacity(0.05) : Color.chSurface, in: .rect(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(locked ? Color.brandGold.opacity(0.3) : Color.chLine))
+        // A container keeps its own identifier without overriding its rows'.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("roi2Group-\(id)")
     }
 
     private func slider(_ row: Row) -> some View {
