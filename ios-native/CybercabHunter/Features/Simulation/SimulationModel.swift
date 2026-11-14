@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// The Simulation screen's state (public/simulation.html, js/fleet-compare.js).
-/// Fleet ROI is computed on the device (SimulationCalc, from calc.js); Fleet
+/// Fleet ROI is computed on the device (FleetROIModel, = js/fleet-roi.js); Fleet
 /// ETA reads GET /api/fleet-eta per city, once, and again only when an hour
 /// old (the estimates change once a day). A failed refresh keeps an earlier
 /// good copy; with none, no number is shown.
@@ -14,42 +14,9 @@ final class SimulationModel {
 
     var view: View = .roi
 
-    // MARK: Fleet ROI 2.0 (FleetROI2View.swift): the simulator and the device's saved configurations
+    // MARK: Fleet ROI (FleetROI2View.swift): the simulator and the device's saved configurations
     let roi2 = FleetROISession()
     let roi2Store = FleetROIStore()
-
-    // MARK: Fleet ROI (the original quick estimate)
-    var fleetSize = 0
-    var electricityRate = SimulationCalc.ROI.electricityStart
-    var dailyMiles = SimulationCalc.ROI.milesStart
-    var lossOn = true
-    /// The lifetime registry count the fleet size starts at (nil until loaded, or if it couldn't be).
-    private(set) var registryCount: Int?
-    private(set) var registryFailed = false
-    private var fleetTouched = false
-
-    var financials: SimulationCalc.Financials {
-        SimulationCalc.fleetFinancials(fleetSize: fleetSize, electricityRate: electricityRate, dailyMiles: dailyMiles, lossOn: lossOn)
-    }
-    var startNote: String {
-        if let n = registryCount { return "Fleet size starts at the lifetime registry count (\(Format.int(n)) Cybercabs spotted). Electricity rate and daily miles start at example values. Change any of them." }
-        if registryFailed { return "Couldn't load the lifetime registry count, so fleet size starts at 0. Electricity rate and daily miles start at example values." }
-        return "Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them."
-    }
-
-    func setFleetSize(_ n: Int) { fleetTouched = true; fleetSize = min(SimulationCalc.ROI.fleetMax, max(0, n)) }
-
-    /// GET /api/registry/stats: fleet size starts at the lifetime count (capped at the slider's 100).
-    func loadRegistry(api: APIClient) async {
-        guard registryCount == nil else { return }
-        do {
-            let s: RegistryStats = try await api.get("/api/registry/stats")
-            registryCount = s.publicVehicles
-            registryFailed = false
-            if !fleetTouched { fleetSize = min(SimulationCalc.ROI.fleetMax, s.publicVehicles) }
-        } catch is CancellationError {
-        } catch { registryFailed = true }
-    }
 
     // MARK: Fleet ETA
     var city = "austin"

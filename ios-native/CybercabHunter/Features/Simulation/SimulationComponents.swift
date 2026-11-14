@@ -43,7 +43,7 @@ extension SimHero where Extra == EmptyView {
     }
 }
 
-/// "INPUTS · RESULTS · BREAKEVEN" over "FLEET ECONOMICS".
+/// A gold eyebrow over a section title ("SIMULATOR · FLEET BUILDER" over "OWN OR OPERATE").
 struct SimSectionHead: View {
     let eyebrow: String
     let title: String
@@ -96,22 +96,6 @@ struct TintCard<Content: View>: View {
     }
 }
 
-/// "● CYBERCAB FLEET" over a white uppercase title (the card's heading).
-struct CardHeading: View {
-    let dotLabel: String
-    let title: String?
-    var color: Color = .brandGold
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Circle().fill(color).frame(width: 8, height: 8)
-                Text(dotLabel.uppercased()).font(.inter(11, .semibold)).tracking(1.8).foregroundStyle(color)
-            }
-            if let title { Text(title.uppercased()).font(.inter(19, .bold)).tracking(0.4).foregroundStyle(Color.chInk) }
-        }
-    }
-}
-
 /// An icon label: a coloured line icon, then grey uppercase text (.rhw-label).
 struct IconLabel: View {
     let icon: String
@@ -122,58 +106,6 @@ struct IconLabel: View {
             Image(systemName: icon).font(.system(size: 13, weight: .medium)).foregroundStyle(color).frame(width: 16)
             Text(text.uppercased()).font(.inter(11.5, .semibold)).tracking(1.6).foregroundStyle(Color.chFog)
         }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// A fixed input: its label on the left, the value on the right.
-struct ValueRow: View {
-    let label: String
-    let value: String
-    var note: String? = nil
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(label).font(.inter(14, .medium)).foregroundStyle(Color.chMist)
-                Spacer(minLength: 8)
-                Text(value).font(.inter(17, .semibold)).monospacedDigit().foregroundStyle(Color.chInk)
-            }
-            if let note { Text(note).font(.inter(11.5)).foregroundStyle(Color.chCaption) }
-        }
-        .padding(.vertical, 11)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// A result tile with a soft glow; the highlighted one (net operating income) is brighter and gold.
-struct ResultTile: View {
-    let icon: String
-    let label: String
-    let value: String
-    var highlight = false
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 5) {
-                Image(systemName: icon).font(.system(size: 9, weight: .bold)).foregroundStyle(Color.brandGold).padding(.top, 2)
-                Text(label.uppercased()).font(.inter(9.5, .semibold)).tracking(0.5).foregroundStyle(Color.chFog)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-            Text(value).font(.inter(16, .semibold)).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1)
-                .foregroundStyle(highlight ? Color.brandGold : Color.chInk)
-                .shadow(color: highlight ? Color.brandGold.opacity(0.45) : .clear, radius: 8)
-        }
-        .padding(11)
-        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-        .background {
-            ZStack {
-                Color.chSurface
-                LinearGradient(stops: [.init(color: Color.brandGold.opacity(highlight ? 0.15 : 0.07), location: 0), .init(color: .clear, location: 0.65)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-            }
-            .clipShape(.rect(cornerRadius: 14))
-        }
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.brandGold.opacity(highlight ? 0.5 : 0.25)))
         .accessibilityElement(children: .combine)
     }
 }

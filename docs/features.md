@@ -33,13 +33,12 @@ Cybercab vs. Model Y in Austin; the model and its inputs are in `docs/fleet-eta-
 - Pickup wait as a range (e.g. 6–16 min, most likely ~9) with Quiet / Typical / Busy scenarios; "How this is estimated" lists every input as Live, Measured or Assumed.
 - The live data refreshes every 5 minutes while the page is visible.
 
-### Fleet ROI — Fleet Dashboard
+### Fleet ROI (`js/fleet-roi.js` + `js/fleet-roi-ui.js`; model: `docs/fleet-roi-model.md`)
 
-- Adjustable inputs: fleet size, electricity rate, and daily miles/cab (range sliders), plus an inductive-loss toggle (defaults to 8%)
-- Passenger Fare, Tesla Network Cut, and Cost per Unit are shown as fixed assumptions, not adjustable inputs
-- Animated output cards: Monthly Energy Overhead, Gross Fleet Revenue, Net Operating Income
-- Breakeven-timeline meter
-- "Export" button generates a PDF client-side via `jsPDF` (served from `public/vendor`) — not a `.txt` file
+- One simulator: Personal ownership / Fleet investment, fleet-size presets (1–100), cash or financing (down payment, APR, term), sales tax, fees, insurance, maintenance, electricity, and (Fleet) fare, rides/day, operating days, downtime, cleaning and commercial start.
+- Five fixed values, shown locked (not editable, enforced on saved configurations): $29,990 price, $1,000 deposit (part of the price), $300/mo Autonomy Subscription, 1 month Free Autonomy, 25% Tesla Revenue Share (a fixed modeling assumption).
+- Animated result cards (upfront cash, revenue, expenses, operating profit, net cash flow, hypothetical break-even), a profit timeline (1/3/5/10 years, series toggles, break-even and commercial-start marks), and saved configurations in this browser (save, rename, duplicate, load, delete, compare).
+- The iOS app has the same simulator (`FleetROI2View.swift`), with identical results (shared fixtures).
 
 ## Zones (`infrastructure.html`)
 

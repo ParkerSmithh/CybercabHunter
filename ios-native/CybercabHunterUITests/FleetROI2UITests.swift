@@ -1,8 +1,8 @@
 import XCTest
 
-/// Fleet ROI 2.0 on the device (FleetROI2View): the reported purchase terms
-/// with their sources, fleet presets, Personal vs Fleet, financing, saved
-/// configurations (save, duplicate, compare) and Dynamic Type. Screenshots
+/// Fleet ROI on the device (FleetROI2View): the five fixed values (locked),
+/// the removed sections staying gone, fleet presets, Personal vs Fleet,
+/// financing, saved configurations (save, duplicate, compare) and Dynamic Type. Screenshots
 /// of each step are attached to the result bundle.
 final class FleetROI2UITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -33,14 +33,23 @@ final class FleetROI2UITests: XCTestCase {
         open(app)
         shot(app, "roi2-hero")
 
-        let purchase = any(app, "roi2Purchase")
-        reveal(purchase, in: app)
-        XCTAssertTrue(shown(app, "$29,990").exists, "the reported price")
-        XCTAssertTrue(shown(app, "$299/mo · first month included").exists)
-        XCTAssertTrue(shown(app, "InsideEVs, Nov 13, 2026").exists, "sources are listed")
-        shot(app, "roi2-purchase")
-        reveal(any(app, "roi2Breakdown"), in: app)
-        shot(app, "roi2-breakdown")
+        // Removed: the purchase card, the ownership breakdown, the scenario comparison, the old quick calculator.
+        for gone in ["roi2Purchase", "roi2Breakdown", "roi2Scenarios", "roiResults", "roiStartNote", "roiExport"] {
+            XCTAssertFalse(any(app, gone).exists, "\(gone) is gone")
+        }
+        // The five fixed values: shown, locked, not adjustable.
+        for (id, value) in [("roi2-price", "$29,990"), ("roi2-deposit", "$1,000"), ("roi2-subscriptionMonthly", "$300/mo"), ("roi2-subscriptionIncludedMonths", "1 month")] {
+            let row = any(app, id)
+            reveal(row, in: app)
+            XCTAssertTrue(row.exists && (row.value as? String ?? "").hasPrefix("\(value), fixed"), "\(id) shows \(value), fixed")
+            XCTAssertFalse(app.sliders[id].exists, "\(id) has no slider")
+        }
+        XCTAssertTrue(any(app, "roi2-subscriptionIncludedMonths").label == "Free Autonomy")
+        shot(app, "roi2-locked")
+        let share = any(app, "roi2-platformSharePct")
+        reveal(share, in: app)
+        XCTAssertTrue(share.label == "Tesla Revenue Share" && (share.value as? String ?? "").hasPrefix("25%, fixed"))
+        shot(app, "roi2-tesla-share")
 
         // Fleet builder: 25 vehicles → upfront ×25 ($32,164.375 × 25 = $804,109).
         let preset = app.buttons["roi2Preset-25"]
@@ -48,7 +57,7 @@ final class FleetROI2UITests: XCTestCase {
         preset.tap()
         XCTAssertTrue(shown(app, "$804,109").waitForExistence(timeout: 5), "upfront cash for 25 cash-bought Cybercabs")
         reveal(any(app, "roi2Metrics"), in: app)
-        XCTAssertTrue(shown(app, "$69,639").waitForExistence(timeout: 5), "operating profit a month: 25 × $2,785.56 ($5,184 − $2,398.44)")
+        XCTAssertTrue(shown(app, "$76,094").waitForExistence(timeout: 5), "operating profit a month: 25 × $3,043.76 ($5,184 − $2,140.24, with the 25% Tesla share and $300 subscription)")
         shot(app, "roi2-metrics-25")
         let timeline = any(app, "roi2Timeline")
         reveal(timeline, in: app)
@@ -72,11 +81,6 @@ final class FleetROI2UITests: XCTestCase {
         pay.buttons["Finance"].tap()
         XCTAssertTrue(any(app, "roi2-aprPct").waitForExistence(timeout: 5), "APR slider")
         shot(app, "roi2-finance")
-
-        // Scenarios.
-        reveal(any(app, "roi2Scenarios"), in: app)
-        XCTAssertTrue(shown(app, "CONSERVATIVE").exists && shown(app, "OPTIMISTIC").exists)
-        shot(app, "roi2-scenarios")
 
         // Save twice, duplicate, compare.
         let save = app.buttons["roi2Save"]
@@ -108,11 +112,11 @@ final class FleetROI2UITests: XCTestCase {
         let app = XCUIApplication.forTests()
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         open(app)
-        reveal(any(app, "roi2Purchase"), in: app)
-        shot(app, "roi2-large-purchase")
         reveal(any(app, "roi2Metrics"), in: app)
         shot(app, "roi2-large-metrics")
-        reveal(any(app, "roi2Scenarios"), in: app)
-        shot(app, "roi2-large-scenarios")
+        reveal(any(app, "roi2-price"), in: app)
+        shot(app, "roi2-large-locked")
+        reveal(any(app, "roi2Saved"), in: app)
+        shot(app, "roi2-large-saved")
     }
 }

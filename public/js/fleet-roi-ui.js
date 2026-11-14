@@ -1,9 +1,10 @@
-/* Fleet ROI 2.0 page UI (simulation.html, Fleet ROI tab). The math is
+/* Fleet ROI page UI (simulation.html, Fleet ROI tab). The math is
    js/fleet-roi.js (CCC_FLEET_ROI); this file only reads inputs, calls
-   simulate(), and draws: the purchase breakdown, the simulator's inputs and
-   result cards, the fleet builder, the profit timeline, the scenario table
-   and saved configurations (localStorage, this browser only). Every input
-   carries its kind (Reported / Estimate / Assumption). Entrances are the
+   simulate(), and draws: the simulator's inputs and result cards, the fleet
+   builder, the profit timeline and saved configurations (localStorage, this
+   browser only). Every input carries its kind (Estimate / Assumption); the
+   five fixed values (price, deposit, Autonomy Subscription, Free Autonomy,
+   Tesla Revenue Share) are shown locked, read-only. Entrances are the
    sitewide AnimatedContent (js/animated-content.js); numbers move with
    CCC.animateCounter, like the rest of the site. No requests. */
 (function () {
@@ -25,11 +26,11 @@
   const paybackText = (r, short) => r.input.mode !== 'fleet' ? 'n/a' : r.paybackMonth === null ? (short ? 'Not in 10 yrs' : 'Not within 10 years') : `${r.paybackMonth} mo`;
 
   // ---- the inputs, grouped (labels and display ranges; the model clamps the rest) ----
-  const KIND = { reported: 'Reported', estimate: 'Estimate', assumption: 'Assumption' };
+  const KIND = { estimate: 'Estimate', assumption: 'Assumption' };   // fixed values are locked rows, not badges
   const GROUPS = [
     { title: 'Purchase', rows: [
-      { k: 'price', label: 'Price per Cybercab', pre: '$', ui: [15000, 60000], hint: 'Reported price, before taxes' },
-      { k: 'deposit', label: 'Order deposit', pre: '$', ui: [0, 5000], hint: 'Nonrefundable; part of the price, not extra' },
+      { k: 'price', label: 'Price per Cybercab', lock: () => '$29,990', hint: 'Before taxes' },
+      { k: 'deposit', label: 'Order deposit', lock: () => '$1,000', hint: 'Per Cybercab; included in the $29,990, not extra' },
       { k: 'salesTaxPct', label: 'Sales tax', post: '%', ui: [0, 12], hint: 'Texas motor vehicle sales tax is 6.25%' },
       { k: 'feesPerVehicle', label: 'Title, registration & fees', pre: '$', ui: [0, 2000] },
       { k: 'purchase', label: 'Pay', seg: [['cash', 'Cash'], ['finance', 'Finance']] },
@@ -38,8 +39,8 @@
       { k: 'loanMonths', label: 'Loan term', post: 'mo', ui: [12, 96], when: x => x.purchase === 'finance' },
     ] },
     { title: 'Ownership costs (per vehicle, monthly)', rows: [
-      { k: 'subscriptionMonthly', label: 'Autonomy Subscription', pre: '$', ui: [0, 600], hint: 'Required; first month included' },
-      { k: 'subscriptionIncludedMonths', label: 'Subscription months included', post: 'mo', ui: [0, 12] },
+      { k: 'subscriptionMonthly', label: 'Autonomy Subscription', lock: () => '$300/mo', hint: 'Per Cybercab; a fixed calculator assumption' },
+      { k: 'subscriptionIncludedMonths', label: 'Free Autonomy', lock: () => '1 month', hint: 'The first month after delivery is free' },
       { k: 'insuranceMonthly', label: 'Insurance', pre: '$', ui: [0, 1500], hint: 'Commercial cover would likely cost more' },
       { k: 'maintenanceMonthly', label: 'Maintenance subscription', pre: '$', ui: [0, 400], hint: 'Required; Tesla hasn\'t shown the price' },
       { k: 'electricityRate', label: 'Electricity', pre: '$', post: '/kWh', ui: [0, 0.5], dp: 2 },
@@ -54,7 +55,7 @@
       { k: 'downtimePct', label: 'Downtime', post: '%', ui: [0, 100], hint: 'Charging, cleaning, repairs, no demand' },
       { k: 'milesPerRide', label: 'Miles per ride', post: 'mi', ui: [0.5, 20], dp: 1 },
       { k: 'deadheadPct', label: 'Empty miles between rides', post: '%', ui: [0, 100] },
-      { k: 'platformSharePct', label: 'Platform revenue share', post: '%', ui: [0, 60], hint: 'Tesla has published no split; estimates run 25–30%' },
+      { k: 'platformSharePct', label: 'Tesla Revenue Share', lock: () => '25%', hint: 'Of fares. A fixed modeling assumption: Tesla hasn\'t published revenue-sharing terms' },
       { k: 'cleaningMonthly', label: 'Cleaning', pre: '$', ui: [0, 800] },
     ] },
   ];
@@ -65,9 +66,10 @@
   let scenEdits = { conservative: {}, expected: {}, optimistic: {} };
   const last = {};
   const store = (() => { try { return R.makeStore(window.localStorage); } catch (e) { return R.makeStore({ getItem: () => null, setItem: () => { throw new Error('no storage'); } }); } })();
-  const toast = (m, k) => { if (window.CCC && CCC.toast) CCC.toast(m, k); };
+  const toast = (m, k) => { if (typeof CCC !== 'undefined' && CCC.toast) CCC.toast(m, k); };
 
   // ---- build the input rows ----
+  const LOCK = '<svg class="roi2-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
   const fieldsBox = $('roi2Fields');
   const fmtVal = (row, v) => (row.dp ? Number(v).toFixed(row.dp) : String(v));
   fieldsBox.innerHTML = GROUPS.map((g, gi) => `
@@ -76,6 +78,11 @@
       ${g.rows.map(row => {
         const f = R.FIELDS[row.k];
         const id = 'roi2-' + row.k;
+        if (row.lock) return `<div class="roi2-row roi2-locked" data-row="${row.k}" role="group" aria-label="${esc(row.label)}: ${esc(row.lock())}, fixed">
+          <div class="top"><span class="roi2-label">${esc(row.label)}</span>
+            <span class="roi2-fixed" id="${id}">${LOCK}<span>${esc(row.lock())}</span></span></div>
+          ${row.hint ? `<div class="hint">${esc(row.hint)}</div>` : ''}
+        </div>`;
         const kind = f.kind ? `<span class="roi2-kind roi2-kind-${f.kind}">${KIND[f.kind]}</span>` : '';
         if (row.seg) return `<div class="roi2-row" data-row="${row.k}"><div class="top"><span class="roi2-label" id="${id}-l">${esc(row.label)}</span>
             <div class="roi2-seg roi2-seg-sm" role="radiogroup" aria-labelledby="${id}-l" data-seg="${row.k}">${row.seg.map(([v, t]) => `<button type="button" role="radio" data-v="${v}" aria-checked="false">${t}</button>`).join('')}</div></div></div>`;
@@ -88,6 +95,9 @@
         </div>`;
       }).join('')}
     </fieldset>`).join('');
+  // ElasticSlider (js/main.js) wires the sliders present at CCC.init();
+  // these are built afterwards, so wire them now.
+  if (typeof CCC !== 'undefined' && CCC.initElastic) CCC.initElastic();
   const rowsByKey = {};
   GROUPS.forEach(g => g.rows.forEach(r => { rowsByKey[r.k] = r; }));
 
@@ -131,15 +141,16 @@
     if (!el) return;
     const from = last[key];
     last[key] = value;
-    if (window.CCC && CCC.animateCounter && Number.isFinite(from) && Number.isFinite(value) && !reduce()) CCC.animateCounter(el, from, value, 450, fmt);
+    if (typeof CCC !== 'undefined' && CCC.animateCounter && Number.isFinite(from) && Number.isFinite(value) && !reduce()) CCC.animateCounter(el, from, value, 450, fmt);
     else el.textContent = fmt(value);
   }
 
   function syncInputs(from) {
     for (const row of Object.values(rowsByKey)) {
       const v = x[row.k];
-      const el = row.seg ? null : $('roi2-' + row.k);
-      if (row.seg) root.querySelectorAll(`[data-seg="${row.k}"] button`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === v)));
+      const el = row.seg || row.lock ? null : $('roi2-' + row.k);
+      if (row.lock) { /* fixed: nothing to sync */ }
+      else if (row.seg) root.querySelectorAll(`[data-seg="${row.k}"] button`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === v)));
       else {
         // Never rewrite the field being typed in; a slider updates its field.
         if (el !== from && (document.activeElement !== el || !from)) el.value = fmtVal(row, v);
@@ -158,7 +169,7 @@
     $('roi2Horizon').querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.months) === horizon)));
     $('roi2Series').querySelectorAll('button').forEach(b => { b.setAttribute('aria-pressed', String(series[b.dataset.series])); b.hidden = x.mode !== 'fleet' && b.dataset.series === 'revenue'; });
     $('roi2ModeNote').textContent = x.mode === 'fleet'
-      ? 'Fleet investment is a hypothetical: Tesla has not published terms for owners to run a Cybercab on its Robotaxi network (eligibility, revenue split, insurance, start date), and local rules and approval apply. Revenue, costs and the start date are your assumptions.'
+      ? 'Fleet investment is a hypothetical: Tesla has not published terms for owners to run a Cybercab on its Robotaxi network (eligibility, revenue split, insurance, start date), and local rules and approval apply. The 25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement; revenue, costs and the start date are assumptions.'
       : 'Personal ownership: what owning and driving a Cybercab costs, with the required Autonomy Subscription. No revenue: owning one doesn\'t mean you may run it as a commercial Robotaxi.';
   }
 
@@ -166,8 +177,8 @@
     const fleet = x.mode === 'fleet', s = r.steady, n = x.vehicles;
     const cards = fleet ? [
       ['upfront', 'Upfront cash', r.purchase.upfront, x.purchase === 'finance' ? `Down payment, tax & fees · ${n} vehicle${n > 1 ? 's' : ''}` : `Price, tax & fees · ${n} vehicle${n > 1 ? 's' : ''}`],
-      ['gross', 'Gross revenue / mo', s.gross, `${Math.round(r.perVehicle.ridesMonthly).toLocaleString('en-US')} rides per vehicle`],
-      ['opex', 'Operating expenses / mo', s.opex, 'Platform share, charging, subscription, insurance, upkeep'],
+      ['gross', 'Gross revenue / mo', s.gross, `Hypothetical · ${Math.round(r.perVehicle.ridesMonthly).toLocaleString('en-US')} rides per vehicle`],
+      ['opex', 'Operating expenses / mo', s.opex, 'Tesla share, charging, subscription, insurance, upkeep'],
       ['op', 'Operating profit / mo', s.operatingProfit, 'Before loan payments', true],
       ['net', 'Net cash flow / mo', s.netWithLoan, x.purchase === 'finance' ? `After ${money(s.loan)} loan payments` : 'Cash purchase: no loan'],
       ['payback', 'Hypothetical break-even', null, r.paybackMonth === null ? 'Cumulative cash never turns positive in 10 years' : `${monthName(r.paybackMonth)}${r.loanBalanceAtPayback > 0 ? ` · ${big(r.loanBalanceAtPayback)} still owed on loans` : ''}`],
@@ -193,40 +204,6 @@
       el.classList.toggle('neg', v !== null && v < 0);
       box.querySelector(`[data-s="${k}"]`).textContent = sub;
     }
-  }
-
-  function breakdown(r) {
-    const n = x.vehicles, p = r.purchase, s = r.steady, fleet = x.mode === 'fleet', multi = n > 1;
-    const k = kind => kind ? `<span class="roi2-kind roi2-kind-${kind}">${KIND[kind]}</span>` : '';
-    const row = (label, kind, per, total, sub, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${label}${sub ? `<span class="sub">${sub}</span>` : ''}</td><td class="k">${k(kind)}</td><td class="v">${per}</td>${multi ? `<td class="v">${total === undefined ? '' : total}</td>` : ''}</tr>`;
-    const per = v => money(v), tot = v => big(v * n);
-    const rows = [];
-    if (multi) rows.push(`<tr><td></td><td></td><td class="v roi2-sub">Per vehicle</td><td class="v roi2-sub">${n} vehicles</td></tr>`);
-    rows.push(row('Vehicle price', 'reported', per(p.price), tot(p.price), 'Before taxes'));
-    rows.push(row('Order deposit', 'reported', per(p.deposit), tot(p.deposit), 'Paid when ordering; part of the price'));
-    rows.push(row('Sales tax', 'estimate', per(p.tax), tot(p.tax), `${x.salesTaxPct}% of the price`));
-    rows.push(row('Title, registration & fees', 'assumption', per(p.fees), tot(p.fees)));
-    if (x.purchase === 'finance') {
-      rows.push(row('Down payment', 'assumption', per(p.down), tot(p.down), `${x.downPaymentPct}%, including the deposit`));
-      rows.push(row('Financed', 'assumption', per(p.principal), tot(p.principal), `${x.loanMonths} months at ${x.aprPct}% APR`));
-      rows.push(row('Loan payment / mo', 'assumption', money(p.payment, 2), tot(p.payment), `${money(p.interestTotal)} interest in all`));
-    } else rows.push(row('Financing', null, 'Cash', multi ? 'Cash' : undefined));
-    rows.push(row('Upfront cash', null, per(p.upfrontPerVehicle), tot(p.upfrontPerVehicle), 'At order and delivery', 'total'));
-    rows.push(row('Autonomy Subscription / mo', 'reported', per(x.subscriptionMonthly), tot(x.subscriptionMonthly), `First ${x.subscriptionIncludedMonths === 1 ? 'month' : x.subscriptionIncludedMonths + ' months'} included`));
-    rows.push(row('Insurance / mo', 'assumption', per(x.insuranceMonthly), tot(x.insuranceMonthly)));
-    rows.push(row('Maintenance subscription / mo', 'assumption', per(x.maintenanceMonthly), tot(x.maintenanceMonthly), 'Required; price not shown by Tesla'));
-    rows.push(row('Charging / mo', 'assumption', per(r.perVehicle.chargingMonthly), tot(r.perVehicle.chargingMonthly), `${Math.round(r.perVehicle.milesMonthly).toLocaleString('en-US')} mi at ${money(x.electricityRate, 2)}/kWh`));
-    if (fleet) {
-      rows.push(row('Cleaning / mo', 'assumption', per(x.cleaningMonthly), tot(x.cleaningMonthly)));
-      rows.push(row('Platform share / mo', 'assumption', per(r.perVehicle.platformFeeMonthly), tot(r.perVehicle.platformFeeMonthly), `${x.platformSharePct}% of fares`));
-      rows.push(row('Operating expenses / mo', null, per(s.opex / n), tot(s.opex / n), 'Once operating', 'total'));
-      rows.push(row('Gross revenue / mo', 'assumption', per(s.gross / n), tot(s.gross / n), 'Hypothetical'));
-      rows.push(row('Net operating cash flow / mo', null, per(s.netWithLoan / n), tot(s.netWithLoan / n), x.purchase === 'finance' ? 'After loan payments' : 'Cash purchase', 'total'));
-      rows.push(row('Hypothetical break-even', null, paybackText(r, true), multi ? paybackText(r, true) : undefined));
-    }
-    rows.push(row(`Total cost of ownership, ${horizon / 12} yr${horizon > 12 ? 's' : ''}`, null, per(r.horizon.ownershipCost / n), tot(r.horizon.ownershipCost / n), fleet ? 'Costs only, before any revenue' : 'Purchase and every running cost', 'total'));
-    $('roi2Breakdown').innerHTML = rows.join('');
-    $('roi2BreakdownSub').textContent = `${multi ? `Per vehicle and for ${n} vehicles` : 'Per vehicle'}, from your inputs below · ${x.mode === 'fleet' ? 'Fleet investment' : 'Personal ownership'}`;
   }
 
   // ---- profit timeline (SVG; cumulative on the left axis, monthly on the right) ----
@@ -274,7 +251,7 @@
     $('roi2ChartDesc').textContent = `Cumulative cash over ${horizon} months: starts at ${money(ms[0].cumulative)}, ends at ${money(end)}. ${pb ? `Hypothetical break-even in month ${pb}.` : fleet ? 'No break-even within this period.' : ''}`;
     $('roi2ChartSub').textContent = fleet ? `Cumulative cash from delivery · ends at ${big(end)} after ${horizon / 12} yr${horizon > 12 ? 's' : ''}` : `What owning costs, cumulative · ${big(-end)} after ${horizon / 12} yr${horizon > 12 ? 's' : ''}`;
     $('roi2ChartNote').textContent = fleet
-      ? `Monthly lines use the right-hand scale; expenses include loan payments. Nothing earns before the commercial start (${monthName(x.activationDelayMonths + 1)}), and ${x.downtimePct}% downtime is applied every operating month. Hypothetical, not a forecast.`
+      ? `Monthly lines use the right-hand scale; expenses include loan payments and the 25% Tesla share. Nothing earns before the commercial start (${monthName(x.activationDelayMonths + 1)}), and ${x.downtimePct}% downtime is applied every operating month. Hypothetical, not a forecast: Tesla's actual commercial terms are unconfirmed.`
       : 'Monthly expenses (right-hand scale) include loan payments. Personal ownership earns no revenue.';
     chart.data = { ms, xs, L, pw, W, fleet };
   }
@@ -297,53 +274,6 @@
     svg.addEventListener('pointerdown', show);
     svg.addEventListener('pointerleave', () => tipEl.classList.add('hidden'));
   })();
-
-  // ---- scenarios ----
-  const SROWS = [
-    { k: 'farePerRide', label: 'Fare per ride', pre: '$', step: 0.5 },
-    { k: 'ridesPerDay', label: 'Rides / vehicle / day', step: 1 },
-    { k: 'downtimePct', label: 'Downtime', post: '%', step: 1 },
-    { k: 'platformSharePct', label: 'Platform share', post: '%', step: 1 },
-    { k: 'activationDelayMonths', label: 'Commercial start (mo)', step: 1 },
-    { k: 'insuranceMonthly', label: 'Insurance / mo', pre: '$', step: 5 },
-    { k: 'cleaningMonthly', label: 'Cleaning / mo', pre: '$', step: 5 },
-  ];
-  const SKEYS = ['conservative', 'expected', 'optimistic'];
-  function scenarioInput(key) { return R.withScenario(Object.assign({}, x, { horizonMonths: horizon }), key, scenEdits[key]); }
-  function scenarios() {
-    const runs = SKEYS.map(k => R.simulate(scenarioInput(k)));
-    const val = (k, row) => { const v = scenarioInput(k)[row.k]; return v; };
-    const head = `<thead><tr><th>${x.vehicles} vehicle${x.vehicles > 1 ? 's' : ''} · ${x.purchase === 'finance' ? 'financed' : 'cash'}</th>${SKEYS.map(k => `<th>${R.SCENARIOS[k].label}</th>`).join('')}</tr></thead>`;
-    const edit = SROWS.map(row => `<tr><td>${row.label}</td>${SKEYS.map(k => `<td>${row.pre || ''}<input type="number" step="${row.step}" data-scen="${k}" data-k="${row.k}" value="${val(k, row)}" aria-label="${R.SCENARIOS[k].label}: ${row.label}">${row.post || ''}</td>`).join('')}</tr>`).join('');
-    const res = (label, f, cls) => `<tr class="res${cls ? ' ' + cls : ''}"><td>${label}</td>${runs.map(r => `<td>${f(r)}</td>`).join('')}</tr>`;
-    const body = edit
-      + `<tr class="sep res"><td>Rides / vehicle / mo</td>${runs.map(r => `<td>${Math.round(r.perVehicle.ridesMonthly).toLocaleString('en-US')}</td>`).join('')}</tr>`
-      + res('Gross revenue / mo', r => big(r.steady.gross))
-      + res('Operating expenses / mo', r => big(r.steady.opex))
-      + res('Operating profit / mo', r => big(r.steady.operatingProfit), 'key')
-      + res('Net cash flow / mo', r => big(r.steady.netWithLoan))
-      + res('Hypothetical break-even', r => paybackText(r, true), 'key')
-      + res(`Cumulative after ${horizon / 12} yr${horizon > 12 ? 's' : ''}`, r => big(r.horizon.cumulative))
-      + `<tr><td></td>${SKEYS.map(k => `<td><button type="button" class="roi2-btn" data-use="${k}">Use in simulator</button></td>`).join('')}</tr>`;
-    const tbl = $('roi2Scenarios');
-    const focused = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.scen ? [document.activeElement.dataset.scen, document.activeElement.dataset.k] : null;
-    tbl.innerHTML = head + `<tbody>${body}</tbody>`;
-    if (focused) { const el = tbl.querySelector(`[data-scen="${focused[0]}"][data-k="${focused[1]}"]`); if (el) { el.focus(); const v = el.value; el.value = ''; el.value = v; } }
-  }
-  $('roi2Scenarios').addEventListener('change', e => {
-    const t = e.target; if (!t.dataset.scen) return;
-    const n = Number(t.value); if (!Number.isFinite(n)) return;
-    const s = R.sanitize(Object.assign({}, x, { [t.dataset.k]: n }));
-    scenEdits[t.dataset.scen] = Object.assign({}, scenEdits[t.dataset.scen], { [t.dataset.k]: s[t.dataset.k] });
-    scenarios();
-  });
-  $('roi2Scenarios').addEventListener('click', e => {
-    const b = e.target.closest('[data-use]'); if (!b) return;
-    x = R.sanitize(scenarioInput(b.dataset.use)); render();
-    toast(`${R.SCENARIOS[b.dataset.use].label} assumptions are in the simulator.`);
-    $('roi2SimHeading').scrollIntoView({ behavior: reduce() ? 'auto' : 'smooth', block: 'start' });
-  });
-  $('roi2ScenReset').addEventListener('click', () => { scenEdits = { conservative: {}, expected: {}, optimistic: {} }; scenarios(); });
 
   // ---- saved configurations ----
   const selected = new Set();
@@ -425,9 +355,7 @@
     syncInputs(from);
     metricCards(r);
     peek(r);
-    breakdown(r);
     chart(r);
-    scenarios();
   }
 
   render();

@@ -2,8 +2,9 @@ import Testing
 import Foundation
 @testable import CybercabHunter
 
-// Phase 7: the website's remaining pages. The Simulation math is checked
+// Phase 7: the website's remaining pages. The Fleet ETA math is checked
 // against values computed by the website's own public/js/calc.js (node);
+// (Fleet ROI: FleetROIModelTests);
 // /api/fleet-eta fixtures are real production answers (read only); the
 // Rider data and Receipt sync fixtures are real Worker answers from the
 // isolated test Worker (scripts/community-test-server.mjs --fixtures).
@@ -11,19 +12,6 @@ import Foundation
 private func json(_ o: Any) -> String { String(decoding: try! JSONSerialization.data(withJSONObject: o), as: UTF8.self) }
 
 struct SimulationCalcTests {
-    @Test func fleetFinancialsMatchCalcJs() {
-        // calc.js fleetFinancials with the page's locked assumptions.
-        let a = SimulationCalc.fleetFinancials(fleetSize: 10, electricityRate: 0.12, dailyMiles: 150, lossOn: true)
-        #expect(a.grossRevenue == 90_000 && a.teslaCut == 22_500 && abs(a.monthlyEnergyOverhead - 1458) < 1e-6 && abs(a.netOperatingIncome - 66_042) < 1e-6 && a.breakevenMonths == 4.5)
-        let b = SimulationCalc.fleetFinancials(fleetSize: 1, electricityRate: 0.4, dailyMiles: 400, lossOn: false)
-        #expect(b.grossRevenue == 24_000 && abs(b.monthlyEnergyOverhead - 1200) < 1e-6 && abs(b.netOperatingIncome - 16_800) < 1e-6 && b.breakevenMonths == 1.8)
-        let c = SimulationCalc.fleetFinancials(fleetSize: 100, electricityRate: 0.05, dailyMiles: 20, lossOn: true)
-        #expect(c.grossRevenue == 120_000 && abs(c.monthlyEnergyOverhead - 810) < 1e-6 && abs(c.netOperatingIncome - 89_190) < 1e-6 && c.breakevenMonths == 33.6)
-        let d = SimulationCalc.fleetFinancials(fleetSize: 5, electricityRate: 0.12, dailyMiles: 0, lossOn: true)
-        #expect(d.grossRevenue == 0 && d.breakevenMonths == nil, "no income: never breaks even (the site's Infinity)")
-        #expect(SimulationCalc.chartMonths(breakeven: nil) == 24 && SimulationCalc.chartMonths(breakeven: 1.8) == 6 && SimulationCalc.chartMonths(breakeven: 33.6) == 44 && SimulationCalc.chartMonths(breakeven: 90) == 60)
-    }
-
     @Test func geometryMatchesCalcJsEtaRange() {
         #expect(SimulationCalc.geometry(fleetSize: 196, tier: "typical", city: "austin") == .ok(low: 4, likely: 6, high: 11, highCapped: false))
         #expect(SimulationCalc.geometry(fleetSize: 196, tier: "busy", city: "austin") == .ok(low: 5, likely: 10, high: 20, highCapped: true), "440 mi² Austin zone (Nov 2026); calc.js gives the same")

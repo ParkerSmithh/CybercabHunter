@@ -1,16 +1,21 @@
-/* Fleet ROI 2.0: the Cybercab ownership and fleet-investment model.
+/* Fleet ROI: the Cybercab ownership and fleet-investment model.
    One documented model for the website (simulation.html) and the iOS app
    (ios-native/.../FleetROIModel.swift, a line-for-line port). Both are
    tested against the same fixtures (tests/fixtures/fleet-roi-cases.json).
    Formulas and every default: docs/fleet-roi-model.md.
 
-   Nothing here is a Tesla commitment. Three kinds of figure, kept apart:
-     reported  what Tesla's Cybercab order interface showed (as reported on
-               Nov 13, 2026); not verified on tesla.com
-     estimate  a public figure we can cite (e.g. Texas motor vehicle sales tax)
-     assumption  an editable guess; commercial operation and its revenue
-               share are hypothetical: Tesla has published no terms for
-               owners running a Cybercab on its network.
+   Five values are FIXED (owner's decision, Nov 2026) and can't be changed
+   by an input or a saved configuration: sanitize() always enforces them.
+     price            $29,990 per Cybercab
+     deposit          $1,000 per Cybercab, part of the price (never added)
+     subscription     $300/month per Cybercab (a fixed calculator
+                      assumption; Tesla's reported price is $299)
+     Free Autonomy    the first month (once, from delivery)
+     Tesla Revenue Share  25% of fares (a fixed modeling assumption;
+                      Tesla has published no revenue-sharing terms)
+   Everything else is an editable estimate or assumption. Commercial
+   operation is hypothetical: Tesla has published no terms for owners
+   running a Cybercab on its network.
 
    simulate(input) runs month by month from delivery (month 1) for up to
    120 months. Money paid before delivery (deposit, down payment, tax, fees)
@@ -20,43 +25,31 @@
 (function (root) {
   'use strict';
 
-  const PRICING = Object.freeze({
-    price: 29990,                    // reported: vehicle price, excludes taxes
-    deposit: 1000,                   // reported: nonrefundable order deposit
-    depositCreditedToPrice: true,    // assumption until Tesla's terms say otherwise
-    depositRefundable: false,        // reported
-    subscriptionMonthly: 299,        // reported: Autonomy Subscription
-    subscriptionIncludedMonths: 1,   // reported: first month included
-    deliveryEstimate: '2026-12',     // reported: December 2026
-    deliveryLocation: 'Austin, Texas',
-    taxesIncluded: false,            // reported: price excludes taxes
-    maintenanceSubscriptionRequired: true,   // reported; price not shown
-    maintenancePriceShown: false,
-    lastVerified: '2026-11-13',
-    verifiedOnTeslaCom: false,
-    sources: [
-      { label: 'Tesla Cybercab order interface (screenshot, as reported)', url: null },
-      { label: 'InsideEVs, Nov 13, 2026', url: 'https://insideevs.com/news/815473/tesla-cybercab-pricing-sales-announced/' },
-      { label: 'Teslarati, Nov 13, 2026', url: 'https://www.teslarati.com/tesla-cybercab-29990-december-deliveries/' },
-      { label: 'Not a Tesla App, Nov 13, 2026', url: 'https://www.notateslaapp.com/news/5012/tesla-opens-orders-for-the-cybercab-for-personal-use-costs-29990-and-requires-a-299-monthly-subscription' },
-    ],
+  const FIXED = Object.freeze({
+    price: 29990,
+    deposit: 1000,
+    subscriptionMonthly: 300,
+    subscriptionIncludedMonths: 1,   // "Free Autonomy"
+    platformSharePct: 25,            // "Tesla Revenue Share" (key kept for saved configurations)
   });
+  const DELIVERY_ESTIMATE = '2026-12';   // month 1 of the timeline (reported December 2026)
 
   // Every input: its default, range, step and what kind of figure it is.
-  // kind: reported | estimate | assumption. fleetOnly: used only in Fleet mode.
+  // kind: fixed | estimate | assumption. fixed = locked to FIXED (not
+  // editable, not overridable). fleetOnly: used only in Fleet mode.
   const FIELDS = Object.freeze({
     mode:                 { def: 'fleet', options: ['personal', 'fleet'] },
     vehicles:             { def: 1, min: 1, max: 1000, step: 1, kind: 'assumption' },
-    price:                { def: 29990, min: 0, max: 200000, step: 10, kind: 'reported' },
-    deposit:              { def: 1000, min: 0, max: 10000, step: 50, kind: 'reported' },
+    price:                { def: FIXED.price, min: FIXED.price, max: FIXED.price, step: 10, kind: 'fixed', locked: true },
+    deposit:              { def: FIXED.deposit, min: FIXED.deposit, max: FIXED.deposit, step: 50, kind: 'fixed', locked: true },
     salesTaxPct:          { def: 6.25, min: 0, max: 15, step: 0.05, kind: 'estimate' },
     feesPerVehicle:       { def: 300, min: 0, max: 5000, step: 10, kind: 'assumption' },
     purchase:             { def: 'cash', options: ['cash', 'finance'] },
     downPaymentPct:       { def: 20, min: 0, max: 100, step: 1, kind: 'assumption' },
     aprPct:               { def: 6.9, min: 0, max: 30, step: 0.1, kind: 'assumption' },
     loanMonths:           { def: 60, min: 12, max: 96, step: 12, kind: 'assumption' },
-    subscriptionMonthly:  { def: 299, min: 0, max: 2000, step: 1, kind: 'reported' },
-    subscriptionIncludedMonths: { def: 1, min: 0, max: 24, step: 1, kind: 'reported' },
+    subscriptionMonthly:  { def: FIXED.subscriptionMonthly, min: FIXED.subscriptionMonthly, max: FIXED.subscriptionMonthly, step: 1, kind: 'fixed', locked: true },
+    subscriptionIncludedMonths: { def: FIXED.subscriptionIncludedMonths, min: FIXED.subscriptionIncludedMonths, max: FIXED.subscriptionIncludedMonths, step: 1, kind: 'fixed', locked: true },
     insuranceMonthly:     { def: 250, min: 0, max: 3000, step: 5, kind: 'assumption' },
     maintenanceMonthly:   { def: 60, min: 0, max: 1000, step: 5, kind: 'assumption' },
     electricityRate:      { def: 0.12, min: 0, max: 0.6, step: 0.01, kind: 'assumption' },
@@ -68,7 +61,7 @@
     deadheadPct:          { def: 30, min: 0, max: 150, step: 5, kind: 'assumption', fleetOnly: true },
     operatingDays:        { def: 30, min: 0, max: 31, step: 1, kind: 'assumption', fleetOnly: true },
     downtimePct:          { def: 10, min: 0, max: 100, step: 1, kind: 'assumption', fleetOnly: true },
-    platformSharePct:     { def: 30, min: 0, max: 100, step: 1, kind: 'assumption', fleetOnly: true },
+    platformSharePct:     { def: FIXED.platformSharePct, min: FIXED.platformSharePct, max: FIXED.platformSharePct, step: 1, kind: 'fixed', locked: true, fleetOnly: true },
     cleaningMonthly:      { def: 150, min: 0, max: 2000, step: 5, kind: 'assumption', fleetOnly: true },
     activationDelayMonths:{ def: 3, min: 0, max: 60, step: 1, kind: 'assumption', fleetOnly: true },
     horizonMonths:        { def: 60, min: 12, max: 120, step: 12 },
@@ -90,6 +83,7 @@
     for (const [k, f] of Object.entries(FIELDS)) {
       const v = src[k];
       if (f.options) { out[k] = f.options.includes(v) ? v : f.def; continue; }
+      if (f.locked) { out[k] = f.def; continue; }   // fixed: never from the input
       let n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
       if (typeof n !== 'number' || !Number.isFinite(n)) n = f.def;
       n = Math.min(f.max, Math.max(f.min, n));
@@ -202,24 +196,10 @@
     };
   }
 
-  // Three editable starting points for Fleet mode (assumptions, not forecasts).
-  const SCENARIOS = Object.freeze({
-    conservative: { label: 'Conservative', farePerRide: 9, ridesPerDay: 10, downtimePct: 20, platformSharePct: 35, activationDelayMonths: 6, insuranceMonthly: 400, cleaningMonthly: 200 },
-    expected:     { label: 'Expected',     farePerRide: 12, ridesPerDay: 16, downtimePct: 10, platformSharePct: 30, activationDelayMonths: 3, insuranceMonthly: 250, cleaningMonthly: 150 },
-    optimistic:   { label: 'Optimistic',   farePerRide: 15, ridesPerDay: 24, downtimePct: 5, platformSharePct: 25, activationDelayMonths: 1, insuranceMonthly: 200, cleaningMonthly: 100 },
-  });
-  const SCENARIO_KEYS = ['farePerRide', 'ridesPerDay', 'downtimePct', 'platformSharePct', 'activationDelayMonths', 'insuranceMonthly', 'cleaningMonthly'];
   const FLEET_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
-  function withScenario(input, key, edits) {
-    const s = Object.assign({}, SCENARIOS[key] || SCENARIOS.expected, edits || {});
-    const out = Object.assign({}, input, { mode: 'fleet' });
-    for (const k of SCENARIO_KEYS) out[k] = s[k];
-    return out;
-  }
-
   // The month the commercial start falls in, from the delivery estimate.
-  function startMonthLabel(delayMonths, delivery = PRICING.deliveryEstimate) {
+  function startMonthLabel(delayMonths, delivery = DELIVERY_ESTIMATE) {
     const [y, mo] = delivery.split('-').map(Number);
     const t = y * 12 + (mo - 1) + delayMonths;
     return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`;
@@ -228,7 +208,10 @@
   // ---- Saved configurations (localStorage on the site; UserDefaults on iOS) ----
   const STORE_KEY = 'cchFleetRoiSaved.v1';
   function makeStore(storage) {
-    const read = () => { try { const a = JSON.parse(storage.getItem(STORE_KEY) || '[]'); return Array.isArray(a) ? a.filter(s => s && typeof s.id === 'string' && typeof s.name === 'string' && s.input) : []; } catch (e) { return []; } };
+    // Every item is read through sanitize(): an older save with a different
+    // price, deposit, subscription, free period or revenue share gets the
+    // fixed values; everything else it saved is kept.
+    const read = () => { try { const a = JSON.parse(storage.getItem(STORE_KEY) || '[]'); return Array.isArray(a) ? a.filter(s => s && typeof s.id === 'string' && typeof s.name === 'string' && s.input).map(s => Object.assign({}, s, { input: sanitize(s.input) })) : []; } catch (e) { return []; } };
     const write = list => { try { storage.setItem(STORE_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } };
     const id = () => 'cfg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
     const clean = name => String(name || '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Untitled configuration';
@@ -242,7 +225,7 @@
     };
   }
 
-  const API = { PRICING, FIELDS, SCENARIOS, SCENARIO_KEYS, FLEET_PRESETS, MAX_MONTHS, STORE_KEY, defaults, sanitize, loanPayment, simulate, withScenario, startMonthLabel, makeStore };
+  const API = { FIXED, DELIVERY_ESTIMATE, FIELDS, FLEET_PRESETS, MAX_MONTHS, STORE_KEY, defaults, sanitize, loanPayment, simulate, startMonthLabel, makeStore };
   root.CCC_FLEET_ROI = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

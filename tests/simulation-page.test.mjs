@@ -14,20 +14,21 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const HTML = read('simulation.html');
 const INLINE = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.indexOf('</script>', HTML.lastIndexOf('<script>')));
-// In the page's order: calc.js, fleet-roi.js (the Fleet ROI 2.0 model, which the
-// quick calculator reads its price from), main.js, the inline scripts, the
-// Fleet ROI 2.0 UI, then Fleet ETA.
+// In the page's order: calc.js, fleet-roi.js (the Fleet ROI model), main.js,
+// the inline scripts, the Fleet ROI UI, then Fleet ETA.
 const COMBINED = `${read('js/calc.js')}\n${read('js/fleet-roi.js')}\n${read('js/main.js')}\n${INLINE}\n${read('js/fleet-roi-ui.js')}\n${read('js/fleet-compare.js')}`;
 
 // Every window opened; closed at the end so the Fleet ETA view's refresh timers
 // (js/fleet-compare.js) don't keep the test process alive.
 const windows = [];
 
-function open(url, registry = null) {
+function open(url, registry = null, saved = null) {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
   const w = dom.window;
+  if (saved) w.localStorage.setItem('cchFleetRoiSaved.v1', JSON.stringify(saved));
   windows.push(w);
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+  w.Element.prototype.scrollIntoView = () => {};   // jsdom has no layout
   const requests = [];
   w.fetch = async u => { requests.push(String(u)); return registry && String(u).endsWith('/api/registry/stats') ? Response.json(registry) : new Response('{}', { status: 404 }); };
   let error = null;
@@ -48,7 +49,9 @@ async function run() {
     check('two buttons: "FLEET ROI" and "FLEET ETA"', tabs.map(b => b.textContent.trim()).join('|') === 'FLEET ROI|FLEET ETA');
     check('the buttons come first, right under the header', (() => { const afterNav = p.d.querySelector('#mobileBottomNav').nextElementSibling; const first = afterNav.tagName === 'MAIN' ? afterNav.firstElementChild : afterNav; return first.tagName === 'SECTION' && !!first.querySelector('#simTabs'); })());
     check('Fleet ROI shows by default; Fleet ETA is hidden', !hidden('simPanelRoi') && hidden('simPanelEta') && p.d.getElementById('simTabRoi').getAttribute('aria-selected') === 'true');
-    check('the Fleet ROI view is the fleet calculator (FLEET ROI, inputs, Export)', /FLEET\s*ROI/.test(p.d.getElementById('simPanelRoi').textContent) && !!p.d.getElementById('fleetSize') && !!p.d.getElementById('exportBtn'));
+    const roi = p.d.getElementById('simPanelRoi');
+    check('the Fleet ROI view is the simulator: inputs, results, timeline, saved configurations', /FLEET\s*ROI/.test(roi.textContent) && ['roi2Mode', 'roi2Inputs', 'roi2Metrics', 'roi2Chart', 'roi2Saved'].every(id => roi.querySelector('#' + id)));
+    check('the purchase card, the ownership breakdown, the old Fleet economics calculator and the scenario comparison are gone', !['roi2PurchaseHeading', 'roi2Breakdown', 'roi2Scenarios', 'roi2ScenReset', 'roiHeading', 'fleetSize', 'exportBtn', 'cashFlowChart', 'roiStartNote'].some(id => p.d.getElementById(id)) && !/Order terms|Scenario comparison|Fleet economics|Purchase &amp; ownership|Conservative|Optimistic/i.test(roi.innerHTML));
     check('the Fleet ETA view is the fleet comparison (fares, hours, pickup wait)', /FLEET\s*ETA/.test(p.d.getElementById('simPanelEta').textContent) && ['etaCybercab', 'etaModelY', 'tripMiles', 'fleetLive'].every(id => p.d.getElementById('simPanelEta').querySelector('#' + id)));
     check('the page asks for the precomputed Fleet ETA estimates, and no live registry count', p.requests.some(u => u.includes('/api/fleet-eta?city=austin')) && !p.requests.some(u => u.includes('/api/fleet-stats')));
     p.d.getElementById('simTabEta').click();
@@ -71,26 +74,34 @@ async function run() {
     check('no element id is used twice on the combined page', ids.length === new Set(ids).size);
   }
 
-  console.log('2. Fleet ROI still calculates');
+  console.log('2. Fleet ROI: the simulator calculates, with five fixed values');
   {
     const p = open('https://cybercabhunter.com/simulation');
-    p.set('fleetSize', 10); p.set('dailyMiles', 200); p.set('electricityRate', 0.12);
+    const UI = p.w.CCC_FLEET_ROI_UI;
+    UI.set('vehicles', 10);
     await new Promise(r => setTimeout(r, 900));
-    const revenue = Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, ''));
-    check('changing the inputs recomputes the revenue', revenue > 0);
+    check('10 Cybercabs: $30,438 operating profit a month (10 × $3,043.76)', p.d.querySelector('[data-m="op"]').textContent === '$30,438');
+    const fixed = { price: '$29,990', deposit: '$1,000', subscriptionMonthly: '$300/mo', subscriptionIncludedMonths: '1 month', platformSharePct: '25%' };
+    const row = k => p.d.querySelector(`#roi2Inputs [data-row="${k}"]`);
+    check('the five fixed values are shown, read-only, with a lock', Object.entries(fixed).every(([k, v]) => row(k) && row(k).classList.contains('roi2-locked') && row(k).querySelector('.roi2-fixed').textContent.trim() === v && row(k).querySelector('.roi2-lock') && /fixed$/.test(row(k).getAttribute('aria-label'))));
+    check('…with no field or slider to change them', Object.keys(fixed).every(k => !row(k).querySelector('input') && !p.d.querySelector(`[data-field="${k}"],[data-range="${k}"]`)));
+    check('renamed: "Free Autonomy" and "Tesla Revenue Share"; no "Platform" or "Subscription months included"', /Free Autonomy/.test(row('subscriptionIncludedMonths').textContent) && /Tesla Revenue Share/.test(row('platformSharePct').textContent) && !/Platform revenue share|Subscription months included/i.test(p.d.getElementById('simPanelRoi').textContent));
+    UI.set('price', 50000); UI.set('platformSharePct', 0); UI.set('subscriptionMonthly', 1);
+    check('even set directly, they stay fixed', UI.input.price === 29990 && UI.input.platformSharePct === 25 && UI.input.subscriptionMonthly === 300);
+    check('the editable inputs still work (financing reveals its fields)', (UI.set('purchase', 'finance'), !p.d.querySelector('[data-row="aprPct"]').classList.contains('is-off')));
+    check('Tesla Revenue Share shows only in Fleet mode', (UI.set('mode', 'personal'), p.d.querySelector('[data-row="platformSharePct"]').classList.contains('is-off')) && (UI.set('mode', 'fleet'), !p.d.querySelector('[data-row="platformSharePct"]').classList.contains('is-off')));
+    check('the earnings say Tesla\'s terms are unconfirmed', /25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement/.test(p.d.getElementById('roi2ModeNote').textContent));
   }
 
-  console.log('2b. Starting values: the lifetime registry count and labeled examples');
+  console.log('2b. Saved configurations made before the values were fixed');
   {
-    const p = open('https://cybercabhunter.com/simulation', { public_vehicles: 45, recorded_rides: 3 });
-    await new Promise(r => setTimeout(r, 900));
-    const note = p.d.getElementById('roiStartNote').textContent;
-    check('fleet size starts at the lifetime registry count (45)', p.d.getElementById('fleetSize').value === '45' && p.d.getElementById('fleetSizeLabel').value === '45');
-    check('electricity starts at $0.12/kWh and daily miles at 150, labeled as examples', p.d.getElementById('electricityRate').value === '0.12' && p.d.getElementById('dailyMiles').value === '150' && /lifetime registry count \(45 Cybercabs spotted\)/.test(note) && /example values/.test(note));
-    check('so the page opens on a real projection, not $0', Number(p.d.getElementById('revenueOut').textContent.replace(/,/g, '')) > 0);
-    const down = open('https://cybercabhunter.com/simulation');
-    await new Promise(r => setTimeout(r, 300));
-    check('if the count can\'t load, fleet size stays 0 and the note says so', down.d.getElementById('fleetSize').value === '0' && /Couldn't load the lifetime registry count/.test(down.d.getElementById('roiStartNote').textContent));
+    const old = [{ id: 'cfg-old', name: 'Old plan', savedAt: '2026-11-13T20:00:00.000Z', input: { mode: 'fleet', vehicles: 7, price: 31000, deposit: 1500, subscriptionMonthly: 299, subscriptionIncludedMonths: 2, platformSharePct: 30, farePerRide: 13, ridesPerDay: 18 } }];
+    const p = open('https://cybercabhunter.com/simulation', null, old);
+    check('the older configuration is still listed (nothing deleted)', p.d.querySelectorAll('#roi2Saved li').length === 1 && /Old plan/.test(p.d.getElementById('roi2Saved').textContent));
+    p.d.querySelector('#roi2Saved [data-act="load"]').click();
+    const x = p.w.CCC_FLEET_ROI_UI.input;
+    check('loading it enforces $29,990, $1,000, $300, 1 month free and 25%', x.price === 29990 && x.deposit === 1000 && x.subscriptionMonthly === 300 && x.subscriptionIncludedMonths === 1 && x.platformSharePct === 25);
+    check('…and keeps its own values', x.vehicles === 7 && x.farePerRide === 13 && x.ridesPerDay === 18);
   }
 
   console.log('3. Navigation and old URLs');

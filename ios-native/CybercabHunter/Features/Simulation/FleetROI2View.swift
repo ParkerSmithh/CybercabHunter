@@ -1,11 +1,11 @@
 import SwiftUI
 import Charts
 
-/// Fleet ROI 2.0 in the app (the website's Fleet ROI tab, same model:
-/// FleetROI in FleetROIModel.swift = public/js/fleet-roi.js). Native
-/// controls, Swift Charts, saved configurations on the device. Every input
-/// says what kind of figure it is (Reported / Estimate / Assumption) and
-/// commercial operation is always labelled hypothetical.
+/// Fleet ROI in the app (the website's Fleet ROI tab, same model: FleetROI in
+/// FleetROIModel.swift = public/js/fleet-roi.js). Native controls, Swift
+/// Charts, saved configurations on the device. The five fixed values are
+/// shown locked; every other input says what kind of figure it is (Estimate /
+/// Assumption), and commercial operation is always labelled hypothetical.
 
 /// The simulator's state, kept on SimulationModel so switching to Fleet ETA
 /// and back doesn't lose it.
@@ -16,13 +16,10 @@ final class FleetROISession {
     var showCumulative = true
     var showRevenue = true
     var showExpenses = true
-    var scenarioEdits: [FleetROI.Scenario: [String: Double]] = [:]
-    var editingScenario: FleetROI.Scenario = .expected
     var compareIDs: Set<String> = []
 
     var result: FleetROI.Result { FleetROI.simulate(input) }
     var horizon: Int { Int(input.sanitized.horizonMonths) }
-    func scenarioInput(_ s: FleetROI.Scenario) -> FleetROI.Input { FleetROI.withScenario(input, s, edits: scenarioEdits[s] ?? [:]) }
     func reset() { let mode = input.mode; input = FleetROI.Input(); input.mode = mode }
 }
 
@@ -48,16 +45,15 @@ enum ROIFormat {
 
 // MARK: - Building blocks
 
-/// Reported / Estimate / Assumption.
+/// Estimate / Assumption (fixed values are LockedRow, not a badge).
 struct KindBadge: View {
     let kind: FleetROI.Kind
     var body: some View {
         Text(kind.label.uppercased())
             .font(.inter(9, .semibold, relativeTo: .caption2)).tracking(0.6)
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .foregroundStyle(kind == .reported ? Color.brandGold : kind == .estimate ? Color.chMist : Color.chFog)
-            .background(kind == .reported ? Color.brandGold.opacity(0.1) : .clear, in: .capsule)
-            .overlay(Capsule().strokeBorder(kind == .reported ? Color.brandGold.opacity(0.45) : Color.chHair2, style: StrokeStyle(lineWidth: 1, dash: kind == .assumption ? [3, 2] : [])))
+            .foregroundStyle(kind == .estimate ? Color.chMist : Color.chFog)
+            .overlay(Capsule().strokeBorder(Color.chHair2, style: StrokeStyle(lineWidth: 1, dash: kind == .assumption ? [3, 2] : [])))
             .accessibilityLabel(kind.label)
     }
 }
@@ -111,56 +107,33 @@ struct ROIMetric: View {
     }
 }
 
-// MARK: - Purchase
-
-struct FleetROIPurchaseCard: View {
+/// A fixed value: shown, never edited (a lock and a quiet capsule, not a
+/// disabled control).
+struct LockedRow: View {
+    let label: String
+    let value: String
+    var hint: String? = nil
+    let id: String
     var body: some View {
-        ROICard(gold: true) {
-            HStack {
-                CardHeading(dotLabel: "Order terms", title: nil)
-                Spacer()
-                KindBadge(kind: .reported)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("$29,990").font(.inter(38, .semibold, relativeTo: .largeTitle)).monospacedDigit().foregroundStyle(Color.brandGold)
-                Text("before taxes").font(.inter(13)).foregroundStyle(Color.chFog)
-            }
-            .accessibilityElement(children: .combine)
-            VStack(spacing: 0) {
-                term("Order deposit", "$1,000 · nonrefundable")
-                term("Autonomy Subscription", "$299/mo · first month included")
-                term("Maintenance subscription", "Required · price not shown")
-                term("Estimated delivery", "December 2026 · Austin, Texas")
-                term("Availability", "Invitation only, personal use")
-            }
-            Text("We treat the deposit as part of the $29,990 (credited at delivery), not an extra charge, until Tesla's terms say otherwise. Tesla hasn't said owners may run a Cybercab on its Robotaxi network; any revenue here is hypothetical.")
-                .font(.inter(11.5, relativeTo: .footnote)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Sources (last verified Nov 13, 2026; not yet confirmed on tesla.com):").font(.inter(11.5, relativeTo: .footnote)).foregroundStyle(Color.chCaption)
-                ForEach(FleetROI.Pricing.sources, id: \.label) { s in
-                    if let u = s.url, let url = URL(string: u) {
-                        Link(destination: url) { Text(s.label).font(.inter(12, .medium, relativeTo: .footnote)).underline() }.tint(.brandGold)
-                    } else {
-                        Text(s.label).font(.inter(12, relativeTo: .footnote)).foregroundStyle(Color.chFog)
-                    }
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .center) {
+                Text(label).font(.inter(14, .medium)).foregroundStyle(Color.chMist)
+                Spacer(minLength: 8)
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.brandGold)
+                    Text(value).font(.inter(15, .semibold)).monospacedDigit().foregroundStyle(Color.chInk)
                 }
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Color.white.opacity(0.03), in: .capsule)
+                .overlay(Capsule().strokeBorder(Color.chLine))
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("roi2Sources")
+            if let hint { Text(hint).font(.inter(11, relativeTo: .caption)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true) }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("roi2Purchase")
-    }
-
-    private func term(_ k: String, _ v: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(k).font(.inter(13)).foregroundStyle(Color.chFog)
-            Spacer(minLength: 10)
-            Text(v).font(.inter(13, .medium)).foregroundStyle(Color.chInk).multilineTextAlignment(.trailing)
-        }
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) { Rectangle().fill(Color.chLine).frame(height: 1) }
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue("\(value), fixed")
+        .accessibilityIdentifier(id)
     }
 }
 
@@ -180,14 +153,10 @@ struct FleetROI2Sections: View {
         let r = session.result
         let fleet = session.input.mode == .fleet
         VStack(alignment: .leading, spacing: 18) {
-            SimSectionHead(eyebrow: "Price · Subscription · Delivery", title: "Cybercab purchase").padding(.top, 8)
-            FleetROIPurchaseCard()
-            breakdown(r)
-
             SimSectionHead(eyebrow: "Simulator · Fleet builder", title: "Own or operate").padding(.top, 8)
             modePicker
             Text(fleet
-                 ? "Fleet investment is a hypothetical: Tesla has not published terms for owners to run a Cybercab on its Robotaxi network (eligibility, revenue split, insurance, start date), and local rules and approval apply. Revenue, costs and the start date are your assumptions."
+                 ? "Fleet investment is a hypothetical: Tesla has not published terms for owners to run a Cybercab on its Robotaxi network (eligibility, revenue split, insurance, start date), and local rules and approval apply. The 25% Tesla Revenue Share is a fixed modeling assumption, not a confirmed agreement; revenue, costs and the start date are assumptions."
                  : "Personal ownership: what owning and driving a Cybercab costs, with the required Autonomy Subscription. No revenue: owning one doesn't mean you may run it as a commercial Robotaxi.")
                 .font(.inter(13, relativeTo: .callout)).foregroundStyle(Color.chMist).fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 12)
@@ -198,11 +167,6 @@ struct FleetROI2Sections: View {
             metrics(r)
             timeline(r)
             inputs
-
-            if fleet {
-                SimSectionHead(eyebrow: "Conservative · Expected · Optimistic", title: "Scenario comparison").padding(.top, 8)
-                scenarios
-            }
 
             SimSectionHead(eyebrow: "On this device only", title: "Saved configurations").padding(.top, 8)
             saved
@@ -271,8 +235,8 @@ struct FleetROI2Sections: View {
         return LazyVGrid(columns: cols, spacing: 8) {
             ROIMetric(label: "Upfront cash", value: r.purchase.upfront, sub: (fin ? "Down payment, tax & fees" : "Price, tax & fees") + " · \(n) vehicle\(n == 1 ? "" : "s")")
             if session.input.mode == .fleet {
-                ROIMetric(label: "Gross revenue / mo", value: s.gross, sub: "\(Format.int(Int(r.perVehicle.ridesMonthly.rounded()))) rides per vehicle")
-                ROIMetric(label: "Operating expenses / mo", value: s.opex, sub: "Platform share, charging, subscription, insurance, upkeep")
+                ROIMetric(label: "Gross revenue / mo", value: s.gross, sub: "Hypothetical · \(Format.int(Int(r.perVehicle.ridesMonthly.rounded()))) rides per vehicle")
+                ROIMetric(label: "Operating expenses / mo", value: s.opex, sub: "Tesla share, charging, subscription, insurance, upkeep")
                 ROIMetric(label: "Operating profit / mo", value: s.operatingProfit, sub: "Before loan payments", highlight: true)
                 ROIMetric(label: "Net cash flow / mo", value: s.netWithLoan, sub: fin ? "After \(ROIFormat.money(s.loan)) loan payments" : "Cash purchase: no loan")
                 ROIMetric(label: "Hypothetical break-even", value: nil, text: ROIFormat.payback(r),
@@ -370,7 +334,7 @@ struct FleetROI2Sections: View {
                 .accessibilityValue(fleet ? "Revenue \(ROIFormat.money(r.steady.gross)) a month once operating; expenses \(ROIFormat.money(r.steady.opex + r.steady.loan))." : "Expenses \(ROIFormat.money(r.steady.opex + r.steady.loan)) a month.")
             }
             Footnote(text: fleet
-                     ? "Expenses include loan payments. Nothing earns before the commercial start (\(FleetROI.monthName(delay + 1))), and \(Int(session.input.downtimePct))% downtime applies every operating month. Hypothetical, not a forecast."
+                     ? "Expenses include loan payments and the 25% Tesla share. Nothing earns before the commercial start (\(FleetROI.monthName(delay + 1))), and \(Int(session.input.downtimePct))% downtime applies every operating month. Hypothetical, not a forecast: Tesla's actual commercial terms are unconfirmed."
                      : "Expenses include loan payments. Personal ownership earns no revenue.")
         }
         .accessibilityElement(children: .contain)
@@ -406,63 +370,6 @@ struct FleetROI2Sections: View {
         .accessibilityAddTraits(on.wrappedValue ? .isSelected : [])
     }
 
-    // MARK: Breakdown
-
-    private func breakdown(_ r: FleetROI.Result) -> some View {
-        let x = session.input.sanitized, p = r.purchase, n = x.vehicles, multi = n > 1, fleet = x.mode == .fleet
-        return ROICard {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    CardHeading(dotLabel: "Purchase & ownership", title: nil)
-                    Text(multi ? "Per vehicle and for \(Int(n)) vehicles" : "Per vehicle, from your inputs").font(.inter(12, relativeTo: .footnote)).foregroundStyle(Color.chFog)
-                }
-                Spacer()
-            }
-            VStack(spacing: 0) {
-                line("Vehicle price", .reported, p.price, n, note: "Before taxes")
-                line("Order deposit", .reported, p.deposit, n, note: "Part of the price")
-                line("Sales tax", .estimate, p.tax, n, note: "\(Format.one(x.salesTaxPct))% of the price")
-                line("Title, registration & fees", .assumption, p.fees, n)
-                if x.purchase == .finance {
-                    line("Financed", .assumption, p.principal, n, note: "\(Int(x.loanMonths)) months at \(Format.one(x.aprPct))% APR")
-                    line("Loan payment / mo", .assumption, p.payment, n, note: "\(ROIFormat.money(p.interestTotal)) interest in all", dp: 2)
-                }
-                line("Upfront cash", nil, p.upfrontPerVehicle, n, total: true)
-                line("Autonomy Subscription / mo", .reported, x.subscriptionMonthly, n, note: "First month included")
-                line("Insurance / mo", .assumption, x.insuranceMonthly, n)
-                line("Maintenance subscription / mo", .assumption, x.maintenanceMonthly, n, note: "Required; price not shown by Tesla")
-                line("Charging / mo", .assumption, r.perVehicle.chargingMonthly, n)
-                if fleet {
-                    line("Platform share / mo", .assumption, r.perVehicle.platformFeeMonthly, n, note: "\(Int(x.platformSharePct))% of fares")
-                    line("Gross revenue / mo", .assumption, r.steady.gross / n, n, note: "Hypothetical")
-                    line("Net operating cash / mo", nil, r.steady.netWithLoan / n, n, total: true)
-                }
-                line("Cost of ownership, \(ROIFormat.years(session.horizon))", nil, r.horizon.ownershipCost / n, n, total: true)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("roi2Breakdown")
-    }
-
-    private func line(_ label: String, _ kind: FleetROI.Kind?, _ per: Double, _ n: Double, note: String? = nil, total: Bool = false, dp: Int = 0) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.inter(13, total ? .semibold : .regular)).foregroundStyle(total ? Color.chInk : Color.chMist)
-                if let note { Text(note).font(.inter(10.5, relativeTo: .caption2)).foregroundStyle(Color.chCaption) }
-            }
-            Spacer(minLength: 6)
-            if let kind { KindBadge(kind: kind) }
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(ROIFormat.money(per, dp: dp)).font(.inter(total ? 15 : 13.5, .semibold)).monospacedDigit().foregroundStyle(total ? Color.brandGold : Color.chInk)
-                    .contentTransition(.numericText(value: per))
-                if n > 1 { Text(ROIFormat.big(per * n)).font(.inter(10.5)).monospacedDigit().foregroundStyle(Color.chFog) }
-            }
-        }
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) { Rectangle().fill(total ? Color.brandGold.opacity(0.35) : Color.chLine).frame(height: 1) }
-        .accessibilityElement(children: .combine)
-    }
-
     // MARK: Inputs
 
     private struct Row { let key: String; let label: String; let range: ClosedRange<Double>; let step: Double; let unit: String; var money = false; var dp = 0; var hint: String? = nil }
@@ -472,9 +379,10 @@ struct FleetROI2Sections: View {
         let fleet = x.mode == .fleet
         return ROICard(gold: true) {
             IconLabel(icon: "slider.horizontal.3", text: "Assumptions")
-            group("Purchase", rows: [
-                Row(key: "price", label: "Price per Cybercab", range: 15_000...60_000, step: 10, unit: "", money: true, hint: "Reported price, before taxes"),
-                Row(key: "deposit", label: "Order deposit", range: 0...5000, step: 50, unit: "", money: true, hint: "Nonrefundable; part of the price, not extra"),
+            group("Purchase", locked: [
+                LockedRow(label: "Price per Cybercab", value: "$29,990", hint: "Before taxes", id: "roi2-price"),
+                LockedRow(label: "Order deposit", value: "$1,000", hint: "Per Cybercab; included in the $29,990, not extra", id: "roi2-deposit"),
+            ], rows: [
                 Row(key: "salesTaxPct", label: "Sales tax", range: 0...12, step: 0.05, unit: "%", dp: 2, hint: "Texas motor vehicle sales tax is 6.25%"),
                 Row(key: "feesPerVehicle", label: "Title, registration & fees", range: 0...2000, step: 10, unit: "", money: true),
             ]) {
@@ -489,20 +397,23 @@ struct FleetROI2Sections: View {
                     slider(Row(key: "loanMonths", label: "Loan term", range: 12...96, step: 12, unit: "mo"))
                 }
             }
-            group("Ownership costs (per vehicle, monthly)", rows: [
-                Row(key: "subscriptionMonthly", label: "Autonomy Subscription", range: 0...600, step: 1, unit: "", money: true, hint: "Required; first month included"),
+            group("Ownership costs (per vehicle, monthly)", locked: [
+                LockedRow(label: "Autonomy Subscription", value: "$300/mo", hint: "Per Cybercab; a fixed calculator assumption", id: "roi2-subscriptionMonthly"),
+                LockedRow(label: "Free Autonomy", value: "1 month", hint: "The first month after delivery is free", id: "roi2-subscriptionIncludedMonths"),
+            ], rows: [
                 Row(key: "insuranceMonthly", label: "Insurance", range: 0...1500, step: 5, unit: "", money: true, hint: "Commercial cover would likely cost more"),
                 Row(key: "maintenanceMonthly", label: "Maintenance subscription", range: 0...400, step: 5, unit: "", money: true, hint: "Required; Tesla hasn't shown the price"),
                 Row(key: "electricityRate", label: "Electricity", range: 0...0.5, step: 0.01, unit: "/kWh", money: true, dp: 2),
             ] + (fleet ? [] : [Row(key: "personalMilesMonthly", label: "Miles per month", range: 0...4000, step: 50, unit: "mi")])) { EmptyView() }
             if fleet {
-                group("Commercial operation (hypothetical)", rows: [
+                group("Commercial operation (hypothetical)", locked: [
+                    LockedRow(label: "Tesla Revenue Share", value: "25%", hint: "Of fares. A fixed modeling assumption: Tesla hasn't published revenue-sharing terms", id: "roi2-platformSharePct"),
+                ], rows: [
                     Row(key: "activationDelayMonths", label: "Commercial start", range: 0...36, step: 1, unit: "mo", hint: "Hypothetical start: \(FleetROI.monthName(Int(x.activationDelayMonths) + 1)) (delivery estimate: December 2026)"),
                     Row(key: "farePerRide", label: "Average fare per ride", range: 0...40, step: 0.5, unit: "", money: true, dp: 2),
                     Row(key: "ridesPerDay", label: "Rides per vehicle per day", range: 0...40, step: 1, unit: ""),
                     Row(key: "operatingDays", label: "Operating days per month", range: 0...31, step: 1, unit: ""),
                     Row(key: "downtimePct", label: "Downtime", range: 0...100, step: 1, unit: "%", hint: "Charging, cleaning, repairs, no demand"),
-                    Row(key: "platformSharePct", label: "Platform revenue share", range: 0...60, step: 1, unit: "%", hint: "Tesla has published no split; estimates run 25–30%"),
                     Row(key: "cleaningMonthly", label: "Cleaning", range: 0...800, step: 5, unit: "", money: true),
                 ]) { EmptyView() }
             }
@@ -528,9 +439,10 @@ struct FleetROI2Sections: View {
         }
     }
 
-    private func group<Extra: View>(_ title: String, rows: [Row], @ViewBuilder extra: () -> Extra) -> some View {
+    private func group<Extra: View>(_ title: String, locked: [LockedRow] = [], rows: [Row], @ViewBuilder extra: () -> Extra) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title.uppercased()).font(.inter(10.5, .semibold, relativeTo: .caption)).tracking(1.2).foregroundStyle(Color.chFog).padding(.top, 12)
+            ForEach(Array(locked.enumerated()), id: \.offset) { $0.element }
             ForEach(rows, id: \.key) { slider($0) }
             extra()
         }
@@ -547,79 +459,6 @@ struct FleetROI2Sections: View {
                       format: { v in row.money ? "$" + v.formatted(.number.precision(.fractionLength(row.dp)).grouping(.never)) : v.formatted(.number.precision(.fractionLength(row.dp)).grouping(.never)) },
                       unit: row.unit, id: "roi2-\(row.key)")
             if let hint = row.hint { Text(hint).font(.inter(11, relativeTo: .caption)).foregroundStyle(Color.chCaption).fixedSize(horizontal: false, vertical: true) }
-        }
-    }
-
-    // MARK: Scenarios
-
-    private var scenarios: some View {
-        let runs = FleetROI.Scenario.allCases.map { ($0, FleetROI.simulate(session.scenarioInput($0))) }
-        return ROICard {
-            Text("Three editable sets of operating assumptions, each run with your fleet, purchase and ownership costs. Hypotheticals, not forecasts or promised returns.")
-                .font(.inter(12.5, relativeTo: .footnote)).foregroundStyle(Color.chFog).fixedSize(horizontal: false, vertical: true)
-            Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 8) {
-                GridRow {
-                    Text("").gridColumnAlignment(.leading)
-                    ForEach(runs, id: \.0) { s, _ in Text(s.label.uppercased()).font(.inter(10, .semibold)).tracking(0.5).lineLimit(1).minimumScaleFactor(0.5).foregroundStyle(s == session.editingScenario ? Color.brandGold : Color.chFog) }
-                }
-                Divider().overlay(Color.chLine)
-                cmp("Fare", runs) { ROIFormat.money($0.input.farePerRide, dp: 2) }
-                cmp("Rides / day", runs) { Format.int(Int($0.input.ridesPerDay)) }
-                cmp("Downtime", runs) { "\(Int($0.input.downtimePct))%" }
-                cmp("Platform share", runs) { "\(Int($0.input.platformSharePct))%" }
-                cmp("Start", runs) { "+\(Int($0.input.activationDelayMonths)) mo" }
-                Divider().overlay(Color.brandGold.opacity(0.35))
-                cmp("Revenue / mo", runs) { ROIFormat.big($0.steady.gross) }
-                cmp("Expenses / mo", runs) { ROIFormat.big($0.steady.opex) }
-                cmp("Profit / mo", runs, gold: true) { ROIFormat.big($0.steady.operatingProfit) }
-                cmp("Net / mo", runs) { ROIFormat.big($0.steady.netWithLoan) }
-                cmp("Break-even", runs, gold: true) { ROIFormat.payback($0, short: true) }
-                cmp("After \(ROIFormat.years(session.horizon))", runs) { ROIFormat.big($0.horizon.cumulative) }
-            }
-            .font(.inter(12.5)).monospacedDigit()
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("roi2Scenarios")
-
-            Picker("Edit scenario", selection: $session.editingScenario) {
-                ForEach(FleetROI.Scenario.allCases) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented).padding(.top, 6)
-            let s = session.editingScenario
-            ForEach(Self.scenarioRows, id: \.key) { row in
-                SliderRow(label: row.label,
-                          value: Binding(get: { session.scenarioInput(s)[row.key] }, set: { session.scenarioEdits[s, default: [:]][row.key] = $0 }),
-                          range: row.range, step: row.step,
-                          format: { v in (row.money ? "$" : "") + v.formatted(.number.precision(.fractionLength(row.dp)).grouping(.never)) },
-                          unit: row.unit, id: "roi2Scen-\(s.rawValue)-\(row.key)")
-            }
-            HStack(spacing: 10) {
-                Button("Reset scenarios") { session.scenarioEdits = [:] }.font(.inter(13, .semibold)).foregroundStyle(Color.chMist)
-                Spacer()
-                Button("Use \(s.label) in simulator") {
-                    withAnimation(.snappy) { session.input = session.scenarioInput(s).sanitized }
-                    Haptics.tap()
-                }
-                .font(.inter(13, .semibold)).foregroundStyle(Color.brandGold)
-                .accessibilityIdentifier("roi2UseScenario")
-            }
-            .padding(.top, 4)
-        }
-    }
-
-    private static let scenarioRows: [Row] = [
-        Row(key: "farePerRide", label: "Fare per ride", range: 0...40, step: 0.5, unit: "", money: true, dp: 2),
-        Row(key: "ridesPerDay", label: "Rides per vehicle per day", range: 0...40, step: 1, unit: ""),
-        Row(key: "downtimePct", label: "Downtime", range: 0...100, step: 1, unit: "%"),
-        Row(key: "platformSharePct", label: "Platform share", range: 0...60, step: 1, unit: "%"),
-        Row(key: "activationDelayMonths", label: "Commercial start", range: 0...36, step: 1, unit: "mo"),
-        Row(key: "insuranceMonthly", label: "Insurance / mo", range: 0...1500, step: 5, unit: "", money: true),
-        Row(key: "cleaningMonthly", label: "Cleaning / mo", range: 0...800, step: 5, unit: "", money: true),
-    ]
-
-    private func cmp(_ label: String, _ runs: [(FleetROI.Scenario, FleetROI.Result)], gold: Bool = false, _ f: @escaping (FleetROI.Result) -> String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(Color.chMist).gridColumnAlignment(.leading).lineLimit(1).minimumScaleFactor(0.8)
-            ForEach(runs, id: \.0) { _, r in Text(f(r)).foregroundStyle(gold ? Color.brandGold : Color.chInk).lineLimit(1).minimumScaleFactor(0.7) }
         }
     }
 

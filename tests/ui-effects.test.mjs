@@ -57,11 +57,12 @@ async function run() {
     check('Sightings: the six stat tiles and the empty / error messages; not the city / sort bar', count('sightings.html') === 8 && !/data-glow class="glass rounded-2xl p-3 mb-6/.test(read('public/sightings.html')));
     check('Community: no glow (its stats became one quiet panel in the redesign, 3d0516e)', count('community.html') === 0 && /id="communityStats" class="community-stats glass soft-panel"/.test(read('public/community.html')));
     {
-      // simulation.html: Fleet ROI's three result tiles, and on Fleet ETA only the
-      // model cards (Cybercab gold, Model Y red), Austin and Dallas: fleet mix + ride/hours/wait.
+      // simulation.html: no glow on Fleet ROI (its result cards are the quiet
+      // .roi2-metric tiles since the old calculator's three glowing tiles were
+      // removed, Nov 2026), and on Fleet ETA only tinted model cards.
       const sim = read('public/simulation.html'), roi = sim.slice(sim.indexOf('id="simPanelRoi"'), sim.indexOf('id="simPanelEta"')), eta = sim.slice(sim.indexOf('id="simPanelEta"'));
       const n = t => (t.match(/\bdata-glow\b/g) || []).length;
-      check('Fleet ROI: the three result tiles only (not the inputs or the graph)', n(roi) === 3);
+      check('Fleet ROI: no glow (the old calculator and its glowing tiles were removed)', n(roi) === 0);
       check('Fleet ETA: no glow (the model cards became subtle panels, c417898), still tinted gold and red', n(eta) === 0 && /class="dmv-card rhw-card [^"]*soft-panel" style="--c:239 68 68"/.test(eta));
     }
     check('the vehicle cards and the sighting cards are marked by their scripts', /a\.dataset\.glow = kind\.glow/.test(read('public/js/vehicles.js')) && /article\.dataset\.glow = ''/.test(read('public/js/sightings.js')));
