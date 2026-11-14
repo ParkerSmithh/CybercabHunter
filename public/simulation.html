@@ -49,12 +49,12 @@
   input[type=number]{-moz-appearance:textfield; appearance:textfield;}
   /* The Cybercab in both views' headers: one size and place, always to the
      right of the text (smaller on phones, beside the heading). */
-  .sim-hero-car{width:240px; height:auto; align-self:start; margin-top:28px; user-select:none;}
+  .sim-hero-car{width:200px; height:auto; align-self:start; margin-top:12px; user-select:none;}
   /* Phones: beside the text on the right, like desktop (owner request
      2026-10-07), at 40% of the screen so the heading keeps one line. */
-  @media (max-width:639px){ .sim-hero-car{margin-top:0; width:clamp(120px, 40vw, 170px); align-self:center;} }
-  @media (min-width:768px){ .sim-hero-car{width:380px; align-self:center; margin-top:0;} }
-  @media (min-width:1024px){ .sim-hero-car{width:520px;} }
+  @media (max-width:639px){ .sim-hero-car{margin-top:0; width:clamp(110px, 32vw, 140px); align-self:center;} }
+  @media (min-width:768px){ .sim-hero-car{width:250px; align-self:center; margin-top:0;} }
+  @media (min-width:1024px){ .sim-hero-car{width:300px;} }
   /* Interactive Cybercab (js/cybercab-doors.js). The frames' studio is the
      page's own dark background, rgb(8, 9, 10), baked into every frame (each
      pixel at least that colour), so the car sits directly on the page with
@@ -119,21 +119,111 @@
   /* ===== Fleet ROI 2.0 (js/fleet-roi-ui.js). Black and gold, the site's
      tokens; figures in tabular numerals; every label says Reported /
      Estimate / Assumption. ===== */
-  .roi2-card{position:relative; border-radius:16px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); padding:24px; min-width:0;}
   .roi2-gold{border-color:rgb(var(--gold) / .35); background:linear-gradient(135deg, rgb(var(--gold) / .09), transparent 60%), rgb(var(--glass) / var(--glass-a));}
-  @media (max-width:639px){ .roi2-card{padding:16px;} }
+  /* ===== Fleet ROI dashboard (js/fleet-roi-ui.js). lg+: settings left, results
+     right (pinned while they fit: .is-pinned). Below lg: one column, results
+     first (fleet size, result cards, settings, timeline). ===== */
+  .roi2-card{position:relative; border-radius:14px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); padding:16px 18px; min-width:0;}
+  @media (max-width:639px){ .roi2-card{padding:12px 14px;} }
+  .roi2-dash-head{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 16px; margin-bottom:8px;}
+  .roi2-note{font-size:12px; line-height:1.45; color:rgb(var(--n-400)); border-left:2px solid rgb(var(--gold)); padding:1px 0 1px 10px; max-width:64rem; margin-bottom:14px;}
+  .roi2-dash{display:grid; gap:14px;}
+  .roi2-col-in, .roi2-col-out{display:contents;}
+  .roi2-fleet-builder{order:1;} #roi2Metrics{order:2;} .roi2-timeline{order:3;} .roi2-inputs{order:4;}
+  @media (min-width:1024px){
+    .roi2-dash{grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:18px; align-items:start;}
+    .roi2-col-in, .roi2-col-out{display:flex; flex-direction:column; gap:14px; min-width:0;}
+    .roi2-col-out.is-pinned{position:sticky; top:80px;}
+  }
+  .roi2-fleet-builder{padding-top:12px; padding-bottom:12px;}
+  .roi2-fleet-builder .roi2-presets{margin-top:8px;}
+  .roi2-group{border-top:1px solid rgb(var(--line));}
+  .roi2-group:first-child{border-top:0;}
+  .roi2-group > summary{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"t chev" "s chev"; align-items:center; column-gap:10px; padding:11px 0; cursor:pointer; list-style:none; min-height:44px;}
+  .roi2-group > summary::-webkit-details-marker{display:none;}
+  .roi2-group > summary .t{grid-area:t; display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:rgb(var(--n-200));}
+  .roi2-group > summary .t em{font-style:normal; letter-spacing:.04em; text-transform:none; font-weight:510; color:rgb(var(--n-500));}
+  .roi2-group > summary .s{grid-area:s; font-size:11.5px; color:rgb(var(--n-500)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+  .roi2-group[open] > summary .s{display:none;}
+  .roi2-group > summary .chev{grid-area:chev; width:16px; height:16px; color:rgb(var(--n-400)); transition:transform var(--t) var(--ease);}
+  .roi2-group[open] > summary .chev{transform:rotate(180deg);}
+  .roi2-group > summary:focus-visible{outline:2px solid rgb(var(--gold)); outline-offset:2px; border-radius:6px;}
+  .roi2-group[open] > .roi2-grid{animation:roi2-open .22s var(--ease);}
+  @keyframes roi2-open{from{opacity:0; transform:translateY(-4px);}}
+  .roi2-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 230px), 1fr)); column-gap:22px; padding-bottom:10px;}
+  .roi2-grid > .roi2-row[data-row="purchase"]{grid-column:1 / -1;}
+  .roi2-row{padding:4px 0 6px;}
+  .roi2-row .hint{line-height:1.35;}
+  .roi2-metric{position:relative; border-radius:12px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); padding:10px 13px; min-width:0; transition:border-color var(--t) var(--ease);}
+  .roi2-metric .n{margin-top:3px; font-size:21px; font-weight:590; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .roi2-timeline{padding-top:12px; padding-bottom:10px;}
+  .roi2-chart-wrap{position:relative; height:230px;}
+  @media (min-width:1024px) and (max-height:820px){ .roi2-chart-wrap{height:200px;} }
+  @media (max-width:639px){ .roi2-chart-wrap{height:200px;} }
+  @media (prefers-reduced-motion: reduce){ .roi2-group[open] > .roi2-grid{animation:none;} .roi2-group > summary .chev{transition:none;} }
+  /* ===== Fleet ETA dashboard (per city). lg+: trip controls, fleet mix and
+     availability on the left; the two model cards on the right. Below lg one
+     column, results first: cards, trip controls, accuracy, reports, fleet mix,
+     availability. Only layout; js/fleet-compare.js fills the same elements. ===== */
+  .eta-dash-wrap{padding-top:22px; padding-bottom:18px;}
+  @media (max-width:639px){ .eta-dash-wrap{padding-top:16px; padding-bottom:12px;} }
+  .eta-dash-head{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:8px 16px; margin-bottom:12px;}
+  .eta-dash-head h2{font-size:1.5rem !important; margin-top:2px !important;}
+  @media (max-width:639px){ .eta-dash-head h2{font-size:1.2rem !important;} }
+  .eta-dash{display:grid; gap:12px;}
+  .eta-col-side, .eta-col-main{display:contents;}
+  .eta-cards{order:1;} .eta-trip{order:2;} .eta-cal{order:3;} .eta-recent{order:4;} .eta-mix{order:5;} .eta-avail{order:6;}
+  @media (min-width:1024px){
+    .eta-dash{grid-template-columns:minmax(0,4fr) minmax(0,8fr); gap:16px; align-items:start;}
+    .eta-col-side, .eta-col-main{display:flex; flex-direction:column; gap:12px; min-width:0;}
+    .eta-col-side{order:1;} .eta-col-main{order:2;}
+  }
+  .eta-trip{display:grid; gap:10px 20px; padding:12px 16px; grid-template-columns:minmax(0,1fr);}
+  @media (min-width:640px) and (max-width:1023px){ .eta-trip{grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:end;} }
+  .eta-mix{padding:12px 16px;}
+  .eta-mix h2{font-size:1rem !important; margin-top:2px !important;}
+  .eta-mix .mt-5{margin-top:10px !important;}
+  .eta-mix .grid{gap:8px !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
+  .eta-mix .dmv-card{min-height:0 !important; padding:8px 12px !important;}
+  .eta-mix .dmv-card img{width:44% !important; opacity:.55 !important;}
+  .eta-mix .dmv-card .relative{max-width:70% !important;}
+  .eta-mix .dmv-card-num{font-size:1.6rem !important; margin-top:0 !important;}
+  .eta-avail{display:grid; gap:14px; padding:12px 16px; grid-template-columns:minmax(0,1fr) !important;}
+  .eta-avail [data-eta-fleet]{margin-top:6px !important; font-size:12.5px;}
+  .eta-avail .input-row{padding:4px 0;}
+  .eta-avail .mt-5{margin-top:10px !important;}
+  @media (min-width:640px) and (max-width:1023px){ .eta-avail{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;} }
+  .eta-cards .rhw-card{padding:14px 16px !important;}
+  .eta-cards .rhw-card img{width:6.5rem !important; margin:-4px -4px 0 0 !important;}
+  .eta-cards .rhw-card > .mt-2{margin-top:0 !important;}
+  .eta-cards .rhw-block{padding-top:9px; padding-bottom:9px;}
+  .eta-cards .text-5xl{font-size:2.15rem !important;}
+  .eta-cards .mt-3{margin-top:6px !important;}
+  @media (max-width:639px){ .eta-cards .rhw-card img{width:5rem !important;} .eta-cards .text-5xl{font-size:1.75rem !important;} }
+  .eta-more{margin-top:6px;}
+  .eta-more > summary{display:inline-flex; align-items:center; gap:5px; min-height:32px; cursor:pointer; list-style:none; font-size:12px; font-weight:510; color:rgb(var(--n-400));}
+  .eta-more > summary::-webkit-details-marker{display:none;}
+  .eta-more > summary::after{content:''; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg) translateY(-2px); transition:transform var(--t) var(--ease);}
+  .eta-more[open] > summary::after{transform:rotate(225deg) translateY(-1px);}
+  .eta-more > summary:hover{color:rgb(var(--n-200));}
+  .eta-more > summary:focus-visible{outline:2px solid rgb(var(--gold)); outline-offset:2px; border-radius:4px;}
+  .eta-more > :not(summary){margin-top:2px; line-height:1.5;}
+  .eta-cal{margin:0;}
+  .eta-recent{margin:0;}
+  /* The two shared panels side by side from lg (each opens on its own). */
+  .eta-shared{display:grid; gap:12px;}
+  @media (min-width:1024px){ .eta-shared{grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start;} }
+  @media (prefers-reduced-motion: reduce){ .eta-more > summary::after{transition:none;} }
   .roi2-eyebrow{font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:rgb(var(--gold));}
   .roi2-sub{font-size:13px; color:rgb(var(--n-400)); line-height:1.5;}
   .roi2-fine{font-size:11.5px; color:rgb(var(--n-500)); line-height:1.55;}
   .roi2-fine a{color:rgb(var(--gold-ink)); text-decoration:underline; text-underline-offset:2px;}
-  .roi2-note{font-size:13px; line-height:1.5; color:rgb(var(--n-300)); border-left:2px solid rgb(var(--gold)); padding:2px 0 2px 12px; max-width:56rem;}
   .roi2-kind{display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; border:1px solid;}
   /* Fixed values: readable, not greyed out; a small gold lock says why they can't change. */
   .roi2-locked .top{min-height:34px;}
   .roi2-fixed{display:inline-flex; align-items:center; gap:7px; padding:5px 10px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--ink) / .03); font-size:15px; font-weight:590; color:rgb(var(--n-200)); font-variant-numeric:tabular-nums; white-space:nowrap;}
   .roi2-lock{width:13px; height:13px; color:rgb(var(--gold)); flex:none;}
   .roi2-kind-estimate{color:rgb(var(--n-200)); border-color:rgb(var(--n-500) / .6);}
-  .roi2-kind-assumption{color:rgb(var(--n-400)); border-color:rgb(var(--n-700)); border-style:dashed;}
   .roi2-seg{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--n-900) / .5); gap:2px;}
   .roi2-seg button{min-height:40px; padding:0 16px; border-radius:999px; font-size:13px; font-weight:590; color:rgb(var(--n-400)); transition:background var(--t) var(--ease), color var(--t) var(--ease);}
   .roi2-seg button[aria-checked="true"]{background:rgb(var(--gold)); color:#1a1204;}
@@ -144,9 +234,6 @@
   .roi2-num{width:7.5ch; background:transparent; border:0; border-bottom:1px solid rgb(var(--line)); text-align:right; font-size:16px; font-weight:590; color:rgb(var(--ink)); font-variant-numeric:tabular-nums; outline:none; padding:2px 0;}
   .roi2-num:focus{border-bottom-color:rgb(var(--gold));}
   .roi2-num-wrap{display:inline-flex; align-items:baseline; gap:3px; color:rgb(var(--n-400)); font-size:13px; font-weight:590;}
-  .roi2-group{padding-top:14px; margin-top:12px; border-top:1px solid rgb(var(--line));}
-  .roi2-group > h3{font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--n-400)); margin-bottom:6px;}
-  .roi2-row{padding:7px 0;}
   .roi2-row .top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
   .roi2-row input[type=range]{width:100%; margin-top:4px;}
   .roi2-row .hint{font-size:11px; color:rgb(var(--n-500)); margin-top:2px;}
@@ -154,15 +241,19 @@
   .roi2-presets{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
   .roi2-presets button{min-width:44px; min-height:36px; padding:0 12px; border-radius:999px; border:1px solid rgb(var(--line)); font-size:13px; font-weight:590; color:rgb(var(--n-300)); font-variant-numeric:tabular-nums; transition:all var(--t) var(--ease);}
   .roi2-presets button[aria-pressed="true"]{border-color:rgb(var(--gold)); color:rgb(var(--gold)); background:rgb(var(--gold) / .1);}
+  /* Phones: the seven presets share one row in equal columns (no wrap, no
+     sideways scroll), each a full 44px tall touch target. */
+  @media (max-width:639px){
+    .roi2-presets{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px;}
+    .roi2-presets button{min-width:0; min-height:44px; padding:0;}
+  }
   .roi2-btn{display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 14px; border-radius:10px; border:1px solid rgb(var(--line-strong, var(--line))); font-size:13px; font-weight:590; color:rgb(var(--n-200)); transition:background var(--t) var(--ease);}
   .roi2-btn:hover{background:rgb(var(--ink) / .05);}
   .roi2-btn:disabled{opacity:.4; cursor:not-allowed;}
   .roi2-btn-gold{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
   .roi2-btn-gold:hover{background:rgb(var(--gold) / .88);}
-  .roi2-metric{position:relative; border-radius:14px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); padding:14px 16px; min-width:0; transition:border-color var(--t) var(--ease);}
   .roi2-metric .l{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:rgb(var(--n-400));}
-  .roi2-metric .n{margin-top:6px; font-size:24px; font-weight:590; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .roi2-metric .s{margin-top:2px; font-size:11.5px; color:rgb(var(--n-500)); line-height:1.4;}
+  .roi2-metric .s{margin-top:2px; font-size:11.5px; color:rgb(var(--n-500)); line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .roi2-metric.hi{border-color:rgb(var(--gold) / .5); background:linear-gradient(135deg, rgb(var(--gold) / .12), transparent 70%), rgb(var(--glass) / var(--glass-a));}
   .roi2-metric.hi .n{color:rgb(var(--gold));}
   .roi2-metric .n.neg{color:rgb(var(--danger-ink, 248 113 113));}
@@ -173,8 +264,6 @@
   .roi2-series button[hidden], .roi2-group[hidden], .roi2-metric[hidden]{display:none;}
   .roi2-swatch{width:10px; height:10px; border-radius:3px; display:inline-block;}
   .s-cum{background:rgb(var(--gold));} .s-rev{background:rgb(52 211 153);} .s-opex{background:rgb(248 113 113);}
-  .roi2-chart-wrap{position:relative; height:260px;}
-  @media (max-width:639px){ .roi2-chart-wrap{height:220px;} }
   #roi2Chart{width:100%; height:100%; overflow:visible; touch-action:pan-y;}
   #roi2Chart .ln{fill:none; vector-effect:non-scaling-stroke; transition:d .45s cubic-bezier(.22,1,.36,1), opacity .25s;}
   #roi2Chart .bar{transition:opacity .25s;}
@@ -289,11 +378,11 @@
      the right, same size and place (.sim-hero-car; on phones, above the text).
      The car is the interactive door component (js/cybercab-doors.js). -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 items-center max-sm:py-6 max-sm:gap-3">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-5 lg:py-6 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-10 items-center max-sm:py-4 max-sm:gap-3">
     <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
-      <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ROI</h1>
-      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">What a $29,990 Cybercab costs to own, and what a fleet might earn if owners are ever allowed to run one: financing, operating costs, cash flow and break-even.</p>
+      <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-1.5">Investor tools</p>
+      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight max-sm:text-[1.6rem]">FLEET ROI</h1>
+      <p class="mt-2 text-slate-300 text-sm lg:text-[15px] leading-relaxed max-w-lg max-sm:mt-1.5 max-sm:text-[13px] max-sm:leading-snug">What a $29,990 Cybercab costs to own, and what a fleet might earn if owners are ever allowed to run one: financing, operating costs, cash flow and break-even.</p>
     </div>
     <!-- Interactive Cybercab (js/cybercab-doors.js): click the car or the button
          and the butterfly doors swing open; again to close. The still is the
@@ -317,46 +406,50 @@
      $1,000 deposit (part of the price), $300/mo Autonomy Subscription, 1
      month Free Autonomy, 25% Tesla Revenue Share. Commercial operation and
      the revenue share are hypothetical. ===== -->
-<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SimHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
-      <div>
+<section class="pt-6 max-sm:pt-4" aria-labelledby="roi2SimHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="roi2-dash-head" data-animate="fade-up" data-animate-distance="12">
+      <div class="min-w-0">
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Simulator · Fleet builder</p>
-        <h2 id="roi2SimHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Own or operate</h2>
+        <h2 id="roi2SimHeading" class="font-display font-bold text-xl lg:text-2xl tracking-[-0.02em] text-white uppercase mt-0.5">Own or operate</h2>
       </div>
       <div class="roi2-seg" role="radiogroup" aria-label="Simulation mode" id="roi2Mode">
         <button type="button" role="radio" data-mode="personal" aria-checked="false">Personal ownership</button>
         <button type="button" role="radio" data-mode="fleet" aria-checked="true">Fleet investment</button>
       </div>
     </div>
-    <p id="roi2ModeNote" class="roi2-note mb-5" role="note"></p>
+    <p id="roi2ModeNote" class="roi2-note" role="note"></p>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-sm:gap-4">
-      <!-- Inputs -->
-      <form id="roi2Inputs" class="lg:col-span-5 roi2-card roi2-gold space-y-1" novalidate onsubmit="return false" aria-label="Simulator inputs">
-        <!-- Below lg the results are under the inputs: this pinned line keeps the two key figures in view while editing. -->
-        <div id="roi2Peek" class="roi2-peek lg:hidden" aria-hidden="true"></div>
-        <div class="roi2-fleet-builder" id="roi2FleetBuilder">
+    <!-- The dashboard. lg+: inputs on the left; results and the timeline on the
+         right, pinned while they fit the window. Below lg one column, results
+         first: fleet size, result cards, timeline, then settings (CSS order;
+         a pinned line keeps the two key figures in view while editing). -->
+    <div id="roi2Dash" class="roi2-dash">
+      <div class="roi2-col-in">
+        <div class="roi2-card roi2-gold roi2-fleet-builder" id="roi2FleetBuilder">
           <div class="flex items-center justify-between gap-3">
             <label for="roi2-vehicles" class="roi2-label">Cybercabs</label>
             <input type="number" id="roi2-vehicles" class="roi2-num" min="1" max="1000" step="1" inputmode="numeric" data-field="vehicles">
           </div>
           <div class="roi2-presets" role="group" aria-label="Fleet size presets" id="roi2Presets"></div>
         </div>
-        <div id="roi2Fields"></div>
-        <div class="flex flex-wrap gap-2 pt-4">
-          <button type="button" id="roi2Reset" class="roi2-btn">Reset to defaults</button>
-          <button type="button" id="roi2SaveBtn" class="roi2-btn roi2-btn-gold">Save configuration</button>
-        </div>
-      </form>
+        <form id="roi2Inputs" class="roi2-card roi2-inputs" novalidate onsubmit="return false" aria-label="Simulator inputs">
+          <!-- Below lg the results scroll away while editing: this pinned line keeps the two key figures in view. -->
+          <div id="roi2Peek" class="roi2-peek lg:hidden" aria-hidden="true"></div>
+          <div id="roi2Fields"></div>
+          <div class="flex flex-wrap gap-2 pt-3">
+            <button type="button" id="roi2Reset" class="roi2-btn">Reset to defaults</button>
+            <button type="button" id="roi2SaveBtn" class="roi2-btn roi2-btn-gold">Save configuration</button>
+          </div>
+        </form>
+      </div>
 
-      <!-- Results -->
-      <div class="lg:col-span-7 space-y-6 max-sm:space-y-4">
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:gap-2" id="roi2Metrics" aria-live="polite" data-animate-stagger="fade-up" data-animate-distance="16"></div>
+      <div class="roi2-col-out" id="roi2Results">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:gap-2" id="roi2Metrics" aria-live="polite"></div>
 
-        <div class="roi2-card" data-animate="fade-up" data-animate-distance="24">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
+        <div class="roi2-card roi2-timeline" id="roi2Timeline">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
               <p class="roi2-eyebrow">Profit timeline</p>
               <p class="roi2-sub" id="roi2ChartSub">Cumulative cash, from delivery</p>
             </div>
@@ -367,28 +460,28 @@
               <button type="button" role="radio" data-months="120" aria-checked="false">10Y</button>
             </div>
           </div>
-          <div class="roi2-series mt-3" role="group" aria-label="Show on the chart" id="roi2Series">
+          <div class="roi2-series mt-2" role="group" aria-label="Show on the chart" id="roi2Series">
             <button type="button" data-series="cumulative" aria-pressed="true"><i class="roi2-swatch s-cum"></i>Cumulative cash</button>
             <button type="button" data-series="revenue" aria-pressed="true"><i class="roi2-swatch s-rev"></i>Revenue / mo</button>
             <button type="button" data-series="opex" aria-pressed="true"><i class="roi2-swatch s-opex"></i>Expenses / mo</button>
           </div>
-          <div class="roi2-chart-wrap mt-3">
+          <div class="roi2-chart-wrap mt-2">
             <svg id="roi2Chart" viewBox="0 0 640 260" role="img" aria-labelledby="roi2ChartTitle roi2ChartDesc" preserveAspectRatio="none"><title id="roi2ChartTitle">Profit timeline</title><desc id="roi2ChartDesc"></desc></svg>
             <div id="roi2Tip" class="roi2-tip hidden" aria-hidden="true"></div>
           </div>
-          <p class="roi2-fine mt-2" id="roi2ChartNote"></p>
+          <p class="roi2-fine mt-1.5" id="roi2ChartNote"></p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SavedHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
+<section class="pt-8 max-sm:pt-6" aria-labelledby="roi2SavedHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="mb-3 flex flex-wrap items-end justify-between gap-3" data-animate="fade-up" data-animate-distance="12">
       <div>
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">On this device only</p>
-        <h2 id="roi2SavedHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Saved configurations</h2>
+        <h2 id="roi2SavedHeading" class="font-display font-bold text-xl lg:text-2xl tracking-[-0.02em] text-white uppercase mt-0.5">Saved configurations</h2>
       </div>
       <button type="button" id="roi2Compare" class="roi2-btn" disabled>Compare selected</button>
     </div>
@@ -400,8 +493,8 @@
   </div>
 </section>
 
-<section class="pt-12 max-sm:pt-8" aria-label="Disclaimer">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+<section class="pt-5 pb-10 max-sm:pb-8" aria-label="Disclaimer">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
     <p class="roi2-fine max-w-4xl" data-animate="fade-up" data-animate-distance="12">Not affiliated with Tesla, Inc. Everything here is a simulation for planning and curiosity, not financial advice, a quote or a promise of returns. Personal ownership does not mean permission to operate a commercial Robotaxi: that depends on Tesla's fleet terms, local regulation, commercial insurance and approval, none of which Tesla has published for owners. Formulas: every figure comes from the inputs shown.</p>
   </div>
 </section>
@@ -418,12 +511,12 @@
      its sample size), modeled from published reports, or insufficient data.
      The model, its inputs and its D1 budget: docs/fleet-eta-accuracy.md. -->
 <section class="relative overflow-hidden border-b border-white/[0.06]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-12 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-12 items-center max-sm:py-6 max-sm:gap-3">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-5 lg:py-6 grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,32rem)_auto] gap-4 md:gap-10 items-center max-sm:py-4 max-sm:gap-3">
     <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
-      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Fleet comparison</p>
-      <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ETA</h1>
-      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-xl max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">Cybercab and Model Y robotaxis in Austin: what a ride costs, when they run, and how long a pickup might take.</p>
-      <div class="mt-6 flex flex-wrap items-center gap-3 max-sm:mt-4 max-sm:gap-x-3 max-sm:gap-y-2">
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-1.5">Fleet comparison</p>
+      <h1 class="font-display font-bold text-3xl lg:text-4xl tracking-tight max-sm:text-[1.6rem]">FLEET ETA</h1>
+      <p class="mt-2 text-slate-300 text-sm lg:text-[15px] leading-relaxed max-w-xl max-sm:mt-1.5 max-sm:text-[13px] max-sm:leading-snug">Cybercab and Model Y robotaxis in Austin: what a ride costs, when they run, and how long a pickup might take.</p>
+      <div class="mt-3 flex flex-wrap items-center gap-3 max-sm:mt-2.5 max-sm:gap-x-3 max-sm:gap-y-2">
         <div class="flex items-center gap-2" role="group" aria-label="City">
           <button type="button" data-city="austin" aria-pressed="true" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">Austin</button>
           <button type="button" data-city="dallas" aria-pressed="false" class="city-filter min-h-[44px] px-5 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-4 max-sm:text-xs">Dallas</button>
@@ -460,9 +553,56 @@
 <!-- ===== Cybercab vs Model Y (Austin): the fleet mix. Cybercabs = the site's
      documented public count (GET /api/fleet-eta, daily); Model Ys = a fixed figure (no live
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
-<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="austinMixHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
+<!-- ===== Ride, hours & wait (Austin): the fare and pickup-wait ESTIMATES
+     (ranges, never one number) under the chosen demand scenario, trip length
+     and pickup area; the service hours; fleet availability in its four
+     separate layers; and the accuracy check. Filled by js/fleet-compare.js from
+     GET /api/fleet-eta?city=austin (one precomputed row, worker/fleet-eta.js).
+     The demand scenarios are Cybercab Hunter's, not Tesla's labels. ===== -->
+<section class="eta-dash-wrap" aria-labelledby="rhwHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="eta-dash-head">
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
+        <h2 id="rhwHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1.5"><span data-eta-updated="austin">Estimates loading</span><span data-eta-stale="austin" class="hidden stale-badge" style="display:none">Stale</span></p>
+      </div>
+      <div class="flex flex-col items-end gap-2 max-sm:items-start max-sm:w-full">
+        <div class="flex items-center gap-3">
+          <span id="scenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Demand scenario</span>
+          <div class="flex items-center gap-2" role="group" aria-labelledby="scenarioLabel">
+            <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
+            <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
+            <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Busy</button>
+          </div>
+        </div>
+        <p data-eta-assumed="austin" class="text-xs text-slate-400 text-right max-sm:text-left"></p>
+      </div>
+    </div>
+
+    <!-- The dashboard. lg+: trip controls, fleet mix and availability on the
+         left; the two model cards (fare, hours, wait) on the right. Below lg one
+         column, results first (CSS order). -->
+    <div class="eta-dash">
+      <div class="eta-col-side">
+        <!-- Trip and pickup area: every estimate follows them. -->
+        <div class="glass rounded-2xl soft-panel eta-trip">
+      <div class="min-w-0">
+        <div class="flex items-center justify-between">
+          <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
+          <div class="flex items-center gap-1">
+            <input type="number" id="tripMilesLabel" min="0.5" max="20" step="0.5" value="5" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
+            <span class="text-slate-400 text-sm font-semibold">mi</span>
+          </div>
+        </div>
+        <input type="range" id="tripMiles" class="eta-miles" data-eta-miles="austin" data-elastic min="0.5" max="20" step="0.5" value="5">
+      </div>
+      <label class="block min-w-0">
+        <span class="text-sm font-medium text-slate-300">Pickup area</span>
+        <select id="etaArea" data-eta-area="austin" class="eta-select mt-1.5 w-full min-h-[44px] rounded-lg px-3 text-sm"><option value="">Anywhere in Austin</option></select>
+      </label>
+    </div>
+        <div class="glass rounded-2xl soft-panel eta-mix">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Austin</p>
@@ -496,112 +636,8 @@
         </div>
       </div>
     </div>
-  </div>
-</section>
-<!-- ===== Ride, hours & wait (Austin): the fare and pickup-wait ESTIMATES
-     (ranges, never one number) under the chosen demand scenario, trip length
-     and pickup area; the service hours; fleet availability in its four
-     separate layers; and the accuracy check. Filled by js/fleet-compare.js from
-     GET /api/fleet-eta?city=austin (one precomputed row, worker/fleet-eta.js).
-     The demand scenarios are Cybercab Hunter's, not Tesla's labels. ===== -->
-<section class="pt-12 lg:pt-16 pb-16 max-sm:pt-6 max-sm:pb-8" aria-labelledby="rhwHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
-      <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
-        <h2 id="rhwHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
-        <p class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1.5"><span data-eta-updated="austin">Estimates loading</span><span data-eta-stale="austin" class="hidden stale-badge" style="display:none">Stale</span></p>
-      </div>
-      <div class="flex flex-col items-end gap-2 max-sm:items-start max-sm:w-full">
-        <div class="flex items-center gap-3">
-          <span id="scenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Demand scenario</span>
-          <div class="flex items-center gap-2" role="group" aria-labelledby="scenarioLabel">
-            <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
-            <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
-            <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Busy</button>
-          </div>
-        </div>
-        <p data-eta-assumed="austin" class="text-xs text-slate-400 text-right max-sm:text-left"></p>
-      </div>
-    </div>
-
-    <!-- Trip and pickup area: every estimate below follows them. -->
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
-      <div class="min-w-0">
-        <div class="flex items-center justify-between">
-          <label for="tripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
-          <div class="flex items-center gap-1">
-            <input type="number" id="tripMilesLabel" min="0.5" max="20" step="0.5" value="5" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
-            <span class="text-slate-400 text-sm font-semibold">mi</span>
-          </div>
-        </div>
-        <input type="range" id="tripMiles" class="eta-miles" data-eta-miles="austin" data-elastic min="0.5" max="20" step="0.5" value="5">
-      </div>
-      <label class="block min-w-0">
-        <span class="text-sm font-medium text-slate-300">Pickup area</span>
-        <select id="etaArea" data-eta-area="austin" class="eta-select mt-1.5 w-full min-h-[44px] rounded-lg px-3 text-sm"><option value="">Anywhere in Austin</option></select>
-      </label>
-    </div>
-
-    <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:250 224 48">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
-            <span data-eta-basis="austin:cybercab" class="tag mt-2 inline-block">Loading</span>
-          </div>
-          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
-        </div>
-        <div class="mt-2 divide-y divide-white/[0.07]">
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
-            <div data-eta-fare="austin:cybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
-            <div class="flex items-center justify-between gap-3">
-              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
-              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
-            </div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
-            <div id="etaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-            <p id="etaCybercabBasis" class="text-xs text-slate-400 mt-2"></p>
-          </div>
-        </div>
-      </article>
-      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
-            <span data-eta-basis="austin:model_y" class="tag mt-2 inline-block">Loading</span>
-          </div>
-          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
-        </div>
-        <div class="mt-2 divide-y divide-white/[0.07]">
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
-            <div data-eta-fare="austin:model_y" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
-            <div class="flex items-center justify-between gap-3">
-              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
-              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
-            </div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
-            <div id="etaModelY" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-            <p id="etaModelYBasis" class="text-xs text-slate-400 mt-2"></p>
-          </div>
-        </div>
-      </article>
-    </div>
-
-    <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
+        <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
+        <div class="glass rounded-2xl soft-panel eta-avail">
       <div class="min-w-0">
         <p class="text-sm font-medium text-slate-300">Fleet availability</p>
         <dl data-eta-fleet="austin" class="mt-3 text-sm"><div class="input-row"><dt>Loading</dt><dd></dd></div></dl>
@@ -619,12 +655,73 @@
         <p id="hoursNowText" class="text-xs text-slate-500 mt-3"></p>
       </div>
     </div>
-
-    <p class="mt-5 flex items-start gap-2 text-sm text-slate-400 max-sm:mt-4 max-sm:text-xs">
+      </div>
+      <div class="eta-col-main">
+        <div class="eta-cards grid gap-4 lg:grid-cols-2 max-sm:gap-3">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:250 224 48">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <span data-eta-basis="austin:cybercab" class="tag mt-2 inline-block">Loading</span>
+          </div>
+          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
+            <div data-eta-fare="austin:cybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more" data-eta-fare-more="austin:cybercab" hidden><summary>Why this range</summary><div data-eta-fare-note="austin:cybercab"></div></details>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <div class="flex items-center justify-between gap-3">
+              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
+              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
+            </div>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
+            <div id="etaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more"><summary>Sources &amp; method</summary><p id="etaCybercabBasis" class="text-xs text-slate-400"></p></details>
+          </div>
+        </div>
+      </article>
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <span data-eta-basis="austin:model_y" class="tag mt-2 inline-block">Loading</span>
+          </div>
+          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
+            <div data-eta-fare="austin:model_y" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more" data-eta-fare-more="austin:model_y" hidden><summary>Why this range</summary><div data-eta-fare-note="austin:model_y"></div></details>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <div class="flex items-center justify-between gap-3">
+              <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
+              <span class="service-status shrink-0 max-sm:text-[11px] max-sm:px-2.5" data-service-status>Checking</span>
+            </div>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
+            <div id="etaModelY" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more"><summary>Sources &amp; method</summary><p id="etaModelYBasis" class="text-xs text-slate-400"></p></details>
+          </div>
+        </div>
+      </article>
+    </div>
+        <p class="eta-cal flex items-start gap-2 text-xs text-slate-400">
       <svg class="w-4 h-4 shrink-0 mt-0.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 9h.01"/> <path d="M11 12h1v4h1"/></svg>
       <span data-eta-calibration="austin">Accuracy check loading.</span>
     </p>
-    <div data-eta-recent="austin" class="hidden mt-5 max-sm:mt-4"></div>
+        <div data-eta-recent="austin" class="hidden eta-recent"></div>
+      </div>
+    </div>
   </div>
 </section>
 </div>
@@ -638,9 +735,50 @@
 <!-- ===== Cybercab vs Model Y (Dallas): the fleet mix. Cybercabs = the site's
      documented public count (GET /api/fleet-eta, daily); Model Ys = a fixed figure (no live
      Model Y source). Filled by js/fleet-compare.js renderMix(). ===== -->
-<section class="pt-10 lg:pt-12 max-sm:pt-6" aria-labelledby="dalMixHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 max-sm:p-4 soft-panel">
+<section class="eta-dash-wrap" aria-labelledby="dalRhwHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4">
+    <div class="eta-dash-head">
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
+        <h2 id="dalRhwHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1.5"><span data-eta-updated="dallas">Estimates loading</span><span data-eta-stale="dallas" class="hidden stale-badge" style="display:none">Stale</span></p>
+      </div>
+      <div class="flex flex-col items-end gap-2 max-sm:items-start max-sm:w-full">
+        <div class="flex items-center gap-3">
+          <span id="dalScenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Demand scenario</span>
+          <div class="flex items-center gap-2" role="group" aria-labelledby="dalScenarioLabel">
+            <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
+            <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
+            <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Busy</button>
+          </div>
+        </div>
+        <p data-eta-assumed="dallas" class="text-xs text-slate-400 text-right max-sm:text-left"></p>
+      </div>
+    </div>
+
+    <!-- The dashboard. lg+: trip controls, fleet mix and availability on the
+         left; the two model cards (fare, hours, wait) on the right. Below lg one
+         column, results first (CSS order). -->
+    <div class="eta-dash">
+      <div class="eta-col-side">
+        <!-- Trip and pickup area: every estimate follows them. -->
+        <div class="glass rounded-2xl soft-panel eta-trip">
+      <div class="min-w-0">
+        <div class="flex items-center justify-between">
+          <label for="dalTripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
+          <div class="flex items-center gap-1">
+            <input type="number" id="dalTripMilesLabel" min="0.5" max="20" step="0.5" value="3" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
+            <span class="text-slate-400 text-sm font-semibold">mi</span>
+          </div>
+        </div>
+        <input type="range" id="dalTripMiles" class="eta-miles" data-eta-miles="dallas" data-elastic min="0.5" max="20" step="0.5" value="3">
+      </div>
+      <label class="block min-w-0">
+        <span class="text-sm font-medium text-slate-300">Pickup area</span>
+        <select id="dalEtaArea" data-eta-area="dallas" class="eta-select mt-1.5 w-full min-h-[44px] rounded-lg px-3 text-sm"><option value="">Anywhere in Dallas</option></select>
+      </label>
+    </div>
+        <div class="glass rounded-2xl soft-panel eta-mix">
       <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fleet mix · Dallas</p>
@@ -674,100 +812,8 @@
         </div>
       </div>
     </div>
-  </div>
-</section>
-<section class="pt-12 lg:pt-16 pb-16 max-sm:pt-6 max-sm:pb-8" aria-labelledby="dalRhwHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="flex flex-wrap items-end justify-between gap-4 mb-6 max-sm:gap-3 max-sm:mb-4">
-      <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Fares · Hours · Pickup wait</p>
-        <h2 id="dalRhwHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Ride, hours &amp; wait</h2>
-        <p class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1.5"><span data-eta-updated="dallas">Estimates loading</span><span data-eta-stale="dallas" class="hidden stale-badge" style="display:none">Stale</span></p>
-      </div>
-      <div class="flex flex-col items-end gap-2 max-sm:items-start max-sm:w-full">
-        <div class="flex items-center gap-3">
-          <span id="dalScenarioLabel" class="text-sm text-slate-400 max-sm:text-xs">Demand scenario</span>
-          <div class="flex items-center gap-2" role="group" aria-labelledby="dalScenarioLabel">
-            <button type="button" data-scenario="quiet" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Quiet</button>
-            <button type="button" data-scenario="typical" aria-pressed="true" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Typical</button>
-            <button type="button" data-scenario="busy" aria-pressed="false" class="city-filter min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors max-sm:min-h-[40px] max-sm:px-3 max-sm:text-xs">Busy</button>
-          </div>
-        </div>
-        <p data-eta-assumed="dallas" class="text-xs text-slate-400 text-right max-sm:text-left"></p>
-      </div>
-    </div>
-
-    <!-- Trip and pickup area: every estimate below follows them. -->
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl px-6 py-4 mb-5 grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] items-center max-sm:px-4 max-sm:mb-4 soft-panel">
-      <div class="min-w-0">
-        <div class="flex items-center justify-between">
-          <label for="dalTripMiles" class="text-sm font-medium text-slate-300">Trip distance</label>
-          <div class="flex items-center gap-1">
-            <input type="number" id="dalTripMilesLabel" min="0.5" max="20" step="0.5" value="3" aria-label="Trip distance in miles" class="stat-value font-semibold text-white text-lg bg-transparent w-14 min-h-[44px] text-right outline-none border-b border-transparent focus:border-gold">
-            <span class="text-slate-400 text-sm font-semibold">mi</span>
-          </div>
-        </div>
-        <input type="range" id="dalTripMiles" class="eta-miles" data-eta-miles="dallas" data-elastic min="0.5" max="20" step="0.5" value="3">
-      </div>
-      <label class="block min-w-0">
-        <span class="text-sm font-medium text-slate-300">Pickup area</span>
-        <select id="dalEtaArea" data-eta-area="dallas" class="eta-select mt-1.5 w-full min-h-[44px] rounded-lg px-3 text-sm"><option value="">Anywhere in Dallas</option></select>
-      </label>
-    </div>
-
-    <div class="grid gap-5 lg:grid-cols-2 max-sm:gap-4">
-      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:250 224 48">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
-            <span data-eta-basis="dallas:cybercab" class="tag mt-2 inline-block">Loading</span>
-          </div>
-          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
-        </div>
-        <div class="mt-2 divide-y divide-white/[0.07]">
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
-            <div data-eta-fare="dallas:cybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
-            <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
-            <div id="dalEtaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-            <p id="dalEtaCybercabBasis" class="text-xs text-slate-400 mt-2"></p>
-          </div>
-        </div>
-      </article>
-      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
-            <span data-eta-basis="dallas:model_y" class="tag mt-2 inline-block">Loading</span>
-          </div>
-          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
-        </div>
-        <div class="mt-2 divide-y divide-white/[0.07]">
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
-            <div data-eta-fare="dallas:model_y" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
-            <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
-            <div id="dalEtaModelY" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
-            <p id="dalEtaModelYBasis" class="text-xs text-slate-400 mt-2"></p>
-          </div>
-        </div>
-      </article>
-    </div>
-
-    <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
-    <div data-animate="fade-up" data-animate-distance="24" class="glass rounded-2xl p-6 lg:p-7 mt-5 grid gap-8 lg:grid-cols-2 max-sm:p-4 max-sm:mt-4 max-sm:gap-6 soft-panel">
+        <!-- Fleet availability (four different things, never interchangeable) and the service day. -->
+        <div class="glass rounded-2xl soft-panel eta-avail">
       <div class="min-w-0">
         <p class="text-sm font-medium text-slate-300">Fleet availability</p>
         <dl data-eta-fleet="dallas" class="mt-3 text-sm"><div class="input-row"><dt>Loading</dt><dd></dd></div></dl>
@@ -788,20 +834,75 @@
         </div>
       </div>
     </div>
-
-    <p class="mt-5 flex items-start gap-2 text-sm text-slate-400 max-sm:mt-4 max-sm:text-xs">
+      </div>
+      <div class="eta-col-main">
+        <div class="eta-cards grid gap-4 lg:grid-cols-2 max-sm:gap-3">
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:250 224 48">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab</p>
+            <span data-eta-basis="dallas:cybercab" class="tag mt-2 inline-block">Loading</span>
+          </div>
+          <img src="images/dmv-cybercab.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
+            <div data-eta-fare="dallas:cybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more" data-eta-fare-more="dallas:cybercab" hidden><summary>Why this range</summary><div data-eta-fare-note="dallas:cybercab"></div></details>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
+            <div id="dalEtaCybercab" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more"><summary>Sources &amp; method</summary><p id="dalEtaCybercabBasis" class="text-xs text-slate-400"></p></details>
+          </div>
+        </div>
+      </article>
+      <article class="dmv-card rhw-card glass relative rounded-2xl p-6 lg:p-7 min-w-0 max-sm:p-4 soft-panel" style="--c:239 68 68">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-400"><span class="w-2 h-2 rounded-full bg-current"></span>Model Y</p>
+            <span data-eta-basis="dallas:model_y" class="tag mt-2 inline-block">Loading</span>
+          </div>
+          <img src="images/dmv-model-y.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" class="pointer-events-none w-44 -mt-2 -mr-2 max-sm:w-32">
+        </div>
+        <div class="mt-2 divide-y divide-white/[0.07]">
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Estimated fare</p>
+            <div data-eta-fare="dallas:model_y" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more" data-eta-fare-more="dallas:model_y" hidden><summary>Why this range</summary><div data-eta-fare-note="dallas:model_y"></div></details>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hours</p>
+            <p class="stat-value text-white text-lg max-sm:text-base"><span data-hours class="whitespace-nowrap">24/7</span> <span data-hours-note class="text-slate-500 text-sm">every day, Central</span></p>
+          </div>
+          <div class="rhw-block">
+            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Estimated pickup wait</p>
+            <div id="dalEtaModelY" aria-live="polite"><span class="skeleton-line w-40 h-10"></span></div>
+            <details class="eta-more"><summary>Sources &amp; method</summary><p id="dalEtaModelYBasis" class="text-xs text-slate-400"></p></details>
+          </div>
+        </div>
+      </article>
+    </div>
+        <p class="eta-cal flex items-start gap-2 text-xs text-slate-400">
       <svg class="w-4 h-4 shrink-0 mt-0.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/> <path d="M12 9h.01"/> <path d="M11 12h1v4h1"/></svg>
       <span data-eta-calibration="dallas">Accuracy check loading.</span>
     </p>
-    <div data-eta-recent="dallas" class="hidden mt-5 max-sm:mt-4"></div>
+        <div data-eta-recent="dallas" class="hidden eta-recent"></div>
+      </div>
+    </div>
   </div>
 </section>
 </div>
 
 <!-- ===== Shared by both cities: how the estimates are made, and the
      optional rider report (worker/fleet-eta.js POST /api/fare-reports). ===== -->
-<section class="pb-16 max-sm:pb-10" aria-label="How the estimates work and rider reports">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 space-y-5 max-sm:space-y-4">
+<section class="pb-12 max-sm:pb-8" aria-label="How the estimates work and rider reports">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 max-sm:px-4 eta-shared">
     <details data-animate="fade-up" data-animate-distance="24" id="etaMethod" class="estimate-details glass rounded-2xl soft-panel">
       <summary class="flex items-center justify-between gap-3 px-6 py-4 max-sm:px-4 cursor-pointer select-none text-sm font-semibold text-slate-200">
         How are these estimates calculated?
@@ -1068,8 +1169,8 @@
     show(new URLSearchParams(location.search).get('view'));
   })();
 </script>
-<script src="js/fleet-roi-ui.js?v=2"></script>
-<script src="js/fleet-compare.js?v=11"></script>
+<script src="js/fleet-roi-ui.js?v=3"></script>
+<script src="js/fleet-compare.js?v=12"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 <script src="/vendor/gsap-3.13.0.min.js" defer></script>
 <script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>

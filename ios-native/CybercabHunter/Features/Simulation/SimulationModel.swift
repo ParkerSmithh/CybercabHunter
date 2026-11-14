@@ -13,6 +13,13 @@ final class SimulationModel {
     enum CityState: Equatable { case idle, loading, loaded(FleetEta), failed }
 
     var view: View = .roi
+    /// Fleet ETA's segment (kept while switching to Fleet ROI and back).
+    enum EtaTab: String, CaseIterable, Identifiable { case estimates, fleet, method; var id: String { rawValue }
+        var title: String { switch self { case .estimates: "Estimates"; case .fleet: "Fleet"; case .method: "Method" } }
+    }
+    var etaTab: EtaTab = .estimates
+    /// Whether the segment bar is pinned (the page scrolled past its place).
+    var segmentPinned = false
 
     // MARK: Fleet ROI (FleetROI2View.swift): the simulator and the device's saved configurations
     let roi2 = FleetROISession()

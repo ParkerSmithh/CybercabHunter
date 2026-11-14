@@ -67,6 +67,7 @@ final class Phase7UITests: XCTestCase {
         XCTAssertTrue(shown("$51,840").waitForExistence(timeout: 5), "gross revenue for 10 cabs: 16 rides × 30 days × 90% × $12 × 10")
         XCTAssertTrue(shown("$30,438").exists, "operating profit: 10 × ($5,184 − 25% Tesla share − $84.24 charging − $300 − $250 − $60 − $150)")
         XCTAssertFalse(app.descendants(matching: .any)["roiResults"].exists, "the old quick calculator is gone")
+        app.segmentedControls["roi2Segments"].buttons["Timeline"].tap()
         let chart = app.descendants(matching: .any)["roi2Timeline"]
         reveal(chart, in: app)
         shot(app, "p7-roi-results")
@@ -95,6 +96,7 @@ final class Phase7UITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["etaFleetLine"].exists, "the registry count line is Austin's only")
         reveal(dalCard, in: app)
         shot(app, "p7-eta-dallas")
+        app.segmentedControls["etaSegments"].buttons["Method"].tap()   // how it's estimated: under Method
         let method = app.descendants(matching: .any)["etaMethod"]
         reveal(method, in: app)
         XCTAssertTrue(method.exists)

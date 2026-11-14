@@ -136,10 +136,11 @@ final class PolishUITests: XCTestCase {
         shot(app, "roi-inputs-card")
         for _ in 0..<6 { app.swipeDown(velocity: .fast) }
         app.buttons["simTab-eta"].tap()
+        app.segmentedControls["etaSegments"].buttons["Fleet"].tap()   // the fleet mix is under Fleet
         let mix = app.descendants(matching: .any)["etaMix"]
         XCTAssertTrue(mix.waitForExistence(timeout: 20))
-        app.swipeUp(velocity: .slow)
         shot(app, "eta-mix-cards")
+        app.segmentedControls["etaSegments"].buttons["Estimates"].tap()
         let card = app.otherElements["etaCard-cybercab"]
         reveal(card, in: app)
         shot(app, "eta-model-card")
