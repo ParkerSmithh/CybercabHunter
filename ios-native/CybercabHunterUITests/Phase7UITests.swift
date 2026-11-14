@@ -62,7 +62,7 @@ final class Phase7UITests: XCTestCase {
         shot(app, "p7-roi")
         // An exact fleet size: 10 cabs, $0.12/kWh, 150 mi/day, loss on (calc.js values).
         let fleet = app.textFields["roiFleetField"]
-        reveal(fleet, in: app)
+        reveal(fleet, in: app, swipes: 45)   // below Fleet ROI 2.0 (FleetROI2View)
         fleet.tap()
         fleet.press(forDuration: 1.0)
         if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
@@ -79,7 +79,8 @@ final class Phase7UITests: XCTestCase {
         shot(app, "p7-roi-results")
 
         // Fleet ETA: Austin, then Dallas (each its own numbers).
-        for _ in 0..<10 { app.swipeDown(velocity: .fast) }
+        var up = 0
+        while !app.buttons["simTab-eta"].isHittable && up < 45 { app.swipeDown(velocity: .fast); up += 1 }
         app.buttons["simTab-eta"].tap()
         XCTAssertTrue(app.staticTexts["etaTitle"].waitForExistence(timeout: 10))
         let cyCard = app.otherElements["etaCard-cybercab"]

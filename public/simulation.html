@@ -120,6 +120,111 @@
   .conf-low{color:rgb(var(--warn-ink)); border-color:rgb(var(--warn-ink) / 0.45);}
   .conf-insufficient{color:rgb(var(--n-400, 140 144 152)); border-style:dashed;}
   @media (prefers-reduced-motion: reduce){ .details-chevron{transition:none;} }
+  /* ===== Fleet ROI 2.0 (js/fleet-roi-ui.js). Black and gold, the site's
+     tokens; figures in tabular numerals; every label says Reported /
+     Estimate / Assumption. ===== */
+  .roi2-card{position:relative; border-radius:16px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); padding:24px; min-width:0;}
+  .roi2-gold{border-color:rgb(var(--gold) / .35); background:linear-gradient(135deg, rgb(var(--gold) / .09), transparent 60%), rgb(var(--glass) / var(--glass-a));}
+  @media (max-width:639px){ .roi2-card{padding:16px;} }
+  .roi2-eyebrow{font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:rgb(var(--gold));}
+  .roi2-sub{font-size:13px; color:rgb(var(--n-400)); line-height:1.5;}
+  .roi2-fine{font-size:11.5px; color:rgb(var(--n-500)); line-height:1.55;}
+  .roi2-fine a{color:rgb(var(--gold-ink)); text-decoration:underline; text-underline-offset:2px;}
+  .roi2-note{font-size:13px; line-height:1.5; color:rgb(var(--n-300)); border-left:2px solid rgb(var(--gold)); padding:2px 0 2px 12px; max-width:56rem;}
+  .roi2-price{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .roi2-price-num{font-size:44px; font-weight:590; letter-spacing:-.03em; color:rgb(var(--gold)); font-variant-numeric:tabular-nums; line-height:1;}
+  .roi2-price-note{font-size:13px; color:rgb(var(--n-400));}
+  @media (max-width:639px){ .roi2-price-num{font-size:36px;} }
+  .roi2-terms{display:grid; gap:0;}
+  .roi2-terms > div{display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid rgb(var(--line)); font-size:13px;}
+  .roi2-terms dt{color:rgb(var(--n-400));}
+  .roi2-terms dd{color:rgb(var(--ink)); text-align:right; font-weight:510;}
+  .roi2-kind{display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; border:1px solid;}
+  .roi2-kind-reported{color:rgb(var(--gold)); border-color:rgb(var(--gold) / .45); background:rgb(var(--gold) / .08);}
+  .roi2-kind-estimate{color:rgb(var(--n-200)); border-color:rgb(var(--n-500) / .6);}
+  .roi2-kind-assumption{color:rgb(var(--n-400)); border-color:rgb(var(--n-700)); border-style:dashed;}
+  .roi2-legend{display:flex; gap:6px; flex-wrap:wrap;}
+  .roi2-breakdown{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .roi2-breakdown td{padding:9px 0; border-top:1px solid rgb(var(--line)); vertical-align:middle;}
+  .roi2-breakdown td:first-child{color:rgb(var(--n-300));}
+  .roi2-breakdown td.k{width:1%; padding:0 10px; white-space:nowrap;}
+  .roi2-breakdown td.v{text-align:right; font-variant-numeric:tabular-nums; font-weight:510; color:rgb(var(--ink)); white-space:nowrap;}
+  .roi2-breakdown tr.total td{border-top:1px solid rgb(var(--gold) / .4); font-weight:590;}
+  .roi2-breakdown tr.total td.v{color:rgb(var(--gold)); font-size:16px;}
+  .roi2-breakdown .sub{display:block; font-size:11.5px; color:rgb(var(--n-500));}
+  @media (max-width:639px){ .roi2-breakdown{font-size:12.5px;} .roi2-breakdown td.k{padding:0 6px;} }
+  .roi2-seg{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--n-900) / .5); gap:2px;}
+  .roi2-seg button{min-height:40px; padding:0 16px; border-radius:999px; font-size:13px; font-weight:590; color:rgb(var(--n-400)); transition:background var(--t) var(--ease), color var(--t) var(--ease);}
+  .roi2-seg button[aria-checked="true"]{background:rgb(var(--gold)); color:#1a1204;}
+  .roi2-seg button:focus-visible, .roi2-btn:focus-visible, .roi2-presets button:focus-visible, .roi2-series button:focus-visible{outline:2px solid rgb(var(--gold)); outline-offset:2px;}
+  .roi2-seg-sm button{min-height:34px; padding:0 12px; font-size:12px;}
+  @media (max-width:639px){ .roi2-seg button{padding:0 12px; font-size:12px;} }
+  .roi2-label{font-size:13px; font-weight:510; color:rgb(var(--n-300)); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .roi2-num{width:7.5ch; background:transparent; border:0; border-bottom:1px solid rgb(var(--line)); text-align:right; font-size:16px; font-weight:590; color:rgb(var(--ink)); font-variant-numeric:tabular-nums; outline:none; padding:2px 0;}
+  .roi2-num:focus{border-bottom-color:rgb(var(--gold));}
+  .roi2-num-wrap{display:inline-flex; align-items:baseline; gap:3px; color:rgb(var(--n-400)); font-size:13px; font-weight:590;}
+  .roi2-group{padding-top:14px; margin-top:12px; border-top:1px solid rgb(var(--line));}
+  .roi2-group > h3{font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--n-400)); margin-bottom:6px;}
+  .roi2-row{padding:7px 0;}
+  .roi2-row .top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .roi2-row input[type=range]{width:100%; margin-top:4px;}
+  .roi2-row .hint{font-size:11px; color:rgb(var(--n-500)); margin-top:2px;}
+  .roi2-row.is-off{display:none;}
+  .roi2-presets{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .roi2-presets button{min-width:44px; min-height:36px; padding:0 12px; border-radius:999px; border:1px solid rgb(var(--line)); font-size:13px; font-weight:590; color:rgb(var(--n-300)); font-variant-numeric:tabular-nums; transition:all var(--t) var(--ease);}
+  .roi2-presets button[aria-pressed="true"]{border-color:rgb(var(--gold)); color:rgb(var(--gold)); background:rgb(var(--gold) / .1);}
+  .roi2-btn{display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 14px; border-radius:10px; border:1px solid rgb(var(--line-strong, var(--line))); font-size:13px; font-weight:590; color:rgb(var(--n-200)); transition:background var(--t) var(--ease);}
+  .roi2-btn:hover{background:rgb(var(--ink) / .05);}
+  .roi2-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .roi2-btn-gold{background:rgb(var(--gold)); border-color:rgb(var(--gold)); color:#1a1204;}
+  .roi2-btn-gold:hover{background:rgb(var(--gold) / .88);}
+  .roi2-metric{position:relative; border-radius:14px; border:1px solid rgb(var(--line)); background:rgb(var(--glass) / var(--glass-a)); padding:14px 16px; min-width:0; transition:border-color var(--t) var(--ease);}
+  .roi2-metric .l{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:rgb(var(--n-400));}
+  .roi2-metric .n{margin-top:6px; font-size:24px; font-weight:590; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:rgb(var(--ink)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .roi2-metric .s{margin-top:2px; font-size:11.5px; color:rgb(var(--n-500)); line-height:1.4;}
+  .roi2-metric.hi{border-color:rgb(var(--gold) / .5); background:linear-gradient(135deg, rgb(var(--gold) / .12), transparent 70%), rgb(var(--glass) / var(--glass-a));}
+  .roi2-metric.hi .n{color:rgb(var(--gold));}
+  .roi2-metric .n.neg{color:rgb(var(--danger-ink, 248 113 113));}
+  @media (max-width:639px){ .roi2-metric{padding:10px 11px;} .roi2-metric .n{font-size:clamp(15px,4.6vw,19px);} .roi2-metric .l{font-size:10px;} }
+  .roi2-series{display:flex; flex-wrap:wrap; gap:6px;}
+  .roi2-series button{display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 10px; border-radius:999px; border:1px solid rgb(var(--line)); font-size:12px; font-weight:510; color:rgb(var(--n-300));}
+  .roi2-series button[aria-pressed="false"]{opacity:.45;}
+  .roi2-series button[hidden], .roi2-group[hidden], .roi2-metric[hidden]{display:none;}
+  .roi2-swatch{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .s-cum{background:rgb(var(--gold));} .s-rev{background:rgb(52 211 153);} .s-opex{background:rgb(248 113 113);}
+  .roi2-chart-wrap{position:relative; height:260px;}
+  @media (max-width:639px){ .roi2-chart-wrap{height:220px;} }
+  #roi2Chart{width:100%; height:100%; overflow:visible; touch-action:pan-y;}
+  #roi2Chart .ln{fill:none; vector-effect:non-scaling-stroke; transition:d .45s cubic-bezier(.22,1,.36,1), opacity .25s;}
+  #roi2Chart .bar{transition:opacity .25s;}
+  #roi2Chart text{font-family:'Inter',sans-serif; font-variant-numeric:tabular-nums; font-size:10px; fill:rgb(var(--n-500));}
+  .roi2-tip{position:absolute; top:6px; pointer-events:none; padding:8px 10px; border-radius:10px; background:rgb(var(--surface-2, var(--n-900))); border:1px solid rgb(var(--line)); font-size:12px; line-height:1.5; color:rgb(var(--ink)); white-space:nowrap; font-variant-numeric:tabular-nums; box-shadow:0 8px 24px -12px rgb(0 0 0 / .6); z-index:2;}
+  .roi2-table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .roi2-peek{position:sticky; top:64px; z-index:5; margin:-8px -8px 10px; padding:10px 12px; border-radius:12px; background:rgb(var(--bg) / .92); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border:1px solid rgb(var(--gold) / .35); display:flex; justify-content:space-between; gap:12px; font-size:12px; color:rgb(var(--n-400)); font-variant-numeric:tabular-nums;}
+  .roi2-peek b{display:block; font-size:16px; font-weight:590; color:rgb(var(--gold));}
+  .roi2-peek .r{text-align:right;}
+  @media (min-width:1024px){ .roi2-peek{display:none;} }
+  .roi2-table{width:100%; border-collapse:collapse; font-size:13px; min-width:560px;}
+  .roi2-table th, .roi2-table td{padding:9px 10px; border-top:1px solid rgb(var(--line)); text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .roi2-table th:first-child, .roi2-table td:first-child{text-align:left; color:rgb(var(--n-300)); font-weight:510; position:sticky; left:0; background:rgb(var(--bg));}
+  .roi2-table thead th{border-top:0; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:rgb(var(--n-400)); font-weight:600;}
+  .roi2-table thead th.cur{color:rgb(var(--gold));}
+  .roi2-table input{width:6.5ch; text-align:right; background:transparent; border:0; border-bottom:1px dashed rgb(var(--n-700)); color:rgb(var(--ink)); font-weight:590; font-variant-numeric:tabular-nums; outline:none;}
+  .roi2-table input:focus{border-bottom:1px solid rgb(var(--gold));}
+  .roi2-table tr.res td{font-weight:590; color:rgb(var(--ink));}
+  .roi2-table tr.res.key td:not(:first-child){color:rgb(var(--gold));}
+  .roi2-table tr.sep td{border-top:1px solid rgb(var(--gold) / .3);}
+  .roi2-saved{display:grid; gap:8px;}
+  .roi2-saved li{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border-radius:12px; border:1px solid rgb(var(--line));}
+  .roi2-saved li .nm{flex:1 1 12rem; min-width:0;}
+  .roi2-saved li .nm b{display:block; font-weight:590; color:rgb(var(--ink)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .roi2-saved li .nm span{font-size:11.5px; color:rgb(var(--n-500));}
+  .roi2-saved li .acts{display:flex; gap:4px; flex-wrap:wrap;}
+  .roi2-saved li .acts button{min-height:34px; padding:0 10px; border-radius:8px; font-size:12px; font-weight:590; color:rgb(var(--n-300)); border:1px solid transparent;}
+  .roi2-saved li .acts button:hover{border-color:rgb(var(--line));}
+  .roi2-saved li .acts button.danger{color:rgb(var(--danger-ink, 248 113 113));}
+  .roi2-saved input[type=checkbox]{width:18px; height:18px; accent-color:rgb(var(--gold));}
+  @media (prefers-reduced-motion: reduce){ #roi2Chart .ln{transition:none;} }
 </style>
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -207,7 +312,7 @@
     <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ROI</h1>
-      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">Model monthly economics for a prospective Cybercab fleet: energy overhead, gross revenue, net operating income, and breakeven timeline.</p>
+      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">What a Cybercab costs at the newly reported $29,990, and what a fleet might earn if owners are ever allowed to run one: purchase, financing, operating costs, payback and scenarios. Every assumption is yours to change.</p>
     </div>
     <!-- Interactive Cybercab (js/cybercab-doors.js): click the car or the button
          and the butterfly doors swing open; again to close. The still is the
@@ -225,6 +330,160 @@
   </div>
 </section>
 
+<!-- ===== Fleet ROI 2.0 (js/fleet-roi.js = the model, js/fleet-roi-ui.js =
+     this UI; formulas and every default: docs/fleet-roi-model.md). The
+     purchase terms are labeled "Reported" (Tesla's order interface, as
+     reported Nov 13, 2026); every other figure is an editable estimate or
+     assumption, and commercial operation is hypothetical. ===== -->
+<section class="pt-10 max-sm:pt-6" aria-labelledby="roi2PurchaseHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-6 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Price · Subscription · Delivery</p>
+      <h2 id="roi2PurchaseHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Cybercab purchase</h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 max-sm:gap-4">
+      <!-- The reported terms, with their sources and date -->
+      <div class="lg:col-span-2 roi2-card roi2-gold" data-animate="fade-up" data-animate-distance="24">
+        <div class="flex items-start justify-between gap-3">
+          <p class="roi2-eyebrow">Order terms</p>
+          <span class="roi2-kind roi2-kind-reported" title="Shown on Tesla's Cybercab order interface, as reported. Not verified on tesla.com.">Reported</span>
+        </div>
+        <p class="roi2-price mt-2"><span class="roi2-price-num">$29,990</span><span class="roi2-price-note">before taxes</span></p>
+        <dl class="roi2-terms mt-4">
+          <div><dt>Order deposit</dt><dd>$1,000 · nonrefundable</dd></div>
+          <div><dt>Autonomy Subscription</dt><dd>$299/mo · first month included</dd></div>
+          <div><dt>Maintenance subscription</dt><dd>Required · price not shown</dd></div>
+          <div><dt>Estimated delivery</dt><dd>December 2026 · Austin, Texas</dd></div>
+          <div><dt>Availability</dt><dd>Invitation only, personal use</dd></div>
+        </dl>
+        <p class="roi2-fine mt-4">We treat the deposit as part of the $29,990 (credited at delivery), not an extra charge, until Tesla's terms say otherwise. Tesla hasn't said owners may run a Cybercab on its Robotaxi network; any revenue below is hypothetical.</p>
+        <p class="roi2-fine mt-3" id="roi2Sources">Sources: Tesla's Cybercab order interface as reported by
+          <a href="https://insideevs.com/news/815473/tesla-cybercab-pricing-sales-announced/" target="_blank" rel="noopener">InsideEVs</a>,
+          <a href="https://www.teslarati.com/tesla-cybercab-29990-december-deliveries/" target="_blank" rel="noopener">Teslarati</a> and
+          <a href="https://www.notateslaapp.com/news/5012/tesla-opens-orders-for-the-cybercab-for-personal-use-costs-29990-and-requires-a-299-monthly-subscription" target="_blank" rel="noopener">Not a Tesla App</a>.
+          Last verified <time datetime="2026-11-13">Nov 13, 2026</time>; not yet confirmed on tesla.com.</p>
+      </div>
+      <!-- What it costs, from the simulator's current inputs -->
+      <div class="lg:col-span-3 roi2-card" data-animate="fade-up" data-animate-distance="24">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="roi2-eyebrow">Purchase &amp; ownership breakdown</p>
+            <p class="roi2-sub" id="roi2BreakdownSub">Per vehicle, from your inputs below</p>
+          </div>
+          <div class="roi2-legend" aria-hidden="true"><span class="roi2-kind roi2-kind-reported">Reported</span><span class="roi2-kind roi2-kind-estimate">Estimate</span><span class="roi2-kind roi2-kind-assumption">Assumption</span></div>
+        </div>
+        <table class="roi2-breakdown mt-3" aria-describedby="roi2BreakdownSub"><tbody id="roi2Breakdown"></tbody></table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SimHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Simulator · Fleet builder</p>
+        <h2 id="roi2SimHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Own or operate</h2>
+      </div>
+      <div class="roi2-seg" role="radiogroup" aria-label="Simulation mode" id="roi2Mode">
+        <button type="button" role="radio" data-mode="personal" aria-checked="false">Personal ownership</button>
+        <button type="button" role="radio" data-mode="fleet" aria-checked="true">Fleet investment</button>
+      </div>
+    </div>
+    <p id="roi2ModeNote" class="roi2-note mb-5" role="note"></p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-sm:gap-4">
+      <!-- Inputs -->
+      <form id="roi2Inputs" class="lg:col-span-5 roi2-card roi2-gold space-y-1" novalidate onsubmit="return false" aria-label="Simulator inputs">
+        <!-- Below lg the results are under the inputs: this pinned line keeps the two key figures in view while editing. -->
+        <div id="roi2Peek" class="roi2-peek lg:hidden" aria-hidden="true"></div>
+        <div class="roi2-fleet-builder" id="roi2FleetBuilder">
+          <div class="flex items-center justify-between gap-3">
+            <label for="roi2-vehicles" class="roi2-label">Cybercabs</label>
+            <input type="number" id="roi2-vehicles" class="roi2-num" min="1" max="1000" step="1" inputmode="numeric" data-field="vehicles">
+          </div>
+          <div class="roi2-presets" role="group" aria-label="Fleet size presets" id="roi2Presets"></div>
+        </div>
+        <div id="roi2Fields"></div>
+        <div class="flex flex-wrap gap-2 pt-4">
+          <button type="button" id="roi2Reset" class="roi2-btn">Reset to defaults</button>
+          <button type="button" id="roi2SaveBtn" class="roi2-btn roi2-btn-gold">Save configuration</button>
+        </div>
+      </form>
+
+      <!-- Results -->
+      <div class="lg:col-span-7 space-y-6 max-sm:space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-sm:gap-2" id="roi2Metrics" aria-live="polite" data-animate-stagger="fade-up" data-animate-distance="16"></div>
+
+        <div class="roi2-card" data-animate="fade-up" data-animate-distance="24">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="roi2-eyebrow">Profit timeline</p>
+              <p class="roi2-sub" id="roi2ChartSub">Cumulative cash, from delivery</p>
+            </div>
+            <div class="roi2-seg roi2-seg-sm" role="radiogroup" aria-label="Timeline length" id="roi2Horizon">
+              <button type="button" role="radio" data-months="12" aria-checked="false">1Y</button>
+              <button type="button" role="radio" data-months="36" aria-checked="false">3Y</button>
+              <button type="button" role="radio" data-months="60" aria-checked="true">5Y</button>
+              <button type="button" role="radio" data-months="120" aria-checked="false">10Y</button>
+            </div>
+          </div>
+          <div class="roi2-series mt-3" role="group" aria-label="Show on the chart" id="roi2Series">
+            <button type="button" data-series="cumulative" aria-pressed="true"><i class="roi2-swatch s-cum"></i>Cumulative cash</button>
+            <button type="button" data-series="revenue" aria-pressed="true"><i class="roi2-swatch s-rev"></i>Revenue / mo</button>
+            <button type="button" data-series="opex" aria-pressed="true"><i class="roi2-swatch s-opex"></i>Expenses / mo</button>
+          </div>
+          <div class="roi2-chart-wrap mt-3">
+            <svg id="roi2Chart" viewBox="0 0 640 260" role="img" aria-labelledby="roi2ChartTitle roi2ChartDesc" preserveAspectRatio="none"><title id="roi2ChartTitle">Profit timeline</title><desc id="roi2ChartDesc"></desc></svg>
+            <div id="roi2Tip" class="roi2-tip hidden" aria-hidden="true"></div>
+          </div>
+          <p class="roi2-fine mt-2" id="roi2ChartNote"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2ScenHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-5 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Conservative · Expected · Optimistic</p>
+      <h2 id="roi2ScenHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Scenario comparison</h2>
+      <p class="roi2-sub mt-2 max-w-3xl">Three editable sets of operating assumptions, each run with your fleet size, purchase and ownership costs above. Edit any cell. These are hypotheticals, not forecasts or promised returns.</p>
+    </div>
+    <p class="roi2-fine mb-2 sm:hidden">Swipe the table for Expected and Optimistic.</p>
+    <div class="roi2-card roi2-table-wrap" data-animate="fade-up" data-animate-distance="24">
+      <table class="roi2-table" id="roi2Scenarios"></table>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button type="button" id="roi2ScenReset" class="roi2-btn">Reset scenarios</button>
+    </div>
+  </div>
+</section>
+
+<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SavedHeading">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
+      <div>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">On this device only</p>
+        <h2 id="roi2SavedHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Saved configurations</h2>
+      </div>
+      <button type="button" id="roi2Compare" class="roi2-btn" disabled>Compare selected</button>
+    </div>
+    <div class="roi2-card" data-animate="fade-up" data-animate-distance="24">
+      <ul id="roi2Saved" class="roi2-saved" aria-live="polite"></ul>
+      <p id="roi2SavedEmpty" class="roi2-sub">Nothing saved yet. Set up a configuration above and choose <b>Save configuration</b>. Saved configurations stay in this browser; nothing is uploaded.</p>
+      <div id="roi2CompareOut" class="roi2-table-wrap mt-4 hidden"></div>
+    </div>
+  </div>
+</section>
+
+<section class="pt-12 max-sm:pt-8" aria-label="Disclaimer">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+    <p class="roi2-fine max-w-4xl" data-animate="fade-up" data-animate-distance="12">Not affiliated with Tesla, Inc. Everything here is a simulation for planning and curiosity, not financial advice, a quote or a promise of returns. Personal ownership does not mean permission to operate a commercial Robotaxi: that depends on Tesla's fleet terms, local regulation, commercial insurance and approval, none of which Tesla has published for owners. Formulas: every figure comes from the inputs shown.</p>
+  </div>
+</section>
+
 <!-- ===== Fleet economics: the Fleet ETA look (a gold model card per part,
      React Bits glow on the three results, icon labels). The only picture is
      the Cybercab (images/dmv-cybercab.webp). Every id js/main.js / the inline
@@ -232,8 +491,9 @@
 <section class="pt-10 pb-16 max-sm:pt-6 max-sm:pb-10" aria-labelledby="roiHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="mb-6 max-sm:mb-4">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Inputs · Results · Breakeven</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Quick estimate · Energy &amp; network</p>
       <h2 id="roiHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Fleet economics</h2>
+      <p class="text-xs text-slate-500 mt-2 max-w-3xl">The original quick calculator: fixed fare and network cut, the fleet's energy use and a simple payback on the vehicle price. The simulator above models the full cost of ownership.</p>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5" data-animate-stagger="fade-up" data-animate-distance="24">
       <!-- Inputs: one gold card with the Cybercab -->
@@ -981,6 +1241,7 @@
 
 <script src="/vendor/jspdf-2.5.1.umd.min.js"></script>
 <script src="js/calc.js?v=14"></script>
+<script src="js/fleet-roi.js?v=1"></script>
 <script src="js/main.js?v=34"></script>
 <script>
   CCC.init();
@@ -1016,7 +1277,7 @@
 
     // Locked assumptions — not user-editable.
     const NETWORK_CUT_PCT = 25;
-    const COST_PER_CAB = 30000;
+    const COST_PER_CAB = CCC_FLEET_ROI.PRICING.price;   // reported Cybercab price ($29,990; js/fleet-roi.js)
     const BASE_FARE = 3.00;
     const PER_MILE_RATE = 1.40;
     const AVG_TRIP_MILES = 5;
@@ -1248,6 +1509,7 @@
       });
   })();
 </script>
+<script src="js/fleet-roi-ui.js?v=1"></script>
 <script src="js/fleet-compare.js?v=11"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 <script src="/vendor/gsap-3.13.0.min.js" defer></script>

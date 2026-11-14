@@ -14,7 +14,11 @@ final class SimulationModel {
 
     var view: View = .roi
 
-    // MARK: Fleet ROI
+    // MARK: Fleet ROI 2.0 (FleetROI2View.swift): the simulator and the device's saved configurations
+    let roi2 = FleetROISession()
+    let roi2Store = FleetROIStore()
+
+    // MARK: Fleet ROI (the original quick estimate)
     var fleetSize = 0
     var electricityRate = SimulationCalc.ROI.electricityStart
     var dailyMiles = SimulationCalc.ROI.milesStart

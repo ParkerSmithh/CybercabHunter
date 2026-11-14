@@ -14,7 +14,10 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const read = f => fs.readFileSync(`${ROOT}public/${f}`, 'utf8');
 const HTML = read('simulation.html');
 const INLINE = HTML.slice(HTML.lastIndexOf('<script>') + 8, HTML.indexOf('</script>', HTML.lastIndexOf('<script>')));
-const COMBINED = `${read('js/calc.js')}\n${read('js/main.js')}\n${INLINE}\n${read('js/fleet-compare.js')}`;
+// In the page's order: calc.js, fleet-roi.js (the Fleet ROI 2.0 model, which the
+// quick calculator reads its price from), main.js, the inline scripts, the
+// Fleet ROI 2.0 UI, then Fleet ETA.
+const COMBINED = `${read('js/calc.js')}\n${read('js/fleet-roi.js')}\n${read('js/main.js')}\n${INLINE}\n${read('js/fleet-roi-ui.js')}\n${read('js/fleet-compare.js')}`;
 
 // Every window opened; closed at the end so the Fleet ETA view's refresh timers
 // (js/fleet-compare.js) don't keep the test process alive.
