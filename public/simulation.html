@@ -47,10 +47,6 @@
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   input[type=number]{-moz-appearance:textfield; appearance:textfield;}
-  .toggle{width:44px; height:24px; border-radius:999px; background:rgb(var(--n-800)); position:relative; transition:background 0.25s ease; cursor:pointer;}
-  .toggle.on{background:linear-gradient(120deg,#FAE030,#FAE030);}
-  .toggle-dot{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:rgb(var(--ink)); transition:transform var(--t) var(--ease);}
-  .toggle.on .toggle-dot{transform:translateX(20px); background:#1a1204;}
   /* The Cybercab in both views' headers: one size and place, always to the
      right of the text (smaller on phones, beside the heading). */
   .sim-hero-car{width:240px; height:auto; align-self:start; margin-top:28px; user-select:none;}
@@ -131,28 +127,13 @@
   .roi2-fine{font-size:11.5px; color:rgb(var(--n-500)); line-height:1.55;}
   .roi2-fine a{color:rgb(var(--gold-ink)); text-decoration:underline; text-underline-offset:2px;}
   .roi2-note{font-size:13px; line-height:1.5; color:rgb(var(--n-300)); border-left:2px solid rgb(var(--gold)); padding:2px 0 2px 12px; max-width:56rem;}
-  .roi2-price{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
-  .roi2-price-num{font-size:44px; font-weight:590; letter-spacing:-.03em; color:rgb(var(--gold)); font-variant-numeric:tabular-nums; line-height:1;}
-  .roi2-price-note{font-size:13px; color:rgb(var(--n-400));}
-  @media (max-width:639px){ .roi2-price-num{font-size:36px;} }
-  .roi2-terms{display:grid; gap:0;}
-  .roi2-terms > div{display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid rgb(var(--line)); font-size:13px;}
-  .roi2-terms dt{color:rgb(var(--n-400));}
-  .roi2-terms dd{color:rgb(var(--ink)); text-align:right; font-weight:510;}
   .roi2-kind{display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; border:1px solid;}
-  .roi2-kind-reported{color:rgb(var(--gold)); border-color:rgb(var(--gold) / .45); background:rgb(var(--gold) / .08);}
+  /* Fixed values: readable, not greyed out; a small gold lock says why they can't change. */
+  .roi2-locked .top{min-height:34px;}
+  .roi2-fixed{display:inline-flex; align-items:center; gap:7px; padding:5px 10px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--ink) / .03); font-size:15px; font-weight:590; color:rgb(var(--n-200)); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .roi2-lock{width:13px; height:13px; color:rgb(var(--gold)); flex:none;}
   .roi2-kind-estimate{color:rgb(var(--n-200)); border-color:rgb(var(--n-500) / .6);}
   .roi2-kind-assumption{color:rgb(var(--n-400)); border-color:rgb(var(--n-700)); border-style:dashed;}
-  .roi2-legend{display:flex; gap:6px; flex-wrap:wrap;}
-  .roi2-breakdown{width:100%; border-collapse:collapse; font-size:13.5px;}
-  .roi2-breakdown td{padding:9px 0; border-top:1px solid rgb(var(--line)); vertical-align:middle;}
-  .roi2-breakdown td:first-child{color:rgb(var(--n-300));}
-  .roi2-breakdown td.k{width:1%; padding:0 10px; white-space:nowrap;}
-  .roi2-breakdown td.v{text-align:right; font-variant-numeric:tabular-nums; font-weight:510; color:rgb(var(--ink)); white-space:nowrap;}
-  .roi2-breakdown tr.total td{border-top:1px solid rgb(var(--gold) / .4); font-weight:590;}
-  .roi2-breakdown tr.total td.v{color:rgb(var(--gold)); font-size:16px;}
-  .roi2-breakdown .sub{display:block; font-size:11.5px; color:rgb(var(--n-500));}
-  @media (max-width:639px){ .roi2-breakdown{font-size:12.5px;} .roi2-breakdown td.k{padding:0 6px;} }
   .roi2-seg{display:inline-flex; padding:3px; border-radius:999px; border:1px solid rgb(var(--line)); background:rgb(var(--n-900) / .5); gap:2px;}
   .roi2-seg button{min-height:40px; padding:0 16px; border-radius:999px; font-size:13px; font-weight:590; color:rgb(var(--n-400)); transition:background var(--t) var(--ease), color var(--t) var(--ease);}
   .roi2-seg button[aria-checked="true"]{background:rgb(var(--gold)); color:#1a1204;}
@@ -312,7 +293,7 @@
     <div class="max-w-2xl" data-animate-stagger="fade-up" data-animate-distance="20">
       <p data-decrypt class="text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-3">Investor tools</p>
       <h1 class="font-display font-bold text-4xl lg:text-5xl tracking-tight max-sm:text-[1.75rem]">FLEET ROI</h1>
-      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">What a Cybercab costs at the newly reported $29,990, and what a fleet might earn if owners are ever allowed to run one: purchase, financing, operating costs, payback and scenarios. Every assumption is yours to change.</p>
+      <p class="mt-4 text-slate-300 text-base leading-relaxed max-w-lg max-sm:mt-2 max-sm:text-sm max-sm:leading-snug">What a $29,990 Cybercab costs to own, and what a fleet might earn if owners are ever allowed to run one: financing, operating costs, cash flow and break-even.</p>
     </div>
     <!-- Interactive Cybercab (js/cybercab-doors.js): click the car or the button
          and the butterfly doors swing open; again to close. The still is the
@@ -330,54 +311,12 @@
   </div>
 </section>
 
-<!-- ===== Fleet ROI 2.0 (js/fleet-roi.js = the model, js/fleet-roi-ui.js =
-     this UI; formulas and every default: docs/fleet-roi-model.md). The
-     purchase terms are labeled "Reported" (Tesla's order interface, as
-     reported Nov 13, 2026); every other figure is an editable estimate or
-     assumption, and commercial operation is hypothetical. ===== -->
-<section class="pt-10 max-sm:pt-6" aria-labelledby="roi2PurchaseHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-6 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Price · Subscription · Delivery</p>
-      <h2 id="roi2PurchaseHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Cybercab purchase</h2>
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 max-sm:gap-4">
-      <!-- The reported terms, with their sources and date -->
-      <div class="lg:col-span-2 roi2-card roi2-gold" data-animate="fade-up" data-animate-distance="24">
-        <div class="flex items-start justify-between gap-3">
-          <p class="roi2-eyebrow">Order terms</p>
-          <span class="roi2-kind roi2-kind-reported" title="Shown on Tesla's Cybercab order interface, as reported. Not verified on tesla.com.">Reported</span>
-        </div>
-        <p class="roi2-price mt-2"><span class="roi2-price-num">$29,990</span><span class="roi2-price-note">before taxes</span></p>
-        <dl class="roi2-terms mt-4">
-          <div><dt>Order deposit</dt><dd>$1,000 · nonrefundable</dd></div>
-          <div><dt>Autonomy Subscription</dt><dd>$299/mo · first month included</dd></div>
-          <div><dt>Maintenance subscription</dt><dd>Required · price not shown</dd></div>
-          <div><dt>Estimated delivery</dt><dd>December 2026 · Austin, Texas</dd></div>
-          <div><dt>Availability</dt><dd>Invitation only, personal use</dd></div>
-        </dl>
-        <p class="roi2-fine mt-4">We treat the deposit as part of the $29,990 (credited at delivery), not an extra charge, until Tesla's terms say otherwise. Tesla hasn't said owners may run a Cybercab on its Robotaxi network; any revenue below is hypothetical.</p>
-        <p class="roi2-fine mt-3" id="roi2Sources">Sources: Tesla's Cybercab order interface as reported by
-          <a href="https://insideevs.com/news/815473/tesla-cybercab-pricing-sales-announced/" target="_blank" rel="noopener">InsideEVs</a>,
-          <a href="https://www.teslarati.com/tesla-cybercab-29990-december-deliveries/" target="_blank" rel="noopener">Teslarati</a> and
-          <a href="https://www.notateslaapp.com/news/5012/tesla-opens-orders-for-the-cybercab-for-personal-use-costs-29990-and-requires-a-299-monthly-subscription" target="_blank" rel="noopener">Not a Tesla App</a>.
-          Last verified <time datetime="2026-11-13">Nov 13, 2026</time>; not yet confirmed on tesla.com.</p>
-      </div>
-      <!-- What it costs, from the simulator's current inputs -->
-      <div class="lg:col-span-3 roi2-card" data-animate="fade-up" data-animate-distance="24">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p class="roi2-eyebrow">Purchase &amp; ownership breakdown</p>
-            <p class="roi2-sub" id="roi2BreakdownSub">Per vehicle, from your inputs below</p>
-          </div>
-          <div class="roi2-legend" aria-hidden="true"><span class="roi2-kind roi2-kind-reported">Reported</span><span class="roi2-kind roi2-kind-estimate">Estimate</span><span class="roi2-kind roi2-kind-assumption">Assumption</span></div>
-        </div>
-        <table class="roi2-breakdown mt-3" aria-describedby="roi2BreakdownSub"><tbody id="roi2Breakdown"></tbody></table>
-      </div>
-    </div>
-  </div>
-</section>
-
+<!-- ===== Fleet ROI (js/fleet-roi.js = the model, js/fleet-roi-ui.js = this
+     UI; formulas and every default: docs/fleet-roi-model.md). The only Fleet
+     ROI calculator. Five values are fixed and shown locked: $29,990 price,
+     $1,000 deposit (part of the price), $300/mo Autonomy Subscription, 1
+     month Free Autonomy, 25% Tesla Revenue Share. Commercial operation and
+     the revenue share are hypothetical. ===== -->
 <section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SimHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
@@ -444,23 +383,6 @@
   </div>
 </section>
 
-<section class="pt-12 max-sm:pt-8" aria-labelledby="roi2ScenHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-5 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Conservative · Expected · Optimistic</p>
-      <h2 id="roi2ScenHeading" class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Scenario comparison</h2>
-      <p class="roi2-sub mt-2 max-w-3xl">Three editable sets of operating assumptions, each run with your fleet size, purchase and ownership costs above. Edit any cell. These are hypotheticals, not forecasts or promised returns.</p>
-    </div>
-    <p class="roi2-fine mb-2 sm:hidden">Swipe the table for Expected and Optimistic.</p>
-    <div class="roi2-card roi2-table-wrap" data-animate="fade-up" data-animate-distance="24">
-      <table class="roi2-table" id="roi2Scenarios"></table>
-    </div>
-    <div class="mt-3 flex flex-wrap gap-2">
-      <button type="button" id="roi2ScenReset" class="roi2-btn">Reset scenarios</button>
-    </div>
-  </div>
-</section>
-
 <section class="pt-12 max-sm:pt-8" aria-labelledby="roi2SavedHeading">
   <div class="max-w-7xl mx-auto px-6 lg:px-10">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3 max-sm:mb-4" data-animate="fade-up" data-animate-distance="20">
@@ -484,126 +406,6 @@
   </div>
 </section>
 
-<!-- ===== Fleet economics: the Fleet ETA look (a gold model card per part,
-     React Bits glow on the three results, icon labels). The only picture is
-     the Cybercab (images/dmv-cybercab.webp). Every id js/main.js / the inline
-     calculator reads or writes is kept. ===== -->
-<section class="pt-10 pb-16 max-sm:pt-6 max-sm:pb-10" aria-labelledby="roiHeading">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="mb-6 max-sm:mb-4">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Quick estimate · Energy &amp; network</p>
-      <h2 id="roiHeading" data-split class="font-display font-bold text-2xl lg:text-3xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-xl">Fleet economics</h2>
-      <p class="text-xs text-slate-500 mt-2 max-w-3xl">The original quick calculator: fixed fare and network cut, the fleet's energy use and a simple payback on the vehicle price. The simulator above models the full cost of ownership.</p>
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-sm:gap-5" data-animate-stagger="fade-up" data-animate-distance="24">
-      <!-- Inputs: one gold card with the Cybercab -->
-      <div class="lg:col-span-1">
-        <div class="dmv-card glass relative rounded-2xl border p-6 h-fit max-sm:p-4" style="--c:250 224 48;border-color:#FAE03059;background:linear-gradient(135deg, #FAE0301c, transparent 62%)">
-          <div class="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true"><img src="images/dmv-cybercab.webp" alt="" loading="lazy" decoding="async" class="absolute right-[-12%] top-2 w-[62%] max-w-[230px] opacity-95 max-sm:w-[50%] max-sm:top-1"></div>
-          <div class="relative max-w-[55%] min-h-[88px] max-sm:min-h-[72px]">
-            <p class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gold"><span class="w-2 h-2 rounded-full bg-current"></span>Cybercab fleet</p>
-            <h3 class="font-display font-bold text-xl text-white uppercase tracking-wide mt-1 max-sm:text-lg">Inputs</h3>
-          </div>
-          <p id="roiStartNote" class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:text-[11px] max-sm:leading-snug max-sm:mt-2">Fleet size starts at the live registry count. Electricity rate and daily miles start at example values. Change any of them.</p>
-          <div class="mt-1 divide-y divide-white/[0.07]">
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3"/></svg>Network &amp; fare</p>
-            <div class="flex items-center justify-between pb-3 border-b border-white/[0.07]">
-            <label class="text-[13px] font-medium text-slate-300">Tesla Network Cut</label>
-            <span class="stat-value font-semibold text-white text-lg max-sm:text-base"><span id="networkCutOut">0</span>%</span>
-            </div>
-            <div class="flex items-center justify-between py-3 border-b border-white/[0.07]">
-            <label class="text-[13px] font-medium text-slate-300">Cost per Unit</label>
-            <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="costPerCabOut">0</span></span>
-            </div>
-            <div class="pt-3">
-            <div class="flex items-center justify-between">
-            <label class="text-[13px] font-medium text-slate-300">Passenger Fare</label>
-            <span class="stat-value font-semibold text-white text-lg max-sm:text-base">$<span id="baseFareOut">0.00</span> + $<span id="perMileFareOut">0.00</span>/mi</span>
-            </div>
-            <div class="text-xs text-slate-500 mt-1.5 max-sm:text-[11px] max-sm:mt-1">Base fare per trip, plus per-mile rate (~5 mi avg trip)</div>
-            </div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17M8 12l1-3h6l1 3M7 20v-3M17 20v-3"/></svg>Fleet</p>
-            <div>
-            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
-            <label class="text-[13px] font-medium text-slate-300">Fleet Size</label>
-            <input type="number" id="fleetSizeLabel" min="0" max="100" step="1" value="0" class="stat-value font-semibold text-white text-lg bg-transparent w-16 text-right outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]">
-            </div>
-            <input type="range" id="fleetSize" data-elastic min="0" max="100" step="1" value="0">
-            </div>
-          </div>
-          <div class="rhw-block">
-            <p class="rhw-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>Energy</p>
-            <div>
-            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
-            <label class="text-[13px] font-medium text-slate-300">Electricity Rate</label>
-            <div class="flex items-center gap-1">
-            <span class="text-slate-400 text-sm font-semibold">$</span>
-            <input type="number" id="electricityLabel" min="0" max="0.40" step="0.01" value="0.12" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
-            <span class="text-slate-400 text-sm font-semibold">/kWh</span>
-            </div>
-            </div>
-            <input type="range" id="electricityRate" data-elastic min="0" max="0.40" step="0.01" value="0.12">
-            </div>
-            <div class="h-4"></div>
-            <div>
-            <div class="flex items-center justify-between mb-2 max-sm:mb-0">
-            <label class="text-[13px] font-medium text-slate-300">Daily Miles / Cab</label>
-            <div class="flex items-center gap-1">
-            <input type="number" id="milesLabel" min="0" max="400" step="1" value="150" class="stat-value font-semibold text-white text-lg bg-transparent text-left outline-none border-b border-transparent focus:border-gold max-sm:min-h-[40px]" style="width:2ch;">
-            <span class="text-slate-400 text-sm font-semibold">mi</span>
-            </div>
-            </div>
-            <input type="range" id="dailyMiles" data-elastic min="0" max="400" step="1" value="150">
-            </div>
-            <div class="h-3"></div>
-            <div class="flex items-center justify-between pt-1">
-            <label class="text-[13px] font-medium text-slate-300">Inductive Loss Factor <span id="lossLabel" class="text-slate-300">(8%)</span></label>
-            <div id="lossToggle" class="toggle on"><div class="toggle-dot"></div></div>
-            </div>
-          </div>
-          </div>
-          <button id="exportBtn" class="btn-magnetic mt-5 w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/> <path d="M7 11l5 5l5 -5"/> <path d="M12 4l0 12"/></svg>
-          Export
-          </button>
-        </div>
-      </div>
-
-      <!-- Results -->
-      <div class="lg:col-span-2 space-y-6 max-sm:space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-sm:grid-cols-3 max-sm:gap-2">
-          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:250 224 48;border-color:#FAE03040;background:linear-gradient(135deg, #FAE03012, transparent 65%)">
-            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/></svg>Monthly energy overhead</div>
-            <div class="dmv-card-num stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="energyOut">0</span></div>
-          </div>
-          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:250 224 48;border-color:#FAE03040;background:linear-gradient(135deg, #FAE03012, transparent 65%)">
-            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>Gross fleet revenue</div>
-            <div class="dmv-card-num stat-value font-semibold text-2xl text-white max-sm:text-[clamp(12px,3.9vw,16px)]">$<span id="revenueOut">0</span></div>
-          </div>
-          <div data-glow class="dmv-card glass relative rounded-2xl border p-6 min-w-0 max-sm:px-2.5 max-sm:py-3" style="--c:250 224 48;border-color:#FAE03080;background:linear-gradient(135deg, #FAE03026, transparent 65%)">
-            <div class="rhw-label mb-3 max-sm:mb-1.5 max-sm:tracking-normal max-sm:text-[9px] max-sm:whitespace-normal max-sm:leading-tight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6 4 4 6-7M20 8v4M20 8h-4"/></svg>Net operating income</div>
-            <div class="dmv-card-num stat-value font-semibold text-3xl text-gold leading-none max-sm:text-[clamp(12px,3.9vw,16px)] max-sm:leading-normal">$<span id="noiOut">0</span></div>
-          </div>
-        </div>
-
-        <div class="dmv-card glass relative rounded-2xl border p-7 max-sm:p-5" style="--c:250 224 48;border-color:#FAE03040">
-          <div class="flex flex-wrap items-end justify-between gap-3 mb-2">
-            <div>
-              <p class="rhw-label mb-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Breakeven</p>
-              <p class="font-display font-bold text-lg text-white uppercase tracking-wide max-sm:text-base">Cumulative cash flow</p>
-            </div>
-            <span id="breakevenLabel" class="dmv-card-num stat-value font-semibold text-2xl text-gold max-sm:text-xl">— mo</span>
-          </div>
-          <svg id="cashFlowChart" viewBox="0 0 600 200" class="w-full h-auto mt-2" preserveAspectRatio="none"></svg>
-          <div class="text-xs text-slate-500 mt-2 max-sm:text-[11px] max-sm:leading-snug">Projected net cash position from initial fleet capital outlay through recovery.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 </div>
 
 <div id="simPanelEta" role="tabpanel" aria-labelledby="simTabEta" class="hidden">
@@ -1239,9 +1041,8 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-10"><p class="py-6 border-t border-white/[0.06] text-xs text-slate-500 max-sm:py-4 max-sm:text-[11px]">© 2026 CybercabHunter. Not affiliated with Tesla, Inc. Data is crowdsourced and simulated.</p></div>
 </footer>
 
-<script src="/vendor/jspdf-2.5.1.umd.min.js"></script>
 <script src="js/calc.js?v=14"></script>
-<script src="js/fleet-roi.js?v=1"></script>
+<script src="js/fleet-roi.js?v=2"></script>
 <script src="js/main.js?v=34"></script>
 <script>
   CCC.init();
@@ -1266,250 +1067,8 @@
     tabs.eta.addEventListener('click', () => show('eta'));
     show(new URLSearchParams(location.search).get('view'));
   })();
-
-  // ---- Fleet ROI (each tool in its own scope: both define recompute() etc.) ----
-  (function () {
-    const fleetSize = document.getElementById('fleetSize');
-    const electricityRate = document.getElementById('electricityRate');
-    const dailyMiles = document.getElementById('dailyMiles');
-    const lossToggle = document.getElementById('lossToggle');
-    let lossOn = true;
-
-    // Locked assumptions — not user-editable.
-    const NETWORK_CUT_PCT = 25;
-    const COST_PER_CAB = CCC_FLEET_ROI.PRICING.price;   // reported Cybercab price ($29,990; js/fleet-roi.js)
-    const BASE_FARE = 3.00;
-    const PER_MILE_RATE = 1.40;
-    const AVG_TRIP_MILES = 5;
-
-    // Count up the locked assumption cards on page load, like the homepage stats bar.
-    CCC.animateCounter(document.getElementById('networkCutOut'), 0, NETWORK_CUT_PCT, 1400);
-    CCC.animateCounter(document.getElementById('costPerCabOut'), 0, COST_PER_CAB, 1400);
-    CCC.animateCounter(document.getElementById('baseFareOut'), 0, BASE_FARE, 1400, v => v.toFixed(2));
-    CCC.animateCounter(document.getElementById('perMileFareOut'), 0, PER_MILE_RATE, 1400, v => v.toFixed(2));
-
-    let last = { energy: 0, revenue: 0, noi: 0 };
-
-    function fmt(n) { return Math.round(n).toLocaleString(); }
-
-    // Shrink/grow a number input to fit exactly what's typed in it, so any
-    // prefix/suffix beside it stays snug regardless of value length.
-    function fitNumberWidth(el) {
-      el.style.width = Math.max(1, el.value.length) + 1 + 'ch';
-    }
-
-    // Keep a range slider and its typeable number field in sync in both directions.
-    function linkSliderAndNumber(rangeEl, numberEl) {
-      rangeEl.addEventListener('input', () => {
-        numberEl.value = rangeEl.value;
-        fitNumberWidth(numberEl);
-        recompute();
-      });
-      numberEl.addEventListener('input', () => {
-        if (numberEl.value === '') return;
-        rangeEl.value = numberEl.value;
-        fitNumberWidth(numberEl);
-        recompute();
-      });
-    }
-
-    function fmtSigned(n) {
-      return (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
-    }
-    // Axis labels only: compact ("-$1.29M"), so the longest one fits the
-    // 64px margin. The exact figures are in the result tiles above.
-    const fmtAxis = n => (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
-
-    // Draws the cumulative net-cash-position line from month 0 (−total fleet
-    // capital) through the projection window, shading the loss/profit zones
-    // on either side of the month it crosses zero (breakeven).
-    function renderCashFlowChart(totalCapital, noi, breakevenMonths) {
-      const svg = document.getElementById('cashFlowChart');
-      const W = 600, H = 200, left = 64, right = 16, top = 16, bottom = 28;
-      const plotW = W - left - right, plotH = H - top - bottom;
-
-      const maxMonths = isFinite(breakevenMonths) && breakevenMonths > 0
-        ? Math.min(60, Math.max(6, Math.ceil(breakevenMonths * 1.3)))
-        : 24;
-      const startVal = -totalCapital;
-      const endVal = startVal + noi * maxMonths;
-
-      let yMin = Math.min(startVal, endVal, 0);
-      let yMax = Math.max(startVal, endVal, 0);
-      if (yMin === yMax) { yMin -= 1; yMax += 1; }
-      const pad = (yMax - yMin) * 0.1;
-      yMin -= pad; yMax += pad;
-
-      const xScale = m => left + (m / maxMonths) * plotW;
-      const yScale = v => top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
-      const zeroY = yScale(0);
-
-      const hasCrossing = isFinite(breakevenMonths) && breakevenMonths > 0 && breakevenMonths <= maxMonths && totalCapital > 0;
-      const beX = hasCrossing ? xScale(breakevenMonths) : null;
-
-      let areas = '';
-      if (hasCrossing) {
-        areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${beX},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
-        areas += `<polygon points="${beX},${zeroY} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY}" fill="rgba(250,224,48,0.18)"></polygon>`;
-      } else if (totalCapital > 0) {
-        areas += `<polygon points="${xScale(0)},${yScale(startVal)} ${xScale(maxMonths)},${yScale(endVal)} ${xScale(maxMonths)},${zeroY} ${xScale(0)},${zeroY}" fill="rgba(232,33,39,0.18)"></polygon>`;
-      }
-
-      const linePath = `M ${xScale(0)} ${yScale(startVal)} L ${hasCrossing ? beX + ' ' + zeroY + ' L ' : ''}${xScale(maxMonths)} ${yScale(endVal)}`;
-      const lineColor = totalCapital <= 0 ? 'rgb(var(--n-500))' : '#FAE030';
-
-      const marker = hasCrossing
-        ? `<circle cx="${beX}" cy="${zeroY}" r="5" fill="#FAE030" style="stroke:rgb(var(--bg))" stroke-width="2"></circle>
-           <text x="${beX}" y="${zeroY - 12}" text-anchor="middle" font-size="11" font-weight="700" style="fill:rgb(var(--gold-ink));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${breakevenMonths} mo</text>`
-        : '';
-
-      svg.innerHTML = `
-        <line x1="${left}" y1="${zeroY}" x2="${W - right}" y2="${zeroY}" style="stroke:rgb(var(--n-700))" stroke-width="1" stroke-dasharray="4 4"></line>
-        ${areas}
-        <path d="${linePath}" fill="none" style="stroke:${lineColor}" stroke-width="2.5"></path>
-        ${marker}
-        <text x="${left - 8}" y="${yScale(yMax) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${fmtAxis(yMax)}</text>
-        <text x="${left - 8}" y="${yScale(yMin) + 4}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${fmtAxis(yMin)}</text>
-        <text x="${left}" y="${H - 8}" font-size="10" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">0 mo</text>
-        <text x="${W - right}" y="${H - 8}" text-anchor="end" font-size="10" style="fill:rgb(var(--n-500));font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums">${maxMonths} mo</text>
-      `;
-    }
-
-    function recompute() {
-      document.getElementById('lossLabel').textContent = lossOn ? '(8%)' : '(0%)';
-
-      const r = CCC_CALC.fleetFinancials({
-        fleetSize: parseInt(fleetSize.value, 10),
-        electricityRate: parseFloat(electricityRate.value),
-        dailyMiles: parseInt(dailyMiles.value, 10),
-        baseFare: BASE_FARE,
-        perMileRate: PER_MILE_RATE,
-        avgTripMiles: AVG_TRIP_MILES,
-        inductiveLossFactor: lossOn ? 0.08 : 0,
-        networkCutPct: NETWORK_CUT_PCT,
-        costPerCab: COST_PER_CAB
-      });
-
-      CCC.animateCounter(document.getElementById('energyOut'), last.energy, r.monthlyEnergyOverhead, 700, fmt);
-      CCC.animateCounter(document.getElementById('revenueOut'), last.revenue, r.grossRevenue, 700, fmt);
-      CCC.animateCounter(document.getElementById('noiOut'), last.noi, r.netOperatingIncome, 700, fmt);
-      last = { energy: r.monthlyEnergyOverhead, revenue: r.grossRevenue, noi: r.netOperatingIncome };
-
-      const months = r.breakevenMonths;
-      document.getElementById('breakevenLabel').textContent = isFinite(months) ? months + ' mo' : '—';
-      const totalCapital = parseInt(fleetSize.value, 10) * COST_PER_CAB;
-      renderCashFlowChart(totalCapital, r.netOperatingIncome, months);
-    }
-
-    linkSliderAndNumber(fleetSize, document.getElementById('fleetSizeLabel'));
-    linkSliderAndNumber(electricityRate, document.getElementById('electricityLabel'));
-    linkSliderAndNumber(dailyMiles, document.getElementById('milesLabel'));
-    fitNumberWidth(document.getElementById('electricityLabel'));
-    fitNumberWidth(document.getElementById('milesLabel'));
-    lossToggle.addEventListener('click', () => { lossOn = !lossOn; lossToggle.classList.toggle('on', lossOn); recompute(); });
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-      const marginX = 56;
-      let y = 72;
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      // The CybercabHunter wordmark on paper: Cybercab in black (white would
-      // vanish on the page), Hunter in the brand gold, one word.
-      doc.text('Cybercab', marginX, y);
-      doc.setTextColor(250, 224, 48);
-      doc.text('Hunter', marginX + doc.getTextWidth('Cybercab'), y);
-      doc.setTextColor(0, 0, 0);
-      y += 24;
-      doc.setFontSize(14);
-      doc.setTextColor(250, 224, 48);
-      doc.text('Investment Prospectus', marginX, y);
-      doc.setTextColor(0, 0, 0);
-      y += 20;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, marginX, y);
-      y += 28;
-
-      doc.setDrawColor(250, 224, 48);
-      doc.line(marginX, y, 556, y);
-      y += 24;
-
-      const rows = [
-        ['Fleet Size', `${fleetSize.value} Cybercabs`],
-        ['Electricity Rate', `$${parseFloat(electricityRate.value).toFixed(2)}/kWh`],
-        ['Daily Miles per Cab', `${dailyMiles.value} mi`],
-        ['Passenger Fare', `$${BASE_FARE.toFixed(2)} + $${PER_MILE_RATE.toFixed(2)}/mi`],
-        ['Tesla Network Cut', `${NETWORK_CUT_PCT}%`],
-        ['Cost per Cybercab', `$${fmt(COST_PER_CAB)}`],
-        ['Inductive Loss Factor', lossOn ? '8%' : '0%']
-      ];
-      doc.setFontSize(11);
-      rows.forEach(([label, value]) => {
-        doc.setFont('helvetica', 'bold');
-        doc.text(label, marginX, y);
-        doc.setFont('helvetica', 'normal');
-        doc.text(value, marginX + 200, y);
-        y += 20;
-      });
-
-      y += 12;
-      doc.line(marginX, y, 556, y);
-      y += 24;
-
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Financial Outlook', marginX, y);
-      y += 22;
-
-      const outputs = [
-        ['Monthly Energy Overhead', `$${document.getElementById('energyOut').textContent}`],
-        ['Gross Fleet Revenue', `$${document.getElementById('revenueOut').textContent}`],
-        ['Net Operating Income', `$${document.getElementById('noiOut').textContent}`],
-        ['Breakeven Timeline', document.getElementById('breakevenLabel').textContent]
-      ];
-      doc.setFontSize(11);
-      outputs.forEach(([label, value]) => {
-        doc.setFont('helvetica', 'bold');
-        doc.text(label, marginX, y);
-        doc.setFont('helvetica', 'normal');
-        doc.text(value, marginX + 200, y);
-        y += 20;
-      });
-
-      y += 24;
-      doc.setFontSize(9);
-      doc.setTextColor(120, 120, 120);
-      doc.text('Not affiliated with Tesla, Inc. Figures are simulated estimates for planning purposes only.', marginX, y, { maxWidth: 500 });
-
-      doc.save('cybercab-central-prospectus.pdf');
-      CCC.toast('Prospectus exported as PDF.', 'success');
-    });
-
-    recompute();
-
-    // Fleet size starts at the lifetime registry count (real data, not an
-    // invented number); if it can't be loaded, the field stays at 0 and says so.
-    fetch(((typeof CCC !== 'undefined' && CCC.apiOrigin) || 'https://cybercabhunter.contactjoeclos.workers.dev') + '/api/registry/stats')
-      .then(r => (r.ok ? r.json() : null))
-      .then(stats => {
-        const n = stats && Number.isInteger(stats.public_vehicles) ? stats.public_vehicles : null;
-        if (n === null) throw new Error('no count');
-        const v = Math.min(Number(fleetSize.max), n);
-        fleetSize.value = String(v);
-        const label = document.getElementById('fleetSizeLabel');
-        label.value = String(v);
-        document.getElementById('roiStartNote').textContent = `Fleet size starts at the lifetime registry count (${n.toLocaleString('en-US')} Cybercabs spotted). Electricity rate and daily miles start at example values. Change any of them.`;
-        recompute();
-      })
-      .catch(() => {
-        document.getElementById('roiStartNote').textContent = "Couldn't load the lifetime registry count, so fleet size starts at 0. Electricity rate and daily miles start at example values.";
-      });
-  })();
 </script>
-<script src="js/fleet-roi-ui.js?v=1"></script>
+<script src="js/fleet-roi-ui.js?v=2"></script>
 <script src="js/fleet-compare.js?v=11"></script>
 <script src="js/cybercab-doors.js?v=4"></script>
 <script src="/vendor/gsap-3.13.0.min.js" defer></script>

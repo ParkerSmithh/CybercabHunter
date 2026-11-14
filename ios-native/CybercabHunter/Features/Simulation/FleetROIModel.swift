@@ -1,42 +1,35 @@
 import Foundation
 
-/// Fleet ROI 2.0: the Cybercab ownership and fleet-investment model, a
+/// Fleet ROI: the Cybercab ownership and fleet-investment model, a
 /// line-for-line port of public/js/fleet-roi.js (the reference). Formulas and
 /// every default: docs/fleet-roi-model.md. Both are tested against the same
 /// fixtures, tests/fixtures/fleet-roi-cases.json (FleetROIModelTests), so the
 /// app and the website always give the same numbers.
 ///
-/// Three kinds of figure, kept apart: reported (Tesla's order interface, as
-/// reported Nov 13, 2026; not verified on tesla.com), estimate (a citable
-/// public figure), assumption (an editable guess). Commercial operation is
-/// hypothetical: Tesla has published no terms for owners.
+/// Five values are fixed (owner's decision, Nov 2026); `sanitized` always
+/// enforces them, whatever the input or a saved configuration says: $29,990
+/// price, $1,000 deposit (part of the price), $300/mo Autonomy Subscription
+/// (a calculator assumption; Tesla's reported price is $299), 1 month Free
+/// Autonomy, 25% Tesla Revenue Share (a modeling assumption, not a published
+/// agreement). Commercial operation is hypothetical.
 enum FleetROI {
 
-    // MARK: Reported terms
+    // MARK: Fixed values
 
-    enum Pricing {
+    enum Fixed {
         static let price = 29_990.0
         static let deposit = 1_000.0
-        static let depositRefundable = false
-        static let depositCreditedToPrice = true      // assumption until Tesla's terms say otherwise
-        static let subscriptionMonthly = 299.0
-        static let subscriptionIncludedMonths = 1
-        static let deliveryEstimate = "2026-12"
-        static let deliveryLocation = "Austin, Texas"
-        static let taxesIncluded = false
-        static let maintenanceSubscriptionRequired = true
-        static let maintenancePriceShown = false
-        static let lastVerified = "2026-11-13"
-        static let verifiedOnTeslaCom = false
-        static let sources: [(label: String, url: String?)] = [
-            ("Tesla Cybercab order interface (screenshot, as reported)", nil),
-            ("InsideEVs, Nov 13, 2026", "https://insideevs.com/news/815473/tesla-cybercab-pricing-sales-announced/"),
-            ("Teslarati, Nov 13, 2026", "https://www.teslarati.com/tesla-cybercab-29990-december-deliveries/"),
-            ("Not a Tesla App, Nov 13, 2026", "https://www.notateslaapp.com/news/5012/tesla-opens-orders-for-the-cybercab-for-personal-use-costs-29990-and-requires-a-299-monthly-subscription"),
-        ]
+        static let subscriptionMonthly = 300.0
+        /// "Free Autonomy": the first month after delivery, once.
+        static let subscriptionIncludedMonths = 1.0
+        /// "Tesla Revenue Share" (input key platformSharePct, kept for saved configurations).
+        static let platformSharePct = 25.0
+        static let lockedKeys: Set<String> = ["price", "deposit", "subscriptionMonthly", "subscriptionIncludedMonths", "platformSharePct"]
     }
+    /// Month 1 of the timeline (the reported December 2026 delivery estimate).
+    static let deliveryEstimate = "2026-12"
 
-    enum Kind: String, Codable { case reported, estimate, assumption
+    enum Kind: String, Codable { case fixed, estimate, assumption
         var label: String { rawValue.capitalized }
     }
     enum Mode: String, Codable, CaseIterable { case personal, fleet }
@@ -48,15 +41,15 @@ enum FleetROI {
     /// Same table as FIELDS in fleet-roi.js.
     static let fields: [String: Field] = [
         "vehicles": .init(def: 1, min: 1, max: 1000, step: 1, kind: .assumption, fleetOnly: false),
-        "price": .init(def: 29_990, min: 0, max: 200_000, step: 10, kind: .reported, fleetOnly: false),
-        "deposit": .init(def: 1000, min: 0, max: 10_000, step: 50, kind: .reported, fleetOnly: false),
+        "price": .init(def: Fixed.price, min: Fixed.price, max: Fixed.price, step: 10, kind: .fixed, fleetOnly: false),
+        "deposit": .init(def: Fixed.deposit, min: Fixed.deposit, max: Fixed.deposit, step: 50, kind: .fixed, fleetOnly: false),
         "salesTaxPct": .init(def: 6.25, min: 0, max: 15, step: 0.05, kind: .estimate, fleetOnly: false),
         "feesPerVehicle": .init(def: 300, min: 0, max: 5000, step: 10, kind: .assumption, fleetOnly: false),
         "downPaymentPct": .init(def: 20, min: 0, max: 100, step: 1, kind: .assumption, fleetOnly: false),
         "aprPct": .init(def: 6.9, min: 0, max: 30, step: 0.1, kind: .assumption, fleetOnly: false),
         "loanMonths": .init(def: 60, min: 12, max: 96, step: 12, kind: .assumption, fleetOnly: false),
-        "subscriptionMonthly": .init(def: 299, min: 0, max: 2000, step: 1, kind: .reported, fleetOnly: false),
-        "subscriptionIncludedMonths": .init(def: 1, min: 0, max: 24, step: 1, kind: .reported, fleetOnly: false),
+        "subscriptionMonthly": .init(def: Fixed.subscriptionMonthly, min: Fixed.subscriptionMonthly, max: Fixed.subscriptionMonthly, step: 1, kind: .fixed, fleetOnly: false),
+        "subscriptionIncludedMonths": .init(def: Fixed.subscriptionIncludedMonths, min: Fixed.subscriptionIncludedMonths, max: Fixed.subscriptionIncludedMonths, step: 1, kind: .fixed, fleetOnly: false),
         "insuranceMonthly": .init(def: 250, min: 0, max: 3000, step: 5, kind: .assumption, fleetOnly: false),
         "maintenanceMonthly": .init(def: 60, min: 0, max: 1000, step: 5, kind: .assumption, fleetOnly: false),
         "electricityRate": .init(def: 0.12, min: 0, max: 0.6, step: 0.01, kind: .assumption, fleetOnly: false),
@@ -68,7 +61,7 @@ enum FleetROI {
         "deadheadPct": .init(def: 30, min: 0, max: 150, step: 5, kind: .assumption, fleetOnly: true),
         "operatingDays": .init(def: 30, min: 0, max: 31, step: 1, kind: .assumption, fleetOnly: true),
         "downtimePct": .init(def: 10, min: 0, max: 100, step: 1, kind: .assumption, fleetOnly: true),
-        "platformSharePct": .init(def: 30, min: 0, max: 100, step: 1, kind: .assumption, fleetOnly: true),
+        "platformSharePct": .init(def: Fixed.platformSharePct, min: Fixed.platformSharePct, max: Fixed.platformSharePct, step: 1, kind: .fixed, fleetOnly: true),
         "cleaningMonthly": .init(def: 150, min: 0, max: 2000, step: 5, kind: .assumption, fleetOnly: true),
         "activationDelayMonths": .init(def: 3, min: 0, max: 60, step: 1, kind: .assumption, fleetOnly: true),
         "horizonMonths": .init(def: 60, min: 12, max: 120, step: 12, kind: nil, fleetOnly: false),
@@ -89,7 +82,7 @@ enum FleetROI {
         var downPaymentPct: Double = 20
         var aprPct: Double = 6.9
         var loanMonths: Double = 60
-        var subscriptionMonthly: Double = 299
+        var subscriptionMonthly: Double = 300
         var subscriptionIncludedMonths: Double = 1
         var insuranceMonthly: Double = 250
         var maintenanceMonthly: Double = 60
@@ -102,7 +95,7 @@ enum FleetROI {
         var deadheadPct: Double = 30
         var operatingDays: Double = 30
         var downtimePct: Double = 10
-        var platformSharePct: Double = 30
+        var platformSharePct: Double = 25
         var cleaningMonthly: Double = 150
         var activationDelayMonths: Double = 3
         var horizonMonths: Double = 60
@@ -166,6 +159,7 @@ enum FleetROI {
             var x = self
             for k in Input.numericKeys {
                 guard let f = FleetROI.fields[k] else { continue }
+                if FleetROI.Fixed.lockedKeys.contains(k) { x[k] = f.def; continue }   // fixed: never from the input
                 var n = x[k]
                 if !n.isFinite { n = f.def }
                 n = Swift.min(f.max, Swift.max(f.min, n))
@@ -300,33 +294,8 @@ enum FleetROI {
             cumulativeEnd: months[maxMonths - 1].cumulative)
     }
 
-    // MARK: Scenarios (Fleet mode)
-
-    enum Scenario: String, CaseIterable, Identifiable, Codable {
-        case conservative, expected, optimistic
-        var id: String { rawValue }
-        var label: String { rawValue.capitalized }
-        /// Same values as SCENARIOS in fleet-roi.js.
-        var values: [String: Double] {
-            switch self {
-            case .conservative: ["farePerRide": 9, "ridesPerDay": 10, "downtimePct": 20, "platformSharePct": 35, "activationDelayMonths": 6, "insuranceMonthly": 400, "cleaningMonthly": 200]
-            case .expected: ["farePerRide": 12, "ridesPerDay": 16, "downtimePct": 10, "platformSharePct": 30, "activationDelayMonths": 3, "insuranceMonthly": 250, "cleaningMonthly": 150]
-            case .optimistic: ["farePerRide": 15, "ridesPerDay": 24, "downtimePct": 5, "platformSharePct": 25, "activationDelayMonths": 1, "insuranceMonthly": 200, "cleaningMonthly": 100]
-            }
-        }
-    }
-    static let scenarioKeys = ["farePerRide", "ridesPerDay", "downtimePct", "platformSharePct", "activationDelayMonths", "insuranceMonthly", "cleaningMonthly"]
-
-    static func withScenario(_ input: Input, _ s: Scenario, edits: [String: Double] = [:]) -> Input {
-        var out = input
-        out.mode = .fleet
-        let vals = s.values.merging(edits) { _, e in e }
-        for k in scenarioKeys { if let v = vals[k] { out[k] = v } }
-        return out
-    }
-
     /// "2027-03": the month a delay of `delayMonths` lands in, from the delivery estimate.
-    static func startMonthLabel(_ delayMonths: Int, delivery: String = Pricing.deliveryEstimate) -> String {
+    static func startMonthLabel(_ delayMonths: Int, delivery: String = deliveryEstimate) -> String {
         let parts = delivery.split(separator: "-").compactMap { Int($0) }
         let t = parts[0] * 12 + (parts[1] - 1) + delayMonths
         return String(format: "%d-%02d", t / 12, t % 12 + 1)

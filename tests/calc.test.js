@@ -1,25 +1,8 @@
 const assert = require('assert');
 const CCC_CALC = require('../public/js/calc.js');
 
-// fleetFinancials
-{
-  const r = CCC_CALC.fleetFinancials({
-    fleetSize: 43, electricityRate: 0.14, dailyMiles: 180, baseFare: 3, perMileRate: 1.4, avgTripMiles: 5,
-    inductiveLossFactor: 0.08, networkCutPct: 20, costPerCab: 35000
-  });
-  assert.ok(r.grossRevenue > 0, 'gross revenue should be positive');
-  assert.ok(r.monthlyEnergyOverhead > 0, 'energy overhead should be positive');
-  assert.ok(r.netOperatingIncome < r.grossRevenue, 'NOI should be less than gross revenue');
-  assert.ok(r.breakevenMonths > 0, 'breakeven months should be positive');
-}
-{
-  // Losing money: zero fare means negative NOI -> Infinity breakeven
-  const r = CCC_CALC.fleetFinancials({
-    fleetSize: 43, electricityRate: 0.14, dailyMiles: 180, baseFare: 0, perMileRate: 0, avgTripMiles: 5,
-    inductiveLossFactor: 0.08, networkCutPct: 20, costPerCab: 35000
-  });
-  assert.strictEqual(r.breakevenMonths, Infinity);
-}
+// (fleetFinancials, the old quick Fleet ROI calculator, was removed in Nov 2026:
+// Fleet ROI is public/js/fleet-roi.js, tested in tests/fleet-roi.test.mjs.)
 
 // ---- Fleet ETA (simulation.html?view=eta; model: docs/fleet-eta-live-data-research.md §3) ----
 
@@ -153,7 +136,7 @@ assert.strictEqual(CCC_CALC.measuredAverageMiles({ average_fare: null, per_mile:
 assert.deepStrictEqual(Object.keys(CCC_CALC).sort(), [
   'DALLAS_AREA_SQ_MI', 'DALLAS_MODEL_Y_FLEET', 'DALLAS_REPORTED_RATE', 'DALLAS_SERVICE_HOURS',
   'ETA_ASSUMPTIONS', 'ETA_CAP_MINUTES', 'ETA_SCENARIOS', 'ETA_TIERS', 'FARES_STALE_HOURS', 'REPORTED_RATE', 'SERVICE_HOURS',
-  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'fleetFinancials', 'hoursLabel', 'isAllDay', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceSegments', 'serviceStatus'
+  'ageHours', 'assumedTier', 'clockLabel', 'dollarRange', 'etaFareRange', 'etaRange', 'etaSlot', 'etaWaitRange', 'faresStale', 'hoursLabel', 'isAllDay', 'measuredAverageMiles', 'measuredFare', 'minuteRange', 'reportedFare', 'serviceSegments', 'serviceStatus'
 ]);
 
 console.log('calc.test.js: all assertions passed');

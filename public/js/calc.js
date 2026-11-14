@@ -1,25 +1,5 @@
 /* Cybercab Hunter — pure calculation functions (no DOM). */
 const CCC_CALC = (() => {
-  function fleetFinancials({
-    fleetSize, electricityRate, dailyMiles,
-    baseFare, perMileRate, avgTripMiles = 5,
-    inductiveLossFactor, networkCutPct, costPerCab,
-    kwhPerMile = 0.25
-  }) {
-    const tripsPerDay = avgTripMiles > 0 ? dailyMiles / avgTripMiles : 0;
-    const dailyRevenuePerCab = tripsPerDay * (baseFare + perMileRate * avgTripMiles);
-    const grossRevenue = dailyRevenuePerCab * fleetSize * 30;
-    const teslaCut = grossRevenue * (networkCutPct / 100);
-    const monthlyEnergyOverhead =
-      dailyMiles * kwhPerMile * electricityRate * fleetSize * 30 * (1 + inductiveLossFactor);
-    const netOperatingIncome = grossRevenue - teslaCut - monthlyEnergyOverhead;
-    const totalCapital = fleetSize * costPerCab;
-    const breakevenMonths = netOperatingIncome > 0
-      ? Math.round((totalCapital / netOperatingIncome) * 10) / 10
-      : Infinity;
-    return { grossRevenue, teslaCut, monthlyEnergyOverhead, netOperatingIncome, breakevenMonths };
-  }
-
   // ---- Fleet ETA (simulation.html?view=eta) ----
   // Model, inputs and ranges: docs/fleet-eta-live-data-research.md §3.
 
@@ -224,7 +204,6 @@ const CCC_CALC = (() => {
 
   return {
     ETA_TIERS, etaFareRange, etaWaitRange, dollarRange, minuteRange, etaSlot, assumedTier,
-    fleetFinancials,
     SERVICE_HOURS, serviceSegments, REPORTED_RATE, ETA_ASSUMPTIONS, ETA_SCENARIOS, ETA_CAP_MINUTES, FARES_STALE_HOURS,
     DALLAS_SERVICE_HOURS, DALLAS_REPORTED_RATE, DALLAS_MODEL_Y_FLEET, DALLAS_AREA_SQ_MI,
     etaRange, reportedFare, measuredFare, measuredAverageMiles, ageHours, faresStale, clockLabel, serviceStatus, isAllDay, hoursLabel

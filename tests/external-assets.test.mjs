@@ -27,9 +27,8 @@ for (const f of pages) {
 const uses = (name, re) => pages.filter(f => re.test(fs.readFileSync(f, 'utf8'))).length;
 check('every page that styles with Tailwind uses the local copy', uses('tw', /src="\/vendor\/tailwindcss-3\.4\.17\.js"/) >= 17);
 check('the maps use the local MapLibre (script and styles)', uses('ml', /\/vendor\/maplibre-gl-5\.24\.0\.js/) === 3 && uses('mlc', /\/vendor\/maplibre-gl-5\.24\.0\.css/) === 3);
-check('the Fleet ROI PDF export uses the local jsPDF', /src="\/vendor\/jspdf-2\.5\.1\.umd\.min\.js"/.test(fs.readFileSync(`${ROOT}simulation.html`, 'utf8')));
+check('no page loads jsPDF any more (the old Fleet ROI PDF export was removed, Nov 2026)', pages.every(f => !/jspdf/.test(fs.readFileSync(f, 'utf8'))) && !fs.existsSync(`${ROOT}vendor/jspdf-2.5.1.umd.min.js`));
 check('the local copies are the exact files the CDNs served', sha('tailwindcss-3.4.17.js') === '176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15'
   && sha('maplibre-gl-5.24.0.js') === '45a9b07a9189ce56054c620a947ccf41e291e58c95e9b61533b740aaa65ee5cb'
-  && sha('maplibre-gl-5.24.0.css') === 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732'
-  && sha('jspdf-2.5.1.umd.min.js') === '98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875');
+  && sha('maplibre-gl-5.24.0.css') === 'ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732');
 t.finish();

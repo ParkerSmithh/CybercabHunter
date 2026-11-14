@@ -55,26 +55,19 @@ final class Phase7UITests: XCTestCase {
         app.launch()
         openHomeLink(app, "homeExplore")
         XCTAssertTrue(app.staticTexts["roiTitle"].waitForExistence(timeout: 10))
-        let note = app.staticTexts["roiStartNote"]
-        expectation(for: NSPredicate(format: "label CONTAINS 'lifetime registry count'"), evaluatedWith: note)
-        waitForExpectations(timeout: 15)
         XCTAssertFalse(app.navigationBars.firstMatch.staticTexts["Simulation"].exists, "no redundant title")
         shot(app, "p7-roi")
-        // An exact fleet size: 10 cabs, $0.12/kWh, 150 mi/day, loss on (calc.js values).
-        let fleet = app.textFields["roiFleetField"]
-        reveal(fleet, in: app, swipes: 45)   // below Fleet ROI 2.0 (FleetROI2View)
-        fleet.tap()
-        fleet.press(forDuration: 1.0)
-        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
-        fleet.typeText("10\n")
-        let results = app.descendants(matching: .any)["roiResults"]
+        // The simulator (FleetROI2View): 10 Cybercabs at the defaults and the five fixed values.
+        let ten = app.buttons["roi2Preset-10"]
+        reveal(ten, in: app, swipes: 15)
+        ten.tap()
+        let results = app.descendants(matching: .any)["roi2Metrics"]
         reveal(results, in: app)
-        func shown(_ text: String) -> XCUIElement { app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch }
-        XCTAssertTrue(shown("$90,000").waitForExistence(timeout: 5), "gross revenue for 10 cabs: 150 mi ÷ 5 = 30 trips × $10 × 10 cabs × 30 days")
-        XCTAssertTrue(shown("$1,458").exists, "energy overhead: 150 × 0.25 kWh × $0.12 × 10 × 30 × 1.08")
-        XCTAssertTrue(shown("$66,042").exists, "net operating income: 90,000 − 25% − 1,458")
-        XCTAssertTrue(app.staticTexts["roiBreakeven"].label.hasSuffix("mo"))
-        let chart = app.descendants(matching: .any)["roiChart"]
+        func shown(_ text: String) -> XCUIElement { app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", text, text)).firstMatch }
+        XCTAssertTrue(shown("$51,840").waitForExistence(timeout: 5), "gross revenue for 10 cabs: 16 rides × 30 days × 90% × $12 × 10")
+        XCTAssertTrue(shown("$30,438").exists, "operating profit: 10 × ($5,184 − 25% Tesla share − $84.24 charging − $300 − $250 − $60 − $150)")
+        XCTAssertFalse(app.descendants(matching: .any)["roiResults"].exists, "the old quick calculator is gone")
+        let chart = app.descendants(matching: .any)["roi2Timeline"]
         reveal(chart, in: app)
         shot(app, "p7-roi-results")
 

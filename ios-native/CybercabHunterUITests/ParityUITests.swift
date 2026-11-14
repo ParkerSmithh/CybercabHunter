@@ -38,7 +38,7 @@ final class ParityUITests: XCTestCase {
         XCTAssertEqual(doors.label, "Open the Cybercab's doors")
         app.swipeUp(velocity: .slow)
         shot(app, "roi-inputs")
-        reveal(app.descendants(matching: .any)["roiResults"], in: app)
+        reveal(app.descendants(matching: .any)["roi2Metrics"], in: app)
         shot(app, "roi-results")
 
         for _ in 0..<10 { app.swipeDown(velocity: .fast) }

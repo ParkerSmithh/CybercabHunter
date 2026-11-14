@@ -1,54 +1,9 @@
 import Foundation
 
-/// The Simulation page's math, ported line for line from public/js/calc.js
-/// (CCC_CALC). The website and its node tests are the reference; the unit
+/// The Simulation page's Fleet ETA math, ported line for line from
+/// public/js/calc.js (CCC_CALC). (Fleet ROI is FleetROIModel.swift.) The website and its node tests are the reference; the unit
 /// tests check these against the same values. Nothing here is a live price.
 enum SimulationCalc {
-
-    // MARK: Fleet ROI (calc.js fleetFinancials + the page's locked assumptions)
-
-    /// The page's locked assumptions (simulation.html): not user-editable.
-    enum ROI {
-        static let networkCutPct = 25.0
-        static let costPerCab = FleetROI.Pricing.price   // reported $29,990 (FleetROIModel.swift), as on the site
-        static let baseFare = 3.00
-        static let perMileRate = 1.40
-        static let avgTripMiles = 5.0
-        static let kwhPerMile = 0.25
-        static let inductiveLoss = 0.08
-        /// Slider ranges and the example starting values.
-        static let fleetMax = 100, electricityMax = 0.40, milesMax = 400
-        static let electricityStart = 0.12, milesStart = 150
-    }
-
-    struct Financials: Equatable {
-        let grossRevenue: Double
-        let teslaCut: Double
-        let monthlyEnergyOverhead: Double
-        let netOperatingIncome: Double
-        /// One decimal; nil = never (the site's Infinity).
-        let breakevenMonths: Double?
-    }
-
-    static func fleetFinancials(fleetSize: Int, electricityRate: Double, dailyMiles: Int, lossOn: Bool) -> Financials {
-        let miles = Double(dailyMiles), fleet = Double(fleetSize)
-        let tripsPerDay = ROI.avgTripMiles > 0 ? miles / ROI.avgTripMiles : 0
-        let dailyRevenuePerCab = tripsPerDay * (ROI.baseFare + ROI.perMileRate * ROI.avgTripMiles)
-        let gross = dailyRevenuePerCab * fleet * 30
-        let cut = gross * (ROI.networkCutPct / 100)
-        let energy = miles * ROI.kwhPerMile * electricityRate * fleet * 30 * (1 + (lossOn ? ROI.inductiveLoss : 0))
-        let noi = gross - cut - energy
-        let capital = fleet * ROI.costPerCab
-        let breakeven = noi > 0 ? (capital / noi * 10).rounded() / 10 : nil
-        return Financials(grossRevenue: gross, teslaCut: cut, monthlyEnergyOverhead: energy, netOperatingIncome: noi, breakevenMonths: breakeven)
-    }
-
-    /// The cash-flow chart's window (simulation.html renderCashFlowChart):
-    /// 1.3 × breakeven, 6 to 60 months; 24 without a breakeven.
-    static func chartMonths(breakeven: Double?) -> Int {
-        guard let b = breakeven, b > 0 else { return 24 }
-        return min(60, max(6, Int((b * 1.3).rounded(.up))))
-    }
 
     // MARK: Fleet ETA (calc.js)
 

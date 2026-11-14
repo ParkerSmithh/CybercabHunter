@@ -65,7 +65,7 @@ struct FleetROIModelTests {
 
     @Test func matchesTheWebsiteOnEverySharedFixture() throws {
         let cases = try Self.fixtures()
-        #expect(cases.count >= 16)
+        #expect(cases.count >= 17)
         for c in cases {
             let name = c["name"] as? String ?? "?"
             let inputData = try JSONSerialization.data(withJSONObject: c["input"] ?? [:])
@@ -116,12 +116,24 @@ struct FleetROIModelTests {
         #expect(FleetROI.startMonthLabel(3) == "2027-03" && FleetROI.monthName(16) == "Mar 2028")
     }
 
-    @Test func scenariosOrderAndApply() {
-        let c = FleetROI.simulate(FleetROI.withScenario(.init(), .conservative)).steady.operatingProfit
-        let e = FleetROI.simulate(FleetROI.withScenario(.init(), .expected)).steady.operatingProfit
-        let o = FleetROI.simulate(FleetROI.withScenario(.init(), .optimistic)).steady.operatingProfit
-        #expect(c < e && e < o)
-        #expect(FleetROI.withScenario(.init(), .expected, edits: ["farePerRide": 20]).farePerRide == 20)
+    @Test func theFiveFixedValuesCantBeChanged() {
+        #expect(FleetROI.Fixed.price == 29_990 && FleetROI.Fixed.deposit == 1000 && FleetROI.Fixed.subscriptionMonthly == 300
+                && FleetROI.Fixed.subscriptionIncludedMonths == 1 && FleetROI.Fixed.platformSharePct == 25)
+        var x = FleetROI.Input()
+        x.price = 35_000; x.deposit = 2500; x.subscriptionMonthly = 299; x.subscriptionIncludedMonths = 6; x.platformSharePct = 30; x.farePerRide = 14
+        let s = x.sanitized
+        #expect(s.price == 29_990 && s.deposit == 1000 && s.subscriptionMonthly == 300 && s.subscriptionIncludedMonths == 1 && s.platformSharePct == 25, "an input can't change them")
+        #expect(s.farePerRide == 14, "other inputs are kept")
+        let r = FleetROI.simulate(x)
+        #expect(Self.near(r.steady.platformFee, r.steady.gross * 0.25), "Tesla Revenue Share is always 25%")
+        #expect(r.months[0].subscription == 0 && r.months[1].subscription == 300, "month 1 free, then $300")
+        var long = FleetROI.Input(); long.horizonMonths = 120
+        let ten = FleetROI.simulate(long)
+        #expect([12, 13, 24, 25, 60, 119].allSatisfy { ten.months[$0].subscription == 300 }, "the free month applies once, not every year")
+        let costs: Double = 1296 + 84.24 + 300 + 250 + 60 + 150   // 25% share, charging, subscription, insurance, maintenance, cleaning
+        let expected: Double = 5184 - costs
+        #expect(Self.near(FleetROI.simulate(.init()).steady.operatingProfit, expected), "$3,043.76 a month by default")
+        #expect(FleetROI.fields.filter { $0.value.kind == .fixed }.keys.sorted() == ["deposit", "platformSharePct", "price", "subscriptionIncludedMonths", "subscriptionMonthly"])
     }
 
     @MainActor
@@ -145,6 +157,14 @@ struct FleetROIModelTests {
         defaults.set(Data(#"[{"id":"cfg-web","name":"From the web","savedAt":"2026-11-13T20:00:00.000Z","input":{"mode":"personal","vehicles":"3","price":"abc"}}]"#.utf8), forKey: FleetROIStore.key)
         let web = FleetROIStore(defaults: defaults).items
         #expect(web.count == 1 && web[0].input.mode == .personal && web[0].input.vehicles == 3 && web[0].input.price == 29_990)
+        // A save from before the values were fixed ($299, 30%, its own price): fixed on load, everything else kept, nothing deleted.
+        defaults.set(Data(#"[{"id":"cfg-old","name":"Old plan","savedAt":"2026-11-13T20:00:00.000Z","input":{"mode":"fleet","vehicles":7,"price":31000,"deposit":1500,"subscriptionMonthly":299,"subscriptionIncludedMonths":2,"platformSharePct":30,"farePerRide":13,"ridesPerDay":18}}]"#.utf8), forKey: FleetROIStore.key)
+        let oldStore = FleetROIStore(defaults: defaults)
+        let old = try #require(oldStore.items.first)
+        #expect(old.input.price == 29_990 && old.input.deposit == 1000 && old.input.subscriptionMonthly == 300 && old.input.subscriptionIncludedMonths == 1 && old.input.platformSharePct == 25)
+        #expect(old.name == "Old plan" && old.input.vehicles == 7 && old.input.farePerRide == 13 && old.input.ridesPerDay == 18)
+        let copy = try #require(oldStore.duplicate("cfg-old"))
+        #expect(copy.input.subscriptionMonthly == 300 && copy.input.platformSharePct == 25 && oldStore.items.count == 2, "a duplicate carries the fixed values")
         defaults.set(Data("{broken".utf8), forKey: FleetROIStore.key)
         #expect(FleetROIStore(defaults: defaults).items.isEmpty, "a corrupt store reads as empty")
     }
