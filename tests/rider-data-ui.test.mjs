@@ -469,8 +469,10 @@ async function run() {
     check('fresh browser context retains linked label', page.text('linkGmailLabel') === 'Stop Sync');
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET forwarding_code = '123456' WHERE user_id = 'u1'");
     page.w.dispatchEvent(new page.w.Event('focus'));
-    await page.waitFor(() => page.text('linkGmailLabel') === 'Setup Tesla Sync', 'pending confirmation');
-    check('pending confirmation requires linking again', page.text('linkGmailLabel') === 'Setup Tesla Sync');
+    // Owner, Nov 2026: a rider who was receiving and whom Gmail asks to confirm
+    // again is told to reconnect, not shown as never linked (tests/gmail-signin.test.mjs).
+    await page.waitFor(() => page.text('linkGmailLabel') === 'Reconnect Gmail', 'pending confirmation');
+    check('pending confirmation after receiving: Reconnect Gmail, to the setup page', page.text('linkGmailLabel') === 'Reconnect Gmail' && page.d.getElementById('linkGmailBtn').getAttribute('href') === '/link-gmail' && page.d.getElementById('gmailLinkedChip').classList.contains('hidden'));
     ctx.d1.exec("UPDATE receipt_ingestion_addresses SET last_received_at = NULL, forwarding_code = NULL WHERE user_id = 'u1'");
     page.w.dispatchEvent(new page.w.Event('focus'));
     await page.waitFor(() => page.d.getElementById('linkGmailBtn').getAttribute('aria-busy') === null, 'rotation refresh');

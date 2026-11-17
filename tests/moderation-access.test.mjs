@@ -119,14 +119,16 @@ async function run() {
     const sign = await openPage(ctx, 'signin.html', { url: 'https://cybercabhunter.com/signin?returnTo=%2Fmoderation', scripts: SIGNIN_SCRIPT });
     const google = sign.d.getElementById('signInGoogle');
     check('the sign-in page passes the return page to the Worker\'s Google start', google.getAttribute('href') === `${WORKER_ORIGIN}/oauth/google/start?returnTo=%2Fmoderation`);
-    // No return page (or a hostile one): the rider lands on Link Gmail, where rides get into the site.
-    const DEFAULT_HREF = `${WORKER_ORIGIN}/oauth/google/start?returnTo=%2Flink-gmail`;
+    // No return page (or a hostile one): the home page. Never Link Gmail by
+    // default (owner, Nov 2026: linked riders were sent there on every sign-in;
+    // tests/gmail-signin.test.mjs).
+    const DEFAULT_HREF = `${WORKER_ORIGIN}/oauth/google/start?returnTo=%2F`;
     for (const evil of ['https%3A%2F%2Fevil.example', '%2F%2Fevil.example', '%2F%5Cevil.example']) {
       const p = await openPage(ctx, 'signin.html', { url: `https://cybercabhunter.com/signin?returnTo=${evil}`, scripts: SIGNIN_SCRIPT });
-      check(`a hostile returnTo (${decodeURIComponent(evil)}) is not passed on; Link Gmail is used instead`, p.d.getElementById('signInGoogle').getAttribute('href') === DEFAULT_HREF);
+      check(`a hostile returnTo (${decodeURIComponent(evil)}) is not passed on; the home page is used instead`, p.d.getElementById('signInGoogle').getAttribute('href') === DEFAULT_HREF);
     }
     const plain = await openPage(ctx, 'signin.html', { url: 'https://cybercabhunter.com/signin', scripts: SIGNIN_SCRIPT });
-    check('with no returnTo, sign-in returns the rider to Link Gmail', plain.d.getElementById('signInGoogle').getAttribute('href') === DEFAULT_HREF);
+    check('with no returnTo (and no previous page), sign-in returns the rider to the home page, not Link Gmail', plain.d.getElementById('signInGoogle').getAttribute('href') === DEFAULT_HREF);
   }
 
   console.log('4. After sign-in the moderation page opens for a moderator and stays closed for everyone else');

@@ -315,6 +315,19 @@
 
   // Use the same current-address evidence as the forwarding setup page.
   // Historical receipt totals alone cannot establish that a new address works.
+  // The rider's Gmail forwarding state, from the server's record for THIS
+  // signed-in account (GET /api/rides/sync-status). The same rule as
+  // js/rider-data.js and js/link-gmail.js (tests/gmail-signin.test.mjs keeps
+  // them identical):
+  //   linked     set up (completed, or receipts arriving) and nothing waiting in Gmail
+  //   reconnect  it was receiving, and Gmail now asks to confirm forwarding again
+  //   not_linked never set up, or set up on an address since replaced
+  // "Checking" and "unavailable" are the pages' own states: a failed or
+  // unfinished check is never read as "not linked".
+  function gmailState(f) {
+    if (f.confirmation_code || f.confirmation_link) return f.last_received_at ? 'reconnect' : 'not_linked';
+    return f.setup_completed_at || f.last_received_at ? 'linked' : 'not_linked';
+  }
   let gmailStatusLoading = false;
   async function refreshGmailStatus() {
     if (gmailStatusLoading) return;
@@ -326,8 +339,10 @@
       if (response.status === 401) { setView('signedOut'); return; }
       const forwarding = response.ok && response.json && response.json.forwarding;
       if (!forwarding) throw new Error('forwarding status unavailable');
-      const linked = !!forwarding.setup_completed_at || (!!forwarding.last_received_at && !forwarding.confirmation_code && !forwarding.confirmation_link);
-      label.textContent = linked ? 'Stop Sync' : 'Setup Tesla Sync';
+      const state = gmailState(forwarding);
+      const linked = state === 'linked';
+      label.textContent = linked ? 'Stop Sync' : state === 'reconnect' ? 'Reconnect Gmail' : 'Setup Tesla Sync';
+      show('gmailLinkedChip', linked);
       if (linked) {
         button.removeAttribute('href');
         button.setAttribute('role', 'button');
@@ -338,12 +353,13 @@
         button.removeAttribute('tabindex');
       }
       button.dataset.linked = String(linked);
-      button.title = linked ? 'Stop receipt syncing by invalidating your forwarding address.' : 'Set up Gmail receipt forwarding';
+      button.title = linked ? 'Stop receipt syncing by invalidating your forwarding address.' : state === 'reconnect' ? 'Gmail is asking you to confirm forwarding again' : 'Set up Gmail receipt forwarding';
     } catch (e) {
       button.setAttribute('href', '/link-gmail');
       button.removeAttribute('role');
       button.removeAttribute('tabindex');
       label.textContent = 'Check Gmail';
+      show('gmailLinkedChip', false);
       delete button.dataset.linked;
       button.title = 'Connection status unavailable. Open Gmail setup to check or retry.';
     } finally {

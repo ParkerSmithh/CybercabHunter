@@ -382,7 +382,9 @@ async function run() {
     await ctx.email('u1', { body: receiptBody() });
     const page = await openPage(ctx, 'u1');
     await page.refresh(); for (let second = 0; second < 5; second++) page.tickCountdown();
-    check('already linked on load stays on the existing status view', page.visible('lgCodeDone') && page.visible('lgSetup') && !page.visible('lgSuccess') && page.navigations.length === 0 && !page.requests.some(r => r.path.endsWith('/setup/complete')));
+    // Owner, Nov 2026: a linked rider sees "Gmail Linked" first; the setup steps
+    // open on Manage forwarding (tests/gmail-signin.test.mjs).
+    check('already linked on load: "Gmail Linked", setup closed, no auto-completion or navigation', page.visible('lgStatus') && page.text('lgStatusText') === 'Gmail Linked' && !page.visible('lgSetup') && page.visible('lgCodeDone') && !page.visible('lgSuccess') && page.navigations.length === 0 && !page.requests.some(r => r.path.endsWith('/setup/complete')));
   }
   {
     const ctx = await makeApp();

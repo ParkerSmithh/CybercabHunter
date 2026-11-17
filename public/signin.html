@@ -66,22 +66,37 @@
 </div>
 
 <script src="js/calc.js?v=13"></script>
-<script src="js/main.js?v=34"></script>
+<script src="js/main.js?v=35"></script>
 <script>
   CCC.init();
 
   // "/signin?returnTo=/moderation": hand the requested page to the Worker's
   // sign-in start so the visitor comes back there. With no page requested,
-  // a rider lands on Link Gmail (/link-gmail), where their rides get into the
-  // site. Only a same-site path is passed on; the Worker validates it again
-  // and is the authority, this just avoids sending obvious junk.
+  // the visitor goes back to the site page they came from, or the home page.
+  // Never to Link Gmail by default (owner, Nov 2026): a rider whose Gmail is
+  // already linked was sent there after every sign-in. Only a same-site path
+  // is passed on; the Worker validates it again and is the authority, this
+  // just avoids sending obvious junk.
   (function () {
-    var DEFAULT_RETURN = '/link-gmail';
+    var DEFAULT_RETURN = '/';
     var link = document.getElementById('signInGoogle');
     if (!link) return;
     if (/^.+-cybercabhunter\.contactjoeclos\.workers\.dev$/.test(location.hostname)) link.href = location.origin + '/oauth/google/start';
+    var ok = function (p) { return typeof p === 'string' && p.charAt(0) === '/' && p.charAt(1) !== '/' && p.charAt(1) !== '\\' && !/^\/(signin(\.html)?|api\/|oauth\/)/.test(p); };
     var raw = new URLSearchParams(location.search).get('returnTo');
-    if (!raw || raw.charAt(0) !== '/' || raw.charAt(1) === '/' || raw.charAt(1) === '\\') raw = DEFAULT_RETURN;
+    if (!ok(raw)) {
+      raw = DEFAULT_RETURN;
+      // The page they came from on this site, if any (not the sign-in page itself).
+      try {
+        var from = document.referrer ? new URL(document.referrer) : null;
+        if (from && from.origin === location.origin) {
+          var q = new URLSearchParams(from.search);
+          ['signin', 'tesla', 'account'].forEach(function (k) { q.delete(k); });
+          var path = from.pathname + (q.toString() ? '?' + q.toString() : '');
+          if (ok(path)) raw = path;
+        }
+      } catch (e) { /* stay with the home page */ }
+    }
     link.href = link.href.split('?')[0] + '?returnTo=' + encodeURIComponent(raw);
   })();
 </script>

@@ -656,6 +656,32 @@ const CCC = (() => {
 
   const SIGN_IN_PAGE = 'signin.html';   // relative on purpose: vehicle.html's <base href="/"> makes it resolve from the site root
 
+  /* Signing in brings the rider back to the page they were on (owner,
+     Nov 2026). It never routes to Link Gmail on its own: a rider whose Gmail
+     is already linked kept landing there after every sign-in, because a
+     sign-in with no page requested defaulted to /link-gmail. Gmail setup is
+     opened on purpose (Rider Data, receipts), never forced. The page is a
+     same-site path only; the sign-in page and the Worker
+     (worker/google-auth.js sanitizeReturnPath) both check it again. */
+  const ONE_TIME_PARAMS = ['signin', 'tesla', 'account'];
+  function signInHref(target) {
+    let path = target;
+    if (!path) {
+      const params = new URLSearchParams(location.search);
+      ONE_TIME_PARAMS.forEach(k => params.delete(k));
+      const query = params.toString();
+      path = location.pathname + (query ? '?' + query : '');
+    }
+    if (typeof path !== 'string' || path[0] !== '/' || path[1] === '/' || path[1] === '\\' || /^\/(signin(\.html)?|api\/|oauth\/)/.test(path)) return SIGN_IN_PAGE;
+    return SIGN_IN_PAGE + '?returnTo=' + encodeURIComponent(path);
+  }
+  // Every plain Sign In link on the page (header, signed-out prompts) asks to come back here.
+  function initSignInLinks() {
+    document.querySelectorAll('a[href]').forEach(a => {
+      if (/^\/?signin(\.html)?$/.test(a.getAttribute('href'))) a.setAttribute('href', signInHref());
+    });
+  }
+
   function initSightingDrawer() {
     const drawer = document.getElementById('sightingDrawer');
     const backdrop = document.getElementById('sightingBackdrop');
@@ -946,7 +972,7 @@ const CCC = (() => {
     // signed in. The in-drawer sign-in prompt above stays as the fallback for a
     // session that turns out to be rejected while the drawer is already open.
     function open() {
-      if (!refreshAuthGate()) { window.location.href = SIGN_IN_PAGE; return; }
+      if (!refreshAuthGate()) { window.location.href = signInHref(); return; }
       // No future dates in the picker (the server rejects them too).
       if (dateField) {
         const now = new Date();
@@ -1721,10 +1747,11 @@ const CCC = (() => {
     initSplit();
     initElastic();
     initTeslaLink();
+    initSignInLinks();
     initAccountMenu();
     initMapDrawer();
     initBorderGlow();
   }
 
-  return { apiOrigin: TESLA_WORKER_URL, initRubberSegments, initSquishSwitches, data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, avatarSrc, avatarInitials, renderAvatar };
+  return { apiOrigin: TESLA_WORKER_URL, initRubberSegments, initSquishSwitches, data, storage, merge, initNav, initReveal, animateCounter, countUp, enterList, initMagnet, initTilt, initDecrypt, initElastic, initSplit, pixelReveal, spawnConfetti, toast, initParticles, initSightingDrawer, initTeslaLink, initAccountMenu, init, signInHref, avatarSrc, avatarInitials, renderAvatar };
 })();
