@@ -130,7 +130,9 @@ async function run() {
     await new Promise(r => setTimeout(r, 30));
     check('clicking the submit button leaves the page (one navigation attempt)', page.navigations.length === 1);
     check('the submit drawer and its backdrop are not opened', !page.drawerOpen());
-    check('the navigation target is the existing sign-in page', /const SIGN_IN_PAGE = 'signin\.html'/.test(MAIN) && /window\.location\.href = SIGN_IN_PAGE/.test(MAIN));
+    // It still goes to the existing sign-in page, now asking to come back to this
+    // page afterwards (owner, Nov 2026: tests/gmail-signin.test.mjs).
+    check('the navigation target is the existing sign-in page, returning here after', /const SIGN_IN_PAGE = 'signin\.html'/.test(MAIN) && /window\.location\.href = signInHref\(\)/.test(MAIN) && /return SIGN_IN_PAGE \+ '\?returnTo=' \+ encodeURIComponent\(path\)/.test(MAIN));
     const hero = page.d.getElementById('heroSightingBtn');
     if (hero) { hero.click(); check('the hero submit button behaves the same', page.navigations.length === 2 && !page.drawerOpen()); }
     // Even a direct dispatch of submit must not silently "succeed".

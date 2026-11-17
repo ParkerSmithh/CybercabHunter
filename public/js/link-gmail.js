@@ -166,6 +166,57 @@
   }
 
   // ---------- status ----------
+  // The rider's Gmail forwarding state, from the server's record for THIS
+  // signed-in account (GET /api/rides/sync-status). The same rule as
+  // js/rider-data.js and js/link-gmail.js (tests/gmail-signin.test.mjs keeps
+  // them identical):
+  //   linked     set up (completed, or receipts arriving) and nothing waiting in Gmail
+  //   reconnect  it was receiving, and Gmail now asks to confirm forwarding again
+  //   not_linked never set up, or set up on an address since replaced
+  // "Checking" and "unavailable" are the pages' own states: a failed or
+  // unfinished check is never read as "not linked".
+  function gmailState(f) {
+    if (f.confirmation_code || f.confirmation_link) return f.last_received_at ? 'reconnect' : 'not_linked';
+    return f.setup_completed_at || f.last_received_at ? 'linked' : 'not_linked';
+  }
+
+  // Linked riders see "Gmail Linked" with the setup steps closed until they
+  // choose Manage forwarding; a rider who needs to reconnect, or who hasn't
+  // linked, sees the steps.
+  let setupOpen = false;
+  function renderGmailState() {
+    if (!status) return;
+    const f = status.forwarding;
+    const state = gmailState(f);
+    const card = $('lgStatus');
+    card.dataset.gmailState = state;
+    if (autoCompletion) { show('lgStatus', false); return; }   // the "GMAIL IS LINKED" success panel is showing
+    show('lgStatus', state !== 'not_linked');
+    const linked = state === 'linked';
+    show('lgStatusIconOk', linked);
+    show('lgStatusIconWarn', !linked);
+    $('lgStatusText').textContent = linked ? 'Gmail Linked' : 'Reconnect Gmail';
+    $('lgStatusDetail').textContent = linked
+      ? (f.last_received_at ? `Receipts are arriving. Last receipt ${fmtWhen(f.last_received_at).toLowerCase()}.` : 'Set up. Your next Tesla receipt will appear in Rider Data.')
+      : 'Gmail is asking you to confirm forwarding again. Confirm it in step 3 below and receipts keep arriving. Your rides are safe.';
+    const primary = $('lgStatusPrimary');
+    primary.textContent = linked ? 'Go to Rider Data' : 'Reconnect Gmail';
+    primary.setAttribute('href', linked ? '/rider-data' : '#lgCodeShown');
+    show('lgStatusManage', linked);
+    const open = !linked || setupOpen;
+    show('lgSetup', open);
+    show('lgSameAccount', open);   // its "every step below" goes with the steps
+    $('lgStatusManage').setAttribute('aria-expanded', String(linked && setupOpen));
+    $('lgStatusManage').textContent = setupOpen ? 'Hide forwarding setup' : 'Manage forwarding';
+  }
+  function setupGmailState() {
+    $('lgStatusManage').addEventListener('click', () => {
+      setupOpen = !setupOpen;
+      renderGmailState();
+      if (setupOpen) $('lgSetupTitle').focus();
+    });
+  }
+
   // Forwarding is linked when the CURRENT address has received mail and no
   // Gmail confirmation code is waiting to be typed in. The API's `receiving`
   // is historical (any emailed receipt, ever, on any address) and stays true
@@ -237,6 +288,7 @@
       show('lgSetup', true);
     }
     if (becameLinked) startAutoCompletion();
+    renderGmailState();
   }
 
   async function refreshStatus() {
@@ -393,7 +445,6 @@
     previousLinked = isLinked(status.forwarding);
     renderStatus();
     setView('ready');
-    show('lgSetup', true);
     show('lgAuto', true);
     $('lgSetupTitle').textContent = 'FORWARD AUTOMATICALLY';
     $('lgSetupLede').textContent = 'Set this up once in Gmail and every new receipt forwards itself. Gmail only has these settings on its website, so do this on a computer.';
@@ -402,7 +453,7 @@
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion();
+    setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion(); setupGmailState();
     $('lgRetry').addEventListener('click', load);
     load();
   }
