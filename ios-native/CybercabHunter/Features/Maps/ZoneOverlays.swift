@@ -49,11 +49,12 @@ final class DarkMatterRenderer: MKOverlayRenderer {
 }
 
 /// Map annotations, each identified so a refresh updates rather than duplicates.
-final class ChargingAnnotation: NSObject, MKAnnotation {
-    let location: WebData.ChargingLocation
-    var coordinate: CLLocationCoordinate2D { location.coordinate }
-    var title: String? { location.name }
-    init(_ location: WebData.ChargingLocation) { self.location = location }
+/// A Robotaxi facility (charging hub, staging ground or both): FacilityStore.
+final class FacilityAnnotation: NSObject, MKAnnotation {
+    let facility: Facility
+    var coordinate: CLLocationCoordinate2D { facility.coordinate }
+    var title: String? { facility.name }
+    init(_ facility: Facility) { self.facility = facility }
 }
 
 final class LiveCameraAnnotation: NSObject, MKAnnotation {
@@ -90,23 +91,30 @@ final class PlaceAnnotation: NSObject, MKAnnotation {
 enum MarkerViews {
     static let gold = UIColor(red: 250 / 255, green: 224 / 255, blue: 48 / 255, alpha: 1)
 
-    /// A charging location: a compact dark tile with a gold bolt (distinct from
-    /// the round Cybercab markers), a 44pt tap target.
-    static func charging(_ view: MKAnnotationView) {
-        view.frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+    /// A Robotaxi facility, as on the website: a compact dark tile with a gold
+    /// bolt (charging hub), a gold P (staging ground) or both (combined),
+    /// distinct from the round Cybercab markers; a 44pt tap target.
+    static func facility(_ view: MKAnnotationView, kind: Facility.Kind) {
+        let symbols = kind == .combined ? ["bolt.fill", "parkingsign"] : [kind == .staging ? "parkingsign" : "bolt.fill"]
+        let tileWidth: CGFloat = symbols.count == 2 ? 34 : 22
+        let width: CGFloat = max(44, tileWidth + 18)
+        view.frame = CGRect(x: 0, y: 0, width: width, height: 44)
         view.subviews.forEach { $0.removeFromSuperview() }
-        let tile = UIView(frame: CGRect(x: 11, y: 11, width: 22, height: 22))
+        let tile = UIView(frame: CGRect(x: (width - tileWidth) / 2, y: 11, width: tileWidth, height: 22))
         tile.backgroundColor = UIColor(red: 15 / 255, green: 16 / 255, blue: 17 / 255, alpha: 0.94)
-        tile.layer.cornerRadius = 6.5
+        tile.layer.cornerRadius = kind == .staging ? 5 : 6.5
         tile.layer.cornerCurve = .continuous
         tile.layer.borderColor = gold.withAlphaComponent(0.85).cgColor
         tile.layer.borderWidth = 1
         shadow(tile)
-        let bolt = UIImageView(image: UIImage(systemName: "bolt.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)))
-        bolt.tintColor = gold
-        bolt.contentMode = .center
-        bolt.frame = tile.bounds
-        tile.addSubview(bolt)
+        let slot = tileWidth / CGFloat(symbols.count)
+        for (i, name) in symbols.enumerated() {
+            let glyph = UIImageView(image: UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: 10.5, weight: .bold)))
+            glyph.tintColor = gold
+            glyph.contentMode = .center
+            glyph.frame = CGRect(x: CGFloat(i) * slot + (symbols.count == 2 ? (i == 0 ? 2 : -2) : 0), y: 0, width: slot, height: 22)
+            tile.addSubview(glyph)
+        }
         view.addSubview(tile)
     }
 

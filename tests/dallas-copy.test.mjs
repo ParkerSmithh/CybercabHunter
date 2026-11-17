@@ -33,7 +33,7 @@ function run() {
     check('infrastructure.html: has a #dallasContent Dallas panel', start !== -1);
     const panel = html.slice(start, html.indexOf('<!-- Map: a tall card on mobile', start));
     check('infrastructure.html: the Dallas panel is no longer a "not available" placeholder', !/isn'?t (available|built) in Cybercab Hunter/i.test(panel) && !/NOT YET AVAILABLE/.test(panel));
-    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Locations', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'In service since April 18, 2026', 'Fleet &amp; Fares'];
+    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Hubs', 'Staging Grounds', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'In service since April 18, 2026', 'Fleet &amp; Fares'];
     const at = order.map(x => panel.indexOf(x));
     check('infrastructure.html: the Dallas panel has Austin\'s structure, in order', at.every((i, k) => i !== -1 && (k === 0 || i > at[k - 1])));
     check('infrastructure.html: the Dallas coverage is 81 mi² (counted up like Austin\'s)', /id="dalCoverageOut"/.test(panel) && /countUp\(document\.getElementById\('dalCoverageOut'\), 81\)/.test(html));

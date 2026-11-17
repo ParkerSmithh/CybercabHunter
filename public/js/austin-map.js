@@ -8,8 +8,9 @@
        Zones page and homepage keep their own copy; a test keeps all three equal)
      - DALLAS_SERVICE_ZONE: the Dallas service-zone boundary (Zones page and
        homepage minimap; the only copy)
-     - addFeatures(map): the Zones map's markers only (not the minimap) —
-       the real, publicly reported Cybercab charging locations (gold bolt tiles)
+     - addFeatures(map): the Zones map's camera markers only (not the
+       minimap). Robotaxi facilities (charging hubs, staging grounds) are
+       js/zones-facilities.js, from the shared /data/facilities.json.
      - Cybercabs spotted by the traffic-camera watch (GET /api/camera-sightings,
        worker/camera-sightings.js): one marker per camera with a detection in
        the last 24 hours, refreshed every 60s and reconciled by camera_id.
@@ -81,48 +82,6 @@ window.CCCAustinMap = (function () {
   // Returns { refreshCameras } so the page can reload them on a city switch.
   function addFeatures(map, opts = {}) {
     const cityOf = typeof opts.city === 'function' ? opts.city : () => 'austin';
-    // A charging location, as in the iOS app: a compact dark rounded tile with a
-    // gold lightning bolt (distinct from the round Cybercab markers), 44px target.
-    const BOLT = '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="#FAE030" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg>';
-    function addChargingPin(lat, lng, name, html) {
-      const el = document.createElement('div');
-      el.className = 'charging-pin';
-      el.setAttribute('aria-label', `Charging location, ${name}`);
-      el.style.cssText = 'width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-      el.innerHTML = `<span style="width:22px;height:22px;border-radius:6.5px;display:flex;align-items:center;justify-content:center;background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85),0 1.5px 3px rgba(0,0,0,0.55);">${BOLT}</span>`;
-      return new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML(html))
-        .addTo(map);
-    }
-
-    // ---- Real, publicly reported Cybercab charging locations ----
-    const chargingLocations = [
-      { name: 'St. Elmo Robotaxi Charging Hub', lat: 30.2149565, lng: -97.7630241, note: '405 E St Elmo Rd, Austin, TX. 48 V4 Supercharger posts (phase 1), plus 80 wireless inductive Cybercab chargers planned (phase 2)' },
-      { name: 'Ridgepoint Robotaxi Charging Site', lat: 30.3285815, lng: -97.6749944, note: '2323 Ridgepoint Dr, Austin, TX. 24-stall V4 DC fast-charging depot' }
-    ];
-    chargingLocations.forEach(c => {
-      addChargingPin(c.lat, c.lng, c.name, `
-         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
-         <div class="font-display font-bold text-sm mb-1">${c.name}</div>
-         <div class="text-xs text-slate-300">${c.note}</div>`);
-    });
-
-    // Optional Dallas hubs belong to the Zones page; Austin's pins stay unchanged.
-    let dallasChargingMarkers = [];
-    function refreshChargingLocations() {
-      dallasChargingMarkers.forEach(marker => marker.remove());
-      dallasChargingMarkers = [];
-      if (cityOf() !== 'dallas') return;
-      (opts.dallasChargingLocations || []).forEach(c => {
-        dallasChargingMarkers.push(addChargingPin(c.lat, c.lng, c.name, `
-         <div class="text-[11px] uppercase tracking-wide text-gold font-semibold mb-1">Charging Location</div>
-         <div class="font-display font-bold text-sm mb-1">${c.name}</div>
-         <div class="text-xs text-slate-300">${c.note}</div>`));
-      });
-    }
-    refreshChargingLocations();
-
     // ---- Cybercabs spotted by the traffic-camera watch ----
     // One marker per camera with a detection in the last 24 hours (the API
     // returns each camera's latest), at the camera's own location. Refreshed
@@ -282,7 +241,7 @@ window.CCCAustinMap = (function () {
 
     refreshCameraMarkers();
     setInterval(() => { if (!document.hidden) refreshCameraMarkers(); }, CAMERA_REFRESH_MS);
-    return { refreshCameras: refreshCameraMarkers, refreshChargingLocations, setFollowingSpots };
+    return { refreshCameras: refreshCameraMarkers, setFollowingSpots };
   }
   return { DARK_MATTER, styleUrl, styleBasemap, addServiceZone, addFeatures, SERVICE_ZONE, DALLAS_SERVICE_ZONE };
 })();

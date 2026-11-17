@@ -1,7 +1,7 @@
 import XCTest
 
 /// The refined Zones map: thin zone outline, compact Cybercab markers that
-/// cluster (a tap zooms them apart), the charging tile, aligned controls.
+/// cluster (a tap zooms them apart), the facility tiles, aligned controls.
 /// Live site, read only; screenshots kept for review.
 @MainActor
 final class ZonesStyleUITests: XCTestCase {
@@ -39,12 +39,12 @@ final class ZonesStyleUITests: XCTestCase {
             for _ in 0..<2 { app.buttons["Dallas"].firstMatch.tap(); sleep(1); app.buttons["Austin"].firstMatch.tap(); sleep(2) }
         }
 
-        // A charging location opens its sheet.
-        let charging = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Charging location'")).firstMatch
-        if charging.waitForExistence(timeout: 5) {
-            charging.tap()
-            XCTAssertTrue(app.staticTexts["CHARGING LOCATION"].waitForExistence(timeout: 5), "charging sheet")
-            shot(app, "zones-charging-sheet")
+        // A Robotaxi facility (a charging hub here) opens its preview.
+        let hub = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Charging Hub: '")).firstMatch
+        if hub.waitForExistence(timeout: 5) {
+            hub.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["facilityPreview"].waitForExistence(timeout: 5), "facility preview")
+            shot(app, "zones-facility-preview")
             app.swipeDown(velocity: .fast); sleep(1)
         }
 

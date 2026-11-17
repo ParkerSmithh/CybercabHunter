@@ -177,7 +177,7 @@ async function run() {
     w.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
     const calls = [];
     w.fetch = async u => { calls.push(String(u)); return responder(String(u)); };
-    // The page script, after the shared charging/camera features it calls (js/austin-map.js).
+    // The page script, after the shared camera features it calls (js/austin-map.js).
     const script = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8') + '\n' + [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map'));
     w.eval(script);
     await new Promise(r => setTimeout(r, 20));
@@ -229,8 +229,8 @@ async function run() {
 
     const legend = p.d.querySelector('#austinContent').textContent.replace(/\s+/g, ' ');
     const entry = [...p.d.querySelectorAll('#austinContent span')].find(s => s.textContent.trim() === 'Cybercabs');
-    check('legend: "Cybercabs" beside "Charging Locations", with the icon to the LEFT of the text at 18px',
-      /Charging Locations Cybercabs/.test(legend) && entry && entry.firstElementChild.tagName === 'IMG' && entry.firstElementChild.getAttribute('src') === 'images/CybercabOverhead.png' && entry.firstElementChild.getAttribute('width') === '18');
+    check('legend: "Cybercabs" after "Charging Hubs" and "Staging Grounds", with the icon to the LEFT of the text at 18px',
+      /Charging Hubs Staging Grounds Cybercabs/.test(legend) && entry && entry.firstElementChild.tagName === 'IMG' && entry.firstElementChild.getAttribute('src') === 'images/CybercabOverhead.png' && entry.firstElementChild.getAttribute('width') === '18');
     check('the legend row wraps on narrow screens (flex-wrap)', entry.parentElement.classList.contains('flex-wrap'));
     check('the icon file exists where the page references it', fs.existsSync(`${ROOT}public/images/CybercabOverhead.png`));
   }
@@ -287,8 +287,8 @@ async function run() {
     check('...Austin\'s zone keeps its layer ids; Dallas\'s is a second, suffixed zone', ['zone-fill', 'zone-line-glow', 'zone-line', 'zone-fill-dallas', 'zone-line-glow-dallas', 'zone-line-dallas'].every(id => zones.layers.some(l => l.id === id)));
     check('...the Zones map too', zones.maps[0].o.style === DARK_MATTER && Object.keys(zones.paints).length === 0);
     check('...and the Replay map', /style: window\.CCCAustinMap \? CCCAustinMap\.styleUrl\(\)/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8')) && !/openfreemap/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8') + fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8')));
-    check('...and it still has the charging pins and camera Cybercabs', zones.markers.filter(m => /Charging Location/.test(m.popup && m.popup.html || '')).length === 2 && zones.markers.some(m => m.el.className === 'camera-cybercab'));
-    check('both pages load the shared script (v13)', /<script src="js\/austin-map\.js\?v=13"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=13"><\/script>/.test(ZONES));
+    check('...and it still has the camera Cybercabs; facilities are js/zones-facilities.js, not hard-coded pins', !zones.markers.some(m => /Charging Location/.test(m.popup && m.popup.html || '')) && zones.markers.some(m => m.el.className === 'camera-cybercab') && !/chargingLocations/.test(SHARED + zonesScript) && /<script src="js\/zones-facilities\.js\?v=\d+"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v14)', /<script src="js\/austin-map\.js\?v=14"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=14"><\/script>/.test(ZONES));
   }
 
   t.finish();

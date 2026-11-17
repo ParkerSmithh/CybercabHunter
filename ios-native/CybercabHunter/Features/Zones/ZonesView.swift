@@ -2,7 +2,8 @@ import SwiftUI
 import MapKit
 
 /// Zones (the website's /infrastructure): the service-zone map for Austin and
-/// Dallas with charging locations, camera-spotted Cybercabs, place search,
+/// Dallas with Robotaxi facilities (charging hubs and staging grounds, with a
+/// filter per city), camera-spotted Cybercabs, place search,
 /// Normal Map / Heatmap, zone details with Fleet & Fares, and the Replay.
 struct ZonesView: View {
     var initialHeat = false
@@ -26,6 +27,7 @@ struct ZonesView: View {
     @State private var searchOpen = false
     @State private var searchDetent: PresentationDetent = .medium
     @State private var heatExpanded = false
+    @State private var facilities = FacilityStore.shared
 
     private let areas = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
 
@@ -36,7 +38,7 @@ struct ZonesView: View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 ZoneMapView(cityKey: model.city, heatMode: model.mode == .heat, liveDetections: model.source == .following ? [] : (model.live[model.city] ?? []), followingSpots: model.followingSpots,
-                            heatPoints: model.heatPoints, cameraDots: model.cameraDots, place: place, locationFix: location.location, recenterID: recenterID, locationTarget: locationTarget,
+                            heatPoints: model.heatPoints, cameraDots: model.cameraDots, facilities: facilities.visible(in: model.city), place: place, locationFix: location.location, recenterID: recenterID, locationTarget: locationTarget,
                             bottomInset: model.mode == .heat ? (heatExpanded ? 230 : 140) : 90,
                             topInset: geo.safeAreaInsets.top + 52, selectionActive: selection != nil) { selection = $0 }   // under the status bar, header and the Search button
                     .ignoresSafeArea()
@@ -48,6 +50,7 @@ struct ZonesView: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 topControls
+                facilityEmptyNote
             }
         }
         .overlay { if model.source == .following && model.mode == .normal { followingOverlay } }
@@ -78,6 +81,8 @@ struct ZonesView: View {
         .sheet(item: $selection) { sel in
             if case .following(let spot) = sel {
                 FollowingSpotSheet(spot: spot) { selection = nil }.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            } else if case .facility(let f) = sel {
+                FacilitySheet(facility: f)
             } else {
                 MapSelectionSheet(selection: sel, model: model).presentationDetents([.medium]).presentationDragIndicator(.visible)
             }
@@ -91,6 +96,8 @@ struct ZonesView: View {
         .task(id: model.city) {
             await model.loadPanel(using: session.api)
         }
+        // The facility list: the shipped copy at once, refreshed once per launch (a static file).
+        .task { await facilities.refresh() }
         .task(id: "\(model.city)|\(scenePhase == .active)|\(model.source.rawValue)|\(session.user != nil)|\(followingRefresh)") {
             guard scenePhase == .active else { return }
             // Following asks once and never polls; All Sightings keeps its 60 s refresh.
@@ -173,10 +180,50 @@ struct ZonesView: View {
                     MapGlassButton(systemImage: "location.fill", label: "My Location", active: location.location != nil) {
                         location.request()
                     }.accessibilityIdentifier("zoneMyLocationButton")
+                    facilityFilterButton
                 }
             }
         }
         .padding(.horizontal, 12).padding(.top, 8)
+    }
+
+    /// All Facilities | Charging Hubs | Staging Grounds, for this city only (as on
+    /// the website); a combined site shows under both. Gold while filtered.
+    private var facilityFilterButton: some View {
+        let current = facilities.filter(for: model.city)
+        return Menu {
+            Picker("Facilities shown", selection: Binding(get: { facilities.filter(for: model.city) }, set: { facilities.filters[model.city] = $0 })) {
+                ForEach(FacilityFilter.allCases) { f in
+                    Label(f.title, systemImage: f.systemImage).tag(f)
+                }
+            }
+        } label: {
+            Image(systemName: current == .all ? "building.2" : current.systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(current == .all ? Color.chInk : Color.brandGold)
+                .frame(width: MapControl.height, height: MapControl.height)
+                .contentShape(Circle())
+        }
+        .modifier(GlassBackground(shape: Circle(), interactive: true))
+        .sensoryFeedback(.selection, trigger: current)
+        .accessibilityLabel("Facilities")
+        .accessibilityValue(current.title)
+        .accessibilityIdentifier("facilityFilterButton")
+    }
+
+    /// "No staging grounds listed in Austin yet", when the filter leaves none.
+    @ViewBuilder private var facilityEmptyNote: some View {
+        let f = facilities.filter(for: model.city)
+        if f != .all && facilities.visible(in: model.city).isEmpty {
+            Text("No \(f == .staging ? "staging grounds" : "charging hubs") listed in \(model.cityData.name) yet")
+                .font(.inter(12.5, .medium, relativeTo: .footnote)).foregroundStyle(Color.chMist)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(Color.chBackground.opacity(0.92), in: .capsule)
+                .overlay(Capsule().strokeBorder(Color.chHair2))
+                .padding(.top, 170)
+                .allowsHitTesting(false)
+                .accessibilityIdentifier("facilityFilterEmpty")
+        }
     }
 
     private var zoneStatus: some View {
@@ -529,7 +576,7 @@ struct FollowingSpotSheet: View {
 
 // MARK: - Sheets
 
-/// A tapped marker: a charging location, a camera's Cybercab capture, or (in
+/// A tapped marker: a camera's Cybercab capture, or (in
 /// Heatmap mode) a camera's detections for the selection.
 struct MapSelectionSheet: View {
     let selection: MapSelection
@@ -539,10 +586,8 @@ struct MapSelectionSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 switch selection {
-                case .charging(let c):
-                    Eyebrow(text: "Charging location")
-                    Text(c.name).font(.inter(20, .bold)).foregroundStyle(Color.chInk)
-                    Text(c.note).font(.inter(14)).foregroundStyle(Color.chMist)
+                case .facility:
+                    EmptyView()   // FacilitySheet shows these
                 case .liveCamera(let d):
                     Eyebrow(text: "Cybercab spotted")
                     // The whole capture, aspect-fit and centred on a dark panel (never
@@ -617,9 +662,9 @@ struct ZoneDetailsSheet: View {
                         .foregroundStyle(Color.brandGold).padding(.horizontal, 10).padding(.vertical, 6)
                         .overlay(Capsule().strokeBorder(Color.brandGold.opacity(0.4)))
                 }
-                HStack(spacing: 14) {
-                    Label { Text("Charging Locations") } icon: { Circle().fill(Color.brandGold).frame(width: 10, height: 10) }
-                    Label { Text("Cybercabs") } icon: { Image("CybercabOverhead").resizable().frame(width: 18, height: 18) }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 14) { legendItems }
+                    VStack(alignment: .leading, spacing: 6) { legendItems }
                 }
                 .font(.inter(13)).foregroundStyle(Color.chMist)
                 .accessibilityElement(children: .combine)
@@ -651,6 +696,12 @@ struct ZoneDetailsSheet: View {
             .padding(20)
         }
         .appBackground()
+    }
+
+    @ViewBuilder private var legendItems: some View {
+        Label { Text("Charging Hubs") } icon: { FacilityGlyph(kind: .charging, size: 10) }
+        Label { Text("Staging Grounds") } icon: { FacilityGlyph(kind: .staging, size: 10) }
+        Label { Text("Cybercabs") } icon: { Image("CybercabOverhead").resizable().frame(width: 18, height: 18) }
     }
 
     /// "Based on 9 rides · updated Oct 16, 2026" (the site's fareBasis).

@@ -110,12 +110,14 @@ struct ZoneSearchSheet: View {
                 .accessibilityIdentifier("zoneCity-\(c.key)")
             }
         }
-        if !city.charging.isEmpty {
-            section("Charging locations") {
-                ForEach(city.charging) { c in
-                    row(icon: "bolt.fill", tint: .brandGold, title: c.name, subtitle: c.note) {
-                        onPick(PlaceResults.Place(id: "spot:\(c.name)", label: c.name, lat: c.lat, lng: c.lng)); close()
+        let facilities = FacilityStore.shared.facilities(in: city.key)
+        if !facilities.isEmpty {
+            section("Robotaxi facilities") {
+                ForEach(facilities) { f in
+                    row(icon: f.type == .staging ? "parkingsign" : "bolt.fill", tint: .brandGold, title: f.name, subtitle: "\(FacilityStore.shared.typeLabel(f)) · \(f.address)") {
+                        onPick(PlaceResults.Place(id: "spot:\(f.id)", label: f.name, lat: f.lat, lng: f.lng)); close()
                     }
+                    .accessibilityIdentifier("zoneFacility-\(f.id)")
                 }
             }
         }
