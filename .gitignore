@@ -4,3 +4,7 @@ private-key.pem
 node_modules/
 keys/private-key.pem
 wrangler.preview.jsonc
+
+# Facility photo originals (may carry EXIF/GPS): scripts/facility-photos.py
+# writes the stripped public copies to public/images/facilities/.
+facility-photos/

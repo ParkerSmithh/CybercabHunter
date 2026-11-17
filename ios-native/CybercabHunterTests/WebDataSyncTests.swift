@@ -3,7 +3,7 @@ import Foundation
 import MapKit
 @testable import CybercabHunter
 
-/// The bundled zones, charging locations and US map are the website's own
+/// The bundled zones, Robotaxi facilities and US map are the website's own
 /// (ios-native/scripts/sync-web-data.mjs). These read the website's files from
 /// the repository (the simulator runs on this Mac) and fail if they drifted:
 /// rerun the script.
@@ -31,12 +31,41 @@ struct WebDataSyncTests {
         #expect(WebData.city("austin").polygon.count == 32 && WebData.city("dallas").polygon.count == 23)
     }
 
-    @Test func chargingLocationsMatchTheWebsite() throws {
-        let js = try site("js/austin-map.js"), page = try site("infrastructure.html")
-        for c in WebData.city("austin").charging { #expect(js.contains("name: '\(c.name)', lat: \(c.lat), lng: \(c.lng)")) }
-        for c in WebData.city("dallas").charging { #expect(page.contains("name: '\(c.name)', lat: \(c.lat), lng: \(c.lng)")) }
-        #expect(WebData.city("austin").charging.map(\.name) == ["St. Elmo Robotaxi Charging Hub", "Ridgepoint Robotaxi Charging Site"])
-        #expect(WebData.city("dallas").charging.map(\.name) == ["Irving Robotaxi Hub"])
+    /// Robotaxi facilities: the app ships the website's very file, and reads it the same way.
+    @Test @MainActor func facilitiesMatchTheWebsite() throws {
+        let site = try Data(contentsOf: TestFixtures.repoRoot.appendingPathComponent("public/data/facilities.json"))
+        let bundled = try Data(contentsOf: try #require(Bundle.main.url(forResource: "facilities", withExtension: "json")))
+        #expect(bundled == site, "rerun ios-native/scripts/sync-web-data.mjs")
+        let data = try #require(FacilityStore.decode(bundled))
+        #expect(data.facilities.map(\.id) == ["austin-st-elmo", "austin-ridgepoint", "irving-royal-lane", "dallas-cedar-springs"])
+        // The marker labels use the file's own words.
+        for kind in [Facility.Kind.charging, .staging, .combined] { #expect(FacilityStore.typeTitle(kind) == data.labels.type[kind.rawValue]) }
+        let store = FacilityStore()
+        #expect(store.facilities(in: "austin").map(\.name) == ["St. Elmo Robotaxi Charging Hub", "Ridgepoint Robotaxi Charging Site"])
+        #expect(store.facilities(in: "dallas").map(\.name) == ["Irving Robotaxi Hub", "Dallas Cedar Springs Staging Ground"])
+    }
+
+    /// The filter, per city: a combined site shows under both; one city's filter leaves the other alone.
+    @Test @MainActor func facilityFiltersPerCity() {
+        let store = FacilityStore()
+        store.filters["dallas"] = .charging
+        #expect(store.visible(in: "dallas").map(\.id) == ["irving-royal-lane"])
+        store.filters["dallas"] = .staging
+        #expect(store.visible(in: "dallas").map(\.id) == ["irving-royal-lane", "dallas-cedar-springs"])
+        #expect(store.filter(for: "austin") == .all && store.visible(in: "austin").count == 2)
+        store.filters["austin"] = .staging
+        #expect(store.visible(in: "austin").isEmpty)
+    }
+
+    /// Cedar Springs: a staging ground with the owner's photos from the site, never charging.
+    @Test @MainActor func cedarSpringsIsAStagingGround() throws {
+        let c = try #require(FacilityStore().facility("dallas-cedar-springs"))
+        #expect(c.type == .staging && c.charging.isEmpty && !c.hasCharging)
+        #expect(c.photos.count == 3 && c.photos.allSatisfy { $0.url?.absoluteString.hasPrefix("https://cybercabhunter.com/images/facilities/dallas-cedar-springs/") == true })
+        #expect(c.webURL.absoluteString.hasSuffix("/infrastructure?city=dallas&facility=dallas-cedar-springs"))
+        #expect(Facility.day(c.lastVerified) == "Nov 16, 2026")
+        // Only the site's own facility images, never a hotlink.
+        #expect(Facility.Photo.url("https://evil.example/x.webp") == nil && Facility.Photo.url("/images/other/x.webp") == nil)
     }
 
     @Test func usMapMatchesTheWebsite() throws {

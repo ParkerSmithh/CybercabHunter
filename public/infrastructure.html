@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="The Austin Cybercab service zone on a live map, with charging locations, traffic-camera spots and fleet and fare stats.">
+<meta name="description" content="The Austin Cybercab service zone on a live map, with Robotaxi charging hubs and staging grounds, traffic-camera spots and fleet and fare stats.">
 <meta name="theme-color" content="#090B0F">
 <link rel="canonical" href="https://cybercabhunter.com/infrastructure">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CybercabHunter">
 <meta property="og:title" content="Cybercab Service Zone Map – CybercabHunter">
-<meta property="og:description" content="The Austin Cybercab service zone on a live map, with charging locations, traffic-camera spots and fleet and fare stats.">
+<meta property="og:description" content="The Austin Cybercab service zone on a live map, with Robotaxi charging hubs and staging grounds, traffic-camera spots and fleet and fare stats.">
 <meta property="og:url" content="https://cybercabhunter.com/infrastructure">
 <meta property="og:image" content="https://cybercabhunter.com/images/CybercabAnimation-poster.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Cybercab Service Zone Map – CybercabHunter">
-<meta name="twitter:description" content="The Austin Cybercab service zone on a live map, with charging locations, traffic-camera spots and fleet and fare stats.">
+<meta name="twitter:description" content="The Austin Cybercab service zone on a live map, with Robotaxi charging hubs and staging grounds, traffic-camera spots and fleet and fare stats.">
 <meta name="twitter:image" content="https://cybercabhunter.com/images/CybercabAnimation-poster.jpg">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://cybercabhunter.com/#organization","name":"CybercabHunter","url":"https://cybercabhunter.com/","logo":"https://cybercabhunter.com/images/brand/cybercab-logo-512.png"},{"@type":"WebSite","@id":"https://cybercabhunter.com/#website","name":"CybercabHunter","url":"https://cybercabhunter.com/","publisher":{"@id":"https://cybercabhunter.com/#organization"}}]}</script>
 <link rel="icon" href="/favicon.ico?v=b1" sizes="16x16 32x32 48x48">
@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="css/style.css?v=79">
 <link rel="stylesheet" href="css/brand-type.css?v=4">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
+<link rel="stylesheet" href="css/zones-facilities.css?v=1">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -135,7 +136,8 @@
 
         <!-- Map key, right under the zone name -->
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-xs text-slate-400">
-          <span class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px]" style="background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85)" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="#FAE030" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Locations</span>
+          <span class="flex items-center gap-2"><span class="fac-legend-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Hubs</span>
+          <span class="flex items-center gap-2"><span class="fac-legend-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 3h6.2a5.3 5.3 0 0 1 0 10.6H10.4V21H7V3zm3.4 3.1v4.4h2.7a2.2 2.2 0 0 0 0-4.4h-2.7z"/></svg></span>Staging Grounds</span>
           <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
         </div>
 
@@ -174,6 +176,12 @@
         </dl>
         <!-- Sample size and freshness of the fare stats (GET /api/fleet-stats). -->
         <p id="fareBasis" class="text-xs text-slate-500 mt-2"></p>
+
+        <!-- Robotaxi facilities (js/zones-facilities.js, /data/facilities.json): each opens its details. -->
+        <div data-facility-section class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4" hidden>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Robotaxi Facilities</p>
+          <ul class="fac-list" data-facility-list="austin" aria-label="Robotaxi facilities, Austin"></ul>
+        </div>
       </div>
 
       <!-- Dallas (launched April 18, 2026): the same structure as Austin's panel.
@@ -191,7 +199,8 @@
 
         <!-- Map key, right under the zone name -->
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-xs text-slate-400">
-          <span class="flex items-center gap-2"><span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-[5px]" style="background:rgba(15,16,17,0.94);box-shadow:0 0 0 1px rgba(250,224,48,0.85)" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="#FAE030" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Locations</span>
+          <span class="flex items-center gap-2"><span class="fac-legend-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 2 4 13.5h6.5L9 22l10-12h-6.6L13.5 2z"/></svg></span>Charging Hubs</span>
+          <span class="flex items-center gap-2"><span class="fac-legend-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 3h6.2a5.3 5.3 0 0 1 0 10.6H10.4V21H7V3zm3.4 3.1v4.4h2.7a2.2 2.2 0 0 0 0-4.4h-2.7z"/></svg></span>Staging Grounds</span>
           <span class="flex items-center gap-2"><img src="images/CybercabOverhead.png" alt="" width="18" height="18" class="w-[18px] h-[18px] object-contain">Cybercabs</span>
         </div>
 
@@ -229,6 +238,12 @@
           </div>
         </dl>
         <p id="dalFareBasis" class="text-xs text-slate-500 mt-2"></p>
+
+        <!-- Robotaxi facilities (js/zones-facilities.js, /data/facilities.json): each opens its details. -->
+        <div data-facility-section class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4" hidden>
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Robotaxi Facilities</p>
+          <ul class="fac-list" data-facility-list="dallas" aria-label="Robotaxi facilities, Dallas"></ul>
+        </div>
       </div>
     </div>
 
@@ -400,11 +415,12 @@
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/calc.js?v=13"></script>
 <script src="js/main.js?v=34"></script>
-<script src="js/austin-map.js?v=13"></script>
+<script src="js/austin-map.js?v=14"></script>
 <script src="js/map-search.js?v=3"></script>
 <script src="js/zones-heatmap.js?v=4"></script>
 <script src="js/zones-following.js?v=2"></script>
 <script src="js/zone-warp.js?v=2"></script>
+<script src="js/zones-facilities.js?v=1"></script>
 <script>
   CCC.init();
 
@@ -528,18 +544,13 @@
     CCCAustinMap.addServiceZone(map, CCCAustinMap.DALLAS_SERVICE_ZONE, { id: 'dallas' });
   });
 
-  // Charging locations and camera-spotted Cybercabs (shared with the homepage
-  // minimap): js/austin-map.js.
-  // Both follow the selected city (Dallas: its TxDOT camera captures and places).
+  // Camera-spotted Cybercabs (shared with the homepage minimap): js/austin-map.js.
+  // They follow the selected city (Dallas: its TxDOT camera captures and places).
   let currentCity = 'austin';   // declared first: the features read it right away
-  const dallasChargingLocations = [
-    // Owner-verified address/coordinates, geocoded 2026-10-07. Public sources:
-    // TeslaNorth, 2026-05-17: https://teslanorth.com/2026/05/17/teslas-24-acre-robotaxi-hub-just-got-exposed-in-city-documents/
-    // Irving City Council May 7 / July 16, 2026 coverage (citizenportal.ai);
-    // @scotsrule08 drive-by, 2026-05-21: https://x.com/scotsrule08/status/2057582124987724121
-    { name: 'Irving Robotaxi Hub', lat: 32.92182, lng: -97.00428, note: '4203 W Royal Ln, Irving, TX — 35,049 sqft warehouse remodel, 16 V4 Supercharger stalls, 212 vehicle storage spots (zoning approved by Irving City Council ~Jul 16, 2026)' }
-  ];
-  const features = CCCAustinMap.addFeatures(map, { city: () => currentCity, dallasChargingLocations });
+  const features = CCCAustinMap.addFeatures(map, { city: () => currentCity });
+  // Robotaxi facilities: charging hubs and staging grounds from /data/facilities.json
+  // (js/zones-facilities.js; the app uses the same file). The map works without it.
+  const facilities = window.CCCZonesFacilities ? CCCZonesFacilities.attach(map, { city: () => currentCity, setCity: c => { const b = document.querySelector(`.city-btn[data-city="${c}"]`); if (b) b.click(); } }) : null;
   // Place search (js/map-search.js); the map works without it.
   const search = window.CCCMapSearch ? CCCMapSearch.attach(map, { area: () => currentCity }) : null;
   // Normal Map / Heatmap (js/zones-heatmap.js): Normal by default; the map works without it.
@@ -570,7 +581,7 @@
     document.getElementById('zonesReplay').setAttribute('href', meta.replay);
     if (search) search.reset();
     if (features && features.refreshCameras) features.refreshCameras();
-    if (features && features.refreshChargingLocations) features.refreshChargingLocations();
+    if (facilities) facilities.refresh();
     if (heat) heat.refresh();
     if (following) following.refresh();
     if (city === 'dallas') {

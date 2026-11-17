@@ -130,7 +130,7 @@ final class ZonesUITests: XCTestCase {
 
         app.buttons["zoneDetailsButton"].tap()
         XCTAssertTrue(legend.waitForExistence(timeout: 10), "open: the legend is in Zone details")
-        XCTAssertTrue(legend.label.contains("Charging Locations") && legend.label.contains("Cybercabs"))
+        XCTAssertTrue(legend.label.contains("Charging Hubs") && legend.label.contains("Staging Grounds") && legend.label.contains("Cybercabs"))
         shot(app, "z9-zone-details-legend")
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(legend.waitForNonExistence(timeout: 10), "closed again: gone")

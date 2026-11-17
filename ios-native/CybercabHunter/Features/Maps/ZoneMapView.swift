@@ -3,13 +3,13 @@ import MapKit
 
 /// What the rider tapped on the map.
 enum MapSelection: Identifiable, Equatable {
-    case charging(WebData.ChargingLocation)
+    case facility(Facility)
     case liveCamera(CameraDetection)
     case heatCamera(id: String, name: String)
     case following(FollowingMapSpot)
     var id: String {
         switch self {
-        case .charging(let c): "charging-\(c.name)"
+        case .facility(let f): "facility-\(f.id)"
         case .liveCamera(let d): "live-\(d.cameraId)"
         case .heatCamera(let id, _): "heat-\(id)"
         case .following(let spot): "following-\(spot.id)"
@@ -29,6 +29,8 @@ struct ZoneMapView: UIViewRepresentable {
     var followingSpots: [FollowingMapSpot] = []
     var heatPoints: [ZonesModel.HeatPoint] = []
     var cameraDots: [ZonesModel.CameraDot] = []
+    /// The Robotaxi facilities to show (the selected city's, after its filter).
+    var facilities: [Facility] = []
     var place: PlaceResults.Place?
     var locationFix: CLLocation?
     var recenterID = 0
@@ -61,7 +63,7 @@ struct ZoneMapView: UIViewRepresentable {
         map.isZoomEnabled = interactive
         map.cameraZoomRange = MKMapView.CameraZoomRange(minCenterCoordinateDistance: 400, maxCenterCoordinateDistance: 250_000)
         map.backgroundColor = UIColor(Color.chSurface)
-        map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "charging")
+        map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "facility")
         map.register(CybercabMarkerView.self, forAnnotationViewWithReuseIdentifier: "live")
         map.register(CybercabClusterView.self, forAnnotationViewWithReuseIdentifier: "cybercabCluster")
         map.register(MKAnnotationView.self, forAnnotationViewWithReuseIdentifier: "dot")
@@ -148,9 +150,14 @@ struct ZoneMapView: UIViewRepresentable {
 
         func syncAnnotations(on map: MKMapView) {
             let p = parent
-            // Charging pins: the selected city's (Dallas's hub only with Dallas, as the site).
-            let wantCharging = p.showsMarkers ? WebData.city(p.cityKey).charging + (p.cityKey == "austin" ? [] : WebData.city("austin").charging) : []
-            reconcile(map, current: map.annotations.compactMap { $0 as? ChargingAnnotation }, wanted: wantCharging, key: { $0.location.id }, wantedKey: \.id, make: ChargingAnnotation.init)
+            // Robotaxi facilities: the selected city's, after its filter; reconciled by id
+            // (a refresh never duplicates one).
+            let wantFacilities = p.showsMarkers ? p.facilities : []
+            let facilityCurrent = map.annotations.compactMap { $0 as? FacilityAnnotation }
+            let stale = facilityCurrent.filter { have in !wantFacilities.contains { $0.id == have.facility.id && $0 == have.facility } }
+            map.removeAnnotations(stale)
+            let kept = Set(facilityCurrent.filter { !stale.contains($0) }.map(\.facility.id))
+            map.addAnnotations(wantFacilities.filter { !kept.contains($0.id) }.map(FacilityAnnotation.init))
             // Camera-spotted Cybercabs: Normal Map only (Heatmap hides them).
             let wantLive = p.showsMarkers && !p.heatMode ? p.liveDetections : []
             let liveCurrent = map.annotations.compactMap { $0 as? LiveCameraAnnotation }
@@ -184,12 +191,6 @@ struct ZoneMapView: UIViewRepresentable {
                 map.removeAnnotations(dotCurrent)
                 map.addAnnotations(wantDots.map(CameraDotAnnotation.init))
             }
-        }
-
-        private func reconcile<A: MKAnnotation, W>(_ map: MKMapView, current: [A], wanted: [W], key: (A) -> String, wantedKey: KeyPath<W, String>, make: (W) -> A) {
-            let have = Set(current.map(key)), want = Set(wanted.map { $0[keyPath: wantedKey] })
-            map.removeAnnotations(current.filter { !want.contains(key($0)) })
-            map.addAnnotations(wanted.filter { !have.contains($0[keyPath: wantedKey]) }.map(make))
         }
 
         func syncHeat(on map: MKMapView) {
@@ -231,9 +232,14 @@ struct ZoneMapView: UIViewRepresentable {
                 return view
             }
             switch annotation {
-            case let a as ChargingAnnotation:
-                let v = mapView.dequeueReusableAnnotationView(withIdentifier: "charging", for: a)
-                MarkerViews.charging(v); v.displayPriority = .required; v.accessibilityLabel = "Charging location, \(a.location.name)"
+            case let a as FacilityAnnotation:
+                let v = mapView.dequeueReusableAnnotationView(withIdentifier: "facility", for: a)
+                MarkerViews.facility(v, kind: a.facility.type)
+                v.displayPriority = .required
+                v.isAccessibilityElement = true
+                v.accessibilityTraits = .button
+                v.accessibilityLabel = "\(FacilityStore.typeTitle(a.facility.type)): \(a.facility.name)"
+                v.accessibilityIdentifier = "facilityMarker-\(a.facility.id)"
                 return v
             case let a as LiveCameraAnnotation:
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: "live", for: a)
@@ -262,7 +268,7 @@ struct ZoneMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
             switch annotation {
-            case let a as ChargingAnnotation: parent.onSelect(.charging(a.location))
+            case let a as FacilityAnnotation: parent.onSelect(.facility(a.facility))
             case let a as LiveCameraAnnotation: parent.onSelect(.liveCamera(a.detection))
             case let a as FollowingSpotAnnotation: parent.onSelect(.following(a.spot))
             case let a as CameraDotAnnotation: parent.onSelect(.heatCamera(id: a.dot.id, name: a.dot.name))

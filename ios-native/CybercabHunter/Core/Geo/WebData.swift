@@ -3,7 +3,8 @@ import CoreLocation
 import MapKit
 
 /// The website's fixed map data, copied unchanged by
-/// ios-native/scripts/sync-web-data.mjs (Resources/WebData).
+/// ios-native/scripts/sync-web-data.mjs (Resources/WebData). Robotaxi
+/// facilities are `FacilityStore` (the same script copies their file).
 enum WebData {
     struct Zones: Decodable { let cities: [City] }
 
@@ -13,7 +14,6 @@ enum WebData {
         let state: String
         /// [lng, lat] pairs, as in the site's JS.
         let zone: [[Double]]
-        let charging: [ChargingLocation]
         var id: String { key }
 
         var polygon: [CLLocationCoordinate2D] { zone.map { CLLocationCoordinate2D(latitude: $0[1], longitude: $0[0]) } }
@@ -24,15 +24,6 @@ enum WebData {
         }
 
         static func == (a: City, b: City) -> Bool { a.key == b.key }
-    }
-
-    struct ChargingLocation: Decodable, Equatable, Identifiable {
-        let name: String
-        let lat: Double
-        let lng: Double
-        let note: String
-        var id: String { name }
-        var coordinate: CLLocationCoordinate2D { .init(latitude: lat, longitude: lng) }
     }
 
     struct USMap: Decodable {

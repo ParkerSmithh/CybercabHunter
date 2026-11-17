@@ -1,0 +1,224 @@
+{
+ "about": "Robotaxi facilities on the Zones map: the one list for the website (js/zones-facilities.js) and the iOS app (bundled by ios-native/scripts/sync-web-data.mjs, refreshed from this URL). Photos: scripts/facility-photos.py. Only add a facility, detail or photo with a source.",
+ "version": 1,
+ "updated": "2026-11-16",
+ "labels": {
+  "type": {
+   "charging": "Charging Hub",
+   "staging": "Staging Ground",
+   "combined": "Charging & Staging"
+  },
+  "operational": {
+   "operating": "Operating",
+   "reported": "Reported activity",
+   "planned": "Planned",
+   "unknown": "Status unknown"
+  },
+  "verification": {
+   "confirmed": "Confirmed",
+   "observed": "Observed",
+   "reported": "Reported",
+   "unverified": "Unverified"
+  },
+  "verificationHelp": {
+   "confirmed": "Confirmed by Tesla or in official records",
+   "observed": "Cybercabs photographed here; not confirmed by Tesla",
+   "reported": "From permit filings and news reports",
+   "unverified": "Not yet checked against a source"
+  }
+ },
+ "facilities": [
+  {
+   "id": "austin-st-elmo",
+   "name": "St. Elmo Robotaxi Charging Hub",
+   "city": "austin",
+   "address": "405 E St Elmo Rd, Austin, TX 78745",
+   "lat": 30.2149565,
+   "lng": -97.7630241,
+   "type": "charging",
+   "operational": "planned",
+   "verification": "reported",
+   "summary": "Planned two-phase Robotaxi charging site across the road from Tesla's St. Elmo service center.",
+   "description": "A vehicle storage lot across E St. Elmo Rd from Tesla's St. Elmo service center. Permit filings reported in August 2026 show a two-phase Robotaxi charging site. No opening date has been announced.",
+   "charging": [
+    "Phase 1: 48 Supercharger posts (most reports say V4; one says V3)",
+    "Phase 2: up to 80 wireless inductive chargers for Cybercab, fed by V4 cabinets"
+   ],
+   "staging": [],
+   "photos": [],
+   "photoReview": "No location photographs with reuse permission found (Wikimedia Commons searched; none geotagged within 300 m). Coverage shows permit filings, not the site.",
+   "sources": [
+    {
+     "title": "Tesla Plans Charging Hub in Austin With 80 Wireless Chargers",
+     "publisher": "Not a Tesla App",
+     "url": "https://www.notateslaapp.com/news/4589/tesla-plans-charging-hub-in-austin-with-80-wireless-chargers"
+    },
+    {
+     "title": "Tesla gears up for Cybercab robotaxi launch, leases an 80 wireless charger location in Austin, Texas",
+     "publisher": "Tesla Oracle",
+     "date": "2026-08-19",
+     "url": "https://www.teslaoracle.com/2026/08/19/tesla-tsla-gears-up-for-cybercab-robotaxi-launch-leases-an-80-wireless-charger-location-in-austin-texas/"
+    },
+    {
+     "title": "Permit filing: 80 wireless chargers in Phase 2",
+     "publisher": "Sawyer Merritt on X",
+     "url": "https://x.com/SawyerMerritt/status/2089729557083439398"
+    }
+   ],
+   "lastVerified": "2026-11-16"
+  },
+  {
+   "id": "austin-ridgepoint",
+   "name": "Ridgepoint Robotaxi Charging Site",
+   "city": "austin",
+   "address": "2323 Ridgepoint Dr, Austin, TX 78754",
+   "lat": 30.3285815,
+   "lng": -97.6749944,
+   "type": "charging",
+   "operational": "planned",
+   "verification": "reported",
+   "summary": "Planned 24-post fleet charging depot at Tesla's Ridgepoint site in northeast Austin.",
+   "description": "Tesla's Austin-Ridgepoint service center site. A site plan filed in June 2026 under a project named \"2323 Ridgepoint Dr – Robotaxi\" adds a fleet charging depot; the drawings and permit record don't state the purpose outright. No opening date has been announced.",
+   "charging": [
+    "24 V4 Supercharger posts",
+    "No wireless charging pads in the plans",
+    "A 2,500 kVA transformer serving a 4,000 A switchboard"
+   ],
+   "staging": [],
+   "photos": [],
+   "photoReview": "No location photographs with reuse permission found (Wikimedia Commons searched; none geotagged within 300 m). Tesla's own Find Us page shows the service center, not the charging depot.",
+   "sources": [
+    {
+     "title": "Tesla Files Plans for Another Robotaxi-Only Supercharger",
+     "publisher": "Not a Tesla App",
+     "url": "https://www.notateslaapp.com/news/4674/tesla-files-plans-for-another-robotaxi-only-supercharger"
+    },
+    {
+     "title": "Tesla's Second Austin Robotaxi Charging Site Has 24 Plugs and No Wireless Pads",
+     "publisher": "EV (eletric-vehicles.com)",
+     "url": "https://eletric-vehicles.com/tesla/teslas-second-austin-robotaxi-charging-site-has-24-plugs-and-no-wireless-pads/"
+    },
+    {
+     "title": "Tesla Service Austin-Ridgepoint",
+     "publisher": "Tesla",
+     "url": "https://www.tesla.com/findus/location/service/AustinRidgepoint"
+    }
+   ],
+   "lastVerified": "2026-11-16"
+  },
+  {
+   "id": "irving-royal-lane",
+   "name": "Irving Robotaxi Hub",
+   "city": "dallas",
+   "address": "4203 W Royal Ln, Irving, TX 75063",
+   "lat": 32.92182,
+   "lng": -97.00428,
+   "type": "combined",
+   "operational": "planned",
+   "verification": "reported",
+   "summary": "Planned Robotaxi and Cybercab hub: charging, storage, dispatch and service. Zoning approved July 16, 2026.",
+   "description": "A 35,049 sq ft warehouse remodel planned as a Robotaxi and Cybercab operations hub, from which the fleet would be dispatched, serviced, repaired, cleaned and charged. Irving City Council approved the zoning change on July 16, 2026. Outside the Dallas service zone.",
+   "charging": [
+    "16 V4 Supercharger stalls near the maintenance building"
+   ],
+   "staging": [
+    "212 vehicle storage spots on the north part of the property",
+    "Fleet dispatch, service, repair and cleaning on site"
+   ],
+   "photos": [],
+   "photoReview": "Drive-by photos exist (@scotsrule08 on X, May 21, 2026; EV Wire \"First look\"), but none with reuse permission. Ask the photographers before adding them.",
+   "sources": [
+    {
+     "title": "Tesla's 24-acre Robotaxi hub just got exposed in city documents",
+     "publisher": "TeslaNorth",
+     "date": "2026-05-17",
+     "url": "https://teslanorth.com/2026/05/17/teslas-24-acre-robotaxi-hub-just-got-exposed-in-city-documents/"
+    },
+    {
+     "title": "Irving council approves zoning for Tesla Robotaxi hub",
+     "publisher": "Citizen Portal",
+     "date": "2026-07-16",
+     "url": "https://citizenportal.ai/articles/8543612/texas/dallas-county/irving/irving-council-approves-zoning-for-tesla-robotaxi-hub-after-safety-briefing-and-firstresponder-commitments"
+    },
+    {
+     "title": "Drive-by of the proposed Robotaxi maintenance site",
+     "publisher": "@scotsrule08 on X",
+     "date": "2026-05-21",
+     "url": "https://x.com/scotsrule08/status/2057582124987724121"
+    },
+    {
+     "title": "Tesla is Planning a Dedicated Robotaxi Hub in Texas",
+     "publisher": "Not a Tesla App",
+     "url": "https://www.notateslaapp.com/news/4188/tesla-is-planning-a-dedicated-robotaxi-hub-in-texas-video"
+    }
+   ],
+   "lastVerified": "2026-11-16"
+  },
+  {
+   "id": "dallas-cedar-springs",
+   "name": "Dallas Cedar Springs Staging Ground",
+   "city": "dallas",
+   "address": "Near Cedar Springs Rd & W Mockingbird Ln, Dallas, TX 75235",
+   "locationNote": "A parking lot at the northwest corner of Cedar Springs Rd and W Mockingbird Ln, by Dallas Love Field. It's across the street from Tesla's Cedar Springs service center (6500 Cedar Springs Rd), which is a separate site.",
+   "lat": 32.8351,
+   "lng": -96.8368,
+   "type": "staging",
+   "operational": "reported",
+   "verification": "observed",
+   "summary": "Parking lot where rows of Cybercabs have been photographed, reportedly staged ahead of a possible public rollout.",
+   "description": "A parking lot where rows of Cybercabs have been photographed. They've reportedly been staged in preparation for a possible public rollout in Dallas. Tesla hasn't confirmed that it runs the lot as a staging facility, and hasn't announced a public launch date.",
+   "charging": [],
+   "staging": [
+    "Rows of Cybercabs photographed parked on the lot",
+    "Across the street, Tesla's Cedar Springs service center cleans and services Robotaxis and validation Cybercabs (Road to Autonomy field report, Nov 2, 2026)"
+   ],
+   "photos": [
+    {
+     "src": "/images/facilities/dallas-cedar-springs/01-lot-rows.webp",
+     "thumb": "/images/facilities/dallas-cedar-springs/01-lot-rows-thumb.webp",
+     "width": 1448,
+     "height": 1086,
+     "caption": "Rows of Cybercabs parked on the lot.",
+     "alt": "Long rows of gold Cybercabs parked on a concrete lot under a blue sky, with more Cybercabs in the distance.",
+     "credit": "CybercabHunter's owner",
+     "license": "Photographed by CybercabHunter's owner; published with the photographer's permission"
+    },
+    {
+     "src": "/images/facilities/dallas-cedar-springs/02-side-profile.webp",
+     "thumb": "/images/facilities/dallas-cedar-springs/02-side-profile-thumb.webp",
+     "width": 1600,
+     "height": 711,
+     "caption": "A Cybercab on the lot, with two more parked against the wall behind it.",
+     "alt": "Side view of a gold Cybercab with the Cybercab logo on its door; two more gold Cybercabs are parked facing a block wall behind it.",
+     "credit": "CybercabHunter's owner",
+     "license": "Photographed by CybercabHunter's owner; published with the photographer's permission"
+    },
+    {
+     "src": "/images/facilities/dallas-cedar-springs/03-row-by-trees.webp",
+     "thumb": "/images/facilities/dallas-cedar-springs/03-row-by-trees-thumb.webp",
+     "width": 546,
+     "height": 290,
+     "caption": "A row of Cybercabs along the tree line.",
+     "alt": "A row of gold Cybercabs parked side by side along a line of trees.",
+     "credit": "CybercabHunter's owner",
+     "license": "Photographed by CybercabHunter's owner; published with the photographer's permission"
+    }
+   ],
+   "photoReview": "",
+   "sources": [
+    {
+     "title": "Photographs of the lot by CybercabHunter's owner (in the gallery)",
+     "publisher": "CybercabHunter",
+     "url": "https://cybercabhunter.com/infrastructure?city=dallas&facility=dallas-cedar-springs"
+    },
+    {
+     "title": "Tesla Robotaxi Dallas–Fort Worth field report (the Cedar Springs service center and nearby lots)",
+     "publisher": "The Road to Autonomy",
+     "date": "2026-11-02",
+     "url": "https://www.roadtoautonomy.com/tesla-robotaxi-dallas-fort-worth-field-report/"
+    }
+   ],
+   "lastVerified": "2026-11-16"
+  }
+ ]
+}
