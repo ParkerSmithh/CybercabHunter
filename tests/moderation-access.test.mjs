@@ -78,7 +78,14 @@ async function run() {
         return { start, state, cb, location: cb.headers.get('Location') };
       };
 
+      // The first sign-in creates this account: a brand-new account gets the
+      // one-time Tesla Sync invitation first, which then continues to the page
+      // asked for (worker/onboarding.js, tests/tesla-sync-onboarding.test.mjs).
       let r = await signIn('/moderation');
+      check('a brand-new account: the one-time invitation, then on to /moderation', r.location.startsWith('https://cybercabhunter.com/link-gmail?welcome=1&next=%2Fmoderation&signin=success#tesla_session='));
+      // From here on it is a returning account (the invitation was handled).
+      ctx.d1.exec("UPDATE users SET tesla_sync_onboarding = 'skipped' WHERE tesla_sync_onboarding IS NOT NULL");
+      r = await signIn('/moderation');
       check('start redirects to Google and does not pass the return page to Google', r.start.status === 302 && r.start.headers.get('Location').startsWith('https://accounts.google.com/') && !r.start.headers.get('Location').includes('moderation'));
       check('the callback returns to /moderation on the production domain', r.location.startsWith('https://cybercabhunter.com/moderation?signin=success#tesla_session='));
       const sid = r.location.split('#tesla_session=')[1];

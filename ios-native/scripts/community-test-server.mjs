@@ -14,7 +14,8 @@
 //
 // Sessions: "s-alice", "s-bob", "s-dave", "s-mod" (moderator), "s-carol"
 // (private), "s-erin" (a throwaway account the fixtures delete), "s-frank"
-// (served only: an upload and a Google photo, for the avatar checks). Any other
+// (served only: an upload and a Google photo, for the avatar checks), and
+// "s-new1" … "s-new6" (brand-new accounts: the Tesla Sync invitation is due). Any other
 // token, e.g. "s-expired", is an ended session (401).
 //
 // Phase 5 adds sightings (approved, pending and rejected, through the real
@@ -39,6 +40,13 @@ const PHOTO = fs.readFileSync(path.join(ROOT, 'public/images/CybercabAnimation-p
 for (const id of ['carol', 'dave', 'erin']) {
   d1.prepare(`INSERT INTO users (id, display_name, profile_visibility) VALUES (?, ?, 'public')`).bind(id, id === 'carol' ? 'Carol Private' : 'Dave D')._exec();
   await env.TESLA_SESSIONS.put(`session:s-${id}`, JSON.stringify({ user_id: id }));
+}
+// Brand-new accounts, as Google sign-in leaves them (worker/onboarding.js:
+// 'pending', the one-time Tesla Sync invitation is due). One per UI test,
+// since each moves its own forward: "s-new1" … "s-new6".
+for (let n = 1; n <= 6; n++) {
+  d1.prepare(`INSERT INTO users (id, display_name, profile_visibility, tesla_sync_onboarding) VALUES (?, ?, 'public', 'pending')`).bind(`new${n}`, `New Rider ${n}`)._exec();
+  await env.TESLA_SESSIONS.put(`session:s-new${n}`, JSON.stringify({ user_id: `new${n}` }));
 }
 d1.exec(`UPDATE users SET leaderboard_opt_in = 0, handle = 'carol_c' WHERE id = 'carol'`);
 d1.exec(`UPDATE users SET leaderboard_opt_in = 1, handle = 'dave_d' WHERE id = 'dave'`);

@@ -153,6 +153,28 @@
 
     <!-- Ready: automatic forwarding setup -->
     <div id="lgReady" class="hidden">
+      <!-- First-time Tesla Sync invitation (js/link-gmail.js, worker/onboarding.js):
+           only for a brand-new account the server still lists as offered
+           ('pending' / 'presented'), reached from sign-in with ?welcome=1. It is
+           optional: Skip for Now, or Set Up Gmail (the steps below); either way
+           the rider then continues to the page they asked for (?next=). -->
+      <section id="lgWelcome" class="hidden glass rounded-2xl p-6 sm:p-8 max-w-2xl mb-6 max-sm:p-5 max-sm:mb-4" aria-labelledby="lgWelcomeTitle">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Tesla Sync</p>
+        <h2 id="lgWelcomeTitle" tabindex="-1" class="mt-2 font-display font-bold text-2xl lg:text-[28px] tracking-tight text-white outline-none max-sm:text-xl">Welcome to CybercabHunter</h2>
+        <p class="mt-1 font-display font-semibold text-lg text-gold max-sm:text-base">Set Up Tesla Sync</p>
+        <p class="mt-3 text-sm text-slate-300 leading-relaxed max-w-[56ch]">Automatically track your Tesla Robotaxi rides by forwarding Tesla receipts to CybercabHunter.</p>
+        <p class="mt-2 text-xs text-slate-500">Optional. You can set it up any time from Rider Data.</p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button id="lgWelcomeSetup" type="button" class="inline-flex items-center justify-center min-h-[44px] px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204]">Set Up Gmail</button>
+          <button id="lgWelcomeSkip" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-3 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Skip for Now</button>
+        </div>
+      </section>
+      <!-- While a new rider follows the steps: a way out at any time. -->
+      <div id="lgWelcomeBar" class="hidden max-w-2xl mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 max-sm:mb-4" role="region" aria-label="Tesla Sync setup">
+        <p class="text-sm text-slate-300">Setting up Tesla Sync. You can finish it later from Rider Data.</p>
+        <button id="lgWelcomeLater" type="button" class="inline-flex items-center justify-center min-h-[40px] px-4 rounded-lg text-sm font-semibold border border-[rgba(250,224,48,0.35)] text-slate-100 hover:bg-white/5 transition-colors">Skip for Now</button>
+      </div>
+
       <!-- Gmail status first (js/link-gmail.js gmailState): "Gmail Linked" for a
            linked rider (the setup steps stay closed behind Manage forwarding), or
            "Reconnect Gmail" when Gmail asks to confirm forwarding again. Hidden
@@ -530,7 +552,7 @@
 <script>
   CCC.init();
 </script>
-<script src="js/link-gmail.js?v=14"></script>
+<script src="js/link-gmail.js?v=15"></script>
 <script src="/vendor/gsap-3.13.0.min.js" defer></script>
 <script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
 <script src="js/animated-content.js?v=1" defer></script>

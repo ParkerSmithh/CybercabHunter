@@ -274,6 +274,52 @@ try {
     await shot(page, 'link-gmail-linked-390');
     await c.close();
   }
+
+  console.log('10. A brand-new account (desktop): the one-time Tesla Sync invitation, then the page asked for');
+  {
+    nextSub = 'sub-brand-new';
+    const { c, page, visited, errors } = await open();
+    await page.goto(`${ORIGIN}/rider-data`); await settle(page);
+    await signIn(page, 'main a[href^="signin.html?returnTo=%2Frider-data"]');
+    await page.waitForSelector('#lgWelcome:not(.hidden)', { timeout: 8000 }).catch(() => {});
+    check('signed up from Rider Data: the invitation on Link Gmail', new URL(page.url()).pathname === '/link-gmail' && await page.isVisible('#lgWelcome'));
+    check('…"Welcome to CybercabHunter", "Set Up Tesla Sync", Set Up Gmail and Skip for Now', (await page.textContent('#lgWelcomeTitle')).trim() === 'Welcome to CybercabHunter' && /Set Up Tesla Sync/.test(await page.textContent('#lgWelcome')) && await page.isVisible('#lgWelcomeSetup') && await page.isVisible('#lgWelcomeSkip'));
+    await shot(page, 'onboarding-web-1440');
+    await page.reload(); await settle(page); await page.waitForTimeout(400);
+    check('refresh: still the invitation', await page.isVisible('#lgWelcome'));
+    await page.click('#lgWelcomeSkip');
+    await page.waitForURL(/\/rider-data/); await settle(page); await page.waitForTimeout(300);
+    check('Skip for Now: on to Rider Data, signed in', new URL(page.url()).pathname === '/rider-data' && await page.isVisible('#dataSignedIn'));
+    await page.evaluate(() => { const b = document.getElementById('accountMenuSignOut'); if (b) b.click(); else localStorage.removeItem('teslaSessionId'); });
+    await page.waitForTimeout(400);
+    await page.goto(`${ORIGIN}/rider-data`); await settle(page);
+    const before = visited.filter(v => v === '/link-gmail').length;
+    await signIn(page, 'main a[href^="signin.html?returnTo=%2Frider-data"]');
+    check('signing out and in again: straight to Rider Data, the invitation not repeated', new URL(page.url()).pathname === '/rider-data' && visited.filter(v => v === '/link-gmail').length === before);
+    // The harness blocks MapLibre (tests/e2e/harness.mjs), so the home page's minimap can't start after sign-out.
+    const real = errors.filter(e => !/maplibregl is not defined/.test(e));
+    check('no page errors (besides the harness\'s blocked map library)', real.length === 0, JSON.stringify(real));
+    await c.close();
+  }
+
+  console.log('11. A brand-new account (phone): Set Up Gmail, then Skip for Now from the steps');
+  {
+    nextSub = 'sub-brand-new-phone';
+    const { c, page } = await open({ width: 390, height: 844, mobile: true });
+    await page.goto(`${ORIGIN}/`); await settle(page);
+    await signIn(page, 'a[href^="signin.html"] >> visible=true');
+    await page.waitForSelector('#lgWelcome:not(.hidden)', { timeout: 8000 }).catch(() => {});
+    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    check('the invitation on a phone, no sideways scrolling', await page.isVisible('#lgWelcome') && (await overflow()) <= 0);
+    await shot(page, 'onboarding-web-390');
+    await page.click('#lgWelcomeSetup'); await page.waitForTimeout(300);
+    check('Set Up Gmail: the forwarding steps and the "Skip for Now" bar', await page.isVisible('#lgSetup') && await page.isVisible('#lgWelcomeBar') && !(await page.isVisible('#lgWelcome')));
+    await shot(page, 'onboarding-web-setup-390');
+    await page.click('#lgWelcomeLater');
+    await page.waitForURL(u => u.pathname === '/'); await settle(page);
+    check('Skip for Now from the steps: back to the home page they started from', new URL(page.url()).pathname === '/');
+    await c.close();
+  }
 } finally {
   await browser.close();
   server.close();

@@ -11,6 +11,7 @@
 
 import { db } from './db.js';
 import { leaderboardRiderChanged } from './community.js';
+import { getTeslaSyncOnboarding } from './onboarding.js';
 
 const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -214,10 +215,17 @@ async function handleCallback(request, env) {
     expirationTtl: SESSION_TTL_SECONDS
   });
 
+  // A brand-new account (still 'pending'): the one-time Tesla Sync invitation
+  // on Link Gmail first, which then continues to the page they asked for
+  // (worker/onboarding.js). Everyone else goes straight there.
+  const landing = (await getTeslaSyncOnboarding(sql, userId)) === 'pending'
+    ? `/link-gmail?welcome=1&next=${encodeURIComponent(returnTo || '/')}`
+    : returnTo;
+
   // Same fragment handoff Tesla's callback uses — never sent to any server,
   // and js/main.js already reads #tesla_session= into the same session
   // store regardless of which provider created it.
-  const headers = new Headers({ Location: successLocation(frontend, returnTo, sessionId) });
+  const headers = new Headers({ Location: successLocation(frontend, landing, sessionId) });
   return new Response(null, { status: 302, headers });
 }
 

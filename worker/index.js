@@ -33,6 +33,7 @@ import { apiListCameraSightings, apiGetCameraSightingImage, apiCreateCameraSight
 import { apiMuseLogRide } from './muse-rides.js';
 import { teslaRides } from './tesla-rides.js';
 import { googleAuth } from './google-auth.js';
+import { apiUpdateTeslaSyncOnboarding } from './onboarding.js';
 import { gmail } from './gmail.js';
 import { serveVideo } from './videos.js';
 import { sitemap } from './sitemap.js';
@@ -117,6 +118,12 @@ const worker = {
     // itself from the bearer session; none trust an ID from the request.
     if (url.pathname === '/api/me' && request.method === 'GET') {
       return withCors(await tesla.apiMe(request, env), request);
+    }
+    // The one-time Tesla Sync invitation: shown / skipped / completed (worker/onboarding.js).
+    if (url.pathname === '/api/onboarding/tesla-sync' && request.method === 'POST') {
+      const userId = await tesla.requireUserId(request, env);
+      if (!userId) return withCors(Response.json({ authenticated: false }, { status: 401 }), request);
+      return withCors(await apiUpdateTeslaSyncOnboarding(request, env, userId), request);
     }
     if (url.pathname === '/api/tesla/status' && request.method === 'GET') {
       return withCors(await tesla.apiTeslaStatus(request, env), request);

@@ -35,6 +35,16 @@
   let countdownTimer = null;
   let completionRequest = null;
 
+  // ---------- first-time Tesla Sync invitation (worker/onboarding.js) ----------
+  // Sign-in sends a brand-new account here once with ?welcome=1&next=<page>.
+  // The server decides whether it is due (its state is 'pending', or
+  // 'presented' after a refresh); the URL alone never shows it.
+  const PARAMS = new URLSearchParams(location.search);
+  const samePath = p => typeof p === 'string' && p.charAt(0) === '/' && p.charAt(1) !== '/' && p.charAt(1) !== '\\' && !/^\/(signin(\.html)?|api\/|oauth\/|link-gmail)/.test(p);
+  const welcomeAsked = PARAMS.get('welcome') === '1';
+  const nextPage = samePath(PARAMS.get('next')) ? PARAMS.get('next') : '/';
+  let welcome = null;        // null = not onboarding; 'invite' (the card) | 'setup' (the steps)
+
   // ---------- formatting ----------
   const sqlDate = ts => (ts ? new Date(String(ts).replace(' ', 'T') + 'Z') : null);
   function fmtWhen(ts) {
@@ -191,6 +201,14 @@
     const card = $('lgStatus');
     card.dataset.gmailState = state;
     if (autoCompletion) { show('lgStatus', false); return; }   // the "GMAIL IS LINKED" success panel is showing
+    if (welcome) {
+      show('lgWelcome', welcome === 'invite');
+      show('lgWelcomeBar', welcome === 'setup');
+      show('lgStatus', false);
+      show('lgSetup', welcome === 'setup');
+      show('lgSameAccount', welcome === 'setup');
+      return;
+    }
     show('lgStatus', state !== 'not_linked');
     const linked = state === 'linked';
     show('lgStatusIconOk', linked);
@@ -348,7 +366,33 @@
   function navigateToRiderData() {
     clearTimeout(countdownTimer);
     stopPolling();
+    if (welcome) { finishWelcome('complete'); return; }
     location.assign('/rider-data');
+  }
+
+  // Record the rider's choice (best effort, a few seconds at most), then go on
+  // to the page they asked for. A failure never keeps them here: the invitation
+  // was already shown, so it isn't offered automatically again.
+  function onboarding(action) {
+    const timeout = new Promise(resolve => setTimeout(resolve, 4000));
+    return Promise.race([api('/api/onboarding/tesla-sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }).catch(() => null), timeout]);
+  }
+  let leaving = false;
+  async function finishWelcome(action) {
+    if (leaving) return;
+    leaving = true;
+    stopPolling();
+    await onboarding(action);
+    location.assign(nextPage);
+  }
+  function setupWelcome() {
+    $('lgWelcomeSetup').addEventListener('click', () => {
+      welcome = 'setup';
+      renderGmailState();
+      $('lgSetupTitle').focus();
+    });
+    $('lgWelcomeSkip').addEventListener('click', () => finishWelcome('skip'));
+    $('lgWelcomeLater').addEventListener('click', () => finishWelcome('skip'));
   }
 
   function showCompletionError() {
@@ -362,7 +406,7 @@
     function tick() {
       if (autoCompletion !== completion || completion.stay) return;
       if (remaining === 0) { navigateToRiderData(); return; }
-      $('lgCountdown').textContent = `Opening Rider Data in ${remaining} ${remaining === 1 ? 'second' : 'seconds'}…`;
+      $('lgCountdown').textContent = `${welcome ? 'Continuing' : 'Opening Rider Data'} in ${remaining} ${remaining === 1 ? 'second' : 'seconds'}…`;
       remaining -= 1;
       countdownTimer = setTimeout(tick, 1000);
     }
@@ -429,9 +473,10 @@
   // ---------- load ----------
   async function load() {
     setView('loading');
-    let addr, sync;
+    let addr, sync, me = null;
     try {
-      [addr, sync] = await Promise.all([api('/api/receipt-ingestion/address'), api('/api/rides/sync-status')]);
+      [addr, sync, me] = await Promise.all([api('/api/receipt-ingestion/address'), api('/api/rides/sync-status'),
+        welcomeAsked ? api('/api/me').catch(() => null) : null]);
     } catch (e) {
       setView('error'); return;
     }
@@ -441,6 +486,12 @@
       setView('error'); return;
     }
     applyAddressResponse(addr);
+    // Onboarding only when the server says this account's invitation is due.
+    const invite = me && me.ok && me.json && me.json.onboarding ? me.json.onboarding.tesla_sync : null;
+    if (welcomeAsked && (invite === 'pending' || invite === 'presented') && !welcome) {
+      welcome = 'invite';
+      if (invite === 'pending') onboarding('presented');   // shown now: not offered automatically again
+    }
     status = sync.json;
     previousLinked = isLinked(status.forwarding);
     renderStatus();
@@ -453,7 +504,7 @@
 
   function init() {
     if (!sessionId) { setView('signedOut'); return; }
-    setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion(); setupGmailState();
+    setupCopy(); setupRotate(); setupStatus(); setupDone(); setupAutoCompletion(); setupGmailState(); setupWelcome();
     $('lgRetry').addEventListener('click', load);
     load();
   }

@@ -65,6 +65,7 @@ struct SightingsView: View {
         .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
         // Signed in after asking for the form from a control or shortcut: it opens now.
         .onChange(of: session.user?.id) { resumeAfterSignIn() }
+        .onChange(of: session.teslaSyncInviteShowing) { if !session.teslaSyncInviteShowing { resumeAfterSignIn() } }
         // Another control or shortcut (the map, Community…): an empty form makes
         // way; one holding the rider's photo or notes stays.
         .onChange(of: router.presentationReset) {
@@ -104,7 +105,8 @@ struct SightingsView: View {
     /// The sign-in a sighting request led to has finished: close the account
     /// sheet and open the form that was asked for (within ten minutes).
     private func resumeAfterSignIn(now: Date = .now) {
-        guard session.user != nil, let pending = router.resumeSightingAfterSignIn else { return }
+        // A brand-new account sees the Tesla Sync invitation first; the form follows it.
+        guard session.user != nil, !session.teslaSyncInviteShowing, let pending = router.resumeSightingAfterSignIn else { return }
         router.resumeSightingAfterSignIn = nil
         guard now.timeIntervalSince(pending.at) < 600 else { return }
         router.closeAccountSheetRequest &+= 1

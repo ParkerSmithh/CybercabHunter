@@ -97,6 +97,14 @@ struct AccountView: View {
                 if session.user != nil { await model.load(api: session.api) } else { model.reset() }
             }
         }
+        // A brand-new account signed in here: the one-time Tesla Sync invitation,
+        // over this sheet, so closing it returns right here.
+        .onAppear { session.accountScreens += 1 }
+        .onDisappear { session.accountScreens = max(0, session.accountScreens - 1) }
+        .fullScreenCover(isPresented: Binding(get: { session.teslaSyncInviteShowing && session.accountScreens > 0 },
+                                              set: { if !$0 { session.teslaSyncInviteShowing = false } })) {
+            TeslaSyncOnboardingView()
+        }
     }
 
     // MARK: Signed out
