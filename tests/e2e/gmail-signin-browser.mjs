@@ -283,7 +283,7 @@ try {
     await signIn(page, 'main a[href^="signin.html?returnTo=%2Frider-data"]');
     await page.waitForSelector('#lgWelcome:not(.hidden)', { timeout: 8000 }).catch(() => {});
     check('signed up from Rider Data: the invitation on Link Gmail', new URL(page.url()).pathname === '/link-gmail' && await page.isVisible('#lgWelcome'));
-    check('…"Welcome to CybercabHunter", "Set Up Tesla Sync", Set Up Gmail and Skip for Now', (await page.textContent('#lgWelcomeTitle')).trim() === 'Welcome to CybercabHunter' && /Set Up Tesla Sync/.test(await page.textContent('#lgWelcome')) && await page.isVisible('#lgWelcomeSetup') && await page.isVisible('#lgWelcomeSkip'));
+    check('…"WELCOME TO CYBERCABHUNTER", "SET UP TESLA SYNC", Set Up Gmail and Skip for Now', (await page.textContent('#lgWelcomeTitle')).trim() === 'WELCOME TO CYBERCABHUNTER' && /SET UP TESLA SYNC/.test(await page.textContent('#lgWelcome')) && await page.isVisible('#lgWelcomeSetup') && await page.isVisible('#lgWelcomeSkip'));
     await shot(page, 'onboarding-web-1440');
     await page.reload(); await settle(page); await page.waitForTimeout(400);
     check('refresh: still the invitation', await page.isVisible('#lgWelcome'));

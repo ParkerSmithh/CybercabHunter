@@ -209,8 +209,8 @@ async function run() {
     const { session } = await webSignIn(ctx, 'sub-page', '/rider-data');
     const id = ctx.userOf('sub-page');
     const p = await linkGmail(ctx, session, '?welcome=1&next=%2Frider-data');
-    check('a new account: "Welcome to CybercabHunter", "Set Up Tesla Sync", the description, both buttons',
-      p.vis('lgWelcome') && p.text('lgWelcomeTitle') === 'Welcome to CybercabHunter' && /Set Up Tesla Sync/.test(p.text('lgWelcome')) &&
+    check('a new account: "WELCOME TO CYBERCABHUNTER", "SET UP TESLA SYNC", the description, both buttons',
+      p.vis('lgWelcome') && p.text('lgWelcomeTitle') === 'WELCOME TO CYBERCABHUNTER' && /SET UP TESLA SYNC/.test(p.text('lgWelcome')) &&
       /Automatically track your Tesla Robotaxi rides by forwarding Tesla receipts to CybercabHunter\./.test(p.text('lgWelcome')) && p.text('lgWelcomeSetup') === 'Set Up Gmail' && p.text('lgWelcomeSkip') === 'Skip for Now');
     check('…the setup steps and status wait behind it', !p.vis('lgSetup') && !p.vis('lgStatus') && !p.vis('lgSameAccount'));
     await waitFor(() => ctx.state(id) === 'presented');

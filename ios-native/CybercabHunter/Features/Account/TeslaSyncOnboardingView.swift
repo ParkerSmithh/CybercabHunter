@@ -49,12 +49,15 @@ struct TeslaSyncOnboardingView: View {
                     .padding(.top, 28)
                 VStack(alignment: .leading, spacing: 8) {
                     Eyebrow(text: "Tesla Sync")
-                    Text("Welcome to CybercabHunter")
+                    Text("WELCOME TO CYBERCABHUNTER")
                         .font(.inter(30, .bold, relativeTo: .largeTitle)).foregroundStyle(Color.chInk)
-                        .fixedSize(horizontal: false, vertical: true)
+                        // Two lines, never a word split: only when "CYBERCABHUNTER" alone is
+                        // wider than the screen (the largest text sizes) does it shrink to fit.
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.5)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("onboardingTitle")
-                    Text("Set Up Tesla Sync")
+                    Text("SET UP TESLA SYNC")
                         .font(.inter(20, .semibold, relativeTo: .title3)).foregroundStyle(Color.brandGold)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("onboardingSubtitle")
