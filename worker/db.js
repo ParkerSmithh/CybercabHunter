@@ -600,9 +600,13 @@ async function getVehicleSightingSubmission(sql, submissionId) {
 async function getRecentApprovedPhotoSightings(sql, limit) {
   const result = await sql.prepare(`
     SELECT s.id AS submission_id, s.reviewed_at, o.observed_at, o.service_area, o.approx_location, o.license_plate, o.camera_id,
-           (SELECT MAX(d.observed_at) FROM camera_detections d
-                   WHERE d.source_submission_id = s.id
-                      OR (d.camera_id = o.camera_id AND d.observed_at = replace(o.observed_at, ' ', 'T') || 'Z')) AS map_observed_at
+           -- Its own detection, or its camera's marker at that moment: two
+           -- indexed lookups (one OR'd lookup scanned every detection per row).
+           (SELECT MAX(m) FROM (
+              SELECT MAX(d.observed_at) AS m FROM camera_detections d WHERE d.source_submission_id = s.id
+              UNION ALL
+              SELECT MAX(d.observed_at) FROM camera_detections d
+                     WHERE d.camera_id = o.camera_id AND d.observed_at = replace(o.observed_at, ' ', 'T') || 'Z')) AS map_observed_at
     FROM submissions s
     JOIN vehicle_observations o ON o.submission_id = s.id
     WHERE s.submission_type = 'vehicle_sighting' AND s.status = 'approved'
@@ -630,9 +634,27 @@ export const PUBLIC_PHOTO_SIGHTING_SQL = `
 // City filter: the trimmed, case-insensitive service area equals the city,
 // or starts with "<city>," (e.g. "Austin, TX"). No filter = every city,
 // including unlisted ones and sightings with no city at all.
+// "Starts with '<city>,'" is written as the range ['<city>,', '<city>-')
+// (',' and '-' are adjacent characters) rather than LIKE '<city>,%': the same
+// rows, but an index on lower(trim(service_area)) can serve it
+// (migrations/0055), so a city's sightings are read without scanning every
+// sighting (D1 rows-read budget, Nov 2026).
 function publicSightingCityFilter(city) {
-  return city ? { sql: ` AND (lower(trim(o.service_area)) = ? OR lower(trim(o.service_area)) LIKE ?)`, binds: [city, `${city},%`] } : { sql: '', binds: [] };
+  return city
+    ? { sql: ` AND (lower(trim(o.service_area)) = ? OR (lower(trim(o.service_area)) >= ? AND lower(trim(o.service_area)) < ?))`, binds: [city, `${city},`, `${city}-`] }
+    : { sql: '', binds: [] };
 }
+// Public photo sightings are read starting from the observations (only the
+// public ones, through the partial indexes in migrations/0055), then their
+// submission by primary key. CROSS JOIN fixes that order: SQLite would
+// otherwise start from every submission (the full scan behind the Nov 2026
+// D1 read-limit incident). The rows and results are the same either way.
+// `o.observed_at >= ''` is always true (a NOT NULL text column) but gives the
+// planner a range on idx_vehicle_observations_public_time (0055: the photos
+// still held, about 30 days), instead of idx_vehicle_observations_public_id
+// (every approved photo ever, growing forever). Unlike INDEXED BY, it still
+// works, unchanged, on a database without that index.
+export const PUBLIC_SIGHTINGS_FROM = `vehicle_observations o CROSS JOIN submissions s ON s.id = o.submission_id AND o.observed_at >= ''`;
 
 // Newest first by date spotted (observed_at, which defaults to the
 // submission time), then public_id as a stable tie-break. `after` is the
@@ -644,8 +666,10 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
   const asc = order === 'asc';
   const cmp = asc ? '>' : '<';
   const dir = asc ? 'ASC' : 'DESC';
-  const cursorSql = after ? ` AND (o.observed_at ${cmp} ? OR (o.observed_at = ? AND o.public_id ${cmp} ?))` : '';
-  const cursorBinds = after ? [after.observedAt, after.observedAt, after.publicId] : [];
+  // The leading `observed_at <=/>= ?` is implied by the OR (same rows); it
+  // lets the index walk start at the cursor instead of the newest sighting.
+  const cursorSql = after ? ` AND o.observed_at ${cmp}= ? AND (o.observed_at ${cmp} ? OR (o.observed_at = ? AND o.public_id ${cmp} ?))` : '';
+  const cursorBinds = after ? [after.observedAt, after.observedAt, after.observedAt, after.publicId] : [];
   const rows = await sql.prepare(`
     SELECT o.public_id, o.service_area, o.approx_location, o.observed_at,
            -- The plate (and Cybercab label) only from a PUBLICLY ELIGIBLE registry
@@ -653,7 +677,7 @@ async function getPublicPhotoSightings(sql, { city = null, limit, after = null, 
            -- (the same gate as the public vehicle page). A primary-key lookup per row.
            pv.license_plate AS public_plate,
            (pv.approval_basis IS NOT NULL) AS public_cybercab
-    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    FROM ${PUBLIC_SIGHTINGS_FROM}
     LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${cursorSql}
     ORDER BY o.observed_at ${dir}, o.public_id ${dir}
@@ -704,11 +728,37 @@ async function getApprovedPhotoSightingHourBuckets(sql, { city = null } = {}) {
   const rows = await sql.prepare(`
     SELECT substr(o.observed_at, 1, 13) AS utc_hour, COUNT(*) AS n,
            SUM(o.observed_at > datetime('now', '-7 days')) AS last_7_days
-    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    FROM ${PUBLIC_SIGHTINGS_FROM}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}
     GROUP BY utc_hour
   `).bind(...filter.binds).all();
   return rows.results || [];
+}
+
+// The homepage's sighting numbers in ONE pass over a city's public sightings
+// (they used to be five counts and the hour buckets, six passes): the same
+// hour buckets as getApprovedPhotoSightingHourBuckets, plus per bucket how many
+// fall in each trailing window, so the total and the 24h / 48h / 7-day /
+// 14-day counts are sums over the buckets — exactly what
+// countPublicPhotoSightings returns for the same windows.
+async function getPublicPhotoSightingSummary(sql, { city = null } = {}) {
+  const filter = publicSightingCityFilter(city);
+  const rows = (await sql.prepare(`
+    SELECT substr(o.observed_at, 1, 13) AS utc_hour, COUNT(*) AS n,
+           SUM(o.observed_at > datetime('now', '-7 days')) AS last_7_days,
+           SUM(o.observed_at > datetime('now', '-24 hours')) AS h24,
+           SUM(o.observed_at > datetime('now', '-48 hours')) AS h48,
+           SUM(o.observed_at > datetime('now', '-168 hours')) AS h168,
+           SUM(o.observed_at > datetime('now', '-336 hours')) AS h336
+    FROM ${PUBLIC_SIGHTINGS_FROM}
+    WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}
+    GROUP BY utc_hour
+  `).bind(...filter.binds).all()).results || [];
+  const sum = k => rows.reduce((t, r) => t + (Number(r[k]) || 0), 0);
+  return {
+    buckets: rows.map(r => ({ utc_hour: r.utc_hour, n: r.n, last_7_days: r.last_7_days })),
+    total: sum('n'), last24: sum('h24'), last48: sum('h48'), last168: sum('h168'), last336: sum('h336')
+  };
 }
 
 // `sinceHours`: only sightings spotted in that trailing window (homepage).
@@ -716,7 +766,7 @@ async function countPublicPhotoSightings(sql, { city = null, sinceHours = null }
   const filter = publicSightingCityFilter(city);
   const since = Number.isInteger(sinceHours) && sinceHours > 0 ? ` AND o.observed_at > datetime('now', '-${sinceHours} hours')` : '';
   const row = await sql.prepare(`
-    SELECT COUNT(*) AS n FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    SELECT COUNT(*) AS n FROM ${PUBLIC_SIGHTINGS_FROM}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql}${since}
   `).bind(...filter.binds).first();
   return row ? row.n : 0;
@@ -728,7 +778,7 @@ async function getPublicPhotoSightingSpots(sql, { city = null, limit = 10 } = {}
   const filter = publicSightingCityFilter(city);
   const rows = await sql.prepare(`
     SELECT o.approx_location AS location, COUNT(*) AS n
-    FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+    FROM ${PUBLIC_SIGHTINGS_FROM}
     WHERE ${PUBLIC_PHOTO_SIGHTING_SQL}${filter.sql} AND trim(COALESCE(o.approx_location, '')) <> ''
     GROUP BY o.approx_location
     ORDER BY n DESC, location
@@ -1801,7 +1851,7 @@ export const db = {
   getVehicleSightingSubmission,
   reviewVehicleSighting,
   getPublicPhotoSightings, getFollowingMapSightings,
-  getApprovedPhotoSightingHourBuckets,
+  getApprovedPhotoSightingHourBuckets, getPublicPhotoSightingSummary,
   countPublicPhotoSightings, getPublicPhotoSightingSpots,
   getPublicSightingPhoto,
   listExpiredSightingPhotos,

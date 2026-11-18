@@ -150,16 +150,13 @@ async function rideStats(sql, area, nowMs) {
 
 async function sightingStats(sql, area) {
   const city = area.name.toLowerCase();
-  const [total, last24, last48, last7d, last14d, buckets, spots, latest] = await Promise.all([
-    db.countPublicPhotoSightings(sql, { city }),
-    db.countPublicPhotoSightings(sql, { city, sinceHours: 24 }),
-    db.countPublicPhotoSightings(sql, { city, sinceHours: 48 }),
-    db.countPublicPhotoSightings(sql, { city, sinceHours: 168 }),
-    db.countPublicPhotoSightings(sql, { city, sinceHours: 336 }),
-    db.getApprovedPhotoSightingHourBuckets(sql, { city }),
+  // One pass gives the hour buckets and every count (it used to be six).
+  const [summary, spots, latest] = await Promise.all([
+    db.getPublicPhotoSightingSummary(sql, { city }),
     db.getPublicPhotoSightingSpots(sql, { city, limit: 20 }),
     db.getPublicPhotoSightings(sql, { city, limit: LATEST_SIGHTINGS })
   ]);
+  const { buckets, total, last24, last48 } = summary, last7d = summary.last168, last14d = summary.last336;
   const stats = buildSightingStats(buckets, area.timeZone);
   // Spots by their public label (house numbers dropped), so two stored forms
   // of one place count together.

@@ -9,6 +9,7 @@ import { handleIncomingEmail, apiGetIngestionAddress, apiRotateIngestionAddress,
 import { apiImportReceipts, apiPreviewReceipt, apiListImports } from './receipt-import.js';
 import { apiListTrips, apiDeleteTrip, apiDeleteAllTrips } from './trips.js';
 import { apiGetProfile, apiUpdateProfile } from './profile.js';
+import { edgeCached } from './edge-cache.js';
 import { apiGetVehicle, apiGetVehicleSightings, apiListVehicles, apiGetRegistryStats } from './vehicles.js';
 import { apiModerationForwardingStats, apiModerationForwardingDetail, apiModerationAccess, apiListPendingVehicleSightings, apiReviewVehicleSighting, apiPromoteVehicleSighting, apiListRegistryVehicles, apiSetVehicleVisibility, apiReviewRegistryVehicle, apiListRegistryVehicleReviews, apiDeleteRegistryVehicle, apiSetRegistryVehicleVin, apiLogVehicleRide, apiModerationImportReceipts, apiModerationSearchRiders, apiGetVehicleSightingPhoto, apiDeleteVehicleSightingPhoto, apiDeletePublicSightingPhoto, apiListApprovedPhotoSightings, apiAddSightingToMap } from './moderation.js';
 import { apiCreateVehicleSighting, apiCreatePhotoSighting } from './sightings.js';
@@ -660,16 +661,18 @@ const worker = {
     }
     // The registry list behind the /vehicles page: public, GET only, and gated
     // by the same rule as the per-vehicle route below.
+    // These three are the same for everyone and already promise 60 s
+    // (Cache-Control): served from the edge cache for that long (worker/edge-cache.js).
     if (url.pathname === '/api/robotaxi-vehicles' && request.method === 'GET') {
-      return withCors(await apiListVehicles(request, env), request);
+      return withCors(await edgeCached(request, ctx, () => apiListVehicles(request, env)), request);
     }
     const vehicleSightingsMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)\/sightings$/);
     if (vehicleSightingsMatch && request.method === 'GET') {
-      return withCors(await apiGetVehicleSightings(request, env, vehicleSightingsMatch[1]), request);
+      return withCors(await edgeCached(request, ctx, () => apiGetVehicleSightings(request, env, vehicleSightingsMatch[1])), request);
     }
     const vehicleIdMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)$/);
     if (vehicleIdMatch && request.method === 'GET') {
-      return withCors(await apiGetVehicle(request, env, vehicleIdMatch[1]), request);
+      return withCors(await edgeCached(request, ctx, () => apiGetVehicle(request, env, vehicleIdMatch[1])), request);
     }
 
     // Tesla Ride Sync — a separate Fleet API OAuth subsystem from the routes

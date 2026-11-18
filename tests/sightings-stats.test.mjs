@@ -231,10 +231,21 @@ async function run() {
     await sighting(ctx, { service_area: 'Austin' }, 0);   // new data arrives...
     queries = 0;
     const second = await (await call()).json();
-    check('the first poll is stored in the edge cache (30 s)', store.size === 1 && afterFirst > 0 && waits.length === 1);
+    // The page, plus the city's count + hour buckets (shared by every page and
+    // cursor URL of that city, same 30 s: D1 read budget, Nov 2026).
+    const pages = () => [...store.keys()].filter(k => !k.includes('/__cache/'));
+    check('the first poll is stored in the edge cache (30 s)', pages().length === 1 && afterFirst > 0 && waits.length === 2
+      && store.has('https://cybercabhunter.com/__cache/sightings-aggregates?city=austin&stats=1'));
     check('a repeat poll is served from the cache: zero D1 queries', queries === 0 && JSON.stringify(second) === JSON.stringify(first));
     check('the cached response says so (max-age=30)', (await call()).headers.get('Cache-Control') === 'public, max-age=30');
-    check('a different city or order is a different cache entry', (await (await worker.fetch(new Request('https://cybercabhunter.com/api/sightings?city=dallas&order=desc&stats=1'), ctx.env, {})).json()) && store.size === 2);
+    check('a different city or order is a different cache entry', (await (await worker.fetch(new Request('https://cybercabhunter.com/api/sightings?city=dallas&order=desc&stats=1'), ctx.env, {})).json()) && pages().length === 2);
+    // Another URL of the same city (a later page, or no stats) reuses the
+    // city's cached count: only the page's own rows are read.
+    const seenQueries = () => { const sqls = []; ctx.d1.prepare = (sql, ...a) => { sqls.push(sql); return realPrepare(sql, ...a); }; return sqls; };
+    store.set('https://cybercabhunter.com/__cache/sightings-aggregates?city=austin&stats=0', Response.json({ seen: 7, buckets: null }));
+    const sqls = seenQueries();
+    const other = await (await worker.fetch(new Request('https://cybercabhunter.com/api/sightings?city=austin&order=asc'), ctx.env, {})).json();
+    check('another page of the same city reuses the cached count (no COUNT query)', other.seen === 7 && sqls.length > 0 && !sqls.some(q => /COUNT\(\*\) AS n FROM vehicle_observations/.test(q)));
     delete globalThis.caches;
   }
 

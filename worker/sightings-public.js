@@ -135,6 +135,32 @@ export function buildSightingStats(buckets, zone, nowMs = Date.now()) {
 // request counts: a request answered from the cache is still a request.
 const LIST_CACHE_SECONDS = 30;
 
+// The live count (and, with stats=1, the hour buckets) depend only on the
+// city, not on the page, order or cursor, so they are shared per city for the
+// same LIST_CACHE_SECONDS rather than recomputed for every page a reader
+// scrolls to. With the buckets, the count is their total (the same sightings
+// and filter as db.countPublicPhotoSightings), so it costs no second pass.
+async function cityAggregates(sql, cityParam, city, wantStats, ctx) {
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const key = new Request(`https://cybercabhunter.com/__cache/sightings-aggregates?city=${encodeURIComponent(cityParam)}&stats=${wantStats ? 1 : 0}`);
+  if (cache) {
+    const hit = await cache.match(key).catch(() => null);
+    if (hit) { try { return await hit.json(); } catch (e) { /* recompute */ } }
+  }
+  let value;
+  if (wantStats) {
+    const buckets = await db.getApprovedPhotoSightingHourBuckets(sql, { city });
+    value = { seen: buckets.reduce((t, b) => t + (Number(b.n) || 0), 0), buckets };
+  } else {
+    value = { seen: await db.countPublicPhotoSightings(sql, { city }), buckets: null };
+  }
+  if (cache) {
+    const stored = cache.put(key, Response.json(value, { headers: { 'Cache-Control': `public, max-age=${LIST_CACHE_SECONDS}` } })).catch(() => {});
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);
+  }
+  return value;
+}
+
 export async function apiListPublicSightings(request, env, ctx) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
@@ -161,10 +187,9 @@ export async function apiListPublicSightings(request, env, ctx) {
   const wantStats = params.get('stats') === '1';
 
   const sql = env.cybercabhunter_db;
-  const [seen, rows, buckets, counters] = await Promise.all([
-    db.countPublicPhotoSightings(sql, { city }),
+  const [{ seen, buckets }, rows, counters] = await Promise.all([
+    cityAggregates(sql, cityParam, city, wantStats, ctx),
     db.getPublicPhotoSightings(sql, { city, limit: limit + 1, after, order }),
-    wantStats ? db.getApprovedPhotoSightingHourBuckets(sql, { city }) : null,
     getSiteStatCounters(sql)
   ]);
   const page = rows.slice(0, limit);

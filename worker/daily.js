@@ -1,6 +1,6 @@
 // Cybercab Daily only: two days of public counts, no annual history or
 // correlated VIN/plate comparisons. All source tables belong to other features.
-import { PUBLIC_PHOTO_SIGHTING_SQL } from './db.js';
+import { PUBLIC_PHOTO_SIGHTING_SQL, PUBLIC_SIGHTINGS_FROM } from './db.js';
 import { publicVehicleEligibleSql } from './ride-status.js';
 import { usLocalParts } from './timezones.js';
 
@@ -58,7 +58,7 @@ export async function buildDaily(sql, now = Date.now()) {
       const row = await sql.prepare(`SELECT MIN(o.observed_at) AS first,
         COALESCE(SUM(o.observed_at >= ? AND o.observed_at < ?), 0) AS previous,
         COALESCE(SUM(o.observed_at >= ? AND o.observed_at < ?), 0) AS today
-        FROM submissions s JOIN vehicle_observations o ON o.submission_id = s.id
+        FROM ${PUBLIC_SIGHTINGS_FROM}
         LEFT JOIN robotaxi_vehicles pv ON pv.id = o.robotaxi_vehicle_id AND ${publicVehicleEligibleSql('pv')}
         WHERE ${PUBLIC_PHOTO_SIGHTING_SQL} AND (o.robotaxi_vehicle_id IS NULL OR pv.id IS NOT NULL)
           AND ${USER_SIGHTING_SQL}`)
