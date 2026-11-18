@@ -8,6 +8,7 @@ import { gmailQueries } from './db-gmail.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, approvalEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
 import { googlePicture } from './avatars.js';
+import { markNewAccountForTeslaSync } from './onboarding.js';
 
 // Registry visibility values. 'private' is the value this schema already
 // uses for non-public rows (see the personal `vehicles` table); the column
@@ -260,6 +261,9 @@ async function findOrCreateUserByGoogleIdentity(sql, { googleSub, email, name, a
   if (name) {
     try { await assignHandleFromName(sql, id, name); } catch (err) { /* sign-in never fails over this */ }
   }
+  // Created by this sign-in: the one-time Tesla Sync invitation is due
+  // (worker/onboarding.js; the website and the app both offer it once).
+  await markNewAccountForTeslaSync(sql, id);
   return id;
 }
 

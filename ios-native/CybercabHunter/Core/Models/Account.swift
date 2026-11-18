@@ -5,6 +5,14 @@ struct MeResponse: Decodable, Sendable, Equatable {
     let authenticated: Bool
     let user: User?
     let tesla: Tesla?
+    /// The one-time Tesla Sync invitation (worker/onboarding.js); absent from an older server.
+    var onboarding: Onboarding? = nil
+
+    struct Onboarding: Decodable, Sendable, Equatable {
+        /// "pending" (offer it now), "presented", "skipped", "completed", or nil
+        /// for every account that existed before the invitation.
+        let teslaSync: String?
+    }
 
     struct User: Decodable, Sendable, Equatable, Identifiable {
         let id: String

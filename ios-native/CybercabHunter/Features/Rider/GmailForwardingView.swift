@@ -12,6 +12,10 @@ struct GmailForwardingView: View {
     @State private var confirmRotate = false
     @State private var confirmStop = false
     @State private var copied: String?
+    /// The first-time Tesla Sync invitation (TeslaSyncOnboardingView): told
+    /// when setup is done (Done saved, or setup took effect while open). Nil
+    /// everywhere else, where the screen behaves exactly as before.
+    var onSetUp: (() -> Void)? = nil
 
     static let filters = URL(string: "https://mail.google.com/mail/u/0/#settings/filters")!
 
@@ -43,6 +47,10 @@ struct GmailForwardingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.load(api: session.api) }
         .refreshable { await model.refresh(api: session.api) }
+        // Set up while this screen was open (Gmail's confirmation went through, a receipt arrived).
+        .onChange(of: model.status.map(GmailForwardingModel.syncing)) { was, now in
+            if was == false, now == true { onSetUp?() }
+        }
         // Re-check while the screen is open, faster while Gmail's confirmation may be on its way.
         .task(id: model.state == .ready && phase == .active) {
             guard model.state == .ready, phase == .active else { return }
@@ -67,7 +75,7 @@ struct GmailForwardingView: View {
         }
         step(4, "Finish the filter") {
             Text("Back in Filters and Blocked Addresses, create the tesla.com filter again, tick Forward it, choose your verified address, then Create filter.")
-            Button(model.saving ? "Saving…" : "Done") { Task { _ = await model.markDone(api: session.api) } }
+            Button(model.saving ? "Saving…" : "Done") { Task { if await model.markDone(api: session.api) { onSetUp?() } } }
                 .buttonStyle(GoldButtonStyle())
                 .disabled(model.saving || !isReady)
                 .accessibilityIdentifier("gmailDone")

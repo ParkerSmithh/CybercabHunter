@@ -66,7 +66,9 @@ console.log('Migration 0046 on the current production schema (0001-0045)');
   const backfill = SQL.slice(SQL.indexOf('UPDATE users'));
   d1.exec(backfill);
   check('the backfill is idempotent', dump(d1) === before && row(d1, 'google').google_avatar_url === GOOGLE);
-  check('the result is the schema the new Worker is tested against', usersSchema(d1) === usersSchema(createTestD1()));
+  // Compared with the schema built through 0046 itself: later migrations may add
+  // their own users columns (0054 tesla_sync_onboarding).
+  check('the result is the schema the new Worker is tested against', usersSchema(d1) === usersSchema(createTestD1({ migrateThrough: '0046_google_avatar.sql' })));
   let reapplied = null;
   try { d1.exec(SQL); reapplied = 'ran'; } catch (e) { reapplied = String(e.message); }
   check('applying it twice fails at once on ADD COLUMN (wrangler records it, so it never re-runs)', /duplicate column/i.test(reapplied));

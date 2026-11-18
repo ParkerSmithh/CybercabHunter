@@ -12,6 +12,7 @@
 import { tokenCrypto } from './crypto.js';
 import { db } from './db.js';
 import { avatarSource } from './avatars.js';
+import { TESLA_SYNC_STATES } from './onboarding.js';
 
 const AUTHORIZE_URL = 'https://auth.tesla.com/oauth2/v3/authorize';
 const TOKEN_URL = 'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token';
@@ -348,7 +349,10 @@ async function apiMe(request, env) {
       avatar_url: user.avatar_url || null,
       avatar_source: avatarSource(user)
     },
-    tesla: { connected: !!connection && connection.status === 'active' }
+    tesla: { connected: !!connection && connection.status === 'active' },
+    // The one-time Tesla Sync invitation (worker/onboarding.js): 'pending'
+    // means offer it now; null for every account that existed before it.
+    onboarding: { tesla_sync: TESLA_SYNC_STATES.includes(user.tesla_sync_onboarding) ? user.tesla_sync_onboarding : null }
   });
 }
 

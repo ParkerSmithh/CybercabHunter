@@ -19,6 +19,22 @@ final class SessionStore {
     private(set) var isSigningIn = false
     var signInError: String?
 
+    // MARK: The one-time Tesla Sync invitation (worker/onboarding.js)
+    // The server decides: an account Google sign-in just created is "pending"
+    // (the website and the app share the one record). Nothing on the device
+    // makes an account "new", so a reinstall, a second device or cleared
+    // storage changes nothing.
+    /// The server's state for this account, from /api/me.
+    private(set) var teslaSyncOnboarding: String?
+    /// The invitation is on screen (TeslaSyncOnboardingView).
+    var teslaSyncInviteShowing = false
+    /// Accounts offered it during this launch: never twice, even when the
+    /// server couldn't be told (the next sign-in, anywhere, offers it again).
+    private var teslaSyncOffered: Set<String> = []
+    /// Account screens on screen: the topmost presents the invitation (the
+    /// account sheet a sign-in happens in; RootView when there is none).
+    var accountScreens = 0
+
     let api: APIClient
     private let keychain: KeychainStore
 
@@ -55,6 +71,8 @@ final class SessionStore {
             if me.authenticated, let user = me.user {
                 state = .signedIn(user)
                 shareWithWidgets(token)
+                teslaSyncOnboarding = me.onboarding?.teslaSync
+                offerTeslaSyncIfDue()
             } else { signOut() }
         } catch APIError.unauthorized {
             signOut()
@@ -105,8 +123,40 @@ final class SessionStore {
         }
         keychain.delete(KeychainTokenProvider.account)
         shareWithWidgets(nil)
+        teslaSyncInviteShowing = false
+        teslaSyncOnboarding = nil
         state = .signedOut
         Task { await ImagePipeline.shared.removeAll() }
+    }
+}
+
+extension SessionStore {
+    /// Offers the invitation when the server says it is due, once per launch.
+    /// Refreshing the account (a resume, a restore) never offers it twice.
+    fileprivate func offerTeslaSyncIfDue() {
+        guard let id = user?.id, teslaSyncOnboarding == "pending", !teslaSyncOffered.contains(id) else { return }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-noOnboarding") { return }
+        #endif
+        teslaSyncOffered.insert(id)
+        teslaSyncInviteShowing = true
+    }
+
+    /// Tells the server: "presented" (now on screen), "skip" or "complete".
+    /// It only moves forward and only for this account; a failure is harmless
+    /// (the invitation already closed, and it was offered only once here).
+    func recordTeslaSync(_ action: String) async {
+        struct Answer: Decodable, Sendable { let teslaSync: String? }
+        if let answer: Answer = try? await api.post("/api/onboarding/tesla-sync", json: ["action": action], authenticated: true) {
+            teslaSyncOnboarding = answer.teslaSync
+        }
+    }
+
+    /// Skip for Now / setup finished: the invitation closes at once and the
+    /// rider is back where they were.
+    func finishTeslaSyncInvite(_ action: String) {
+        teslaSyncInviteShowing = false
+        Task { await recordTeslaSync(action) }
     }
 }
 

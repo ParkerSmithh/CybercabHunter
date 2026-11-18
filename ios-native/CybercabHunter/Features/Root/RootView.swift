@@ -107,6 +107,12 @@ struct RootView: View {
             AccountView()
                 .presentationDragIndicator(.visible)
         }
+        // The one-time Tesla Sync invitation when no account sheet is up (a new
+        // account restored on launch); the account sheet presents its own.
+        .fullScreenCover(isPresented: Binding(get: { session.teslaSyncInviteShowing && session.accountScreens == 0 },
+                                              set: { if !$0 { session.teslaSyncInviteShowing = false } })) {
+            TeslaSyncOnboardingView()
+        }
     }
 
     @ViewBuilder
