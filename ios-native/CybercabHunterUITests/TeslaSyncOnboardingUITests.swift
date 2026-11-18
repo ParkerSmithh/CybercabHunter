@@ -54,8 +54,8 @@ final class TeslaSyncOnboardingUITests: XCTestCase {
     func testNewAccountSeesTheInvitationOnceAndSkips() throws {
         let app = launch("s-new1")
         XCTAssertTrue(invitation(app).waitForExistence(timeout: 20), "a brand-new account: the invitation")
-        XCTAssertEqual(invitation(app).label, "Welcome to CybercabHunter")
-        XCTAssertEqual(any(app, "onboardingSubtitle").label, "Set Up Tesla Sync")
+        XCTAssertEqual(invitation(app).label, "WELCOME TO CYBERCABHUNTER")
+        XCTAssertEqual(any(app, "onboardingSubtitle").label, "SET UP TESLA SYNC")
         XCTAssertTrue(any(app, "onboardingDescription").label.contains("Automatically track your Tesla Robotaxi rides by forwarding your Tesla receipts to CybercabHunter."))
         XCTAssertTrue(app.buttons["onboardingSetUp"].isHittable && app.buttons["onboardingSkip"].isHittable)
         XCTAssertEqual(app.webViews.count, 0, "native, no web view")
