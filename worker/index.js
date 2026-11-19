@@ -1,5 +1,6 @@
 import { apiCities, recomputeCityStats } from './city-stats.js';
 import { apiPreferredCity, cityPage } from './city-pages.js';
+import { apiFareHistory, recomputeFareHistory } from './fare-history.js';
 import { apiPush, runPushTick, PUSH_CRON } from './push.js';
 import { apiMyStreaks } from './streaks.js';
 import { apiMyXp, apiXpRules, reconcileAllXp } from './progression.js';
@@ -435,6 +436,9 @@ const worker = {
     // Live Fleet & Fares stats (worker/fleet-stats.js): public, edge-cached.
     // Fleet ETA estimates (worker/fleet-eta.js): one precomputed row per city,
     // edge-cached for an hour; rider fare/wait reports and their moderation.
+    if (['/api/fare-history', '/api/fare-history/summary'].includes(url.pathname) && request.method === 'GET') {
+      return withCors(await apiFareHistory(request, env, ctx), request);
+    }
     if (url.pathname === '/api/fleet-eta' && request.method === 'GET') {
       return withCors(await apiFleetEta(request, env, ctx), request);
     }
@@ -801,6 +805,7 @@ const worker = {
     // feature needs no trigger of its own and each run stays small.
     if (controller && controller.cron === FLEET_STATS_CRON) {
       ctx.waitUntil(recomputeCityStats(env, controller.scheduledTime || Date.now()));
+      ctx.waitUntil(recomputeFareHistory(env, controller.scheduledTime || Date.now()));
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
       // Spotter XP (worker/progression.js): the full reconcile (backfill,
       // discoveries, reversals), then the Community page's daily numbers.

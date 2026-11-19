@@ -244,7 +244,7 @@ async function run() {
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(`public/${f}`).includes('id="sightingForm"'));
     check('every page with the drawer has the optional picker, defaulting to "Not a traffic camera"',
-      pages.length === 14 && pages.every(f => /<select id="sightingCamera"[^>]*>\s*<option value="">Not a traffic camera<\/option>/.test(read(`public/${f}`)) && !/id="sightingCamera"[^>]*required/.test(read(`public/${f}`))));
+      pages.length === 15 && pages.every(f => /<select id="sightingCamera"[^>]*>\s*<option value="">Not a traffic camera<\/option>/.test(read(`public/${f}`)) && !/id="sightingCamera"[^>]*required/.test(read(`public/${f}`))));
     check('...inside a block that starts HIDDEN on every page (no space, no placeholder, no mention for riders)',
       pages.every(f => /<div id="sightingCameraWrap" class="hidden">/.test(read(`public/${f}`)) && /id="sightingCameraSearch" type="search"/.test(read(`public/${f}`))));
     const ctx = await makeApp();
