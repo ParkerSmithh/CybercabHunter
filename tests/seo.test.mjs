@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
 import { seedRide, approveVehicle, makeCheck } from './helpers/env.mjs';
 import { SITEMAP_PAGES } from '../worker/sitemap.js';
+import { rebuildVehicleTimelines } from '../worker/vehicle-timeline.js';
 import worker from '../worker/index.js';
 
 const t = makeCheck();
@@ -125,6 +126,9 @@ async function run() {
     d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, first_seen_at, last_seen_at) VALUES (?, 'MY 999', '2026-08-01', '2026-09-01')`).bind(uuid(11))._exec();
     approveVehicle(d1, uuid(11), { withRide: true, userId: 'u1' });
     const env = { cybercabhunter_db: d1 };
+    // The vehicle page reads its ride summary from the daily timeline rebuild
+    // (worker/vehicle-timeline.js, FLEET_STATS_CRON); run it as production does.
+    await rebuildVehicleTimelines(env);
     const open = async id => {
       const dom = new JSDOM(read('vehicle.html'), { runScripts: 'outside-only', url: `https://cybercabhunter.com/vehicle/${id}`, pretendToBeVisual: true });
       const w = dom.window;
