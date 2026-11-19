@@ -14,7 +14,7 @@ const CACHE_SECONDS = 24 * 60 * 60;
 // Public pages only: every one returns 200 and is linked from the nav.
 // Internal pages (sign-in, profile, rider data, moderation) are noindex and
 // never listed.
-export const SITEMAP_PAGES = ['/', '/sightings', '/vehicles', '/news', '/community', '/infrastructure', '/simulation', '/replay', '/dmv', '/privacy'];
+export const SITEMAP_PAGES = ['/', '/sightings', '/vehicles', '/news', '/community', '/infrastructure', '/simulation', '/history', '/replay', '/dmv', '/privacy'];
 
 const xmlEscape = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const day = v => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10) : null);

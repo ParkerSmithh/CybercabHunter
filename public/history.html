@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090B0F">
+<meta name="description" content="Track the growth of Cybercab Hunter’s registry, approved sightings, camera detections, and Texas DMV roster over time.">
+<link rel="canonical" href="https://cybercabhunter.com/history">
+<link rel="icon" href="/favicon.ico">
+<script src="js/theme.js?v=5"></script>
+<link rel="stylesheet" href="/css/brand-type.css">
+<link rel="stylesheet" href="/css/history.css">
+<script src="/js/history.js" defer></script>
+<title>CybercabHunter</title>
+</head>
+<body>
+<header><nav aria-label="Primary">
+  <a class="brand" href="/"><img src="/images/brand/favicon-32.png?v=b1" alt="">CybercabHunter</a>
+  <div><a href="/vehicles">Cars</a><a href="/sightings">Sightings</a></div>
+</nav></header>
+<main>
+  <h1>Fleet History</h1>
+  <p class="intro">How the public registry, sightings, and camera detections grew over time.</p>
+  <form id="history-filters" aria-label="History filters">
+    <label>City<select name="city"><option value="all">All cities</option></select></label>
+    <label>Range<select name="range"><option value="30d">30 days</option><option value="90d" selected>90 days</option><option value="1y">1 year</option><option value="all">All time</option></select></label>
+  </form>
+  <p id="history-status" role="status">Loading Fleet History…</p>
+  <ul id="history-milestones" aria-label="Milestones" hidden></ul>
+  <div id="history-charts"></div>
+  <p id="history-note"></p>
+</main>
+<footer><a href="/">CybercabHunter</a><a href="/privacy">Privacy</a></footer>
+<script src="/vendor/gsap-3.13.0.min.js" defer></script>
+<script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
+<script src="js/animated-content.js?v=1" defer></script>
+</body>
+</html>
