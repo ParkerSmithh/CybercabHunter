@@ -1,33 +1,34 @@
-:root { color-scheme: dark; --background: #090b0f; --text: #f5f5f5; --muted: #a8b0bf; --line: #303643; --gold: #fae030; --control: #151922; }
-:root[data-theme="light"] { color-scheme: light; --background: #fbfaf6; --text: #171a20; --muted: #515762; --line: #d6d9df; --gold: #665000; --control: #fff; }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--background); color: var(--text); font: 1rem/1.5 Inter, system-ui, sans-serif; }
-main, nav, footer { width: min(1120px, calc(100% - 2rem)); margin-inline: auto; }
-header { border-bottom: 1px solid var(--line); }
-nav, footer { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
-nav > div { display: flex; gap: .85rem; }
-.brand { display: flex; align-items: center; gap: .5rem; color: var(--text); text-decoration: none; font-weight: 750; }
-.brand img { width: 24px; height: 24px; }
-a { color: var(--gold); text-underline-offset: .2em; }
-h1 { margin: 1.6rem 0 .25rem; font-size: clamp(2.35rem, 6vw, 4.5rem); line-height: 1.05; letter-spacing: -.035em; }
-.intro, .caption, #history-note, #history-status { color: var(--muted); }
-.intro { margin: .5rem 0 1rem; }
-form { display: flex; gap: .7rem; padding: .75rem 0; border-block: 1px solid var(--line); }
-label { width: min(50%, 13rem); display: grid; gap: .25rem; font-size: .8rem; color: var(--muted); }
-select { min-height: 44px; border: 1px solid var(--line); border-radius: .4rem; padding-inline: .5rem; background: var(--control); color: var(--text); font: inherit; }
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-#history-status:empty, #history-note:empty { display: none; }
-#history-charts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); column-gap: clamp(.65rem, 3vw, 2rem); }
-.chart { min-width: 0; border-top: 1px solid var(--line); padding-block: .75rem 1rem; }
-.chart h2 { margin: 0; font-size: clamp(.95rem, 2vw, 1.3rem); line-height: 1.15; }
-.caption, #history-note, #history-milestones, summary { font-size: .78rem; }
-.caption { margin: .35rem 0; }
-canvas { width: 100%; height: 168px; display: block; }
-#history-milestones { margin: .75rem 0; padding-left: 1.2rem; color: var(--gold); }
-details { margin-top: .4rem; }
-details > div { overflow: auto; max-height: 12rem; }
-summary { color: var(--gold); cursor: pointer; }
-table { width: 100%; border-collapse: collapse; font-size: .73rem; font-variant-numeric: tabular-nums; }
-td, th { padding: .25rem; border-bottom: 1px solid var(--line); text-align: left; }
-footer { border-top: 1px solid var(--line); margin-top: 1.4rem; font-size: .85rem; }
-@media (max-width: 480px) { canvas { height: 112px; } nav { font-size: .83rem; } }
+/* History pages (/history, /fares): on the site's layout and tokens (style.css),
+   no page-level :root overrides. Filters, then chart cards in two columns at
+   every width (phones stay dense), each with an expandable data table. */
+.hist-filters{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px}
+.hist-field{display:grid; gap:6px; flex:0 1 13rem; min-width:0; font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgb(var(--n-500))}
+.hist-field select{width:100%; min-height:44px; text-transform:none; letter-spacing:normal; font-weight:500; color:rgb(var(--ink))}
+.hist-status,.hist-note,.hist-threshold{font-size:13px; color:rgb(var(--n-400)); margin:8px 0}
+.hist-status:empty,.hist-note:empty{display:none}
+.hist-milestones{list-style:none; padding:0; margin:8px 0 16px; display:flex; flex-wrap:wrap; gap:8px}
+.hist-milestones li{font-size:11px; font-weight:600; letter-spacing:0.04em; color:rgb(var(--gold-ink)); padding:4px 10px; border:1px solid rgb(var(--gold) / 0.35); border-radius:999px}
+.hist-charts{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; margin-top:8px}
+.hist-charts .chart{min-width:0; padding:16px; border-radius:16px; border:1px solid rgb(var(--line)); background:rgb(var(--surface))}
+.hist-charts .chart h2{margin:0; font-size:15px; font-weight:590; line-height:1.25; color:rgb(var(--ink))}
+.hist-charts .caption,.hist-charts .empty{font-size:12px; line-height:1.45; color:rgb(var(--n-400)); margin:6px 0}
+.hist-charts canvas{display:block; width:100%; height:168px; margin-top:8px}
+.hist-charts details{margin-top:8px}
+.hist-charts summary{font-size:12px; font-weight:590; color:rgb(var(--gold-ink)); cursor:pointer}
+.hist-charts details > div{overflow:auto; max-height:15rem; margin-top:6px}
+/* A table wider than its card (fares by local time on phones) scrolls inside the card. */
+.hist-charts .chart > table{display:block; overflow-x:auto; max-width:100%}
+.hist-charts table{width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; color:rgb(var(--n-300))}
+.hist-charts th{font-weight:600; color:rgb(var(--n-500)); text-align:left}
+.hist-charts td,.hist-charts th{padding:5px 4px; border-bottom:1px solid rgb(var(--line))}
+@media (max-width:639px){
+  .hist-filters{gap:8px}
+  .hist-field{flex:1 1 0; font-size:10px; letter-spacing:0.08em}
+  .hist-field select{padding-left:8px; padding-right:4px; font-size:13px}   /* as the Cars sort select (max-sm:px-2) */
+  .hist-charts{gap:10px}
+  .hist-charts .chart{padding:10px; border-radius:12px}
+  .hist-charts .chart h2{font-size:13px}
+  .hist-charts .caption,.hist-charts .empty{font-size:11px}
+  .hist-charts canvas{height:112px}
+  .hist-charts table{font-size:11px}
+}

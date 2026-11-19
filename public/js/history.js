@@ -33,13 +33,14 @@
     if (!ctx) return;
     ctx.scale(scale, scale);
     const colors = getComputedStyle(document.documentElement);
-    const read = token => colors.getPropertyValue(token).trim();
+    // The site's colour tokens (style.css) are RGB triplets ("250 224 48").
+    const read = token => { const v = colors.getPropertyValue(token).trim(); return /^\d/.test(v) ? `rgb(${v})` : v; };
     const top = 10, bottom = height - 18, left = 35, right = width - 8;
     const peak = Math.max(1, ...rows.map(row => row[column] ?? 0));
     const x = i => rows.length === 1 ? (left + right) / 2 : left + (right - left) * i / (rows.length - 1);
     const y = value => bottom - value / peak * (bottom - top);
     ctx.font = '10px Inter, sans-serif';
-    ctx.fillStyle = read('--muted');
+    ctx.fillStyle = read('--n-400');
     ctx.strokeStyle = read('--line');
     for (const value of new Set([0, Math.round(peak / 2), peak])) {
       ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
@@ -51,7 +52,7 @@
       ctx.fillText(rows.at(-1)[0].slice(5), right, height - 3);
       ctx.textAlign = 'left';
     }
-    ctx.strokeStyle = read('--muted');
+    ctx.strokeStyle = read('--n-400');
     ctx.setLineDash([2, 3]);
     rows.forEach((row, index) => {
       if (!markers.some(marker => marker.day === row[0])) return;
