@@ -15,7 +15,7 @@
     {
       key: 'dallas', slug: 'dallas', name: 'Dallas', state: 'TX', timeZone: 'America/Chicago',
       center: { lat: 32.80, lon: -96.80 }, mapBounds: { minLon: -96.93, minLat: 32.73, maxLon: -96.72, maxLat: 32.88 },
-      status: 'live', cameraSource: 'TxDOT', cybercabSince: null,
+      status: 'live', cameraSource: 'TxDOT', cybercabSince: '2026-11-19',
       bbox: { minLon: -97.20, minLat: 32.55, maxLon: -96.45, maxLat: 33.15 },
       zone: { square_miles: 81, in_service_since: '2026-04-18', hours: HOURS, hoursAsOf,
         description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
