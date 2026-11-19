@@ -85,6 +85,20 @@ final class HomeModel {
         }
     }
 
+    /// A car's city by the server's registry rule (worker/db.js registryCitySql), so
+    /// each city's growth counts the same cars as its Cars list: its own
+    /// service_area; else the city of its counted rides (a non-default city wins, as
+    /// on the server); else the default city (Austin). A recorded city the app does
+    /// not know is in no city's list (nil), as on the server.
+    nonisolated static func registryCity(_ v: RegistryVehicle, areas: [ServiceArea], defaultKey: String = "austin") -> String? {
+        let norm = { (s: String) in s.trimmingCharacters(in: .whitespaces).lowercased() }
+        let match = { (s: String) in areas.first { $0.key == norm(s) || norm($0.name) == norm(s) }?.key }
+        let own = norm(v.serviceArea ?? "")
+        if !own.isEmpty { return match(own) }
+        let rode = (v.serviceAreas ?? "").split(separator: ",").compactMap { match(String($0)) }
+        return rode.first { $0 != defaultKey } ?? defaultKey
+    }
+
     /// The registry, page by page (100 at a time, as the website's chart does),
     /// grouped by each vehicle's own city.
     func loadGrowth(using api: APIClient) async {
@@ -105,8 +119,8 @@ final class HomeModel {
         }
         var byCity: [String: [Date]] = [:]
         for v in all {
-            guard let city = v.serviceArea, let seen = Format.instant(v.firstSeenAt) else { continue }
-            byCity[city, default: []].append(seen)
+            guard let key = Self.registryCity(v, areas: areas), let seen = Format.instant(v.firstSeenAt) else { continue }
+            byCity[cityName(key), default: []].append(seen)
         }
         growth = byCity.mapValues { dates in
             var points: [GrowthPoint] = []
