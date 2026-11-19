@@ -8,7 +8,7 @@ import { JSDOM } from 'jsdom';
 import { createTestD1, seedUser } from './helpers/d1-sqlite.mjs';
 import { seedRide, approveVehicle, makeCheck } from './helpers/env.mjs';
 import { SITEMAP_PAGES } from '../worker/sitemap.js';
-import { rebuildVehicleTimelines } from '../worker/vehicle-timeline.js';
+import { rebuildVehicleTimelines, serveVehiclePage } from '../worker/vehicle-timeline.js';
 import worker from '../worker/index.js';
 
 const t = makeCheck();
@@ -151,6 +151,17 @@ async function run() {
     check('JSON-LD gains a Car: Tesla Cybercab, its VIN and colour, still one block', car && car.model === 'Cybercab' && car.manufacturer.name === 'Tesla'
       && car.vehicleIdentificationNumber === '7SAXCBE5XRF000001' && car.color === 'Gold' && d.head.querySelectorAll('script[type="application/ld+json"]').length === 1);
 
+    // The Worker-rendered page (serveVehiclePage, HTMLRewriter): the tab title is never rewritten.
+    {
+      const seen = [];
+      globalThis.HTMLRewriter = class { on(selector) { seen.push(selector); return this; } transform(response) { return response; } };
+      const assets = { ...env, ASSETS: { fetch: async () => new Response(read('vehicle.html'), { headers: { etag: '"x"' } }) } };
+      const page = await serveVehiclePage(new Request(`https://cybercabhunter.com/vehicle/${uuid(10)}`), assets, null, uuid(10));
+      delete globalThis.HTMLRewriter;
+      check('the Worker-rendered vehicle page keeps the tab title "CybercabHunter"; the plate goes in og/twitter titles only',
+        page.status === 200 && !seen.includes('title') && seen.includes('meta[property="og:title"]') && seen.includes('meta[name="twitter:title"]')
+        && /<title>CybercabHunter<\/title>/.test(read('vehicle.html')));
+    }
     const d2 = await open(uuid(11));
     const graph2 = JSON.parse(d2.head.querySelector('script[type="application/ld+json"]').textContent)['@graph'];
     check('a vehicle not approved as a Cybercab is a "Robotaxi", with no Car data and no invented VIN or colour (its city is where its rides were, as the page shows)',

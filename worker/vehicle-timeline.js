@@ -230,7 +230,10 @@ export async function serveVehiclePage(request, env, ctx, vehicleId) {
   const attr = value => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const schema = JSON.stringify({ '@context': 'https://schema.org', ...car }).replace(/</g, '\\u003c');
   const cache = globalThis.caches?.default;
-  const version = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([title, desc, car, asset.headers.get('etag')])));
+  // The tab title stays the page's own "CybercabHunter" (owner rule: every <title> is the
+  // brand); the plate goes in og/twitter titles only. 'tab-title-brand' versions the cache
+  // key so pages cached with the old <title> are not served after this change.
+  const version = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(['tab-title-brand', title, desc, car, asset.headers.get('etag')])));
   const etag = [...new Uint8Array(version)].slice(0, 12).map(byte => byte.toString(16).padStart(2, '0')).join('');
   const key = new Request(new URL('/__cache/vehicle/' + vehicleId + '/' + etag, request.url));
   const cached = cache ? await cache.match(key).catch(() => null) : null;
@@ -241,7 +244,6 @@ export async function serveVehiclePage(request, env, ctx, vehicleId) {
   if (cached) return new Response(cached.body, { headers });
   const page = new HTMLRewriter()
     .on('head', { element: el => el.append(`<link rel="canonical" href="${attr(url)}"><meta property="og:url" content="${attr(url)}"><script type="application/ld+json">${schema}</script>`, { html: true }) })
-    .on('title', { element: el => el.setInnerContent(title) })
     .on('meta[name="description"]', set('content', desc))
     .on('meta[property="og:title"]', set('content', title))
     .on('meta[property="og:description"]', set('content', desc))
