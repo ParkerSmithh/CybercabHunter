@@ -1,3 +1,4 @@
+import { rebuildVehicleTimelines } from '../worker/vehicle-timeline.js';
 // Tests for the public vehicle page (vehicle.html + js/vehicle.js) and the
 // /vehicle/:id worker route that serves it. The REAL js/vehicle.js runs in
 // jsdom against the REAL Worker code and real SQL (node:sqlite + the
@@ -25,6 +26,7 @@ const JS = fs.readFileSync(`${ROOT}public/js/vehicle.js`, 'utf8');
 // directly). `intercept(url, init)` may return a Response (or throw) to
 // simulate a failing server; otherwise the request goes to the real Worker.
 async function openPage(env, vehicleId, intercept) {
+  if (env.cybercabhunter_db) await rebuildVehicleTimelines(env);
   const url = vehicleId == null ? 'https://cybercabhunter.com/vehicle.html' : `https://cybercabhunter.com/vehicle/${vehicleId}`;
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url, pretendToBeVisual: true });
   const w = dom.window;
@@ -68,7 +70,10 @@ async function run() {
       if (path === '/vehicle.html') return new Response(null, { status: 307, headers: { Location: new URL('/vehicle', req.url).href } });
       return new Response('not found', { status: 404 });
     } };
-    const fakeEnv = { ASSETS };
+    // Every id here is a public vehicle (a stub registry): the route serves the
+    // shell for it. Non-public / unknown ids 404 (tests/vehicle-timeline.test.mjs).
+    const stubDb = { prepare: () => ({ bind: (id) => ({ first: async () => ({ id, provider: 'tesla', license_plate: 'TEST001', model: null, color: null, service_area: 'Austin', first_seen_at: null, last_seen_at: null, verification_status: 'unverified', vin: null, approval_basis: null }) }) }) };
+    const fakeEnv = { ASSETS, cybercabhunter_db: stubDb };
     const ids = ['0ac4f010-b852-4ae3-a064-7b2b92b7d6db', '1cda265e-c1e3-4b72-9db4-3ff13a6aeaef', '2412b9ff-c5cc-4dd2-a889-9252e60e9edd', '5b040cd5-4d98-430b-9c38-cae74ed6a691', '0c617f6a-969a-4610-8025-f4f2e4f395ea'];
     for (const id of ids) {
       requested.length = 0;
@@ -115,7 +120,7 @@ async function run() {
     approveVehicle(d1, id, { withRide: true });
     d1.exec(`UPDATE robotaxi_vehicles SET model = 'Model Y', color = 'Pearl White', service_area = 'Austin' WHERE id = '${id}'`);
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('the summary line reads "Operating in Austin · Pearl White exterior" (service_area then color, joined with " · ")', page.visible('vSummaryLine') && page.text('vSummaryLine') === 'Operating in Austin · Pearl White exterior');
+    check('the summary line reads "Registered in Austin · Pearl White exterior" (service_area then color, joined with " · ")', page.visible('vSummaryLine') && page.text('vSummaryLine') === 'Registered in Austin · Pearl White exterior');
     check('model text ("Model Y") never appears anywhere on the page — the Cybercab badge (absent here, no vin) is the only type signal', !page.d.getElementById('vehicleLoaded').textContent.includes('Model Y'));
     check('still no Cybercab badge/image (no vin was set in this scenario)', !page.visible('vCybercabBadge') && !page.visible('vCybercabImage'));
     check('the plate still renders normally alongside the summary line', page.text('vLicensePlate') === 'XJR2195');
@@ -194,7 +199,7 @@ async function run() {
     // is let through to the real worker, simulating the server recovering.
     const intercept = (path) => {
       // Only the vehicle endpoint itself, not the separate /sightings one.
-      if (!/\/api\/robotaxi-vehicles\/[^/]+$/.test(path)) return null;
+      if (!/\/api\/robotaxi-vehicles\/[^/]+\/timeline$/.test(path)) return null;
       calls += 1;
       return calls === 1 ? new Response('{"success":false}', { status: 500 }) : null;
     };
@@ -217,7 +222,7 @@ async function run() {
     });
     seedRide(d1, { userId: 'user-second', vehicleId: id, fare: 810, rideDate: '2026-07-01' });
     const page = await openPage({ cybercabhunter_db: d1 }, id);
-    check('exactly one request was made to the public vehicle endpoint, and nothing else is called (the Community Sightings section was removed, so its endpoint is never fetched)', page.requests.length === 1 && page.requests[0].path === `/api/robotaxi-vehicles/${id}`);
+    check('exactly one request was made to the public vehicle endpoint, and nothing else is called (the Community Sightings section was removed, so its endpoint is never fetched)', page.requests.length === 1 && page.requests[0].path === `/api/robotaxi-vehicles/${id}/timeline`);
     check('no Authorization header was ever sent — this page never authenticates', page.requests.every(r => !r.headers.Authorization));
     check('no private endpoints were called (/api/profile, /api/trips, /api/tesla/*)', !page.requests.some(r => /\/api\/(profile|trips|tesla|me)\b/.test(r.path)));
     const rendered = page.d.body.innerHTML;

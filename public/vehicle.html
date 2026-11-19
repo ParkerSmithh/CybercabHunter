@@ -33,6 +33,7 @@
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css?v=80">
 <link rel="stylesheet" href="css/brand-type.css?v=5">
+<link rel="stylesheet" href="css/vehicle-timeline.css?v=2">
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -147,6 +148,7 @@
             <span id="vCybercabBadge" class="hidden vcard-pill mt-3">Cybercab</span>
           </div>
           <p id="vSummaryLine" class="hidden mt-3 text-sm text-slate-300 [overflow-wrap:anywhere] max-sm:text-xs max-sm:leading-snug"></p>
+          <p id="vRecordedStatus" class="text-xs text-slate-400 mt-1"></p>
         </div>
       </div>
 
@@ -161,6 +163,23 @@
           <div class="min-w-0"><div class="vcard-label max-sm:truncate"><svg class="max-sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></svg><span class="max-sm:hidden">Latest Recorded Ride</span><span class="sm:hidden">Latest ride</span></div><div id="vLastRide" class="dmv-card-num stat-value text-2xl font-semibold text-white mt-1 [overflow-wrap:anywhere] max-sm:text-sm max-sm:leading-tight">—</div></div>
         </div>
         <p id="vServiceAreasNote" class="text-xs text-slate-500 mt-6 pt-4 border-t border-white/[0.07] leading-relaxed max-sm:mt-4"></p>
+      </div>
+
+      <!-- Timeline (js/vehicle-timeline.js, GET /api/robotaxi-vehicles/:id/timeline):
+           the vehicle's record from public data, newest first. -->
+      <div id="vTimeline" class="glass rounded-2xl p-7 mb-8 max-sm:p-4 max-sm:mb-4 hidden" aria-labelledby="vTimelineTitle">
+        <div class="vt-head">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold">Record</p>
+            <h2 id="vTimelineTitle" class="font-display font-bold text-2xl tracking-[-0.02em] text-white uppercase mt-1 max-sm:text-lg">Timeline</h2>
+          </div>
+          <button id="vtShare" type="button" class="vt-share">Copy link</button>
+        </div>
+        <div id="vtFilters" class="vt-filters" role="group" aria-label="Show"></div>
+        <ol id="vtList" class="vt-list"></ol>
+        <button id="vtMore" type="button" class="vt-more hidden">Show more</button>
+        <p id="vtNote" class="vt-note"></p>
+        <nav id="vtNav" class="vt-nav" aria-label="Other vehicles in this city"></nav>
       </div>
     </div>
 
@@ -315,7 +334,8 @@
 <script>
   CCC.init();
 </script>
-<script src="js/vehicle.js?v=14"></script>
+<script src="js/vehicle.js?v=16"></script>
+<script src="js/vehicle-timeline.js?v=1"></script>
 <script src="/vendor/gsap-3.13.0.min.js" defer></script>
 <script src="/vendor/ScrollTrigger-3.13.0.min.js" defer></script>
 <script src="js/animated-content.js?v=1" defer></script>

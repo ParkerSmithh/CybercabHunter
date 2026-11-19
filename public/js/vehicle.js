@@ -78,8 +78,10 @@
     // The vehicle's city: its own, or (with none of its own) where its rides were
     // (the Cars page's rule, Dallas launch) -- a car first seen in Dallas shows Dallas.
     const rideCities = h.service_areas ? String(h.service_areas).split(',').map(c => c.trim()).filter(Boolean) : [];
-    if (v.service_area) clauses.push(`Operating in ${v.service_area}`);
+    if (v.service_area) clauses.push(`Registered in ${v.service_area}`);
     else if (rideCities.length) clauses.push(`Rides in ${rideCities.join(', ')}`);
+    $('vRecordedStatus').textContent = ['Service status not recorded',
+      approvedCybercab ? (v.approval_basis === 'vin-verified' ? 'VIN-verified approval' : 'Manual approval') : null].filter(Boolean).join(' · ');
     if (v.color) clauses.push(`${v.color} exterior`);
     if (v.vin) clauses.push(`VIN ${v.vin}`);
     $('vSummaryLine').textContent = clauses.join(' · ');
@@ -137,7 +139,7 @@
     setView('loading');
     let resp;
     try {
-      resp = await fetch(`${WORKER}/api/robotaxi-vehicles/${encodeURIComponent(vehicleId)}`);
+      resp = await fetch(`${WORKER}/api/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/timeline`);
     } catch (e) {
       // Network failure — distinct from a 404: the request never completed.
       $('vehicleErrorDetail').textContent = "Something went wrong reaching the server. Check your connection and try again.";
@@ -164,6 +166,7 @@
 
     renderVehicle(body);
     setView('loaded');
+    if (window.CCHVehicleTimeline) window.CCHVehicleTimeline.load(vehicleId, body);   // js/vehicle-timeline.js
   }
 
   function init() {
