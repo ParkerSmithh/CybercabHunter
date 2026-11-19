@@ -313,6 +313,33 @@ async function run() {
     check('clearing the search restores the full (Dallas) list', p.cards().length === 1 && p.vis('regLoaded') && /XJR1903/.test(p.cards()[0].textContent));
   }
 
+  console.log('4d. City rule: own city, else its counted rides\' city, else the default city (Austin)');
+  {
+    // Receipt-created cars and sightings sent without a city have no
+    // service_area of their own; they must still land in a city view.
+    const ctx = await makeApp();
+    const ownAustinDallasRide = vehicle(ctx, 1, 'OWN0001', { visibility: 'public', serviceArea: 'Austin' }); ride(ctx, ownAustinDallasRide, { serviceArea: 'Dallas' });
+    const ownDallas = vehicle(ctx, 2, 'OWN0002', { visibility: 'public', serviceArea: ' dallas ' }); ride(ctx, ownDallas, { serviceArea: 'Austin' });
+    const emptyDallasRide = vehicle(ctx, 3, 'EMP0003', { visibility: 'public', serviceArea: null }); ride(ctx, emptyDallasRide, { serviceArea: 'Dallas' });
+    const emptyAustinRide = vehicle(ctx, 4, 'EMP0004', { visibility: 'public', serviceArea: '' }); ride(ctx, emptyAustinRide, { serviceArea: 'Austin' });
+    const emptyBothRides = vehicle(ctx, 5, 'EMP0005', { visibility: 'public', serviceArea: null }); ride(ctx, emptyBothRides, { serviceArea: 'Austin' }); ride(ctx, emptyBothRides, { serviceArea: 'Dallas' });
+    // No city and no rides: an approved sighting car (public without a ride).
+    ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, visibility, origin, approval_basis) VALUES (?, 'EMP0006', 'Cybercab', 'public', 'sighting', 'manual')`).bind(uuid(6))._exec();
+    const emptyNoRides = uuid(6);
+    const byCity = async c => (await list(ctx, '?city=' + c)).body.vehicles.map(v => v.id).sort().join();
+    const sorted = (...ids) => ids.sort().join();
+    check('an empty-city car with no rides is listed under the default city (Austin)', (await byCity('austin')).includes(emptyNoRides) && !(await byCity('dallas')).includes(emptyNoRides));
+    check('an empty-city car takes its rides\' city', (await byCity('dallas')).includes(emptyDallasRide) && (await byCity('austin')).includes(emptyAustinRide));
+    check('...and a non-default city wins when it rode in both (a Dallas car, as on main)', (await byCity('dallas')).includes(emptyBothRides) && !(await byCity('austin')).includes(emptyBothRides));
+    check('a recorded own city wins over the rides\' city (any case or spacing)', (await byCity('austin')).includes(ownAustinDallasRide) && (await byCity('dallas')).includes(ownDallas) && !(await byCity('dallas')).includes(ownAustinDallasRide));
+    check('every public car is in exactly one city list, and Austin + Dallas = All cities',
+      await byCity('austin') === sorted(ownAustinDallasRide, emptyAustinRide, emptyNoRides)
+      && await byCity('dallas') === sorted(ownDallas, emptyDallasRide, emptyBothRides)
+      && (await list(ctx, '')).body.total === 6);
+    const totals = async c => (await list(ctx, '?city=' + c)).body.total;
+    check('the city totals match the lists (3 and 3)', await totals('austin') === 3 && await totals('dallas') === 3);
+  }
+
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');
   {
     const pages = fs.readdirSync(`${ROOT}public`).filter(f => f.endsWith('.html') && read(f).includes('data-nav="sightings"'));

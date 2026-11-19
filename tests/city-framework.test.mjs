@@ -26,11 +26,14 @@ test('one daily snapshot and explicit city deltas, including a planned city', as
   const env = { cybercabhunter_db: db };
   await recomputeCityStats(env, now);
   await recomputeCityStats(env, now);
+  // The registry city rule (db.registryCitySql): 'u' has no city and no rides, so
+  // it counts toward the default city (Austin). Sightings count by the
+  // observation's own city, so 'u's unassigned sighting is in neither.
   assert.deepEqual(db.query('SELECT city, registry_additions, approved_sightings FROM city_event_deltas ORDER BY city')
-    .map(row => Object.values(row)), [['austin', 1, 1], ['dallas', 1, 1]]);
+    .map(row => Object.values(row)), [['austin', 2, 1], ['dallas', 1, 1]]);
   const response = await apiCities(new Request('https://example.org/api/cities'), env);
   assert.deepEqual((await response.json()).cities.map(area => [area.key, area.stats.registry]),
-    [['austin', 1], ['dallas', 1]]);
+    [['austin', 2], ['dallas', 1]]);   // 'u' (no city, no rides) is an Austin car
   const phoenix = { ...SERVICE_AREAS[0], key: 'phoenix', timeZone: 'America/Phoenix' };
   const delta = await computeCityEventDelta(db, phoenix, now);
   assert.equal(delta.registry_additions + delta.approved_sightings, 0);
