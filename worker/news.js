@@ -1,3 +1,4 @@
+import { SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
 // Cybercab news: an automatic headline aggregator for /news (public/news.html).
 //
 // SOURCES: eleven publisher RSS / Atom feeds (FEEDS), each verified Oct 9-10,
@@ -52,7 +53,7 @@ const THUMB_PAGE_MAX_BYTES = 2 * 1024 * 1024;
 const THUMB_MAX_BYTES = 200 * 1024;    // a 400 px WebP is ~30-60 KB; anything bigger is refused
 const FETCH_TIMEOUT_MS = 10000;
 const ROBOTS_TTL_SECONDS = 7 * 86400;
-const CACHE_SECONDS = 900;
+const CACHE_SECONDS = 3600;
 const KV_RUN = 'news:last_run';
 const KV_NEXT_FEED = 'news:next_feed';
 const KV_PRUNE = 'news:last_prune';
@@ -386,8 +387,12 @@ async function ingestFeeds(env, feeds, { fetchImpl, nowMs, log }) {
   const fresh = urls.filter(u => !known.has(u)).map(u => candidates.get(u)).filter(it => !storedKeys.has(storyKey(it)));
   log.duplicates += urls.length - fresh.length;
   fresh.forEach(it => { it.id = crypto.randomUUID(); });
-  const inserts = fresh.map(it => sql.prepare(`INSERT OR IGNORE INTO news_articles (id, title, url, source, source_type, published_at, excerpt, image_url, thumb_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`)
-    .bind(it.id, it.title.slice(0, 300), it.url, it.source.slice(0, 80), it.source_type, it.published_at, it.excerpt, null));
+  function headlineCity(title) {
+    const matches = SERVICE_AREAS.filter(area => new RegExp(`\\b${area.name}\\b`, 'i').test(title));
+    return matches.length === 1 ? matches[0].key : null;
+  }
+  const inserts = fresh.map(it => sql.prepare(`INSERT OR IGNORE INTO news_articles (id, title, url, source, source_type, published_at, excerpt, image_url, thumb_status, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`)
+    .bind(it.id, it.title.slice(0, 300), it.url, it.source.slice(0, 80), it.source_type, it.published_at, it.excerpt, null, headlineCity(it.title)));
   for (let i = 0; i < inserts.length; i += 50) {
     const res = await sql.batch(inserts.slice(i, i + 50));
     log.new += res.reduce((n, r) => n + ((r.meta && r.meta.changes) || 0), 0);
@@ -739,26 +744,33 @@ export async function apiNews(request, env, ctx) {
   const cursor = params.get('cursor') ? decodeCursor(params.get('cursor')) : null;
   const q = String(params.get('q') || '').trim().slice(0, 80);
   const where = [PRIMARY], binds = [];
+  const cityParam = params.get('city');
+  if (cityParam && cityParam !== 'all') {
+    const area = serviceAreaFor(cityParam);
+    if (!area) return Response.json({ error: 'invalid_city' }, { status: 400 });
+    where.push('n.city = ?');
+    binds.push(area.key);
+  }
   if (majorOnly) where.push('n.importance = 2');
   if (cursor) { where.push('(n.published_at < ? OR (n.published_at = ? AND n.id < ?))'); binds.push(cursor.p, cursor.p, cursor.id); }
   if (q) { where.push(`(n.title LIKE ? ESCAPE '\\' OR n.excerpt LIKE ? ESCAPE '\\')`); const like = `%${q.replace(/[\\%_]/g, c => '\\' + c)}%`; binds.push(like, like); }
   const sql = env.cybercabhunter_db;
   try {
-    const { results } = await sql.prepare(`SELECT n.id, n.title, n.url, n.source, n.source_type, n.published_at, n.excerpt, n.image_url, n.thumb_key, n.importance, n.source_count, n.cluster_id
+    const { results } = await sql.prepare(`SELECT n.id, n.title, n.url, n.source, n.source_type, n.published_at, n.excerpt, n.image_url, n.thumb_key, n.importance, n.source_count, n.cluster_id, n.city
       FROM news_articles n WHERE ${where.join(' AND ')} ORDER BY n.published_at DESC, n.id DESC LIMIT ?`).bind(...binds, limit + 1).all();
     const rows = (results || []).slice(0, limit);
     const more = (results || []).length > limit;
     const clusters = [...new Set(rows.map(r => r.cluster_id).filter(Boolean))];
     const siblings = {};
     if (clusters.length) {
-      const sib = await sql.prepare(`SELECT id, cluster_id, title, url, source, source_type, published_at FROM news_articles WHERE hidden = 0 AND cluster_id IN (${clusters.map(() => '?').join(',')}) ORDER BY published_at`).bind(...clusters).all();
+      const sib = await sql.prepare(`SELECT id, cluster_id, title, url, source, source_type, published_at FROM news_articles WHERE hidden = 0 ${cityParam && cityParam !== 'all' ? 'AND city = ?' : ''} AND cluster_id IN (${clusters.map(() => '?').join(',')}) ORDER BY published_at`).bind(...(cityParam && cityParam !== 'all' ? [binds[0]] : []), ...clusters).all();
       for (const s of sib.results || []) (siblings[s.cluster_id] = siblings[s.cluster_id] || []).push(s);
     }
     const stories = rows.map(r => ({
       id: r.id, title: r.title, url: r.url, source: r.source, source_type: r.source_type, published_at: r.published_at,
       // The page shows thumb_url first (our own WebP), then image_url (a feed
       // enclosure), then the outlet's initial.
-      excerpt: r.excerpt, thumb_url: r.thumb_key ? thumbUrl(r.id) : null, image_url: r.image_url, importance: r.importance, source_count: r.source_count, tags: tagsOf(r),
+      city: r.city, excerpt: r.excerpt, thumb_url: r.thumb_key ? thumbUrl(r.id) : null, image_url: r.image_url, importance: r.importance, source_count: r.source_count, tags: tagsOf(r),
       also: (siblings[r.cluster_id] || []).filter(s => s.id !== r.id).map(s => ({ title: s.title, url: s.url, source: s.source, source_type: s.source_type, published_at: s.published_at }))
     }));
     const body = { stories, next_cursor: more && rows.length ? encodeCursor(rows[rows.length - 1]) : null, disclosure: 'Stories are picked and summarized automatically; follow each link for the original reporting.' };

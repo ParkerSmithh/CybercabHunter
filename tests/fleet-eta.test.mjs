@@ -225,16 +225,10 @@ async function run() {
     const first = await call('GET', '/api/fleet-eta?city=dallas');
     const firstJson = await first.json();
     watch(false);
-    // Everything after the first statement belongs to the background recompute.
-    const inRequest = log.findIndex(q => !/fleet_eta_stats WHERE city/.test(q)) === -1 ? log.length : log.findIndex(q => !/fleet_eta_stats WHERE city/.test(q));
-    check('before the first daily run: published-report estimates, flagged, from one indexed read in the request itself', first.status === 200 && firstJson.pending_first_run === true && inRequest === 1 && /FROM fleet_eta_stats WHERE city = \?/.test(log[0]));
-    check('...cached for a minute only', /max-age=60\b/.test(first.headers.get('Cache-Control')));
-    await Promise.all(background.splice(0));
-    const filled = await (await call('GET', '/api/fleet-eta?city=dallas')).json();
-    check('...and the city\'s row is computed once in the background, so the next request has its fleet count', !filled.pending_first_run && filled.fleet && typeof filled.fleet.documented.cybercab === 'number');
-    await call('GET', '/api/fleet-eta?city=austin');
-    check('a burst of misses recomputes only once (5-minute marker)', await env.TESLA_SESSIONS.get('fleet_eta:first_run:dallas') === '1');
-    await Promise.all(background.splice(0));
+    check('before the daily refresh: published estimates from one indexed read', first.status === 200 &&
+      firstJson.pending_first_run === true && log.length === 1 && /FROM fleet_eta_stats WHERE city = \?/.test(log[0]));
+    check('the pending response is cached for a minute', /max-age=60\b/.test(first.headers.get('Cache-Control')));
+    check('the request does not schedule a fleet recomputation', background.length === 0);
     d1.prepare(`DELETE FROM fleet_eta_stats`)._exec();
     await env.TESLA_SESSIONS.delete('fleet_eta:first_run:austin'); await env.TESLA_SESSIONS.delete('fleet_eta:first_run:dallas');
     check('unknown city: 400', (await call('GET', '/api/fleet-eta?city=houston')).status === 400);

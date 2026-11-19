@@ -24,7 +24,7 @@
 
 import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './ride-status.js';
 import { MILES_SQL, FLEET_CITIES } from './fleet-stats.js';
-import { serviceAreaFor } from './service-areas.js';
+import { DEFAULT_CITY, serviceAreaFor } from './service-areas.js';
 import { requireModerator } from './moderation.js';
 import { tesla } from './tesla.js';
 import { sha256Hex } from './account.js';
@@ -37,7 +37,7 @@ export const REPORT_DAILY_LIMIT = 10;        // per rider and per IP, rolling 24
 const REPORT_MAX_AGE_DAYS = 30;
 const REPORTS_READ_CAP = 1000;               // newest approved reports the daily job reads per city
 const RECENT_SHOWN = 6;
-const AREA_SQ_MI = { austin: CALC.ETA_ASSUMPTIONS.areaSqMi, dallas: CALC.DALLAS_AREA_SQ_MI };
+
 const TZ = 'America/Chicago';
 
 const vehicleType = model => {
@@ -262,7 +262,7 @@ export function buildCityPayload(city, { rides = [], reports = [], fleet = null 
     baselines: {
       // The previous page: the fleet-geometry model's "most likely" for the documented Cybercabs.
       previous_fleet_geometry: () => {
-        const e = CALC.etaRange({ fleetSize: docCybercabs, scenario: 'typical', assumptions: { ...CALC.ETA_ASSUMPTIONS, areaSqMi: AREA_SQ_MI[city] } });
+        const e = CALC.etaRange({ fleetSize: docCybercabs, scenario: 'typical', assumptions: { ...CALC.ETA_ASSUMPTIONS, areaSqMi: serviceAreaFor(city)?.zone.square_miles } });
         return () => (e.state === 'ok' ? e.likely : NaN);
       }
     }
@@ -390,7 +390,7 @@ export async function recomputeFleetEta(env, nowMs = Date.now(), cities = FLEET_
 // ---- GET /api/fleet-eta ------------------------------------------------------
 
 export async function apiFleetEta(request, env, ctx) {
-  const city = (new URL(request.url).searchParams.get('city') || 'austin').toLowerCase();
+  const city = (new URL(request.url).searchParams.get('city') || DEFAULT_CITY).toLowerCase();
   if (!FLEET_CITIES.includes(city)) return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(`https://cybercabhunter.com/api/fleet-eta?city=${city}`, { method: 'GET' });
@@ -407,19 +407,7 @@ export async function apiFleetEta(request, env, ctx) {
     }
     return response;
   }
-  // Not computed yet (a new deploy before the first daily run, or a model
-  // change): serve the published-reports estimate now, and compute the city's
-  // row once in the background, so the next request (within a minute) has it.
-  // A 5-minute KV marker stops a burst of requests from recomputing in
-  // parallel; the pending answer is cached for a minute only, never an hour.
-  if (ctx && typeof ctx.waitUntil === 'function' && env.TESLA_SESSIONS) {
-    const lockKey = `fleet_eta:first_run:${city}`;
-    ctx.waitUntil((async () => {
-      if (await env.TESLA_SESSIONS.get(lockKey)) return;
-      await env.TESLA_SESSIONS.put(lockKey, '1', { expirationTtl: 300 });
-      await recomputeFleetEta(env, Date.now(), [city]);
-    })().catch(() => {}));
-  }
+  // A missing snapshot stays pending until the scheduled refresh.
   const body = JSON.stringify({ ...buildCityPayload(city, {}, Date.now()), pending_first_run: true });
   return new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${PENDING_CACHE_SECONDS}` } });
 }

@@ -41,7 +41,7 @@ async function page({ reducedMotion = false } = {}) {
   w.matchMedia = q => ({ matches: reducedMotion && /reduce/.test(q), addEventListener() {}, removeEventListener() {} });
   w.ResizeObserver = class { observe() {} disconnect() {} };
   const fetches = [];
-  w.fetch = async u => { fetches.push(String(u)); return { ok: true, json: async () => ({ vehicles: VEHICLES, total: VEHICLES.length }) }; };
+  w.fetch = async u => { fetches.push(String(u)); return { ok: true, json: async () => ({ registry_growth: VEHICLES.filter(v => v.service_area === 'Austin').map(v => v.first_seen_at) }) }; };
   // Hand-driven animation frames: advance(ms) runs 16ms frames until that much time has passed.
   let queue = [], nextId = 1, clock = 1000;
   w.requestAnimationFrame = cb => { const id = nextId++; queue.push({ id, cb }); return id; };
@@ -50,6 +50,7 @@ async function page({ reducedMotion = false } = {}) {
     const end = clock + ms;
     while (clock < end && queue.length) { clock += 16; const batch = queue; queue = []; batch.forEach(f => f.cb(clock)); }
   };
+  w.eval(fs.readFileSync(new URL('../public/js/cities.js', import.meta.url), 'utf8'));
   w.eval(`${CHART}\ninitFleetGrowthChart();`);
   await new Promise(r => setTimeout(r, 20));
   const d = w.document;
@@ -76,7 +77,7 @@ async function run() {
     check('the readout is hidden before playing', p.readout().classList.contains('hidden'));
     const before = p.fetches.length;
     b.click(); p.advance(5000); p.range('all'); p.btn().click(); p.advance(9000);
-    check('playback reuses the loaded data: no request beyond the chart\'s one registry fetch', before === 1 && p.fetches.length === 1 && /\/api\/robotaxi-vehicles\?/.test(p.fetches[0]));
+    check('playback reuses the loaded data: no request beyond the chart\'s one precomputed summary fetch', before === 1 && p.fetches.length === 1 && /\/api\/homepage-stats\?city=austin/.test(p.fetches[0]));
   }
 
   console.log('2. Play, pause, resume, finish, replay (90D, the default range)');

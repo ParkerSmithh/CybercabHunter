@@ -1,3 +1,4 @@
+import { serviceAreaFor } from '../worker/service-areas.js';
 // Dallas copy on infrastructure.html and the homepage. Before the Dallas
 // launch the app had no authoritative source for real-world launch status, so
 // placeholders described only the app's own missing functionality. Since the
@@ -33,7 +34,7 @@ function run() {
     check('infrastructure.html: has a #dallasContent Dallas panel', start !== -1);
     const panel = html.slice(start, html.indexOf('<!-- Map: a tall card on mobile', start));
     check('infrastructure.html: the Dallas panel is no longer a "not available" placeholder', !/isn'?t (available|built) in Cybercab Hunter/i.test(panel) && !/NOT YET AVAILABLE/.test(panel));
-    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Hubs', 'Staging Grounds', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'In service since April 18, 2026', 'Fleet &amp; Fares'];
+    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Hubs', 'Staging Grounds', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'data-robotaxi-since="dallas"', 'Fleet &amp; Fares'];
     const at = order.map(x => panel.indexOf(x));
     check('infrastructure.html: the Dallas panel has Austin\'s structure, in order', at.every((i, k) => i !== -1 && (k === 0 || i > at[k - 1])));
     check('infrastructure.html: the Dallas coverage is 81 mi² (counted up like Austin\'s)', /id="dalCoverageOut"/.test(panel) && /countUp\(document\.getElementById\('dalCoverageOut'\), 81\)/.test(html));
@@ -52,9 +53,10 @@ function run() {
     check('index.html: the Dallas "not available" placeholder is gone', !/homeZoneDallasNote/.test(html) && !/isn'?t (available|built) in Cybercab Hunter/i.test(html));
     const zones = html.slice(html.indexOf('id="map"'), html.indexOf('<!-- Austin mini map -->'));
     check('index.html: the service-area facts sit at the top of SERVICE ZONES (one block for both cities)', /<div id="rowArea" data-row="area"/.test(zones) && !/homeZone(Austin|Dallas)Info/.test(html));
-    const areas = fs.readFileSync(new URL('../worker/service-areas.js', import.meta.url), 'utf8');
-    const strip = areas.slice(areas.indexOf('dallas: {'), areas.indexOf('};', areas.indexOf('dallas: {')));
-    check('the Dallas facts: 24/7 (00:00-24:00, all_day), 81 mi², launched 2026-04-18', /open: '00:00', close: '24:00', all_day: true/.test(strip) && /square_miles: 81/.test(strip) && /in_service_since: '2026-04-18'/.test(strip));
+    const facts = serviceAreaFor('dallas').zone;
+    const strip = JSON.stringify(facts);
+    check('Dallas service facts come from the shared config', facts.hours.all_day && facts.hours.open === '00:00' &&
+      facts.hours.close === '24:00' && facts.square_miles === 81 && facts.in_service_since === '2026-04-18');
     check('index.html: the Dallas minimap draws the Dallas service zone', /initZoneMap\('zoneMap-dallas', 'Dallas', \[[^\]]+\], CCCAustinMap\.DALLAS_SERVICE_ZONE\)/.test(html));
     for (const claim of LAUNCH_CLAIMS) {
       check(`the Dallas facts make no unsourced launch claim (${claim})`, !claim.test(strip));

@@ -1167,24 +1167,9 @@ export const REGISTRY_SORTS = {
   most_rides: `trip_count DESC, ${RECENT_FIRST}`
 };
 
-// q searches the plate and the VIN only (owner request 2026-10-07: not model,
-// colour or city). city (a service-area name, optional) keeps vehicles whose
-// own city is that one, or, for a vehicle with no city of its own, that have a
-// counted ride there (a car first seen in Dallas is a Dallas car). Austin
-// lists every public vehicle that is not a Dallas car.
-// THE registry city rule (the Cars page, the homepage rows): ' AND …' for the
-// robotaxi_vehicles alias. A vehicle is in a city when its own city is that
-// one, or (with no city of its own) a counted ride was there. Dallas lists
-// Dallas cars; Austin, the only city before Dallas, lists every other public
-// vehicle, exactly the list it always had minus the Dallas cars, so nothing
-// disappears.
+// A city-filtered registry includes only explicitly assigned vehicles.
 export function registryCitySql(alias, city) {
-  const counted = `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE} AND lower(trim(t.service_area)) = ?`;
-  const inCity = `(lower(trim(COALESCE(${alias}.service_area, ''))) = ?
-      OR (trim(COALESCE(${alias}.service_area, '')) = '' AND EXISTS (SELECT 1 ${counted})))`;
-  const c = String(city).trim().toLowerCase();
-  const other = c === 'austin' ? 'dallas' : c;
-  return { sql: c === 'austin' ? ` AND NOT ${inCity}` : ` AND ${inCity}`, binds: [other, other] };
+  return { sql: ` AND lower(trim(${alias}.service_area)) = ?`, binds: [String(city).trim().toLowerCase()] };
 }
 
 async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent', city = null } = {}) {

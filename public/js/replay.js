@@ -37,7 +37,7 @@ window.CCCReplay = (function () {
   // The city replayed (?city=dallas; Austin by default, its URLs unchanged).
   // Dallas: its TxDOT camera captures, framed on its service zone like Austin
   // (cameras outside it are a pan away). Same time zone.
-  const CITY = (() => { try { return new URLSearchParams(location.search).get('city') === 'dallas' ? 'dallas' : 'austin'; } catch (e) { return 'austin'; } })();
+  const CITY = new URLSearchParams(location.search).get('city') || window.CCH_CITIES?.DEFAULT_CITY || 'austin';
 
   // ---- Time (Austin) ----
   function zoneParts(ms) {

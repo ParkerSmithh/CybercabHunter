@@ -42,14 +42,14 @@
 // what was used.
 
 import { COUNTED_RIDES_WHERE, RIDES_FROM, publicVehicleEligibleSql } from './ride-status.js';
-import { serviceAreaFor } from './service-areas.js';
+import { DEFAULT_CITY, SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
 
 export const FARE_MIN_RIDES = 1;
 // The cities with a fleet panel (Zones, homepage, Fleet ETA). Dallas added for
 // the Dallas launch; every other city is refused (400 invalid_city).
-export const FLEET_CITIES = ['austin', 'dallas'];
+export const FLEET_CITIES = SERVICE_AREAS.map(area => area.key);
 export const FLEET_STATS_CRON = '0 11 * * *';        // daily, 6 AM CDT / 5 AM CST
-const COUNT_CACHE_SECONDS = 300;
+
 const KM_TO_MI = 0.621371;
 // Bump FARES_VERSION whenever the fare rules or shape change, so a deploy never
 // serves figures stored under the old rules (the first request recomputes).
@@ -124,30 +124,24 @@ export async function recomputeFleetStats(env, nowMs = Date.now()) {
   return out;
 }
 
-// The stored fare model; computed (and stored) once if the daily job hasn't run yet.
-async function storedFares(env, area) {
-  try {
-    const raw = await env.TESLA_SESSIONS.get(kvKey(area.key));
-    if (raw) return JSON.parse(raw);
-  } catch (e) { /* recompute below */ }
-  const fares = await computeFareStats(env.cybercabhunter_db, area.name);
-  try { await env.TESLA_SESSIONS.put(kvKey(area.key), JSON.stringify(fares)); } catch (e) { /* served anyway */ }
-  return fares;
+export async function computeFleetSnapshot(db, area, now) {
+  const [counts, fares] = await Promise.all([computeFleetCounts(db, area.name), computeFareStats(db, area.name, now)]);
+  return { city: area.key, cybercabs: counts.cybercabs, count_as_of: new Date(now).toISOString(), fares };
 }
 
 export async function apiFleetStats(request, env, ctx) {
-  const cityParam = (new URL(request.url).searchParams.get('city') || 'austin').toLowerCase();
+  const cityParam = (new URL(request.url).searchParams.get('city') || DEFAULT_CITY).toLowerCase();
   const area = FLEET_CITIES.includes(cityParam) ? serviceAreaFor(cityParam) : null;
   if (!area) return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
+  const cacheKey = new Request(new URL('/api/fleet-stats?city=' + area.key, request.url));
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
   }
-  const [counts, fares] = await Promise.all([computeFleetCounts(env.cybercabhunter_db, area.name), storedFares(env, area)]);
-  const response = Response.json({ city: area.key, cybercabs: counts.cybercabs, count_as_of: new Date().toISOString(), fares },
-    { headers: { 'Cache-Control': `public, max-age=${COUNT_CACHE_SECONDS}` } });
+  const row = await env.cybercabhunter_db.prepare('SELECT fleet_payload FROM city_daily_summary WHERE city = ?').bind(area.key).first();
+  if (!row) return Response.json({ error: 'stats_unavailable' }, { status: 503 });
+  const response = Response.json(JSON.parse(row.fleet_payload), { headers: { 'Cache-Control': 'public, max-age=3600' } });
   if (cache) {
     const stored = cache.put(cacheKey, response.clone()).catch(() => {});
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);

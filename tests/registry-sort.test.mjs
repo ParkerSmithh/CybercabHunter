@@ -77,6 +77,7 @@ async function run() {
   console.log('3. The Cars page sort menu');
   {
     const { ctx } = await makeApp();
+    ctx.d1.exec("UPDATE robotaxi_vehicles SET service_area = 'Austin'");
     const html = fs.readFileSync(`${ROOT}public/vehicles.html`, 'utf8');
     const js = fs.readFileSync(`${ROOT}public/js/vehicles.js`, 'utf8');
     async function open(url) {
@@ -84,6 +85,7 @@ async function run() {
       const w = dom.window;
       const calls = [];
       w.fetch = async u => { const path = String(u).replace(/^https:\/\/[^/]+/, ''); calls.push(path); return worker.fetch(new Request(`https://x${path}`), ctx.env, {}); };
+      w.eval(fs.readFileSync(`${ROOT}public/js/cities.js`, 'utf8'));
       w.eval(js);
       const d = w.document;
       const settle = async () => { await new Promise(r => setTimeout(r, 80)); };

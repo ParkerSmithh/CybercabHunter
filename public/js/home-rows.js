@@ -201,7 +201,7 @@
         tile('Service hours', esc(hours), allDay ? 'Around the clock, every day' : span ? `${span} hours a day · Central` : '')) +
       (a.description ? `<p class="mt-3 text-sm text-slate-400 leading-relaxed max-sm:mt-2 max-sm:text-xs max-sm:leading-snug">${esc(a.description)}</p>` : '') +
       footnote('Zone facts as published for the service area; vehicles from the public registry.') +
-      about('Coverage, launch date and hours are the published figures for the zone (the Zones page shows the same). Vehicles documented counts the public registry\'s Cybercabs in this city: its own city, or, with none set, where its counted rides were.');
+      about('Coverage, launch date and hours are the published figures for the zone (the Zones page shows the same). Vehicles documented counts the public registry\'s Cybercabs in this city: its assigned service city.');
   }
 
   function rowRides(d) {
@@ -229,7 +229,7 @@
     const s = d.sightings || {}, c = d.cameras || {};
     const tile = metric;
     const has = s.total > 0;
-    const city = d.city === 'dallas' ? '?city=dallas' : '';
+    const city = '?city=' + encodeURIComponent(d.city);
     const spots = (s.top_spots || []).length
       ? `<ol class="mt-2 space-y-1.5">${s.top_spots.map((p, i) => `<li class="flex items-center gap-2 text-sm max-sm:text-xs"><span class="w-5 text-slate-500 stat-value">${i + 1}</span><span class="flex-1 min-w-0 truncate text-slate-200">${esc(p.location)}</span><span class="stat-value text-slate-400">${plural(p.count, 'sighting', 'sightings')}</span></li>`).join('')}</ol>`
       : `<div class="mt-2">${empty('No sighting locations yet.')}</div>`;
@@ -283,7 +283,7 @@
   if (fleetMount && window.ResizeObserver) new ResizeObserver(syncChartSize).observe(fleetMount);
   window.addEventListener('resize', syncChartSize);
 
-  let seq = 0, current = null, city = 'austin';
+  let seq = 0, current = null, city = window.CCH_CITIES?.DEFAULT_CITY || 'austin';
   function draw(d) {
     current = d;
     rowEls().forEach(el => {
@@ -322,6 +322,6 @@
   setInterval(() => document.querySelectorAll('#cityRows [data-updated]').forEach(el => { if (el.dataset.updated) el.textContent = `updated ${ago(el.dataset.updated)}`; }), 30 * 1000);
   setInterval(() => { if (!document.hidden) render(city, { quiet: true }); }, REFRESH_MS);
 
-  window.setHomeRowsCity = c => render(c === 'dallas' ? 'dallas' : 'austin');
+  window.setHomeRowsCity = c => render(c);
   render('austin');
 })();

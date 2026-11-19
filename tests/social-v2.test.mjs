@@ -291,7 +291,7 @@ async function run() {
     check('an anonymous author is never named; no photo → the site image', anon.title === 'Ride review by a Cybercab Hunter | CybercabHunter Community' && /CybercabAnimation-poster/.test(anon.image));
     const page = await call(ctx, 'GET', `/community?post=${p.id}`);
     check('/community is served through the Worker (the page itself when no rewriter is available)', page.status === 200 && /<title>/.test(await page.r.text()));
-    check('wrangler runs the Worker first for /community only', /"run_worker_first": \["\/community"\]/.test(read('wrangler.jsonc')));
+    check('wrangler runs the Worker first for /community', /"run_worker_first": \["\/community"/.test(read('wrangler.jsonc')));
     check('the page has default Open Graph tags for the rewriter to fill', ['og:title', 'og:description', 'og:image', 'og:url'].every(k => read('public/community.html').includes(`property="${k}"`)));
     await call(ctx, 'PUT', `/api/social/posts/${p.id}/save`, { session: 's-bob' });
     await call(ctx, 'PUT', `/api/social/posts/${p.id}/like`, { session: 's-bob' });

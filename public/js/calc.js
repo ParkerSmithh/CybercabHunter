@@ -8,8 +8,17 @@ const CCC_CALC = (() => {
   // 2 AM): the whole day, 0 to 1440, so serviceStatus is always "Operating now"
   // and serviceSegments is one full-day piece. A window that crosses midnight
   // (closeMinute < openMinute) still works if hours ever come back.
-  const SERVICE_HOURS = { openMinute: 0, closeMinute: 1440, timeZone: 'America/Chicago' };
-  const DALLAS_SERVICE_HOURS = { openMinute: 0, closeMinute: 1440, timeZone: 'America/Chicago' };
+  const cities = typeof module === 'object' && module.exports ? require('./cities.js') : globalThis.CCH_CITIES;
+  const cityFacts = key => cities?.SERVICE_AREAS.find(city => city.key === key);
+  const minutes = clock => Number(clock.split(':')[0]) * 60 + Number(clock.split(':')[1]);
+  function hoursFor(key) {
+    const city = cityFacts(key);
+    return city ? {
+      openMinute: minutes(city.zone.hours.open), closeMinute: minutes(city.zone.hours.close), timeZone: city.timeZone
+    } : { openMinute: 0, closeMinute: 1440, timeZone: 'America/Chicago' };
+  }
+  const SERVICE_HOURS = hoursFor('austin');
+  const DALLAS_SERVICE_HOURS = hoursFor('dallas');
   // Around the clock: no opening or closing to show.
   const isAllDay = (hours = SERVICE_HOURS) => hours.openMinute === 0 && hours.closeMinute >= 1440;
   // "24/7", or "5:00 AM - 2:00 AM" for a window.
@@ -20,7 +29,7 @@ const CCC_CALC = (() => {
   // Dallas Model Y fleet: a fixed figure set by the owner (no live source).
   const DALLAS_MODEL_Y_FLEET = 65;
   // Dallas service zone, 81 mi² (Tesla's figure; js/austin-map.js DALLAS_SERVICE_ZONE).
-  const DALLAS_AREA_SQ_MI = 81;
+  const DALLAS_AREA_SQ_MI = cityFacts('dallas')?.zone.square_miles ?? 81;
 
   // Tesla's Austin robotaxi rate as reported from the app (not an official rate card):
   // $3.00 base + $1.40/mi since 2026-03-12 (Not a Tesla App / Basenor reporting).

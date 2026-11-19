@@ -1,0 +1,17 @@
+.site-city-switcher {
+  max-width: 100%;
+  min-height: 40px;
+  padding: 0 0.35rem;
+  border: 1px solid color-mix(in srgb, #fae030 42%, transparent);
+  border-radius: 0.5rem;
+  background: #101014;
+  color: #fae030;
+  font: 600 0.8125rem Inter, sans-serif;
+}
+.site-city-switcher:focus-visible {
+  outline: 2px solid #fae030;
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  .site-city-switcher { min-height: 44px; font-size: 0.75rem; }
+}

@@ -38,6 +38,9 @@
 <link rel="stylesheet" href="css/hero-typewriter.css?v=2">
 <link rel="stylesheet" href="css/home-data.css?v=8">
 <link rel="stylesheet" href="css/daily.css?v=5">
+<link rel="stylesheet" href="/css/city-switcher.css">
+<script src="/js/cities.js"></script>
+<script src="/js/city-switcher.js"></script>
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -135,7 +138,7 @@
       <h1 class="font-display font-bold text-5xl lg:text-6xl leading-[1.05] tracking-[-0.035em] text-paper max-sm:text-[2.375rem]" style="font-weight:700">
         <span class="blur-word" style="--i:0">TRACK</span> <span class="blur-word" style="--i:1">THE</span><br><span class="blur-word text-[#FAE030]" style="--i:2">FUTURE</span> <span class="blur-word" style="--i:3">OF</span><br><span class="blur-word" style="--i:4">AUTONOMY</span>
       </h1>
-      <p id="heroTypewriter" class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed max-sm:mt-3 max-sm:text-sm">Crowdsourced sightings and live stats for Tesla's autonomous Cybercab fleet in Austin.</p>
+      <p id="heroTypewriter" class="mt-5 text-base lg:text-lg text-paper/75 max-w-[34ch] leading-relaxed max-sm:mt-3 max-sm:text-sm">Crowdsourced sightings and fleet stats for Tesla's autonomous Cybercabs.</p>
       <div class="flex flex-wrap gap-3 mt-8 max-sm:mt-5" data-animate="fade-up" data-animate-distance="16" data-animate-delay="0.32">
         <a href="/news" class="btn-magnetic inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold bg-gradient-to-r from-goldsoft to-gold text-[#1a1204] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.55)]">
           <!-- Phones keep the original label width so the hero layout stays fixed;
@@ -594,6 +597,8 @@
         if (window.setHomeRowsCity) window.setHomeRowsCity(city);
       });
     });
+    const initialCity = new URLSearchParams(location.search).get('city');
+    if (initialCity === 'dallas') addEventListener('load', () => [...cityBtns].find(btn => btn.dataset.city === initialCity)?.click(), { once: true });
   })();
 
   function initFleetGrowthChart() {
@@ -702,27 +707,15 @@
     // drifting from Austin's.
     let CHART_CITY = 'Austin';   // switched by the city selector (window.setFleetChartCity)
 
-    // Paginate the SAME public endpoint the rest of the site uses
-    // (LIST_MAX_LIMIT is 100 server-side), keeping only vehicles whose
-    // service_area === city — see the CHART_CITY rule above.
     async function fetchFirstSeenDatesForCity(city) {
-      const out = [];
-      let offset = 0;
-      for (let page = 0; page < 20; page++) {
-        const r = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=100&offset=${offset}`);
-        if (!r.ok) throw new Error('http_' + r.status);
-        const body = await r.json();
-        const vehicles = Array.isArray(body.vehicles) ? body.vehicles : [];
-        for (const v of vehicles) {
-          if (v.service_area === city && v.first_seen_at) {
-            const dt = new Date(String(v.first_seen_at).replace(' ', 'T') + 'Z');
-            if (!isNaN(dt)) out.push(dt);
-          }
-        }
-        offset += vehicles.length;
-        if (vehicles.length === 0 || offset >= (Number(body.total) || 0)) break;
-      }
-      return out;
+      const area = CCH_CITIES.SERVICE_AREAS.find(record => record.name === city);
+      const response = await fetch('/api/homepage-stats?city=' + encodeURIComponent(area.key));
+      if (!response.ok) throw new Error('http_' + response.status);
+      const { registry_growth = [] } = await response.json();
+      return registry_growth.map(timestamp => {
+        const text = timestamp.replace(' ', 'T');
+        return new Date(/(?:Z|[+-]\d{2}:?\d{2})$/.test(text) ? text : text + 'Z');
+      }).filter(date => Number.isFinite(date.getTime()));
     }
 
     // One point per exact first_seen_at (only truly simultaneous timestamps

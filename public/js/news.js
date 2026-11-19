@@ -83,12 +83,14 @@
   const filterBtns = [...document.querySelectorAll('[data-news-filter]')];
   const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
+  const newsCity = new URLSearchParams(location.search).get('city') || window.CCH_CITIES?.DEFAULT_CITY || 'austin';
+
   async function fetchPage(more) {
     const gen = ++generation;
     loading = true;
     $('newsMore').disabled = true;
     if (!more) { list.innerHTML = ''; lastDay = null; cursor = null; show('newsLoading', true); show('newsEmpty', false); show('newsError', false); show('newsMore', false); }
-    const p = new URLSearchParams({ limit: '20' });
+    const p = new URLSearchParams({ limit: '20', city: newsCity });
     if (filter === 'major') p.set('importance', '2');
     if (query) p.set('q', query);
     if (more && cursor) p.set('cursor', cursor);
@@ -115,7 +117,7 @@
 
   async function loadTop() {
     let body = null;
-    try { const r = await fetch('/api/news?importance=2&limit=6'); body = r.ok ? await r.json() : null; } catch (e) { body = null; }
+    try { const r = await fetch('/api/news?importance=2&limit=6&city=' + encodeURIComponent(newsCity)); body = r.ok ? await r.json() : null; } catch (e) { body = null; }
     const stories = body && Array.isArray(body.stories) ? body.stories.slice(0, 4) : [];
     $('newsTopList').innerHTML = stories.map(s => card(s, { top: true })).join('');
     wireThumbs($('newsTopList'));
@@ -132,7 +134,7 @@
     const sources = new Set(), weekAgo = Date.now() - 7 * 864e5;
     do {
       let body = null;
-      try { const r = await fetch('/api/news?limit=50' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')); body = r.ok ? await r.json() : null; } catch (e) { body = null; }
+      try { const r = await fetch('/api/news?limit=50&city=' + encodeURIComponent(newsCity) + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')); body = r.ok ? await r.json() : null; } catch (e) { body = null; }
       if (!body || !Array.isArray(body.stories)) return;
       for (const s of body.stories) {
         stories++;
