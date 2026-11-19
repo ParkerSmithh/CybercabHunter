@@ -38,6 +38,7 @@ import { apiUpdateTeslaSyncOnboarding } from './onboarding.js';
 import { gmail } from './gmail.js';
 import { serveVideo } from './videos.js';
 import { sitemap } from './sitemap.js';
+import { apiVehicleTimeline, rebuildVehicleTimelines, serveVehiclePage } from './vehicle-timeline.js';
 
 const ALLOWED_ORIGIN = 'https://cybercabhunter.com';
 
@@ -666,6 +667,11 @@ const worker = {
     if (url.pathname === '/api/robotaxi-vehicles' && request.method === 'GET') {
       return withCors(await edgeCached(request, ctx, () => apiListVehicles(request, env)), request);
     }
+    // A public vehicle's timeline (worker/vehicle-timeline.js): precomputed daily, cached 1 hour.
+    const vehicleTimelineMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)\/timeline$/);
+    if (vehicleTimelineMatch && request.method === 'GET') {
+      return withCors(await apiVehicleTimeline(request, env, ctx, vehicleTimelineMatch[1]), request);
+    }
     const vehicleSightingsMatch = url.pathname.match(/^\/api\/robotaxi-vehicles\/([^/]+)\/sightings$/);
     if (vehicleSightingsMatch && request.method === 'GET') {
       return withCors(await edgeCached(request, ctx, () => apiGetVehicleSightings(request, env, vehicleSightingsMatch[1])), request);
@@ -725,11 +731,15 @@ const worker = {
       assetUrl.pathname = '/rider';
       return env.ASSETS.fetch(new Request(assetUrl, request));
     }
+    // A public vehicle's page: its own share/SEO tags and Car data, server-rendered;
+    // a pending, private, removed or unknown id is a 404 (worker/vehicle-timeline.js).
+    const vehicleAlias = url.pathname.match(/^\/vehicles\/([a-f0-9-]{36})\/?$|^\/vehicle\/([a-f0-9-]{36})\/$/i);
+    if (vehicleAlias && ['GET', 'HEAD'].includes(request.method)) {
+      return Response.redirect(new URL('/vehicle/' + (vehicleAlias[1] || vehicleAlias[2]), url), 308);
+    }
     const vehiclePageMatch = url.pathname.match(/^\/vehicle\/([^/]+)$/);
     if (vehiclePageMatch && request.method === 'GET') {
-      const assetUrl = new URL(request.url);
-      assetUrl.pathname = '/vehicle';
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      return serveVehiclePage(request, env, ctx, vehiclePageMatch[1]);
     }
 
     // Fleet ROI and Fleet ETA are two views of one Simulation page. The old
@@ -797,6 +807,8 @@ const worker = {
         // worker/summary-cache.js): refreshed here if stale, so views never aggregate.
         .then(() => leaderboardData(env)).catch(() => {})
         .then(() => socialSidebarData(env)).catch(() => {}));
+      // Vehicle timelines (/vehicle/<id>): rebuilt from public records once a day.
+      ctx.waitUntil(rebuildVehicleTimelines(env, controller.scheduledTime || Date.now()));
       return;
     }
     // Every 10 minutes (offset from the */10 run): one news step (worker/news.js

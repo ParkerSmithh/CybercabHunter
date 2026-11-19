@@ -78,8 +78,10 @@
     // The vehicle's city: its own, or (with none of its own) where its rides were
     // (the Cars page's rule, Dallas launch) -- a car first seen in Dallas shows Dallas.
     const rideCities = h.service_areas ? String(h.service_areas).split(',').map(c => c.trim()).filter(Boolean) : [];
-    if (v.service_area) clauses.push(`Operating in ${v.service_area}`);
+    if (v.service_area) clauses.push(`Registered in ${v.service_area}`);
     else if (rideCities.length) clauses.push(`Rides in ${rideCities.join(', ')}`);
+    $('vRecordedStatus').textContent = ['Service status not recorded',
+      approvedCybercab ? (v.approval_basis === 'vin-verified' ? 'VIN-verified approval' : 'Manual approval') : null].filter(Boolean).join(' · ');
     if (v.color) clauses.push(`${v.color} exterior`);
     if (v.vin) clauses.push(`VIN ${v.vin}`);
     $('vSummaryLine').textContent = clauses.join(' · ');
@@ -95,49 +97,13 @@
       ? `Recorded in: ${h.service_areas.split(',').join(', ')}.`
       : 'No service area recorded for these rides yet.';
 
-    setSearchMeta(v, heroCity, approvedCybercab);
-  }
-
-  // Search and link-preview tags for this vehicle (the tab title stays
-  // "Cybercab Hunter"). Only facts the page itself shows: plate, city, VIN,
-  // colour, and "Tesla Cybercab" only for an approved Cybercab.
-  function setSearchMeta(v, city, approvedCybercab) {
-    const url = 'https://cybercabhunter.com/vehicle/' + encodeURIComponent(v.id);
-    const kind = approvedCybercab ? 'Cybercab' : 'Robotaxi';
-    const name = v.license_plate ? `${kind} ${v.license_plate}` : kind;
-    const title = `${name} | Tesla Cybercab Registry`;
-    const desc = `Tesla ${name}${v.vin ? ` (VIN ${v.vin})` : ''}${city ? ` operating in ${city}` : ''}: rides, sightings and details on Cybercab Hunter.`;
-    const head = document.head;
-    const tag = (sel, make) => head.querySelector(sel) || head.appendChild(make());
-    const meta = (attr, key, value) => tag(`meta[${attr}="${key}"]`, () => {
-      const m = document.createElement('meta'); m.setAttribute(attr, key); return m;
-    }).setAttribute('content', value);
-    tag('link[rel="canonical"]', () => {
-      const l = document.createElement('link'); l.rel = 'canonical'; return l;
-    }).setAttribute('href', url);
-    meta('name', 'description', desc);
-    meta('property', 'og:title', title);
-    meta('property', 'og:description', desc);
-    meta('property', 'og:url', url);
-    meta('name', 'twitter:title', title);
-    meta('name', 'twitter:description', desc);
-    const ld = head.querySelector('script[type="application/ld+json"]');
-    if (!ld || !approvedCybercab) return;
-    try {
-      const data = JSON.parse(ld.textContent);
-      const car = { '@type': 'Car', name: `Tesla ${name}`, url, manufacturer: { '@type': 'Organization', name: 'Tesla' }, model: 'Cybercab' };
-      if (v.vin) car.vehicleIdentificationNumber = v.vin;
-      if (v.color) car.color = v.color;
-      data['@graph'] = (data['@graph'] || []).filter(n => n['@type'] !== 'Car').concat(car);
-      ld.textContent = JSON.stringify(data);
-    } catch (e) { /* the Organization/WebSite data stays as served */ }
   }
 
   async function load(vehicleId) {
     setView('loading');
     let resp;
     try {
-      resp = await fetch(`${WORKER}/api/robotaxi-vehicles/${encodeURIComponent(vehicleId)}`);
+      resp = await fetch(`${WORKER}/api/robotaxi-vehicles/${encodeURIComponent(vehicleId)}/timeline`);
     } catch (e) {
       // Network failure — distinct from a 404: the request never completed.
       $('vehicleErrorDetail').textContent = "Something went wrong reaching the server. Check your connection and try again.";
@@ -164,6 +130,7 @@
 
     renderVehicle(body);
     setView('loaded');
+    if (window.CCHVehicleTimeline) window.CCHVehicleTimeline.load(vehicleId, body);   // js/vehicle-timeline.js
   }
 
   function init() {
