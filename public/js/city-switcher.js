@@ -43,39 +43,11 @@
       }
     }
 
-    const header = document.querySelector('header, body > .glass');
-    const anchor = header?.querySelector('#openSightingDrawer, #accountSignedOut');
-    if (!anchor) return;
-
-    const select = document.createElement('select');
-    select.className = 'site-city-switcher';
-    select.setAttribute('aria-label', 'Tracker city');
-    for (const area of [...SERVICE_AREAS, { key: 'all', name: 'All cities' }]) {
-      select.add(new Option(area.name, area.key));
-    }
-    const syncSelector = () => {
-      const latest = new URL(location.href).searchParams.get('city');
-      select.value = valid(latest) ? latest : DEFAULT_CITY;
-    };
-    select.value = city;
-    // Phones (the same 640px break as the header lockup in brand-type.css): the
-    // switcher gets its own row just under the header, so the full wordmark,
-    // Submit and Sign In keep the header row. The row is in the page flow, not
-    // inside the sticky header, so the header stays 64px tall and everything
-    // pinned at top:64px keeps its place. Wider screens: beside Submit, as before.
-    const row = document.createElement('div');
-    row.className = 'site-city-row';
-    const phone = typeof matchMedia === 'function' ? matchMedia('(max-width: 640px)') : null;
-    const place = () => {
-      if (phone?.matches) { row.append(select); header.after(row); }
-      else { anchor.before(select); row.remove(); }
-    };
-    place();
-    phone?.addEventListener('change', place);
-    addEventListener('popstate', syncSelector);
-    document.addEventListener('click', event => {
-      if (event.target.closest('[data-city]') && event.target !== select) setTimeout(syncSelector, 0);
-    });
+    // No control in the site header (owner, 2026-11-19): the city is chosen with
+    // each page's own city buttons ([data-city]: /vehicles, /sightings, the
+    // homepage, Zones, Replay, Simulation). Choosing one there is remembered:
+    // this browser (cch.preferredCity) for everyone, and the account
+    // (PATCH /api/me/city) when signed in, so the next page opens on it.
     const session = stored('teslaSessionId');
     const headers = session ? { Authorization: 'Bearer ' + session } : null;
     let changed = false;
@@ -90,17 +62,19 @@
         }
       }).catch(() => {});
     }
-    select.addEventListener('change', async () => {
+    document.addEventListener('click', event => {
+      const choice = event.target.closest('button[data-city], a[data-city]');
+      const next = choice && choice.dataset.city;
+      if (!valid(next)) return;   // only real city choices (not e.g. the US map's city index)
       changed = true;
-      try { localStorage.setItem(key, select.value); } catch {}
+      try { localStorage.setItem(key, next); } catch {}
       if (headers) {
-        select.disabled = true;
-        const response = await fetch('/api/me/city', { method: 'PATCH', signal: AbortSignal.timeout(2500),
-          headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ city: select.value }) }).catch(() => null);
-        if (response?.ok) sessionStorage.setItem('cch.cityLoaded', session);
+        // keepalive: Replay's city buttons are links, so the page may navigate at once.
+        fetch('/api/me/city', { method: 'PATCH', keepalive: true,
+          headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ city: next }) })
+          .then(response => { if (response.ok) sessionStorage.setItem('cch.cityLoaded', session); }).catch(() => {});
       }
-      location.assign(pathFor(select.value));
-    });
+    }, true);
   }
   document.addEventListener('DOMContentLoaded', mount, { once: true });
 })();
