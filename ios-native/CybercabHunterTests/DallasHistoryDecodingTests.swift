@@ -40,4 +40,19 @@ final class DallasHistoryDecodingTests: XCTestCase {
         XCTAssertEqual(try car(nil, "Austin").cityTag, "Austin")
         XCTAssertNil(try car(nil, nil).cityTag)
     }
+
+    /// Fleet Growth: a city whose cars were all added on one day (Dallas, Nov 19 2026)
+    /// gets a 30-day window ending the next day, so the day-wide strip bar is one
+    /// thin bar, not a band. A span of 30+ days (Austin) is kept exactly.
+    func testFleetGrowthDomainWidensASingleDayAndKeepsALongSpan() throws {
+        let iso = ISO8601DateFormatter()
+        let first = try XCTUnwrap(iso.date(from: "2026-11-19T20:07:12Z")), last = try XCTUnwrap(iso.date(from: "2026-11-20T01:03:53Z"))
+        let dallas = FleetGrowthSection.xDomain(first: first, last: last)
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
+        XCTAssertEqual(dallas.upperBound, cal.date(from: DateComponents(year: 2026, month: 11, day: 20)))
+        XCTAssertEqual(dallas.upperBound.timeIntervalSince(dallas.lowerBound), 30 * 86400, accuracy: 3600)
+        XCTAssertTrue(dallas.contains(first) && dallas.contains(last))
+        let austinFirst = try XCTUnwrap(iso.date(from: "2026-09-03T15:00:00Z")), austinLast = try XCTUnwrap(iso.date(from: "2026-11-17T18:00:00Z"))
+        XCTAssertEqual(FleetGrowthSection.xDomain(first: austinFirst, last: austinLast), austinFirst...austinLast)
+    }
 }

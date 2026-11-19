@@ -191,18 +191,24 @@ struct FleetGrowthSection: View {
                 }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()).foregroundStyle(Color.chCaption) } }
                 .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in AxisGridLine().foregroundStyle(Color.chLine); AxisValueLabel().foregroundStyle(Color.chCaption) } }
-                .chartXScale(domain: (visible.first?.date ?? .now)...max(visible.last?.date ?? .now, projected.last?.date ?? .now))
+                .chartXScale(domain: Self.xDomain(first: visible.first?.date, last: max(visible.last?.date ?? .now, projected.last?.date ?? .now)))
                 .chartYScale(domain: 0...max(1, (projected.map(\.high).max() ?? 0), visible.map(\.count).max() ?? 0))
                 .frame(height: 140)
                 .accessibilityLabel(projected.isEmpty ? "Cumulative \(city) Cybercabs: \(total)" : "Cumulative \(city) Cybercabs: \(total), projected about \(projected.last!.value) in \(horizon.rawValue) days")
                 .overlay(alignment: .bottomTrailing) { if !predict { playButton } }
-                Chart(dailyAdditions(shown)) { d in
-                    BarMark(x: .value("Day", d.day, unit: .day), y: .value("New", d.count)).foregroundStyle(Color.brandGold.opacity(0.65))
+                let additions = dailyAdditions(shown)
+                if additions.isEmpty {
+                    // No additions to show: an empty strip, never a filled one.
+                    Color.clear.frame(height: 22).accessibilityHidden(true)
+                } else {
+                    Chart(additions) { d in
+                        BarMark(x: .value("Day", d.day, unit: .day), y: .value("New", d.count)).foregroundStyle(Color.brandGold.opacity(0.65))
+                    }
+                    .chartXScale(domain: Self.xDomain(first: visible.first?.date, last: visible.last?.date))
+                    .chartXAxis(.hidden).chartYAxis(.hidden)
+                    .frame(height: 22)
+                    .accessibilityLabel("New Cybercabs per day")
                 }
-                .chartXScale(domain: (visible.first?.date ?? .now)...(visible.last?.date ?? .now))
-                .chartXAxis(.hidden).chartYAxis(.hidden)
-                .frame(height: 22)
-                .accessibilityLabel("New Cybercabs per day")
                 if let c = cut, play == .playing || play == .paused {
                     // "N Cybercabs · date" while it plays.
                     let n = shown.last?.count ?? 0
@@ -315,6 +321,22 @@ struct FleetGrowthSection: View {
     }
 
     struct DayCount: Identifiable { let day: Date; let count: Int; var id: Date { day } }
+    /// The charts' date range: the data's own span, unless that is shorter than
+    /// `minimumDays` (a city with a day or two of data, e.g. Dallas whose first
+    /// cars were all added on one day). Then it is the `minimumDays` ending the
+    /// day after the latest addition, so a day-wide bar stays one thin bar (not
+    /// a band across the whole strip) and the axis shows distinct dates. A span
+    /// of `minimumDays` or more (Austin) is returned unchanged.
+    static func xDomain(first: Date?, last: Date?, minimumDays: Int = 30) -> ClosedRange<Date> {
+        let last = last ?? .now
+        let first = min(first ?? last, last)
+        if last.timeIntervalSince(first) >= Double(minimumDays) * 86400 { return first...last }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
+        let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: last)) ?? last
+        let start = cal.date(byAdding: .day, value: -minimumDays, to: end) ?? first
+        return min(start, first)...end
+    }
+
     private func dailyAdditions(_ points: [HomeModel.GrowthPoint]) -> [DayCount] {
         var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
         return Dictionary(grouping: points, by: { cal.startOfDay(for: $0.date) })
