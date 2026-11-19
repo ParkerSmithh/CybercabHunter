@@ -12,6 +12,7 @@ struct RegistryView: View {
     enum SearchField: Hashable { case inline, floating }
     @FocusState private var focus: SearchField?
     @State private var floatingSearch = false
+    @State private var usesSideControls = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -28,7 +29,7 @@ struct RegistryView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { focus = nil }   // a tap on the header puts the keyboard away
-                searchField(.inline)
+                searchControls(.inline, showsFilter: usesSideControls && !floatingSearch)
                     // Hidden from the floating copy's view until this one leaves the screen.
                     .onScrollVisibilityChange(threshold: 0.6) { visible in
                         withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { floatingSearch = !visible }
@@ -54,11 +55,14 @@ struct RegistryView: View {
         // While scrolled down: the same search, floating in Liquid Glass under the bar.
         .overlay(alignment: .top) {
             if floatingSearch {
-                searchField(.floating)
+                searchControls(.floating, showsFilter: usesSideControls)
                     .padding(.horizontal, 16).padding(.top, 4)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.safeAreaInsets.trailing >= 44
+        } action: { usesSideControls = $0 }
         // The keyboard goes away when the list scrolls, on Search / Done, on a tap
         // outside the field, when a car opens or the tab changes, and when the
         // filter menu opens. Focus is never handed from one copy to the other
@@ -75,7 +79,11 @@ struct RegistryView: View {
                 Button("Done") { focus = nil }.fontWeight(.semibold).accessibilityIdentifier("registryKeyboardDone")
             }
         }
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { filterMenu } }
+        .toolbar {
+            if !usesSideControls {
+                ToolbarItem(placement: .topBarTrailing) { filterMenu }
+            }
+        }
         .navigationDestination(for: VehicleRoute.self) { route in VehicleDetailView(route: route) }
         .task { await model.reload(using: session.api) }
         .refreshable { await model.reload(using: session.api) }
@@ -88,6 +96,17 @@ struct RegistryView: View {
         .onChange(of: model.query) { reloadSoon(delay: 0.3) }   // debounce typing
         .task {
             if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas + [ServiceArea(key: "all", name: "All cities")] }
+        }
+    }
+
+    /// The system's side controls can omit the trailing toolbar item. Keep the
+    /// filter next to the active search field when that safe area is reserved.
+    private func searchControls(_ kind: SearchField, showsFilter: Bool) -> some View {
+        HStack(spacing: 8) {
+            searchField(kind)
+            if showsFilter {
+                filterMenu.modifier(SearchChrome(floating: kind == .floating))
+            }
         }
     }
 

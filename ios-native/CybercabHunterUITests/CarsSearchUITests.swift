@@ -37,7 +37,9 @@ final class CarsSearchUITests: XCTestCase {
     func testCarsFloatingSearchAndFilter() throws {
         let app = XCUIApplication.forTests()
         app.launch()
-        app.tabBars.buttons["Cars"].tap()
+        let cars = app.tabButton("Cars")
+        XCTAssertTrue(cars.isHittable, app.debugDescription)
+        cars.tap()
         let inline = app.textFields["registrySearch"], floating = app.textFields["registryFloatingSearch"]
         XCTAssertTrue(inline.waitForExistence(timeout: 20))
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "vehicleCard").firstMatch.waitForExistence(timeout: 20))
@@ -47,9 +49,14 @@ final class CarsSearchUITests: XCTestCase {
         // Scrolling down: the floating Liquid Glass search appears.
         drag(app, by: -450)
         XCTAssertTrue(floating.waitForExistence(timeout: 3), "floating search while scrolled")
-        XCTAssertGreaterThan(floating.frame.minY, 50, "below the status bar")
+        XCTAssertTrue(floating.isHittable, "floating search stays reachable")
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(floating.frame), "floating search stays on screen")
+        let statusBar = app.statusBars.firstMatch
+        if statusBar.exists {
+            XCTAssertFalse(statusBar.frame.intersects(floating.frame), "no overlap with the status bar")
+        }
         let filter = app.buttons["registryFilter"]
-        XCTAssertTrue(filter.isHittable, "filter stays reachable")
+        XCTAssertTrue(filter.isHittable, app.debugDescription)
         XCTAssertFalse(filter.frame.intersects(floating.frame), "no overlap with the floating search")
         shot(app, "cars-scrolled")
 
