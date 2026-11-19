@@ -58,7 +58,20 @@
       select.value = valid(latest) ? latest : DEFAULT_CITY;
     };
     select.value = city;
-    anchor.before(select);
+    // Phones (the same 640px break as the header lockup in brand-type.css): the
+    // switcher gets its own row just under the header, so the full wordmark,
+    // Submit and Sign In keep the header row. The row is in the page flow, not
+    // inside the sticky header, so the header stays 64px tall and everything
+    // pinned at top:64px keeps its place. Wider screens: beside Submit, as before.
+    const row = document.createElement('div');
+    row.className = 'site-city-row';
+    const phone = typeof matchMedia === 'function' ? matchMedia('(max-width: 640px)') : null;
+    const place = () => {
+      if (phone?.matches) { row.append(select); header.after(row); }
+      else { anchor.before(select); row.remove(); }
+    };
+    place();
+    phone?.addEventListener('change', place);
     addEventListener('popstate', syncSelector);
     document.addEventListener('click', event => {
       if (event.target.closest('[data-city]') && event.target !== select) setTimeout(syncSelector, 0);

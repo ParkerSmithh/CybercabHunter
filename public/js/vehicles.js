@@ -158,6 +158,9 @@
     // city line (it would say Dallas twice).
     const civicArea = vehicleCity(v);
     if (civicArea) eyebrow.appendChild(el('span', 'vcard-city', civicArea.name));
+    // With the car image on the right, the pill + tag stay on the left half and
+    // wrap there (on a narrow card the tag goes under the pill, never over the car).
+    if (approvedCybercab(v)) eyebrow.classList.add('vcard-eyebrow-car');
     top.appendChild(eyebrow);
     // The plate, styled like one (the same treatment as the Sightings cards).
     top.appendChild(el('h2', v.license_plate
