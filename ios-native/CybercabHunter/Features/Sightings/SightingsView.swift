@@ -18,6 +18,47 @@ struct SightingsView: View {
     private let columns = [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), spacing: 10, alignment: .top)]
 
     var body: some View {
+        routedGallery
+        .fullScreenCover(item: $viewing) { SightingViewer(sighting: $0) }
+        .confirmationDialog("Delete this photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
+            Button("Delete photo", role: .destructive) { if let s = deleting { Task { await model.deletePhoto(s, api: session.api) } } }
+        } message: { Text("It is removed permanently and can't be undone.") }
+        .overlay(alignment: .top) { ToastHost(toast: $model.toast) }
+    }
+
+    private var routedGallery: some View {
+        galleryScreen
+        .sheet(isPresented: $submitting, onDismiss: { submitWithCamera = false; router.sightingFormHasDraft = false }) { SubmitSightingView(startWithCamera: submitWithCamera) }
+        // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
+        .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
+        // The rider looked at a city's sightings (a donation, once per city per launch).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let stamp = model.snapshotDate { Text("Saved sightings · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote).padding(6) }
+        }
+        .onChange(of: trackerCity) { Task { await model.select(city: trackerCity.rawValue, api: session.api) } }
+        .onChange(of: model.city, initial: true) {
+            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
+            if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("sightings-\(c.rawValue)", RecentSightingsIntent(city: c)) }
+        }
+        // Siri / Shortcuts asked for a city's sightings.
+        .onChange(of: router.sightingsCity, initial: true) {
+            guard let c = router.sightingsCity else { return }
+            router.sightingsCity = nil
+            Task { await model.select(city: c, api: session.api) }
+        }
+        .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
+        // Signed in after asking for the form from a control or shortcut: it opens now.
+        .onChange(of: session.user?.id) { resumeAfterSignIn() }
+        .onChange(of: session.teslaSyncInviteShowing) { if !session.teslaSyncInviteShowing { resumeAfterSignIn() } }
+        // Another control or shortcut (the map, Community…): an empty form makes
+        // way; one holding the rider's photo or notes stays.
+        .onChange(of: router.presentationReset) {
+            guard submitting, let a = router.lastQuickAction?.action, !a.opensSightingForm, !router.sightingFormHasDraft else { return }
+            submitting = false
+        }
+    }
+
+    private var galleryScreen: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
@@ -50,39 +91,6 @@ struct SightingsView: View {
                 if scenePhase == .active && router.selectedTab == .sightings { await model.poll(api: session.api) }
             }
         }
-        .sheet(isPresented: $submitting, onDismiss: { submitWithCamera = false; router.sightingFormHasDraft = false }) { SubmitSightingView(startWithCamera: submitWithCamera) }
-        // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
-        .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
-        // The rider looked at a city's sightings (a donation, once per city per launch).
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if let stamp = model.snapshotDate { Text("Saved sightings · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote).padding(6) }
-        }
-        .onChange(of: trackerCity) { Task { await model.select(city: trackerCity.rawValue, api: session.api) } }
-        .onChange(of: model.city, initial: true) {
-            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
-            if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("sightings-\(c.rawValue)", RecentSightingsIntent(city: c)) }
-        }
-        // Siri / Shortcuts asked for a city's sightings.
-        .onChange(of: router.sightingsCity, initial: true) {
-            guard let c = router.sightingsCity else { return }
-            router.sightingsCity = nil
-            Task { await model.select(city: c, api: session.api) }
-        }
-        .onChange(of: session.state) { handleSubmitRequest() }   // a cold launch: once the session is known
-        // Signed in after asking for the form from a control or shortcut: it opens now.
-        .onChange(of: session.user?.id) { resumeAfterSignIn() }
-        .onChange(of: session.teslaSyncInviteShowing) { if !session.teslaSyncInviteShowing { resumeAfterSignIn() } }
-        // Another control or shortcut (the map, Community…): an empty form makes
-        // way; one holding the rider's photo or notes stays.
-        .onChange(of: router.presentationReset) {
-            guard submitting, let a = router.lastQuickAction?.action, !a.opensSightingForm, !router.sightingFormHasDraft else { return }
-            submitting = false
-        }
-        .fullScreenCover(item: $viewing) { SightingViewer(sighting: $0) }
-        .confirmationDialog("Delete this photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
-            Button("Delete photo", role: .destructive) { if let s = deleting { Task { await model.deletePhoto(s, api: session.api) } } }
-        } message: { Text("It is removed permanently and can't be undone.") }
-        .overlay(alignment: .top) { ToastHost(toast: $model.toast) }
     }
 
     /// The shortcut's request: the form when signed in, sign-in otherwise. While
