@@ -51,7 +51,7 @@ console.log('2. Coverage is measured from the polygon');
   check('the server reports the measured figure', serviceAreaFor('austin').zone.square_miles === Math.round(measured));
   check('the wait-time model uses it', /areaSqMi: 440\.1,/.test(read('public/js/calc.js')));
   check('the app\'s model uses it', /"austin": 440\.1/.test(read('ios-native/CybercabHunter/Features/Simulation/SimulationCalc.swift')));
-  check('the Zones page shows it', /countUp\(document\.getElementById\('coverageOut'\), 440\)/.test(read('public/infrastructure.html')));
+  check('the Zones page shows it', /countUp\(document\.getElementById\('coverageOut'\), [^\n]+zone\.square_miles\)/.test(read('public/infrastructure.html')));
   check('the old figure is gone', !/\b272(\.4)?\b/.test(read('public/js/calc.js') + read('worker/service-areas.js')));
 }
 

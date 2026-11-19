@@ -67,8 +67,8 @@
 /* Phones: everything shrinks together, never wraps, never meets the buttons. */
 @media (max-width:640px){
   /* The lockup is ~5.65x its emblem wide; the buttons (Submit + Sign In) and
-     the side padding take ~170px, so the emblem gets what is left. */
-  header .brand{--mark:clamp(24px, calc((100vw - 170px) / 5.65), 38px)}
+     the side padding take ~190px (with room to spare), so the emblem gets what is left. */
+  header .brand{--mark:clamp(24px, calc((100vw - 190px) / 5.65), 38px)}
   .brand--footer{--mark:32px}
 }
 /* The header's buttons never wrap or shrink; the lockup is sized to fit beside them. */

@@ -1,3 +1,5 @@
+import { apiCities, recomputeCityStats } from './city-stats.js';
+import { apiPreferredCity, cityPage } from './city-pages.js';
 import { apiPush, runPushTick, PUSH_CRON } from './push.js';
 import { apiMyStreaks } from './streaks.js';
 import { apiMyXp, apiXpRules, reconcileAllXp } from './progression.js';
@@ -72,6 +74,15 @@ const worker = {
 
     if (url.pathname === '/sitemap.xml' && (request.method === 'GET' || request.method === 'HEAD')) {
       return sitemap(request, env, ctx);
+    }
+
+    if (url.pathname === '/api/cities' && request.method === 'GET') return withCors(await apiCities(request, env, ctx), request);
+    if (url.pathname === '/api/me/city' && ['GET', 'PATCH'].includes(request.method)) {
+      return withCors(await apiPreferredCity(request, env, await tesla.requireUserId(request, env)), request);
+    }
+    if (['GET', 'HEAD'].includes(request.method)) {
+      const cityResponse = await cityPage(request, env, ctx);
+      if (cityResponse) return cityResponse;
     }
 
     if (url.pathname.startsWith('/api/push/')) return withCors(await apiPush(request, env), request);
@@ -789,6 +800,7 @@ const worker = {
     // (worker/fleet-eta.js; Dallas's runs with TXDMV_CRON below), so that
     // feature needs no trigger of its own and each run stays small.
     if (controller && controller.cron === FLEET_STATS_CRON) {
+      ctx.waitUntil(recomputeCityStats(env, controller.scheduledTime || Date.now()));
       ctx.waitUntil(recomputeFleetStats(env).catch(() => {}).then(() => recomputeFleetEta(env, Date.now(), ['austin'])).catch(() => {}));
       // Spotter XP (worker/progression.js): the full reconcile (backfill,
       // discoveries, reversals), then the Community page's daily numbers.

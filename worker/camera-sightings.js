@@ -43,7 +43,8 @@
 // data is never joined to robotaxi_vehicles — no plate, no VIN, no registry link.
 
 import { tokensMatch, readBearerToken } from './connector.js';
-import { serviceAreaFor, isInServiceArea } from './service-areas.js';
+import { clock } from './push-policy.js';
+import { DEFAULT_CITY, SERVICE_AREAS, serviceAreaFor, isInServiceArea } from './service-areas.js';
 import { trafficCameraFor, cameraCity } from './traffic-cameras.js';
 
 const WINDOW_MS = 24 * 3600 * 1000;
@@ -55,7 +56,6 @@ const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 const ALLOWED_FIELDS = new Set(['camera_id', 'camera_name', 'lat', 'lng', 'observed_at', 'image_base64']);
 const CAMERA_ID_RE = /^[A-Za-z0-9_-]{1,32}$/;
 const DETECTION_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
-const WATCH_AREA = serviceAreaFor('austin');
 
 const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -76,7 +76,7 @@ export function onLiveMap(observedAt, now = Date.now()) {
 
 // The city a camera-feed request asks for (?city=, default austin), or null.
 function requestedCity(request) {
-  const area = serviceAreaFor(new URL(request.url).searchParams.get('city') || 'austin');
+  const area = serviceAreaFor(new URL(request.url).searchParams.get('city') || DEFAULT_CITY);
   return area ? area.key : null;
 }
 
@@ -240,7 +240,9 @@ export async function apiCameraSightingsHeat(request, env, ctx, { now = Date.now
     }
     if (ms - c.lastMs < HEAT_SAME_EVENT_MS) continue;   // the same detection, filed again
     c.lastMs = ms;
-    const { hour, day } = austinHourDay(ms);
+    const zone = serviceAreaFor(city).timeZone;
+    const local = clock(ms, zone);
+    const hour = Math.floor(local.minute / 60), day = local.weekday;
     c.count++; total++;
     c.grid[day * 24 + hour]++;
     c.last = r.observed_at; c.camera_name = r.camera_name; c.lat = r.lat; c.lng = r.lng;
@@ -309,7 +311,9 @@ export async function apiCreateCameraSighting(request, env, { now = Date.now() }
   const cameraName = typeof body.camera_name === 'string' ? body.camera_name.trim().replace(/\s+/g, ' ') : '';
   if (!cameraName || cameraName.length > 120) return fail(400, 'invalid_camera_name');
   const { lat, lng } = body;
-  if (typeof lat !== 'number' || typeof lng !== 'number' || !isInServiceArea(WATCH_AREA, lng, lat)) return fail(400, 'invalid_location');
+  const areas = SERVICE_AREAS.filter(area => isInServiceArea(area, lng, lat));
+  if (areas.length !== 1) return fail(400, 'invalid_location');
+  const city = areas[0].key;
   // A zone is required so the instant is unambiguous.
   const observedMs = typeof body.observed_at === 'string' && /(Z|[+-]\d{2}:?\d{2})$/i.test(body.observed_at.trim())
     ? Date.parse(body.observed_at.trim()) : NaN;
@@ -324,9 +328,9 @@ export async function apiCreateCameraSighting(request, env, { now = Date.now() }
   const sql = env.cybercabhunter_db;
   const id = crypto.randomUUID();
   const inserted = await sql.prepare(
-    `INSERT OR IGNORE INTO camera_detections (id, camera_id, camera_name, lat, lng, observed_at, image_r2_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, cameraId, cameraName, lat, lng, observedAt, key).run();
+    `INSERT OR IGNORE INTO camera_detections (id, camera_id, camera_name, lat, lng, observed_at, image_r2_key, city)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, cameraId, cameraName, lat, lng, observedAt, key, city).run();
   if (inserted.meta && inserted.meta.changes === 0) {
     // A retry of an existing detection: the image above replaced the old
     // bytes at the same key; make sure the row points at it.

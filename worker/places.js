@@ -22,7 +22,7 @@
 // moderators; the public gallery shows publicLocation() — street/place and
 // city only, never the house number.
 
-import { serviceAreaFor, isInServiceArea, bboxParam } from './service-areas.js';
+import { DEFAULT_CITY, serviceAreaFor, isInServiceArea, bboxParam } from './service-areas.js';
 import { sha256Hex } from './account.js';
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
@@ -131,26 +131,17 @@ export async function apiSearchPlaces(request, env) {
 // and cached publicly, since the answer is the same for everyone.
 //   -> { places: [{ id, label, lat, lng }] }
 const MAP_SEARCH_CACHE_SECONDS = 86400;
-const MAP_SEARCH_AREAS = ['austin', 'dallas'];   // the cities with a Zones map
-const MAP_SEARCH_CANDIDATES = 20;                 // fetched, then narrowed to the city
-// The city the map shows: Photon is biased to its center, and a suggestion
-// must be in the city itself (Photon's city) or inside the service zone's box
-// (the enclaves in it, e.g. Highland Park, West Lake Hills). The metro box
-// alone let half-typed words fill the list with suburbs (Allen, Rockwall).
-const MAP_SEARCH_CITY = {
-  austin: { name: 'Austin', center: { lat: 30.27, lon: -97.74 }, zone: { minLon: -97.87, minLat: 30.14, maxLon: -97.55, maxLat: 30.46 } },
-  dallas: { name: 'Dallas', center: { lat: 32.80, lon: -96.80 }, zone: { minLon: -96.93, minLat: 32.73, maxLon: -96.72, maxLat: 32.88 } }
-};
+const MAP_SEARCH_CANDIDATES = 20;
 export function placeInMapCity(place, cityKey) {
-  const c = MAP_SEARCH_CITY[cityKey];
+  const c = serviceAreaFor(cityKey);
   if (!c || !place) return false;
-  const z = c.zone;
+  const z = c.mapBounds || c.bbox;
   return place.city === c.name || (place.lon >= z.minLon && place.lon <= z.maxLon && place.lat >= z.minLat && place.lat <= z.maxLat);
 }
 export async function apiSearchMapPlaces(request, env, ctx) {
   const params = new URL(request.url).searchParams;
-  const area = serviceAreaFor(params.get('area') || 'austin');
-  if (!area || !MAP_SEARCH_AREAS.includes(area.key)) return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
+  const area = serviceAreaFor(params.get('area') || DEFAULT_CITY);
+  if (!area) return Response.json({ success: false, error: 'invalid_service_area' }, { status: 400 });
   const q = (params.get('q') || '').trim().replace(/\s+/g, ' ');
   if (q.length < MIN_QUERY) return Response.json({ places: [] });
   if (q.length > MAX_QUERY) return Response.json({ success: false, error: 'query_too_long' }, { status: 400 });
@@ -171,7 +162,7 @@ export async function apiSearchMapPlaces(request, env, ctx) {
   }
   let places;
   try {
-    places = (await photonSearch(q, MAP_SEARCH_CANDIDATES, bboxParam(area), MAP_SEARCH_CITY[area.key].center))
+    places = (await photonSearch(q, MAP_SEARCH_CANDIDATES, bboxParam(area), area.center || { lat: (area.bbox.minLat + area.bbox.maxLat) / 2, lon: (area.bbox.minLon + area.bbox.maxLon) / 2 }))
       .filter(p => placeInArea(p, area) && placeInMapCity(p, area.key))
       // One suggestion per label: OpenStreetMap splits long streets into
       // same-named segments ("East 6th Street, Austin, TX" twice); the first

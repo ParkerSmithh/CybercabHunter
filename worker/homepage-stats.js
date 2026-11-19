@@ -41,15 +41,15 @@
 // pending count or queue figure is selected anywhere.
 
 import { db, registryCitySql } from './db.js';
-import { physicalRidesFrom, publicVehicleEligibleSql } from './ride-status.js';
+import { publicVehicleEligibleSql } from './ride-status.js';
 import { CITY_RIDES_FROM, MILES_SQL, computeFareStats, FLEET_CITIES } from './fleet-stats.js';
 import { buildSightingStats, publicSightingJson } from './sightings-public.js';
 import { publicLocation } from './places.js';
 import { TRAFFIC_CAMERAS, cameraCity } from './traffic-cameras.js';
-import { serviceAreaFor } from './service-areas.js';
+import { DEFAULT_CITY, serviceAreaFor } from './service-areas.js';
 import { usLocalParts } from './timezones.js';
 
-const CACHE_SECONDS = 300;
+
 const DAILY_DAYS = 90;            // sightings per day: the longest window the page offers
 const LATEST_SIGHTINGS = 5;
 const TOP_SPOTS = 3;
@@ -91,14 +91,16 @@ function localDaily(hours, zone, nowMs, days) {
 async function heroCounts(sql, area) {
   const rule = registryCitySql('v', area.key);
   const eligible = `FROM robotaxi_vehicles v WHERE ${publicVehicleEligibleSql('v')}`;
-  const counts = `SELECT COUNT(*) AS vehicles, COALESCE(SUM((SELECT COUNT(*) FROM ${physicalRidesFrom('v.id')})), 0) AS rides,
+  const counts = `SELECT COUNT(*) AS vehicles,
     COALESCE(SUM(v.created_at > datetime('now', '-7 days')), 0) AS added_7d,
-    COALESCE(SUM(v.created_at > datetime('now', '-14 days') AND v.created_at <= datetime('now', '-7 days')), 0) AS added_prev_7d ${eligible}`;
+    COALESCE(SUM(v.created_at > datetime('now', '-14 days') AND v.created_at <= datetime('now', '-7 days')), 0) AS added_prev_7d,
+    json_group_array(v.first_seen_at) FILTER (WHERE v.first_seen_at IS NOT NULL AND lower(trim(v.model)) = 'cybercab') AS first_seen_dates ${eligible}`;
   const c = (await sql.prepare(counts + rule.sql).bind(...rule.binds).first()) || {};
   return {
+    registry_growth: JSON.parse(c.first_seen_dates || '[]'),
     added_7d: Number(c.added_7d) || 0,
     added_prev_7d: Number(c.added_prev_7d) || 0,
-    city: { vehicles: Number(c.vehicles) || 0, rides: Number(c.rides) || 0 }
+    city: { vehicles: Number(c.vehicles) || 0 }
   };
 }
 
@@ -224,39 +226,44 @@ async function cameraStats(sql, area, nowMs) {
   };
 }
 
+export async function computeHomepageStats(sql, area, nowMs) {
+  const [hero, rides, sightings, cameras] = await Promise.all([
+    heroCounts(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs)
+  ]);
+  const z = area.zone || {};
+  return {
+    city: area.key,
+    name: area.name,
+    generated_at: new Date(nowMs).toISOString(),
+    registry_growth: hero.registry_growth,
+    hero: {
+      city: { ...hero.city, rides: rides.rides, sightings: sightings.total }
+    },
+    area: {
+      square_miles: z.square_miles ?? null, in_service_since: z.in_service_since || null,
+      hours: z.hours || null, description: z.description || null, vehicles: hero.city.vehicles,
+      vehicles_added_7d: hero.added_7d, vehicles_added_prev_7d: hero.added_prev_7d
+    },
+    rides,
+    sightings,
+    cameras
+  };
+}
+
 export async function apiHomepageStats(request, env, ctx) {
-  const cityParam = (new URL(request.url).searchParams.get('city') || 'austin').toLowerCase();
+  const cityParam = (new URL(request.url).searchParams.get('city') || DEFAULT_CITY).toLowerCase();
   const area = FLEET_CITIES.includes(cityParam) ? serviceAreaFor(cityParam) : null;
   if (!area) return Response.json({ success: false, error: 'invalid_city' }, { status: 400 });
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
+  const cacheKey = new Request(new URL('/api/homepage-stats?city=' + area.key, request.url));
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
   }
-  const sql = env.cybercabhunter_db;
-  const nowMs = Date.now();
   try {
-    const [hero, rides, sightings, cameras] = await Promise.all([
-      heroCounts(sql, area), rideStats(sql, area, nowMs), sightingStats(sql, area), cameraStats(sql, area, nowMs)
-    ]);
-    const z = area.zone || {};
-    const response = Response.json({
-      city: area.key,
-      name: area.name,
-      generated_at: new Date(nowMs).toISOString(),
-      hero: {
-        city: { ...hero.city, sightings: sightings.total }
-      },
-      area: {
-        square_miles: z.square_miles ?? null, in_service_since: z.in_service_since || null,
-        hours: z.hours || null, description: z.description || null, vehicles: hero.city.vehicles,
-        vehicles_added_7d: hero.added_7d, vehicles_added_prev_7d: hero.added_prev_7d
-      },
-      rides,
-      sightings,
-      cameras
-    }, { headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}` } });
+    const row = await env.cybercabhunter_db.prepare('SELECT homepage_payload FROM city_daily_summary WHERE city = ?').bind(area.key).first();
+    if (!row) return Response.json({ error: 'stats_unavailable' }, { status: 503 });
+    const response = Response.json(JSON.parse(row.homepage_payload), { headers: { 'Cache-Control': 'public, max-age=3600' } });
     if (cache) {
       const stored = cache.put(cacheKey, response.clone()).catch(() => {});
       if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(stored);

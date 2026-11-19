@@ -1,3 +1,5 @@
+import { serviceAreaFor } from './service-areas.js';
+
 // Local time for a sighting's area. The sighting form only asks for the
 // DATE spotted; the time is the exact moment of submission, taken in the
 // local time zone of the area being documented (Austin -> US Central, Miami
@@ -7,7 +9,7 @@
 // picked Location, then the submitter's own browser time zone.
 
 const CITY_ZONES = {
-  austin: 'America/Chicago', dallas: 'America/Chicago', houston: 'America/Chicago', 'san antonio': 'America/Chicago',
+  houston: 'America/Chicago', 'san antonio': 'America/Chicago',
   'fort worth': 'America/Chicago', 'el paso': 'America/Denver',
   miami: 'America/New_York', orlando: 'America/New_York', tampa: 'America/New_York', jacksonville: 'America/New_York',
   'san francisco': 'America/Los_Angeles', 'los angeles': 'America/Los_Angeles', phoenix: 'America/Phoenix',
@@ -39,11 +41,15 @@ export function isValidTimeZone(zone) {
 // ("..., Dallas, TX") -> state zone; otherwise the fallback (if valid) or null.
 export function timeZoneFor({ serviceArea = null, location = null, fallback = null } = {}) {
   const city = String(serviceArea || '').toLowerCase().split(',')[0].trim().replace(/\s+/g, ' ');
+  const configured = serviceAreaFor(city);
+  if (configured) return configured.timeZone;
   if (CITY_ZONES[city]) return CITY_ZONES[city];
   for (const text of [location, serviceArea]) {
     const parts = String(text || '').split(',').map(s => s.trim()).filter(Boolean);
     if (parts.length > 1) {
       const locCity = parts[parts.length - 2].toLowerCase();
+      const configuredLocation = serviceAreaFor(locCity);
+      if (configuredLocation) return configuredLocation.timeZone;
       if (CITY_ZONES[locCity]) return CITY_ZONES[locCity];
     }
     const state = parts.length ? parts[parts.length - 1].toUpperCase() : '';

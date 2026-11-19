@@ -1,3 +1,4 @@
+import { recomputeCityStats } from '../worker/city-stats.js';
 // GET /api/homepage-stats?city= (worker/homepage-stats.js) and the homepage
 // rows that read it (js/home-rows.js): every figure against a small, known
 // database worked out by hand; the counting rules shared with the rest of the
@@ -48,6 +49,7 @@ function detection(ctx, n, { city = 'austin', hoursAgo = 1 } = {}) {
     .bind(`det-${n}`, `cam-${n}`, iso(NOW - hoursAgo * 3600e3), city)._exec();
 }
 const get = async (ctx, city) => {
+  await recomputeCityStats(ctx.env, NOW);
   const r = await worker.fetch(new Request(`https://x/api/homepage-stats${city ? `?city=${city}` : ''}`), ctx.env, {});
   const raw = await r.text();
   let json = null; try { json = JSON.parse(raw); } catch (e) { /* not JSON */ }
@@ -76,7 +78,7 @@ async function run() {
   console.log('1. The endpoint');
   {
     const r = await get(ctx, 'austin');
-    check('200, edge-cached for 5 minutes', r.status === 200 && /public, max-age=300/.test(r.cache));
+    check('200, edge-cached for an hour', r.status === 200 && /public, max-age=3600/.test(r.cache));
     check('an unknown city is refused (400)', (await get(ctx, 'houston')).status === 400);
     check('no city asked for: Austin', (await get(ctx, '')).json.city === 'austin');
     check('the response carries the rows and the hero, and no fleet / spotter data (those rows were removed)', ['hero', 'area', 'rides', 'sightings', 'cameras'].every(k => k in r.json) && !('fleet' in r.json) && !('spotters' in r.json));
@@ -208,7 +210,7 @@ async function run() {
     check('a LIVE badge on Sightings Activity, with "updated … ago"; no Experimental badge', d.querySelectorAll('#rowSightings .hr-live').length === 1 && /Live · updated/.test(text('rowSightings')) && !/Experimental/.test(text('rowSightings')));
     check('footnotes name each source', /Zone facts as published/.test(text('rowArea')) && /From contributed ride receipts\./.test(text('rowRides')) && /From approved sightings\./.test(text('rowSightings')) && /From automated camera detections/.test(text('rowSightings')));
     check('every block has an "About these numbers" note', ['#rowArea', '#rowRides', '#rowSightings'].every(id => d.querySelectorAll(`${id} details.hr-about`).length === 1));
-    check('header "See all" links to Fleet ETA and Sightings', ['#rowRides a[href="/simulation?view=eta"]', '#rowSightings a[href="/sightings"]'].every(sel => d.querySelector(sel)));
+    check('header "See all" links to Fleet ETA and Sightings', ['#rowRides a[href="/simulation?view=eta"]', '#rowSightings a[href="/sightings?city=austin"]'].every(sel => d.querySelector(sel)));
     check('latest sightings as a list: thumbnail, "Cybercab seen at …", time ago, linked', /Cybercab seen at Congress Ave, Austin/.test(text('rowSightings')) && d.querySelector('#rowSightings ol a img') && /\dh ago/.test(text('rowSightings')));
     check('no extra map thumbnail (the minimap beside the facts opens the full map)', !d.querySelector('.hr-map'));
     w.setHomeRowsCity('dallas');

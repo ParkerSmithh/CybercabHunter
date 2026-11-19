@@ -35,18 +35,14 @@
   let busy = false;
   let query = '';      // the search the current list reflects
   // The city whose Cybercabs are listed (Austin by default; ?city=dallas in the URL).
-  const CITIES = ['austin', 'dallas'];
+  const CITIES = (window.CCH_CITIES?.SERVICE_AREAS || []).map(area => area.key).concat('all');
   let city = 'austin';
   try {
     const fromUrl = new URLSearchParams(location.search).get('city');
     if (CITIES.includes(fromUrl)) city = fromUrl;
   } catch (e) { /* default */ }
-  // A Dallas car: its own city is Dallas, or (with none of its own) its rides are in Dallas.
-  const isDallas = v => {
-    const own = String(v.service_area || '').trim().toLowerCase();
-    if (own) return own === 'dallas';
-    return String(v.service_areas || '').toLowerCase().split(',').some(c => c.trim() === 'dallas');
-  };
+  const vehicleCity = vehicle => (window.CCH_CITIES?.SERVICE_AREAS || []).find(area =>
+    area.key === String(vehicle.service_area || '').trim().toLowerCase());
   let generation = 0;  // bumped per new search, so a slow older response is dropped
 
   function setView(view) {
@@ -160,15 +156,19 @@
     }
     // Dallas cars carry a Dallas tag (the Dallas launch) in place of the plain
     // city line (it would say Dallas twice).
-    if (isDallas(v)) eyebrow.appendChild(el('span', 'vcard-city', 'Dallas'));
+    const civicArea = vehicleCity(v);
+    if (civicArea) eyebrow.appendChild(el('span', 'vcard-city', civicArea.name));
+    // With the car image on the right, the pill + tag stay on the left half and
+    // wrap there (on a narrow card the tag goes under the pill, never over the car).
+    if (approvedCybercab(v)) eyebrow.classList.add('vcard-eyebrow-car');
     top.appendChild(eyebrow);
     // The plate, styled like one (the same treatment as the Sightings cards).
     top.appendChild(el('h2', v.license_plate
       ? 'mt-3 inline-block font-display font-bold text-lg leading-none tracking-[0.18em] pl-2 pr-[calc(0.5rem-0.18em)] py-1.5 max-sm:mt-2 max-sm:text-sm max-sm:pl-1.5 max-sm:pr-[calc(0.375rem-0.18em)] max-sm:py-1 rounded-md bg-[#f4efe3] text-[#141008] border-2 border-[#1a1406]/80 shadow-[inset_0_0_0_1px_rgba(250,224,48,0.6)] [overflow-wrap:anywhere]'
       : 'mt-3 font-display font-bold text-lg text-slate-400 max-sm:mt-2 max-sm:text-sm', v.license_plate || 'Plate not recorded'));
     // service_area is the record's own field; service_areas are the cities of its counted rides.
-    const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
-    if (!isDallas(v)) top.appendChild(el('p', 'text-slate-500 text-xs mt-2 [overflow-wrap:anywhere] max-sm:text-[10px] max-sm:mt-1.5', area || 'Service area not recorded'));
+    const area = v.service_area || '';
+    if (!civicArea) top.appendChild(el('p', 'text-slate-500 text-xs mt-2 [overflow-wrap:anywhere] max-sm:text-[10px] max-sm:mt-1.5', area || 'Service area not recorded'));
     a.appendChild(top);
 
     // The ride count, large, in the card's light.
@@ -206,7 +206,7 @@
 
   async function fetchPage(offset) {
     const q = query ? '&q=' + encodeURIComponent(query) : '';
-    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}&sort=${encodeURIComponent(sort)}&city=${city}${q}`);
+    const resp = await fetch(`${WORKER}/api/robotaxi-vehicles?limit=${PAGE_SIZE}&offset=${offset}&sort=${encodeURIComponent(sort)}${city === 'all' ? '' : '&city=' + encodeURIComponent(city)}${q}`);
     if (!resp.ok) throw new Error('http_' + resp.status);
     const body = await resp.json();
     if (!body || !Array.isArray(body.vehicles)) throw new Error('bad_body');
@@ -227,7 +227,7 @@
         if (query) { $('regNoMatchQuery').textContent = '\u201c' + query + '\u201d'; setView('nomatch'); }
         else {
           const h = document.querySelector('#regEmpty h2');
-          if (h) h.textContent = city === 'dallas' ? 'No Dallas Cybercabs yet' : 'No vehicles found';
+          if (h) h.textContent = city === 'all' ? 'No vehicles found' : `No vehicles found in ${(window.CCH_CITIES?.SERVICE_AREAS || []).find(area => area.key === city)?.name || city}`;
           setView('empty');
         }
         return;

@@ -31,10 +31,13 @@
 <script src="/vendor/tailwindcss-3.4.17.js"></script>
 <script src="js/theme.js?v=5"></script>
 <link rel="preload" href="fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=79">
-<link rel="stylesheet" href="css/brand-type.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=80">
+<link rel="stylesheet" href="css/brand-type.css?v=5">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/zones-facilities.css?v=1">
+<link rel="stylesheet" href="/css/city-switcher.css?v=3">
+<script src="/js/cities.js?v=2"></script>
+<script src="/js/city-switcher.js?v=2"></script>
 </head>
 <body class="bg-void text-slate-100 font-body">
 <div class="bg-mesh"></div>
@@ -151,7 +154,7 @@
             <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Austin • Live fleet</p>
           </div>
           <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">First Robotaxi market. Launched as an invite pilot, now unsupervised.</p>
-          <p class="text-xs text-slate-500 mt-2">In service since Jun 22, 2025</p>
+          <p class="text-xs text-slate-500 mt-2"><span data-robotaxi-since="austin"></span></p>
         </div>
 
         <!-- Fleet & fares -->
@@ -214,7 +217,7 @@
             <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Dallas • Live fleet</p>
           </div>
           <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">Central Dallas, from downtown north to Northwest Highway, including Highland Park.</p>
-          <p class="text-xs text-slate-500 mt-2">In service since April 18, 2026</p>
+          <p class="text-xs text-slate-500 mt-2"><span data-robotaxi-since="dallas"></span></p>
         </div>
 
         <!-- Fleet & fares (GET /api/fleet-stats?city=dallas) -->
@@ -425,7 +428,7 @@
   CCC.init();
 
   // Count up the zone stats once they are in view, like the homepage stats bar.
-  CCC.countUp(document.getElementById('coverageOut'), 440);
+  CCC.countUp(document.getElementById('coverageOut'), window.CCH_CITIES.SERVICE_AREAS.find(area => area.key === 'austin').zone.square_miles);
   CCC.countUp(document.getElementById('dalCoverageOut'), 81);   // counts when Dallas is first shown
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
@@ -596,6 +599,10 @@
     requestAnimationFrame(() => map.resize());
   }
 
+  for (const el of document.querySelectorAll('[data-robotaxi-since]')) {
+    const launch = CCH_CITIES.SERVICE_AREAS.find(area => area.key === el.dataset.robotaxiSince)?.zone.in_service_since;
+    if (launch) el.textContent = 'In service since ' + new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(launch));
+  }
   if (new URLSearchParams(location.search).get('city') === 'dallas') {
     document.querySelector('.city-btn[data-city="dallas"]').click();
   }

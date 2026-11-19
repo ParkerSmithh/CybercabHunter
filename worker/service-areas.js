@@ -1,44 +1,5 @@
-// The service areas Cybercab Hunter supports — the ONE definition behind:
-//   - the Submit form's City dropdown and the Sightings page's city filter
-//     buttons (both built from GET /api/service-areas),
-//   - the Location search (worker/places.js searches only inside the
-//     chosen area's box),
-//   - server-side validation of a submitted Location (it must fall inside the
-//     chosen area) and of the City itself (worker/sightings.js),
-//   - the public Sightings city filters (worker/sightings-public.js).
-//
-// Each area is a practical METRO bounding box — where Cybercabs may be seen,
-// deliberately a little wider than Tesla's service-zone polygon.
-// To add a city (e.g. Miami, Orlando), add one entry here.
-
-// Published facts about each city's Robotaxi service zone — the same figures
-// the Zones page shows (not database figures: they describe Tesla's geofence
-// and launch): coverage in square miles (Austin: the mapped boundary, measured (docs/verification/austin-zone-expansion);
-// Dallas: Tesla's figure), first day of service, daily hours (America/Chicago,
-// js/calc.js) and one line describing the zone. Hours: Robotaxi service runs
-// 24/7 in both cities (Tesla's Robotaxi account, Nov 2026: "Robotaxi now runs
-// 24/7. Every city we're available in."); before that it was 5 AM to 2 AM.
-// 24/7 is { open: '00:00', close: '24:00', all_day: true } so older app builds,
-// which read open/close, see the whole day as service hours.
-const ZONE_FACTS = {
-  austin: { square_miles: 440, in_service_since: '2025-06-22', hours: { open: '00:00', close: '24:00', all_day: true },
-    description: 'First Robotaxi market. Launched as an invite pilot, now unsupervised.' },
-  dallas: { square_miles: 81, in_service_since: '2026-04-18', hours: { open: '00:00', close: '24:00', all_day: true },
-    description: 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.' }
-};
-
-export const SERVICE_AREAS = [
-  {
-    key: 'austin', name: 'Austin', state: 'TX', timeZone: 'America/Chicago',
-    bbox: { minLon: -98.05, minLat: 30.00, maxLon: -97.45, maxLat: 30.60 },
-    zone: ZONE_FACTS.austin
-  },
-  {
-    key: 'dallas', name: 'Dallas', state: 'TX', timeZone: 'America/Chicago',
-    bbox: { minLon: -97.20, minLat: 32.55, maxLon: -96.45, maxLat: 33.15 },
-    zone: ZONE_FACTS.dallas
-  }
-];
+import cities from '../public/js/cities.js';
+export const { DEFAULT_CITY, SERVICE_AREAS } = cities;
 
 // An area by its key or name, case- and whitespace-insensitive
 // ("austin", " Austin ", "AUSTIN" -> Austin); null if unsupported.

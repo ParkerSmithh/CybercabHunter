@@ -1,3 +1,4 @@
+import { recomputeCityStats } from '../worker/city-stats.js';
 // Live Fleet & Fares stats (worker/fleet-stats.js, GET /api/fleet-stats) and
 // the Zones page panel. (The Fleet ETA page that also used them was removed.)
 //   - the Austin Cybercab count follows the public registry (adds, approvals,
@@ -46,7 +47,9 @@ function sighting(ctx, vehicleId, { status = 'approved', daysAgo = 1 } = {}) {
   ctx.d1.prepare(`INSERT INTO submissions (id, user_id, submission_type, status) VALUES (?, 'rider', 'vehicle_sighting', ?)`).bind(`s-${sn}`, status)._exec();
   ctx.d1.exec(`INSERT INTO vehicle_observations (id, robotaxi_vehicle_id, user_id, submission_id, verification_status, observed_at) VALUES ('o-${sn}', '${vehicleId}', 'rider', 's-${sn}', 'verified', datetime('now', '-${daysAgo} days'))`);
 }
-const stats = async ctx => (await worker.fetch(new Request('https://x/api/fleet-stats?city=austin'), ctx.env, {})).json();
+const cachedStats = async ctx => (await worker.fetch(new Request('https://x/api/fleet-stats?city=austin'), ctx.env, {})).json();
+
+const stats = async ctx => { await recomputeCityStats(ctx.env); return cachedStats(ctx); };
 
 async function run() {
   console.log('1. The Austin Cybercab count follows the public registry');
@@ -60,7 +63,7 @@ async function run() {
     vehicle(ctx, { vin: false });                      // a sighting vehicle with no VIN isn't publicly eligible
     check('private, Dallas and not-yet-eligible vehicles are not counted', (await stats(ctx)).cybercabs === 2);
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'public' WHERE id = '${pending}'`);
-    check('approving (making public) a vehicle adds it at once — no deploy', (await stats(ctx)).cybercabs === 3);
+    check('approving (making public) a vehicle adds it in the next snapshot', (await stats(ctx)).cybercabs === 3);
     ctx.d1.exec(`UPDATE robotaxi_vehicles SET visibility = 'private' WHERE id = '${pending}'`);
     check('a takedown removes it again', (await stats(ctx)).cybercabs === 2);
     const receiptCar = vehicle(ctx, { origin: 'receipt', vin: false });
@@ -114,17 +117,18 @@ async function run() {
     const car = vehicle(ctx);
     for (let i = 0; i < 5; i++) ride(ctx, car, { fare: 1000, miles: 4 });
     await recomputeFleetStats(ctx.env, Date.parse('2026-09-30T11:00:00Z'));
+    await recomputeCityStats(ctx.env, Date.parse('2026-09-30T11:00:00Z'));
     const stored = JSON.parse(await ctx.env.TESLA_SESSIONS.get('fleet_stats:v2:austin:fares'));
     check('the job stores the fare model with its computed date', stored.median_fare === 10 && stored.computed_at === '2026-09-30T11:00:00.000Z');
     for (let i = 0; i < 5; i++) ride(ctx, car, { fare: 3000, miles: 4 });
-    check('the page reads the stored values (new rides show after the next run)', (await stats(ctx)).fares.median_fare === 10);
+    check('the page reads the stored values (new rides show after the next run)', (await cachedStats(ctx)).fares.median_fare === 10);
     await worker.scheduled({ cron: FLEET_STATS_CRON }, ctx.env, { waitUntil: p => p });
     await new Promise(r => setTimeout(r, 20));
-    check('the daily cron recomputes: the numbers move with no deploy', (await stats(ctx)).fares.median_fare === 20 && (await stats(ctx)).fares.rides === 10);
+    check('the daily cron recomputes: the numbers move with no deploy', (await cachedStats(ctx)).fares.median_fare === 20 && (await cachedStats(ctx)).fares.rides === 10);
     check('wrangler.jsonc schedules exactly that cron', read('wrangler.jsonc').includes(`"${FLEET_STATS_CRON}"`));
     const fresh = await makeApp();
     const c2 = vehicle(fresh); for (let i = 0; i < 5; i++) ride(fresh, c2, { fare: 1500, miles: 5 });
-    check('before the first run, the first request computes and stores it', (await stats(fresh)).fares.median_fare === 15 && !!(await fresh.env.TESLA_SESSIONS.get('fleet_stats:v2:austin:fares')));
+    check('before the first run, the request returns unavailable without building a snapshot', (await cachedStats(fresh)).error === 'stats_unavailable');
   }
 
   console.log('6. Privacy');
@@ -133,6 +137,7 @@ async function run() {
     const hidden = vehicle(ctx, { visibility: 'private' });
     for (let i = 0; i < 6; i++) ride(ctx, hidden, { fare: 5000, miles: 2 });
     sighting(ctx, hidden, { daysAgo: 1 });
+    await recomputeCityStats(ctx.env);
     const r = await worker.fetch(new Request('https://x/api/fleet-stats?city=austin'), ctx.env, {});
     const raw = await r.text();
     const s = JSON.parse(raw);
@@ -143,7 +148,7 @@ async function run() {
     const dalJson = await dal.json();
     check('Dallas is served too (Dallas launch), with its own count, never Austin\'s', dal.status === 200 && dalJson.city === 'dallas' && typeof dalJson.cybercabs === 'number');
     check('an unsupported city: 400', (await worker.fetch(new Request('https://x/api/fleet-stats?city=houston'), ctx.env, {})).status === 400);
-    check('edge-cacheable', /public, max-age=300/.test(r.headers.get('Cache-Control')));
+    check('edge-cacheable', /public, max-age=3600/.test(r.headers.get('Cache-Control')));
   }
 
   console.log('7. The pages');
@@ -157,6 +162,7 @@ async function run() {
     w.maplibregl = { Map: class { on() {} fitBounds() {} resize() {} }, Marker: class { setLngLat() { return this; } setPopup() { return this; } addTo() { return this; } getPopup() { return { setHTML() {} }; } remove() {} }, Popup: class { setHTML() { return this; } }, LngLatBounds: class { extend() { return this; } } };
     w.fetch = async u => respond(String(u));
     const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => !/tailwind\.config|scrollRestoration/.test(s)).join('\n');
+    w.eval(read('public/js/cities.js'));
     w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\n${read('public/js/austin-map.js')}\n${inline}`);
     await new Promise(r => setTimeout(r, 1700));
     return { w, d: w.document };

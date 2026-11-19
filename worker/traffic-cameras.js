@@ -13,8 +13,8 @@ const BY_ID = new Map(TRAFFIC_CAMERAS.map(c => [c.camera_id, c]));
 
 export { TRAFFIC_CAMERAS };
 
-// A camera's city key; an entry without one is an Austin camera.
-export const cameraCity = camera => (camera && camera.city) || 'austin';
+// Unassigned cameras do not appear in any city-specific feed.
+export const cameraCity = camera => camera?.city || null;
 
 // The camera with this id, or null. Accepts the id as a string or an integer.
 export function trafficCameraFor(id) {

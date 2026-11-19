@@ -162,6 +162,7 @@ async function zonesPage(wide, query = '', { camera = false } = {}) {
   w.maplibregl = { Map, LngLatBounds, Marker: class { setLngLat() { return this; } setPopup() { return this; } addTo() { return this; } getPopup() { return { setHTML() {} }; } remove() {} }, Popup: class { setHTML() { return this; } } };
   w.fetch = async () => new Response('{}', { status: 404 });
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => !/tailwind\.config|scrollRestoration/.test(s)).join('\n');
+  w.eval(read('public/js/cities.js'));
   w.eval(`${read('public/js/calc.js')}\n${read('public/js/main.js')}\n${read('public/js/austin-map.js')}\n${read('public/js/zone-warp.js')}\n${inline}`);
   await new Promise(r => setTimeout(r, 300));
   const d = w.document, panel = d.getElementById('zonePanel'), toggle = d.querySelector('[data-map-drawer-toggle]');

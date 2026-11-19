@@ -134,7 +134,7 @@ async function run() {
       ['an unknown field (e.g. a plate)', body({ plate: 'ABC123' }), 'unknown_field'],
       ['a bad camera_id', body({ camera_id: '../65' }), 'invalid_camera_id'],
       ['an empty camera_name', body({ camera_name: '  ' }), 'invalid_camera_name'],
-      ['coordinates outside the Austin metro', body({ lat: 32.78, lng: -96.8 }), 'invalid_location'],
+      ['coordinates outside supported metros', body({ lat: 33.80, lng: -97.8 }), 'invalid_location'],
       ['string coordinates', body({ lat: '30.27' }), 'invalid_location'],
       ['observed_at without a zone', body({ observed_at: '2026-09-30T01:24:33' }), 'invalid_observed_at'],
       ['observed_at in the future', body({ observed_at: iso(NOW + H) }), 'invalid_observed_at'],
@@ -179,6 +179,7 @@ async function run() {
     w.fetch = async u => { calls.push(String(u)); return responder(String(u)); };
     // The page script, after the shared camera features it calls (js/austin-map.js).
     const script = fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8') + '\n' + [...HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('CCCAustinMap.addFeatures(map'));
+    w.eval(fs.readFileSync(`${ROOT}public/js/cities.js`, 'utf8'));
     w.eval(script);
     await new Promise(r => setTimeout(r, 20));
     const cams = () => markers.filter(m => m.el.className === 'camera-cybercab');   // every camera marker ever created
@@ -263,6 +264,7 @@ async function run() {
       w.ResizeObserver = class { observe() {} };
       w.setInterval = () => 0;
       w.fetch = async () => new Response(JSON.stringify([{ camera_id: '65', camera_name: 'MLK / TRINITY', lat: 30.28, lng: -97.73, observed_at: '2026-09-30T01:24:33Z', image_url: null }]));
+      w.eval(fs.readFileSync(`${ROOT}public/js/cities.js`, 'utf8'));
       w.eval(`${SHARED}\n${script}`);
       made.maps.forEach(m => m.cbs.forEach(cb => cb()));
       await new Promise(r => setTimeout(r, 30));

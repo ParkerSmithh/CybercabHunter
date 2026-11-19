@@ -144,6 +144,7 @@ async function run() {
       if (intercept) { const x = await intercept(path, init); if (x) return x; }
       return worker.fetch(new Request(`https://x${path}`, { ...init, headers: { Origin: 'https://cybercabhunter.com', ...(init.headers || {}) } }), ctx.env, {});
     };
+    w.eval(read('js/cities.js'));
     w.eval(`${CALC}\n${MAIN}\nCCC.init();\n${PAGE}`);
     const d = w.document;
     const page = { w, d, requests,
@@ -158,8 +159,8 @@ async function run() {
     // The registry row's own ingestion timestamps (seen/created) are deliberately far from the ride's
     // own date, matching the real bug report this guards against: a receipt imported long after the ride
     // it describes must still show the RIDE's date, not when the row was created/touched.
-    const a = vehicle(ctx, 1, 'XFY4946', { visibility: 'public', serviceArea: null, seen: '2026-09-19 23:11:44', created: '2026-09-19 23:11:44' }); ride(ctx, a, { serviceArea: 'Austin', rideDate: '2026-08-05' });
-    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Model Y', seen: '2026-09-20 05:16:22', created: '2026-09-20 05:16:22' }); ride(ctx, b, { serviceArea: 'Dallas', rideDate: '2026-07-04' });
+    const a = vehicle(ctx, 1, 'XFY4946', { visibility: 'public', serviceArea: 'Austin', seen: '2026-09-19 23:11:44', created: '2026-09-19 23:11:44' }); ride(ctx, a, { serviceArea: 'Austin', rideDate: '2026-08-05' });
+    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Model Y', serviceArea: 'Dallas', seen: '2026-09-20 05:16:22', created: '2026-09-20 05:16:22' }); ride(ctx, b, { serviceArea: 'Dallas', rideDate: '2026-07-04' });
     vehicle(ctx, 3, 'HIDDEN33', { visibility: 'private' }); const hid = uuid(3); ride(ctx, hid);
     const p = await open(ctx, null);
     check('the loaded state is shown (not empty, not error, not loading)', p.vis('regLoaded') && !p.vis('regEmpty') && !p.vis('regError') && !p.vis('regLoading'));
@@ -188,7 +189,7 @@ async function run() {
     // Data is treated as text, never markup; a malformed id is never linked.
     const ctx = await makeApp();
     const x = vehicle(ctx, 1, 'XSS0001', { visibility: 'public', model: '<img src=x onerror="window.__pwned=1">', serviceArea: '<script>window.__pwned=1</script>' }); ride(ctx, x);
-    const p = await open(ctx, null);
+    const p = await open(ctx, null, 'https://cybercabhunter.com/vehicles?city=all');
     check('markup in model/service area is shown as text', /<img src=x/.test(p.cards()[0].textContent) && p.d.querySelectorAll('#regList img, #regList script').length === 0 && p.w.__pwned === undefined);
     const good = { id: uuid(1), license_plate: 'GOOD001', model: null, service_area: null, service_areas: null, first_seen_at: null, last_seen_at: null, trip_count: 1 };
     const p2 = await open(ctx, async path => (path.startsWith('/api/robotaxi-vehicles') ? Response.json({ vehicles: [good, { ...good, id: '../../etc/passwd', license_plate: 'BAD' }, { ...good, id: 'javascript:alert(1)', license_plate: 'BAD2' }], total: 3 }) : null));
@@ -210,7 +211,7 @@ async function run() {
   }
   {
     const ctx = await makeApp();
-    for (let i = 1; i <= 55; i++) { const id = vehicle(ctx, i, `PG${String(i).padStart(3, '0')}`, { visibility: 'public', seen: `2026-09-01 00:${String(i).padStart(2, '0')}:00` }); ride(ctx, id); }
+    for (let i = 1; i <= 55; i++) { const id = vehicle(ctx, i, `PG${String(i).padStart(3, '0')}`, { visibility: 'public', serviceArea: 'Austin', seen: `2026-09-01 00:${String(i).padStart(2, '0')}:00` }); ride(ctx, id); }
     const p = await open(ctx, null);
     check('the first page shows 50 of 55, with a Show more button', p.cards().length === 50 && p.vis('regMore') && p.d.getElementById('regCount').textContent === '55 vehicles');
     p.d.getElementById('regMore').click();
@@ -246,7 +247,7 @@ async function run() {
     check('the vin-but-not-yet-approved vehicle is still 404 on its detail endpoint, same as any other private vehicle', (await call(ctx, `/api/robotaxi-vehicles/${vinButPrivate}`)).status === 404);
 
     // Cars registry page: Cybercab2.png shown iff v.vin is present, and never for a vehicle without one.
-    const p = await open(ctx, null);
+    const p = await open(ctx, null, 'https://cybercabhunter.com/vehicles?city=all');
     check('three cards render (the two Cybercabs and the ordinary vehicle)', p.cards().length === 3);
     const cybercabCard = p.cards().find(a => /CYB0010/.test(a.textContent));
     const ordinaryCard = p.cards().find(a => /ORD0011/.test(a.textContent));
@@ -277,7 +278,7 @@ async function run() {
     const ctx = await makeApp();
     const VIN = '7SAYGDEE1RA000123';
     const a = vehicle(ctx, 1, 'ABC-1234', { visibility: 'public', model: 'Model Y', serviceArea: 'Austin', seen: '2026-09-10 00:00:00' }); ride(ctx, a, { serviceArea: 'Austin' });
-    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Cybercab', vin: VIN, seen: '2026-09-11 00:00:00' }); ride(ctx, b, { serviceArea: 'Dallas' });
+    const b = vehicle(ctx, 2, 'XJR1903', { visibility: 'public', model: 'Cybercab', vin: VIN, serviceArea: 'Dallas', seen: '2026-09-11 00:00:00' }); ride(ctx, b, { serviceArea: 'Dallas' });
     const hidden = vehicle(ctx, 3, 'ABC9999', { visibility: 'private' }); ride(ctx, hidden);
     const ids = async q => (await list(ctx, '?q=' + encodeURIComponent(q))).body.vehicles.map(v => v.id).sort().join();
     check('a plate matches ignoring case, hyphens and spaces', await ids('abc1234') === a && await ids('ABC-1234') === a && await ids('c 12') === a);
@@ -286,7 +287,7 @@ async function run() {
     // separate filter (?city=) and the model never matches.
     check('model and city no longer match the search box', await ids('cyber') === '' && await ids('dallas') === '' && await ids('austin') === '');
     const byCity = async c => (await list(ctx, '?city=' + c)).body.vehicles.map(v => v.id).sort().join();
-    check('?city= keeps each city\'s vehicles (by its own city, or its rides\' city when it has none)', await byCity('dallas') === b && await byCity('austin') === a);
+    check('?city= keeps each city\'s vehicles (by its assigned city)', await byCity('dallas') === b && await byCity('austin') === a);
     check('an unknown ?city= is 400', (await list(ctx, '?city=houston')).status === 400);
     check('search never reveals a private vehicle', !(await ids('ABC')).includes(hidden) && await ids('ABC9999') === '');
     const r = await list(ctx, '?q=zzz');
@@ -310,6 +311,33 @@ async function run() {
     await type('');
     await p.waitFor(() => p.cards().length === 1 && p.vis('regLoaded'));
     check('clearing the search restores the full (Dallas) list', p.cards().length === 1 && p.vis('regLoaded') && /XJR1903/.test(p.cards()[0].textContent));
+  }
+
+  console.log('4d. City rule: own city, else its counted rides\' city, else the default city (Austin)');
+  {
+    // Receipt-created cars and sightings sent without a city have no
+    // service_area of their own; they must still land in a city view.
+    const ctx = await makeApp();
+    const ownAustinDallasRide = vehicle(ctx, 1, 'OWN0001', { visibility: 'public', serviceArea: 'Austin' }); ride(ctx, ownAustinDallasRide, { serviceArea: 'Dallas' });
+    const ownDallas = vehicle(ctx, 2, 'OWN0002', { visibility: 'public', serviceArea: ' dallas ' }); ride(ctx, ownDallas, { serviceArea: 'Austin' });
+    const emptyDallasRide = vehicle(ctx, 3, 'EMP0003', { visibility: 'public', serviceArea: null }); ride(ctx, emptyDallasRide, { serviceArea: 'Dallas' });
+    const emptyAustinRide = vehicle(ctx, 4, 'EMP0004', { visibility: 'public', serviceArea: '' }); ride(ctx, emptyAustinRide, { serviceArea: 'Austin' });
+    const emptyBothRides = vehicle(ctx, 5, 'EMP0005', { visibility: 'public', serviceArea: null }); ride(ctx, emptyBothRides, { serviceArea: 'Austin' }); ride(ctx, emptyBothRides, { serviceArea: 'Dallas' });
+    // No city and no rides: an approved sighting car (public without a ride).
+    ctx.d1.prepare(`INSERT INTO robotaxi_vehicles (id, license_plate, model, visibility, origin, approval_basis) VALUES (?, 'EMP0006', 'Cybercab', 'public', 'sighting', 'manual')`).bind(uuid(6))._exec();
+    const emptyNoRides = uuid(6);
+    const byCity = async c => (await list(ctx, '?city=' + c)).body.vehicles.map(v => v.id).sort().join();
+    const sorted = (...ids) => ids.sort().join();
+    check('an empty-city car with no rides is listed under the default city (Austin)', (await byCity('austin')).includes(emptyNoRides) && !(await byCity('dallas')).includes(emptyNoRides));
+    check('an empty-city car takes its rides\' city', (await byCity('dallas')).includes(emptyDallasRide) && (await byCity('austin')).includes(emptyAustinRide));
+    check('...and a non-default city wins when it rode in both (a Dallas car, as on main)', (await byCity('dallas')).includes(emptyBothRides) && !(await byCity('austin')).includes(emptyBothRides));
+    check('a recorded own city wins over the rides\' city (any case or spacing)', (await byCity('austin')).includes(ownAustinDallasRide) && (await byCity('dallas')).includes(ownDallas) && !(await byCity('dallas')).includes(ownAustinDallasRide));
+    check('every public car is in exactly one city list, and Austin + Dallas = All cities',
+      await byCity('austin') === sorted(ownAustinDallasRide, emptyAustinRide, emptyNoRides)
+      && await byCity('dallas') === sorted(ownDallas, emptyDallasRide, emptyBothRides)
+      && (await list(ctx, '')).body.total === 6);
+    const totals = async c => (await list(ctx, '?city=' + c)).body.total;
+    check('the city totals match the lists (3 and 3)', await totals('austin') === 3 && await totals('dallas') === 3);
   }
 
   console.log('5. Site: the registry is reachable from the top navigation tab ("Cars") and the footer; the homepage promo card is gone');

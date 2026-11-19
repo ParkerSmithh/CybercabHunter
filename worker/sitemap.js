@@ -1,3 +1,5 @@
+import { CITY_PAGES } from './city-pages.js';
+import { DEFAULT_CITY, SERVICE_AREAS } from './service-areas.js';
 // GET /sitemap.xml — the public pages plus one /vehicle/<id> per public
 // registry vehicle, for search engines.
 //
@@ -25,6 +27,7 @@ export function sitemapXml(vehicles, today) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...SITEMAP_PAGES.map(p => entry(p, today)),
+    ...SERVICE_AREAS.filter(area => area.key !== DEFAULT_CITY).flatMap(area => CITY_PAGES.map(p => entry(p + '?city=' + area.key, today))),
     ...vehicles.map(v => entry('/vehicle/' + encodeURIComponent(v.id), day(v.approved_at) || today)),
     '</urlset>',
     ''

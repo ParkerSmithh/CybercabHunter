@@ -66,7 +66,7 @@
     const p = eta[city];
     const f = p && p.fleet;
     if (!f) return null;
-    const n = city === 'austin' && f.registry ? f.registry.total : f.documented ? f.documented.cybercab : null;
+    const n = f.documented?.cybercab;
     return typeof n === 'number' ? { cybercabs: n, count_as_of: p.computed_at } : null;
   }
 
@@ -382,7 +382,7 @@
     renderFleet(city); renderCalibration(city); renderRecent(city);
     const count = countOf(city), pre = city === 'dallas' ? 'dal' : 'austin';
     renderMix(pre, count ? count.cybercabs : null, city === 'dallas' ? C.DALLAS_MODEL_Y_FLEET : MODEL_Y_FLEET, count
-      ? (city === 'austin' ? `Every Cybercab on the public registry, counted ${ago(count.count_as_of) || 'at an unknown time'}` : `Documented in Dallas by Cybercab Hunter, counted ${ago(count.count_as_of) || 'at an unknown time'}`)
+      ? (city === 'austin' ? `Documented in Austin by Cybercab Hunter, counted ${ago(count.count_as_of) || 'at an unknown time'}` : `Documented in Dallas by Cybercab Hunter, counted ${ago(count.count_as_of) || 'at an unknown time'}`)
       : (eta[city] === false ? 'Count unavailable' : eta[city] && eta[city].pending_first_run ? 'Count pending the first daily update' : 'Count loading'));
   }
   function renderScenarioButtons() {
@@ -566,4 +566,6 @@
   renderMix('austin', null, MODEL_Y_FLEET, 'Count loading');
   loadEta('austin');
   if (!document.hidden) start();
+  const initialCity = new URLSearchParams(location.search).get('city');
+  if (initialCity === 'dallas') document.querySelector('button[data-city="dallas"]')?.click();
 })();

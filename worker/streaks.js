@@ -1,3 +1,5 @@
+import { DEFAULT_CITY, serviceAreaFor } from './service-areas.js';
+import { clock } from './push-policy.js';
 // Spotting Streaks (the Community page's Streaks section, public/js/streaks.js).
 //
 //   GET /api/streaks/me                      signed in; never cached
@@ -33,7 +35,7 @@
 
 import { tesla } from './tesla.js';
 
-export const STREAK_TZ = 'America/Chicago';
+export const STREAK_TZ = serviceAreaFor(DEFAULT_CITY).timeZone;
 export const DAILY_MILESTONES = [3, 7, 14, 30, 60, 100];
 export const WEEKLY_MILESTONES = [2, 4, 8, 12, 26, 52];
 const DAY = 864e5;
@@ -53,7 +55,8 @@ function dstBounds(year) {
   return dstCache.get(year);
 }
 // Days since 1970-01-01 of the Austin calendar date at this instant.
-export function austinDayIndex(ms) {
+export function austinDayIndex(ms, timezone = STREAK_TZ) {
+  if (timezone !== 'America/Chicago') return Date.parse(clock(ms, timezone).date + 'T00:00:00Z') / DAY;
   const [start, end] = dstBounds(new Date(ms).getUTCFullYear());
   const offset = ms >= start && ms < end ? -5 : -6;
   return Math.floor((ms + offset * 3600e3) / DAY);

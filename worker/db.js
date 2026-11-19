@@ -7,6 +7,7 @@ import { rideQueries } from './db-rides.js';
 import { gmailQueries } from './db-gmail.js';
 import { RIDES_FROM, COUNTED_RIDES_WHERE, registryEvidenceSql, approvalEvidenceSql, publicVehicleEligibleSql, physicalRidesFrom } from './ride-status.js';
 import { normalizePlate, sqlNormalizedPlate } from './plate.js';
+import { DEFAULT_CITY, SERVICE_AREAS, serviceAreaFor } from './service-areas.js';
 import { googlePicture } from './avatars.js';
 import { markNewAccountForTeslaSync } from './onboarding.js';
 
@@ -1167,24 +1168,28 @@ export const REGISTRY_SORTS = {
   most_rides: `trip_count DESC, ${RECENT_FIRST}`
 };
 
-// q searches the plate and the VIN only (owner request 2026-10-07: not model,
-// colour or city). city (a service-area name, optional) keeps vehicles whose
-// own city is that one, or, for a vehicle with no city of its own, that have a
-// counted ride there (a car first seen in Dallas is a Dallas car). Austin
-// lists every public vehicle that is not a Dallas car.
-// THE registry city rule (the Cars page, the homepage rows): ' AND …' for the
-// robotaxi_vehicles alias. A vehicle is in a city when its own city is that
-// one, or (with no city of its own) a counted ride was there. Dallas lists
-// Dallas cars; Austin, the only city before Dallas, lists every other public
-// vehicle, exactly the list it always had minus the Dallas cars, so nothing
-// disappears.
+// THE registry city rule (the Cars page, the homepage rows, the city stats):
+// ' AND …' for the robotaxi_vehicles alias. A vehicle's city is, in order:
+//   1. its own service_area, when recorded;
+//   2. else the city of its counted rides (a non-default city wins, as on main:
+//      a car first ridden in Dallas is a Dallas car);
+//   3. else the default city (Austin).
+// Receipt-created vehicles and sightings sent without a city have no
+// service_area of their own, so rules 2 and 3 keep them in a city view
+// instead of only under "All cities". Stored values are city names
+// ("Austin"); both the key and the name match, case- and space-insensitively.
 export function registryCitySql(alias, city) {
-  const counted = `FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE} AND lower(trim(t.service_area)) = ?`;
-  const inCity = `(lower(trim(COALESCE(${alias}.service_area, ''))) = ?
-      OR (trim(COALESCE(${alias}.service_area, '')) = '' AND EXISTS (SELECT 1 ${counted})))`;
-  const c = String(city).trim().toLowerCase();
-  const other = c === 'austin' ? 'dallas' : c;
-  return { sql: c === 'austin' ? ` AND NOT ${inCity}` : ` AND ${inCity}`, binds: [other, other] };
+  const area = serviceAreaFor(city);
+  const match = a => [a.key, a.name.toLowerCase()];
+  const target = area ? match(area) : [String(city).trim().toLowerCase()];
+  const own = `lower(trim(COALESCE(${alias}.service_area, '')))`;
+  const ridIn = n => `EXISTS (SELECT 1 FROM ${RIDES_FROM} WHERE t.robotaxi_vehicle_id = ${alias}.id AND ${COUNTED_RIDES_WHERE} AND lower(trim(t.service_area)) IN (${Array(n).fill('?').join(', ')}))`;
+  if (area && area.key === DEFAULT_CITY) {
+    const others = SERVICE_AREAS.filter(a => a.key !== DEFAULT_CITY).flatMap(match);
+    const noOtherRide = others.length ? ` AND NOT ${ridIn(others.length)}` : '';
+    return { sql: ` AND (${own} IN (?, ?) OR (${own} = ''${noOtherRide}))`, binds: [...target, ...others] };
+  }
+  return { sql: ` AND (${own} IN (${target.map(() => '?').join(', ')}) OR (${own} = '' AND ${ridIn(target.length)}))`, binds: [...target, ...target] };
 }
 
 async function getPublicRobotaxiVehicles(sql, { limit = 50, offset = 0, q = '', sort = 'recent', city = null } = {}) {

@@ -8,7 +8,7 @@
 		// Only the Community page: the Worker adds link-preview tags to shared
 		// Social post links (/community?post=<id>, worker/social.js). Everything
 		// else is still served straight from ./public.
-		"run_worker_first": ["/community"]
+		"run_worker_first": ["/community", "/", "/vehicles", "/sightings", "/infrastructure", "/replay", "/simulation", "/news"]
 	},
 	"vars": {
 		"FRONTEND_URL": "https://cybercabhunter.com/",

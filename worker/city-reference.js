@@ -1,3 +1,5 @@
+import { serviceAreaFor } from './service-areas.js';
+
 // Lightweight service-area -> timezone knowledge. Receipts carry a local
 // wall-clock time and NO timezone, so the zone is inferred from the city
 // (or, failing that, the state) already extracted from the receipt's
@@ -6,8 +8,6 @@
 // states, and callers record it as such (trips.timezone_source).
 
 const SERVICE_AREAS = {
-  austin: { state: 'TX', timezone: 'America/Chicago' },
-  dallas: { state: 'TX', timezone: 'America/Chicago' },
   houston: { state: 'TX', timezone: 'America/Chicago' },
   'san antonio': { state: 'TX', timezone: 'America/Chicago' },
   'fort worth': { state: 'TX', timezone: 'America/Chicago' },
@@ -48,6 +48,8 @@ export function parseStateFromAddress(description) {
 // Returns { timezone, source } or null when neither the city nor the state
 // is known — in which case no timezone (and no UTC start time) is claimed.
 export function resolveTimezone({ serviceArea, state }) {
+  const configured = serviceAreaFor(String(serviceArea || '').split(',')[0]);
+  if (configured) return { timezone: configured.timeZone, source: 'inferred_from_service_area' };
   const area = serviceArea ? SERVICE_AREAS[String(serviceArea).trim().toLowerCase()] : null;
   if (area) return { timezone: area.timezone, source: 'inferred_from_service_area' };
   if (state && STATE_TIMEZONES[state]) return { timezone: STATE_TIMEZONES[state], source: 'inferred_from_state' };
