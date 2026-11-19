@@ -20,11 +20,16 @@ final class PushCoordinator {
         UserDefaults.standard.set(id, forKey: "push.installation.v1")
         return id
     }
+    private let requestedKey = "push.device.requested"
+    private let optedOutKey = "push.device.optedOut"
+    private var optedOut: Bool { UserDefaults.standard.bool(forKey: optedOutKey) }
     var allowed: Bool { [.authorized, .provisional, .ephemeral].contains(authorization) }
     func refresh() async {
         authorization = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
     func requestPermission() async {
+        UserDefaults.standard.set(false, forKey: optedOutKey)
+        UserDefaults.standard.set(true, forKey: requestedKey)
         await refresh()
         if authorization == .notDetermined {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
@@ -36,7 +41,7 @@ final class PushCoordinator {
         self.api = api; userID = user
         if token == nil { token = tokenStore.read("apns-token") }
         await refresh()
-        if user != nil && allowed { UIApplication.shared.registerForRemoteNotifications() }
+        if !optedOut && user != nil && allowed && (token != nil || UserDefaults.standard.bool(forKey: requestedKey)) { UIApplication.shared.registerForRemoteNotifications() }
         await synchronize()
     }
     func receive(_ data: Data) async {
@@ -45,7 +50,7 @@ final class PushCoordinator {
         await synchronize()
     }
     func synchronize() async {
-        guard !syncing, let api, userID != nil, let token else { return }
+        guard !optedOut, !syncing, let api, userID != nil, let token else { return }
         let owner = userID
         syncing = true
         defer { syncing = false }
@@ -58,14 +63,24 @@ final class PushCoordinator {
         do {
             let body = try JSONSerialization.data(withJSONObject: ["id": installationID, "token": token, "environment": environment, "authorized": allowed, "timezone": TimeZone.current.identifier])
             let _: PushWriteResponse = try await api.send("/api/push/device", method: "PUT", body: body)
-            guard userID == owner else { return }
+            guard !optedOut, userID == owner else { return }
             registered = allowed
             status = allowed ? "Device registered for push notifications." : "Notifications are disabled in iOS Settings."
         } catch {
-            guard userID == owner else { return }
+            guard !optedOut, userID == owner else { return }
             registered = false; status = "Device registration is pending. Open Notifications to retry."
         }
     }
+    func removeDevice(api: APIClient) async throws {
+        UserDefaults.standard.set(true, forKey: optedOutKey)
+        registered = false
+        UIApplication.shared.unregisterForRemoteNotifications()
+        while syncing { try await Task.sleep(for: .milliseconds(100)) }
+        let body = try JSONSerialization.data(withJSONObject: ["id": installationID])
+        let _: PushWriteResponse = try await api.send("/api/push/device", method: "DELETE", body: body)
+        status = "This iPhone was removed from push delivery."
+    }
+
     /// Called with the captured authenticated API before erasing the session.
     func unregister(api: APIClient) async {
         registered = false; self.api = nil; userID = nil

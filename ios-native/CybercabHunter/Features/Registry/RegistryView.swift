@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Cars: the public vehicle registry (the website's /vehicles).
 struct RegistryView: View {
+    @AppStorage(TrackerCity.storageKey) private var trackerCity = TrackerCity.austin
     @Environment(SessionStore.self) private var session
     @State private var model = RegistryModel()
     @State private var areas: [ServiceArea] = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
@@ -11,6 +12,7 @@ struct RegistryView: View {
     enum SearchField: Hashable { case inline, floating }
     @FocusState private var focus: SearchField?
     @State private var floatingSearch = false
+    @State private var usesSideControls = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -27,7 +29,7 @@ struct RegistryView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { focus = nil }   // a tap on the header puts the keyboard away
-                searchField(.inline)
+                searchControls(.inline, showsFilter: usesSideControls && !floatingSearch)
                     // Hidden from the floating copy's view until this one leaves the screen.
                     .onScrollVisibilityChange(threshold: 0.6) { visible in
                         withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { floatingSearch = !visible }
@@ -53,11 +55,14 @@ struct RegistryView: View {
         // While scrolled down: the same search, floating in Liquid Glass under the bar.
         .overlay(alignment: .top) {
             if floatingSearch {
-                searchField(.floating)
+                searchControls(.floating, showsFilter: usesSideControls)
                     .padding(.horizontal, 16).padding(.top, 4)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
         }
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.safeAreaInsets.trailing >= 44
+        } action: { usesSideControls = $0 }
         // The keyboard goes away when the list scrolls, on Search / Done, on a tap
         // outside the field, when a car opens or the tab changes, and when the
         // filter menu opens. Focus is never handed from one copy to the other
@@ -74,15 +79,34 @@ struct RegistryView: View {
                 Button("Done") { focus = nil }.fontWeight(.semibold).accessibilityIdentifier("registryKeyboardDone")
             }
         }
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { filterMenu } }
+        .toolbar {
+            if !usesSideControls {
+                ToolbarItem(placement: .topBarTrailing) { filterMenu }
+            }
+        }
         .navigationDestination(for: VehicleRoute.self) { route in VehicleDetailView(route: route) }
         .task { await model.reload(using: session.api) }
         .refreshable { await model.reload(using: session.api) }
-        .onChange(of: model.city) { reloadSoon(delay: 0) }
+        .onChange(of: model.city) {
+            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
+            reloadSoon(delay: 0)
+        }
+        .onChange(of: trackerCity) { if model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
         .onChange(of: model.sort) { reloadSoon(delay: 0) }
         .onChange(of: model.query) { reloadSoon(delay: 0.3) }   // debounce typing
         .task {
-            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas }
+            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas + [ServiceArea(key: "all", name: "All cities")] }
+        }
+    }
+
+    /// The system's side controls can omit the trailing toolbar item. Keep the
+    /// filter next to the active search field when that safe area is reserved.
+    private func searchControls(_ kind: SearchField, showsFilter: Bool) -> some View {
+        HStack(spacing: 8) {
+            searchField(kind)
+            if showsFilter {
+                filterMenu.modifier(SearchChrome(floating: kind == .floating))
+            }
         }
     }
 
@@ -184,7 +208,13 @@ struct VehicleCard: View {
             // Badge and plate on the left, the Cybercab wholly inside the card on the right.
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .leading, spacing: 6) {
-                    if vehicle.isApprovedCybercab { CybercabBadge() }
+                    // The badges side by side, or the city tag under the badge when they don't fit (as on the web).
+                    if vehicle.isApprovedCybercab || vehicle.cityTag != nil {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 5) { badges }
+                            VStack(alignment: .leading, spacing: 5) { badges }
+                        }
+                    }
                     LicensePlate(plate: vehicle.licensePlate, size: 12.5)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,7 +226,10 @@ struct VehicleCard: View {
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(vehicle.city ?? "City not recorded").font(.inter(11)).foregroundStyle(Color.chFog).lineLimit(1)
+                // The city is the tag above; plain text only when the car has no tagged city.
+                if vehicle.cityTag == nil {
+                    Text(vehicle.city ?? "City not recorded").font(.inter(11)).foregroundStyle(Color.chFog).lineLimit(1)
+                }
                 Spacer(minLength: 4)
                 Text(Format.int(vehicle.tripCount ?? 0)).statNumber(19)
                 Text(vehicle.tripCount == 1 ? "ride" : "rides").font(.inter(11)).foregroundStyle(Color.chFog)
@@ -219,6 +252,11 @@ struct VehicleCard: View {
         .contentShape(.rect(cornerRadius: 14))
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the vehicle's details")
+    }
+
+    @ViewBuilder private var badges: some View {
+        if vehicle.isApprovedCybercab { CybercabBadge() }
+        if let city = vehicle.cityTag { CityTag(city: city) }
     }
 
     /// One line per fact (icon, short label, value); two lines only if it can't fit.

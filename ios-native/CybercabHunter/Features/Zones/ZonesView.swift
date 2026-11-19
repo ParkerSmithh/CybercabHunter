@@ -8,6 +8,7 @@ import MapKit
 struct ZonesView: View {
     var initialHeat = false
     var initialCity: String? = nil
+    @AppStorage(TrackerCity.storageKey) private var trackerCity = TrackerCity.austin
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
@@ -91,6 +92,7 @@ struct ZonesView: View {
         // Live markers: now, then every 60 s while Zones is showing (as the site), per city.
         .task {
             if let initialCity, ["austin", "dallas"].contains(initialCity) { model.city = initialCity }
+            else if trackerCity != .all { model.city = trackerCity.rawValue }
             if initialHeat { model.mode = .heat }
         }
         .task(id: model.city) {
@@ -144,7 +146,10 @@ struct ZonesView: View {
             if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("zone-\(c.rawValue)", ServiceZoneIntent(city: c)) }
         }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
-        .onChange(of: model.city) { place = nil; selection = nil; model.clearFollowing() }
+        .onChange(of: trackerCity) { if trackerCity != .all && model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
+        .onChange(of: model.city) {
+            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
+            place = nil; selection = nil; model.clearFollowing() }
         #if DEBUG
         .onAppear { if ProcessInfo.processInfo.arguments.contains("-zonesFollowing") { model.source = .following } }
         #endif

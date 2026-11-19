@@ -83,6 +83,13 @@ struct RootView: View {
         // A cybercabhunter.com link handed to the app opens its native screen.
         .onOpenURL { url in
             StartupIntro.shared.skip()
+            if url.scheme == WidgetLink.scheme, url.host == "sightings",
+               let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "id" })?.value,
+               id.count == 32, id.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) {
+                _ = router.open(widgetURL: url)
+                pushDestination = PushDestination(url: AppConfig.webURL("/sightings?sighting=" + id))
+                return
+            }
             if router.open(widgetURL: url) { return }   // a Home Screen / Lock Screen widget
             if let link = CommunityLink(url: url) { router.open(link) }
         }

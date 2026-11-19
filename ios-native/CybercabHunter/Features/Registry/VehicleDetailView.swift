@@ -15,6 +15,7 @@ struct VehicleDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let detail {
                     heroCard(detail)
+                    VehicleTimelinePanel(vehicleID: route.id)
                     rideHistory(detail.history)
                     sightingsPanel
                 } else if let failure {
@@ -56,6 +57,8 @@ struct VehicleDetailView: View {
             SiriDonations.donate("vehicle-\(entity.id)", open)   // the rider viewed this Cybercab
         } catch is CancellationError {
         } catch APIError.http(let status, _) where status == 404 {
+            detail = nil
+            sightings = nil
             failure = "This vehicle isn't in the public registry (or no longer is)."
         } catch {
             failure = (error as? LocalizedError)?.errorDescription ?? "Couldn't load this vehicle."

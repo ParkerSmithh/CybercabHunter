@@ -10,4 +10,10 @@ extension XCUIApplication {
         app.launchEnvironment["CCH_SKIP_INTRO"] = "1"
         return app
     }
+
+    /// The Duo displays its tabs in a side rail outside the TabBar hierarchy.
+    func tabButton(_ title: String) -> XCUIElement {
+        let tabBarButton = tabBars.buttons[title]
+        return tabBarButton.exists ? tabBarButton : buttons[title]
+    }
 }

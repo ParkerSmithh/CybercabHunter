@@ -175,8 +175,19 @@ final class AppRouter {
             selectedTab = .community
             return true
         case "zones": openZones(city == "dallas" ? "dallas" : "austin")
-        case "sightings": selectedTab = .sightings
-        case "registry": selectedTab = .registry
+        case "sightings":
+            if let scope = city.flatMap(TrackerCity.init(rawValue:)) { TrackerCity.selected = scope }
+            openSightings(city: city.flatMap(TrackerCity.init(rawValue:))?.rawValue)
+        case "registry":
+            if let scope = city.flatMap(TrackerCity.init(rawValue:)) { TrackerCity.selected = scope }
+            selectedTab = .registry
+        case "vehicle":
+            guard let id = items.first(where: { $0.name == "id" })?.value, UUID(uuidString: id) != nil else { return false }
+            openVehicle(id: id, plate: nil)
+        case "city":
+            guard let scope = city.flatMap(TrackerCity.init(rawValue:)) else { return false }
+            TrackerCity.selected = scope
+            selectedTab = .home
         default: selectedTab = .home
         }
         return true

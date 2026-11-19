@@ -30,7 +30,9 @@ final class BrandingUITests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
 
         // Community: no redundant "… community" heading over the page title.
-        app.tabBars.buttons["Community"].tap()
+        let community = app.tabButton("Community")
+        XCTAssertTrue(community.isHittable, app.debugDescription)
+        community.tap()
         XCTAssertTrue(app.staticTexts["COMMUNITY"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'hunter community'")).firstMatch.exists, "the old Community heading is gone")
         shot(app, "brand-community")
@@ -61,8 +63,9 @@ final class BrandingUITests: XCTestCase {
         XCTAssertTrue(replay.waitForExistence(timeout: 15))
         XCTAssertEqual(replay.label, "CybercabHunter")
         XCTAssertTrue(screen.contains(replay.frame), "never cut off: \(replay.frame)")
-        let back = app.navigationBars.buttons.firstMatch
-        XCTAssertTrue(back.exists && back.isHittable, "the back button stays usable")
+        let navigationBarBack = app.navigationBars.buttons.firstMatch
+        let back = navigationBarBack.exists ? navigationBarBack : app.buttons["BackButton"]
+        XCTAssertTrue(back.isHittable, app.debugDescription)
         XCTAssertFalse(replay.frame.intersects(back.frame), "clear of the back button")
         sleep(2)
         shot(app, "brand-replay")

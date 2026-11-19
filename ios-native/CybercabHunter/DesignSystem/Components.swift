@@ -197,6 +197,21 @@ struct CybercabBadge: View {
     }
 }
 
+/// A car's city ("AUSTIN", "DALLAS"), as on the website's cards (.vcard-city):
+/// the same cyan outlined pill for every city, beside the CYBERCAB badge.
+struct CityTag: View {
+    let city: String
+    var body: some View {
+        Text(city.uppercased())
+            .font(.inter(9, .bold)).tracking(0.8)
+            .foregroundStyle(Color.chCyan)
+            .lineLimit(1).fixedSize()
+            .padding(.horizontal, 7).padding(.vertical, 4)
+            .overlay(Capsule().strokeBorder(Color.chCyan.opacity(0.4)))
+            .accessibilityIdentifier("vehicle.cityTag")
+    }
+}
+
 /// "● LIVE · UPDATED 1M AGO"
 struct LiveBadge: View {
     let updated: Date?

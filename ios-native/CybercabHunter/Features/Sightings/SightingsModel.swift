@@ -19,7 +19,8 @@ final class SightingsModel {
     private static let orderKey = "sightingsOrder"
 
     private(set) var areas: [ServiceArea] = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
-    private(set) var city = "austin"
+    private(set) var city = TrackerCity.selected.rawValue
+    private(set) var snapshotDate: Date?
     private(set) var order: Order = Order(rawValue: UserDefaults.standard.string(forKey: SightingsModel.orderKey) ?? "") ?? .desc
     private(set) var items: [PublicSighting] = []
     private(set) var nextCursor: String?
@@ -36,7 +37,7 @@ final class SightingsModel {
 
     func start(api: APIClient, signedIn: Bool) async {
         if let list: ServiceAreasResponse = try? await api.get("/api/service-areas"), !list.areas.isEmpty {
-            areas = list.areas
+            areas = list.areas + [ServiceArea(key: "all", name: "All cities")]
             if !areas.contains(where: { $0.key == city }) { city = areas[0].key }
         }
         async let r: Void = reload(api: api)
@@ -45,7 +46,7 @@ final class SightingsModel {
     }
 
     func checkModerator(api: APIClient, signedIn: Bool) async {
-        guard signedIn else { isModerator = false; return }
+        guard signedIn, PublicSnapshotSource.cities.client(api).baseURL == api.baseURL else { isModerator = false; return }
         let access: ModerationAccess? = try? await api.get("/api/moderation/access", authenticated: true)
         isModerator = access?.moderator == true
     }
@@ -53,6 +54,10 @@ final class SightingsModel {
     func select(city next: String, api: APIClient) async {
         guard next != city else { return }
         city = next
+        items = []
+        stats = nil
+        nextCursor = nil
+        snapshotDate = nil
         await reload(api: api)
     }
 
@@ -76,8 +81,10 @@ final class SightingsModel {
         let gen = generation
         phase = items.isEmpty ? .loading : phase
         do {
-            let page: PublicSightingsPage = try await api.get("/api/sightings", query: query(cursor: nil, stats: true))
+            let snapshot: PublicSnapshot<PublicSightingsPage> = try await PublicSnapshotCache.shared.load("/api/sightings", query: query(cursor: nil, stats: true), source: .cities, api: api)
+            let page = snapshot.value
             guard gen == generation else { return }
+            snapshotDate = snapshot.cached ? snapshot.fetchedAt : nil
             items = page.sightings
             nextCursor = page.nextCursor
             stats = page.stats
@@ -97,7 +104,7 @@ final class SightingsModel {
         let gen = generation
         loadingMore = true
         defer { loadingMore = false }
-        guard let page: PublicSightingsPage = try? await api.get("/api/sightings", query: query(cursor: cursor, stats: false)), gen == generation else { return }
+        guard let page: PublicSightingsPage = try? await PublicSnapshotSource.cities.client(api).get("/api/sightings", query: query(cursor: cursor, stats: false)), gen == generation else { return }
         let known = Set(items.map(\.id))
         items += page.sightings.filter { !known.contains($0.id) }
         nextCursor = page.nextCursor
@@ -107,7 +114,9 @@ final class SightingsModel {
     func poll(api: APIClient) async {
         guard phase == .loaded else { return }
         let gen = generation
-        guard let page: PublicSightingsPage = try? await api.get("/api/sightings", query: query(cursor: nil, stats: true)), gen == generation else { return }
+        guard let snapshot: PublicSnapshot<PublicSightingsPage> = try? await PublicSnapshotCache.shared.load("/api/sightings", query: query(cursor: nil, stats: true), source: .cities, api: api), gen == generation else { return }
+        let page = snapshot.value
+        snapshotDate = snapshot.cached ? snapshot.fetchedAt : nil
         stats = page.stats
         guard order == .desc else { return }
         let known = Set(items.map(\.id))
