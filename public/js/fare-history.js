@@ -14,6 +14,8 @@
     return node;
   };
   let request = 0;
+  // The site's colour tokens (style.css) are RGB triplets ("250 224 48"), so they follow light/dark theme.
+  const tok = name => { const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return /^\d/.test(v) ? `rgb(${v})` : v; };
   let observers = [];
 
   function section(title, n, timestamp) {
@@ -49,9 +51,9 @@
     const y = value => bottom - value * (bottom - top) / max;
     ctx.font = '10px Inter, sans-serif';
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#a7afbd';
+    ctx.fillStyle = tok('--n-400');
     for (const value of [0, max / 2, max]) {
-      ctx.strokeStyle = '#2b303a';
+      ctx.strokeStyle = tok('--line');
       ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
       ctx.fillText('$' + value.toFixed(value < 10 ? 1 : 0), 0, y(value) + 3);
     }
@@ -65,7 +67,7 @@
       }
     }
     for (const { points, color } of series) {
-      ctx.strokeStyle = ctx.fillStyle = color;
+      ctx.strokeStyle = ctx.fillStyle = tok(color);
       ctx.lineWidth = 2;
       let previous = null;
       points.forEach((point, index) => {
@@ -111,15 +113,15 @@
     const city = cities.get(data.city);
     const dates = selected.weeks.map(w => w.week);
     trend(section(`${city} · Median fare`, selected.fare.n, stamp),
-      [{ label: 'Fare', color: '#fae030', points: selected.weeks.map(w => w.fare) }], dates);
+      [{ label: 'Fare', color: '--gold', points: selected.weeks.map(w => w.fare) }], dates);
     trend(section(`${city} · Median per mile`, selected.per_mile.n, stamp),
-      [{ label: 'Fare per mile', color: '#fae030', points: selected.weeks.map(w => w.per_mile) }], dates);
+      [{ label: 'Fare per mile', color: '--gold', points: selected.weeks.map(w => w.per_mile) }], dates);
 
     const comparisonTypes = type === 'all' ? ['cybercab', 'model_y'] : [type];
     const comparisonDates = [...new Set(comparisonTypes.flatMap(key => filters[key].weeks.map(w => w.week)))].sort();
     const comparison = comparisonTypes.map(key => {
       const byWeek = new Map(filters[key].weeks.map(w => [w.week, w.fare]));
-      return { label: key === 'cybercab' ? 'Cybercab' : 'Model Y', color: key === 'cybercab' ? '#fae030' : '#a7afbd',
+      return { label: key === 'cybercab' ? 'Cybercab' : 'Model Y', color: key === 'cybercab' ? '--gold' : '--n-400',
         points: comparisonDates.map(week => byWeek.get(week) || { n: 0, median: null, p25: null, p75: null }) };
     });
     const vehicles = section(`${city} · Fare by vehicle`, comparisonTypes.reduce((n, key) => n + filters[key].fare.n, 0), stamp);
@@ -183,6 +185,7 @@
       if ([...select.options].some(option => option.value === value)) select.value = value;
     }
     form.addEventListener('change', update);
+    document.addEventListener('cch:theme', update);   // redraw in the new theme's colours (cached data, no refetch)
     form.addEventListener('submit', event => event.preventDefault());
     update();
   }
