@@ -15,7 +15,15 @@ final class RegistryModel {
     private(set) var loadingMore = false
     private var generation = 0
 
-    var city = "austin"
+    var city = TrackerCity.selected.rawValue {
+        didSet {
+            guard oldValue != city else { return }
+            generation += 1
+            vehicles = []
+            total = 0
+            phase = .idle
+        }
+    }
     var sort: RegistrySort = .recent
     var query = ""
 
@@ -54,10 +62,10 @@ final class RegistryModel {
     private func fetch(offset: Int, using api: APIClient) async throws -> VehicleList {
         var query = [URLQueryItem(name: "limit", value: String(Self.pageSize)),
                      URLQueryItem(name: "offset", value: String(offset)),
-                     URLQueryItem(name: "sort", value: sort.rawValue),
-                     URLQueryItem(name: "city", value: city)]
+                     URLQueryItem(name: "sort", value: sort.rawValue)]
+        if city != "all" { query.append(URLQueryItem(name: "city", value: city)) }
         let q = self.query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !q.isEmpty { query.append(URLQueryItem(name: "q", value: String(q.prefix(60)))) }
-        return try await api.get("/api/robotaxi-vehicles", query: query)
+        return try await PublicSnapshotSource.cities.client(api).get("/api/robotaxi-vehicles", query: query)
     }
 }

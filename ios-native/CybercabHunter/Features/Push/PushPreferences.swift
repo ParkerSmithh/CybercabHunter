@@ -3,6 +3,7 @@ import Foundation
 struct PushPreferences: Codable, Equatable, Sendable {
     var version = 1
     var master = true
+    var city: String?
     var timezone = TimeZone.current.identifier
     var quiet = false
     var quietStart = 1320
@@ -42,12 +43,13 @@ struct PushPreferences: Codable, Equatable, Sendable {
 // server) still load: a missing key keeps its default instead of failing the
 // whole decode, which would quietly reset every setting.
 extension PushPreferences {
-    private enum Keys: String, CodingKey { case version, master, timezone, quiet, quietStart, quietEnd, majorDuringQuiet, group, frequency, news, dmv, daily, dailyTime, dailyMetrics, comparison, registry, sightings, cameras, comments, replies, mentions, likes, weekly, weeklyDay, weeklyTime, weeklyMetrics, rides }
+    private enum Keys: String, CodingKey { case version, master, city, timezone, quiet, quietStart, quietEnd, majorDuringQuiet, group, frequency, news, dmv, daily, dailyTime, dailyMetrics, comparison, registry, sightings, cameras, comments, replies, mentions, likes, weekly, weeklyDay, weeklyTime, weeklyMetrics, rides }
     init(from decoder: Decoder) throws {
         self.init()
         let c = try decoder.container(keyedBy: Keys.self)
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? version
         master = try c.decodeIfPresent(Bool.self, forKey: .master) ?? master
+        city = try c.decodeIfPresent(String.self, forKey: .city)
         timezone = try c.decodeIfPresent(String.self, forKey: .timezone) ?? timezone
         quiet = try c.decodeIfPresent(Bool.self, forKey: .quiet) ?? quiet
         quietStart = try c.decodeIfPresent(Int.self, forKey: .quietStart) ?? quietStart

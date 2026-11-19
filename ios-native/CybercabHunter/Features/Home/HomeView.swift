@@ -5,6 +5,7 @@ import SwiftUI
 /// Texas DMV registrations, Ride Stats and Sightings Activity. Every number is
 /// one the server sent.
 struct HomeView: View {
+    @AppStorage(TrackerCity.storageKey) private var trackerCity = TrackerCity.austin
     @Environment(SessionStore.self) private var session
     @Environment(\.scenePhase) private var scenePhase
     @State private var model = HomeModel()
@@ -19,7 +20,11 @@ struct HomeView: View {
                 // No pin and no reserved space: the doors open as the hero scrolls out
                 // (the site's flow mode, js/hero-video.js), so the stats follow the hero.
                 HomeHero(scroll: scroll)
+                TrackerExplorePanel()
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
+                if let stamp = model.registrySnapshotDate {
+                    Text("Saved fleet totals · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote)
+                }
                 CybercabDailyCard(report: model.daily, error: model.errors["daily"])
                 ServiceZonesSection(model: model)
                 // Everything below the Austin minimap: compact dashboard cards.
@@ -50,10 +55,14 @@ struct HomeView: View {
         .toolbar { BrandToolbarItem() }
         .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
         .onAppear { SiriDonations.donate("fleet", FleetStatsIntent()) }   // the rider checked the fleet
-        .task { await model.loadAll(using: session.api) }
+        .task {
+            if trackerCity != .all { model.city = trackerCity.rawValue }
+            await model.loadAll(using: session.api)
+        }
         .refreshable { await model.loadAll(using: session.api) }
         // Back in the app: Cybercab Daily (and the Live Activity) catch up, at most every five minutes.
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refreshDailyIfStale(using: session.api) } } }
+        .onChange(of: trackerCity) { if trackerCity != .all && model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
         .onChange(of: model.city) { _, city in
             Task { await model.loadCity(city, using: session.api) }
         }

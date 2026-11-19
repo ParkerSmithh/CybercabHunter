@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Cars: the public vehicle registry (the website's /vehicles).
 struct RegistryView: View {
+    @AppStorage(TrackerCity.storageKey) private var trackerCity = TrackerCity.austin
     @Environment(SessionStore.self) private var session
     @State private var model = RegistryModel()
     @State private var areas: [ServiceArea] = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
@@ -78,11 +79,15 @@ struct RegistryView: View {
         .navigationDestination(for: VehicleRoute.self) { route in VehicleDetailView(route: route) }
         .task { await model.reload(using: session.api) }
         .refreshable { await model.reload(using: session.api) }
-        .onChange(of: model.city) { reloadSoon(delay: 0) }
+        .onChange(of: model.city) {
+            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
+            reloadSoon(delay: 0)
+        }
+        .onChange(of: trackerCity) { if model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
         .onChange(of: model.sort) { reloadSoon(delay: 0) }
         .onChange(of: model.query) { reloadSoon(delay: 0.3) }   // debounce typing
         .task {
-            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas }
+            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas + [ServiceArea(key: "all", name: "All cities")] }
         }
     }
 

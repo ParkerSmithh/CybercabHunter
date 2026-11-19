@@ -7,6 +7,7 @@ struct PushSettingsView: View {
     @State private var preferences = PushPreferences()
     @State private var coordinator = PushCoordinator.shared
     @State private var synchronized = PushPreferences()
+    @State private var removing = false
     @State private var loaded = false
     @State private var saving = false
     @State private var syncStatus = "Saved on this iPhone."
@@ -22,7 +23,35 @@ struct PushSettingsView: View {
                     }
                 }
                 Text(coordinator.status).font(.footnote).foregroundStyle(.secondary)
-                Toggle("Push Notifications", isOn: $preferences.master)
+                if !coordinator.registered && coordinator.allowed {
+                    Button("Register this iPhone for alerts") { Task { await coordinator.requestPermission(); await coordinator.synchronize() } }
+                }
+                Toggle("Pause alerts", isOn: Binding(get: { !preferences.master }, set: { paused in
+                    preferences.master = !paused
+                    Task { await save() }
+                })).disabled(!loaded || saving || session.user == nil)
+                if let selected = preferences.city {
+                    Picker("Alert cities", selection: Binding(get: { preferences.city ?? selected }, set: { preferences.city = $0 })) {
+                        Text("Austin").tag("austin")
+                        Text("Dallas").tag("dallas")
+                        Text("Both").tag("all")
+                    }
+                } else {
+                    LabeledContent("Alert cities", value: "Both")
+                    Text("City controls will be available when the server supports them.").font(.footnote)
+                }
+                Button("Remove this iPhone from alerts", role: .destructive) {
+                    Task {
+                        removing = true
+                        defer { removing = false }
+                        do {
+                            try await coordinator.removeDevice(api: session.api)
+                            syncStatus = "This iPhone was removed from push delivery."
+                        } catch {
+                            syncStatus = "Server removal couldn’t be verified. Tap Remove to retry."
+                        }
+                    }
+                }.disabled(removing || saving || session.user == nil)
                 Toggle("Quiet Hours", isOn: $preferences.quiet)
                 if preferences.quiet {
                     time("Start", $preferences.quietStart)

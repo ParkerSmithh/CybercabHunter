@@ -3,6 +3,7 @@ import SwiftUI
 /// Sightings (the website's /sightings): every approved photo of a Cybercab,
 /// with the stat cards, a city filter, the sort, and the Submit button.
 struct SightingsView: View {
+    @AppStorage(TrackerCity.storageKey) private var trackerCity = TrackerCity.austin
     @Environment(SessionStore.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.scenePhase) private var scenePhase
@@ -53,7 +54,12 @@ struct SightingsView: View {
         // "Submit a sighting" from Siri or Shortcuts (AppRouter.requestSubmitSighting).
         .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
         // The rider looked at a city's sightings (a donation, once per city per launch).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let stamp = model.snapshotDate { Text("Saved sightings · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote).padding(6) }
+        }
+        .onChange(of: trackerCity) { Task { await model.select(city: trackerCity.rawValue, api: session.api) } }
         .onChange(of: model.city, initial: true) {
+            if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
             if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("sightings-\(c.rawValue)", RecentSightingsIntent(city: c)) }
         }
         // Siri / Shortcuts asked for a city's sightings.

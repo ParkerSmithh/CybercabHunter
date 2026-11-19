@@ -12,6 +12,7 @@ import Observation
 @Observable
 final class HomeModel {
     private(set) var registry: RegistryStats?
+    private(set) var registrySnapshotDate: Date?
     private(set) var daily: DailyReport?
     private(set) var dmv: DMVRegistrations?
     private(set) var areas: [ServiceArea] = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
@@ -35,7 +36,11 @@ final class HomeModel {
 
     /// The whole screen (first open and pull-to-refresh).
     func loadAll(using api: APIClient) async {
-        async let r: Void = load("registry", using: api) { self.registry = try await api.get("/api/registry/stats") }
+        async let r: Void = load("registry", using: api) {
+            let snapshot: PublicSnapshot<RegistryStats> = try await PublicSnapshotCache.shared.load("/api/registry/stats", api: api)
+            self.registry = snapshot.value
+            self.registrySnapshotDate = snapshot.cached ? snapshot.fetchedAt : nil
+        }
         async let d: Void = loadDaily(using: api)
         async let m: Void = load("dmv", using: api) { self.dmv = try await api.get("/api/dmv-registrations") }
         async let a: Void = load("areas", using: api) { self.areas = (try await api.get("/api/service-areas", as: ServiceAreasResponse.self)).areas }
@@ -68,9 +73,9 @@ final class HomeModel {
     func loadCity(_ key: String, using api: APIClient, force: Bool = false) async {
         if !force, cityStats[key] != nil { return }
         do {
-            // First open and pull-to-refresh skip the phone's HTTP cache, so a change
-            // to the service hours or the zone shows at once (not up to 5 minutes later).
-            let stats: HomepageStats = try await api.get("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)], fresh: force)
+            // Summary data uses the same hourly cache as city facts and history.
+            let snapshot: PublicSnapshot<HomepageStats> = try await PublicSnapshotCache.shared.load("/api/homepage-stats", query: [URLQueryItem(name: "city", value: key)], source: .cities, api: api)
+            let stats = snapshot.value
             cityStats[key] = stats
             SiriIndex.later { await SiriIndex.zone(stats) }   // Spotlight / Siri: that city's zone and its last 24 hours
             cityErrors[key] = nil
