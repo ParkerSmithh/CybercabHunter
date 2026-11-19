@@ -64,8 +64,35 @@ test('a config-only planned city has an honest map empty state and stays selecte
   window.eval(switcher);
   await new Promise(resolve => window.document.addEventListener('DOMContentLoaded', resolve, { once: true }));
   assert.equal(window.location.search, '?city=phoenix');
-  assert.equal(window.document.querySelector('[aria-label="Tracker city"]').value, 'phoenix');
+  // No city control in the site header (owner, 2026-11-19); the page's own buttons choose the city.
+  assert.equal(window.document.querySelector('header select, .site-city-switcher, [aria-label="Tracker city"]'), null);
   assert.equal(window.document.querySelector('main').hidden, true);
   assert.match(window.document.querySelector('main').previousElementSibling.textContent, /Phoenix.*has no map/);
   window.close();
+});
+
+test('the in-page city buttons remember the choice: this browser, and the account when signed in', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { JSDOM } = await import('jsdom');
+  const [html, cities, switcher] = await Promise.all(['vehicles.html', 'js/cities.js', 'js/city-switcher.js']
+    .map(file => readFile(new URL('../public/' + file, import.meta.url), 'utf8')));
+  for (const signedIn of [false, true]) {
+    const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.org/vehicles' });
+    const { window } = dom;
+    const calls = [];
+    window.fetch = async (url, init = {}) => { calls.push({ url: String(url), method: init.method || 'GET', body: init.body }); return { ok: true, json: async () => ({ city: 'austin' }) }; };
+    if (signedIn) window.localStorage.setItem('teslaSessionId', 'session-1');
+    window.eval(cities);
+    window.eval(switcher);
+    await new Promise(resolve => window.document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+    assert.equal(window.document.querySelector('header select, .site-city-switcher'), null, 'no header control');
+    // A data-city that is not a city choice (the US map's index) is ignored.
+    const other = window.document.createElement('button'); other.dataset.city = '3'; window.document.body.append(other); other.click();
+    assert.equal(window.localStorage.getItem('cch.preferredCity'), null);
+    window.document.querySelector('#regCity [data-city="dallas"]').click();
+    assert.equal(window.localStorage.getItem('cch.preferredCity'), 'dallas');
+    const patches = calls.filter(c => c.method === 'PATCH');
+    assert.deepEqual(patches.map(c => [c.url, c.body]), signedIn ? [['/api/me/city', JSON.stringify({ city: 'dallas' })]] : []);
+    window.close();
+  }
 });
