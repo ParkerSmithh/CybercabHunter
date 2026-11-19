@@ -848,10 +848,13 @@ html .stat-value{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; font-va
 /* ---------- Vehicle cards (js/vehicles.js) and the vehicle page (vehicle.html) ----------
    The Fleet ETA model-card style: .dmv-card with --c the vehicle's colour.
    .vcard-label: small caps with an icon in that colour; .vcard-pill: the
-   Cybercab pill; .vcard-city: the Dallas tag. */
+   Cybercab pill; .vcard-city: the city tag (Austin, Dallas — the same tag for every city). */
 .vcard-label{display:flex; align-items:center; gap:5px; margin-bottom:4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:rgb(var(--n-500)); white-space:nowrap;}
 .vcard-label svg{width:13px; height:13px; flex-shrink:0; color:rgb(var(--c));}
 .vcard-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid rgb(var(--c, 250 224 48) / 0.45); background:rgb(var(--c, 250 224 48) / 0.12); color:rgb(var(--c, 250 224 48)); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; box-shadow:0 0 14px -4px rgb(var(--c, 250 224 48) / 0.6);}
+/* The pill + city tag beside the Cybercab image: the image's visible car starts
+   about halfway across the card at every width, so this line keeps to the left half. */
+.vcard-eyebrow-car{max-width:48%}
 .vcard-city{display:inline-flex; padding:3px 9px; border-radius:999px; border:1px solid rgb(34 211 238 / 0.4); color:rgb(34 211 238); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em;}
 @media (max-width:639px){ .vcard-pill{padding:2px 7px; font-size:9px;} .vcard-city{padding:2px 6px; font-size:9px;} .vcard-label{font-size:9px; letter-spacing:0.08em;} }
 

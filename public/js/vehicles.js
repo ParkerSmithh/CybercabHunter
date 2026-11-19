@@ -41,11 +41,14 @@
     const fromUrl = new URLSearchParams(location.search).get('city');
     if (CITIES.includes(fromUrl)) city = fromUrl;
   } catch (e) { /* default */ }
-  // A Dallas car: its own city is Dallas, or (with none of its own) its rides are in Dallas.
-  const isDallas = v => {
+  // A car's city tag (Austin or Dallas — one treatment for every city): its own
+  // city, or (with none of its own) the city of its rides (Dallas first, as before).
+  const TAG_CITIES = { austin: 'Austin', dallas: 'Dallas' };
+  const cityTag = v => {
     const own = String(v.service_area || '').trim().toLowerCase();
-    if (own) return own === 'dallas';
-    return String(v.service_areas || '').toLowerCase().split(',').some(c => c.trim() === 'dallas');
+    if (own) return TAG_CITIES[own] || null;
+    const rides = String(v.service_areas || '').toLowerCase().split(',').map(c => c.trim());
+    return rides.includes('dallas') ? 'Dallas' : rides.includes('austin') ? 'Austin' : null;
   };
   let generation = 0;  // bumped per new search, so a slow older response is dropped
 
@@ -160,7 +163,11 @@
     }
     // Dallas cars carry a Dallas tag (the Dallas launch) in place of the plain
     // city line (it would say Dallas twice).
-    if (isDallas(v)) eyebrow.appendChild(el('span', 'vcard-city', 'Dallas'));
+    const tag = cityTag(v);
+    if (tag) eyebrow.appendChild(el('span', 'vcard-city', tag));
+    // With the car image on the right, the pill + tag stay on the left half and
+    // wrap there (on a narrow card the tag goes under the pill, never over the car).
+    if (approvedCybercab(v)) eyebrow.classList.add('vcard-eyebrow-car');
     top.appendChild(eyebrow);
     // The plate, styled like one (the same treatment as the Sightings cards).
     top.appendChild(el('h2', v.license_plate
@@ -168,7 +175,7 @@
       : 'mt-3 font-display font-bold text-lg text-slate-400 max-sm:mt-2 max-sm:text-sm', v.license_plate || 'Plate not recorded'));
     // service_area is the record's own field; service_areas are the cities of its counted rides.
     const area = v.service_area || (v.service_areas ? String(v.service_areas).split(',').join(', ') : '');
-    if (!isDallas(v)) top.appendChild(el('p', 'text-slate-500 text-xs mt-2 [overflow-wrap:anywhere] max-sm:text-[10px] max-sm:mt-1.5', area || 'Service area not recorded'));
+    if (!tag) top.appendChild(el('p', 'text-slate-500 text-xs mt-2 [overflow-wrap:anywhere] max-sm:text-[10px] max-sm:mt-1.5', area || 'Service area not recorded'));
     a.appendChild(top);
 
     // The ride count, large, in the card's light.
