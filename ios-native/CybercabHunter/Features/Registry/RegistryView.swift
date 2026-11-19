@@ -208,7 +208,13 @@ struct VehicleCard: View {
             // Badge and plate on the left, the Cybercab wholly inside the card on the right.
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .leading, spacing: 6) {
-                    if vehicle.isApprovedCybercab { CybercabBadge() }
+                    // The badges side by side, or the city tag under the badge when they don't fit (as on the web).
+                    if vehicle.isApprovedCybercab || vehicle.cityTag != nil {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 5) { badges }
+                            VStack(alignment: .leading, spacing: 5) { badges }
+                        }
+                    }
                     LicensePlate(plate: vehicle.licensePlate, size: 12.5)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -220,7 +226,10 @@ struct VehicleCard: View {
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(vehicle.city ?? "City not recorded").font(.inter(11)).foregroundStyle(Color.chFog).lineLimit(1)
+                // The city is the tag above; plain text only when the car has no tagged city.
+                if vehicle.cityTag == nil {
+                    Text(vehicle.city ?? "City not recorded").font(.inter(11)).foregroundStyle(Color.chFog).lineLimit(1)
+                }
                 Spacer(minLength: 4)
                 Text(Format.int(vehicle.tripCount ?? 0)).statNumber(19)
                 Text(vehicle.tripCount == 1 ? "ride" : "rides").font(.inter(11)).foregroundStyle(Color.chFog)
@@ -243,6 +252,11 @@ struct VehicleCard: View {
         .contentShape(.rect(cornerRadius: 14))
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the vehicle's details")
+    }
+
+    @ViewBuilder private var badges: some View {
+        if vehicle.isApprovedCybercab { CybercabBadge() }
+        if let city = vehicle.cityTag { CityTag(city: city) }
     }
 
     /// One line per fact (icon, short label, value); two lines only if it can't fit.

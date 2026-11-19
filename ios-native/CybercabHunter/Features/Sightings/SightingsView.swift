@@ -33,7 +33,7 @@ struct SightingsView: View {
         .onChange(of: router.submitSightingRequested, initial: true) { handleSubmitRequest() }
         // The rider looked at a city's sightings (a donation, once per city per launch).
         .safeAreaInset(edge: .top, spacing: 0) {
-            if let stamp = model.snapshotDate { Text("Saved sightings · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote).padding(6) }
+            if let stamp = model.snapshotDate { Text("Saved sightings · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.inter(11)).foregroundStyle(Color.chCaption).padding(6) }
         }
         .onChange(of: trackerCity) { Task { await model.select(city: trackerCity.rawValue, api: session.api) } }
         .onChange(of: model.city, initial: true) {

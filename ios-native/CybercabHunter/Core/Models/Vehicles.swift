@@ -29,6 +29,15 @@ struct RegistryVehicle: Decodable, Sendable, Equatable, Identifiable, Hashable {
     var isApprovedCybercab: Bool { approvalBasis == "vin-verified" || approvalBasis == "manual" }
     /// Its own city, else where its rides were (the Cars page's rule).
     var city: String? { serviceArea ?? serviceAreas?.split(separator: ",").first.map { String($0).trimmingCharacters(in: .whitespaces) } }
+    /// The card's city tag, the website's rule (vehicles.js cityTag): its own city when
+    /// that is a tagged city; with no own city, Dallas if it rode there, else Austin.
+    var cityTag: String? {
+        let tagged = ["austin": "Austin", "dallas": "Dallas"]
+        let own = (serviceArea ?? "").trimmingCharacters(in: .whitespaces).lowercased()
+        if !own.isEmpty { return tagged[own] }
+        let rides = (serviceAreas ?? "").lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        return rides.contains("dallas") ? "Dallas" : rides.contains("austin") ? "Austin" : nil
+    }
 }
 
 /// GET /api/robotaxi-vehicles/:id

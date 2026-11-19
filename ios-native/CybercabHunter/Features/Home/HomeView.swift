@@ -23,7 +23,7 @@ struct HomeView: View {
                 TrackerExplorePanel()
                 HeadlineStats(stats: model.registry, error: model.errors["registry"])
                 if let stamp = model.registrySnapshotDate {
-                    Text("Saved fleet totals · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.footnote)
+                    Text("Saved fleet totals · " + stamp.formatted(date: .abbreviated, time: .shortened)).font(.inter(11)).foregroundStyle(Color.chCaption)
                 }
                 CybercabDailyCard(report: model.daily, error: model.errors["daily"])
                 ServiceZonesSection(model: model)

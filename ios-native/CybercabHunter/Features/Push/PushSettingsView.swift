@@ -38,7 +38,7 @@ struct PushSettingsView: View {
                     }
                 } else {
                     LabeledContent("Alert cities", value: "Both")
-                    Text("City controls will be available when the server supports them.").font(.footnote)
+                    Text("City controls will be available when the server supports them.").font(.inter(13)).foregroundStyle(Color.chFog)
                 }
                 Button("Remove this iPhone from alerts", role: .destructive) {
                     Task {

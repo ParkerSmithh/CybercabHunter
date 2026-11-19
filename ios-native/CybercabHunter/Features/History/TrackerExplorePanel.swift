@@ -12,17 +12,17 @@ struct TrackerExplorePanel: View {
             }
             .pickerStyle(.segmented)
             if let snapshot, let selected = snapshot.value.cities.first(where: { $0.key == city.rawValue }) {
-                Text(selected.name).font(.headline)
+                Eyebrow(text: selected.name)
                 Text("\(selected.zone.squareMiles) mi² · \(selected.zone.hours.allDay ? "24/7" : selected.zone.hours.open + "–" + selected.zone.hours.close)")
-                    .font(.subheadline)
-                Text("Robotaxi service since \(selected.zone.inServiceSince)").font(.footnote)
+                    .font(.inter(14)).foregroundStyle(Color.chMist)
+                Text("Robotaxi service since \(Format.day(selected.zone.inServiceSince))").font(.inter(13)).foregroundStyle(Color.chFog)
                 if let since = selected.stats?.cybercabSince ?? selected.cybercabSince {
-                    Text("First documented Cybercab · \(since)").font(.footnote)
+                    Text("First documented Cybercab · \(Format.day(since))").font(.inter(13)).foregroundStyle(Color.chFog)
                 }
                 if let count = selected.stats?.registry {
-                    Text("\(count) public registry vehicles").font(.footnote)
+                    Text("\(Format.int(count)) public registry vehicles").font(.inter(13)).foregroundStyle(Color.chFog)
                 }
-                if snapshot.cached { Text("Saved city facts · " + snapshot.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption) }
+                if snapshot.cached { Text("Saved city facts · " + snapshot.fetchedAt.formatted(date: .abbreviated, time: .shortened)).font(.inter(11)).foregroundStyle(Color.chCaption) }
             }
             ForEach(TrackerHistoryKind.allCases) { kind in
                 NavigationLink { TrackerHistoryView(kind: kind) } label: {

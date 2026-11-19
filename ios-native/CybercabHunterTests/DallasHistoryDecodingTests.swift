@@ -24,4 +24,20 @@ final class DallasHistoryDecodingTests: XCTestCase {
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(preferences)) as? [String: Any])
         XCTAssertNil(body["city"])
     }
+
+    /// The card's city tag follows the website's rule: one tag style for every city.
+    func testCityTagMatchesWebsiteRule() throws {
+        func car(_ area: String?, _ areas: String?) throws -> RegistryVehicle {
+            var o: [String: Any] = ["id": "v1"]
+            if let area { o["service_area"] = area }
+            if let areas { o["service_areas"] = areas }
+            return try APIClient.makeDecoder().decode(RegistryVehicle.self, from: JSONSerialization.data(withJSONObject: o))
+        }
+        XCTAssertEqual(try car("Austin", nil).cityTag, "Austin")
+        XCTAssertEqual(try car("dallas", nil).cityTag, "Dallas")
+        XCTAssertNil(try car("Phoenix", "Dallas").cityTag)
+        XCTAssertEqual(try car(nil, "Austin, Dallas").cityTag, "Dallas")
+        XCTAssertEqual(try car(nil, "Austin").cityTag, "Austin")
+        XCTAssertNil(try car(nil, nil).cityTag)
+    }
 }

@@ -21,6 +21,7 @@ extension Color {
     static let brandGold = Color(hex: 0xFAE030)     // --gold  the one accent
     static let chDanger = Color(hex: 0xE82127)      // --danger
     static let chOK = Color(hex: 0x5FD4A3)          // --ok-ink  rises, "live"
+    static let chCyan = Color(hex: 0x22D3EE)        // the cars' city tag (.vcard-city, rgb 34 211 238)
     static let chModelY = Color(hex: 0xEF4444)      // the DMV panel's Model Y red
 
     // Phase 1 names, kept for the account sheet and fallbacks.

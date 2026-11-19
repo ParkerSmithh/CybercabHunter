@@ -24,25 +24,25 @@ struct VehicleTimelinePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Vehicle timeline").font(.headline)
-            if let updatedOn { Text("Updated " + String(updatedOn.prefix(10))).font(.caption).foregroundStyle(.secondary) }
-            if unavailable { Text("Timeline data is unavailable.").font(.footnote) }
-            else if events.isEmpty && !loading { Text("No public timeline events yet.").font(.footnote) }
+            Eyebrow(text: "Vehicle timeline")
+            if let updatedOn { Text("Updated " + Format.day(updatedOn)).font(.inter(11)).foregroundStyle(Color.chCaption) }
+            if unavailable { Text("Timeline data is unavailable.").font(.inter(13)).foregroundStyle(Color.chFog) }
+            else if events.isEmpty && !loading { Text("No public timeline events yet.").font(.inter(13)).foregroundStyle(Color.chFog) }
             LazyVStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(events.enumerated()), id: \.offset) { _, event in
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(label(event.kind)).font(.subheadline.weight(.semibold))
-                            if let day = event.date { Text(String(day.prefix(10))).font(.caption).foregroundStyle(.secondary) }
+                            Text(label(event.kind)).font(.inter(14, .medium)).foregroundStyle(Color.chInk)
+                            if let day = event.date { Text(Format.day(day)).font(.inter(13)).foregroundStyle(Color.chFog) }
                         }
                         Spacer()
                         if let id = event.photo?.id, id.count == 32, id.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) {
                             AsyncImage(url: AppConfig.webURL("/api/sightings/\(id)/photo")) { image in
                                 image.resizable().scaledToFill()
                             } placeholder: {
-                                Color.secondary.opacity(0.15)
+                                Color.chSurface2
                             }
-                            .frame(width: 64, height: 42).clipped()
+                            .frame(width: 64, height: 42).clipShape(.rect(cornerRadius: 6))
                             .accessibilityLabel("Approved sighting photo")
                         }
                     }

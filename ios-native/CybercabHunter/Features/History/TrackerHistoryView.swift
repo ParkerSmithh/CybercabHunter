@@ -81,7 +81,7 @@ struct TrackerHistoryView: View {
                     graph("Sightings per day", source: "Approved image sightings, by approval date", points: rows.map { Point(id: $0.date, value: $0.sightings.map(Double.init)) }, bars: true)
                 } else if let fares, let selected = fares.value.ranges[range] {
                     stamp(fares.value.updatedAt, fares.cached)
-                    Text("Approved receipts and completed-ride reports. At least \(fares.value.minimum) observations per week.").font(.footnote)
+                    Text("Approved receipts and completed-ride reports. At least \(fares.value.minimum) observations per week.").font(.inter(13)).foregroundStyle(Color.chFog)
                     fareGraph("Median fare", selected.all.weeks, \.fare, minimum: fares.value.minimum)
                     fareGraph("Median fare per mile", selected.all.weeks, \.perMile, minimum: fares.value.minimum)
                     fareGraph("Cybercab median fare", selected.cybercab.weeks, \.fare, minimum: fares.value.minimum)
@@ -123,8 +123,8 @@ struct TrackerHistoryView: View {
     }
 
     private func stamp(_ value: String, _ cached: Bool) -> some View {
-        Text("\(cached ? "Saved snapshot" : "Updated") · \(value.prefix(10))")
-            .font(.footnote).foregroundStyle(.secondary)
+        Text("\(cached ? "Saved snapshot" : "Updated") · \(Format.day(value))")
+            .font(.inter(11)).foregroundStyle(Color.chCaption)
     }
 
     private func fareGraph(_ title: String, _ weeks: [FareHistoryResponse.Week],
@@ -139,16 +139,16 @@ struct TrackerHistoryView: View {
         let available = points.filter { $0.value != nil }
         let last = available.last
         let value = last?.value.map { currency ? $0.formatted(.currency(code: "USD")) : $0.formatted() }
-        let summary = value.map { "Latest recorded value \($0) on \(last?.id ?? "")." } ?? (currency ? "Insufficient data." : "No dated records in this range.")
+        let summary = value.map { "Latest recorded value \($0) on \(Format.day(last?.id))." } ?? (currency ? "Insufficient data." : "No dated records in this range.")
         var segment = 0
         let segments = points.map { point -> Int in
             if point.value == nil { segment += 1 }
             return segment
         }
         return VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
-            Text(source).font(.footnote).foregroundStyle(.secondary)
-            Text(summary).font(.footnote)
+            Eyebrow(text: title)
+            Text(source).font(.inter(11)).foregroundStyle(Color.chCaption)
+            Text(summary).font(.inter(14)).foregroundStyle(Color.chMist)
             if !available.isEmpty {
                 Chart {
                     ForEach(Array(points.enumerated()), id: \.offset) { index, point in
@@ -168,10 +168,10 @@ struct TrackerHistoryView: View {
                 .accessibilityLabel(title)
                 .accessibilityValue(summary)
                 if let first = points.first, let last = points.last {
-                    HStack { Text(first.id); Spacer(); Text(last.id) }
-                        .font(.caption).foregroundStyle(.secondary)
+                    HStack { Text(Format.day(first.id)); Spacer(); Text(Format.day(last.id)) }
+                        .font(.inter(11)).foregroundStyle(Color.chCaption)
                 }
-                if available.count != points.count { Text("Some dates have no published value.").font(.caption) }
+                if available.count != points.count { Text("Some dates have no published value.").font(.inter(11)).foregroundStyle(Color.chCaption) }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
