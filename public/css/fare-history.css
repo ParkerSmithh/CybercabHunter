@@ -1,0 +1,34 @@
+:root { color-scheme: dark; --background: #090b0f; --gold: #fae030; --paper: #f3f3f2; --muted: #a7afbd; --line: #2b303a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--paper); font: 1rem/1.5 Inter, system-ui, sans-serif; }
+main, nav, footer { width: min(1080px, calc(100% - 2rem)); margin-inline: auto; }
+.site-header { border-bottom: 1px solid var(--line); }
+nav, footer { min-height: 62px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.wordmark { display: flex; align-items: center; gap: .55rem; font-weight: 750; color: var(--paper); }
+.wordmark img { width: 24px; height: 24px; }
+a { color: var(--gold); text-underline-offset: .2em; }
+h1 { margin: 1.6rem 0 .2rem; font-size: clamp(2.2rem, 6vw, 4.25rem); line-height: 1.05; letter-spacing: -.035em; }
+.intro, .threshold, .caption, #status { color: var(--muted); }
+.intro { margin: .6rem 0 1.2rem; }
+form { display: flex; gap: .6rem; padding: .85rem 0; border-block: 1px solid var(--line); }
+label { flex: 0 1 12rem; min-width: 0; display: grid; gap: .25rem; font-size: .78rem; color: var(--muted); }
+select { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: .4rem; padding-inline: .45rem; background: #151922; color: var(--paper); font: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.threshold, #status { font-size: .83rem; }
+#status:empty { display: none; }
+#charts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); column-gap: clamp(.75rem, 3vw, 2rem); }
+.chart { min-width: 0; border-top: 1px solid var(--line); padding-block: .8rem 1rem; }
+.chart h2 { margin: 0; font-size: clamp(.88rem, 2vw, 1.28rem); line-height: 1.2; }
+.caption, .empty, summary { font-size: .78rem; }
+.caption { margin: .45rem 0; }
+.empty { margin: .75rem 0; }
+canvas { width: 100%; height: 150px; display: block; }
+details { margin-top: .45rem; }
+details > div { overflow: auto; max-height: 15rem; }
+summary { color: var(--gold); cursor: pointer; }
+table { width: 100%; border-collapse: collapse; font-size: .73rem; font-variant-numeric: tabular-nums; }
+td, th { padding: .3rem .25rem; border-bottom: 1px solid var(--line); text-align: right; }
+td:first-child, th:first-child { text-align: left; }
+.heat td { background: color-mix(in srgb, var(--gold) var(--heat, 0%), #14181f); }
+footer { border-top: 1px solid var(--line); margin-top: 1.4rem; font-size: .85rem; }
+@media (max-width: 480px) { canvas { height: 124px; } .heat { font-size: .62rem; } }
