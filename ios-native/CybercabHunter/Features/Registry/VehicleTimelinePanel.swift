@@ -25,6 +25,16 @@ struct VehicleTimelineResponse: Decodable, Sendable {
     let updatedOn: String?
 }
 
+/// A sighting photo opened full screen from the History panel.
+struct TimelinePhoto: Identifiable, Hashable {
+    let id: String
+    let url: URL
+    let caption: String
+}
+
+/// The vehicle's History (the website's vehicle page, public/vehicle.html #vTimeline):
+/// first seen, approvals, additions, sightings with their photos, and the rides
+/// AGGREGATE. Headed "History", with no "Record" heading above it, as on the web.
 struct VehicleTimelinePanel: View {
     let vehicleID: String
     @Environment(SessionStore.self) private var session
@@ -32,15 +42,45 @@ struct VehicleTimelinePanel: View {
     @State private var nextPage = 1
     @State private var hasMore = false
     @State private var loading = false
+    @State private var loaded = false
     @State private var unavailable = false
     @State private var updatedOn: String?
+    @State private var viewing: TimelinePhoto?
 
     var body: some View {
+        let photos = events.compactMap(Self.photo)
         VStack(alignment: .leading, spacing: 12) {
-            Eyebrow(text: "Vehicle timeline")
-            if let updatedOn { Text("Updated " + Format.day(updatedOn)).font(.inter(11)).foregroundStyle(Color.chCaption) }
-            if unavailable { Text("Timeline data is unavailable.").font(.inter(13)).foregroundStyle(Color.chFog) }
-            else if events.isEmpty && !loading { Text("No public timeline events yet.").font(.inter(13)).foregroundStyle(Color.chFog) }
+            Text("HISTORY").displayTitle(18).accessibilityIdentifier("vehicleHistoryTitle").accessibilityAddTraits(.isHeader)
+            if unavailable {
+                Text("History couldn't be loaded.").font(.inter(13)).foregroundStyle(Color.chFog)
+            } else if loaded {
+                // The sighting photos first, larger, each opening full screen.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sighting photos").font(.inter(12, .semibold)).foregroundStyle(Color.chFog)
+                    if photos.isEmpty {
+                        Text(hasMore ? "No sighting photos in the newest events." : "No sighting photos yet.")
+                            .font(.inter(13)).foregroundStyle(Color.chFog).accessibilityIdentifier("historyNoPhotos")
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(photos) { photo in
+                                    Button { viewing = photo } label: {
+                                        RemoteImage(url: photo.url, points: 240).frame(width: 120, height: 80).clipShape(.rect(cornerRadius: 8))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Sighting photo, \(photo.caption)")
+                                    .accessibilityHint("Opens the photo")
+                                    .accessibilityIdentifier("historyPhoto")
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle().fill(Color.chInk.opacity(0.08)).frame(height: 1)
+                if events.isEmpty {
+                    Text("Nothing recorded for this vehicle yet.").font(.inter(13)).foregroundStyle(Color.chFog).accessibilityIdentifier("historyEmpty")
+                }
+            }
             LazyVStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(events.enumerated()), id: \.offset) { _, event in
                     HStack {
@@ -51,24 +91,36 @@ struct VehicleTimelinePanel: View {
                         }
                         .accessibilityElement(children: .combine)
                         Spacer()
-                        if let id = event.photo?.id, id.count == 32, id.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) {
-                            AsyncImage(url: AppConfig.webURL("/api/sightings/\(id)/photo")) { image in
-                                image.resizable().scaledToFill()
-                            } placeholder: {
-                                Color.chSurface2
+                        if let photo = Self.photo(event) {
+                            Button { viewing = photo } label: {
+                                RemoteImage(url: photo.url, points: 160).frame(width: 72, height: 48).clipShape(.rect(cornerRadius: 6))
                             }
-                            .frame(width: 64, height: 42).clipShape(.rect(cornerRadius: 6))
+                            .buttonStyle(.plain)
                             .accessibilityLabel("Approved sighting photo")
+                            .accessibilityHint("Opens the photo")
                         }
                     }
+                    .accessibilityIdentifier("historyEvent")
                 }
             }
             if loading { ProgressView() }
-            if hasMore { Button("Load more") { Task { await load() } }.disabled(loading) }
+            if hasMore { Button("Show more") { Task { await load() } }.disabled(loading) }
+            if let updatedOn {
+                Footnote(text: "Updated daily from approved, public records · last update \(Format.day(updatedOn)). In- and out-of-service changes are not recorded by the site.")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
         .task(id: vehicleID) { await load() }
+        .fullScreenCover(item: $viewing) { TimelinePhotoViewer(photo: $0) }
+    }
+
+    /// A sighting's photo, if it still has one: the site's photo path for the
+    /// sighting (/api/sightings/<32 hex>/photo, the API's image_url), on the website's origin.
+    nonisolated static func photo(_ e: VehicleTimelineResponse.Event) -> TimelinePhoto? {
+        guard e.kind == "sighting", let id = e.photo?.id, id.count == 32,
+              id.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else { return nil }
+        return TimelinePhoto(id: id, url: AppConfig.webURL("/api/sightings/\(id)/photo"), caption: meta(e))
     }
 
     // The website's wording (public/js/vehicle-timeline.js), item for item.
@@ -119,7 +171,32 @@ struct VehicleTimelinePanel: View {
             updatedOn = page.updatedOn
             nextPage += 1
             unavailable = false
+            loaded = true
         } catch is CancellationError {
         } catch { unavailable = true }
+    }
+}
+
+/// A History photo, full screen (as the Sightings tab's viewer).
+struct TimelinePhotoViewer: View {
+    let photo: TimelinePhoto
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 14) {
+                Spacer()
+                RemoteImage(url: photo.url, points: 1400, contentMode: .fit).accessibilityLabel("Sighting photo")
+                Text(photo.caption).font(.inter(13)).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).padding(.horizontal, 20)
+                Spacer()
+            }
+            Button { dismiss() } label: {
+                Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 44, height: 44).background(.white.opacity(0.14), in: Circle())
+            }
+            .padding(16)
+            .accessibilityLabel("Close")
+            .accessibilityIdentifier("closeViewer")
+        }
     }
 }

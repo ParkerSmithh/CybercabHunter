@@ -204,9 +204,12 @@ struct FleetGrowthSection: View {
                     Chart(additions) { d in
                         BarMark(x: .value("Day", d.day, unit: .day), y: .value("New", d.count)).foregroundStyle(Color.brandGold.opacity(0.65))
                     }
-                    .chartXScale(domain: Self.xDomain(first: visible.first?.date, last: visible.last?.date))
+                    // The same days as the chart above (its domain also reaches a forecast's end).
+                    .chartXScale(domain: Self.xDomain(first: visible.first?.date, last: max(visible.last?.date ?? .now, projected.last?.date ?? .now)))
                     .chartXAxis(.hidden).chartYAxis(.hidden)
+                    .chartPlotStyle { $0.clipped() }   // nothing draws outside the strip
                     .frame(height: 22)
+                    .clipped()
                     .accessibilityLabel("New Cybercabs per day")
                 }
                 if let c = cut, play == .playing || play == .paused {
@@ -326,15 +329,17 @@ struct FleetGrowthSection: View {
     /// cars were all added on one day). Then it is the `minimumDays` ending the
     /// day after the latest addition, so a day-wide bar stays one thin bar (not
     /// a band across the whole strip) and the axis shows distinct dates. A span
-    /// of `minimumDays` or more (Austin) is returned unchanged.
+    /// of `minimumDays` or more (Austin) keeps its length, rounded out to whole days.
     static func xDomain(first: Date?, last: Date?, minimumDays: Int = 30) -> ClosedRange<Date> {
+        // Whole Central days, so each day's bar in the additions strip (one day wide)
+        // starts and ends inside the plot, never past its edges.
         let last = last ?? .now
         let first = min(first ?? last, last)
-        if last.timeIntervalSince(first) >= Double(minimumDays) * 86400 { return first...last }
         var cal = Calendar(identifier: .gregorian); cal.timeZone = Format.central
+        let start = cal.startOfDay(for: first)
         let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: last)) ?? last
-        let start = cal.date(byAdding: .day, value: -minimumDays, to: end) ?? first
-        return min(start, first)...end
+        if end.timeIntervalSince(start) >= Double(minimumDays) * 86400 { return start...end }
+        return min(cal.date(byAdding: .day, value: -minimumDays, to: end) ?? start, start)...end
     }
 
     private func dailyAdditions(_ points: [HomeModel.GrowthPoint]) -> [DayCount] {
