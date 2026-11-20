@@ -240,6 +240,18 @@ async function run() {
     check('a cursor still works after rows vanish mid-pagination (keyset on published_at, id): no error, no repeats, still newest first', p2.status === 200 && p2.json.stories.map(s => s.id).join() === [uuid(103), uuid(104)].join() && !p2.json.stories.some(s => p1.json.stories.some(x => x.id === s.id)));
   }
 
+  console.log('5b. GET /api/news?city=: a story with no city shows in every city');
+  {
+    const c = await makeApp();
+    insertStory(c, { id: uuid(301), title: 'Cybercab general story', published_at: new Date(NOW - 3600e3).toISOString() });
+    insertStory(c, { id: uuid(302), title: 'Cybercab Dallas story', published_at: new Date(NOW - 7200e3).toISOString() });
+    c.d1.exec(`UPDATE news_articles SET city = 'dallas' WHERE id = '${uuid(302)}'`);
+    const ids = async city => (await call(c, 'GET', `/api/news?city=${city}`)).json.stories.map(s => s.id);
+    const [austin, dallas, all] = [await ids('austin'), await ids('dallas'), await ids('all')];
+    check('a null-city story appears under ?city=austin, ?city=dallas and ?city=all', [austin, dallas, all].every(l => l.includes(uuid(301))));
+    check('a Dallas story appears under ?city=dallas and ?city=all, not ?city=austin', dallas.includes(uuid(302)) && all.includes(uuid(302)) && !austin.includes(uuid(302)));
+  }
+
   console.log('6. GET /api/news and moderation');
   {
     const a = await call(ctx, 'GET', '/api/news');

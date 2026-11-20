@@ -736,7 +736,9 @@ function decodeCursor(c) {
 }
 export async function apiNews(request, env, ctx) {
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
-  const key = new Request(new URL(request.url).toString(), { method: 'GET' });
+  // The key carries a version so a deploy that changes the response skips stale copies.
+  const keyUrl = new URL(request.url); keyUrl.searchParams.set('_cache', 'null-city');
+  const key = new Request(keyUrl.toString(), { method: 'GET' });
   if (cache) { const hit = await cache.match(key); if (hit) return hit; }
   const params = new URL(request.url).searchParams;
   const limit = Math.min(Math.max(Number(params.get('limit')) || 20, 1), 50);
@@ -748,7 +750,8 @@ export async function apiNews(request, env, ctx) {
   if (cityParam && cityParam !== 'all') {
     const area = serviceAreaFor(cityParam);
     if (!area) return Response.json({ error: 'invalid_city' }, { status: 400 });
-    where.push('n.city = ?');
+    // A story with no city (null) is not about one city: it shows in every city's feed.
+    where.push("(n.city = ? OR n.city IS NULL OR n.city = '')");
     binds.push(area.key);
   }
   if (majorOnly) where.push('n.importance = 2');
@@ -763,7 +766,7 @@ export async function apiNews(request, env, ctx) {
     const clusters = [...new Set(rows.map(r => r.cluster_id).filter(Boolean))];
     const siblings = {};
     if (clusters.length) {
-      const sib = await sql.prepare(`SELECT id, cluster_id, title, url, source, source_type, published_at FROM news_articles WHERE hidden = 0 ${cityParam && cityParam !== 'all' ? 'AND city = ?' : ''} AND cluster_id IN (${clusters.map(() => '?').join(',')}) ORDER BY published_at`).bind(...(cityParam && cityParam !== 'all' ? [binds[0]] : []), ...clusters).all();
+      const sib = await sql.prepare(`SELECT id, cluster_id, title, url, source, source_type, published_at FROM news_articles WHERE hidden = 0 ${cityParam && cityParam !== 'all' ? "AND (city = ? OR city IS NULL OR city = '')" : ''} AND cluster_id IN (${clusters.map(() => '?').join(',')}) ORDER BY published_at`).bind(...(cityParam && cityParam !== 'all' ? [binds[0]] : []), ...clusters).all();
       for (const s of sib.results || []) (siblings[s.cluster_id] = siblings[s.cluster_id] || []).push(s);
     }
     const stories = rows.map(r => ({
