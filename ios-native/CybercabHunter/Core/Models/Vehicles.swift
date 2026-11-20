@@ -29,14 +29,17 @@ struct RegistryVehicle: Decodable, Sendable, Equatable, Identifiable, Hashable {
     var isApprovedCybercab: Bool { approvalBasis == "vin-verified" || approvalBasis == "manual" }
     /// Its own city, else where its rides were (the Cars page's rule).
     var city: String? { serviceArea ?? serviceAreas?.split(separator: ",").first.map { String($0).trimmingCharacters(in: .whitespaces) } }
-    /// The card's city tag, the website's rule (vehicles.js cityTag): its own city when
-    /// that is a tagged city; with no own city, Dallas if it rode there, else Austin.
+    /// The card's city tag: the server's registry city rule (worker/db.js registryCitySql),
+    /// so every car on the Cars list is tagged with the city it is listed under: its own
+    /// city; with no own city, the city of its counted rides (Dallas wins over Austin);
+    /// with neither, Austin (the default city). Only an own city outside Austin and
+    /// Dallas has no tag (such a car is in neither city's list).
     var cityTag: String? {
         let tagged = ["austin": "Austin", "dallas": "Dallas"]
         let own = (serviceArea ?? "").trimmingCharacters(in: .whitespaces).lowercased()
         if !own.isEmpty { return tagged[own] }
         let rides = (serviceAreas ?? "").lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        return rides.contains("dallas") ? "Dallas" : rides.contains("austin") ? "Austin" : nil
+        return rides.contains("dallas") ? "Dallas" : "Austin"
     }
 }
 

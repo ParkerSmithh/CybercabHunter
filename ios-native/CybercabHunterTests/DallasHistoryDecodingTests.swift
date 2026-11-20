@@ -38,7 +38,8 @@ final class DallasHistoryDecodingTests: XCTestCase {
         XCTAssertNil(try car("Phoenix", "Dallas").cityTag)
         XCTAssertEqual(try car(nil, "Austin, Dallas").cityTag, "Dallas")
         XCTAssertEqual(try car(nil, "Austin").cityTag, "Austin")
-        XCTAssertNil(try car(nil, nil).cityTag)
+        XCTAssertEqual(try car(nil, nil).cityTag, "Austin")   // no city at all: the default city, as the server lists it
+        XCTAssertEqual(try car("  ", "Phoenix").cityTag, "Austin")
     }
 
     /// Fleet Growth: a city whose cars were all added on one day (Dallas, Nov 19 2026)
@@ -53,7 +54,19 @@ final class DallasHistoryDecodingTests: XCTestCase {
         XCTAssertEqual(dallas.upperBound.timeIntervalSince(dallas.lowerBound), 30 * 86400, accuracy: 3600)
         XCTAssertTrue(dallas.contains(first) && dallas.contains(last))
         let austinFirst = try XCTUnwrap(iso.date(from: "2026-09-03T15:00:00Z")), austinLast = try XCTUnwrap(iso.date(from: "2026-11-17T18:00:00Z"))
-        XCTAssertEqual(FleetGrowthSection.xDomain(first: austinFirst, last: austinLast), austinFirst...austinLast)
+        // A long span keeps its length, on whole Central days (Sep 3 00:00 to Nov 18 00:00).
+        let austin = FleetGrowthSection.xDomain(first: austinFirst, last: austinLast)
+        XCTAssertEqual(austin.lowerBound, cal.date(from: DateComponents(year: 2026, month: 9, day: 3)))
+        XCTAssertEqual(austin.upperBound, cal.date(from: DateComponents(year: 2026, month: 11, day: 18)))
+        // Dallas on Nov 20, 2026: 4 cars on Nov 19, 10 on Nov 20. Every day's bar (a whole
+        // Central day) lies inside the domain, so nothing draws past the strip's edges.
+        let nov19 = try XCTUnwrap(iso.date(from: "2026-11-19T19:03:00Z")), nov20 = try XCTUnwrap(iso.date(from: "2026-11-20T13:41:24Z"))
+        let d2 = FleetGrowthSection.xDomain(first: nov19, last: nov20)
+        for day in [nov19, nov20] {
+            let barStart = cal.startOfDay(for: day), barEnd = try XCTUnwrap(cal.date(byAdding: .day, value: 1, to: barStart))
+            XCTAssertTrue(d2.lowerBound <= barStart && barEnd <= d2.upperBound, "bar for \(day) inside \(d2)")
+        }
+        XCTAssertEqual(d2.upperBound.timeIntervalSince(d2.lowerBound), 30 * 86400, accuracy: 3600)
     }
 
     /// The Fleet Growth city of a car follows the server's registry rule (registryCitySql):
@@ -87,5 +100,17 @@ final class DallasHistoryDecodingTests: XCTestCase {
         XCTAssertEqual(rows[2], ["First seen", "Sep 25, 2026", ""])
         XCTAssertEqual(rows[3], ["Added to the registry", "Submitted Sep 25, 2026", ""])
         XCTAssertEqual(rows[4], ["Image sighting", "Oct 1, 2026 · Austin", "Photo no longer stored (photos are kept 30 days)."])
+    }
+
+    /// History photos: a sighting's stored photo (live shape for YTS8353, Nov 20 2026)
+    /// opens from the site's own photo path; a malformed id or a non-sighting has none.
+    func testHistoryPhotosComeFromTheTimelineSightings() throws {
+        let json = #"{"has_more":false,"updated_on":"2026-11-20","events":[{"kind":"first_seen","date":"2026-11-19","date_kind":"event"},{"kind":"sighting","date":"2026-11-19","date_kind":"submitted","type":"image","city":"Dallas","camera":null,"photo":{"id":"effd8e66e8ba5839d567be722c8cf000","image_url":"/api/sightings/effd8e66e8ba5839d567be722c8cf000/photo"}},{"kind":"sighting","date":"2026-11-18","type":"image","photo":{"id":"../../etc"}}]}"#
+        let page = try APIClient.makeDecoder().decode(VehicleTimelineResponse.self, from: Data(json.utf8))
+        XCTAssertNil(VehicleTimelinePanel.photo(page.events[0]))
+        let photo = try XCTUnwrap(VehicleTimelinePanel.photo(page.events[1]))
+        XCTAssertEqual(photo.url.path, "/api/sightings/effd8e66e8ba5839d567be722c8cf000/photo")
+        XCTAssertEqual(photo.caption, "Submitted Nov 19, 2026 · Dallas")
+        XCTAssertNil(VehicleTimelinePanel.photo(page.events[2]), "only a 32-hex id becomes a URL")
     }
 }
