@@ -56,13 +56,13 @@ struct HomeView: View {
         .navigationDestination(for: ExploreRoute.self) { ExploreDestination(route: $0) }
         .onAppear { SiriDonations.donate("fleet", FleetStatsIntent()) }   // the rider checked the fleet
         .task {
-            if trackerCity != .all { model.city = trackerCity.rawValue }
+            model.city = trackerCity.rawValue
             await model.loadAll(using: session.api)
         }
         .refreshable { await model.loadAll(using: session.api) }
         // Back in the app: Cybercab Daily (and the Live Activity) catch up, at most every five minutes.
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refreshDailyIfStale(using: session.api) } } }
-        .onChange(of: trackerCity) { if trackerCity != .all && model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
+        .onChange(of: trackerCity) { if model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
         .onChange(of: model.city) { _, city in
             Task { await model.loadCity(city, using: session.api) }
         }

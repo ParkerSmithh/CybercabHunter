@@ -95,7 +95,7 @@ struct RegistryView: View {
         .onChange(of: model.sort) { reloadSoon(delay: 0) }
         .onChange(of: model.query) { reloadSoon(delay: 0.3) }   // debounce typing
         .task {
-            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas + [ServiceArea(key: "all", name: "All cities")] }
+            if let list: ServiceAreasResponse = try? await session.api.get("/api/service-areas") { areas = list.areas }
         }
     }
 

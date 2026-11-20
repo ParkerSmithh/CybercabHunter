@@ -1,10 +1,12 @@
 import Foundation
 
 enum TrackerCity: String, CaseIterable, Identifiable, Sendable {
-    case austin, dallas, all
+    // No "All cities" in the app (owner's decision, 2026-11-20). A saved "all"
+    // from an older build no longer decodes, so it falls back to Austin.
+    case austin, dallas
     static let storageKey = "tracker.city"
     var id: String { rawValue }
-    var title: String { self == .all ? "All cities" : rawValue.capitalized }
+    var title: String { rawValue.capitalized }
     static var selected: Self {
         get { UserDefaults.standard.string(forKey: storageKey).flatMap(Self.init(rawValue:)) ?? .austin }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: storageKey) }

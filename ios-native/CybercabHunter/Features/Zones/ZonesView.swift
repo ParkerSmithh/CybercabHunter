@@ -92,7 +92,7 @@ struct ZonesView: View {
         // Live markers: now, then every 60 s while Zones is showing (as the site), per city.
         .task {
             if let initialCity, ["austin", "dallas"].contains(initialCity) { model.city = initialCity }
-            else if trackerCity != .all { model.city = trackerCity.rawValue }
+            else { model.city = trackerCity.rawValue }
             if initialHeat { model.mode = .heat }
         }
         .task(id: model.city) {
@@ -146,7 +146,7 @@ struct ZonesView: View {
             if let c = ServiceCity(rawValue: model.city) { SiriDonations.donate("zone-\(c.rawValue)", ServiceZoneIntent(city: c)) }
         }
         .onChange(of: router.zonesCity) { _, c in if let c { model.city = c; router.zonesCity = nil } }
-        .onChange(of: trackerCity) { if trackerCity != .all && model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
+        .onChange(of: trackerCity) { if model.city != trackerCity.rawValue { model.city = trackerCity.rawValue } }
         .onChange(of: model.city) {
             if let city = TrackerCity(rawValue: model.city) { trackerCity = city }
             place = nil; selection = nil; model.clearFollowing() }

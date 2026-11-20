@@ -37,7 +37,7 @@ final class SightingsModel {
 
     func start(api: APIClient, signedIn: Bool) async {
         if let list: ServiceAreasResponse = try? await api.get("/api/service-areas"), !list.areas.isEmpty {
-            areas = list.areas + [ServiceArea(key: "all", name: "All cities")]
+            areas = list.areas
             if !areas.contains(where: { $0.key == city }) { city = areas[0].key }
         }
         async let r: Void = reload(api: api)

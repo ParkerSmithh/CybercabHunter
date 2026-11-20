@@ -63,7 +63,7 @@ final class RegistryModel {
         var query = [URLQueryItem(name: "limit", value: String(Self.pageSize)),
                      URLQueryItem(name: "offset", value: String(offset)),
                      URLQueryItem(name: "sort", value: sort.rawValue)]
-        if city != "all" { query.append(URLQueryItem(name: "city", value: city)) }
+        query.append(URLQueryItem(name: "city", value: city))
         let q = self.query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !q.isEmpty { query.append(URLQueryItem(name: "q", value: String(q.prefix(60)))) }
         return try await PublicSnapshotSource.cities.client(api).get("/api/robotaxi-vehicles", query: query)
