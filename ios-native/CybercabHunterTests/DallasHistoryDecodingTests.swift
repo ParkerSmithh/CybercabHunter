@@ -55,4 +55,37 @@ final class DallasHistoryDecodingTests: XCTestCase {
         let austinFirst = try XCTUnwrap(iso.date(from: "2026-09-03T15:00:00Z")), austinLast = try XCTUnwrap(iso.date(from: "2026-11-17T18:00:00Z"))
         XCTAssertEqual(FleetGrowthSection.xDomain(first: austinFirst, last: austinLast), austinFirst...austinLast)
     }
+
+    /// The Fleet Growth city of a car follows the server's registry rule (registryCitySql):
+    /// own city, else its rides' city (a non-default city wins), else Austin.
+    func testGrowthCityFollowsTheServerRegistryRule() throws {
+        let areas = [ServiceArea(key: "austin", name: "Austin"), ServiceArea(key: "dallas", name: "Dallas")]
+        func car(_ area: String?, _ rides: String?) throws -> RegistryVehicle {
+            var o: [String: Any] = ["id": "v1"]
+            if let area { o["service_area"] = area }
+            if let rides { o["service_areas"] = rides }
+            return try APIClient.makeDecoder().decode(RegistryVehicle.self, from: JSONSerialization.data(withJSONObject: o))
+        }
+        XCTAssertEqual(HomeModel.registryCity(try car("Austin", "Dallas"), areas: areas), "austin")   // own city wins
+        XCTAssertEqual(HomeModel.registryCity(try car(" dallas ", nil), areas: areas), "dallas")
+        XCTAssertEqual(HomeModel.registryCity(try car(nil, "Dallas"), areas: areas), "dallas")         // rides' city
+        XCTAssertEqual(HomeModel.registryCity(try car(nil, "Austin, Dallas"), areas: areas), "dallas")  // non-default wins
+        XCTAssertEqual(HomeModel.registryCity(try car(nil, "Austin"), areas: areas), "austin")
+        XCTAssertEqual(HomeModel.registryCity(try car(nil, nil), areas: areas), "austin")              // no city, no rides
+        XCTAssertEqual(HomeModel.registryCity(try car("", nil), areas: areas), "austin")
+        XCTAssertNil(HomeModel.registryCity(try car("Phoenix", "Dallas"), areas: areas))              // unknown own city: no list
+    }
+
+    /// The vehicle timeline shows the website's items, including the rides AGGREGATE
+    /// (never individual rides). Live payload shape for XVF2569, Nov 19 2026.
+    func testTimelineMatchesTheWebsiteAndShowsRideTotalsOnly() throws {
+        let json = #"{"has_more":false,"updated_on":"2026-11-19","events":[{"kind":"approved","date":"2026-10-04","date_kind":"event","basis":"vin-verified"},{"kind":"rides","date":"2026-09-26","date_kind":"event","count":2,"first":"2026-09-17","last":"2026-09-26","total_distance":7.9},{"kind":"first_seen","date":"2026-09-25","date_kind":"event"},{"kind":"added","date":"2026-09-25","date_kind":"submitted"},{"kind":"sighting","date":"2026-10-01","date_kind":"event","type":"image","city":"Austin"}]}"#
+        let page = try APIClient.makeDecoder().decode(VehicleTimelineResponse.self, from: Data(json.utf8))
+        let rows = page.events.map { [VehicleTimelinePanel.title($0), VehicleTimelinePanel.meta($0), VehicleTimelinePanel.note($0) ?? ""] }
+        XCTAssertEqual(rows[0], ["Approved as a Cybercab (VIN verified)", "Oct 4, 2026", ""])
+        XCTAssertEqual(rows[1], ["2 recorded rides", "Sep 17, 2026 – Sep 26, 2026 · 7.9 mi total", "Ride totals only; individual rides are not published."])
+        XCTAssertEqual(rows[2], ["First seen", "Sep 25, 2026", ""])
+        XCTAssertEqual(rows[3], ["Added to the registry", "Submitted Sep 25, 2026", ""])
+        XCTAssertEqual(rows[4], ["Image sighting", "Oct 1, 2026 · Austin", "Photo no longer stored (photos are kept 30 days)."])
+    }
 }
