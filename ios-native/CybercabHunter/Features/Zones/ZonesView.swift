@@ -677,7 +677,7 @@ struct ZoneDetailsSheet: View {
                 Rectangle().fill(Color.chLine).frame(height: 1)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("COVERAGE").font(.inter(11, .semibold)).tracking(1.6).foregroundStyle(Color.chFog)
+                        Text("COVERAGE (EST.)").font(.inter(11, .semibold)).tracking(1.6).foregroundStyle(Color.chFog)
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(facts?.squareMiles.map { Format.int(Int($0)) } ?? "—").statNumber(38, color: .brandGold)
                             Text("mi²").font(.inter(16)).foregroundStyle(Color.brandGold)
@@ -688,6 +688,7 @@ struct ZoneDetailsSheet: View {
                 }
                 if let d = facts?.description { Text(d).font(.inter(14)).foregroundStyle(Color.chMist) }
                 if let since = facts?.inServiceSince { Text("In service since \(Format.day(since))").font(.inter(13)).foregroundStyle(Color.chFog) }
+                Text("Area estimated from Tesla's map; not an official Tesla figure.").font(.inter(12)).foregroundStyle(Color.chFog).accessibilityIdentifier("zoneAreaEstimateNote")
                 Rectangle().fill(Color.chLine).frame(height: 1)
                 Text("FLEET & FARES").font(.inter(11, .semibold)).tracking(1.6).foregroundStyle(Color.chFog)
                 MetricGrid(columns: 2) {

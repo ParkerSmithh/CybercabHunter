@@ -43,18 +43,17 @@ window.CCCAustinMap = (function () {
     [-97.528728, 30.392212], [-97.654048, 30.438097], [-97.694168, 30.450539], [-97.723472, 30.452872]
   ];
 
-  // The Dallas service zone (lng, lat), digitized from Tesla's in-app Dallas
-  // zone map (owner screenshot, Oct 2026), georeferenced on the map's own
-  // labels and checked against the basemap: Northwest Highway on the north,
-  // Loop 12 on the west, White Rock Lake on the east, Love Field cut out of the
-  // northwest corner. ~80 mi² as traced; Tesla gives 81 mi².
+  // The Dallas service zone (lng, lat). Expanded Nov 2026, north past I-635 to
+  // the edges of Carrollton, Farmers Branch, Addison and Richardson, with Love
+  // Field now inside: reconstructed from two of Tesla's maps (no official
+  // coordinates), calibrated on the previous boundary's exact coordinates. The
+  // southern part is the previous boundary, unchanged. About 148 mi² measured
+  // (docs/verification/dallas-zone-expansion).
   const DALLAS_SERVICE_ZONE = [
-    [-96.85815, 32.8603], [-96.84597, 32.86391], [-96.82591, 32.86737], [-96.77756, 32.86617],
-    [-96.77756, 32.87189], [-96.76234, 32.87189], [-96.75249, 32.8749], [-96.74443, 32.87309],
-    [-96.73905, 32.8609], [-96.73959, 32.84374], [-96.73601, 32.82447], [-96.72921, 32.81363],
-    [-96.73726, 32.77976], [-96.75284, 32.76381], [-96.78562, 32.74318], [-96.81481, 32.73566],
-    [-96.92172, 32.74695], [-96.92316, 32.81619], [-96.89665, 32.81965], [-96.87964, 32.83501],
-    [-96.85421, 32.84208], [-96.84525, 32.84856], [-96.85815, 32.8603]
+    [-96.92316, 32.81619], [-96.89899, 32.82199], [-96.8755, 32.84569], [-96.87175, 32.85335],
+    [-96.90215, 32.95459], [-96.85089, 32.95377], [-96.84441, 32.9551], [-96.71917, 32.95555],
+    [-96.70955, 32.88203], [-96.72921, 32.81363], [-96.73726, 32.77976], [-96.75284, 32.76381],
+    [-96.78562, 32.74318], [-96.81481, 32.73566], [-96.92172, 32.74695], [-96.92316, 32.81619]
   ];
 
   // The service zone in gold: a light wash (the streets show through), a soft

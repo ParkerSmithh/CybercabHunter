@@ -13,7 +13,7 @@ struct TrackerExplorePanel: View {
             .pickerStyle(.segmented)
             if let snapshot, let selected = snapshot.value.cities.first(where: { $0.key == city.rawValue }) {
                 Eyebrow(text: selected.name)
-                Text("\(selected.zone.squareMiles) mi² · \(selected.zone.hours.allDay ? "24/7" : selected.zone.hours.open + "–" + selected.zone.hours.close)")
+                Text("≈\(selected.zone.squareMiles) mi² (est.) · \(selected.zone.hours.allDay ? "24/7" : selected.zone.hours.open + "–" + selected.zone.hours.close)")
                     .font(.inter(14)).foregroundStyle(Color.chMist)
                 Text("Robotaxi service since \(Format.day(selected.zone.inServiceSince))").font(.inter(13)).foregroundStyle(Color.chFog)
                 if let since = selected.stats?.cybercabSince ?? selected.cybercabSince {

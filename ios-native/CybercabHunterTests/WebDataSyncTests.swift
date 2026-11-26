@@ -28,7 +28,7 @@ struct WebDataSyncTests {
         #expect(WebData.city("dallas").zone == (try pairs(in: js, constant: "DALLAS_SERVICE_ZONE")))
         // The Zones page keeps its own Austin copy; it must be the same.
         #expect(WebData.city("austin").zone == (try pairs(in: try site("infrastructure.html"), constant: "serviceZoneCoords")))
-        #expect(WebData.city("austin").polygon.count == 32 && WebData.city("dallas").polygon.count == 23)
+        #expect(WebData.city("austin").polygon.count == 32 && WebData.city("dallas").polygon.count == 16)
     }
 
     /// Robotaxi facilities: the app ships the website's very file, and reads it the same way.

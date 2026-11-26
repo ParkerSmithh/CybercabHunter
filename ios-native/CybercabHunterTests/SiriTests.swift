@@ -197,7 +197,7 @@ struct SiriTests {
         let other = SiriSpeech.zone(decode(city("austin", sq: 300)), now: now)
         #expect(other.spoken.contains("about 300 square miles"), "read from the data, not hard-coded")
         let both = SiriSpeech.compareZones(decode(city("austin", sq: 272)), decode(city("dallas", sq: 81, since: "2026-04-18")))
-        #expect(both.spoken.hasPrefix("Austin covers about 272 square miles and Dallas about 81, so Austin's area is about 3.4 times larger.") && both.spoken.contains("Dallas's is Cybercab Hunter's currently listed coverage figure") && !both.spoken.contains("Tesla's own figure"))
+        #expect(both.spoken.hasPrefix("Austin covers about 272 square miles and Dallas about 81, so Austin's area is about 3.4 times larger.") && both.spoken.contains("Dallas's is Cybercab Hunter's mapped boundary, traced from Tesla's maps, not an official Tesla figure") && !both.spoken.contains("Tesla's own figure"))
     }
 
     // MARK: the data layer: cached, bounded, never signed in

@@ -34,10 +34,10 @@ function run() {
     check('infrastructure.html: has a #dallasContent Dallas panel', start !== -1);
     const panel = html.slice(start, html.indexOf('<!-- Map: a tall card on mobile', start));
     check('infrastructure.html: the Dallas panel is no longer a "not available" placeholder', !/isn'?t (available|built) in Cybercab Hunter/i.test(panel) && !/NOT YET AVAILABLE/.test(panel));
-    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Hubs', 'Staging Grounds', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Central Dallas, from downtown north to Northwest Highway, including Highland Park.', 'data-robotaxi-since="dallas"', 'Fleet &amp; Fares'];
+    const order = ['Service Zone', 'DALLAS, TX', 'Operating', 'Charging Hubs', 'Staging Grounds', 'Cybercabs', 'Coverage', 'mi²', 'Dallas • Live fleet', 'Dallas from downtown north past I-635 to the edges of Carrollton, Farmers Branch, Addison and Richardson, including Highland Park and Love Field.', 'data-robotaxi-since="dallas"', 'Fleet &amp; Fares'];
     const at = order.map(x => panel.indexOf(x));
     check('infrastructure.html: the Dallas panel has Austin\'s structure, in order', at.every((i, k) => i !== -1 && (k === 0 || i > at[k - 1])));
-    check('infrastructure.html: the Dallas coverage is 81 mi² (counted up like Austin\'s)', /id="dalCoverageOut"/.test(panel) && /countUp\(document\.getElementById\('dalCoverageOut'\), 81\)/.test(html));
+    check('infrastructure.html: the Dallas coverage comes from the shared config (counted up like Austin\'s)', /id="dalCoverageOut"/.test(panel) && /countUp\(document\.getElementById\('dalCoverageOut'\), [^\n]+key === 'dallas'\)\.zone\.square_miles\)/.test(html));
     check('infrastructure.html: no 2 AM, "not published" or "TxDOT cameras" left in the Dallas panel', !/2 AM|not published|TxDOT cameras/i.test(panel));
     for (const claim of LAUNCH_CLAIMS) {
       check(`infrastructure.html: the Dallas panel makes no unsourced launch claim (${claim})`, !claim.test(panel));
@@ -56,7 +56,7 @@ function run() {
     const facts = serviceAreaFor('dallas').zone;
     const strip = JSON.stringify(facts);
     check('Dallas service facts come from the shared config', facts.hours.all_day && facts.hours.open === '00:00' &&
-      facts.hours.close === '24:00' && facts.square_miles === 81 && facts.in_service_since === '2026-04-18');
+      facts.hours.close === '24:00' && facts.square_miles === 148 && facts.in_service_since === '2026-04-18');
     check('index.html: the Dallas minimap draws the Dallas service zone', /initZoneMap\('zoneMap-dallas', 'Dallas', \[[^\]]+\], CCCAustinMap\.DALLAS_SERVICE_ZONE\)/.test(html));
     for (const claim of LAUNCH_CLAIMS) {
       check(`the Dallas facts make no unsourced launch claim (${claim})`, !claim.test(strip));
@@ -65,17 +65,17 @@ function run() {
   }
 
   // The Dallas service zone (js/austin-map.js): a closed ring inside the Dallas
-  // metro, about Tesla's 81 mi²; Fleet ETA shows 5 AM - 2 AM.
+  // metro, about 148 mi² since the Nov 2026 expansion; Fleet ETA shows 5 AM - 2 AM.
   {
     const src = fs.readFileSync(new URL('../public/js/austin-map.js', import.meta.url), 'utf8');
     const ring = JSON.parse(src.match(/const DALLAS_SERVICE_ZONE = (\[[\s\S]*?\]);/)[1].replace(/\s/g, ''));
     const closed = JSON.stringify(ring[0]) === JSON.stringify(ring.at(-1));
-    const inDallas = ring.every(([lng, lat]) => lng > -97 && lng < -96.6 && lat > 32.7 && lat < 32.9);
+    const inDallas = ring.every(([lng, lat]) => lng > -97 && lng < -96.6 && lat > 32.7 && lat < 33.0);
     const k = Math.cos(32.8 * Math.PI / 180) * 111.32 * 110.57;
     let a2 = 0;
     for (let i = 0; i < ring.length - 1; i++) a2 += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
     const mi2 = Math.abs(a2 / 2) * k / 2.58999;
-    check(`the Dallas zone is a closed ring in Dallas, ~81 mi² (${mi2.toFixed(1)})`, closed && inDallas && ring.length > 10 && mi2 > 75 && mi2 < 87);
+    check(`the Dallas zone is a closed ring in Dallas, ~148 mi² (${mi2.toFixed(1)})`, closed && inDallas && ring.length > 10 && mi2 > 140 && mi2 < 156);
     const cameras = JSON.parse(read('data/traffic-cameras.json')).filter(c => c.city === 'dallas');
     check('Dallas has exactly 50 distinct TxDOT cameras', cameras.length === 50 && new Set(cameras.map(c => c.camera_id)).size === 50 && cameras.every(c => /^txdot-dal-\d+$/.test(c.camera_id)));
     // The owner's final corridor plan intentionally extends beyond the service zone.

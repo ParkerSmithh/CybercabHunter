@@ -195,7 +195,7 @@
     const added = a.vehicles ? `+${int(a.vehicles_added_7d || 0)} this week · ${int(a.vehicles_added_prev_7d || 0)} the week before` : 'None in the registry yet';
     return `<p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 max-sm:text-[10px]">Service area · <span class="text-gold">${esc(d.name.toUpperCase())}</span></p>` +
       tiles('grid-cols-4 max-sm:grid-cols-2',
-        tile('Coverage', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—', esc(density)) +
+        tile('Coverage (est.)', typeof a.square_miles === 'number' ? `${int(a.square_miles)}<span class="text-base text-slate-400 ml-1 max-sm:text-[10px]">mi²</span>` : '—', esc(density)) +
         tile('In service since', esc(date(a.in_service_since)), days != null ? `${int(days)} days of service` : '') +
         tile('Vehicles documented', int(a.vehicles), esc(added)) +
         tile('Service hours', esc(hours), allDay ? 'Around the clock, every day' : span ? `${span} hours a day · Central` : '')) +

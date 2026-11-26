@@ -160,7 +160,7 @@ window.CCCReplay = (function () {
     const zoneBounds = () => {
       const z = window.CCCAustinMap
         ? (CITY === 'dallas' ? CCCAustinMap.DALLAS_SERVICE_ZONE : CCCAustinMap.SERVICE_ZONE)
-        : (CITY === 'dallas' ? [[-96.93, 32.73], [-96.72, 32.88]] : [[-97.87, 30.14], [-97.55, 30.46]]);
+        : (CITY === 'dallas' ? [[-96.93, 32.73], [-96.70, 32.96]] : [[-97.87, 30.14], [-97.55, 30.46]]);
       const lng = z.map(c => c[0]), lat = z.map(c => c[1]);
       return [[Math.min(...lng), Math.min(...lat)], [Math.max(...lng), Math.max(...lat)]];
     };

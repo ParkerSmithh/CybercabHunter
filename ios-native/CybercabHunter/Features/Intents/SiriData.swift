@@ -442,7 +442,7 @@ enum SiriSpeech {
     static func zoneSource(_ key: String) -> String {
         switch key {
         case "austin": "Cybercab Hunter's mapped boundary, traced from Tesla's in-app map, not an official Tesla figure"
-        case "dallas": "Cybercab Hunter's currently listed coverage figure"
+        case "dallas": "Cybercab Hunter's mapped boundary, traced from Tesla's maps, not an official Tesla figure"
         default: "an approximate figure"
         }
     }

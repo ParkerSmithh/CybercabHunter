@@ -149,7 +149,8 @@ export async function apiSearchMapPlaces(request, env, ctx) {
   // One cache entry per normalized query, shared by every visitor.
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   // v2: city-biased results (older entries, some empty from a Photon outage, are skipped).
-  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?v=2&area=${area.key}&q=${encodeURIComponent(q.toLowerCase())}`);
+  // v3: Dallas's box reaches the expanded zone's north (Nov 2026).
+  const cacheKey = new Request(`https://cybercabhunter.com/api/places/map?v=3&area=${area.key}&q=${encodeURIComponent(q.toLowerCase())}`);
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
