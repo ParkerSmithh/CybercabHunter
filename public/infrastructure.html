@@ -35,7 +35,7 @@
 <link rel="stylesheet" href="css/brand-type.css?v=5">
 <link rel="stylesheet" href="css/panel-finish.css?v=1">
 <link rel="stylesheet" href="css/zones-facilities.css?v=1">
-<script src="/js/cities.js?v=2"></script>
+<script src="/js/cities.js?v=3"></script>
 <script src="/js/city-switcher.js?v=3"></script>
 </head>
 <body class="bg-void text-slate-100 font-body">
@@ -147,13 +147,14 @@
         <div class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage (est.)</p>
               <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums max-sm:text-2xl max-sm:mt-1.5"><span id="coverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
             </div>
             <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Austin • Live fleet</p>
           </div>
           <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">First Robotaxi market. Launched as an invite pilot, now unsupervised.</p>
           <p class="text-xs text-slate-500 mt-2"><span data-robotaxi-since="austin"></span></p>
+          <p class="text-xs text-slate-500 mt-1">Area estimated from Tesla's map; not an official Tesla figure.</p>
         </div>
 
         <!-- Fleet & fares -->
@@ -187,7 +188,7 @@
       </div>
 
       <!-- Dallas (launched April 18, 2026): the same structure as Austin's panel.
-           Zone: js/austin-map.js DALLAS_SERVICE_ZONE; 81 mi² is Tesla's figure. -->
+           Zone: js/austin-map.js DALLAS_SERVICE_ZONE; about 148 mi², measured from it (expanded Nov 2026). -->
       <div id="dallasContent" class="hidden mt-5 max-sm:mt-4">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -210,13 +211,14 @@
         <div class="mt-5 pt-5 border-t border-white/[0.07] max-sm:mt-4 max-sm:pt-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage</p>
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Coverage (est.)</p>
               <div class="font-display font-bold text-3xl text-gold leading-none mt-2 tabular-nums max-sm:text-2xl max-sm:mt-1.5"><span id="dalCoverageOut">0</span><span class="text-lg text-gold/80 ml-1">mi²</span></div>
             </div>
             <p class="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Dallas • Live fleet</p>
           </div>
-          <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">Central Dallas, from downtown north to Northwest Highway, including Highland Park.</p>
+          <p class="text-xs text-slate-400 leading-relaxed mt-3 max-sm:mt-2 max-sm:leading-snug">Dallas from downtown north past I-635 to the edges of Carrollton, Farmers Branch, Addison and Richardson, including Highland Park and Love Field.</p>
           <p class="text-xs text-slate-500 mt-2"><span data-robotaxi-since="dallas"></span></p>
+          <p class="text-xs text-slate-500 mt-1">Area estimated from Tesla's map; not an official Tesla figure.</p>
         </div>
 
         <!-- Fleet & fares (GET /api/fleet-stats?city=dallas) -->
@@ -417,7 +419,7 @@
 <script src="/vendor/maplibre-gl-5.24.0.js"></script>
 <script src="js/calc.js?v=13"></script>
 <script src="js/main.js?v=35"></script>
-<script src="js/austin-map.js?v=14"></script>
+<script src="js/austin-map.js?v=15"></script>
 <script src="js/map-search.js?v=3"></script>
 <script src="js/zones-heatmap.js?v=4"></script>
 <script src="js/zones-following.js?v=2"></script>
@@ -428,7 +430,7 @@
 
   // Count up the zone stats once they are in view, like the homepage stats bar.
   CCC.countUp(document.getElementById('coverageOut'), window.CCH_CITIES.SERVICE_AREAS.find(area => area.key === 'austin').zone.square_miles);
-  CCC.countUp(document.getElementById('dalCoverageOut'), 81);   // counts when Dallas is first shown
+  CCC.countUp(document.getElementById('dalCoverageOut'), window.CCH_CITIES.SERVICE_AREAS.find(area => area.key === 'dallas').zone.square_miles);   // counts when Dallas is first shown
 
   // ---- Fleet & Fares: live, from GET /api/fleet-stats (worker/fleet-stats.js) ----
   // The Cybercab count is the public Austin registry; the fares come from

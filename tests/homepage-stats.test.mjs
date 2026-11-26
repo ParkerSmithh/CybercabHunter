@@ -106,7 +106,7 @@ async function run() {
     check('no all-cities totals in the response (the page no longer shows them)', !('all' in A.hero));
     check('Dallas hero: 0 / 0', D.hero.city.vehicles === 0 && D.hero.city.rides === 0);
     check('the private vehicle is nowhere in the response', !/PRIV004/.test(JSON.stringify(A)));
-    check('area: published zone facts and the documented vehicle count', A.area.square_miles === 440 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 81);
+    check('area: published zone facts and the documented vehicle count', A.area.square_miles === 440 && A.area.in_service_since === '2025-06-22' && A.area.vehicles === 3 && D.area.square_miles === 148);
   }
 
   console.log('4. Sightings (approved public photo sightings only)');
@@ -215,7 +215,7 @@ async function run() {
     check('no extra map thumbnail (the minimap beside the facts opens the full map)', !d.querySelector('.hr-map'));
     w.setHomeRowsCity('dallas');
     await settle();
-    check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No approved sightings in Dallas yet/.test(text('rowSightings')) && /81/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '3');
+    check('Dallas: every row switches (empty states, "—", no Austin numbers left)', /No contributed ride receipts in Dallas yet/.test(text('rowRides')) && !/\$13\.25/.test(text('rowRides')) && /No approved sightings in Dallas yet/.test(text('rowSightings')) && /148/.test(text('rowArea')) && d.getElementById('statVehicles').textContent === '3');
     check('Dallas graph switches city and keeps the September 29 timeline with zero counts', d.querySelector('.sightings-daily-svg').getAttribute('aria-label').startsWith('Dallas approved sightings per day.') && d.querySelectorAll('.sightings-day').length === D.sightings.daily.filter(day => day.date >= '2026-09-29').length && [...d.querySelectorAll('.sightings-day')].every(el => el.dataset.count === '0') && /No approved sightings in Dallas in this window/.test(text('rowSightings')));
     check('all three headline totals stay unchanged when Dallas is selected', headline() === globalHeadline);
     w.setHomeRowsCity('austin');

@@ -17,7 +17,7 @@ struct ServiceZonesSection: View {
             if let d = model.cityStats[model.city], let a = d.area {
                 Eyebrow(text: "Service area", accent: d.name)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                    tile("Coverage", a.squareMiles.map { Format.int(Int($0)) } ?? "—", unit: "mi²",
+                    tile("Coverage (est.)", a.squareMiles.map { Format.int(Int($0)) } ?? "—", unit: "mi²",
                          note: (a.vehicles ?? 0) > 0 && (a.squareMiles ?? 0) > 0 ? "≈ \(Format.one(Double(a.vehicles!) / a.squareMiles! * 10)) vehicles per 10 mi²" : "No vehicles documented yet")
                     tile("In service since", Format.day(a.inServiceSince), note: daysOfService(a.inServiceSince))
                     tile("Vehicles documented", Format.int(a.vehicles),

@@ -117,7 +117,7 @@ enum SimulationCalc {
 
     static let deployedShare = [0.4, 0.6, 0.8], speedMph = [18.0, 22, 28]
     static let idleShare: [String: [Double]] = ["quiet": [0.5, 0.65, 0.8], "typical": [0.3, 0.5, 0.6], "busy": [0.05, 0.15, 0.3]]
-    static let areaSqMi = ["austin": 440.1, "dallas": 81.0]
+    static let areaSqMi = ["austin": 440.1, "dallas": 148.0]
 
     enum Geometry: Equatable { case ok(low: Int, likely: Int, high: Int, highCapped: Bool), fewCars, noData }
 

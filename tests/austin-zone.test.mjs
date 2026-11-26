@@ -66,8 +66,8 @@ console.log('3. The expansion, as the reference images show it');
 
 console.log('4. Dallas and the service-area boxes');
 {
-  check('Dallas is unchanged, and still shared by both platforms', JSON.stringify(dallas) === JSON.stringify(iosDallas) && JSON.stringify(dallas[0]) === '[-96.85815,32.8603]' && dallas.length === iosDallas.length);
-  check('Dallas still 81 mi² (Tesla\'s figure)', serviceAreaFor('dallas').zone.square_miles === 81);
+  // Dallas has its own checks (tests/dallas-zone.test.mjs); here, only that both platforms share it.
+  check('Dallas is shared by both platforms', JSON.stringify(dallas) === JSON.stringify(iosDallas) && dallas.length === iosDallas.length);
   const austin = serviceAreaFor('austin');
   check('every vertex is inside the Austin box (locations in the new areas can be picked)', shared.every(([lon, lat]) => isInServiceArea(austin, lon, lat)));
   const b = austin.bbox, lons = shared.map(p => p[0]), lats = shared.map(p => p[1]);

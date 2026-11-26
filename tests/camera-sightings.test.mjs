@@ -290,7 +290,7 @@ async function run() {
     check('...the Zones map too', zones.maps[0].o.style === DARK_MATTER && Object.keys(zones.paints).length === 0);
     check('...and the Replay map', /style: window\.CCCAustinMap \? CCCAustinMap\.styleUrl\(\)/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8')) && !/openfreemap/.test(fs.readFileSync(`${ROOT}public/js/replay.js`, 'utf8') + fs.readFileSync(`${ROOT}public/js/austin-map.js`, 'utf8')));
     check('...and it still has the camera Cybercabs; facilities are js/zones-facilities.js, not hard-coded pins', !zones.markers.some(m => /Charging Location/.test(m.popup && m.popup.html || '')) && zones.markers.some(m => m.el.className === 'camera-cybercab') && !/chargingLocations/.test(SHARED + zonesScript) && /<script src="js\/zones-facilities\.js\?v=\d+"><\/script>/.test(ZONES));
-    check('both pages load the shared script (v14)', /<script src="js\/austin-map\.js\?v=14"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=14"><\/script>/.test(ZONES));
+    check('both pages load the shared script (v15)', /<script src="js\/austin-map\.js\?v=15"><\/script>/.test(INDEX) && /<script src="js\/austin-map\.js\?v=15"><\/script>/.test(ZONES));
   }
 
   t.finish();
